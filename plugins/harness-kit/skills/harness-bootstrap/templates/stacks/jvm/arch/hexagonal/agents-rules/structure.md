@@ -2,8 +2,8 @@
 
 # 구조 · 멀티모듈 헥사고날 — {{PROJECT_NAME}}
 
-이 프로젝트는 **클린 아키텍처(헥사고날) + DDD**를 **빌드 도구(Gradle 기본, Maven 선택)의 모듈 의존 그래프로 컴파일 레벨에서 강제**한다.
-의존 방향 위반은 리뷰가 아니라 **컴파일 실패**로 막힌다(기계적 강제 우선). 아키텍처 상세 정본은 `ARCHITECTURE.md`.
+이 프로젝트는 **클린 아키텍처(헥사고날) + DDD**를 빌드 도구(Gradle 기본, Maven 선택)의 모듈 의존 그래프로 컴파일 레벨에서 강제한다.
+의존 방향 위반은 리뷰가 아니라 **컴파일 실패**로 막힌다(기계적 강제 우선). 아키텍처 상세 원본은 `ARCHITECTURE.md`.
 
 ## 모듈 레이아웃 (단일 프로젝트)
 
@@ -40,8 +40,8 @@
 
 ## Port & Adapter
 
-- **Inbound Port(`port.in`)** = 유스케이스 인터페이스. 위치 `application/usecase/<X>UseCase.kt`(POJO, 어노테이션 없음). 컨트롤러는 이 인터페이스에만 의존한다.
-- **Outbound Port(`port.out`)** = Repository/Gateway 추상. 위치 `application/output/`. `application`이 정의하고 `infra`가 구현한다.
+- Inbound Port(`port.in`) = 유스케이스 인터페이스. 위치 `application/usecase/<X>UseCase.kt`(POJO, 어노테이션 없음). 컨트롤러는 이 인터페이스에만 의존한다.
+- Outbound Port(`port.out`) = Repository/Gateway 추상. 위치 `application/output/`. `application`이 정의하고 `infra`가 구현한다.
 - 포트는 **애그리거트 기준**(`save(aggregate)`·`findBy…`)으로 정의한다. `upsert(컬럼들)`·SQL 같은 영속 메커니즘을 포트 시그니처에 드러내지 않는다(멱등/충돌 처리는 어댑터 내부).
 - 새 외부 시스템 통합 = 새 `port.out` + 새 `infra` 어댑터. `application`/`domain`은 손대지 않는다(OCP).
 
@@ -65,8 +65,8 @@
         ├── client / config
 ```
 
-- 클래스명은 도메인 개념(ubiquitous language)으로 짓고 **테이블 prefix를 붙이지 않는다**(네임스페이스는 컨텍스트 패키지가 담당). 예: `Order`/`OrderLine`(테이블 `ord_*`), infra는 `<concept>Entity`/`<concept>JpaRepository`/`<concept>PersistenceAdapter`/`<concept>Mapper`.
-- DB 접근: **표준 CRUD는 JPA(또는 Spring Data)**, **복잡 조회·keyset cursor·저장소 레벨 격리·JSON 컬럼 등은 쿼리 도구(선택)**로. 네이티브 SQL은 지양(불가피하면 Why 주석 + 정렬).
+- 클래스명은 도메인 개념(ubiquitous language)으로 짓고 테이블 prefix를 붙이지 않는다(네임스페이스는 컨텍스트 패키지가 담당). 예: `Order`/`OrderLine`(테이블 `ord_*`), infra는 `<concept>Entity`/`<concept>JpaRepository`/`<concept>PersistenceAdapter`/`<concept>Mapper`.
+- DB 접근: 표준 CRUD는 JPA(또는 Spring Data), 복잡 조회·keyset cursor·저장소 레벨 격리·JSON 컬럼 등은 쿼리 도구(선택)로. 네이티브 SQL은 지양(불가피하면 Why 주석 + 정렬).
 - 컨텍스트 간 직접 호출·모델 공유 금지. 통합이 필요하면 제공 컨텍스트의 **공개 계약(contract) 인터페이스**를 경유한다(impl 직접 의존 금지).
 
 ## 새 도메인/유스케이스 착수 워크플로
@@ -77,14 +77,14 @@
    1. `domain`: 애그리거트/VO 테스트 → 모델 구현.
    2. `application`: 유스케이스 테스트(fake `port.out`) → `port.in`/`port.out` 정의 → 유스케이스 구현.
    3. `infra`: 통합 테스트(예: Testcontainers)로 `port.out` 구현 테스트 → JPA/쿼리 도구 구현(DB가 지원하면 저장소 격리 정책 포함).
-   4. `primary`: `@WebMvcTest`로 컨트롤러 테스트 → 컨트롤러·DTO·매퍼 구현. **응답은 `ApiResponses` envelope**.
+   4. `primary`: `@WebMvcTest`로 컨트롤러 테스트 → 컨트롤러·DTO·매퍼 구현. 응답은 `ApiResponses` envelope.
    5. `bootstrap`: 빈 등록·smoke 테스트.
 4. **검증**: `scripts/verify.sh`(= `./gradlew check`) 통과 + OpenAPI/문서 동기화(`.agents/docs/openapi`).
 5. **계획 추적**: 복잡 작업은 `.agents/docs/product-<slug>-specs/tasks/active/`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
 
 ## 아키텍처 구조 테스트 (Konsist — 컴파일 강제의 보완)
 
-의존 방향은 **Gradle 모듈 그래프가 1차로 컴파일 차단**한다(위 표). 그러나 모듈 그래프가 **못 잡는** 위반이 있다:
+의존 방향은 Gradle 모듈 그래프가 1차로 컴파일 차단한다(위 표). 그러나 모듈 그래프가 **못 잡는** 위반이 있다:
 같은 모듈 안에서의 패키지 규율(도메인 패키지가 Spring/JPA 어노테이션 참조), 네이밍 규약(`*PersistenceAdapter`),
 컨트롤러가 `ResponseEntity`를 직접 반환(§Anti-pattern), 컨텍스트 간 도메인 직접 import 등. 이를 **테스트로 강제**한다.
 
@@ -153,7 +153,7 @@ class ArchitectureTest : FunSpec({
 
 > ArchUnit을 쓴다면 `layeredArchitecture()`로 같은 레이어 규칙(`domain` ← `application` ← `primary`/`infra`)과
 > `noClasses().that().resideInAPackage("..domain..").should().dependOnClassesThat().resideInAPackage("org.springframework..")`를 표현한다.
-> 어느 쪽이든 **위반을 `./gradlew check`에서 실패로 만드는 것**이 핵심이다(리뷰가 아니라 게이트).
+> 어느 쪽이든 위반을 `./gradlew check`에서 실패로 만드는 것이 핵심이다(리뷰가 아니라 게이트).
 
 ## 새 기능 착수 규칙
 

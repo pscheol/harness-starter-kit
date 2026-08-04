@@ -3,9 +3,9 @@ name: hx-tasks
 description: SDD 3단계 — 작업 생성. design을 실행 가능한 tasks/active/<feature>.md 로 분해한다.
 ---
 
-<!-- HARNESS STARTER KIT · 얇은 트리거. 정본: .agents/rules/sdd-workflow.md (/hx-tasks 절) -->
+<!-- HARNESS STARTER KIT · 얇은 트리거. 원본: .agents/rules/sdd-workflow.md (/hx-tasks 절) -->
 
-SDD 워크플로 **정본** `.agents/rules/sdd-workflow.md` 의 **`/hx-tasks`** 절을 로드해 그대로 수행한다.
+SDD 워크플로 원본 `.agents/rules/sdd-workflow.md` 의 `/hx-tasks` 절을 로드해 그대로 수행한다.
 
 전제: design 승인(없으면 `scripts/check-sdd-prerequisites.sh <slug> <feature> --stage tasks`).
 

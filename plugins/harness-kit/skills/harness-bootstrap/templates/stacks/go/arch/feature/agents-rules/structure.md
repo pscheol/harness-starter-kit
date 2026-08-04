@@ -2,9 +2,9 @@
 
 # 구조 · 표준 Go 레이아웃 + 패키지 바이 피처 — {{PROJECT_NAME}}
 
-이 프로젝트는 **[golang-standards/project-layout](https://github.com/golang-standards/project-layout)** 을 최상위 뼈대로,
+이 프로젝트는 [golang-standards/project-layout](https://github.com/golang-standards/project-layout) 을 최상위 뼈대로,
 `internal/` 안을 **기술 레이어가 아니라 기능(feature)** 으로 먼저 나눈다. 한 기능 = 한 패키지이고, 그 안에 `handler`·`service`·`store`·`model`이 파일로 공존한다.
-의존 방향은 **`internal/` 가시성 + import 사이클 금지(둘 다 컴파일러) + depguard 린트 + 구조 테스트**로 강제한다. 아키텍처 상세 정본(선택 기준·전환 가이드 포함)은 `ARCHITECTURE.md`.
+의존 방향은 `internal/` 가시성 + import 사이클 금지(둘 다 컴파일러) + depguard 린트 + 구조 테스트로 강제한다. 아키텍처 상세 원본(선택 기준·전환 가이드 포함)은 `ARCHITECTURE.md`.
 
 ## 리포 레이아웃
 
@@ -26,7 +26,7 @@
 │   ├── auth/ ...                # 다른 기능
 │   └── architecture_test.go     # 기능 독립성 자동 검사
 ├── pkg/                         # 외부 공개 라이브러리만(없으면 만들지 않는다)
-├── api/                         # OpenAPI·proto 계약 정본
+├── api/                         # OpenAPI·proto 계약 원본
 ├── configs/ · deployments/ · migrations/ · test/ · build/
 ├── scripts/verify.sh            # 단일 검증 게이트
 └── docs/
@@ -39,7 +39,7 @@
 
 ## 기능 패키지 내부 규약
 
-한 기능은 **하나의 Go 패키지**다. 파일은 나뉘어 있어도 컴파일러 관점에서는 같은 패키지이므로 **소문자 식별자로 캡슐화**한다.
+한 기능은 하나의 Go 패키지다. 파일은 나뉘어 있어도 컴파일러 관점에서는 같은 패키지이므로 소문자 식별자로 캡슐화한다.
 
 | 파일 | 책임 | 노출 |
 |---|---|---|
@@ -56,7 +56,7 @@
 
 ## 기능 간 통합 (이 변형의 핵심 규칙)
 
-기능은 서로를 **직접 import하지 않는다**. 통합이 필요하면 셋 중 하나를 고른다.
+기능은 서로를 직접 import하지 않는다. 통합이 필요하면 셋 중 하나를 고른다.
 
 | 방식 | 언제 | 형태 |
 |---|---|---|
@@ -75,33 +75,33 @@ type OwnerLookup interface {
 }
 ```
 
-- **(b)가 기본값**이다. Go 관례상 인터페이스는 소비자 쪽에 선언하고, 이 방식만이 **양방향 의존을 만들지 않는다**.
-- (a)도 **DTO만 오간다**. 다른 기능의 내부 타입·`*sql.Tx`·`*sql.DB`를 넘기지 않는다.
-- **다른 기능이 소유한 테이블을 직접 조회·조인하지 않는다.** 조인이 꼭 필요하면 경계가 잘못됐다는 신호다.
-- **기능을 넘는 단일 트랜잭션을 만들지 않는다.** 두 기능을 바꿔야 하면 (c) 이벤트 + 멱등 처리로 최종 일관성을 택한다.
-- 기능 간 호출을 **루프 안에서 하지 않는다**(N+1). 배치 계약(`DisplayNames(ctx, ids)`)을 제공한다.
+- **(b)가 기본값**이다. Go 관례상 인터페이스는 소비자 쪽에 선언하고, 이 방식만이 양방향 의존을 만들지 않는다.
+- (a)도 DTO만 오간다. 다른 기능의 내부 타입·`*sql.Tx`·`*sql.DB`를 넘기지 않는다.
+- 다른 기능이 소유한 테이블을 직접 조회·조인하지 않는다. 조인이 꼭 필요하면 경계가 잘못됐다는 신호다.
+- 기능을 넘는 단일 트랜잭션을 만들지 않는다. 두 기능을 바꿔야 하면 (c) 이벤트 + 멱등 처리로 최종 일관성을 택한다.
+- 기능 간 호출을 루프 안에서 하지 않는다(N+1). 배치 계약(`DisplayNames(ctx, ids)`)을 제공한다.
 
 ## 강제 수단
 
 - **depguard**(`.golangci.yml`): `store.go`·`model.go`의 `net/http` 금지, `platform` → 기능 역참조 금지, 기능 쌍 간 import 금지. 골격은 `ARCHITECTURE.md` §3.2.
   - depguard는 **쌍으로 선언**해야 해서 기능이 늘면 규칙도 늘어난다(등록 누락 = 강제 누락).
-- **구조 테스트**(`internal/architecture_test.go`): 디렉터리를 스캔해 **모든 기능 쌍을 자동 검사**한다. 기능을 추가해도 설정을 고칠 필요가 없다. 골격은 `ARCHITECTURE.md` §3.3.
+- 구조 테스트(`internal/architecture_test.go`): 디렉터리를 스캔해 모든 기능 쌍을 자동 검사한다. 기능을 추가해도 설정을 고칠 필요가 없다. 골격은 `ARCHITECTURE.md` §3.3.
 - 둘을 **함께** 둔다. depguard는 빠른 피드백, 구조 테스트는 누락 없는 커버리지를 준다.
 
 ## 패키지·네이밍 컨벤션
 
 - 기능 패키지명은 **짧은 소문자 단수형**(`{{DOMAIN_EXAMPLE}}`·`auth`·`billing`). 밑줄·대문자·복수형 금지. `util`·`helper` 패키지를 만들지 않는다.
-- **패키지명 반복 금지**: `{{DOMAIN_EXAMPLE}}.New{{DOMAIN_EXAMPLE}}()`가 아니라 `{{DOMAIN_EXAMPLE}}.New()`. 호출부에서 읽히는 이름을 기준으로 짓는다.
+- 패키지명 반복 금지: `{{DOMAIN_EXAMPLE}}.New{{DOMAIN_EXAMPLE}}()`가 아니라 `{{DOMAIN_EXAMPLE}}.New()`. 호출부에서 읽히는 이름을 기준으로 짓는다.
 - 패키지 주석(`// Package {{DOMAIN_EXAMPLE}} ...`)에 **이 기능이 무엇을 소유하는지** 한 줄로 적는다.
 - 인터페이스명: 단일 메서드는 `-er`(`Reader`·`Provisioner`), 역할형은 명사(`OwnerLookup`).
 - 도메인 타입 필드는 **비공개 + 접근자**로 두고 생성자에서 불변식을 검증한다.
-- **DB 스캔 구조체와 `model` 타입은 다른 타입**이며 `store`가 변환한다. 스캔 구조체가 기능 밖으로 새지 않는다.
-- **`handler`는 `model`을 그대로 반환하지 않는다.** 응답 DTO로 변환하고 `platform/httpx`의 공통 envelope에 담는다.
+- DB 스캔 구조체와 `model` 타입은 다른 타입이며 `store`가 변환한다. 스캔 구조체가 기능 밖으로 새지 않는다.
+- `handler`는 `model`을 그대로 반환하지 않는다. 응답 DTO로 변환하고 `platform/httpx`의 공통 envelope에 담는다.
 - **트랜잭션 경계는 `service`**: 자기 패키지에 `TxManager` 인터페이스를 선언하고 `platform/db`가 구현한다. `store`는 커밋하지 않는다.
 
 ## 새 기능 착수 워크플로
 
-1. **기능 결정**: 기존 기능 안인지 새 기능인지 먼저 답한다. 판단 기준은 **"어느 기능이 이 데이터를 소유하는가"**.
+1. **기능 결정**: 기존 기능 안인지 새 기능인지 먼저 답한다. 판단 기준은 "어느 기능이 이 데이터를 소유하는가".
 2. (신규 기능이면) `internal/<feature>/` 생성(`handler.go`·`service.go`·`store.go`·`model.go`) → `.golangci.yml`에 독립 규칙 쌍 추가(구조 테스트가 자동 검사하는지도 확인) → `main.go`에서 조립·라우터 마운트.
 3. **TDD 사이클**(RED→GREEN→REFACTOR):
    1. `model`: 테이블 주도 테스트로 불변식·상태 전이 → 생성자에서 검증하는 타입 구현.
@@ -116,7 +116,7 @@ type OwnerLookup interface {
 ## 아키텍처 구조 테스트 (린터의 보완)
 
 컴파일러가 `internal/` 가시성과 사이클을, depguard가 선언된 쌍의 import를 막는다.
-그러나 **기능이 늘어날 때 규칙 등록을 잊는 것**이 이 변형의 가장 흔한 실패다. 구조 테스트가 그 구멍을 메운다.
+그러나 기능이 늘어날 때 규칙 등록을 잊는 것이 이 변형의 가장 흔한 실패다. 구조 테스트가 그 구멍을 메운다.
 
 ```go
 // internal/architecture_test.go — 기능 목록을 하드코딩하지 않고 디렉터리를 스캔한다.
@@ -157,7 +157,7 @@ func Test기능간직접import금지(t *testing.T) {
 }
 ```
 
-> 규칙은 프로젝트에 맞게 늘린다. 핵심은 **위반을 `scripts/verify.sh`에서 실패로 만드는 것**(리뷰가 아니라 게이트).
+> 규칙은 프로젝트에 맞게 늘린다. 핵심은 위반을 `scripts/verify.sh`에서 실패로 만드는 것(리뷰가 아니라 게이트).
 
 ## 새 기능 착수 규칙
 

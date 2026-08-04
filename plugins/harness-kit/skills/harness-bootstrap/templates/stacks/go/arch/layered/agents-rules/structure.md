@@ -2,9 +2,9 @@
 
 # 구조 · 표준 Go 레이아웃 + 레이어드 — {{PROJECT_NAME}}
 
-이 프로젝트는 **[golang-standards/project-layout](https://github.com/golang-standards/project-layout)** 을 최상위 뼈대로,
-`internal/` 안에서 **레이어드 아키텍처(handler → service → repository → model)** 를 구현한다.
-의존 방향은 **`internal/` 가시성 + import 사이클 금지(둘 다 컴파일러) + depguard 린트**로 강제한다. 아키텍처 상세 정본(선택 기준·전환 가이드 포함)은 `ARCHITECTURE.md`.
+이 프로젝트는 [golang-standards/project-layout](https://github.com/golang-standards/project-layout) 을 최상위 뼈대로,
+`internal/` 안에서 레이어드 아키텍처(handler → service → repository → model) 를 구현한다.
+의존 방향은 `internal/` 가시성 + import 사이클 금지(둘 다 컴파일러) + depguard 린트로 강제한다. 아키텍처 상세 원본(선택 기준·전환 가이드 포함)은 `ARCHITECTURE.md`.
 
 ## 리포 레이아웃
 
@@ -24,13 +24,13 @@
 │   ├── repository/              #   데이터 접근(쿼리·스캔·매핑)
 │   └── model/                   #   도메인 타입(엔티티·VO·상태 상수)
 ├── pkg/                         # 외부 공개 라이브러리만(없으면 만들지 않는다)
-├── api/                         # OpenAPI·proto 계약 정본
+├── api/                         # OpenAPI·proto 계약 원본
 ├── configs/ · deployments/ · migrations/ · test/ · build/
 ├── scripts/verify.sh            # 단일 검증 게이트
 └── docs/
 ```
 
-- **`internal/`이 기본**이다. `pkg/`는 **정말로 외부에 공개할 코드가 있을 때만** 만든다.
+- `internal/`이 기본이다. `pkg/`는 정말로 외부에 공개할 코드가 있을 때만 만든다.
 - `cmd/<binary>/main.go`는 조립만 한다. 로직이 들어가기 시작하면 `internal/`로 옮긴다.
 - **단위 테스트는 소스 옆**(`foo.go` ↔ `foo_test.go`). `test/`는 e2e·대용량 픽스처 전용.
 - `src/` 디렉터리를 만들지 않는다(Go 관례 아님).
@@ -48,13 +48,13 @@
 | `internal/common` | envelope·errcode·공용 타입 | `model` |
 | `internal/{config,database,logger,middleware}` | 기술 토대 | 표준 라이브러리 + 드라이버 |
 
-- **의존 금지**: `service → handler`, `repository → service/handler`, `model → 위 전부`, `service`·`repository`·`model` → `net/http`, **`handler` → `repository`(레이어 건너뛰기)**.
-- **레이어를 건너뛰지 않는다**: 조회만 하는 엔드포인트라도 서비스를 통과시킨다(규칙은 나중에 생긴다).
-- 강제 수단(depguard 규칙 예시)은 `ARCHITECTURE.md` §3.2. **새 레이어 패키지를 만들면 규칙 경로 패턴이 그것을 덮는지 확인**한다.
+- 의존 금지: `service → handler`, `repository → service/handler`, `model → 위 전부`, `service`·`repository`·`model` → `net/http`, `handler` → `repository`(레이어 건너뛰기).
+- 레이어를 건너뛰지 않는다: 조회만 하는 엔드포인트라도 서비스를 통과시킨다(규칙은 나중에 생긴다).
+- 강제 수단(depguard 규칙 예시)은 `ARCHITECTURE.md` §3.2. 새 레이어 패키지를 만들면 규칙 경로 패턴이 그것을 덮는지 확인한다.
 
 ## 인터페이스는 소비자 쪽에 (Go 관례)
 
-레이어드에서도 **인터페이스는 구현체가 아니라 사용하는 쪽이 선언**한다. `service`가 필요한 저장 동작을 인터페이스로 선언하고 `repository`가 시그니처를 만족한다(명시적 implements 선언 없음 = 컴파일 타임 덕 타이핑).
+레이어드에서도 인터페이스는 구현체가 아니라 사용하는 쪽이 선언한다. `service`가 필요한 저장 동작을 인터페이스로 선언하고 `repository`가 시그니처를 만족한다(명시적 implements 선언 없음 = 컴파일 타임 덕 타이핑).
 
 ```go
 // internal/service/{{DOMAIN_EXAMPLE}}.go
@@ -75,19 +75,19 @@ type TxManager interface {
 ```
 
 - **인터페이스는 작게**(1~3 메서드). 거대한 단일 `Repository` 인터페이스는 테스트 대역 작성을 어렵게 한다.
-- **모든 메서드의 첫 인자는 `ctx context.Context`**. 시그니처에 SQL·컬럼·`*sql.Tx`를 노출하지 않는다.
+- 모든 메서드의 첫 인자는 `ctx context.Context`. 시그니처에 SQL·컬럼·`*sql.Tx`를 노출하지 않는다.
 - `repository`가 `service`를 import해 인터페이스를 "구현 선언"하지 않는다(의존 방향이 뒤집힌다).
 
 ## 패키지·네이밍 컨벤션
 
 - 패키지명은 **짧은 소문자 단수형**(`handler`·`service`·`repository`·`model`). `util`·`helper` 같은 잡동사니 패키지를 만들지 않는다(`internal/common`은 역할이 좁게 정의된 예외).
-- **패키지명 반복 금지**: `service.NewService()`가 아니라 도메인별로 `service.New{{DOMAIN_EXAMPLE}}(...)`. 호출부에서 읽히는 이름을 기준으로 짓는다.
+- 패키지명 반복 금지: `service.NewService()`가 아니라 도메인별로 `service.New{{DOMAIN_EXAMPLE}}(...)`. 호출부에서 읽히는 이름을 기준으로 짓는다.
 - 파일명은 소문자 + 밑줄(`{{DOMAIN_EXAMPLE}}.go`·`{{DOMAIN_EXAMPLE}}_test.go`). 한 파일에 한 리소스.
 - 인터페이스명: 단일 메서드는 `-er`(`Reader`·`Provisioner`), 역할형은 명사(`{{DOMAIN_EXAMPLE}}Store`).
 - **exported는 최소화**한다. 패키지 밖에서 쓰지 않는 타입·함수는 소문자로 둔다.
 - `model` 타입의 불변식이 중요하면 필드를 **비공개 + 접근자**로 두고 생성자에서 검증한다.
-- **DB 스캔 구조체(`repository`)와 `model` 타입은 다른 타입**이며 repository가 변환한다. 스캔 구조체가 repository 밖으로 새지 않는다.
-- **`handler`는 `model`을 그대로 반환하지 않는다.** 응답 DTO로 변환하고 공통 envelope에 담는다.
+- DB 스캔 구조체(`repository`)와 `model` 타입은 다른 타입이며 repository가 변환한다. 스캔 구조체가 repository 밖으로 새지 않는다.
+- `handler`는 `model`을 그대로 반환하지 않는다. 응답 DTO로 변환하고 공통 envelope에 담는다.
 - **트랜잭션 경계는 service**: `TxManager`로 열고 커밋한다. repository는 `ctx`로 전파된 실행기를 쓰기만 한다.
 
 ## 새 기능 착수 워크플로
@@ -131,7 +131,7 @@ func TestRepository는커밋하지않는다(t *testing.T) {
 }
 ```
 
-> 규칙은 프로젝트에 맞게 늘린다. 핵심은 **위반을 `scripts/verify.sh`에서 실패로 만드는 것**(리뷰가 아니라 게이트).
+> 규칙은 프로젝트에 맞게 늘린다. 핵심은 위반을 `scripts/verify.sh`에서 실패로 만드는 것(리뷰가 아니라 게이트).
 
 ## 새 기능 착수 규칙
 

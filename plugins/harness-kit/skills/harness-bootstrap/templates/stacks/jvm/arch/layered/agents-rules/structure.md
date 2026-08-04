@@ -2,8 +2,8 @@
 
 # 구조 · 레이어드(단일 모듈) — {{PROJECT_NAME}}
 
-이 프로젝트는 **레이어드 아키텍처**를 **단일 Gradle 모듈** 안에서 구현한다.
-모듈 그래프가 없으므로 의존 방향은 **ArchUnit 구조 테스트가 `./gradlew check`에서 실패로 강제**한다. 아키텍처 상세 정본은 `ARCHITECTURE.md`.
+이 프로젝트는 레이어드 아키텍처를 단일 Gradle 모듈 안에서 구현한다.
+모듈 그래프가 없으므로 의존 방향은 ArchUnit 구조 테스트가 `./gradlew check`에서 실패로 강제한다. 아키텍처 상세 원본은 `ARCHITECTURE.md`.
 
 ## 패키지 레이아웃
 
@@ -32,16 +32,16 @@
 | `common` | 공유 커널 | — |
 
 - **의존 금지(구조 테스트 차단)**: `service → controller`, `repository → service/controller`, `entity → 위 전부`, `entity·repository → org.springframework.web`.
-- **레이어 건너뛰기 금지**: `controller`는 `repository`를 직접 import하지 않는다(트랜잭션·정책이 service에 있다).
-- **`@Transactional`은 service에만**. 컨트롤러·리포지토리에 붙이지 않는다.
-- **엔티티를 컨트롤러 시그니처에 노출하지 않는다** — 항상 `controller/dto`로 변환한다.
+- 레이어 건너뛰기 금지: `controller`는 `repository`를 직접 import하지 않는다(트랜잭션·정책이 service에 있다).
+- `@Transactional`은 service에만. 컨트롤러·리포지토리에 붙이지 않는다.
+- 엔티티를 컨트롤러 시그니처에 노출하지 않는다 — 항상 `controller/dto`로 변환한다.
 
 ## 네이밍 컨벤션
 
 - 클래스명은 도메인 개념(ubiquitous language) + 레이어 접미사: `{{DOMAIN_EXAMPLE}}Controller` · `{{DOMAIN_EXAMPLE}}Service` · `{{DOMAIN_EXAMPLE}}Repository` · 엔티티는 접미사 없이 `{{DOMAIN_EXAMPLE}}`.
 - DTO는 용도를 이름에 담는다: `Create{{DOMAIN_EXAMPLE}}Request` · `{{DOMAIN_EXAMPLE}}Response`.
-- **테이블 prefix를 클래스명에 붙이지 않는다**(테이블명은 `@Table`로 지정).
-- 서비스 인터페이스를 습관적으로 만들지 않는다. 구현이 하나뿐이면 클래스 하나로 충분하고, **테스트 대역이 필요한 경계(리포지토리·외부 클라이언트)에만 인터페이스**를 둔다.
+- 테이블 prefix를 클래스명에 붙이지 않는다(테이블명은 `@Table`로 지정).
+- 서비스 인터페이스를 습관적으로 만들지 않는다. 구현이 하나뿐이면 클래스 하나로 충분하고, 테스트 대역이 필요한 경계(리포지토리·외부 클라이언트)에만 인터페이스를 둔다.
 
 ## 새 기능 착수 워크플로
 
@@ -57,7 +57,7 @@
 
 ## 아키텍처 구조 테스트 (ArchUnit — 이 변형의 강제 장치)
 
-단일 모듈에는 **컴파일 차단이 없다**. 레이어 방향·건너뛰기·엔티티 오염을 잡는 유일한 기계적 장치가 이 테스트다.
+단일 모듈에는 컴파일 차단이 없다. 레이어 방향·건너뛰기·엔티티 오염을 잡는 유일한 기계적 장치가 이 테스트다.
 `src/test/kotlin/{{PACKAGE_NS}}/architecture/LayeredArchitectureTest.kt`에 두면 `./gradlew check`가 자동으로 돌린다.
 
 ```kotlin
@@ -105,8 +105,8 @@ class LayeredArchitectureTest {
 ```
 
 - **레이어 패키지를 추가하면 이 테스트에 등록**한다(등록 누락 = 강제 누락).
-- **규칙이 0개 클래스를 검사하면 실패로 취급한다.** ArchUnit 1.x는 `archRule.failOnEmptyShould` 기본값이 `true`다 — 패키지명 오타나 패키지 이동으로 규칙이 조용히 죽는 것을 잡는 자동 감지이므로 `archunit.properties`에서 끄지 않는다.
-- 규칙을 `@Disabled`로 끄거나 지워서 통과시키는 것은 **아키텍처를 지우는 것**이다. 규칙이 틀렸다면 ADR을 남기고 고친다.
+- 규칙이 0개 클래스를 검사하면 실패로 취급한다. ArchUnit 1.x는 `archRule.failOnEmptyShould` 기본값이 `true`다 — 패키지명 오타나 패키지 이동으로 규칙이 조용히 죽는 것을 잡는 자동 감지이므로 `archunit.properties`에서 끄지 않는다.
+- 규칙을 `@Disabled`로 끄거나 지워서 통과시키는 것은 아키텍처를 지우는 것이다. 규칙이 틀렸다면 ADR을 남기고 고친다.
 - Kotlin 프로젝트라면 Konsist로도 같은 규칙을 표현할 수 있다. 중요한 것은 **위반이 게이트에서 실패**하는 것이다.
 
 ## 새 기능 착수 규칙

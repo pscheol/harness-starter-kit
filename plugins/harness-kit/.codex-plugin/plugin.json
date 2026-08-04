@@ -1,7 +1,7 @@
 {
   "name": "harness-kit",
   "version": "1.0.0",
-  "description": "백엔드 단일 프로젝트에 하네스 엔지니어링 골격(AGENTS.md 목차 · .agents/rules 공통 정본 · SDD 기록 시스템 · 단일 검증 게이트)을 스캐폴딩한다. jvm · python · go 3개 스택 × 14개 아키텍처 변형 지원.",
+  "description": "백엔드 단일 프로젝트에 하네스 엔지니어링 골격(AGENTS.md 목차 · .agents/rules 공통 원본 · SDD 기록 시스템 · 단일 검증 게이트)을 스캐폴딩한다. jvm · python · go 3개 스택 × 14개 아키텍처 변형 지원.",
   "author": {
     "name": "pscheol",
     "email": "application2@drimaes.com"
@@ -19,7 +19,7 @@
   "interface": {
     "displayName": "Harness Kit",
     "shortDescription": "백엔드 리포에 하네스 골격을 한 번에 스캐폴딩",
-    "longDescription": "AGENTS.md 진입점, .agents/rules 공통 규칙 정본(Claude Code · Codex · Kiro 공유), .kiro/steering 얇은 포인터, SDD 기록 시스템, scripts/verify.sh 단일 검증 게이트를 대상 백엔드 프로젝트에 설치한다. 스택은 jvm(Kotlin/Java+Spring) · python(FastAPI/Django) · go 중에서 고르고, 아키텍처 변형은 스택별 4~5종 중에서 고른다.",
+    "longDescription": "AGENTS.md 진입점, .agents/rules 공통 규칙 원본(Claude Code · Codex · Kiro 공유), .kiro/steering 얇은 포인터, SDD 기록 시스템, scripts/verify.sh 단일 검증 게이트를 대상 백엔드 프로젝트에 설치한다. 스택은 jvm(Kotlin/Java+Spring) · python(FastAPI/Django) · go 중에서 고르고, 아키텍처 변형은 스택별 4~5종 중에서 고른다.",
     "developerName": "pscheol",
     "category": "Developer Tools",
     "capabilities": [

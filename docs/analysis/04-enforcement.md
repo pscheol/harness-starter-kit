@@ -1,15 +1,15 @@
 # 04. 강제 레이어 — 단일 게이트·N트리거·구조 테스트
 
-킷의 강제는 "1곳 + N트리거"로 설계된다. **강제 로직은 `scripts/verify.sh` 한 곳**에만 있고,
+킷의 강제는 "1곳 + N트리거"로 설계된다. 강제 로직은 `scripts/verify.sh` 한 곳에만 있고,
 나머지 접점(에이전트 훅·CI·pre-commit)은 로직을 복제하지 않고 이 한 곳을 **호출만** 한다.
 
 ## 1. 단일 게이트 — `scripts/verify.sh`
 
 훅·CI·pre-commit이 전부 이 하나를 호출한다. 여러 단계 실패를 한 번에 보고하도록 실패를 누적한다.
-**아키텍처 변형마다 파일을 나누지는 않는다.** 변형 전용 단계는 **파일 존재 감지 기반 선택 실행**으로
+아키텍처 변형마다 파일을 나누지는 않는다. 변형 전용 단계는 **파일 존재 감지 기반 선택 실행**으로
 한 스크립트 안에 흡수한다 — `manage.py`가 있으면 Django 점검 + `makemigrations --check`(마이그레이션 드리프트),
 `evaluation/`·`evals/`가 있고 `EVAL_ON_VERIFY=1`이면 eval 스모크(기본은 비활성 — 비용·비결정성 때문에 nightly 권장).
-**아키텍처 변형마다 파일을 나누지는 않는다.** 변형 전용 단계는 **파일 존재 감지 기반 선택 실행**으로
+아키텍처 변형마다 파일을 나누지는 않는다. 변형 전용 단계는 **파일 존재 감지 기반 선택 실행**으로
 한 스크립트 안에 흡수한다 — `manage.py`가 있으면 Django 점검 + `makemigrations --check`(마이그레이션 드리프트),
 `evaluation/`·`evals/`가 있고 `EVAL_ON_VERIFY=1`이면 eval 스모크(기본은 비활성 — 비용·비결정성 때문에 nightly 권장).
 **스택마다 다른 파일이 설치**되지만(스택별 `verify.sh`), 구조는 같다: 1단계는 스택 무관 검사, 2단계는
@@ -38,7 +38,7 @@ python·go 게이트는 도구 미설치 시 그 단계를 건너뛰거나(golan
 
 | 훅 | 시점 | 하는 일 |
 |---|---|---|
-| `session-start.sh` | SessionStart | 하네스 컨텍스트를 stdout으로 주입 — 진입점(AGENTS.md)·규칙 정본·SDD SSOT·ARCHITECTURE·가드레일·verify.sh 안내 |
+| `session-start.sh` | SessionStart | 하네스 컨텍스트를 stdout으로 주입 — 진입점(AGENTS.md)·규칙 원본·SDD SSOT·ARCHITECTURE·가드레일·verify.sh 안내 |
 | `protect-sources.sh` | PreToolUse(`Write\|Edit\|MultiEdit`) | 편집 대상 `file_path`가 `PROTECTED_PATH`(기본 `docs/references`)면 **exit 2 + stderr로 차단** |
 | `verify.sh` | Stop | 얇은 트리거 — `scripts/verify.sh`가 있으면 `exec bash scripts/verify.sh`, 없으면 no-op(exit 0) |
 
@@ -61,7 +61,7 @@ python·go 게이트는 도구 미설치 시 그 단계를 건너뛰거나(golan
 
 ### 2.3 Kiro 포인터
 
-`.kiro/steering/*`는 `inclusion` 기반 얇은 포인터로, 정본과 verify.sh를 가리킨다(규칙 본문 없음).
+`.kiro/steering/*`는 `inclusion` 기반 얇은 포인터로, 원본과 verify.sh를 가리킨다(규칙 본문 없음).
 상세는 [02-architecture.md](02-architecture.md) §4.
 
 ## 3. 레이어 강제 + 구조 테스트 (스택별)
@@ -97,7 +97,7 @@ python·go 게이트는 도구 미설치 시 그 단계를 건너뛰거나(golan
   `DeclarativeBase`를 상속하지 않는다, (2) `*/infra/**`에 `.commit()` 호출이 없다(트랜잭션 경계는 유스케이스 소유).
 - `go`(`internal/architecture_test.go`) — 소스 스캔으로 검사: `*/infra/**`에 `.Commit(` 호출이 없다.
 
-두 스택 모두 **계약 린터(import-linter/depguard)가 import 방향**을, **구조 테스트가 그 밖의 규율**을
+두 스택 모두 계약 린터(import-linter/depguard)가 import 방향을, **구조 테스트가 그 밖의 규율**을
 맡는 분담이며, 실패는 `scripts/verify.sh`에서 그대로 게이트 실패가 된다.
 
 ## 4. 완료 게이트의 기계적 보완
@@ -114,8 +114,8 @@ check/→check, completed/→completed)해 **위치/상태 모순만** 기계적
 ## 5. 권한 모드 (`settings.json`)
 
 - `defaultMode: "acceptEdits"` — 편집은 자동 승인, 그 외 도구는 프롬프트.
-- `permissions.deny`: `Edit({{PROTECTED_PATH}}/**)`, `Write({{PROTECTED_PATH}}/**)`.
-- `_comment_defaultMode` 경고: `bypassPermissions`는 모든 권한 프롬프트를 끈다. protect-sources 같은 PreToolUse 안전장치는 남지만 권한 게이트가 사라져 위험 도구(임의 쉘·삭제)까지 무프롬프트로 실행된다. **완전 신뢰·격리 환경(컨테이너/전용 워크트리)에서만** 상향하고, 낮추려면 `default`로.
+- `permissions.deny`: `Edit({{PROTECTED_PATH}}/)`, `Write({{PROTECTED_PATH}}/)`.
+- `_comment_defaultMode` 경고: `bypassPermissions`는 모든 권한 프롬프트를 끈다. protect-sources 같은 PreToolUse 안전장치는 남지만 권한 게이트가 사라져 위험 도구(임의 쉘·삭제)까지 무프롬프트로 실행된다. 완전 신뢰·격리 환경(컨테이너/전용 워크트리)에서만 상향하고, 낮추려면 `default`로.
 
 ## 6. 소스 보호 (`protect-sources.sh`)
 

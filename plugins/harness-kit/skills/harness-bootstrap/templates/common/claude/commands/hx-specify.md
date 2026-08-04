@@ -2,9 +2,9 @@
 description: SDD 1단계 — 요구사항 생성. 제품 폴더에 requirements/<feature>.md 를 만들고 채운다.
 ---
 
-<!-- HARNESS STARTER KIT · 얇은 트리거. 정본: .agents/rules/sdd-workflow.md (/hx-specify 절) -->
+<!-- HARNESS STARTER KIT · 얇은 트리거. 원본: .agents/rules/sdd-workflow.md (/hx-specify 절) -->
 
-SDD 워크플로 **정본** `.agents/rules/sdd-workflow.md` 의 **`/hx-specify`** 절을 로드해 그대로 수행한다.
+SDD 워크플로 원본 `.agents/rules/sdd-workflow.md` 의 `/hx-specify` 절을 로드해 그대로 수행한다.
 
 핵심:
 1. 제품 slug·기능 short-name 확정(기존 `.agents/docs/product-*-specs/` 중 택 또는 신규).

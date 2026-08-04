@@ -30,17 +30,17 @@ REST 응답·오류·문서화의 단일 규약. 직접 구현하는 REST API에
   { "code": "RS0001", "message": "요청한 리소스를 찾을 수 없습니다.", "requestId": "req_123", "timestamp": "...", "details": { } }
   ```
 - 성공 `code`는 고정 `SUCCESS`. 오류에 200 금지 — 적절한 HTTP status를 쓴다.
-- **컨트롤러에서 `ResponseEntity<DTO>` 직접 반환 금지**(envelope 우회). 컨트롤러 DTO와 애그리거트는 다른 타입이다(인바운드 경계의 DTO 패키지에 별도 정의 — 위치는 [`structure.md`](./structure.md)).
+- 컨트롤러에서 `ResponseEntity<DTO>` 직접 반환 금지(envelope 우회). 컨트롤러 DTO와 애그리거트는 다른 타입이다(인바운드 경계의 DTO 패키지에 별도 정의 — 위치는 [`structure.md`](./structure.md)).
 
 ## ErrorCode ↔ HttpStatus 단일 매핑
 
-- `common`의 **`ErrorCode` enum이 (머신코드 · HTTP status · 기본 메시지 키)의 단일 매핑 소스**다. 매핑을 여러 곳에 흩지 않는다.
+- `common`의 `ErrorCode` enum이 (머신코드 · HTTP status · 기본 메시지 키)의 단일 매핑 소스다. 매핑을 여러 곳에 흩지 않는다.
 - 응답 body에는 **`code`(머신코드)만** 노출한다. enum 이름은 내부 식별자(미노출).
 - **`GlobalExceptionHandler`**(`@RestControllerAdvice`)가 모든 예외를 envelope로 변환하는 유일한 경계다:
   - `ApiException`/`DomainException` → 매핑된 `ErrorCode`의 status.
   - `MethodArgumentNotValidException`(body 검증)·`HandlerMethodValidationException`(param/path 검증) → 422(`RQ0001`) + 필드별 i18n 메시지.
   - 미분류 예외 → 500(`SY0001`). 에러 로그는 **이 경계에서 한 번만** 남긴다(안쪽 계층·어댑터의 중복 로깅 금지).
-- **도메인·오케스트레이션 계층은 `DomainException`을 던지고 web 경계(`ApiException`)에서 변환한다. 규칙을 담은 안쪽 계층은 `HttpStatus`·`ResponseEntity`·Spring web 타입을 모른다**(아키텍처 변형에 따라 컴파일 또는 구조 테스트가 차단).
+- 도메인·오케스트레이션 계층은 `DomainException`을 던지고 web 경계(`ApiException`)에서 변환한다. 규칙을 담은 안쪽 계층은 `HttpStatus`·`ResponseEntity`·Spring web 타입을 모른다(아키텍처 변형에 따라 컴파일 또는 구조 테스트가 차단).
 
 ## RequestId
 
@@ -70,13 +70,13 @@ REST 응답·오류·문서화의 단일 규약. 직접 구현하는 REST API에
 ## 다국어(i18n) 오류 메시지
 
 - 오류 `message`는 `Accept-Language`에 따라 다국어로 내려준다. **기본 로케일은 한국어**(헤더 없으면 한국어). `code`는 로케일 무관 고정, 다국어가 되는 것은 `message`뿐.
-- **메시지를 코드에 하드코딩하지 않는다.** 도메인/application은 예외에 **메시지 키 + 치환 인자**만 담아 던지고(`throw NotFoundException(messageKey = "error.{{DOMAIN_EXAMPLE}}.not_found", args = listOf(code))`), 경계(`GlobalExceptionHandler`)가 `MessageSource`로 해석한다. 순수 도메인은 `MessageSource`에 의존하지 않는다.
+- 메시지를 코드에 하드코딩하지 않는다. 도메인/application은 예외에 **메시지 키 + 치환 인자**만 담아 던지고(`throw NotFoundException(messageKey = "error.{{DOMAIN_EXAMPLE}}.not_found", args = listOf(code))`), 경계(`GlobalExceptionHandler`)가 `MessageSource`로 해석한다. 순수 도메인은 `MessageSource`에 의존하지 않는다.
 - 키 규칙: 일반 폴백 `error.{ErrorCode}`, 케이스별 `error.{context}.{case}`, 치환 인자 `{0}`,`{1}`. Bean Validation 필드 메시지 키 규칙 `validation.{제약명}`(`validation.NotBlank`·`validation.Size`…).
 - 번들 `classpath:messages*.properties`(UTF-8), 지원 로케일 `ko`·`en`. 구현: `MessageSource` + `Accept-Language` `LocaleResolver`. MVC는 `LocaleContextHolder`, 보안 필터단은 요청 `Accept-Language` 직접 사용.
 
 ## 리소스 ID
 
-- 내부 PK는 **bigint**(`<단수테이블>_id`). **UUID 미사용, 응답 비노출.**
+- 내부 PK는 **bigint**(`<단수테이블>_id`). UUID 미사용, 응답 비노출.
 - 외부 노출 식별자는 **code**(prefix 2자 + base62, `gen_code()`), 예: `order_code`(OD)·`user_code`(US)·`catalog_code`(CT).
 
 ## Pagination
@@ -90,9 +90,9 @@ REST 응답·오류·문서화의 단일 규약. 직접 구현하는 REST API에
 - **Operation**: `@Operation(summary, description)` — 동작·권한·주요 오류(status) 요약.
 - **Path/Query**: `@Parameter(in = PATH|QUERY, description, example)` 필수(외부 식별자는 code 예시).
 - **인증 주체**: `@AuthenticationPrincipal` 파라미터는 `@Parameter(hidden = true)`로 숨긴다.
-- **요청/응답 DTO의 모든 필드**: `@field:Schema(description, example)` **필수**(빠진 필드 금지). 필수 필드 `requiredMode = REQUIRED`, 길이/형식(`minLength`/`maxLength`/`format`) 명시, enum은 허용값·의미를 description에 명시. 내부 PK(bigint)는 응답 비노출.
+- **요청/응답 DTO의 모든 필드**: `@field:Schema(description, example)` 필수(빠진 필드 금지). 필수 필드 `requiredMode = REQUIRED`, 길이/형식(`minLength`/`maxLength`/`format`) 명시, enum은 허용값·의미를 description에 명시. 내부 PK(bigint)는 응답 비노출.
 - **검증 제약**: `@Min/@Max/@Size/@Email`은 **`*Api` 인터페이스 메서드 파라미터에 선언**한다(구현 오버라이드에 두면 Jakarta BV Liskov 위반 `ConstraintDeclarationException`).
-- **요청 검증은 Jakarta Validation**: 요청 DTO에 `@field:NotBlank`·`@field:Email` + 컨트롤러 파라미터에 `@Valid`. 위반은 422(`RQ0001`) + 필드 오류(i18n).
+- 요청 검증은 Jakarta Validation: 요청 DTO에 `@field:NotBlank`·`@field:Email` + 컨트롤러 파라미터에 `@Valid`. 위반은 422(`RQ0001`) + 필드 오류(i18n).
 - 노출 경로 `/v3/api-docs`(JSON)·`/swagger-ui.html`(UI)는 SecurityConfig에서 permitAll. 문서 메타·보안 스킴(bearerAuth)은 조립 지점의 `OpenApiConfig`가 정의.
 
 ## API DoD (Story)

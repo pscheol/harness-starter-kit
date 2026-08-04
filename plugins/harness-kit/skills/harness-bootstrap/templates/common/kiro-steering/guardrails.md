@@ -4,7 +4,7 @@ inclusion: always
 <!-- HARNESS TEMPLATE ({{PROJECT_NAME}}) · Kiro 얇은 포인터. 규칙 본문 금지. -->
 # 가드레일 (포인터)
 
-정본: `.agents/rules/guardrails.md` — Claude·Codex·Kiro 공통. **모든 변경 전 반드시 이 정본을 연다.**
+원본: `.agents/rules/guardrails.md` — Claude·Codex·Kiro 공통. 모든 변경 전 반드시 이 원본을 연다.
 
 요약:
 - 추측 금지 — 확인 후 단정, 미확인은 명시(파일·함수·스키마는 읽고 말한다).

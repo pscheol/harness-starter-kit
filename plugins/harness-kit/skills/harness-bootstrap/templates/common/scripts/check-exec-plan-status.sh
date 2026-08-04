@@ -3,7 +3,7 @@
 #
 # exec-plan(=tasks) 위치↔상태 일관성 점검 (완료 게이트의 기계적 보조).
 # 제품 단위 SDD 구조를 순회한다: .agents/docs/product-*-specs/tasks/{active,check,completed}/
-# 규칙(정본: 각 제품 tasks/README.md):
+# 규칙(원본: 각 제품 tasks/README.md):
 #   전이 active/ → check/ → completed/  (상태값도 동일)
 #   - active/    : 상태는 active 여야 한다.
 #   - check/     : 상태는 check 여야 한다(사용자 검증 대기).

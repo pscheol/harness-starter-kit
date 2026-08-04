@@ -2,9 +2,9 @@
 
 # 구조 · 표준 Go 레이아웃 + 헥사고날 — {{PROJECT_NAME}}
 
-이 프로젝트는 **[golang-standards/project-layout](https://github.com/golang-standards/project-layout)** 을 최상위 뼈대로,
+이 프로젝트는 [golang-standards/project-layout](https://github.com/golang-standards/project-layout) 을 최상위 뼈대로,
 `internal/` 안에서 **클린 아키텍처(헥사고날) + DDD**를 구현한다.
-의존 방향은 **`internal/` 가시성 + import 사이클 금지(둘 다 컴파일러) + depguard 린트**로 강제한다. 아키텍처 상세 정본은 `ARCHITECTURE.md`.
+의존 방향은 `internal/` 가시성 + import 사이클 금지(둘 다 컴파일러) + depguard 린트로 강제한다. 아키텍처 상세 원본은 `ARCHITECTURE.md`.
 
 ## 리포 레이아웃
 
@@ -23,7 +23,7 @@
 │   │   └── infra/{postgres,client}/
 │   └── platform/                #   config·db·logger·telemetry
 ├── pkg/                         # 외부 공개 라이브러리만(없으면 만들지 않는다)
-├── api/                         # OpenAPI·proto 계약 정본
+├── api/                         # OpenAPI·proto 계약 원본
 ├── configs/                     # 설정 템플릿(비밀값 금지)
 ├── deployments/                 # Dockerfile·compose·IaC
 ├── migrations/                  # DB 마이그레이션 SQL
@@ -33,7 +33,7 @@
 └── docs/
 ```
 
-- **`internal/`이 기본**이다. `pkg/`는 **정말로 외부에 공개할 코드가 있을 때만** 만든다(레이아웃 저장소도 `pkg/` 남용을 경고한다).
+- `internal/`이 기본이다. `pkg/`는 정말로 외부에 공개할 코드가 있을 때만 만든다(레이아웃 저장소도 `pkg/` 남용을 경고한다).
 - `cmd/<binary>/main.go`는 조립만 한다. 로직이 들어가기 시작하면 `internal/`로 옮긴다.
 - **단위 테스트는 소스 옆**(`foo.go` ↔ `foo_test.go`). `test/`는 e2e·대용량 픽스처 전용.
 - `src/` 디렉터리를 만들지 않는다(Go 관례 아님).
@@ -52,13 +52,13 @@
 | `internal/core` | Primitives | — (표준 라이브러리만) |
 | `internal/platform` | 기술 토대 | 표준 라이브러리 + 드라이버 |
 
-- **의존 금지**: `domain → infra/primary`, `app → infra/primary`, `core → 서드파티`, `primary ↔ infra`.
-- 강제 수단(depguard 규칙 예시)은 `ARCHITECTURE.md` §4.2. **새 컨텍스트를 추가하면 규칙 경로 패턴이 그 컨텍스트를 덮는지 확인**한다.
+- 의존 금지: `domain → infra/primary`, `app → infra/primary`, `core → 서드파티`, `primary ↔ infra`.
+- 강제 수단(depguard 규칙 예시)은 `ARCHITECTURE.md` §4.2. 새 컨텍스트를 추가하면 규칙 경로 패턴이 그 컨텍스트를 덮는지 확인한다.
 - 한 컨텍스트의 4패키지(`domain`/`app`/`primary`/`infra`)는 **항상 한 묶음으로 추가·제거**한다.
 
 ## Port & Adapter (인터페이스는 소비자 쪽에)
 
-- **Go 관례: 인터페이스는 사용하는 쪽이 선언한다.** 포트 인터페이스는 **`app` 패키지가 선언**하고, `infra`가 시그니처를 만족하는 구조체를 제공한다. `infra`는 `app`을 import해 인터페이스를 "구현 선언"할 필요가 없다(구조적 만족).
+- Go 관례: 인터페이스는 사용하는 쪽이 선언한다. 포트 인터페이스는 **`app` 패키지가 선언**하고, `infra`가 시그니처를 만족하는 구조체를 제공한다. `infra`는 `app`을 import해 인터페이스를 "구현 선언"할 필요가 없다(구조적 만족).
 - 포트는 **애그리거트 기준**(`Save`·`FindByCode`)으로 정의하고 첫 인자는 항상 `ctx context.Context`.
 - **인터페이스는 작게**(1~3 메서드). 거대한 단일 `Repository` 인터페이스는 테스트 대역 작성을 어렵게 한다.
 - 새 외부 시스템 통합 = 새 포트 + 새 infra 어댑터. `app`/`domain`은 손대지 않는다(OCP).
@@ -82,8 +82,8 @@ type TxManager interface {
 
 ## 패키지·네이밍 컨벤션
 
-- 패키지명은 **짧은 소문자 단수형**(`user`, `billing`). 밑줄·대문자·복수형 금지. `util`·`common`·`helper` 같은 잡동사니 패키지를 만들지 않는다(`internal/common`은 공유 **커널**로 역할이 좁게 정의된 예외).
-- **패키지명 반복 금지**: `user.NewUser()`가 아니라 `user.New()`. 호출부에서 `user.New()`로 읽힌다.
+- 패키지명은 짧은 소문자 단수형(`user`, `billing`). 밑줄·대문자·복수형 금지. `util`·`common`·`helper` 같은 잡동사니 패키지를 만들지 않는다(`internal/common`은 공유 커널로 역할이 좁게 정의된 예외).
+- 패키지명 반복 금지: `user.NewUser()`가 아니라 `user.New()`. 호출부에서 `user.New()`로 읽힌다.
 - 파일명은 소문자 + 밑줄(`order_repository.go`). 한 파일에 한 주제.
 - 인터페이스명: 단일 메서드는 `-er`(`Reader`·`Provisioner`), 역할형은 명사(`{{DOMAIN_EXAMPLE}}Repository`).
 - 구현체는 역할이 드러나게: `postgres{{DOMAIN_EXAMPLE}}Repository`(비공개) + `NewPostgres{{DOMAIN_EXAMPLE}}Repository(...)` 생성자.
@@ -133,7 +133,7 @@ func TestInfra어댑터는커밋하지않는다(t *testing.T) {
 }
 ```
 
-> 규칙은 프로젝트에 맞게 늘린다. 핵심은 **위반을 `scripts/verify.sh`에서 실패로 만드는 것**(리뷰가 아니라 게이트).
+> 규칙은 프로젝트에 맞게 늘린다. 핵심은 위반을 `scripts/verify.sh`에서 실패로 만드는 것(리뷰가 아니라 게이트).
 
 ## 새 기능 착수 규칙
 

@@ -135,7 +135,7 @@ remap() {
     root/*)          echo "${1#root/}" ;;                       # 프로젝트 루트
     kiro-steering/*) echo ".kiro/steering/${1#kiro-steering/}" ;;
     kiro-skills/*)   echo ".kiro/skills/${1#kiro-skills/}" ;;   # Kiro CLI 슬래시 커맨드
-    agents-rules/*)  echo ".agents/rules/${1#agents-rules/}" ;; # 공통 규칙 정본(3 에이전트 공유)
+    agents-rules/*)  echo ".agents/rules/${1#agents-rules/}" ;; # 공통 규칙 원본(3 에이전트 공유)
     agents-skills/*) echo ".agents/skills/${1#agents-skills/}" ;; # Codex 스킬 탐색 경로($<name>)
     agents-docs/*)   echo ".agents/docs/${1#agents-docs/}" ;;
     scripts/*)       echo "scripts/${1#scripts/}" ;;
@@ -289,7 +289,7 @@ echo "  · product.md · ARCHITECTURE.md · structure.md 의 {{플레이스홀�
 echo "    SDD 는 제품 폴더를 미리 만들지 않는다. 첫 기능에서 만들어진다:"
 echo "      scripts/new-feature.sh <product-slug> <feature>   (또는 /hx-specify)"
 echo "      → .agents/docs/product-<slug>-specs/{requirements,design,tasks} 생성 + specs-index.md 등록"
-echo "    템플릿 정본은 .agents/docs/_spec-templates/ 한 곳이다(제품 폴더에 복사되지 않는다)."
+echo "    템플릿 원본은 .agents/docs/_spec-templates/ 한 곳이다(제품 폴더에 복사되지 않는다)."
 echo "  · 미치환 토큰 확인:  grep -rn '{{' . --include='*.md' --include='*.sh' --include='*.yml' | grep -v '_spec-templates/'"
 echo "    (_spec-templates/ 의 {{PRODUCT_SLUG}}·{{FEATURE_NAME}}·{{EPIC_ID}} 는 의도적으로 남긴 토큰이다)"
 echo "  · 이 킷은 harness-kit 플러그인의 harness-bootstrap 스킬로도 쓸 수 있다"

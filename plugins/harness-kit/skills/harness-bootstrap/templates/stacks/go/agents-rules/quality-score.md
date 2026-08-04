@@ -9,7 +9,7 @@
 - [ ] 변경에 대한 테스트 존재(성공 + 최소 1개 실패 케이스). 도메인/유스케이스는 **테스트 우선(TDD)**. 테이블 주도 테스트 우선.
 - [ ] **모든 error를 처리하거나 반환**한다(`_ = err` 없음). 래핑은 `%w`, 판별은 `errors.Is/As`.
 - [ ] 도메인 오류는 sentinel/타입으로 정의하고 **경계에서 한 곳**에서 status·에러코드로 변환.
-- [ ] **`ctx context.Context`가 모든 I/O 경로에 전파**된다. `context.TODO()`가 프로덕션 경로에 없다. `WithTimeout`의 `cancel`을 `defer`로 호출한다.
+- [ ] `ctx context.Context`가 모든 I/O 경로에 전파된다. `context.TODO()`가 프로덕션 경로에 없다. `WithTimeout`의 `cancel`을 `defer`로 호출한다.
 - [ ] 고루틴에 **소유자와 종료 조건**이 있다(누수 없음). 팬아웃에 상한이 있다.
 - [ ] 외부 호출에 timeout, `resp.Body.Close()`, 클라이언트 재사용이 적용되어 있다.
 - [ ] 구조화 로깅 포함(민감정보 미출력). 에러 로그는 경계에서 한 번만.
@@ -25,7 +25,7 @@
 
 - [ ] path/field/status code가 API 명세와 일치.
 - [ ] 인증 필요 API는 401/403 케이스 포함.
-- [ ] 소유·권한 판정이 있는 리소스는 **권한 없는 접근 차단 테스트 포함**(허용 200 · 비허용 403/404 · 미인증 401).
+- [ ] 소유·권한 판정이 있는 리소스는 권한 없는 접근 차단 테스트 포함(허용 200 · 비허용 403/404 · 미인증 401).
 - [ ] 응답은 공통 envelope(`code`/`message`/`request_id`/`timestamp` + `data`/`page` 또는 `details`) 준수.
 - [ ] API 변경 시 `api/` OpenAPI 스펙 및 관련 명세 동시 갱신([`guardrails.md`](./guardrails.md) "docs 동시 갱신").
 - [ ] Secret·자격증명 원문 미저장·미반환(발급 시 1회만). 비교는 `subtle.ConstantTimeCompare`. 난수는 `crypto/rand`.
@@ -54,4 +54,4 @@
 - 도구가 없으면 표준 도구로 셋업하고, 불가하면 그 사유를 명시한다.
 - exec-plan 완료는 임의로 `completed/`로 옮기지 않는다. `check/`로 옮겨 사용자 검증을 요청한다([`agent-harness.md`](./agent-harness.md)).
 
-> 상세 DoD 원본이 별도 백로그 문서에 있으면 여기 링크만 둔다(정본 중복 보관 금지).
+> 상세 DoD 원본이 별도 백로그 문서에 있으면 여기 링크만 둔다(같은 내용을 두 곳에 두지 않는다).

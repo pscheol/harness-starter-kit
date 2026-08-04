@@ -22,14 +22,14 @@
 ## 2. Context & Constraints
 
 <!-- [STACK 예시] 적용 규약·레이어는 프로젝트 아키텍처에 맞게 치환한다. -->
-- 적용 규약: 규칙 정본 `.agents/rules/`(API 표준·보안·도메인 데이터 등), `ARCHITECTURE.md`
+- 적용 규약: 규칙 원본 `.agents/rules/`(API 표준·보안·도메인 데이터 등), `ARCHITECTURE.md`
 - 레이어: Types → Config → Repository → Service → Runtime → UI (단방향 의존)
 - 제약/가정: (requirements에서 이어받은 것 + 설계상 제약)
 
 ## 3. Constitution Check *(게이트 · 필수)*
 
-> **게이트**: 아래를 모두 통과해야 이후 설계를 확정한다. 위반이 불가피하면 아래 **Complexity Tracking**에
-> 정당화를 남긴다(정당화 없으면 진행 금지). 헌법 = `.agents/rules/*` 정본
+> **게이트**: 아래를 모두 통과해야 이후 설계를 확정한다. 위반이 불가피하면 아래 Complexity Tracking에
+> 정당화를 남긴다(정당화 없으면 진행 금지). 헌법 = `.agents/rules/*` 원본
 > (특히 guardrails·security·structure·api-standards·reliability) + `.agents/docs/decisions/core-beliefs.md`.
 
 - [ ] **추측 금지·경계 파싱** (guardrails): 미확정을 지어내지 않고, 외부/미확정 값은 경계에서 검증하도록 설계했는가
@@ -175,7 +175,7 @@ sequenceDiagram
 
 ## 14. Research & Decisions (ADR)
 
-> 설계 조사(research) 로그. 설계 중 내린 **결정**과 근거, **기각한 대안**을 남겨 재추론을 막는다.
+> 설계 조사(research) 로그. 설계 중 내린 결정과 근거, 기각한 대안을 남겨 재추론을 막는다.
 
 ### 14.1 결정 로그
 
@@ -205,6 +205,6 @@ sequenceDiagram
 - [ ] 인터페이스 시그니처가 구현 가능 수준인가
 - [ ] 데이터 모델이 도메인 데이터 규약과 일치하는가
 - [ ] 보안/접근 제어·오류·테스트 전략이 구체적인가
-- [ ] **Quickstart(end-to-end 검증 시나리오)**가 정의되었는가
+- [ ] Quickstart(end-to-end 검증 시나리오)가 정의되었는가
 - [ ] 정확성 속성(PBT)이 정의되었는가
 - [ ] 미해결 `[NEEDS CLARIFICATION]`이 없는가(있으면 `/hx-clarify`로 복귀)

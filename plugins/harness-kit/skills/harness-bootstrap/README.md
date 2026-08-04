@@ -1,17 +1,18 @@
 # 하네스 스타터 킷 (harness-starter-kit)
 
-**백엔드 단일 프로젝트용 하네스 엔지니어링 초기 설정 킷.** 스택은 **JVM(Kotlin/Java + Spring) · Python(FastAPI/ASGI) · Go(표준 Go 레이아웃)** 중에서 고른다.
-하네스 골격은 한 벌만 두고, 언어별 아키텍처·컨벤션·검증 게이트를 오버레이로 얹는 구조다.
+백엔드 단일 프로젝트에 하네스를 처음 세팅할 때 쓰는 킷이다. 스택은 JVM(Kotlin/Java + Spring),
+Python(FastAPI/ASGI), Go(표준 Go 레이아웃) 중에서 고른다. 골격은 한 벌만 두고 언어별 아키텍처와
+컨벤션, 검증 게이트를 그 위에 얹는 구조다.
 
-> 하네스 = AI 에이전트가 안전하고 예측 가능하게 일하도록 "장착"하는 제어 구조.
+> 여기서 하네스란 에이전트가 안전하고 예측 가능하게 일하도록 리포에 얹어두는 제어 구조를 말한다.
 
 ## 설계 원칙
 
-1. **규칙은 공통 정본 한 곳** — 가드레일·보안·API 표준·기술 규약을 `.agents/rules/` 에 두고 **Claude Code · Codex · Kiro 3개 에이전트가 공유**한다.
-2. **Kiro steering = 얇은 포인터** — `.kiro/steering/*` 는 규칙 본문 대신 `.agents/rules/*` 정본을 가리키기만 한다.
+1. **규칙은 공통 원본 한 곳** — 가드레일·보안·API 표준·기술 규약을 `.agents/rules/` 에 두고 Claude Code · Codex · Kiro 3개 에이전트가 공유한다.
+2. **Kiro steering = 얇은 포인터** — `.kiro/steering/*` 는 규칙 본문 대신 `.agents/rules/*` 원본을 가리키기만 한다.
 3. **단일 프로젝트** — 멀티 서비스/2계층 없음.
 4. **스택 오버레이** — `templates/common/`(스택 무관, 51개) + `templates/stacks/<stack>/`(언어 전용·변형 무관, 각 13개). 주석 표준·보안 위험·검증 게이트는 스택마다 다르게 깔린다.
-5. **아키텍처 변형** — 한 스택 안에서도 레이아웃은 하나가 아니다. 아키텍처에 종속되는 파일은 **4개뿐**이라 `templates/stacks/<stack>/arch/<variant>/`에 그 4개만 두고 선택한 하나를 얹는다. **설치 결과는 변형과 무관하게 102개**로 같다.
+5. **아키텍처 변형** — 한 스택 안에서도 레이아웃은 하나가 아니다. 아키텍처에 종속되는 파일은 4개뿐이라 `templates/stacks/<stack>/arch/<variant>/`에 그 4개만 두고 선택한 하나를 얹는다. 설치 결과는 변형과 무관하게 102개로 같다.
 
 ## 지원 스택
 
@@ -21,7 +22,7 @@
 | `python` | Python + FastAPI(ASGI) 또는 Django | src 레이아웃(django 변형은 프로젝트 루트) | **import-linter 계약** + mypy strict | ruff → mypy → lint-imports → pytest |
 | `go` | Go + net/http | [표준 Go 레이아웃](https://github.com/golang-standards/project-layout) (`cmd/`·`internal/`·`pkg/`·`api/`…) | `internal/` 가시성·import 사이클(컴파일) + **depguard** | gofmt → build → vet → golangci-lint → test -race |
 
-컴파일러가 레이어를 막아주지 않는 언어(Python)에서는 **린터 계약이 컴파일 강제를 대신한다**는 것이 설계의 핵심이다. Go는 `internal/`과 import 사이클을 컴파일러가 막고, 방향만 depguard가 채운다.
+컴파일러가 레이어를 막아주지 않는 언어(Python)에서는 린터 계약이 컴파일 강제를 대신한다. Go는 `internal/`과 import 사이클을 컴파일러가 막고, 방향만 depguard가 채운다.
 
 ## 아키텍처 변형 (ARCH=…, 기본 `hexagonal`)
 
@@ -39,10 +40,10 @@
 | `python` | `ai-service` | `src/<pkg>/{api,pipelines,agents,llm,retrieval,prompts,domain,observability,…}` + `evaluation/` | `layers = [api, pipelines, agents, "llm : retrieval", domain]` + 프로바이더 SDK 격리 |
 | `go` | `hexagonal` | `cmd/` + `internal/<ctx>/{domain,app,primary/http,infra}` | depguard 3종 |
 | `go` | `layered` | `cmd/` + `internal/{config,database,logger,middleware,handler,service,repository,model}` | 레이어 방향 + **handler↛repository**(건너뛰기 금지) |
-| `go` | `feature` | `cmd/` + `internal/platform/*` + `internal/<feature>/{handler,service,store,model}.go` | **기능 패키지 간 직접 import 금지**(depguard + 구조 테스트) |
+| `go` | `feature` | `cmd/` + `internal/platform/*` + `internal/<feature>/{handler,service,store,model}.go` | 기능 패키지 간 직접 import 금지(depguard + 구조 테스트) |
 | `go` | `flat` | `cmd/<binary>/main.go` + `internal/app/{config,handler,service,store,model}.go` | 최소 규칙 + **파일 수 상한 감시**(승격 신호) |
 
-각 변형의 `ARCHITECTURE.md`에는 **언제 쓰나/언제 아닌가** · **승격 신호** · **다른 변형으로 전환하는 절차**가 함께 들어 있다.
+각 변형의 `ARCHITECTURE.md`에는 언제 쓰나/언제 아닌가 · 승격 신호 · 다른 변형으로 전환하는 절차가 함께 들어 있다.
 `django`는 마이그레이션 드리프트 체크, `ai-service`는 eval 스모크가 `verify.sh`의 **조건부 단계**로 자동 붙는다(파일 존재 감지 기반 — 스크립트는 스택당 하나).
 
 ## 구성
@@ -50,7 +51,7 @@
 ```
 skills/harness-bootstrap/          ← 스킬 루트 (= SKILL_DIR)
 ├── README.md · SKILL.md · setup.sh · manifest.md
-├── tools/sync-commands.sh         킷 개발용 — 커맨드 정본에서 3하네스 트리 재생성(설치 안 됨)
+├── tools/sync-commands.sh         킷 개발용 — 커맨드 원본에서 3하네스 트리 재생성(설치 안 됨)
 └── templates/
     ├── common/           ★ 스택 무관 골격 (모든 스택 공통 설치)
     │   ├── agents-rules/  agent-harness · sdd-workflow · product
@@ -72,11 +73,11 @@ skills/harness-bootstrap/          ← 스킬 루트 (= SKILL_DIR)
 
 스택별 6종 규칙(변형 무관): `code-comments` · `api-standards` · `security` · `reliability` · `quality-score` · `guardrails`.
 변형별 4종: `root/ARCHITECTURE.md` · `agents-rules/structure.md` · `agents-rules/tech.md` · `kiro-steering/structure.md`.
-설치 순서는 **common → stack(`arch/` 제외) → arch/&lt;ARCH&gt;** 이며, 뒤 레이어가 앞을 덮는다.
+설치 순서는 common → stack(`arch/` 제외) → arch/&lt;ARCH&gt; 이며, 뒤 레이어가 앞을 덮는다.
 
 ## 슬래시 커맨드 (4개 하네스)
 
-SDD 워크플로 9종이 `hx-` 접두사로 깔린다. **본문 정본은 `.agents/rules/sdd-workflow.md` 한 곳**이고, 각 하네스 파일은 그 절을 가리키는 얇은 트리거다.
+SDD 워크플로 9종이 `hx-` 접두사로 깔린다. 본문 원본은 `.agents/rules/sdd-workflow.md` 한 곳이고, 각 하네스 파일은 그 절을 가리키는 얇은 트리거다.
 
 | 하네스 | 설치 경로 | 호출 |
 |---|---|---|
@@ -96,7 +97,7 @@ SDD 워크플로 9종이 `hx-` 접두사로 깔린다. **본문 정본은 `.agen
 
 ```
 Claude Code ─(CLAUDE.md→AGENTS.md, session-start)─┐
-Codex ──────(AGENTS.md)───────────────────────────┼─▶  .agents/rules/*  (정본)
+Codex ──────(AGENTS.md)───────────────────────────┼─▶  .agents/rules/*  (원본)
 Kiro ───────(.kiro/steering/* 얇은 포인터)─────────┘
 ```
 
@@ -120,32 +121,32 @@ $EDITOR .agents/rules/tech.md                        # 기준 스택 버전을 �
 bash scripts/verify.sh                               # 게이트 통과 확인
 ```
 
-`PACKAGE_NS`는 스택마다 의미가 다르다: **jvm**=`com.example.myapp`(패키지) · **python**=`myapp`(최상위 패키지 → `src/myapp/`) · **go**=`github.com/org/my-app`(모듈 경로).
+`PACKAGE_NS`는 스택마다 의미가 다르다: jvm=`com.example.myapp`(패키지) · python=`myapp`(최상위 패키지 → `src/myapp/`) · go=`github.com/org/my-app`(모듈 경로).
 
 `ARCH`는 기본 `hexagonal`이다. 스택에 없는 변형을 주면 사용 가능한 목록을 출력하고 `exit 2`로 중단한다.
 
-기본은 **덮어쓰지 않음**(기존 파일 skip). 재생성은 `--force`, 미리보기는 `--dry-run`.
+기본은 덮어쓰지 않음(기존 파일 skip). 재생성은 `--force`, 미리보기는 `--dry-run`.
 
-## 하네스 4대 축 (킷이 강제)
+## 킷이 강제하는 네 가지
 
-1. **규칙·헌법·가드레일** — 진입점은 목차(`AGENTS.md`/`CLAUDE.md` 짧게), 규칙 정본은 `.agents/rules/`, 기록은 `.agents/docs/`. "추측 금지" 헌법.
-2. **아키텍처 제약·스캐폴딩** — `ARCHITECTURE.md`가 스택별 의존 방향과 **기계적 강제 수단**을 정의 + `_spec-templates/tasks/_template.md` 작업 지시서(추적성·DoD·결정 로그).
-3. **검증·피드백 루프** — 강제는 `scripts/verify.sh` **한 곳**, hook/CI/pre-commit 은 트리거만("1곳 + N트리거"). exec-plan 완료 게이트(active→check→**사용자 승인**→completed).
-4. **엔트로피 관리** — `tech-debt-tracker.md`, `generated/`·`references/` 신선도 규약.
+1. **규칙·헌법·가드레일** — 진입점은 목차(`AGENTS.md`/`CLAUDE.md` 짧게), 규칙 원본은 `.agents/rules/`, 기록은 `.agents/docs/`. "추측 금지" 헌법.
+2. **아키텍처 제약·스캐폴딩** — `ARCHITECTURE.md`가 스택별 의존 방향과 기계적 강제 수단을 정의 + `_spec-templates/tasks/_template.md` 작업 지시서(추적성·DoD·결정 로그).
+3. **검증·피드백 루프** — 강제는 `scripts/verify.sh` 한 곳, hook/CI/pre-commit 은 트리거만("1곳 + N트리거"). exec-plan 완료 게이트(active→check→사용자 승인→completed).
+4. **부채·문서 관리** — `tech-debt-tracker.md`, `generated/`·`references/` 최신 상태 유지 규약.
 
 ## 스택 노트
 
 - **jvm** — Kotlin/Java · Spring Boot · Gradle(Kotlin DSL, `libs.versions.toml`) · JPA/ORM · 마이그레이션 도구 · Spring Security · ktlint/detekt. 멀티모듈 변형(`hexagonal`=컨텍스트당 4모듈 고정 규격, `multimodule`=분할 축 자유·등급 방향만 강제)은 의존 방향을 Gradle 모듈 경계로 컴파일 타임 강제하고, 단일 모듈 변형(`layered`·`modulith`·`feature`)은 구조 테스트가 강제를 담당한다. 빌드 DSL은 Java=Groovy·Kotlin=Kotlin DSL, 버전은 `libs.versions.toml` 단일 소스. 응답은 공통 envelope.
-- **python** — Python 3.12+ · FastAPI · SQLAlchemy 2.0(async) + Alembic · Pydantic v2(경계 전용) · uv · Ruff · mypy strict · pytest · import-linter. 도메인은 프레임워크 무의존(계약 린터가 강제), async 규약(blocking 금지·timeout 필수)을 규칙으로 못박음.
+- **python** — Python 3.12+ · FastAPI · SQLAlchemy 2.0(async) + Alembic · Pydantic v2(경계 전용) · uv · Ruff · mypy strict · pytest · import-linter. 도메인은 프레임워크 무의존(계약 린터가 강제), async 규약(blocking 금지·timeout 필수)은 규칙으로 정해뒀다.
 - **go** — Go 1.22+ · net/http · pgx/`database/sql` · golang-migrate/goose · `log/slog` · gofumpt · golangci-lint(depguard·gosec 등) · `go test -race`. 인터페이스는 소비자(`app`)가 선언, 에러는 값으로 전파(`%w`), 고루틴에는 소유자와 종료 조건.
 
 각 스택의 `ARCHITECTURE.md`에 레이어 표·Anti-pattern·성능 예산·TDD 워크플로가 들어 있다.
 
 ## Claude Code / Codex 스킬로 재사용
 
-이 폴더는 `harness-kit` 플러그인의 `harness-bootstrap` 스킬 본체다. 두 하네스 모두 같은 파일을 읽는다.
+이 폴더가 `harness-kit` 플러그인의 `harness-bootstrap` 스킬 본체이고, 두 하네스가 같은 파일을 읽는다.
 설치 방법은 저장소 루트의 [README.md](../../../../README.md) 참고.
 
 ## 관련 문서
 
-- 파일→경로 맵·공통/스택 분리: `./manifest.md`
+- 파일이 어디로 설치되는지, 공통과 스택이 어떻게 나뉘는지: `./manifest.md`

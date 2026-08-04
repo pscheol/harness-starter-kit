@@ -4,7 +4,7 @@ inclusion: always
 <!-- HARNESS TEMPLATE ({{PROJECT_NAME}}) · Kiro 얇은 포인터. 규칙 본문 금지. -->
 # 리포 구조 · 패키지 책임 (포인터)
 
-정본: `.agents/rules/structure.md` — Claude·Codex·Kiro 공통. 새 패키지/도메인 착수 전 연다. 아키텍처 정본은 `ARCHITECTURE.md`.
+원본: `.agents/rules/structure.md` — Claude·Codex·Kiro 공통. 새 패키지/도메인 착수 전 연다. 아키텍처 원본은 `ARCHITECTURE.md`.
 
 요약:
 - 표준 Go 레이아웃: `cmd/<binary>`(조립만) · `internal/`(기본) · `pkg/`(공개할 때만) · `api/`·`configs/`·`deployments/`·`migrations/`·`test/`.

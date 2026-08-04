@@ -2,9 +2,9 @@
 
 # 구조 · 헥사고날 패키지 레이아웃 — {{PROJECT_NAME}}
 
-이 프로젝트는 **클린 아키텍처(헥사고날) + DDD**를 **src 레이아웃 + import 계약 린터**로 강제한다.
-Python에는 모듈 의존을 막는 컴파일러가 없으므로, **`import-linter` 계약이 컴파일 강제를 대신한다**. 위반은 리뷰가 아니라 `scripts/verify.sh` 실패로 막힌다.
-아키텍처 상세 정본은 `ARCHITECTURE.md`.
+이 프로젝트는 클린 아키텍처(헥사고날) + DDD를 src 레이아웃 + import 계약 린터로 강제한다.
+Python에는 모듈 의존을 막는 컴파일러가 없으므로, `import-linter` 계약이 컴파일 강제를 대신한다. 위반은 리뷰가 아니라 `scripts/verify.sh` 실패로 막힌다.
+아키텍처 상세 원본은 `ARCHITECTURE.md`.
 
 ## 리포 레이아웃 (src layout)
 
@@ -33,7 +33,7 @@ Python에는 모듈 의존을 막는 컴파일러가 없으므로, **`import-lin
 └── docs/                       # 사람이 읽는 문서
 ```
 
-- **src 레이아웃을 쓴다.** 테스트가 설치된 패키지를 import하게 되어 "로컬 경로 덕분에만 동작하는" 사고를 막는다.
+- src 레이아웃을 쓴다. 테스트가 설치된 패키지를 import하게 되어 "로컬 경로 덕분에만 동작하는" 사고를 막는다.
 - 모든 패키지에 `__init__.py`를 둔다. `__init__.py`에는 **재수출만**, 로직·부작용 금지(import 시점에 DB 연결·앱 생성 금지).
 - 테스트 디렉터리는 소스 구조를 거울처럼 따라간다(`tests/unit/{{DOMAIN_EXAMPLE}}/domain/test_*.py`).
 
@@ -90,17 +90,17 @@ class {{DOMAIN_EXAMPLE}}Repository(Protocol):
         └── client/          ← 외부 HTTP/스토리지 클라이언트
 ```
 
-- 모듈·클래스명은 도메인 개념(ubiquitous language)으로 짓고 **테이블 prefix를 붙이지 않는다**(네임스페이스는 컨텍스트 패키지가 담당).
+- 모듈·클래스명은 도메인 개념(ubiquitous language)으로 짓고 테이블 prefix를 붙이지 않는다(네임스페이스는 컨텍스트 패키지가 담당).
 - 네이밍: 모듈·함수·변수 `snake_case`, 클래스 `PascalCase`, 상수 `UPPER_SNAKE_CASE`, 내부 전용은 `_leading_underscore`.
   - infra 구현체는 역할이 드러나게: `{{DOMAIN_EXAMPLE}}Model`(ORM) · `{{DOMAIN_EXAMPLE}}PersistenceAdapter` · `{{DOMAIN_EXAMPLE}}Mapper`.
-- **ORM 모델과 도메인 애그리거트는 다른 타입이다.** `mapper.py`가 양방향 변환을 전담하고, ORM 모델은 `infra` 밖으로 새어 나가지 않는다.
+- ORM 모델과 도메인 애그리거트는 다른 타입이다. `mapper.py`가 양방향 변환을 전담하고, ORM 모델은 `infra` 밖으로 새어 나가지 않는다.
 - DB 접근: 표준 CRUD는 SQLAlchemy 2.0 `select()`/`session.execute`. 복잡 조회·통계·keyset cursor는 별도 read 어댑터로 분리한다. 원시 SQL은 지양(불가피하면 Why 주석 + 파라미터 바인딩 필수).
 - 컨텍스트 간 직접 import 금지. 통합이 필요하면 제공 컨텍스트의 **공개 계약 모듈**(`<ctx>/contract.py`)이나 도메인 이벤트를 경유한다(independence 계약이 위반을 차단).
 
 ## 새 도메인/유스케이스 착수 워크플로
 
 1. **컨텍스트 결정**: 기존 컨텍스트 안인지 새 바운디드 컨텍스트인지 먼저 답한다.
-2. (신규 컨텍스트면) `src/{{PACKAGE_NS}}/<ctx>/{domain,application,primary,infra}/` 생성 + `__init__.py` → **`pyproject.toml`의 import-linter 계약에 등록**(누락 시 강제되지 않는다).
+2. (신규 컨텍스트면) `src/{{PACKAGE_NS}}/<ctx>/{domain,application,primary,infra}/` 생성 + `__init__.py` → `pyproject.toml`의 import-linter 계약에 등록(누락 시 강제되지 않는다).
 3. **TDD 사이클**(RED→GREEN→REFACTOR):
    1. `domain`: 애그리거트/VO 테스트 → 모델 구현(`@dataclass`, `__post_init__` 불변식).
    2. `application`: 유스케이스 테스트(fake outbound port) → Protocol 정의 → 유스케이스 구현.
@@ -112,7 +112,7 @@ class {{DOMAIN_EXAMPLE}}Repository(Protocol):
 
 ## 아키텍처 구조 테스트 (계약 린터의 보완)
 
-`import-linter`가 **패키지 간 의존 방향**을 막는다. 그러나 계약이 **못 잡는** 위반이 있다:
+`import-linter`가 패키지 간 의존 방향을 막는다. 그러나 계약이 못 잡는 위반이 있다:
 같은 패키지 안의 규율(도메인 클래스가 Pydantic 상속), 네이밍 규약(`*PersistenceAdapter`), 라우터가 ORM 모델을 반환, `commit()` 호출 위치 등.
 이런 것은 `tests/architecture/`의 테스트로 강제한다(게이트가 자동 실행).
 
@@ -142,7 +142,7 @@ def test_infra_어댑터는_commit_을_호출하지_않는다() -> None:
         assert ".commit()" not in source, f"{path} 에서 commit() 호출 — 경계는 usecase 에 둔다"
 ```
 
-> 규칙은 프로젝트에 맞게 늘린다. 핵심은 **위반을 `scripts/verify.sh`에서 실패로 만드는 것**(리뷰가 아니라 게이트).
+> 규칙은 프로젝트에 맞게 늘린다. 핵심은 위반을 `scripts/verify.sh`에서 실패로 만드는 것(리뷰가 아니라 게이트).
 
 ## 새 기능 착수 규칙
 

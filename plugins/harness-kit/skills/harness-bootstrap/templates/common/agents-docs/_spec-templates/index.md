@@ -3,7 +3,7 @@
 
 # 제품 스펙 색인 — `product-{{PRODUCT_SLUG}}` (SDD 진입점)
 
-이 폴더는 **하나의 제품/바운디드 컨텍스트(`{{PRODUCT_SLUG}}`)의 SDD 묶음**이다.
+이 폴더는 하나의 제품/바운디드 컨텍스트(`{{PRODUCT_SLUG}}`)의 SDD 묶음이다.
 한 제품의 requirements → design → tasks 를 **한곳에** 모은다(스테이지별로 흩지 않는다).
 
 | SDD 단계 | 이 제품 안 위치 | 내용 |
@@ -14,7 +14,7 @@
 | tasks | `tasks/active/<feature>.md` | 실행 가능한 작업 체크리스트 (요구사항 추적) |
 
 > 세 단계는 **같은 `<feature>` 파일명**을 써서 서로 추적한다(예: `requirements/order.md` ↔ `design/order.md` ↔ `tasks/active/order.md`).
-> 전역(제품 횡단) 결정·핵심 신념은 이 폴더가 아니라 `../../decisions/` 에 둔다.
+> 전역(제품 횡단) 결정·핵심 원칙은 이 폴더가 아니라 `../../decisions/` 에 둔다.
 
 ## 워크플로 (단계별 승인)
 
@@ -27,7 +27,7 @@ requirements/<feature>.md   (EARS + 우선순위 스토리) → 승인
 
 완료 처리: task 파일은 DoD/verify 충족 시 `tasks/check/`로 옮기고(상태 `check`) **사용자 검증**을 받는다.
 사용자 승인 후에만 `tasks/completed/`로 옮긴다(`active/` → `check/` → `completed/`. 상세: `tasks/README.md`).
-각 단계 템플릿 정본은 `../_spec-templates/` 한 곳이다(제품 폴더 안에는 템플릿을 두지 않는다).
+각 단계 템플릿 원본은 `../_spec-templates/` 한 곳이다(제품 폴더 안에는 템플릿을 두지 않는다).
 새 기능은 `scripts/new-feature.sh {{PRODUCT_SLUG}} <feature>`로 스캐폴딩한다.
 
 ## 기준 문서 (원본)
@@ -47,10 +47,10 @@ requirements/<feature>.md   (EARS + 우선순위 스토리) → 승인
 |---|---|---|---|---|---|
 | {{FEATURE_NAME}} | {{EPIC_ID}} | {{SERVICE_NAME}} <!-- [STACK 예시] 도메인 모듈: project \| auth \| storage --> | ◐ | ☐ | ☐ |
 
-> **주의(completed ≠ e2e 동작)**: `completed`가 **계약·골격 완료** 수준일 수 있다(기본값 stub·미배선으로
+> **주의(completed ≠ e2e 동작)**: `completed`가 계약·골격 완료 수준일 수 있다(기본값 stub·미배선으로
 > 실제 클릭 시 동작하지 않는 부분). 상태 ◐→☑(동작)은 **e2e 확인 후에만** 갱신한다.
 
 ## 멀티 에이전트
 
-모든 에이전트(Kiro·Claude·Codex)는 이 제품 폴더의 3-하위폴더 스펙을 SDD 정본으로 읽고 따른다(`AGENTS.md` 경유).
-전 제품 목록·진입은 `../specs-index.md`, SDD 워크플로 정본은 `.agents/rules/sdd-workflow.md`.
+모든 에이전트(Kiro·Claude·Codex)는 이 제품 폴더의 3-하위폴더 스펙을 SDD 원본으로 읽고 따른다(`AGENTS.md` 경유).
+전 제품 목록·진입은 `../specs-index.md`, SDD 워크플로 원본은 `.agents/rules/sdd-workflow.md`.
