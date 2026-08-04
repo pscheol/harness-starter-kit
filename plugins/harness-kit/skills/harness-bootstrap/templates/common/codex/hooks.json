@@ -1,0 +1,27 @@
+{
+  "_comment": "HARNESS STARTER KIT ({{PROJECT_NAME}}) — Claude 와 동일한 3-hook(PreToolUse=protect-sources, SessionStart=session-start, Stop=verify)을 codex/hooks/* 로 매핑. 경로는 프로젝트 루트 기준 상대경로. 절대경로가 필요하면 리포 루트로 바꿔라. codex 파서가 미지의 키를 거부하면 이 _comment 를 삭제하라.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "bash .codex/hooks/protect-sources.sh" }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash .codex/hooks/session-start.sh" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash .codex/hooks/verify.sh" }
+        ]
+      }
+    ]
+  }
+}

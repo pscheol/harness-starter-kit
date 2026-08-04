@@ -1,0 +1,20 @@
+# HARNESS STARTER KIT ({{PROJECT_NAME}}) — 로컬 검증 트리거 (pre-commit 프레임워크).
+#
+# 정본 게이트 scripts/verify.sh **한 곳만** 호출한다("1곳 + N트리거"). 규칙 복제 금지.
+# 설치:  pip install pre-commit && pre-commit install --install-hooks -t pre-push
+#
+# 기본 스테이지는 pre-push 다(전체 빌드·린트·테스트 게이트는 무거워 매 커밋마다 돌리면 흐름을 끊는다).
+# 매 커밋에 돌리려면 아래 stages 를 [pre-commit] 으로 바꾸고 `pre-commit install` 로 재설치한다.
+default_install_hook_types: [pre-push]
+default_stages: [pre-push]
+
+repos:
+  - repo: local
+    hooks:
+      - id: verify
+        name: verify gate (scripts/verify.sh)
+        entry: bash scripts/verify.sh
+        language: system
+        pass_filenames: false      # 파일 목록을 넘기지 않는다 — 게이트는 프로젝트 전체를 본다.
+        always_run: true
+        stages: [pre-push]

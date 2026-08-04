@@ -1,0 +1,42 @@
+# HARNESS STARTER KIT ({{PROJECT_NAME}}) — CI 검증 트리거(Python).
+#
+# 이 워크플로는 로직을 담지 않는다. 정본 게이트인 scripts/verify.sh **한 곳만** 호출한다
+# ("1곳 + N트리거": hook·pre-commit·CI 가 모두 같은 스크립트를 부른다. 규칙 복제 금지).
+name: verify
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # Python — .agents/rules/tech.md 기준(예시 3.12, 프로젝트 버전에 맞게 조정).
+      # pyproject.toml 의 requires-python 과 일치시킨다.
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # uv 설치 + 캐시. Poetry 프로젝트면 snok/install-poetry 로 교체한다.
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      # 잠금 파일 기준 동결 설치 — CI 가 로컬과 같은 의존성 트리를 쓰게 한다.
+      - name: Install dependencies (frozen)
+        run: uv sync --frozen --all-extras --dev
+
+      # 정본 게이트 한 곳만 호출(exec-plan 일관성 + ruff + mypy + lint-imports + pytest).
+      - name: Run verify gate
+        run: bash scripts/verify.sh

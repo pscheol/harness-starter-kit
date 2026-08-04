@@ -1,0 +1,46 @@
+# HARNESS STARTER KIT ({{PROJECT_NAME}}) — 프로젝트 위생(Go). 스택에 맞게 가감하라.
+
+# OS
+.DS_Store
+.AppleDouble
+Thumbs.db
+
+# IDE / editor
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# Go 빌드 산출물
+/bin/
+/dist/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+# 컴파일된 테스트 바이너리
+*.test
+
+# 커버리지·프로파일
+coverage.out
+coverage.html
+*.prof
+*.pprof
+
+# 도구 캐시
+.golangci-cache/
+
+# Logs & temp
+*.log
+*.tmp
+*.harness.tmp
+
+# Env / secrets — 원문 커밋 금지
+.env
+.env.*
+!.env.example
+*.local
+
+# go.sum 은 반드시 커밋한다(재현 가능한 빌드) — 무시하지 말 것
+# vendor/ 를 쓰는 프로젝트라면 커밋 여부를 팀 정책으로 정한다

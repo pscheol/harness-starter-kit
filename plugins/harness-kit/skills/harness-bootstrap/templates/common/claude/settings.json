@@ -1,0 +1,35 @@
+{
+  "_comment": "HARNESS STARTER KIT ({{PROJECT_NAME}}) — {{PROTECTED_PATH}}(기본 docs/references)만 치환 후 사용. permissions.deny 로 원본/참고 경로 보호, hooks 3종은 얇은 트리거이며 강제 로직은 scripts/verify.sh 하나에만 둔다.",
+  "_comment_defaultMode": "기본값은 acceptEdits(편집 자동 승인, 그 외 도구는 프롬프트). ⚠ bypassPermissions 는 '모든' 권한 프롬프트를 끈다 — protect-sources 같은 PreToolUse 안전장치와 GateGuard(fact-forcing) 훅은 그대로 돌지만, 권한 게이트가 사라져 위험 도구(임의 쉘·삭제)까지 무프롬프트로 실행된다. 완전히 신뢰·격리된(예: 컨테이너/전용 워크트리) 환경에서만 bypassPermissions 로 올린다. 낮추려면 default(모두 프롬프트).",
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "deny": [
+      "Edit({{PROTECTED_PATH}}/**)",
+      "Write({{PROTECTED_PATH}}/**)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session-start.sh" }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-sources.sh" }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/verify.sh" }
+        ]
+      }
+    ]
+  }
+}

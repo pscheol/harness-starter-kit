@@ -1,0 +1,17 @@
+# HARNESS STARTER KIT ({{PROJECT_NAME}}) — {{...}} 치환 후 사용.
+#
+# codex 셸 환경 정책 + 시크릿 금지 정책.
+# 목표: 에이전트 셸에 실제 시크릿(API 키/토큰/비밀번호)이 노출되지 않게 한다.
+
+[shell_environment_policy]
+# core 프로파일만 상속(PATH/HOME 등 안전한 기본값). 전체 환경 통째 상속 금지.
+inherit = "core"
+# 기본 제외 패턴(*KEY*, *SECRET*, *TOKEN* 등)을 유지한다.
+ignore_default_excludes = false
+# 추가로 가릴 시크릿성 변수 패턴. 프로젝트 환경변수 명명에 맞게 확장하라.
+exclude = ["*_KEY", "*_SECRET", "*_TOKEN", "*_PASSWORD", "*PASSWD*", "AWS_*", "*_DSN"]
+
+[shell_environment_policy.set]
+# 하네스가 세팅하는 안전한 플래그만 여기에. 시크릿 값은 절대 여기에 넣지 말 것.
+# 예) 특정 에이전트 훅 비활성화:
+# ECC_DISABLED_HOOKS = "pre:edit-write:example-hook"

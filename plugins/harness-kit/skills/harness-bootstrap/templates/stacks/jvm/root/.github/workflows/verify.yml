@@ -1,0 +1,36 @@
+# HARNESS STARTER KIT ({{PROJECT_NAME}}) — CI 검증 트리거.
+#
+# 이 워크플로는 로직을 담지 않는다. 정본 게이트인 scripts/verify.sh **한 곳만** 호출한다
+# ("1곳 + N트리거": hook·pre-commit·CI 가 모두 같은 스크립트를 부른다. 규칙 복제 금지).
+name: verify
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # JDK — ARCHITECTURE.md 기준(예시 JDK 21, 프로젝트 버전에 맞게 조정).
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      # Gradle 캐시·wrapper 검증(Gradle 프로젝트 기준. Maven이면 setup-java의 cache: maven 사용).
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # 정본 게이트 한 곳만 호출(exec-plan 일관성 + ./gradlew check + 선택 DB 격리 테스트).
+      - name: Run verify gate
+        run: bash scripts/verify.sh
