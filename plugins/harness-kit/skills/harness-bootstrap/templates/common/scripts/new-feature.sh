@@ -19,7 +19,7 @@ if [ -z "$slug" ] || [ -z "$feature" ]; then
 fi
 
 if [ ! -d "$TMPL" ]; then
-  echo "✖ 템플릿 정본이 없다: $TMPL (먼저 setup.sh 실행)." >&2; exit 1
+  echo "✖ 템플릿 원본이 없다: $TMPL (먼저 setup.sh 실행)." >&2; exit 1
 fi
 
 base="$DOCS/product-${slug}-specs"
@@ -49,5 +49,5 @@ done
 
 echo ""
 echo "✔ 생성 완료: product-${slug}-specs 의 $feature (requirements/design/tasks)"
-echo "다음: /hx-specify 로 requirements 채우기 → (/hx-clarify·/hx-checklist) → /hx-plan → /hx-tasks → (/hx-analyze) → /hx-implement → (/hx-converge 회수) (정본: .agents/rules/sdd-workflow.md)"
+echo "다음: /hx-specify 로 requirements 채우기 → (/hx-clarify·/hx-checklist) → /hx-plan → /hx-tasks → (/hx-analyze) → /hx-implement → (/hx-converge 회수) (원본: .agents/rules/sdd-workflow.md)"
 echo "제품 index.md 등록표에 '$feature' 행을 추가하라."

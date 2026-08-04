@@ -2,9 +2,9 @@
 
 # 구조 · 레이어드 패키지 레이아웃 — {{PROJECT_NAME}}
 
-이 프로젝트는 **레이어드 아키텍처(api → services → repositories → models)** 를 **src 레이아웃 + import 계약 린터**로 강제한다.
-Python에는 모듈 의존을 막는 컴파일러가 없으므로, **`import-linter` 계약이 컴파일 강제를 대신한다**. 위반은 리뷰가 아니라 `scripts/verify.sh` 실패로 막힌다.
-아키텍처 상세 정본(선택 기준·전환 가이드 포함)은 `ARCHITECTURE.md`.
+이 프로젝트는 레이어드 아키텍처(api → services → repositories → models) 를 **src 레이아웃 + import 계약 린터**로 강제한다.
+Python에는 모듈 의존을 막는 컴파일러가 없으므로, `import-linter` 계약이 컴파일 강제를 대신한다. 위반은 리뷰가 아니라 `scripts/verify.sh` 실패로 막힌다.
+아키텍처 상세 원본(선택 기준·전환 가이드 포함)은 `ARCHITECTURE.md`.
 
 ## 리포 레이아웃 (src layout)
 
@@ -37,7 +37,7 @@ Python에는 모듈 의존을 막는 컴파일러가 없으므로, **`import-lin
 └── docs/
 ```
 
-- **src 레이아웃을 쓴다.** 테스트가 설치된 패키지를 import하게 되어 "로컬 경로 덕분에만 동작하는" 사고를 막는다.
+- src 레이아웃을 쓴다. 테스트가 설치된 패키지를 import하게 되어 "로컬 경로 덕분에만 동작하는" 사고를 막는다.
 - 모든 패키지에 `__init__.py`를 둔다. `__init__.py`에는 **재수출만**, 로직·부작용 금지(import 시점에 DB 연결·앱 생성 금지).
 - 테스트 디렉터리는 소스 구조를 거울처럼 따라간다(`tests/unit/services/test_{{DOMAIN_EXAMPLE}}_service.py`).
 
@@ -54,7 +54,7 @@ Python에는 모듈 의존을 막는 컴파일러가 없으므로, **`import-lin
 | `{{PACKAGE_NS}}.core` | 예외·에러코드·envelope | — (stdlib만) |
 
 - **의존 금지(게이트 차단)**: `services → api`, `repositories → services/api`, `models → 위 전부`, `core → 서드파티`, `repositories·models → schemas`.
-- **레이어를 건너뛰지 않는다**: `api`가 `repositories`를 직접 부르면 트랜잭션·정책이 우회된다. 조회만 하는 엔드포인트라도 서비스를 통과시킨다(규칙이 나중에 생긴다).
+- 레이어를 건너뛰지 않는다: `api`가 `repositories`를 직접 부르면 트랜잭션·정책이 우회된다. 조회만 하는 엔드포인트라도 서비스를 통과시킨다(규칙이 나중에 생긴다).
 - 계약 선언과 추가 절차는 `ARCHITECTURE.md` §3.2. **새 레이어 패키지를 만들면 계약에 등록**해야 강제 대상이 된다.
 
 ## 리포지토리는 Protocol 로 선언한다 (테스트 가능성)
@@ -78,14 +78,14 @@ class {{DOMAIN_EXAMPLE}}Writer(Protocol):
 
 ## 패키지 컨벤션
 
-- 모듈·클래스명은 도메인 개념(ubiquitous language)으로 짓고 **테이블 prefix를 붙이지 않는다**.
+- 모듈·클래스명은 도메인 개념(ubiquitous language)으로 짓고 테이블 prefix를 붙이지 않는다.
 - 네이밍: 모듈·함수·변수 `snake_case`, 클래스 `PascalCase`, 상수 `UPPER_SNAKE_CASE`, 내부 전용은 `_leading_underscore`.
   - 파일명에 역할을 드러낸다: `{{DOMAIN_EXAMPLE}}_service.py` · `{{DOMAIN_EXAMPLE}}_repository.py`.
   - 클래스명도 마찬가지: `{{DOMAIN_EXAMPLE}}Service` · `{{DOMAIN_EXAMPLE}}Repository` · `{{DOMAIN_EXAMPLE}}Model`(ORM).
-- **ORM 모델은 `api` 응답으로 나가지 않는다.** 라우터는 반드시 `schemas`의 DTO로 변환해 반환한다(내부 스키마 유출·순환 직렬화 방지).
+- ORM 모델은 `api` 응답으로 나가지 않는다. 라우터는 반드시 `schemas`의 DTO로 변환해 반환한다(내부 스키마 유출·순환 직렬화 방지).
 - **트랜잭션 경계는 서비스**: 세션은 `api/deps.py`가 요청 스코프로 만들어 주입하고 커밋은 서비스가 한다. 리포지토리는 커밋하지 않는다.
 - DB 접근: SQLAlchemy 2.0 `select()`/`session.execute`. 복잡 조회·통계·keyset cursor는 리포지토리의 별도 메서드로 분리한다. 원시 SQL은 지양(불가피하면 Why 주석 + 파라미터 바인딩 필수).
-- 서비스가 다른 서비스를 부르는 것은 허용하되 **순환을 만들지 않는다**. 순환이 생기면 규칙 소유가 잘못된 신호다 — 공통 규칙을 아래 레이어나 별도 서비스로 내린다.
+- 서비스가 다른 서비스를 부르는 것은 허용하되 순환을 만들지 않는다. 순환이 생기면 규칙 소유가 잘못된 신호다 — 공통 규칙을 아래 레이어나 별도 서비스로 내린다.
 
 ## 새 기능 착수 워크플로
 
@@ -101,7 +101,7 @@ class {{DOMAIN_EXAMPLE}}Writer(Protocol):
 
 ## 아키텍처 구조 테스트 (계약 린터의 보완)
 
-`import-linter`가 **패키지 간 의존 방향**을 막는다. 그러나 계약이 **못 잡는** 위반이 있다:
+`import-linter`가 패키지 간 의존 방향을 막는다. 그러나 계약이 못 잡는 위반이 있다:
 라우터가 ORM 모델을 반환, 리포지토리의 `commit()` 호출, 모델에 비즈니스 메서드 추가 등.
 이런 것은 `tests/architecture/`의 테스트로 강제한다(게이트가 자동 실행).
 
@@ -125,7 +125,7 @@ def test_라우터는_orm_모델을_직접_반환하지_않는다() -> None:
         assert "from {{PACKAGE_NS}}.models" not in source, f"{path}: 라우터는 schemas 로 변환해 반환한다"
 ```
 
-> 규칙은 프로젝트에 맞게 늘린다. 핵심은 **위반을 `scripts/verify.sh`에서 실패로 만드는 것**(리뷰가 아니라 게이트).
+> 규칙은 프로젝트에 맞게 늘린다. 핵심은 위반을 `scripts/verify.sh`에서 실패로 만드는 것(리뷰가 아니라 게이트).
 
 ## 새 기능 착수 규칙
 

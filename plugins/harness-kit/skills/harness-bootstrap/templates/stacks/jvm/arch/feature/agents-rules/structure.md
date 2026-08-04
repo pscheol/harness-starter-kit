@@ -3,7 +3,7 @@
 # 구조 · 패키지 바이 피처(단일 모듈) — {{PROJECT_NAME}}
 
 이 프로젝트는 패키지를 **기술 레이어가 아니라 기능(feature)** 으로 먼저 나눈다.
-단일 Gradle 모듈이므로 경계는 **ArchUnit 슬라이스 규칙이 `./gradlew check`에서 실패로 강제**한다. 아키텍처 상세 정본은 `ARCHITECTURE.md`.
+단일 Gradle 모듈이므로 경계는 ArchUnit 슬라이스 규칙이 `./gradlew check`에서 실패로 강제한다. 아키텍처 상세 원본은 `ARCHITECTURE.md`.
 
 ## 패키지 레이아웃
 
@@ -31,15 +31,15 @@
 | `<feature>.repository` | 같은 기능의 `domain`, `common` |
 | `<feature>.domain` | `common`(상수·enum)만 |
 
-- **기능 간 직접 참조 금지**: 다른 기능의 `web`·`service`·`repository`·`domain`을 import하지 않는다. **`api`만** 본다.
-- **기능 안에서도 레이어 건너뛰기 금지**: `web`이 `repository`를 직접 부르지 않는다.
+- 기능 간 직접 참조 금지: 다른 기능의 `web`·`service`·`repository`·`domain`을 import하지 않는다. **`api`만** 본다.
+- 기능 안에서도 레이어 건너뛰기 금지: `web`이 `repository`를 직접 부르지 않는다.
 - **기능이 소유한 테이블만** 읽고 쓴다. 다른 기능 데이터가 필요하면 그 기능의 `api`를 부른다.
 - `@Transactional`은 `service`에만. 기능을 가로지르는 트랜잭션을 전제하지 않는다.
 
 ## 기능 간 통합 (두 가지뿐)
 
 1. **공개 계약 호출** — 즉시 결과가 필요할 때. 제공 기능의 `api` 인터페이스만 주입받고, 반환은 `api`의 DTO(엔티티 금지).
-2. **도메인 이벤트** — 부수 효과·역방향 의존일 때. `ApplicationEventPublisher` 발행 + `@TransactionalEventListener(phase = AFTER_COMMIT)` 수신. 이벤트 타입은 발행 기능의 `api`에 두고 **과거형 사실**로 이름 짓는다(`OrderPlaced`).
+2. **도메인 이벤트** — 부수 효과·역방향 의존일 때. `ApplicationEventPublisher` 발행 + `@TransactionalEventListener(phase = AFTER_COMMIT)` 수신. 이벤트 타입은 발행 기능의 `api`에 두고 과거형 사실로 이름 짓는다(`OrderPlaced`).
 
 ## 네이밍 컨벤션
 
@@ -117,9 +117,9 @@ class FeatureArchitectureTest {
 }
 ```
 
-- **새 기능을 추가해도 규칙을 고칠 필요가 없다** — 슬라이스 패턴이 자동으로 잡는다.
-- `config`·`common`만 예외다. 예외 목록에 기능 패키지를 추가하는 것은 **경계를 허무는 것**이니 ADR을 남긴다.
-- **규칙이 0개 클래스를 검사하면 실패로 취급한다.** ArchUnit 1.x는 `archRule.failOnEmptyShould` 기본값이 `true`다 — 패키지명 오타나 패키지 이동으로 규칙이 조용히 죽는 것을 잡는 자동 감지이므로 `archunit.properties`에서 끄지 않는다.
+- 새 기능을 추가해도 규칙을 고칠 필요가 없다 — 슬라이스 패턴이 자동으로 잡는다.
+- `config`·`common`만 예외다. 예외 목록에 기능 패키지를 추가하는 것은 경계를 허무는 것이니 ADR을 남긴다.
+- 규칙이 0개 클래스를 검사하면 실패로 취급한다. ArchUnit 1.x는 `archRule.failOnEmptyShould` 기본값이 `true`다 — 패키지명 오타나 패키지 이동으로 규칙이 조용히 죽는 것을 잡는 자동 감지이므로 `archunit.properties`에서 끄지 않는다.
 - 규칙을 끄거나 지워서 통과시키지 않는다. 규칙이 틀렸다면 경계를 다시 긋는다.
 
 ## 새 기능 착수 규칙

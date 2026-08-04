@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # HARNESS STARTER KIT · {{PROJECT_NAME}} — {{...}} 치환 후 사용.
 #
-# 정본 검증 스크립트 (단일 강제 지점).
+# 검증 스크립트 (단일 강제 지점).
 # hook / CI / pre-commit 이 모두 이 스크립트 하나만 호출한다. 로직 복제 금지.
 # 단일 Go 프로젝트 게이트:
 #   1) exec-plan 위치↔상태 일관성 (스택 무관, 항상)
@@ -19,7 +19,7 @@ fail=0
 # 커버리지 임계(%). 프로젝트 정책에 맞게 조정한다(quality-score.md 기준: 전체 80).
 COVERAGE_MIN="${COVERAGE_MIN:-80}"
 
-# ── 1) 구조 점검 (문서/하네스 일관성). 항상 실행 — 정본 규칙의 기계적 보조. ────
+# ── 1) 구조 점검 (문서/하네스 일관성). 항상 실행 — 규칙 문서를 기계적으로 보조. ────
 echo "▶ exec-plan 상태 일관성"
 bash scripts/check-exec-plan-status.sh || { echo "✖ exec-plan 상태 일관성 실패"; fail=1; }
 
@@ -46,7 +46,7 @@ echo "▶ go vet"
 go vet ./... || { echo "✖ go vet 실패"; fail=1; }
 
 # ── 5) 린트 (golangci-lint — depguard 로 레이어 의존을 강제한다) ─────────────
-# 설정 정본은 .golangci.yml (레이어 규칙은 ARCHITECTURE.md §4.2).
+# 설정 원본은 .golangci.yml (레이어 규칙은 ARCHITECTURE.md §4.2).
 if command -v golangci-lint >/dev/null 2>&1; then
   echo "▶ golangci-lint"
   golangci-lint run || { echo "✖ 린트 실패"; fail=1; }

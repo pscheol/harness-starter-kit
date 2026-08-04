@@ -2,36 +2,36 @@
 
 # ARCHITECTURE — {{PROJECT_NAME}} (패키지 바이 피처)
 
-이 문서는 `{{PROJECT_NAME}}`의 **기술 아키텍처 정본**이다. 진입 가이드는 `./AGENTS.md`·`./CLAUDE.md`, 빌드·실행 상세는 `./README.md`와 `.agents/rules/tech.md`를 본다.
+이 문서는 `{{PROJECT_NAME}}`의 **기술 아키텍처 원본**이다. 진입 가이드는 `./AGENTS.md`·`./CLAUDE.md`, 빌드·실행 상세는 `./README.md`와 `.agents/rules/tech.md`를 본다.
 
 본 프로젝트는 **표준 Go 프로젝트 레이아웃**([golang-standards/project-layout](https://github.com/golang-standards/project-layout))을 최상위 뼈대로 쓰고,
 `internal/` 안을 **기술 레이어가 아니라 기능(feature)** 으로 먼저 나눈다. 한 기능은 한 패키지이고, 그 안에 `handler`·`service`·`store`·`model`이 파일로 공존한다.
-의존 방향은 **`internal/` 가시성(컴파일러) + import 사이클 금지(컴파일러) + depguard 린트 + 구조 테스트**로 강제한다.
+의존 방향은 `internal/` 가시성(컴파일러) + import 사이클 금지(컴파일러) + depguard 린트 + 구조 테스트로 강제한다.
 
-스택 기준(버전 정본은 `go.mod` — 구체 버전은 **예시이며 프로젝트에서 확정**):
-**Go 1.22+** · **net/http(+chi 등 라우터)** · **pgx/database\_sql**(관계형 DB) · **golang-migrate/goose** · **log/slog** · **golangci-lint · gofumpt · go test -race**.
+스택 기준(버전 기준은 `go.mod` — 구체 버전은 **예시이며 프로젝트에서 확정**):
+Go 1.22+ · net/http(+chi 등 라우터) · pgx/database\_sql(관계형 DB) · golang-migrate/goose · log/slog · golangci-lint · gofumpt · go test -race.
 
 ---
 
 ## 0. 이 변형을 언제 쓰나 (선택 기준)
 
 **쓴다:**
-- 기능 영역이 이미 여러 개이고, 한 기능을 고치는 변경이 **그 기능 안에서 끝난다**.
+- 기능 영역이 이미 여러 개이고, 한 기능을 고치는 변경이 그 기능 안에서 끝난다.
 - 여러 사람이 서로 다른 기능을 동시에 만져 충돌을 줄이고 싶다.
 - 언젠가 일부 기능을 별도 서비스로 떼어낼 가능성이 있다(기능 경계 = 미래의 분리선).
-- Go의 패키지 단위 캡슐화(소문자 = 패키지 비공개)를 **실제 경계로 쓰고 싶다**.
+- Go의 패키지 단위 캡슐화(소문자 = 패키지 비공개)를 실제 경계로 쓰고 싶다.
 
 **쓰지 않는다:**
 - 기능이 하나뿐이거나 서로 심하게 얽혀 있다 → `layered`.
 - 파일이 손에 꼽을 만큼 적다 → `flat`.
 - 도메인 규칙이 복잡해 순수 모델 + 포트/어댑터가 필요하다 → `hexagonal`(기능 = 바운디드 컨텍스트로 승격).
 
-**승격 신호(이 중 둘 이상이면 `hexagonal` 전환을 검토한다):**
+승격 신호(이 중 둘 이상이면 `hexagonal` 전환을 검토한다):
 1. 한 기능의 `service.go`가 500줄을 넘고 규칙이 DB 스캔 구조체와 뒤엉킨다.
 2. 저장소·외부 시스템을 교체할 요구가 실제로 생긴다(포트/어댑터의 실익).
 3. DB 없이 도메인 규칙을 테스트할 수 없어 단위 테스트가 느려진다.
 
-**경계 오류 신호(전환이 아니라 경계를 다시 그어야 한다):**
+경계 오류 신호(전환이 아니라 경계를 다시 그어야 한다):
 - 기능 간 직접 import가 필요하다는 요구가 반복된다.
 - 한 요청이 두 기능의 테이블을 트랜잭션으로 함께 바꿔야 한다.
 
@@ -45,7 +45,7 @@
 |---|---|---|
 | 내부 패키지 외부 노출 차단 | **`internal/`** (Go 컴파일러 기본 규칙) | 컴파일 실패 |
 | 순환 의존 금지 | Go 컴파일러(import cycle) | 컴파일 실패 |
-| **기능 패키지 간 직접 import 금지** | depguard 규칙 + 구조 테스트(§3.3) | 게이트 차단 |
+| 기능 패키지 간 직접 import 금지 | depguard 규칙 + 구조 테스트(§3.3) | 게이트 차단 |
 | 기능 내부 방향 (handler→service→store) | 같은 패키지라 컴파일러가 못 막는다 → 구조 테스트 + 리뷰 | 게이트 차단 |
 | `store`·`model`은 전송 계층 무의존 | depguard: `net/http` 금지 | 게이트 차단 |
 | `platform`은 기능을 모른다 | depguard: `platform` → `internal/<feature>` 금지 | 게이트 차단 |
@@ -53,7 +53,7 @@
 | 경합 없는 동시성 | `go test -race` | 게이트 차단 |
 | 테스트 우선 (TDD) | RED→GREEN→REFACTOR. 커버리지 ≥ 80% | 커버리지 게이트 |
 
-> **기계적 강제 우선**. 이 변형의 가치는 "기능이 실제로 독립적"일 때만 나온다. 독립성은 규율이 아니라 **린트 + 구조 테스트**가 지킨다.
+> 기계적 강제 우선. 이 변형의 가치는 "기능이 실제로 독립적"일 때만 나온다. 독립성은 규율이 아니라 린트 + 구조 테스트가 지킨다.
 
 ---
 
@@ -74,7 +74,7 @@
 ```
 
 - 기능은 **하나의 프로세스·하나의 DB**를 공유하는 모놀리스로 배포된다(기능 = 코드 경계이지 배포 경계가 아니다).
-- 다만 **테이블 소유권은 기능에 있다**: 다른 기능의 테이블을 직접 조회하지 않는다(§4).
+- 다만 테이블 소유권은 기능에 있다: 다른 기능의 테이블을 직접 조회하지 않는다(§4).
 - 서비스 인스턴스는 **무상태**. 배포 아티팩트는 정적 링크 단일 바이너리 + 컨테이너.
 
 ---
@@ -102,14 +102,14 @@
 └── docs/
 ```
 
-- **`internal/`이 기본이다.** `pkg/`는 정말로 외부에 공개할 코드가 있을 때만 만든다.
+- `internal/`이 기본이다. `pkg/`는 정말로 외부에 공개할 코드가 있을 때만 만든다.
 - `cmd/<binary>/main.go`는 **기능을 조립하고 라우터를 마운트**만 한다. 기능 간 배선이 필요하면 여기서 한다(§4-(b)).
 - **단위 테스트는 기능 패키지 안**에 `*_test.go`로 둔다. 기능을 지우면 테스트도 함께 사라진다.
 - `src/` 디렉터리를 만들지 않는다(Go 관례 아님).
 
 ### 3.1 기능 패키지 내부 규약
 
-한 기능은 **하나의 Go 패키지**다. 파일은 나뉘어 있지만 컴파일러 관점에서는 같은 패키지이므로 **소문자 식별자로 캡슐화**한다.
+한 기능은 하나의 Go 패키지다. 파일은 나뉘어 있지만 컴파일러 관점에서는 같은 패키지이므로 소문자 식별자로 캡슐화한다.
 
 | 파일 | 책임 | 노출 |
 |---|---|---|
@@ -212,7 +212,7 @@ func Test기능간직접import금지(t *testing.T) {
 
 ## 4. 기능 간 통합 규약 (가장 중요한 규칙)
 
-기능은 서로를 **직접 import하지 않는다**. 통합이 필요하면 아래 셋 중 하나를 쓴다.
+기능은 서로를 직접 import하지 않는다. 통합이 필요하면 아래 셋 중 하나를 쓴다.
 
 | 방식 | 언제 | 형태 |
 |---|---|---|
@@ -231,36 +231,36 @@ type OwnerLookup interface {
 }
 ```
 
-- **(b)가 기본값**이다. Go에서 인터페이스는 소비자 쪽에 선언하는 것이 관례이고, 이 방식이 유일하게 **양방향 의존을 만들지 않는다**.
-- (a)도 **DTO만 오간다**. 다른 기능의 내부 타입·`*sql.Tx`를 넘기지 않는다.
-- **다른 기능이 소유한 테이블을 직접 조회·조인하지 않는다.** 조인이 꼭 필요하면 경계가 잘못됐다는 신호다.
-- **기능을 넘는 단일 트랜잭션을 만들지 않는다.** 한 요청이 두 기능을 바꿔야 하면 (c) 이벤트 + 멱등 처리로 최종 일관성을 택한다.
-- 기능 간 호출을 **루프 안에서 하지 않는다**(N+1). 필요하면 배치 계약(`DisplayNames(ctx, ids)`)을 제공한다.
+- **(b)가 기본값**이다. Go에서 인터페이스는 소비자 쪽에 선언하는 것이 관례이고, 이 방식이 유일하게 양방향 의존을 만들지 않는다.
+- (a)도 DTO만 오간다. 다른 기능의 내부 타입·`*sql.Tx`를 넘기지 않는다.
+- 다른 기능이 소유한 테이블을 직접 조회·조인하지 않는다. 조인이 꼭 필요하면 경계가 잘못됐다는 신호다.
+- 기능을 넘는 단일 트랜잭션을 만들지 않는다. 한 요청이 두 기능을 바꿔야 하면 (c) 이벤트 + 멱등 처리로 최종 일관성을 택한다.
+- 기능 간 호출을 루프 안에서 하지 않는다(N+1). 필요하면 배치 계약(`DisplayNames(ctx, ids)`)을 제공한다.
 
 ---
 
 ## 5. 기능 내부 책임
 
-- **트랜잭션 경계는 `service`에만.** `service`가 `TxManager`(자기 패키지에 선언, `platform/db`가 구현)로 열고 커밋한다. `store`는 `ctx`로 전파된 실행기를 쓰기만 한다.
-- **비즈니스 규칙은 `service`와 `model`에**. 상태 불변식은 모델 생성자·메서드로, 오케스트레이션·정책은 서비스로. `handler`에 규칙을 흘리지 않는다.
-- **생성자 주입 only.** 패키지 전역 변수(`var db *sql.DB`)·`init()` 부작용 금지. 시간·난수·ID는 인터페이스(`Clock`·`IDGenerator`)로 주입한다.
-- **로깅은 `handler`/`service`/`store`에서만**, 한 번만. `model`은 로깅 금지. `log/slog` 구조화 로깅, 로거는 주입(전역 로거 지양).
-- **`handler`는 `model`을 그대로 반환하지 않는다.** 응답 DTO로 변환하고 `platform/httpx`의 공통 envelope에 담는다.
+- 트랜잭션 경계는 `service`에만. `service`가 `TxManager`(자기 패키지에 선언, `platform/db`가 구현)로 열고 커밋한다. `store`는 `ctx`로 전파된 실행기를 쓰기만 한다.
+- 비즈니스 규칙은 `service`와 `model`에. 상태 불변식은 모델 생성자·메서드로, 오케스트레이션·정책은 서비스로. `handler`에 규칙을 흘리지 않는다.
+- 생성자 주입 only. 패키지 전역 변수(`var db *sql.DB`)·`init()` 부작용 금지. 시간·난수·ID는 인터페이스(`Clock`·`IDGenerator`)로 주입한다.
+- 로깅은 `handler`/`service`/`store`에서만, 한 번만. `model`은 로깅 금지. `log/slog` 구조화 로깅, 로거는 주입(전역 로거 지양).
+- `handler`는 `model`을 그대로 반환하지 않는다. 응답 DTO로 변환하고 `platform/httpx`의 공통 envelope에 담는다.
 - **DB 접근**: `pgx`(또는 `database/sql`) + 파라미터 바인딩. 스캔 구조체와 `model` 타입은 다른 타입이며 `store`가 변환한다.
 
 ### 5.1 에러 처리 규약 (Go 핵심)
 
-- **에러는 값이다.** 모든 error를 처리하거나 반환한다(`errcheck`). `_ = err`로 버리지 않는다.
-- **래핑으로 맥락을 더한다**: `fmt.Errorf("{{DOMAIN_EXAMPLE}} 저장 실패: %w", err)`. `%w`로 원인을 보존해 `errors.Is/As`가 동작하게 한다.
+- 에러는 값이다. 모든 error를 처리하거나 반환한다(`errcheck`). `_ = err`로 버리지 않는다.
+- 래핑으로 맥락을 더한다: `fmt.Errorf("{{DOMAIN_EXAMPLE}} 저장 실패: %w", err)`. `%w`로 원인을 보존해 `errors.Is/As`가 동작하게 한다.
 - **도메인 오류는 sentinel 또는 타입**으로 기능 패키지에 정의한다(`var ErrNotFound = errors.New("not found")`). `handler`에서 `errors.Is/As`로 판별해 상태코드로 변환한다.
-- **에러 문자열은 소문자로 시작하고 마침표를 붙이지 않는다**(Go 관례).
-- **panic 금지**(요청 처리 경로). recover 미들웨어는 두되 정상 흐름으로 쓰지 않는다.
+- 에러 문자열은 소문자로 시작하고 마침표를 붙이지 않는다(Go 관례).
+- panic 금지(요청 처리 경로). recover 미들웨어는 두되 정상 흐름으로 쓰지 않는다.
 - 에러에 민감정보를 넣지 않는다.
 
 ### 5.2 동시성 규약
 
-- **`context.Context`를 첫 인자로 전파**한다. 구조체 필드에 저장하지 않는다.
-- **고루틴에는 소유자와 종료 조건이 있어야 한다**(`errgroup.Group` + `ctx.Done()`). 종료 경로 없는 고루틴 = 누수.
+- `context.Context`를 첫 인자로 전파한다. 구조체 필드에 저장하지 않는다.
+- 고루틴에는 소유자와 종료 조건이 있어야 한다(`errgroup.Group` + `ctx.Done()`). 종료 경로 없는 고루틴 = 누수.
 - **채널 소유권**: 보내는 쪽이 닫는다. 공유 상태는 뮤텍스 또는 채널 중 하나로만 보호한다. `go test -race`는 항상 켠다.
 - 팬아웃은 상한을 둔다(세마포어·워커 풀).
 
@@ -268,10 +268,10 @@ type OwnerLookup interface {
 
 ## 6. 코드 주석 규약 (요약)
 
-- 코드는 라인 단위 What/How를, 주석은 Why를 설명한다. 단 **함수·메서드 doc comment는 ① 책임 한 줄 + ② 비자명한 Why + ③ `처리 흐름:`(의도를 곁들인 단계)** 로 로직 이해를 돕는다.
-- **Go doc 규약을 따른다**: doc comment는 **선언 이름으로 시작**한다. exported 식별자에는 doc comment를 단다. 패키지 주석은 `// Package {{DOMAIN_EXAMPLE}} ...` — **이 기능이 무엇을 소유하는지** 한 줄로 적는다.
+- 코드는 라인 단위 What/How를, 주석은 Why를 설명한다. 단 함수·메서드 doc comment는 ① 책임 한 줄 + ② 비자명한 Why + ③ `처리 흐름:`(의도를 곁들인 단계) 로 로직 이해를 돕는다.
+- Go doc 규약을 따른다: doc comment는 선언 이름으로 시작한다. exported 식별자에는 doc comment를 단다. 패키지 주석은 `// Package {{DOMAIN_EXAMPLE}} ...` — 이 기능이 무엇을 소유하는지 한 줄로 적는다.
 - `contract.go`의 각 항목에는 **"다른 기능이 이걸 어떻게 쓰는지"** 를 남긴다(경계 문서화).
-- 한국어로 작성한다. 비밀·토큰·키 원문은 주석/예시에도 넣지 않는다. 정본·Bad/Good 예시: `.agents/rules/code-comments.md`.
+- 한국어로 작성한다. 비밀·토큰·키 원문은 주석/예시에도 넣지 않는다. 원본·Bad/Good 예시: `.agents/rules/code-comments.md`.
 
 ---
 
@@ -291,12 +291,12 @@ type OwnerLookup interface {
 
 ## 8. 성능 예산 (부하테스트로 확정)
 
-- **무한/대량 결과 금지**: cursor pagination + 상한 `limit`.
-- **N+1 회피**: 배치·조인·`IN` 조회. **기능 간 호출의 N+1**도 같이 본다(루프 내 contract 호출 금지 — 배치 계약 제공).
+- 무한/대량 결과 금지: cursor pagination + 상한 `limit`.
+- **N+1 회피**: 배치·조인·`IN` 조회. 기능 간 호출의 N+1도 같이 본다(루프 내 contract 호출 금지 — 배치 계약 제공).
 - **커넥션 풀 설정**: `SetMaxOpenConns`·`SetMaxIdleConns`·`SetConnMaxLifetime`을 명시적으로 설정한다(기본값은 무제한).
-- **HTTP 클라이언트 재사용**: 요청마다 생성 금지. **`http.DefaultClient`는 타임아웃이 없다** — `Timeout` 설정 클라이언트를 주입한다.
+- **HTTP 클라이언트 재사용**: 요청마다 생성 금지. `http.DefaultClient`는 타임아웃이 없다 — `Timeout` 설정 클라이언트를 주입한다.
 - **서버 타임아웃**: `ReadHeaderTimeout`·`ReadTimeout`·`WriteTimeout`·`IdleTimeout` 설정(미설정 시 slowloris 노출).
-- **응답 본문은 항상 닫는다**(`defer resp.Body.Close()`).
+- 응답 본문은 항상 닫는다(`defer resp.Body.Close()`).
 
 | 경로 부류 | 예 | 목표(예시 — 프로젝트 확정) | 도달 레버 |
 |---|---|---|---|
@@ -315,9 +315,9 @@ GREEN 최소 구현으로 통과
 REFACTOR 중복 제거·의도 드러내기
 ```
 
-- 테스트가 먼저, 구현이 나중. **테스트 없는 `service` 변경 금지**.
-- **표준 `testing` + 테이블 주도 테스트**. 목 프레임워크보다 **직접 만든 fake**를 우선한다(인터페이스가 작아 쉽다).
-- **기능 테스트는 그 기능만으로 돌아야 한다.** 다른 기능을 조립해야 통과하는 테스트는 경계가 새고 있다는 신호다.
+- 테스트가 먼저, 구현이 나중. 테스트 없는 `service` 변경 금지.
+- 표준 `testing` + 테이블 주도 테스트. 목 프레임워크보다 **직접 만든 fake**를 우선한다(인터페이스가 작아 쉽다).
+- 기능 테스트는 그 기능만으로 돌아야 한다. 다른 기능을 조립해야 통과하는 테스트는 경계가 새고 있다는 신호다.
 - `t.Parallel()`을 기본으로 쓰되 공유 상태를 만들지 않는다. `-race`는 항상 켠다.
 
 | 대상 | 도구 | 비고 |
@@ -335,8 +335,8 @@ REFACTOR 중복 제거·의도 드러내기
 
 ## 10. 새 기능 추가 워크플로
 
-1. **기능 결정**: 기존 기능 안인지 새 기능인지 먼저 답한다. 판단 기준은 **"어느 기능이 이 데이터를 소유하는가"**.
-2. **(신규 기능)** `internal/<feature>/` 생성(`handler.go`·`service.go`·`store.go`·`model.go`) → **`.golangci.yml`에 독립 규칙 쌍 추가**(또는 구조 테스트가 자동 검사하는지 확인) → `main.go`에서 조립·라우터 마운트.
+1. **기능 결정**: 기존 기능 안인지 새 기능인지 먼저 답한다. 판단 기준은 "어느 기능이 이 데이터를 소유하는가".
+2. **(신규 기능)** `internal/<feature>/` 생성(`handler.go`·`service.go`·`store.go`·`model.go`) → `.golangci.yml`에 독립 규칙 쌍 추가(또는 구조 테스트가 자동 검사하는지 확인) → `main.go`에서 조립·라우터 마운트.
 3. **TDD 사이클**: `model`(불변식) → `service`(fake store) → `store`(실제 DB) → `handler`(`httptest`, 응답은 envelope) → `main`(조립·smoke).
 4. **다른 기능이 필요하면** §4의 (a)/(b)/(c) 중 하나를 고르고 이유를 `.agents/docs/decisions/`에 한 줄 남긴다. 기본은 (b).
 5. **검증**: `bash scripts/verify.sh` 통과 + `api/`의 OpenAPI 스펙 동기화.
@@ -372,7 +372,7 @@ REFACTOR 중복 제거·의도 드러내기
 | → `layered` (기능이 하나로 수렴할 때) | `internal/<f>/{handler,service,store,model}.go` 를 `internal/{handler,service,repository,model}/` 로 펼친다. `platform/`은 `config`·`database`·`logger`·`middleware`로 되돌린다. | 기능 독립 규칙을 레이어 방향 규칙으로 교체 |
 | → 기능 분리(별도 서비스) | 기능 디렉터리를 새 리포로 옮기고 §4의 (a)/(b) 호출을 HTTP/메시지로 바꾼다. | 남은 쪽 규칙에서 그 기능을 제거. 호출 지점에 `.agents/rules/reliability.md`의 타임아웃·재시도 적용 |
 
-- **이 변형의 이점은 여기서 나온다**: 독립 규칙을 지켜왔다면 분리 비용이 "디렉터리 이동 + 호출 방식 교체"로 끝난다.
+- 이 변형의 이점은 여기서 나온다: 독립 규칙을 지켜왔다면 분리 비용이 "디렉터리 이동 + 호출 방식 교체"로 끝난다.
 - Go는 **패키지 이동이 곧 import 경로 변경**이라 도구(`gopls` 리네임)로 기계적으로 처리할 수 있다. 컴파일러가 누락을 잡아준다.
 - 전환은 한 번에 한 기능씩 옮기고 각 단계마다 `scripts/verify.sh`를 통과시킨다.
 - 전환 시작 전 `.agents/docs/decisions/`에 ADR을 남긴다(왜 옮기는지·되돌릴 조건).
@@ -381,8 +381,8 @@ REFACTOR 중복 제거·의도 드러내기
 
 ## 13. 관련 문서
 
-- 스택·구조·보안·API 규약 정본: `.agents/rules/` (`tech.md`·`security.md`·`api-standards.md`·`structure.md`·`guardrails.md`)
-- 주석 규약 정본: `.agents/rules/code-comments.md`
+- 스택·구조·보안·API 규약 원본: `.agents/rules/` (`tech.md`·`security.md`·`api-standards.md`·`structure.md`·`guardrails.md`)
+- 주석 규약 원본: `.agents/rules/code-comments.md`
 - 에이전트 진입: `./AGENTS.md`·`./CLAUDE.md`
 - SDD 기록: `.agents/docs/README.md`
 - 레이아웃 근거: [golang-standards/project-layout](https://github.com/golang-standards/project-layout)

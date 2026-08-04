@@ -5,7 +5,7 @@ fileMatchPattern: '**/*.kt|**/*.java|**/*.sql'
 <!-- HARNESS TEMPLATE ({{PROJECT_NAME}}) · Kiro 얇은 포인터. 규칙 본문 금지. -->
 # 주석 표준 (포인터)
 
-정본: `.agents/rules/code-comments.md` — Claude·Codex·Kiro 공통. **로직 함수 작성/수정 전 이 정본을 연다.**
+원본: `.agents/rules/code-comments.md` — Claude·Codex·Kiro 공통. 로직 함수 작성/수정 전 이 원본을 연다.
 
 요약:
 - 코드는 라인 단위 What/How, 주석은 Why. 로직 함수는 **책임 한 줄 + 처리 흐름**(각 단계에 "무엇을 — 왜/무엇을 위해").

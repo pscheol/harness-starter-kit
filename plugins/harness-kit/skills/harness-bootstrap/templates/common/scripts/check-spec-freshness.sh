@@ -62,5 +62,5 @@ done
 
 echo ""
 echo "요약: 정체 스펙=$stale, 미해결 마커=$markers, 정체 tasks=$stuck"
-echo "→ 후속 작업은 /hx-converge 로 tasks에 append-only 회수(정본: .agents/rules/sdd-workflow.md /hx-converge 절)."
+echo "→ 후속 작업은 /hx-converge 로 tasks에 append-only 회수(원본: .agents/rules/sdd-workflow.md /hx-converge 절)."
 exit 0

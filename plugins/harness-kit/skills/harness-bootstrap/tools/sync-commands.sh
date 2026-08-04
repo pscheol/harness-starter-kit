@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # 킷 개발용 도구 — 대상 프로젝트에 설치되지 않는다(templates/ 밖).
 #
-# 슬래시 커맨드 정본은 templates/common/claude/commands/hx-*.md 9종이다.
+# 슬래시 커맨드 원본은 templates/common/claude/commands/hx-*.md 9종이다.
 # 이 스크립트가 거기서 나머지 3개 하네스 트리를 파생시킨다:
 #
 #   .cursor/commands/hx-*.md         Cursor 프로젝트 커맨드 (frontmatter 없이 본문 전체가 프롬프트)
@@ -18,7 +18,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 COMMON="${1:-$SCRIPT_DIR/../templates/common}"
 SRC="$COMMON/claude/commands"
 
-[ -d "$SRC" ] || { echo "✗ 정본 없음: $SRC" >&2; exit 2; }
+[ -d "$SRC" ] || { echo "✗ 원본 없음: $SRC" >&2; exit 2; }
 
 CURSOR="$COMMON/cursor/commands"
 KIRO_ST="$COMMON/kiro-steering"
@@ -54,4 +54,4 @@ for f in "$SRC"/hx-*.md; do
   n=$((n+1))
 done
 
-echo "✔ 정본 ${n}종 → 파생 $((n*4))개 (cursor · kiro-steering · kiro-skills · agents-skills)"
+echo "✔ 원본 ${n}종 → 파생 $((n*4))개 (cursor · kiro-steering · kiro-skills · agents-skills)"

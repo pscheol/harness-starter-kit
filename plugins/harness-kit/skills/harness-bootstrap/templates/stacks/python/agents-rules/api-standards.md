@@ -31,18 +31,18 @@ REST 응답·오류·문서화의 단일 규약. 직접 구현하는 REST API에
   { "code": "RS0001", "message": "요청한 리소스를 찾을 수 없습니다.", "request_id": "req_123", "timestamp": "...", "details": { } }
   ```
 - 성공 `code`는 고정 `SUCCESS`. 오류에 200 금지.
-- **라우터에서 ORM 모델·도메인 애그리거트를 직접 반환 금지**. 응답 스키마(Pydantic)로 변환해 envelope에 담는다.
+- 라우터에서 ORM 모델·도메인 애그리거트를 직접 반환 금지. 응답 스키마(Pydantic)로 변환해 envelope에 담는다.
 - JSON 키 표기는 프로젝트에서 하나로 고정한다(예: `snake_case`). 카멜케이스를 쓰면 `alias_generator`를 **한 곳(BaseSchema)** 에만 설정한다.
 
 ## ErrorCode ↔ HTTP status 단일 매핑
 
-- `common`의 **`ErrorCode`(StrEnum)가 (머신코드 · HTTP status · 기본 메시지 키)의 단일 매핑 소스**다. 매핑을 여러 곳에 흩지 않는다.
+- `common`의 `ErrorCode`(StrEnum)가 (머신코드 · HTTP status · 기본 메시지 키)의 단일 매핑 소스다. 매핑을 여러 곳에 흩지 않는다.
 - 응답 body에는 **`code`(머신코드)만** 노출한다. enum 멤버명은 내부 식별자다.
 - **전역 exception handler**(`app.add_exception_handler(...)`)가 모든 예외를 envelope로 변환하는 유일한 경계다:
   - `DomainError` → 매핑된 `ErrorCode`의 status.
   - `RequestValidationError`(Pydantic 검증) → 422(`RQ0001`) + 필드별 메시지.
   - 미분류 `Exception` → 500(`SY0001`). 에러 로그는 **이 경계에서 한 번만** 남긴다(하위 레이어 중복 로깅 금지).
-- **인바운드 경계 안쪽 계층은 `DomainError`만 던진다. `fastapi.HTTPException`을 그 안에서 던지지 않는다**(계약 위반 — import-linter가 차단).
+- 인바운드 경계 안쪽 계층은 `DomainError`만 던진다. `fastapi.HTTPException`을 그 안에서 던지지 않는다(계약 위반 — import-linter가 차단).
 - 핸들러는 **예외 타입 → 상태 코드** 변환만 한다. 여기서 비즈니스 판단을 하지 않는다.
 
 ## Request ID
@@ -74,20 +74,20 @@ REST 응답·오류·문서화의 단일 규약. 직접 구현하는 REST API에
 ## 다국어(i18n) 오류 메시지
 
 - 오류 `message`는 `Accept-Language`에 따라 다국어로 내려준다. **기본 로케일은 한국어**. `code`는 로케일 무관 고정.
-- **메시지를 코드에 하드코딩하지 않는다.** 안쪽 계층은 예외에 **메시지 키 + 치환 인자**만 담아 던지고(`raise NotFoundError(message_key="error.{{DOMAIN_EXAMPLE}}.not_found", args=(code,))`), 경계(exception handler)가 번역기로 해석한다.
+- 메시지를 코드에 하드코딩하지 않는다. 안쪽 계층은 예외에 **메시지 키 + 치환 인자**만 담아 던지고(`raise NotFoundError(message_key="error.{{DOMAIN_EXAMPLE}}.not_found", args=(code,))`), 경계(exception handler)가 번역기로 해석한다.
 - 키 규칙: 폴백 `error.{ErrorCode}`, 케이스별 `error.{context}.{case}`. 구현은 `gettext`(`.po`/`.mo`) 또는 단순 키→메시지 매핑 테이블. 순수 도메인은 번역기에 의존하지 않는다.
 
 ## 요청 검증 (경계에서 parse)
 
 - 요청 스키마는 **Pydantic v2 모델**로 정의하고 라우터 시그니처에 선언한다. 검증 실패는 자동 422(`RQ0001`).
 - 스키마는 `model_config = ConfigDict(extra="forbid")`를 기본으로 한다 — 오타 필드를 조용히 무시하지 않는다.
-- **경계에서 도메인 타입으로 좁힌다**: Pydantic 모델 → `mapper`가 도메인 VO/커맨드로 변환. 도메인 안쪽으로 `dict`·`Any`를 흘리지 않는다.
+- 경계에서 도메인 타입으로 좁힌다: Pydantic 모델 → `mapper`가 도메인 VO/커맨드로 변환. 도메인 안쪽으로 `dict`·`Any`를 흘리지 않는다.
 - 도메인 VO의 `__post_init__` 검증은 2차 방어선이다(경계 검증을 대체하지 않는다).
 - 쿼리 파라미터 제약은 `Annotated[int, Query(ge=1, le=100)]`처럼 **시그니처에 선언**한다(문서와 검증이 한 소스).
 
 ## 리소스 ID
 
-- 내부 PK는 **정수(bigint)**. **응답 비노출.**
+- 내부 PK는 **정수(bigint)**. 응답 비노출.
 - 외부 노출 식별자는 **code**(prefix 2자 + base62), 예: `order_code`(OD)·`user_code`(US)·`catalog_code`(CT).
 
 ## Pagination
@@ -96,11 +96,11 @@ REST 응답·오류·문서화의 단일 규약. 직접 구현하는 REST API에
 
 ## OpenAPI 문서화 (필수)
 
-FastAPI가 스키마를 자동 생성하지만 **자동 생성만으로는 문서가 되지 않는다.** 아래를 채운다.
+FastAPI가 스키마를 자동 생성하지만 자동 생성만으로는 문서가 되지 않는다. 아래를 채운다.
 
 - **Operation**: `@router.post(..., summary="...", description="...", responses={...})` — 동작·권한·주요 오류를 적는다. 설명은 한국어.
 - **응답 모델**: `response_model=ApiResponse[{{DOMAIN_EXAMPLE}}Response]`로 envelope 타입을 노출한다(문서와 실제 응답 불일치 금지).
-- **모든 스키마 필드**: `Field(description=..., examples=[...])` **필수**(빠진 필드 금지). 제약(`min_length`·`max_length`·`pattern`)을 선언하면 문서와 검증이 함께 간다. enum은 허용값 의미를 description에 적는다.
+- **모든 스키마 필드**: `Field(description=..., examples=[...])` 필수(빠진 필드 금지). 제약(`min_length`·`max_length`·`pattern`)을 선언하면 문서와 검증이 함께 간다. enum은 허용값 의미를 description에 적는다.
 - **인증 주체**: 의존성으로 주입되는 인증 principal은 문서에 노출하지 않는다(`include_in_schema` 조정 또는 의존성 시그니처 설계).
 - **오류 응답**: `responses={404: {"model": ErrorResponse}, 409: {...}}`로 실제 발생 가능한 오류만 선언한다.
 - **문서 경로**(`/docs`·`/openapi.json`)의 공개 여부는 환경별 설정으로 제어한다(운영 비공개가 기본).

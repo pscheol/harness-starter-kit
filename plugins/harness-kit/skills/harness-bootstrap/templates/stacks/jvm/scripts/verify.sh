@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # HARNESS STARTER KIT · {{PROJECT_NAME}} — {{...}} 치환 후 사용.
 #
-# 정본 검증 스크립트 (단일 강제 지점).
+# 검증 스크립트 (단일 강제 지점).
 # hook / CI / pre-commit 이 모두 이 스크립트 하나만 호출한다. 로직 복제 금지.
 # 단일 Kotlin/Spring(Gradle) 프로젝트 게이트:
 #   1) exec-plan 위치↔상태 일관성 (스택 무관, 항상)
@@ -12,7 +12,7 @@ set -uo pipefail
 
 fail=0
 
-# ── 1) 구조 점검 (문서/하네스 일관성). 항상 실행 — 정본 규칙의 기계적 보조. ────
+# ── 1) 구조 점검 (문서/하네스 일관성). 항상 실행 — 규칙 문서를 기계적으로 보조. ────
 # exec-plan 위치↔상태 일관성을 강제한다(스택과 무관하므로 무조건 호출).
 echo "▶ exec-plan 상태 일관성"
 bash scripts/check-exec-plan-status.sh || { echo "✖ exec-plan 상태 일관성 실패"; fail=1; }

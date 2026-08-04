@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # HARNESS STARTER KIT · {{PROJECT_NAME}} — {{...}} 치환 후 사용.
 #
-# 정본 검증 스크립트 (단일 강제 지점).
+# 검증 스크립트 (단일 강제 지점).
 # hook / CI / pre-commit 이 모두 이 스크립트 하나만 호출한다. 로직 복제 금지.
 # 단일 Python 백엔드 프로젝트 게이트:
 #   1) exec-plan 위치↔상태 일관성 (스택 무관, 항상)
@@ -30,7 +30,7 @@ else
 fi
 run() { if [ -n "$RUN" ]; then $RUN "$@"; else "$@"; fi }
 
-# ── 1) 구조 점검 (문서/하네스 일관성). 항상 실행 — 정본 규칙의 기계적 보조. ────
+# ── 1) 구조 점검 (문서/하네스 일관성). 항상 실행 — 규칙 문서를 기계적으로 보조. ────
 echo "▶ exec-plan 상태 일관성"
 bash scripts/check-exec-plan-status.sh || { echo "✖ exec-plan 상태 일관성 실패"; fail=1; }
 
@@ -57,7 +57,7 @@ echo "▶ ruff check"
 run ruff check . || { echo "✖ 린트 실패"; fail=1; }
 
 # ── 4) 타입 (mypy) ───────────────────────────────────────────────────────────
-# 설정(strict 등)은 pyproject.toml 의 [tool.mypy] 정본을 따른다.
+# 설정(strict 등)은 pyproject.toml 의 [tool.mypy] 원본을 따른다.
 # 대상 경로는 레이아웃마다 다르다(src 레이아웃 vs Django 프로젝트 루트) — 존재하는 것만 넘긴다.
 MYPY_TARGETS=""
 [ -d src ]   && MYPY_TARGETS="$MYPY_TARGETS src"
@@ -73,7 +73,7 @@ echo "▶ lint-imports (레이어 계약)"
 run lint-imports || { echo "✖ 아키텍처 레이어 계약 위반"; fail=1; }
 
 # ── 6) 테스트 + 커버리지 ─────────────────────────────────────────────────────
-# addopts(커버리지·임계)는 pyproject.toml 의 [tool.pytest.ini_options] 정본을 따른다.
+# addopts(커버리지·임계)는 pyproject.toml 의 [tool.pytest.ini_options] 원본을 따른다.
 echo "▶ pytest"
 run pytest || { echo "✖ 테스트 실패(또는 커버리지 임계 미달)"; fail=1; }
 

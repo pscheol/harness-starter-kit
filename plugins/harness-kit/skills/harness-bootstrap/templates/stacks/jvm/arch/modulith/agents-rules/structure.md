@@ -2,8 +2,8 @@
 
 # 구조 · 모듈러 모놀리스 — {{PROJECT_NAME}}
 
-이 프로젝트는 **단일 Gradle 모듈 · 단일 배포 단위** 안에서 **패키지를 모듈 경계**로 쓴다.
-경계는 **Spring Modulith의 `ApplicationModules.verify()`** 가 `./gradlew check`에서 강제한다. 아키텍처 상세 정본은 `ARCHITECTURE.md`.
+이 프로젝트는 단일 Gradle 모듈 · 단일 배포 단위 안에서 패키지를 모듈 경계로 쓴다.
+경계는 Spring Modulith의 `ApplicationModules.verify()` 가 `./gradlew check`에서 강제한다. 아키텍처 상세 원본은 `ARCHITECTURE.md`.
 
 ## 패키지 레이아웃
 
@@ -27,17 +27,17 @@
 | `{{PACKAGE_NS}}.<module>.internal..` | ❌ 내부(검증 실패) |
 | `{{PACKAGE_NS}}.shared` | ✅ OPEN 모듈 |
 
-- **공개 표면을 작게 유지한다.** 모듈 루트에 타입을 올리는 것은 "이건 계약이다"라는 선언이다.
-- **JPA 엔티티는 공개하지 않는다.** 값 객체·DTO·ID만 건넨다.
+- 공개 표면을 작게 유지한다. 모듈 루트에 타입을 올리는 것은 "이건 계약이다"라는 선언이다.
+- JPA 엔티티는 공개하지 않는다. 값 객체·DTO·ID만 건넨다.
 - 하위 패키지를 선택적으로 공개해야 하면 `@NamedInterface`로 노출하고 `ARCHITECTURE.md`에 기록한다.
-- 허용 의존을 좁히려면 `src/main/java/{{PACKAGE_NS}}/<module>/package-info.java`에 `@ApplicationModule(allowedDependencies = {...})`를 선언한다(**Kotlin에는 `package-info.java`가 없으므로 Java 소스셋에 이 파일만 둔다**).
+- 허용 의존을 좁히려면 `src/main/java/{{PACKAGE_NS}}/<module>/package-info.java`에 `@ApplicationModule(allowedDependencies = {...})`를 선언한다(Kotlin에는 `package-info.java`가 없으므로 Java 소스셋에 이 파일만 둔다).
 
 ## 모듈 간 통합 (두 가지뿐)
 
 1. **공개 API 직접 호출** — 즉시 결과가 필요할 때. 제공 모듈의 루트 인터페이스만 주입받는다. 호출 사슬이 3단계를 넘으면 설계를 다시 본다.
-2. **도메인 이벤트** — 부수 효과·비동기·역방향 의존일 때. 발행은 `ApplicationEventPublisher`, 수신은 `@ApplicationModuleListener`(커밋 후·비동기·새 트랜잭션). 전달 보장이 필요하면 **이벤트 발행 레지스트리**를 켜고 리스너를 **멱등**하게 만든다.
+2. **도메인 이벤트** — 부수 효과·비동기·역방향 의존일 때. 발행은 `ApplicationEventPublisher`, 수신은 `@ApplicationModuleListener`(커밋 후·비동기·새 트랜잭션). 전달 보장이 필요하면 이벤트 발행 레지스트리를 켜고 리스너를 멱등하게 만든다.
 
-**금지**: 다른 모듈의 `internal..` 참조 · 다른 모듈 소유 테이블 직접 조회 · 모듈을 가로지르는 트랜잭션 전제.
+금지: 다른 모듈의 `internal..` 참조 · 다른 모듈 소유 테이블 직접 조회 · 모듈을 가로지르는 트랜잭션 전제.
 
 ## 모듈 내부 규약
 
@@ -49,7 +49,7 @@
 
 ## 새 모듈/기능 착수 워크플로
 
-1. **모듈 결정**: 기존 모듈 안인지 새 모듈인지 먼저 답한다. **새 모듈은 소유자와 공개 API를 정의할 수 있을 때만** 만든다.
+1. **모듈 결정**: 기존 모듈 안인지 새 모듈인지 먼저 답한다. 새 모듈은 소유자와 공개 API를 정의할 수 있을 때만 만든다.
 2. (신규 모듈) `{{PACKAGE_NS}}/<module>/` 생성 → 루트에 공개 API 타입 → `internal/` 아래 구현 → 필요하면 `package-info.java` 선언.
 3. **통합 방식 선택**: 즉시 결과면 공개 API 호출, 부수 효과면 이벤트.
 4. **TDD 사이클**(RED→GREEN→REFACTOR):
@@ -88,7 +88,7 @@ class ModuleStructureTest {
 ```
 
 - 새 모듈은 **패키지를 만드는 것만으로 검증 대상**이 된다(등록 누락이 구조적으로 불가능하다).
-- `verify()`를 지우거나 `@Disabled`로 끄는 것은 **모듈 경계를 없애는 것**이다. 규칙이 틀렸다면 ADR을 남기고 경계를 다시 긋는다.
+- `verify()`를 지우거나 `@Disabled`로 끄는 것은 모듈 경계를 없애는 것이다. 규칙이 틀렸다면 ADR을 남기고 경계를 다시 긋는다.
 - 생성된 모듈 문서는 "경계가 의도대로인가"를 리뷰에서 확인하는 근거로 쓴다.
 
 ## 새 기능 착수 규칙

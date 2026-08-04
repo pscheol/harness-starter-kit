@@ -4,7 +4,7 @@ inclusion: always
 <!-- HARNESS TEMPLATE ({{PROJECT_NAME}}) · Kiro 얇은 포인터. 규칙 본문 금지. -->
 # 리포 구조 · 패키지 책임 (포인터)
 
-정본: `.agents/rules/structure.md` — Claude·Codex·Kiro 공통. 새 패키지/기능 착수 전 연다. 아키텍처 정본은 `ARCHITECTURE.md`.
+원본: `.agents/rules/structure.md` — Claude·Codex·Kiro 공통. 새 패키지/기능 착수 전 연다. 아키텍처 원본은 `ARCHITECTURE.md`.
 
 요약:
 - src 레이아웃 레이어드: `src/{{PACKAGE_NS}}/{core,api,schemas,services,repositories,models}` + `main.py`.

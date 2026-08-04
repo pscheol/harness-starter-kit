@@ -8,7 +8,7 @@
 
 - [ ] 변경에 대한 테스트 존재(성공 + 최소 1개 실패 케이스). 도메인/유스케이스는 **테스트 우선(TDD)**.
 - [ ] **타입 힌트 완비** — 모든 공개 함수에 인자·반환 타입. `mypy --strict` 통과. 근거 없는 `Any`·`# type: ignore`·`cast()` 없음.
-- [ ] 예외 처리 명시(도메인 오류 → `DomainError` → 전역 handler에서 envelope 매핑). **`except: pass`·삼키기 없음**.
+- [ ] 예외 처리 명시(도메인 오류 → `DomainError` → 전역 handler에서 envelope 매핑). `except: pass`·삼키기 없음.
 - [ ] 구조화 로깅 포함(민감정보 미출력). 에러 로그는 경계에서 한 번만.
 - [ ] 매직 넘버·하드코딩 값 없음(`Final` 상수·`StrEnum`·설정으로 외부화). 메시지는 i18n 키.
 - [ ] 레이어 경계 준수 — `lint-imports` 통과([`structure.md`](./structure.md)). **안쪽 계층은 웹 프레임워크 무의존**(경계 위치는 `ARCHITECTURE.md` 계약).
@@ -23,7 +23,7 @@
 
 - [ ] path/field/status code가 API 명세와 일치.
 - [ ] 인증 필요 API는 401/403 케이스 포함.
-- [ ] 소유·권한 판정이 있는 리소스는 **권한 없는 접근 차단 테스트 포함**(허용 200 · 비허용 403/404 · 미인증 401).
+- [ ] 소유·권한 판정이 있는 리소스는 권한 없는 접근 차단 테스트 포함(허용 200 · 비허용 403/404 · 미인증 401).
 - [ ] 응답은 공통 envelope(`code`/`message`/`request_id`/`timestamp` + `data`/`page` 또는 `details`) 준수.
 - [ ] API 변경 시 OpenAPI 스냅샷 및 관련 명세 동시 갱신([`guardrails.md`](./guardrails.md) "docs 동시 갱신").
 - [ ] Secret·자격증명 원문 미저장·미반환(발급 시 1회만). 비밀번호는 argon2id/bcrypt 등 느린 KDF.
@@ -51,4 +51,4 @@
 - 도구가 없으면 표준 도구로 셋업하고, 불가하면 그 사유를 명시한다.
 - exec-plan 완료는 임의로 `completed/`로 옮기지 않는다. `check/`로 옮겨 사용자 검증을 요청한다([`agent-harness.md`](./agent-harness.md)).
 
-> 상세 DoD 원본이 별도 백로그 문서에 있으면 여기 링크만 둔다(정본 중복 보관 금지).
+> 상세 DoD 원본이 별도 백로그 문서에 있으면 여기 링크만 둔다(같은 내용을 두 곳에 두지 않는다).

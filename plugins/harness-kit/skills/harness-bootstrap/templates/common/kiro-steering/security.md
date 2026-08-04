@@ -4,11 +4,11 @@ inclusion: always
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · Kiro 얇은 포인터. 규칙 본문 금지. -->
 # 보안 가드레일 (포인터)
 
-정본: `.agents/rules/security.md` — Claude·Codex·Kiro 공통. **인증·권한·secret 변경 전 반드시 이 정본을 연다.**
+원본: `.agents/rules/security.md` — Claude·Codex·Kiro 공통. 인증·권한·secret 변경 전 반드시 이 원본을 연다.
 
 요약:
 
 - 인증 실패 401 / 권한 없음 403 — 요청 경계(1차) + 유스케이스 진입(2차) 이중 확인. 판단 컨텍스트가 없으면 기본 거부(fail-closed).
 - Secret 평문 금지 — 환경변수·시크릿 매니저로 주입. 저장이 필요하면 재검증용은 해시, 원문 재사용은 인증 암호화.
-- 언어별 고유 위험(인젝션·경로 순회·SSRF·역직렬화·TLS·디버그 노출)은 정본의 금지 목록을 따른다.
+- 언어별 고유 위험(인젝션·경로 순회·SSRF·역직렬화·TLS·디버그 노출)은 원본의 금지 목록을 따른다.
 - 보안 이벤트(권한 변경·자격증명 발급/폐기·시크릿 접근)는 감사 로그로 남긴다.

@@ -2,13 +2,13 @@
 
 # ARCHITECTURE — {{PROJECT_NAME}} (레이어드)
 
-이 문서는 `{{PROJECT_NAME}}`의 **기술 아키텍처 정본**이다. 진입 가이드는 `./AGENTS.md`·`./CLAUDE.md`, 빌드·실행 상세는 `./README.md`와 `.agents/rules/tech.md`를 본다.
+이 문서는 `{{PROJECT_NAME}}`의 **기술 아키텍처 원본**이다. 진입 가이드는 `./AGENTS.md`·`./CLAUDE.md`, 빌드·실행 상세는 `./README.md`와 `.agents/rules/tech.md`를 본다.
 
-본 프로젝트는 **레이어드 아키텍처(api → services → repositories → models)** 를 Python **src 레이아웃** 위에서 구현한다.
-컴파일러가 경계를 막아주지 않는 언어이므로 **import 계약 린터(import-linter) + 타입 체커(mypy strict) + 린터(Ruff)** 를 검증 게이트에 묶어 **기계적으로 강제**한다.
+본 프로젝트는 레이어드 아키텍처(api → services → repositories → models) 를 Python **src 레이아웃** 위에서 구현한다.
+컴파일러가 경계를 막아주지 않는 언어이므로 import 계약 린터(import-linter) + 타입 체커(mypy strict) + 린터(Ruff) 를 검증 게이트에 묶어 **기계적으로 강제**한다.
 
-스택 기준(버전 정본은 `pyproject.toml` + lock 파일 단일 소스 — 구체 버전은 **예시이며 프로젝트에서 최신 안정 버전으로 확정**):
-**Python 3.12+** · **FastAPI(ASGI)** · **SQLAlchemy 2.0(async) + Alembic** · **Pydantic v2**(경계 전용) · **uv**(또는 Poetry) · **Ruff · mypy · pytest · import-linter**.
+스택 기준(버전 기준은 `pyproject.toml` + lock 파일 단일 소스 — 구체 버전은 예시이며 프로젝트에서 최신 안정 버전으로 확정):
+Python 3.12+ · FastAPI(ASGI) · SQLAlchemy 2.0(async) + Alembic · Pydantic v2(경계 전용) · uv(또는 Poetry) · Ruff · mypy · pytest · import-linter.
 
 ---
 
@@ -26,7 +26,7 @@
 - 저장소·외부 시스템을 교체 가능하게 유지해야 한다(포트/어댑터가 실익이다) → `hexagonal`.
 - LLM 파이프라인·평가 하네스가 1급 관심사다 → `ai-service`.
 
-**승격 신호(이 셋 중 둘 이상이면 전환을 검토한다):**
+승격 신호(이 셋 중 둘 이상이면 전환을 검토한다):
 1. `services/`의 한 모듈이 400줄을 넘고 서로 무관한 관심사가 섞인다.
 2. 서비스 간 순환 참조를 피하려고 함수 안에서 import를 하기 시작한다.
 3. "이 규칙이 어느 서비스 소유인가"를 두고 논쟁이 반복된다.
@@ -46,7 +46,7 @@
 | API 응답 일관성 | `core`의 envelope + `ErrorCode` 단일 매핑 + 전역 exception handler | 코드리뷰·핸들러가 차단 |
 | 테스트 우선 (TDD) | RED→GREEN→REFACTOR. 커버리지 ≥ 80%(services 우선) | `pytest --cov-fail-under` 게이트 |
 
-> **기계적 강제 우선**. Python은 모듈 경계를 컴파일러가 막아주지 않으므로 **린터 계약이 컴파일 강제의 대체물**이다.
+> 기계적 강제 우선. Python은 모듈 경계를 컴파일러가 막아주지 않으므로 린터 계약이 컴파일 강제의 대체물이다.
 > 계약(`pyproject.toml`의 `[tool.importlinter]`)은 아키텍처 문서와 같은 무게로 관리한다.
 
 ---
@@ -112,7 +112,7 @@
 | `{{PACKAGE_NS}}.settings` / `.db` | 설정 로드 · 엔진/세션 팩토리 | `core` |
 
 - **의존 금지(게이트 차단)**: `services → api`, `repositories → services/api`, `models → 위 전부`, `core → 서드파티`, `repositories·models → schemas`.
-- **레이어를 건너뛰지 않는다**: `api`가 `repositories`를 직접 부르지 않는다(트랜잭션·정책이 services에 있어 우회하면 규칙이 새어 나간다).
+- 레이어를 건너뛰지 않는다: `api`가 `repositories`를 직접 부르지 않는다(트랜잭션·정책이 services에 있어 우회하면 규칙이 새어 나간다).
 
 ### 3.2 import-linter 계약 (컴파일 강제의 대체물)
 
@@ -186,7 +186,7 @@ forbidden_modules = ["{{PACKAGE_NS}}.schemas"]
 └── scripts/verify.sh           # 단일 검증 게이트
 ```
 
-- **src 레이아웃 필수**: 설치된 패키지를 테스트하게 되어 "로컬에서만 import되는" 사고를 막는다.
+- src 레이아웃 필수: 설치된 패키지를 테스트하게 되어 "로컬에서만 import되는" 사고를 막는다.
 - 모든 패키지에 `__init__.py`를 둔다. `__init__.py`에는 재수출만, 로직·부작용 금지.
 - 파일명은 도메인 개념으로 짓고 레이어 접미사로 역할을 드러낸다(`_service` · `_repository`).
 
@@ -202,29 +202,29 @@ forbidden_modules = ["{{PACKAGE_NS}}.schemas"]
 | `models` | 테이블 매핑·제약·인덱스 선언 | 비즈니스 메서드, 서비스 호출 |
 | `core` | 예외 계층·에러코드·envelope·공용 상수 | 프레임워크 참조 |
 
-- **트랜잭션 경계는 서비스에만**. `AsyncSession`은 `api/deps.py`가 요청 스코프로 생성해 주입하고, **커밋은 서비스가** 한다. 리포지토리는 주입받은 세션을 쓰기만 한다(경계 분산 금지).
+- 트랜잭션 경계는 서비스에만. `AsyncSession`은 `api/deps.py`가 요청 스코프로 생성해 주입하고, 커밋은 서비스가 한다. 리포지토리는 주입받은 세션을 쓰기만 한다(경계 분산 금지).
 - **비즈니스 규칙은 서비스에**. 라우터에 `if` 분기로 규칙을 흘리지 않는다. 규칙이 모델 상태 불변식이면 모델에 검증 메서드를 두되, ORM 모델에 외부 호출을 넣지 않는다.
 - **생성자 주입 only**. 서비스는 평범한 클래스 + `__init__` 주입으로 만든다. 모듈 전역 싱글턴·`global`·import 시점 부작용 금지. 시간·난수·ID는 `Protocol`(`Clock`·`IdGenerator`)로 주입한다.
   - FastAPI `Depends`는 **`api` 경계에서만** 쓴다. 서비스 생성자에 `Depends`를 침투시키지 않는다(services가 FastAPI를 알게 되면 계약 (2) 위반).
-- **예외는 `core`의 도메인 예외로 올린다**. 서비스가 `HTTPException`을 던지지 않는다. `api/errors.py`의 전역 handler가 도메인 예외 → 상태코드·`ErrorCode`로 한 곳에서 변환한다.
-- **로깅은 `api`/`services`/`repositories` 경계에서만**, 한 번만. 구조화 로깅(structlog 또는 stdlib `logging` + JSON formatter), 모듈별 `logger = logging.getLogger(__name__)`. 민감정보는 로그 금지.
-- **DB 접근**: SQLAlchemy 2.0 스타일(`select()`·`session.execute`). 복잡 조회·통계는 별도 read 메서드로 분리한다. ORM 모델은 `repositories` 밖으로 새어 나가도 되지만(레이어드의 실용적 타협), **`api` 응답에는 반드시 `schemas`의 DTO로 변환**해 내보낸다.
+- 예외는 `core`의 도메인 예외로 올린다. 서비스가 `HTTPException`을 던지지 않는다. `api/errors.py`의 전역 handler가 도메인 예외 → 상태코드·`ErrorCode`로 한 곳에서 변환한다.
+- 로깅은 `api`/`services`/`repositories` 경계에서만, 한 번만. 구조화 로깅(structlog 또는 stdlib `logging` + JSON formatter), 모듈별 `logger = logging.getLogger(__name__)`. 민감정보는 로그 금지.
+- **DB 접근**: SQLAlchemy 2.0 스타일(`select()`·`session.execute`). 복잡 조회·통계는 별도 read 메서드로 분리한다. ORM 모델은 `repositories` 밖으로 새어 나가도 되지만(레이어드의 실용적 타협), `api` 응답에는 반드시 `schemas`의 DTO로 변환해 내보낸다.
 
 ### 4.1 async 규약 (필수)
 
-- I/O 경계(HTTP·DB·캐시)는 **async 일관성**을 유지한다. `async def` 안에서 **blocking 호출 금지**(`requests`·`time.sleep`·동기 DB 드라이버·무거운 CPU 연산) — 이벤트 루프가 멈춰 워커 처리량이 무너진다.
+- I/O 경계(HTTP·DB·캐시)는 **async 일관성**을 유지한다. `async def` 안에서 blocking 호출 금지(`requests`·`time.sleep`·동기 DB 드라이버·무거운 CPU 연산) — 이벤트 루프가 멈춰 워커 처리량이 무너진다.
   - 불가피한 blocking·CPU 작업은 `await anyio.to_thread.run_sync(...)`로 밀어낸다.
-- 동시 실행은 `asyncio.gather`/`anyio.create_task_group`. **참조를 버리는 `asyncio.create_task` 금지**(예외가 삼켜지고 GC가 태스크를 취소할 수 있다).
+- 동시 실행은 `asyncio.gather`/`anyio.create_task_group`. 참조를 버리는 `asyncio.create_task` 금지(예외가 삼켜지고 GC가 태스크를 취소할 수 있다).
 - 모든 외부 호출에 타임아웃: `asyncio.timeout(...)` 또는 클라이언트 자체 timeout(`.agents/rules/reliability.md`).
 
 ---
 
 ## 5. 코드 주석 규약 (요약)
 
-- 코드는 라인 단위 What/How를, 주석은 Why를 설명한다. 단 **함수·메서드 docstring은 ① 책임 한 줄 + ② 비자명한 Why + ③ `처리 흐름:`(의도를 곁들인 단계)** 로 로직 이해를 돕는다.
-- **타입 힌트가 계약을 담는다** — `Args:`/`Returns:`에 타입을 되풀이하지 않는다. 타입이 못 담는 의미(단위·범위·부작용·예외 조건)만 적는다.
+- 코드는 라인 단위 What/How를, 주석은 Why를 설명한다. 단 함수·메서드 docstring은 ① 책임 한 줄 + ② 비자명한 Why + ③ `처리 흐름:`(의도를 곁들인 단계) 로 로직 이해를 돕는다.
+- 타입 힌트가 계약을 담는다 — `Args:`/`Returns:`에 타입을 되풀이하지 않는다. 타입이 못 담는 의미(단위·범위·부작용·예외 조건)만 적는다.
 - 시그니처를 옮긴 번역투 금지. 단순 프로퍼티·위임은 책임 한 줄만. 흐름이 7~8단계로 길면 함수를 분리한다.
-- 한국어로 작성한다. 비밀·토큰·키 원문은 주석/예시에도 넣지 않는다. 정본·Bad/Good 예시: `.agents/rules/code-comments.md`.
+- 한국어로 작성한다. 비밀·토큰·키 원문은 주석/예시에도 넣지 않는다. 원본·Bad/Good 예시: `.agents/rules/code-comments.md`.
 
 ---
 
@@ -233,7 +233,7 @@ forbidden_modules = ["{{PACKAGE_NS}}.schemas"]
 | 계층 | 무엇 | 위치/수단 |
 |---|---|---|
 | (a) 도메인 상수 | 코드 의미를 갖는 고정 라벨·키 | `enum.StrEnum`/`Final` 상수(`core` 또는 소유 레이어) |
-| (b) 환경별 설정 | 배포 환경마다 달라지는 값 | `settings.py`의 **pydantic-settings `BaseSettings`**(+ `.env`) |
+| (b) 환경별 설정 | 배포 환경마다 달라지는 값 | `settings.py`의 pydantic-settings `BaseSettings`(+ `.env`) |
 | (c) 운영자 변경 가능 값 | 런타임 조정 | DB 설정 테이블/기능 플래그(캐시·무효화 동반) |
 
 - 설정 객체는 **`main`에서 1회 생성해 주입**한다. 하위 레이어가 `os.environ`을 직접 읽지 않는다.
@@ -244,11 +244,11 @@ forbidden_modules = ["{{PACKAGE_NS}}.schemas"]
 
 ## 7. 성능 예산 (부하테스트로 확정)
 
-- **무한/대량 결과 금지**: 목록은 cursor pagination + 상한 `limit` 강제.
+- 무한/대량 결과 금지: 목록은 cursor pagination + 상한 `limit` 강제.
 - **N+1 회피**: `selectinload`/`joinedload`로 명시적 로딩. 관계 기본값을 `lazy="raise"`로 두어 암묵 lazy 로딩을 즉시 실패로 만든다.
 - **핫패스 경량화**: 인증·키 검증 등 고빈도 경로는 단건 인덱스 조회 + 캐시(TTL·무효화 동반).
 - **동기 응답 경로 보호**: 무거운 작업은 요청-응답 경로 밖(큐·워커)으로. 지연 민감 경로는 스트리밍(SSE).
-- **워커·풀 사이징**: **워커 프로세스마다 풀이 따로 생긴다** — `pool_size`·`max_overflow` × 워커 수가 DB `max_connections`를 넘지 않게 계산한다.
+- **워커·풀 사이징**: 워커 프로세스마다 풀이 따로 생긴다 — `pool_size`·`max_overflow` × 워커 수가 DB `max_connections`를 넘지 않게 계산한다.
 
 | 경로 부류 | 예 | 목표(예시 — 프로젝트 확정) | 도달 레버 |
 |---|---|---|---|
@@ -266,7 +266,7 @@ GREEN 최소 구현으로 통과
 REFACTOR 중복 제거·의도 드러내기
 ```
 
-- 테스트가 먼저, 구현이 나중. **테스트 없는 서비스 변경 금지**. 프레임워크는 **pytest**(+`pytest-asyncio`).
+- 테스트가 먼저, 구현이 나중. 테스트 없는 서비스 변경 금지. 프레임워크는 **pytest**(+`pytest-asyncio`).
 
 | 레이어 | 도구 | 비고 |
 |---|---|---|
@@ -284,7 +284,7 @@ REFACTOR 중복 제거·의도 드러내기
 ## 9. 새 기능 추가 워크플로
 
 1. **레이어 결정**: 이 기능이 새 리소스인지, 기존 리소스의 새 동작인지 먼저 답한다.
-2. **파일 세트 생성**: `models/<x>.py` → `repositories/<x>_repository.py` → `services/<x>_service.py` → `schemas/<x>.py` → `api/routers/<x>.py`. **레이어 패키지를 새로 만들면 §3.2 (1)에 등록**한다.
+2. **파일 세트 생성**: `models/<x>.py` → `repositories/<x>_repository.py` → `services/<x>_service.py` → `schemas/<x>.py` → `api/routers/<x>.py`. 레이어 패키지를 새로 만들면 §3.2 (1)에 등록한다.
 3. **TDD 사이클**: `services`(fake repository) → `repositories`(실제 DB) → `api`(`AsyncClient`, 응답은 envelope) → `main`(라우터 등록·smoke).
 4. **검증**: `bash scripts/verify.sh` 통과 + OpenAPI 스냅샷/문서 동기화(`.agents/docs/openapi`).
 5. **계획 추적**: 복잡 작업은 `.agents/docs/product-<slug>-specs/tasks/active/`에 기록.
@@ -313,7 +313,7 @@ REFACTOR 중복 제거·의도 드러내기
 
 | 목표 | 디렉터리 이동 | 강제 규칙 교체 지점 |
 |---|---|---|
-| → `modular` (도메인이 둘 이상으로 갈릴 때) | 리소스별로 `models/<x>.py`·`repositories/<x>_repository.py`·`services/<x>_service.py`·`schemas/<x>.py`·`api/routers/<x>.py` 를 `modules/<x>/{model,repository,service,schema,router}.py` 로 모은다. 공용 인프라는 `shared/` 로. | `layers` 계약을 **모듈별 `containers` + `independence`** 계약으로 교체. 모듈 공개 API는 `modules/<x>/__init__.py` |
+| → `modular` (도메인이 둘 이상으로 갈릴 때) | 리소스별로 `models/<x>.py`·`repositories/<x>_repository.py`·`services/<x>_service.py`·`schemas/<x>.py`·`api/routers/<x>.py` 를 `modules/<x>/{model,repository,service,schema,router}.py` 로 모은다. 공용 인프라는 `shared/` 로. | `layers` 계약을 모듈별 `containers` + `independence` 계약으로 교체. 모듈 공개 API는 `modules/<x>/__init__.py` |
 | → `hexagonal` (도메인 규칙이 복잡해질 때) | `services/` 를 `<ctx>/application/usecase/` 로, `repositories/` 를 `<ctx>/infra/persistence/` 로, `api/routers/` 를 `<ctx>/primary/web/` 로 옮기고, ORM 과 분리된 **순수 도메인 모델**을 `<ctx>/domain/` 에 새로 만든다(가장 큰 작업). | `layers` 계약을 `containers = [<ctx>]` + `layers = ["primary : infra", "application", "domain"]` 로 교체하고 `domain → 프레임워크` forbidden 계약 추가 |
 | → `django` (관리자 화면·인증·ORM 통합이 주 요구가 될 때) | 프레임워크 교체이므로 사실상 재작성이다. 규칙(레이어 책임·트랜잭션 경계)은 그대로 옮겨 쓸 수 있다. | `services`/`selectors` 분리 계약으로 교체 |
 
@@ -324,7 +324,7 @@ REFACTOR 중복 제거·의도 드러내기
 
 ## 12. 관련 문서
 
-- 스택·구조·보안·API 규약 정본: `.agents/rules/` (`tech.md`·`security.md`·`api-standards.md`·`structure.md`·`guardrails.md`)
-- 주석 규약 정본: `.agents/rules/code-comments.md`
+- 스택·구조·보안·API 규약 원본: `.agents/rules/` (`tech.md`·`security.md`·`api-standards.md`·`structure.md`·`guardrails.md`)
+- 주석 규약 원본: `.agents/rules/code-comments.md`
 - 에이전트 진입: `./AGENTS.md`·`./CLAUDE.md`
 - SDD 기록: `.agents/docs/README.md`

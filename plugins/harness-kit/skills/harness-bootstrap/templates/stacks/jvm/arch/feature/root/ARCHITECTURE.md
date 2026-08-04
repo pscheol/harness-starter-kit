@@ -2,13 +2,13 @@
 
 # ARCHITECTURE — {{PROJECT_NAME}} (패키지 바이 피처 · 단일 모듈)
 
-이 문서는 `{{PROJECT_NAME}}`의 **기술 아키텍처 정본**이다. 진입 가이드는 `./AGENTS.md`·`./CLAUDE.md`, 빌드·실행 상세는 `./README.md`와 `.agents/rules/tech.md`를 본다.
+이 문서는 `{{PROJECT_NAME}}`의 **기술 아키텍처 원본**이다. 진입 가이드는 `./AGENTS.md`·`./CLAUDE.md`, 빌드·실행 상세는 `./README.md`와 `.agents/rules/tech.md`를 본다.
 
-본 프로젝트는 **패키지를 기술 레이어가 아니라 기능(feature)으로 먼저 나눈다**. 한 기능은 한 패키지이고 그 안에 `web`·`service`·`repository`·`domain`이 하위 패키지로 공존한다.
-단일 Gradle 모듈이므로 경계는 **ArchUnit 슬라이스 규칙**이 `./gradlew check`에서 **실패로 강제**한다.
+본 프로젝트는 패키지를 기술 레이어가 아니라 기능(feature)으로 먼저 나눈다. 한 기능은 한 패키지이고 그 안에 `web`·`service`·`repository`·`domain`이 하위 패키지로 공존한다.
+단일 Gradle 모듈이므로 경계는 ArchUnit 슬라이스 규칙이 `./gradlew check`에서 실패로 강제한다.
 
-스택 기준(버전 정본은 프로젝트의 버전 카탈로그(예: `gradle/libs.versions.toml`) 단일 소스 — 구체 버전은 **예시이며 프로젝트에서 최신 안정 버전으로 확정**):
-**Kotlin/Java · Spring Boot(JVM)** · **Gradle**(단일 모듈, wrapper) · **Spring Data JPA** · **Spring Security** · **ArchUnit** · **JUnit5/Kotest**.
+스택 기준(버전 기준은 프로젝트의 버전 카탈로그(예: `gradle/libs.versions.toml`) 단일 소스 — 구체 버전은 예시이며 프로젝트에서 최신 안정 버전으로 확정):
+Kotlin/Java · Spring Boot(JVM) · Gradle(단일 모듈, wrapper) · Spring Data JPA · Spring Security · ArchUnit · JUnit5/Kotest.
 
 ---
 
@@ -17,15 +17,15 @@
 **쓴다:**
 - 기능이 여럿이고 **기능 단위로 작업이 배분**된다(한 기능을 고칠 때 파일이 한 디렉터리에 모여 있으면 좋다).
 - 레이어별 패키지(`service/`에 20개 클래스)가 커져 "무엇이 무엇과 관련 있는지" 보이지 않는다.
-- 나중에 기능 단위로 떼어낼 가능성이 있지만, **모듈 검증 프레임워크까지 도입할 이유는 아직 없다**.
+- 나중에 기능 단위로 떼어낼 가능성이 있지만, 모듈 검증 프레임워크까지 도입할 이유는 아직 없다.
 - 팀이 기능 오너십으로 움직인다.
 
 **쓰지 않는다:**
 - 도메인이 하나뿐이다 → `layered`(기능 디렉터리가 오히려 소음이 된다).
-- 경계를 **문서·다이어그램·이벤트 보장까지 포함해 공식적으로** 관리하고 싶다 → `modulith`.
+- 경계를 문서·다이어그램·이벤트 보장까지 포함해 공식적으로 관리하고 싶다 → `modulith`.
 - 한 기능의 도메인 규칙이 매우 복잡해 순수 모델·포트/어댑터가 핵심이다 → `hexagonal`.
 
-**승격 신호(이 중 둘 이상이면 전환을 검토한다):**
+승격 신호(이 중 둘 이상이면 전환을 검토한다):
 1. 기능 간 직접 참조를 허용해달라는 요청이 반복된다(경계를 이벤트로 바꿔야 한다는 신호).
 2. 기능이 10개를 넘고 공개/비공개 구분이 필요해진다 → `modulith`.
 3. 한 기능만 배포 주기·확장 요구가 다르다 → 서비스 분리 검토.
@@ -39,14 +39,14 @@
 
 | 원칙 | 강제 수단 | 위반 시 |
 |---|---|---|
-| **기능 간 직접 참조 금지** | **ArchUnit `slices().notDependOnEachOther()`** | `./gradlew check` 실패 |
-| 기능 간 순환 금지 | **ArchUnit `slices().beFreeOfCycles()`** | `./gradlew check` 실패 |
+| 기능 간 직접 참조 금지 | ArchUnit `slices().notDependOnEachOther()` | `./gradlew check` 실패 |
+| 기능 간 순환 금지 | ArchUnit `slices().beFreeOfCycles()` | `./gradlew check` 실패 |
 | 기능 안 레이어 단방향 (web→service→repository→domain) | ArchUnit `layeredArchitecture()` | `./gradlew check` 실패 |
 | domain·repository는 web 타입 무의존 | ArchUnit 규칙 | `./gradlew check` 실패 |
 | API 응답 일관성 | `common`의 envelope + `ErrorCode` 단일 매핑 + `GlobalExceptionHandler` | 코드리뷰·핸들러가 차단 |
 | 테스트 우선 (TDD) | RED→GREEN→REFACTOR. 커버리지 ≥ 80% | `./gradlew check` 게이트 |
 
-> **기계적 강제 우선**. 단일 모듈에는 컴파일 차단이 없으므로 **슬라이스 규칙이 컴파일 강제의 대체물**이다.
+> 기계적 강제 우선. 단일 모듈에는 컴파일 차단이 없으므로 슬라이스 규칙이 컴파일 강제의 대체물이다.
 
 ---
 
@@ -67,7 +67,7 @@
   └────────────┘ └─────────────┘ └─────────────┘ └────────────┘
 ```
 
-- **배포 단위는 하나**다. 기능은 배포 경계가 아니라 **코드 소유 경계**다.
+- 배포 단위는 하나다. 기능은 배포 경계가 아니라 코드 소유 경계다.
 - 서비스 인스턴스는 **무상태**. 데이터베이스는 하나이며 기능은 자기가 소유한 테이블만 다룬다.
 
 ---
@@ -98,7 +98,7 @@
 | `<feature>.repository` | 쿼리·페이지네이션 | 같은 기능의 `domain`, `common` |
 | `<feature>.domain` | 엔티티·VO·불변식 | `common`(상수·enum)만 |
 
-- **기능 안에서도 방향은 `web → service → repository → domain`** 이다. 컨트롤러가 리포지토리를 직접 부르지 않는다.
+- 기능 안에서도 방향은 `web → service → repository → domain` 이다. 컨트롤러가 리포지토리를 직접 부르지 않는다.
 - **다른 기능은 `api` 패키지를 통해서만** 본다. `web`·`service`·`repository`·`domain`은 그 기능 소유다.
 - 기능이 소유한 테이블만 읽고 쓴다. 다른 기능 소유 테이블이 필요하면 그 기능의 `api`를 부른다.
 
@@ -106,9 +106,9 @@
 
 **(a) 공개 계약 호출** — 즉시 결과가 필요할 때. 제공 기능의 `api` 인터페이스만 주입받는다. 반환은 `api`의 DTO(엔티티 금지).
 
-**(b) 도메인 이벤트** — 부수 효과·역방향 의존일 때. `ApplicationEventPublisher`로 발행하고 `@TransactionalEventListener(phase = AFTER_COMMIT)`로 수신한다. 이벤트 타입은 발행 기능의 `api`에 둔다. 이름은 **과거형 사실**(`OrderPlaced`).
+**(b) 도메인 이벤트** — 부수 효과·역방향 의존일 때. `ApplicationEventPublisher`로 발행하고 `@TransactionalEventListener(phase = AFTER_COMMIT)`로 수신한다. 이벤트 타입은 발행 기능의 `api`에 둔다. 이름은 과거형 사실(`OrderPlaced`).
 
-> **금지**: 다른 기능의 `service`·`repository`·`domain` 직접 import, 다른 기능 소유 테이블 직접 조회, 기능을 가로지르는 트랜잭션 전제.
+> 금지: 다른 기능의 `service`·`repository`·`domain` 직접 import, 다른 기능 소유 테이블 직접 조회, 기능을 가로지르는 트랜잭션 전제.
 
 ### 3.3 ArchUnit 슬라이스 테스트 (이 변형의 강제 장치)
 
@@ -170,10 +170,10 @@ class FeatureArchitectureTest {
 }
 ```
 
-- **새 기능을 추가해도 규칙을 고칠 필요가 없다** — 슬라이스 패턴이 자동으로 잡는다(이 변형의 장점).
+- 새 기능을 추가해도 규칙을 고칠 필요가 없다 — 슬라이스 패턴이 자동으로 잡는다(이 변형의 장점).
 - `config`·`common`은 기능이 아니라 토대이므로 예외로 둔다. 예외 목록을 늘리는 것은 경계를 허무는 것이니 ADR을 남긴다.
-- **규칙이 0개 클래스를 검사하면 실패로 취급한다.** ArchUnit 1.x는 `archRule.failOnEmptyShould` 기본값이 `true`다 — 패키지명 오타나 패키지 이동으로 규칙이 조용히 죽는 것을 잡는 자동 감지이므로 `archunit.properties`에서 끄지 않는다.
-- 규칙을 `@Disabled`로 끄거나 지워서 통과시키는 것은 **아키텍처를 지우는 것**이다.
+- 규칙이 0개 클래스를 검사하면 실패로 취급한다. ArchUnit 1.x는 `archRule.failOnEmptyShould` 기본값이 `true`다 — 패키지명 오타나 패키지 이동으로 규칙이 조용히 죽는 것을 잡는 자동 감지이므로 `archunit.properties`에서 끄지 않는다.
+- 규칙을 `@Disabled`로 끄거나 지워서 통과시키는 것은 아키텍처를 지우는 것이다.
 
 ### 3.4 디렉터리 레이아웃
 
@@ -208,7 +208,7 @@ class FeatureArchitectureTest {
 
 - **트랜잭션 경계는 `service`에만**. 읽기 전용은 `@Transactional(readOnly = true)`.
 - **생성자 주입 only**. `@Autowired` 필드/세터 주입·`lateinit var` 의존성 금지. 시간·난수·ID는 인터페이스로 주입한다.
-- **예외는 `common`의 도메인 예외 계층으로 올린다.** 응답 변환은 `common`의 `GlobalExceptionHandler` 한 곳.
+- 예외는 `common`의 도메인 예외 계층으로 올린다. 응답 변환은 `common`의 `GlobalExceptionHandler` 한 곳.
 - **로깅은 경계에서 한 번만**. 민감정보는 로그 금지.
 - **N+1 방지**: 연관은 기본 `LAZY`, 필요한 곳에서 fetch join·`@EntityGraph`.
 
@@ -216,9 +216,9 @@ class FeatureArchitectureTest {
 
 ## 5. 코드 주석 규약 (요약)
 
-- 코드는 라인 단위 What/How를, 주석은 Why를 설명한다. 단 **함수·메서드 KDoc은 ① 책임 한 줄 + ② 비자명한 Why + ③ `처리 흐름:`(의도를 곁들인 단계)** 로 로직 이해를 돕는다.
-- **`api` 패키지의 타입에는 계약 주석을 반드시 단다**(누가 소비하는가·보장 범위·멱등 여부).
-- 한국어로 작성한다. 비밀·토큰·키 원문은 주석/예시에도 넣지 않는다. 정본·Bad/Good 예시: `.agents/rules/code-comments.md`.
+- 코드는 라인 단위 What/How를, 주석은 Why를 설명한다. 단 함수·메서드 KDoc은 ① 책임 한 줄 + ② 비자명한 Why + ③ `처리 흐름:`(의도를 곁들인 단계) 로 로직 이해를 돕는다.
+- `api` 패키지의 타입에는 계약 주석을 반드시 단다(누가 소비하는가·보장 범위·멱등 여부).
+- 한국어로 작성한다. 비밀·토큰·키 원문은 주석/예시에도 넣지 않는다. 원본·Bad/Good 예시: `.agents/rules/code-comments.md`.
 
 ---
 
@@ -237,7 +237,7 @@ class FeatureArchitectureTest {
 
 ## 7. 성능 예산 (부하테스트로 확정)
 
-- **무한/대량 결과 금지**: 목록은 페이지네이션 + 상한 강제.
+- 무한/대량 결과 금지: 목록은 페이지네이션 + 상한 강제.
 - **N+1 회피**: fetch join·`@EntityGraph`·배치 조회. WHERE/JOIN/ORDER BY 컬럼에 인덱스 동반.
 - **기능 간 호출 사슬 관리**: 같은 프로세스라 싸지만 사슬이 길면 장애 전파도 길다. 부수 효과는 이벤트로 끊는다.
 - **동기 응답 경로 보호**: 무거운 작업은 요청-응답 경로 밖으로.
@@ -260,7 +260,7 @@ REFACTOR 중복 제거·의도 드러내기
 | `repository` | `@DataJpaTest` (+ Testcontainers 선택) | 쿼리·매핑 |
 | `web` | `@WebMvcTest` | envelope·상태코드 |
 | 통합 | `@SpringBootTest` | 와이어링·smoke |
-| **구조** | **ArchUnit**(§3.3) | 기능 독립·레이어 방향 |
+| 구조 | ArchUnit(§3.3) | 기능 독립·레이어 방향 |
 
 - 테스트도 **기능 단위 디렉터리**에 모은다(소스와 같은 구조).
 - 검증 게이트: `./gradlew check` (CI·pre-commit·hook이 모두 `scripts/verify.sh`를 호출).
@@ -298,7 +298,7 @@ REFACTOR 중복 제거·의도 드러내기
 
 | 목표 | 디렉터리 이동 | 강제 규칙 교체 지점 |
 |---|---|---|
-| → `modulith` (경계를 공식화하고 이벤트 보장이 필요할 때) | `<feature>/api`는 모듈 루트로, 나머지는 `<feature>/internal/`로 내린다. | ArchUnit 슬라이스 → **Spring Modulith `ApplicationModules.verify()`** |
+| → `modulith` (경계를 공식화하고 이벤트 보장이 필요할 때) | `<feature>/api`는 모듈 루트로, 나머지는 `<feature>/internal/`로 내린다. | ArchUnit 슬라이스 → Spring Modulith `ApplicationModules.verify()` |
 | → `layered` (기능이 하나로 수렴할 때) | `<feature>/{web,service,repository,domain}`을 `controller/service/repository/entity`로 펼친다. | 슬라이스 규칙 제거, `layeredArchitecture()`만 유지 |
 | → `hexagonal` (한 기능의 도메인 규칙이 지배적일 때) | 그 기능만 `<ctx>/{domain,application,primary,infra}`로 재배치하고 Gradle 멀티모듈로 승격. | 컴파일 강제(모듈 그래프) + 구조 테스트 보완 |
 | → 서비스 분리(이 킷 범위 밖) | 기능 디렉터리를 그대로 새 리포로 옮긴다. `api` 호출은 HTTP/메시지로 교체. | 슬라이스 규칙 → 계약 테스트 |
@@ -310,7 +310,7 @@ REFACTOR 중복 제거·의도 드러내기
 
 ## 12. 관련 문서
 
-- 스택·구조·보안·API 규약 정본: `.agents/rules/` (`tech.md`·`security.md`·`api-standards.md`·`structure.md`·`guardrails.md`)
-- 주석 규약 정본: `.agents/rules/code-comments.md`
+- 스택·구조·보안·API 규약 원본: `.agents/rules/` (`tech.md`·`security.md`·`api-standards.md`·`structure.md`·`guardrails.md`)
+- 주석 규약 원본: `.agents/rules/code-comments.md`
 - 에이전트 진입: `./AGENTS.md`·`./CLAUDE.md`
 - SDD 기록: `.agents/docs/README.md`

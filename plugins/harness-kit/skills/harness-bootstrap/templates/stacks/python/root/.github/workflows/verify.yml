@@ -1,6 +1,6 @@
 # HARNESS STARTER KIT ({{PROJECT_NAME}}) — CI 검증 트리거(Python).
 #
-# 이 워크플로는 로직을 담지 않는다. 정본 게이트인 scripts/verify.sh **한 곳만** 호출한다
+# 이 워크플로는 로직을 담지 않는다. 검증 게이트인 scripts/verify.sh **한 곳만** 호출한다
 # ("1곳 + N트리거": hook·pre-commit·CI 가 모두 같은 스크립트를 부른다. 규칙 복제 금지).
 name: verify
 
@@ -37,6 +37,6 @@ jobs:
       - name: Install dependencies (frozen)
         run: uv sync --frozen --all-extras --dev
 
-      # 정본 게이트 한 곳만 호출(exec-plan 일관성 + ruff + mypy + lint-imports + pytest).
+      # 검증 게이트 한 곳만 호출(exec-plan 일관성 + ruff + mypy + lint-imports + pytest).
       - name: Run verify gate
         run: bash scripts/verify.sh

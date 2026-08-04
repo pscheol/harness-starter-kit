@@ -3,9 +3,9 @@ inclusion: manual
 description: SDD 보조 — 요구사항의 모호성을 최대 5개 질문으로 해소하고 spec에 반영(plan 전 권장).
 ---
 
-<!-- HARNESS STARTER KIT · 얇은 트리거. 정본: .agents/rules/sdd-workflow.md (/hx-clarify 절) -->
+<!-- HARNESS STARTER KIT · 얇은 트리거. 원본: .agents/rules/sdd-workflow.md (/hx-clarify 절) -->
 
-SDD 워크플로 **정본** `.agents/rules/sdd-workflow.md` 의 **`/hx-clarify`** 절을 로드해 그대로 수행한다.
+SDD 워크플로 원본 `.agents/rules/sdd-workflow.md` 의 `/hx-clarify` 절을 로드해 그대로 수행한다.
 
 핵심:
 1. 대상 requirements(`.agents/docs/product-<slug>-specs/requirements/<feature>.md`)를 분류축으로 스캔.
