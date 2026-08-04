@@ -7,7 +7,7 @@
 - **Kiro steering은 얇은 포인터** — `.kiro/steering/*` 는 규칙 본문을 담지 않고 `.agents/rules/*` 정본을 가리키기만 한다.
 - **단일 프로젝트** — 멀티 서비스/2계층 없음.
 - **스택 오버레이** — 하네스 골격(SDD·게이트 구조·에이전트 배선)은 한 벌, 언어 종속 규약(컨벤션·주석·보안·검증 명령)만 스택별로 갈아 끼운다.
-- **아키텍처 변형 레이어** — 아키텍처에 종속되는 파일은 **4개뿐**(`ARCHITECTURE.md`·`agents-rules/structure.md`·`agents-rules/tech.md`·`kiro-steering/structure.md`)이다. 이 4개만 `arch/<variant>/`에 두고 **선택한 하나만 설치**하므로 조합이 늘어도 설치 파일 수는 **104개로 불변**이다.
+- **아키텍처 변형 레이어** — 아키텍처에 종속되는 파일은 **4개뿐**(`ARCHITECTURE.md`·`agents-rules/structure.md`·`agents-rules/tech.md`·`kiro-steering/structure.md`)이다. 이 4개만 `arch/<variant>/`에 두고 **선택한 하나만 설치**하므로 조합이 늘어도 설치 파일 수는 **102개로 불변**이다.
 
 ## 스택 (STACK=…)
 
@@ -50,7 +50,7 @@
 
 ## 공통 vs 스택별 (무엇이 어디에 있나)
 
-| 영역 | `templates/common/` (87개) | `templates/stacks/<stack>/` (변형 무관 13개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
+| 영역 | `templates/common/` (85개) | `templates/stacks/<stack>/` (변형 무관 13개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
 |---|---|---|---|
 | 진입점 | `.pre-commit-config.yaml` | `AGENTS.md` · `CLAUDE.md` · `.gitignore` · `.github/workflows/verify.yml` | `root/ARCHITECTURE.md` |
 | 규칙 | `agent-harness.md` · `sdd-workflow.md` · `product.md` | `code-comments.md` · `api-standards.md` · `security.md` · `reliability.md` · `quality-score.md` · `guardrails.md` | `agents-rules/structure.md` · `agents-rules/tech.md` |
@@ -62,7 +62,7 @@
 
 > 규칙 7종이 스택별인 이유: 주석 표준·보안 위험·신뢰성 패턴·DoD가 언어마다 실제로 다르기 때문이다(주석 규약, 동시성 함정, 커버리지 도구 등).
 > 반대로 **레이어 책임은 변형 무관 원칙으로 중립화**해 `guardrails.md`에 두고, 구체 경로·계약은 `structure.md`·`ARCHITECTURE.md`(변형별)로 위임한다.
-> 설치 합계 = 87 + 13 + 4 = **104개**(모든 스택·변형 동일).
+> 설치 합계 = 85 + 13 + 4 = **102개**(모든 스택·변형 동일).
 >
 > **슬래시 커맨드는 정본 1곳 + 4하네스 트리거.** 본문 정본은 `.agents/rules/sdd-workflow.md` 하나이고,
 > `claude/commands/hx-*.md` 9종을 원본으로 나머지 3하네스(Cursor·Kiro·Codex) 트리를 **같은 본문으로 파생**시킨다.
@@ -106,14 +106,14 @@
 | `.agents/rules/quality-score.md` | 코드품질·Story/Epic DoD·커버리지 도구 | ✅ | 인간 |
 | `.kiro/steering/*.md` | 위 정본을 가리키는 **얇은 포인터**(inclusion 유지) | 일부 ✅ | 인간 |
 | `.agents/docs/README.md` | 기록 시스템 자기서술 + 4대 축 매핑 | — | 인간 |
-| `.agents/docs/product-<slug>-specs/{index, requirements/_template, design/_template, checklists/_template, tasks/{_template,README}}.md` | 제품 단위 SDD 색인·템플릿·완료 게이트 | — | 인간→에이전트 실행 |
+| `.agents/docs/_spec-templates/{README, index, requirements/_template, design/_template, checklists/_template, tasks/{_template,README}}.md` | SDD 단계 템플릿 **정본 한 벌**(복사 원본). 제품 폴더 `product-<slug>-specs/` 는 설치가 아니라 `new-feature.sh` 가 첫 기능에서 만들며, 템플릿은 그리로 복사되지 않는다 | — | 인간→에이전트 실행 |
 | `.agents/docs/decisions/{index,_template,core-beliefs}.md` | 전역 설계 결정(ADR)·핵심 신념 | — | 인간 |
 | `.agents/docs/{specs-index,tech-debt-tracker}.md` | 전 제품 스펙 색인·전역 기술부채 | — | 인간 |
 | `.agents/docs/generated/README.md` | 에이전트 생성 산출물 규약(손편집 금지) | — | 에이전트 |
 | `.agents/docs/references/README.md` | 압축 참고자료(*-llms.txt) 규약 | — | 인간/에이전트 |
 | `scripts/verify.sh` | **단일 강제 지점**(스택별 빌드·린트·타입·아키텍처·테스트 + 변형 전용 조건부 단계) | ✅ | 인간 |
 | `scripts/check-exec-plan-status.sh` | exec-plan(tasks) 위치↔상태 일관성 검사(전 제품 순회) | — | 인간 |
-| `scripts/new-feature.sh` | SDD 기능 스캐폴딩(req/design/tasks 3종 생성) | — | 인간/에이전트 |
+| `scripts/new-feature.sh` | SDD 기능 스캐폴딩(`_spec-templates/` → req/design/tasks 3종 생성). 제품 폴더가 없으면 골격까지 생성 | — | 인간/에이전트 |
 | `scripts/check-sdd-prerequisites.sh` | SDD 단계 선행조건 검사(design/tasks/implement) | — | 에이전트 |
 | `scripts/check-spec-freshness.sh` | 스펙 신선도 리포트(읽기 전용·항상 exit 0). `/hx-converge` 근거 | — | 인간/에이전트 |
 | `.claude/settings.json` | 권한(deny) + defaultMode(기본 acceptEdits) + hook 3종 배선 | — | 인간 |
@@ -132,7 +132,7 @@
 |---|---|:---:|
 | `{{PROJECT_NAME}}` | 제품 표시명 | ✅ |
 | `{{PROJECT_SLUG}}` | 리포/모듈 슬러그(기본=대상 폴더명) | ✅ |
-| `{{PRODUCT_SLUG}}` | 제품/바운디드 컨텍스트 슬러그(기본=PROJECT_SLUG). SDD 폴더 `product-<slug>-specs` 경로에 사용 | ✅ |
+| `{{PRODUCT_SLUG}}` | 제품/바운디드 컨텍스트 슬러그. 설치 시점에는 정해지지 않는다 — `_spec-templates/` 안에 남아 있다가 `new-feature.sh <slug>` 가 복사할 때 치환된다 | ❌(그대로 유지) |
 | `{{PACKAGE_NS}}` | **스택별 의미 상이** — jvm=`com.example.app` · python=`myapp` · go=`github.com/org/app` | ✅ |
 | `{{SERVICE_NAME}}` | 배포 단위명(단일=프로젝트명) | ✅ |
 | `{{PRIMARY_LANGUAGE}}` `{{BUILD_TOOL}}` `{{TEST_CMD}}` | 스택 기본값 자동 설정(환경변수로 덮어쓰기 가능) | ✅ |
@@ -141,4 +141,5 @@
 | `{{EPIC_ID}}` `{{FEATURE_NAME}}` | 스펙/계획 작성 시 채우는 토큰 | ❌(그대로 유지) |
 
 > 스택 구성(프레임워크·빌드 도구)은 플레이스홀더가 아니라 스택 템플릿에 구체적으로 박혀 있다. 버전은 `.agents/rules/tech.md` 의 "기준 버전"을 프로젝트에 맞게 조정한다.
-> 설치 후 `grep -rn '{{' .` 로 미치환 토큰을 확인해 채운다(안내 문구의 리터럴 `{{...}}` 는 예외).
+> 설치 후 `grep -rn '{{' . | grep -v '_spec-templates/'` 로 미치환 토큰을 확인해 채운다.
+> `_spec-templates/` 와 안내 문구의 리터럴 `{{...}}` 는 의도적으로 남기는 토큰이라 제외하고 본다.

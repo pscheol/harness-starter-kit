@@ -1,4 +1,5 @@
-<!-- HARNESS STARTER KIT ({{PROJECT_NAME}}): {{PRODUCT_SLUG}}·{{FEATURE_NAME}}·{{EPIC_ID}}·{{SERVICE_NAME}} 치환 후 사용 -->
+<!-- HARNESS STARTER KIT · 제품 스펙 색인. {{FEATURE_NAME}}·{{EPIC_ID}} 는 스펙 작성 시 채운다.
+     원본 템플릿은 .agents/docs/_spec-templates/index.md (new-feature.sh 가 복사·치환한다). -->
 
 # 제품 스펙 색인 — `product-{{PRODUCT_SLUG}}` (SDD 진입점)
 
@@ -26,7 +27,8 @@ requirements/<feature>.md   (EARS + 우선순위 스토리) → 승인
 
 완료 처리: task 파일은 DoD/verify 충족 시 `tasks/check/`로 옮기고(상태 `check`) **사용자 검증**을 받는다.
 사용자 승인 후에만 `tasks/completed/`로 옮긴다(`active/` → `check/` → `completed/`. 상세: `tasks/README.md`).
-각 단계 템플릿은 해당 하위 폴더의 `_template.md`. 새 기능은 `scripts/new-feature.sh {{PRODUCT_SLUG}} <feature>`로 스캐폴딩한다.
+각 단계 템플릿 정본은 `../_spec-templates/` 한 곳이다(제품 폴더 안에는 템플릿을 두지 않는다).
+새 기능은 `scripts/new-feature.sh {{PRODUCT_SLUG}} <feature>`로 스캐폴딩한다.
 
 ## 기준 문서 (원본)
 

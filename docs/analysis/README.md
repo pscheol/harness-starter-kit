@@ -52,7 +52,7 @@
 | `go` | `hexagonal` · `layered` · `feature` · `flat` |
 
 변형이 바꾸는 파일은 **4개뿐**(`ARCHITECTURE.md`·`.agents/rules/structure.md`·`.agents/rules/tech.md`·`.kiro/steering/structure.md`)이라
-조합이 늘어도 설치 파일 수는 104개로 불변이다. 각 변형 문서에는 **선택 기준·승격 신호·전환 절차**가 함께 들어 있다.
+조합이 늘어도 설치 파일 수는 102개로 불변이다. 각 변형 문서에는 **선택 기준·승격 신호·전환 절차**가 함께 들어 있다.
 
 ## 읽는 순서
 

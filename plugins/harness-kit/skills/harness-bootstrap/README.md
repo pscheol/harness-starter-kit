@@ -11,7 +11,7 @@
 2. **Kiro steering = 얇은 포인터** — `.kiro/steering/*` 는 규칙 본문 대신 `.agents/rules/*` 정본을 가리키기만 한다.
 3. **단일 프로젝트** — 멀티 서비스/2계층 없음.
 4. **스택 오버레이** — `templates/common/`(스택 무관, 51개) + `templates/stacks/<stack>/`(언어 전용·변형 무관, 각 13개). 주석 표준·보안 위험·검증 게이트는 스택마다 다르게 깔린다.
-5. **아키텍처 변형** — 한 스택 안에서도 레이아웃은 하나가 아니다. 아키텍처에 종속되는 파일은 **4개뿐**이라 `templates/stacks/<stack>/arch/<variant>/`에 그 4개만 두고 선택한 하나를 얹는다. **설치 결과는 변형과 무관하게 104개**로 같다.
+5. **아키텍처 변형** — 한 스택 안에서도 레이아웃은 하나가 아니다. 아키텍처에 종속되는 파일은 **4개뿐**이라 `templates/stacks/<stack>/arch/<variant>/`에 그 4개만 두고 선택한 하나를 얹는다. **설치 결과는 변형과 무관하게 102개**로 같다.
 
 ## 지원 스택
 
@@ -54,7 +54,7 @@ skills/harness-bootstrap/          ← 스킬 루트 (= SKILL_DIR)
 └── templates/
     ├── common/           ★ 스택 무관 골격 (모든 스택 공통 설치)
     │   ├── agents-rules/  agent-harness · sdd-workflow · product
-    │   ├── agents-docs/   SDD 기록 (README · specs-index · product-<slug>-specs/{requirements,design,checklists,tasks} · decisions · tech-debt-tracker · generated · references)
+    │   ├── agents-docs/   SDD 기록 (README · specs-index · _spec-templates/{index,requirements,design,checklists,tasks} · decisions · tech-debt-tracker · generated · references) — product-<slug>-specs/ 는 설치가 아니라 new-feature.sh 가 만든다
     │   ├── kiro-steering/ 규칙 포인터 8종 + hx-* 9종(Kiro IDE 슬래시 · inclusion: manual)
     │   ├── kiro-skills/   hx-*/SKILL.md 9종 (Kiro CLI 슬래시)
     │   ├── agents-skills/ hx-*/SKILL.md 9종 (Codex — $hx-specify 로 멘션)
@@ -129,7 +129,7 @@ bash scripts/verify.sh                               # 게이트 통과 확인
 ## 하네스 4대 축 (킷이 강제)
 
 1. **규칙·헌법·가드레일** — 진입점은 목차(`AGENTS.md`/`CLAUDE.md` 짧게), 규칙 정본은 `.agents/rules/`, 기록은 `.agents/docs/`. "추측 금지" 헌법.
-2. **아키텍처 제약·스캐폴딩** — `ARCHITECTURE.md`가 스택별 의존 방향과 **기계적 강제 수단**을 정의 + `product-<slug>-specs/tasks/_template.md` 작업 지시서(추적성·DoD·결정 로그).
+2. **아키텍처 제약·스캐폴딩** — `ARCHITECTURE.md`가 스택별 의존 방향과 **기계적 강제 수단**을 정의 + `_spec-templates/tasks/_template.md` 작업 지시서(추적성·DoD·결정 로그).
 3. **검증·피드백 루프** — 강제는 `scripts/verify.sh` **한 곳**, hook/CI/pre-commit 은 트리거만("1곳 + N트리거"). exec-plan 완료 게이트(active→check→**사용자 승인**→completed).
 4. **엔트로피 관리** — `tech-debt-tracker.md`, `generated/`·`references/` 신선도 규약.
 

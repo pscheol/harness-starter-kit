@@ -30,9 +30,11 @@
 #   go     = 모듈 경로                (예: github.com/org/my-app → go.mod 의 module)
 #
 # 치환 토큰(환경변수로 전달, 비우면 해당 토큰은 그대로 남겨 나중에 채움):
-#   PROJECT_NAME PROJECT_SLUG PRODUCT_SLUG PACKAGE_NS SERVICE_NAME
+#   PROJECT_NAME PROJECT_SLUG PACKAGE_NS SERVICE_NAME
 #   PRIMARY_LANGUAGE BUILD_TOOL TEST_CMD DOMAIN_EXAMPLE PROTECTED_PATH
-#   (EPIC_ID·FEATURE_NAME 은 스펙/계획 작성 시 채우는 토큰이라 여기서 치환하지 않는다)
+#   (PRODUCT_SLUG·EPIC_ID·FEATURE_NAME 은 스펙 작성 시점에 정해지는 토큰이라 여기서 치환하지 않는다.
+#    제품 폴더 product-<slug>-specs/ 는 설치가 아니라 scripts/new-feature.sh 가 만든다 —
+#    설치되는 것은 복사 원본 한 벌인 .agents/docs/_spec-templates/ 뿐이다)
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -80,7 +82,6 @@ TARGET="$(cd "$TARGET" && pwd)"
 # 치환값(비어 있으면 치환하지 않음). 슬러그 기본값은 대상 디렉터리명.
 PROJECT_SLUG="${PROJECT_SLUG:-$(basename "$TARGET")}"
 PROJECT_NAME="${PROJECT_NAME:-$PROJECT_SLUG}"
-PRODUCT_SLUG="${PRODUCT_SLUG:-$PROJECT_SLUG}"
 PROTECTED_PATH="${PROTECTED_PATH:-docs/references}"
 SERVICE_NAME="${SERVICE_NAME:-$PROJECT_SLUG}"
 PACKAGE_NS="${PACKAGE_NS:-}"
@@ -118,7 +119,7 @@ echo "▶ 하네스 스캐폴딩"
 echo "  대상        : $TARGET"
 echo "  스택        : $STACK  ($PRIMARY_LANGUAGE · $BUILD_TOOL)"
 echo "  아키텍처    : $ARCH"
-echo "  PROJECT_NAME: $PROJECT_NAME   SLUG: $PROJECT_SLUG   PRODUCT: $PRODUCT_SLUG"
+echo "  PROJECT_NAME: $PROJECT_NAME   SLUG: $PROJECT_SLUG"
 if [ -n "$PACKAGE_NS" ]; then
   echo "  PACKAGE_NS  : $PACKAGE_NS"
 else
@@ -149,7 +150,7 @@ remap() {
 subst() {
   local f="$1"; local tmp="${f}.harness.tmp"; local -a args=()
   local k v
-  for k in PROJECT_NAME PROJECT_SLUG PRODUCT_SLUG PACKAGE_NS SERVICE_NAME \
+  for k in PROJECT_NAME PROJECT_SLUG PACKAGE_NS SERVICE_NAME \
            PRIMARY_LANGUAGE BUILD_TOOL TEST_CMD DOMAIN_EXAMPLE PROTECTED_PATH; do
     v="${!k}"
     [ -n "$v" ] && args+=( -e "s|{{${k}}}|${v}|g" )
@@ -169,8 +170,6 @@ copy_tree() {
   while IFS= read -r src; do
     rel="${src#"$root"/}"
     dest_rel="$(remap "$rel")"
-    # 경로에 박힌 토큰 치환 (예: product-{{PRODUCT_SLUG}}-specs → product-<slug>-specs)
-    dest_rel="${dest_rel//\{\{PRODUCT_SLUG\}\}/$PRODUCT_SLUG}"
     dest="$TARGET/$dest_rel"
 
     if [ -e "$dest" ] && [ "$FORCE" != 1 ]; then
@@ -287,8 +286,12 @@ case "$STACK" in
     ;;
 esac
 echo "  · product.md · ARCHITECTURE.md · structure.md 의 {{플레이스홀더}} 채우기"
-echo "    SDD 스펙: .agents/docs/product-$PRODUCT_SLUG-specs/{requirements,design,tasks} (새 기능: scripts/new-feature.sh $PRODUCT_SLUG <feature>)"
-echo "  · 미치환 토큰 확인:  grep -rn '{{' . --include='*.md' --include='*.sh' --include='*.yml'"
+echo "    SDD 는 제품 폴더를 미리 만들지 않는다. 첫 기능에서 만들어진다:"
+echo "      scripts/new-feature.sh <product-slug> <feature>   (또는 /hx-specify)"
+echo "      → .agents/docs/product-<slug>-specs/{requirements,design,tasks} 생성 + specs-index.md 등록"
+echo "    템플릿 정본은 .agents/docs/_spec-templates/ 한 곳이다(제품 폴더에 복사되지 않는다)."
+echo "  · 미치환 토큰 확인:  grep -rn '{{' . --include='*.md' --include='*.sh' --include='*.yml' | grep -v '_spec-templates/'"
+echo "    (_spec-templates/ 의 {{PRODUCT_SLUG}}·{{FEATURE_NAME}}·{{EPIC_ID}} 는 의도적으로 남긴 토큰이다)"
 echo "  · 이 킷은 harness-kit 플러그인의 harness-bootstrap 스킬로도 쓸 수 있다"
 echo "      Claude Code: /plugin marketplace add <킷_저장소> → /plugin install harness-kit@harness-starter-kit"
 echo "      Codex:       codex plugin marketplace add <킷_저장소> → codex plugin add harness-kit@harness-starter-kit"

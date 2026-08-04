@@ -35,17 +35,27 @@ specify → clarify → checklist → plan → tasks → analyze → implement
 ## 2. 산출 위치 (`.agents/docs/`)
 
 SDD는 **제품(바운디드 컨텍스트) 단위 묶음** `product-<slug>-specs/`로 관리된다.
+템플릿은 제품 폴더 밖 `_spec-templates/` **한 곳**에만 두고, 제품 폴더에는 복사하지 않는다
+(제품이 늘어도 템플릿 사본이 늘지 않는다).
 
 ```text
 .agents/docs/
 ├── README.md                     # 기록 시스템(SSOT) 자기서술
 ├── specs-index.md                # 전 제품 스펙 색인(최상위 진입점)
+├── _spec-templates/              # ★ SDD 단계 템플릿 정본 한 벌 — 설치 산출물(제품 아님)
+│   ├── README.md                 #   이 폴더가 복사 원본임을 명시
+│   ├── index.md                  #   제품 색인 템플릿({{PRODUCT_SLUG}} 미치환 상태로 보관)
+│   ├── requirements/_template.md
+│   ├── checklists/_template.md
+│   ├── design/_template.md
+│   └── tasks/{_template.md, README.md}
 ├── product-<slug>-specs/         # 제품 단위 SDD 묶음 (복수 가능)
+│                                 # ★ 설치가 아니라 new-feature.sh 가 첫 기능에서 만든다
 │   ├── index.md                  #   이 제품의 feature 등록표
-│   ├── requirements/             #   _template.md + <feature>.md      (/specify·/clarify)
-│   ├── checklists/               #   _template.md + <feature>-<도메인>.md (/checklist)
-│   ├── design/                   #   _template.md + <feature>.md      (/plan)
-│   └── tasks/                    #   _template.md · README.md
+│   ├── requirements/             #   <feature>.md                     (/specify·/clarify)
+│   ├── checklists/               #   <feature>-<도메인>.md             (/checklist)
+│   ├── design/                   #   <feature>.md                     (/plan)
+│   └── tasks/                    #   README.md
 │       ├── active/               #     진행 중                        (/tasks·/implement)
 │       ├── check/                #     검증 완료·사용자 확인 대기
 │       └── completed/            #     사용자 승인 완료(이력 보존)
@@ -78,7 +88,7 @@ SDD는 **제품(바운디드 컨텍스트) 단위 묶음** `product-<slug>-specs
 
 | 스크립트 | 역할 |
 |---|---|
-| `new-feature.sh <slug> <feature>` | `requirements/design/tasks/active`에 `_template.md`를 복사해 `<feature>.md` 3종 생성. 제품 폴더 없으면 부트스트랩. 기존 파일 미덮어씀 |
+| `new-feature.sh <slug> <feature>` | `_spec-templates/`의 `_template.md`를 복사해 제품 폴더에 `<feature>.md` 3종 생성(requirements·design·tasks/active). 제품 폴더가 없으면 골격(`index.md`·`tasks/README.md`·빈 하위폴더)까지 생성하며 이때 `{{PRODUCT_SLUG}}`를 치환한다. **템플릿 자체는 제품 폴더에 복사하지 않는다.** 기존 파일 미덮어씀 |
 | `check-sdd-prerequisites.sh <slug> <feature> [--stage design\|tasks\|implement]` | 단계별 선행 산출물(design=requirements, tasks=+design, implement=+tasks) 존재 확인 |
 | `check-exec-plan-status.sh` | 제품별 `tasks/{active,check,completed}/` 순회, 첫 상태 라인과 폴더 일치 강제 |
 | `check-spec-freshness.sh` | 정체 draft/in-review·미해결 `[NEEDS CLARIFICATION:]`·정체 active tasks 리포트. **게이트 아님·항상 exit 0**. `/hx-converge` 근거 |

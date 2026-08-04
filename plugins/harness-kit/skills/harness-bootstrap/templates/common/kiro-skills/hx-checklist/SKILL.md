@@ -11,7 +11,7 @@ SDD 워크플로 **정본** `.agents/rules/sdd-workflow.md` 의 **`/hx-checklist
 
 핵심:
 1. 대상 requirements(`.agents/docs/product-<slug>-specs/requirements/<feature>.md`)와 도메인 초점을 확정.
-2. `checklists/_template.md` 를 `checklists/<feature>-<도메인>.md` 로 복제해 채운다.
+2. `.agents/docs/_spec-templates/checklists/_template.md` 를 제품 폴더의 `checklists/<feature>-<도메인>.md` 로 복제해 채운다(템플릿은 제품 폴더에 두지 않는다).
 3. **기본 5축**(완결성·명료성·일관성·측정가능성·커버리지)을 `CHK-###` 로 PASS/FAIL/N·A 판정 — 근거는 스펙 인용, 확인 불가는 `[NEEDS CLARIFICATION]`.
 4. 도메인 초점(security·api·data·ux 등)이 주어지면 해당 관점 항목을 **추가**.
 5. 판정 요약 + 결론(통과/조건부/보류). 핵심 FAIL은 `/hx-clarify`·`/hx-specify` 로 되돌린 뒤 재실행.

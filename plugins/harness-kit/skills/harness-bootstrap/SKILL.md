@@ -1,6 +1,6 @@
 ---
 name: harness-bootstrap
-description: 백엔드 단일 프로젝트에 하네스 엔지니어링 기본 골격을 스캐폴딩한다. 스택은 jvm(Kotlin/Java+Spring) · python(FastAPI/ASGI) · go(표준 Go 레이아웃) 중에서 고르고, 아키텍처 변형(ARCH)은 jvm 5종(hexagonal·layered·modulith·feature·multimodule) · python 5종(hexagonal·layered·modular·django·ai-service) · go 4종(hexagonal·layered·feature·flat) 중에서 고른다. 진입점=목차(AGENTS.md/CLAUDE.md), 공통 규칙 정본(.agents/rules — Claude Code·Codex·Kiro 3개 에이전트 공유), Kiro 얇은 포인터(.kiro/steering), SDD 기록 시스템(.agents/docs — 제품 단위 product-<slug>-specs/{requirements,design,tasks} + decisions), 단일 검증 게이트(scripts/verify.sh)와 얇은 트리거(hook)를 한 번에 깐다. "하네스 초기 설정", "AGENTS.md 만들기", "에이전트 규칙 세팅", "harness bootstrap/scaffold", "steering 초기화", "exec-plan/SDD 구조 만들기" 요청 시 사용.
+description: 백엔드 단일 프로젝트에 하네스 엔지니어링 기본 골격을 스캐폴딩한다. 스택은 jvm(Kotlin/Java+Spring) · python(FastAPI/ASGI) · go(표준 Go 레이아웃) 중에서 고르고, 아키텍처 변형(ARCH)은 jvm 5종(hexagonal·layered·modulith·feature·multimodule) · python 5종(hexagonal·layered·modular·django·ai-service) · go 4종(hexagonal·layered·feature·flat) 중에서 고른다. 진입점=목차(AGENTS.md/CLAUDE.md), 공통 규칙 정본(.agents/rules — Claude Code·Codex·Kiro 3개 에이전트 공유), Kiro 얇은 포인터(.kiro/steering), SDD 기록 시스템(.agents/docs — 템플릿 정본 _spec-templates + 제품 단위 product-<slug>-specs/{requirements,design,tasks} + decisions), 단일 검증 게이트(scripts/verify.sh)와 얇은 트리거(hook)를 한 번에 깐다. "하네스 초기 설정", "AGENTS.md 만들기", "에이전트 규칙 세팅", "harness bootstrap/scaffold", "steering 초기화", "exec-plan/SDD 구조 만들기" 요청 시 사용.
 ---
 
 # harness-bootstrap — 하네스 엔지니어링 초기 설정 스킬
@@ -13,7 +13,7 @@ description: 백엔드 단일 프로젝트에 하네스 엔지니어링 기본 �
 - **규칙은 공통 정본 한 곳** — 가드레일·보안·API 표준·기술 규약을 `.agents/rules/` 에 두고 **Claude Code · Codex · Kiro 에이전트가 공유**한다. 특정 에이전트가 소유하지 않는다.
 - **Kiro steering = 얇은 포인터** — `.kiro/steering/*` 는 규칙 본문 대신 `.agents/rules/*` 정본을 가리킨다.
 - **스택 오버레이** — 스택 무관 골격(`templates/common/`)은 한 벌만 두고, 언어별 규약(`templates/stacks/<stack>/`)을 그 위에 덮는다. 코드 컨벤션·주석 표준·검증 게이트는 **스택마다 다르게** 깔린다.
-- **아키텍처 변형(ARCH)** — 한 스택 안에서도 레이아웃은 하나가 아니다. 아키텍처에 종속되는 파일은 **4개뿐**(`ARCHITECTURE.md`·`.agents/rules/structure.md`·`.agents/rules/tech.md`·`.kiro/steering/structure.md`)이라, 이 4개만 `templates/stacks/<stack>/arch/<variant>/`에 두고 **선택한 하나만 설치**한다. 설치 파일 수는 변형과 무관하게 104개로 같다.
+- **아키텍처 변형(ARCH)** — 한 스택 안에서도 레이아웃은 하나가 아니다. 아키텍처에 종속되는 파일은 **4개뿐**(`ARCHITECTURE.md`·`.agents/rules/structure.md`·`.agents/rules/tech.md`·`.kiro/steering/structure.md`)이라, 이 4개만 `templates/stacks/<stack>/arch/<variant>/`에 두고 **선택한 하나만 설치**한다. 설치 파일 수는 변형과 무관하게 102개로 같다.
 - **슬래시 커맨드는 4개 하네스 공통** — SDD 워크플로 9종을 `hx-` 접두사로 깔되(`/hx-specify` → `/hx-plan` → `/hx-tasks` → `/hx-implement`), 본문 정본은 `.agents/rules/sdd-workflow.md` **한 곳**이고 각 하네스 파일은 그것을 가리키는 **얇은 트리거**다. Claude Code(`.claude/commands/`) · Cursor(`.cursor/commands/`) · Kiro(IDE `.kiro/steering/` + CLI `.kiro/skills/`) · Codex(`.agents/skills/`). 접두사는 `/plan` 같은 흔한 이름이 타 플러그인과 충돌하는 것을 막는다.
 
 ## 지원 스택
@@ -59,7 +59,7 @@ description: 백엔드 단일 프로젝트에 하네스 엔지니어링 기본 �
 | 축 | 산출물 |
 |---|---|
 | ① 규칙·헌법·가드레일 | `AGENTS.md`(목차), `CLAUDE.md`(리다이렉트), **`.agents/rules/*`(공통 정본 + 스택별 규약)**, `.kiro/steering/*`(얇은 포인터) |
-| ② 아키텍처 제약·스캐폴딩 | `ARCHITECTURE.md`(스택별 의존 방향·기계적 강제 수단), `product-<slug>-specs/tasks/_template.md`(작업 지시서), 제품 단위 SDD |
+| ② 아키텍처 제약·스캐폴딩 | `ARCHITECTURE.md`(스택별 의존 방향·기계적 강제 수단), `.agents/docs/_spec-templates/`(SDD 단계 템플릿 정본 — 제품 폴더는 `new-feature.sh` 가 첫 기능에서 생성), 제품 단위 SDD |
 | ③ 검증·피드백 루프 | `scripts/verify.sh`(스택별 단일 게이트) + `check-exec-plan-status.sh` + `.claude`/`.codex` hook(얇은 트리거), 완료 게이트(active→check→completed) |
 | ④ 엔트로피 관리 | `tech-debt-tracker.md`, `generated/`·`references/` 규약 |
 
@@ -85,8 +85,11 @@ description: 백엔드 단일 프로젝트에 하네스 엔지니어링 기본 �
    - `jvm`: `verify.sh`의 `GRADLE_DIR`, `tech.md`의 기준 버전. `layered`·`feature`·`multimodule`은 **ArchUnit**, `modulith`는 **Spring Modulith**, `hexagonal`은 **Konsist** 의존성과 구조/모듈 검증 테스트를 함께 넣어야 강제가 작동한다. 멀티모듈 변형(`hexagonal`·`multimodule`)은 `settings.gradle` 모듈 등록 + **Spring Boot 플러그인을 실행 모듈에만 적용**(나머지는 `bootJar`가 안 생긴다)까지 해야 한다. `multimodule`은 추가로 **분할 축·네이밍 결정**과 **구조 테스트 자리표시자 채우기**가 첫 작업이다(안 채우면 아무것도 검사하지 않는다).
    - `python`: `pyproject.toml`의 `[tool.ruff]`·`[tool.mypy]`·`[tool.pytest]`·**`[tool.importlinter]` 계약**(골격은 `ARCHITECTURE.md` — 변형마다 계약이 다르다).
    - `go`: `go mod init`, **`.golangci.yml`의 depguard 규칙**(골격은 `ARCHITECTURE.md` — 변형마다 규칙이 다르다). `feature`·`flat`은 구조 테스트도 함께 둔다.
-6. **채우기** — `.agents/rules/product.md`·`ARCHITECTURE.md`·`.agents/rules/structure.md` 의 `{{플레이스홀더}}`, `specs-index.md`·제품 `index.md` 색인.
-7. **검증** — `grep -rn '{{' .` 로 미치환 토큰 확인 후 `bash scripts/verify.sh` 통과를 확인하고 사용자에게 보고.
+6. **채우기** — `.agents/rules/product.md`·`ARCHITECTURE.md`·`.agents/rules/structure.md` 의 `{{플레이스홀더}}`.
+   `.agents/docs/specs-index.md` 제품 등록표는 **비어 있는 채로 시작한다** — 제품 폴더는 설치가 아니라
+   `scripts/new-feature.sh <slug> <feature>`(또는 `/hx-specify`)가 첫 기능에서 만든다. 임의로 제품 폴더를 만들지 않는다.
+7. **검증** — `grep -rn '{{' . | grep -v '_spec-templates/'` 로 미치환 토큰 확인 후 `bash scripts/verify.sh` 통과를 확인하고 사용자에게 보고.
+   `.agents/docs/_spec-templates/` 의 `{{PRODUCT_SLUG}}`·`{{FEATURE_NAME}}`·`{{EPIC_ID}}` 는 **의도적으로 남기는 토큰**이다(채우지 않는다).
 
 ## 원칙 (스캐폴딩 시 반드시 지킬 것)
 

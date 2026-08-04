@@ -1,4 +1,4 @@
-<!-- HARNESS STARTER KIT ({{PROJECT_NAME}}): {{PROJECT_NAME}}·{{PRODUCT_SLUG}} 치환 후 사용 -->
+<!-- HARNESS STARTER KIT ({{PROJECT_NAME}}) -->
 
 # .agents/docs — {{PROJECT_NAME}} 기록 시스템 (System of Record)
 
@@ -31,12 +31,17 @@ AGENTS.md / CLAUDE.md / ARCHITECTURE.md    진입·아키텍처 정본
 .agents/docs/
   README.md                이 문서
   specs-index.md           전 제품 스펙 색인(SDD 최상위 진입점)
+  _spec-templates/         SDD 단계 템플릿 정본 — 복사 원본 한 벌(제품 아님, 설치 시 생성)
+    index.md · requirements/_template.md · design/_template.md
+    checklists/_template.md · tasks/{_template.md, README.md}
   product-<slug>-specs/    제품(바운디드 컨텍스트) 단위 SDD 묶음 — 복수 가능
+                           설치가 아니라 new-feature.sh 가 첫 기능에서 만든다
     index.md                 이 제품의 feature 등록표
-    requirements/            SDD requirements 단계 (_template.md + <feature>.md)
-    design/                  SDD design 단계 (_template.md + <feature>.md)
+    requirements/            SDD requirements 단계 (<feature>.md)
+    design/                  SDD design 단계 (<feature>.md)
+    checklists/              요구사항 품질 판정 (<feature>-<도메인>.md)
     tasks/                   SDD tasks 단계 (= 실행 계획, 완료 게이트)
-      _template.md · README.md
+      README.md
       active/ · check/ · completed/
   decisions/               전역 설계 결정(ADR) + core-beliefs (제품 횡단)
   tech-debt-tracker.md     전역 기술 부채 추적기
@@ -60,7 +65,9 @@ AGENTS.md / CLAUDE.md / ARCHITECTURE.md    진입·아키텍처 정본
 | design | `product-<slug>-specs/design/<feature>.md` | `/hx-plan` |
 | tasks | `product-<slug>-specs/tasks/active/<feature>.md` → `check/` → `completed/` | `/hx-tasks` → `/hx-implement` |
 
-각 단계 템플릿은 해당 하위 폴더의 `_template.md`. 정합성 점검은 `/hx-analyze`(읽기 전용). 단계별 사용자 승인 후 진행.
+각 단계 템플릿 정본은 `_spec-templates/` 한 곳이며, 제품 폴더에는 복사되지 않는다.
+제품 폴더는 `scripts/new-feature.sh <slug> <feature>` 가 첫 기능에서 만든다(설치 시 미리 만들지 않는다).
+정합성 점검은 `/hx-analyze`(읽기 전용). 단계별 사용자 승인 후 진행.
 전 제품 목록은 `specs-index.md`, 전역 결정은 `decisions/`.
 
 ## 신선도 관리 (Freshness)

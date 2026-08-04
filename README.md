@@ -105,7 +105,7 @@ SKILL_DIR=~/.claude/plugins/.../skills/harness-bootstrap   # 또는 ~/.codex/plu
 bash "$SKILL_DIR/setup.sh" --dry-run --stack=python --arch=modular /path/to/project
 ```
 
-스택·변형 목록과 설치 산출물(총 104개, 변형과 무관하게 불변)은
+스택·변형 목록과 설치 산출물(총 102개, 변형과 무관하게 불변)은
 [스킬 README](plugins/harness-kit/skills/harness-bootstrap/README.md)와
 [manifest.md](plugins/harness-kit/skills/harness-bootstrap/manifest.md) 참고.
 
@@ -139,7 +139,7 @@ bootstrap 이 끝나면 SDD 워크플로 9종이 `hx-` 접두사로 깔린다. *
 
 | 스킬 | 단계 | 하는 일 | 쓰기 | 산출물 |
 |---|---|---|---|---|
-| [`harness-bootstrap`](#harness-bootstrap--하네스-골격-설치) | 설치 | 리포에 하네스 골격 스캐폴딩 | O | 104개 파일 |
+| [`harness-bootstrap`](#harness-bootstrap--하네스-골격-설치) | 설치 | 리포에 하네스 골격 스캐폴딩 | O | 102개 파일 |
 | [`/hx-harness`](#hx-harness--하네스-컨텍스트-로드) | 상시 | 규칙·가드레일 컨텍스트 로드 | X | — |
 | [`/hx-specify`](#hx-specify--sdd-1단계-요구사항) | SDD 1 | 무엇을/왜 → requirements | O | `requirements/<feature>.md` |
 | [`/hx-clarify`](#hx-clarify--모호성-해소선택) | SDD 1.5 | 모호성 ≤5문답으로 해소 | O | requirements의 `## Clarifications` |
@@ -190,7 +190,7 @@ bootstrap 이 끝나면 SDD 워크플로 9종이 `hx-` 접두사로 깔린다. *
 ### `/hx-checklist` — 스펙 품질 게이트(선택)
 
 - **역할**: 요구사항의 **"유닛테스트"**. 기능이 아니라 **스펙 문장 자체의 품질**을 본다. **읽기 전용**(스펙 미수정).
-- **절차**: `checklists/_template.md` → `checklists/<feature>-<도메인>.md` 복제 →
+- **절차**: `.agents/docs/_spec-templates/checklists/_template.md` → 제품 폴더의 `checklists/<feature>-<도메인>.md` 복제 →
   **기본 5축**(완결성·명료성·일관성·측정가능성·커버리지)을 `CHK-###` 로 PASS/FAIL/N·A 판정.
   근거는 스펙 인용, 확인 불가는 `[NEEDS CLARIFICATION]`. 도메인 초점(security·api·data·ux)을 주면 해당 항목을 **추가**.
 - **결론**: 통과 / 조건부 / 보류. 핵심 FAIL은 `/hx-clarify`·`/hx-specify` 로 되돌린 뒤 재실행.

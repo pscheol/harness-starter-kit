@@ -1,4 +1,4 @@
-<!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · 스택 무관 공통 규칙 · 플레이스홀더({{PROJECT_NAME}}·{{PRODUCT_SLUG}}) 치환 후 사용 -->
+<!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · 스택 무관 공통 규칙 · 플레이스홀더({{PROJECT_NAME}}) 치환 후 사용 -->
 
 # SDD 워크플로 정본 (Spec-Driven Development)
 
@@ -33,7 +33,7 @@ Codex, Kiro(`.kiro/steering/sdd-workflow.md`)는 모두 이 정본을 참조하�
 입력: (제품 slug + 기능 설명). 없으면 사용자에게 제품 slug와 한 줄 설명을 묻는다.
 
 1. **기능 short-name 도출**(2~4단어, action-noun). 제품 slug 확인(기존 `product-*-specs` 중 택 또는 신규).
-2. **스캐폴딩**: `scripts/new-feature.sh <slug> <feature>` 로 requirements/design/tasks 3종을 `_template.md`에서 생성하고 제품 `index.md`에 등록.
+2. **스캐폴딩**: `scripts/new-feature.sh <slug> <feature>` 로 requirements/design/tasks 3종을 `.agents/docs/_spec-templates/` 원본에서 생성하고 제품 `index.md`에 등록. 제품 폴더가 없으면 골격까지 함께 만들어진다(설치가 미리 만들어 두지 않는다). 새 제품이면 `specs-index.md` 등록표에도 행을 추가한다.
 3. `requirements/<feature>.md` 를 채운다:
    - **User Story(우선순위 P1/P2/P3)**: 각 스토리는 **독립 테스트 가능**하고, 하나만 구현해도 **사용자에게 가치를 주도록** 슬라이싱. "왜 이 우선순위"를 적는다.
    - **수용 기준**: 기존 EARS(`WHEN/IF/WHERE/WHILE ... THE 시스템 SHALL ...`) 유지 + 필요 시 `Given/When/Then` 병용.
@@ -57,7 +57,7 @@ requirements↔design↔tasks **교차** 정합성은 `/hx-checklist`가 아니�
 
 입력: (제품·기능 + 도메인 초점). 도메인 생략 시 `requirements-quality`(기본).
 
-1. 대상 requirements를 읽고, `checklists/_template.md` 를 `checklists/<feature>-<도메인>.md` 로 복제한다(제품 폴더에 `checklists/` 없으면 `_template.md`부터 부트스트랩).
+1. 대상 requirements를 읽고, `.agents/docs/_spec-templates/checklists/_template.md` 를 제품 폴더의 `checklists/<feature>-<도메인>.md` 로 복제한다(제품 폴더에 `checklists/` 가 없으면 만든다). 템플릿 자체를 제품 폴더에 복사하지 않는다.
 2. **기본 5축**을 `CHK-###` 로 **PASS / FAIL / N·A** 판정한다:
    - **완결성**: 스토리·수용기준·SC·NFR·엣지·scope·제약/가정 누락 없음.
    - **명료성**: 측정 불가 형용사(빠른·쉬운·안정적) 제거, 한 기준=한 동작, 구현 세부 누출 없음, `[NEEDS CLARIFICATION]`≤3.

@@ -1,4 +1,4 @@
-<!-- HARNESS STARTER KIT ({{PROJECT_NAME}}): {{PRODUCT_SLUG}} 치환 후 사용 -->
+<!-- HARNESS STARTER KIT ({{PROJECT_NAME}}) -->
 
 # 전 제품 스펙 색인 (SDD 최상위 진입점)
 
@@ -9,20 +9,22 @@
 
 | 제품 | 폴더 | 요약 | 상태 |
 |---|---|---|---|
-| {{PRODUCT_SLUG}} | `product-{{PRODUCT_SLUG}}-specs/` | (이 제품의 한 줄 요약) | ◐ 진행 |
+| _(아직 없음 — 첫 기능을 스캐폴딩하면 추가한다)_ | — | — | — |
 
 > 상태: ☐ 미착수 / ◐ 진행 / ☑ 안정. 각 제품의 기능별 상세는 해당 폴더의 `index.md` 등록표 참고.
 
-## 새 제품 추가
+## 새 제품·기능 추가
 
 ```bash
-# 제품 폴더 골격 생성(권장): requirements/ design/ tasks/{active,check,completed} + index.md
-scripts/new-product.sh <slug>          # (선택) 또는 아래 new-feature.sh 가 없으면 수동 복제
-scripts/new-feature.sh <slug> <feature># 기능 3종(req/design/tasks) 스캐폴딩 + 제품 index 등록
+scripts/new-feature.sh <slug> <feature>   # 제품 폴더가 없으면 골격까지 함께 만든다
 ```
 
-- `<slug>`는 도메인/주요 능력 단위(예: `auth`, `billing`, `order`).
-- 단일 제품이면 `product-{{PRODUCT_SLUG}}-specs/` 하나로 시작하고, 경계가 커지면 분할한다(YAGNI).
+- 제품 폴더는 **설치 시 미리 만들지 않는다.** 첫 기능을 스캐폴딩할 때 생긴다
+  (빈 껍데기 폴더가 쌓이지 않게 하려는 것이다).
+- `<slug>`는 도메인/주요 능력 단위(예: `auth`, `billing`, `order`). 프로젝트명과 같을 필요는 없다.
+- 단일 제품이면 하나로 시작하고, 경계가 커지면 분할한다(YAGNI).
+- 새 제품이 생기면 **위 등록표에 행을 추가한다** — 이 표가 전 제품 진입점이다.
+- 단계 템플릿 정본은 `_spec-templates/` 한 곳이다. 제품 폴더에는 템플릿을 복사하지 않는다.
 
 ## 정본 링크
 

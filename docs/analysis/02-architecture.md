@@ -12,10 +12,10 @@
 
 - 사용법: `STACK=python ARCH=modular PROJECT_NAME=… PROJECT_SLUG=… PACKAGE_NS=… bash setup.sh [대상경로]` (대상 생략 시 `$PWD`).
 - 옵션: `--stack=<jvm|python|go>`(기본 `jvm`), `--arch=<변형>`(기본 `hexagonal`) — 둘 다 환경변수 `STACK`·`ARCH`로도 지정. `--force`(존재해도 덮어씀, 기본은 skip), `--dry-run`(계획만 출력).
-- 처리: 각 루트 하위 파일을 정렬 순회 → 경로를 `remap()`으로 매핑 → 경로 내 `{{PRODUCT_SLUG}}` 치환 → 존재+비force면 skip, 아니면 복사 후 토큰 치환, `*.sh`는 실행권한 부여.
+- 처리: 각 루트 하위 파일을 정렬 순회 → 경로를 `remap()`으로 매핑 → 존재+비force면 skip, 아니면 복사 후 토큰 치환, `*.sh`는 실행권한 부여.
 - 스택 순회는 `find "$root" -type f ! -path "*/arch/*"`로 변형 레이어를 건너뛴다(선택된 하나만 따로 복사).
 - 알 수 없는 스택·변형을 주면 각각 사용 가능한 목록을 출력하고 `exit 2`로 중단한다.
-- **모든 스택×변형 조합에서 설치 결과는 104개 파일**(공통 87 + 스택 13 + 변형 4)로 동일하다.
+- **모든 스택×변형 조합에서 설치 결과는 102개 파일**(공통 85 + 스택 13 + 변형 4)로 동일하다.
 
 ### 1.1 7개 설치 세그먼트
 
@@ -39,7 +39,6 @@
 |---|---|---|
 | `{{PROJECT_NAME}}` | 프로젝트 표시 이름 | `PROJECT_SLUG` |
 | `{{PROJECT_SLUG}}` | 프로젝트 슬러그 | 대상 디렉터리 basename |
-| `{{PRODUCT_SLUG}}` | 제품(바운디드 컨텍스트) 슬러그. `product-<slug>-specs`에 사용 | `PROJECT_SLUG` |
 | `{{PACKAGE_NS}}` | **스택별 의미 상이** — jvm=패키지 네임스페이스(`com.example.app`), python=최상위 패키지명(`myapp`→`src/myapp/`), go=모듈 경로(`github.com/org/app`) | 빈값(미치환) |
 | `{{SERVICE_NAME}}` | 서비스 이름 | `PROJECT_SLUG` |
 | `{{PRIMARY_LANGUAGE}}` | 주 언어 | 스택 기본값(Kotlin/Java · Python · Go) |
@@ -48,11 +47,16 @@
 | `{{DOMAIN_EXAMPLE}}` | 예시 도메인 명 | 빈값 |
 | `{{PROTECTED_PATH}}` | 편집 차단 경로 | `docs/references` |
 
-**치환하지 않는 토큰**: `{{EPIC_ID}}`·`{{FEATURE_NAME}}`은 스펙/계획 작성 시 `/hx-specify`에서 채우는
-자리라 `setup.sh`가 건드리지 않고 그대로 남긴다. 설치 후 `grep -rn '{{' .`로 미치환 토큰을 점검한다.
+**치환하지 않는 토큰**: `{{PRODUCT_SLUG}}`·`{{EPIC_ID}}`·`{{FEATURE_NAME}}`은 **설치 시점에 아직 정해지지
+않은 값**이다. 제품·기능은 SDD를 시작할 때 결정되므로 `setup.sh`는 이 셋을 그대로 남긴다.
+`{{PRODUCT_SLUG}}`는 `.agents/docs/_spec-templates/` 안에 남아 있다가 `new-feature.sh <slug>`가
+제품 폴더로 복사하는 시점에 치환된다.
 
-경로 토큰 치환은 파일 내용 치환과 별개로, 목적지 **경로**의 `{{PRODUCT_SLUG}}`
-(`product-{{PRODUCT_SLUG}}-specs`)를 실제 슬러그로 바꾼다.
+설치 후 미치환 토큰 점검은 `grep -rn '{{' . | grep -v '_spec-templates/'`로 한다
+— `_spec-templates/`의 잔여 토큰은 의도된 것이라 제외하고 본다.
+
+`setup.sh`는 목적지 **경로**에 대한 토큰 치환을 하지 않는다. 경로에 슬러그가 박히는 유일한 대상이던
+`product-<slug>-specs/`가 설치 산출물에서 빠졌기 때문이다(제품 폴더는 `new-feature.sh`가 만든다).
 
 ## 2. 아키텍처 변형과 계층 모델
 

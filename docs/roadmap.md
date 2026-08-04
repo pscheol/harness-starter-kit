@@ -301,6 +301,28 @@ templates/stacks/<stack>/
 
 ---
 
+## Phase 11 — SDD 템플릿을 제품 폴더에서 분리 ✅ (완료: 이 세션)
+
+> **배경**: 사용자 실사용 제보. bootstrap이 `.agents/docs/product-<PROJECT_SLUG>-specs/` 를 **씨앗 제품 폴더**로 깔고 그 안에 `_template.md` 4종을 함께 두는 구조였다. 실제 SDD를 시작하면 ① 프로젝트 슬러그로 된 가짜 제품 폴더가 남고 ② `new-feature.sh` 가 새 제품 폴더를 만들 때 기존 제품에서 템플릿을 통째로 복사해 **제품 수만큼 템플릿 사본이 늘어났다**. "기본 템플릿인데 이름이 바뀌어 생성된다"는 지적이 정확했다.
+
+### 완료 요약
+
+- [x] **템플릿 분리** — `agents-docs/product-{{PRODUCT_SLUG}}-specs/` → `agents-docs/_spec-templates/`. 제품과 무관한 **복사 원본 한 벌**로 승격하고, 용도를 명시하는 `_spec-templates/README.md` 를 신설했다. 씨앗 제품 폴더용 `.gitkeep` 3개는 제거.
+- [x] **제품 폴더는 설치하지 않는다** — `product-<slug>-specs/` 는 `new-feature.sh <slug> <feature>`(= `/hx-specify`)가 첫 기능에서 만든다. 설치 직후 `specs-index.md` 등록표는 비어 있다.
+- [x] **`new-feature.sh` 재작성** — 소스를 `_spec-templates/` 로 고정. 제품 폴더가 없으면 골격(`index.md`·`tasks/README.md`·빈 하위폴더)까지 만들되 **`_template.md` 는 복사하지 않는다**. 복사 시점에 `{{PRODUCT_SLUG}}` 를 치환한다.
+- [x] **`setup.sh`** — `PRODUCT_SLUG` 를 설치 치환 토큰에서 제거(`EPIC_ID`·`FEATURE_NAME` 과 같은 "스펙 시점" 토큰으로 재분류). 경로 토큰 치환 로직도 제거했다(경로에 슬러그가 박히는 대상이 사라졌다). 미치환 토큰 안내는 `| grep -v '_spec-templates/'` 로 갱신.
+- [x] **문서 동기화** — `SKILL.md`(description·②축·6·7단계)·`manifest.md`(산출물 행·토큰표·85+13+4=102)·킷/스킬 `README.md`·`agents-docs/README.md` 트리·`specs-index.md`(빈 등록표 + 죽은 `new-product.sh` 참조 제거)·`sdd-workflow.md`·`hx-checklist`/`hx-specify` 5하네스 각각·`docs/analysis/{02,03}`.
+- 검증: jvm·python·go 3조합 설치 각 **102개**(85+13+4, 변형 무관 불변). e2e로 제품 2개(`order`·`billing`) 생성 후 **제품 폴더 내 `_template.md` 0건 · 잔여 `{{PRODUCT_SLUG}}` 0건** 확인. 제품 폴더 유무 양쪽에서 `check-spec-freshness.sh`·`check-exec-plan-status.sh` 정상 종료.
+
+### 11.0 확정된 결정 (사용자 응답)
+
+| 항목 | 결정 |
+|---|---|
+| 씨앗 제품 폴더 | **아예 만들지 않는다** — 빈 껍데기 폴더가 남는 쪽보다 낫다 |
+| 템플릿 설치 위치 | 프로젝트 안 `.agents/docs/_spec-templates/` — 플러그인 경로는 설치 후 사라질 수 있어 `new-feature.sh` 가 의존할 수 없다 |
+
+---
+
 ## 작업 규칙
 
 - 각 Phase 끝에 `scripts/verify.sh` + 사용자 승인.
