@@ -1,6 +1,6 @@
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · Kotlin/Java + Spring · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
-# 주석 작성 가이드 (실무 밀착형)
+# 주석 작성 가이드
 
 > 대원칙: 코드는 라인 단위의 What/How를, 주석은 Why를 말한다.
 > 단, 함수·메서드 단위 주석은 개발자가 로직을 빠르게 이해하도록 ① 함수의 책임(무엇을 하는 함수인지) + ② 처리 흐름(주요 단계 순서)을 함께 적는다. 흐름의 각 단계에는 "왜/무엇을 위해"가 드러나게 적어, 코드 라인을 그대로 옮긴 번역투가 되지 않게 한다.

@@ -14,4 +14,4 @@ exclude = ["*_KEY", "*_SECRET", "*_TOKEN", "*_PASSWORD", "*PASSWD*", "AWS_*", "*
 [shell_environment_policy.set]
 # 하네스가 세팅하는 안전한 플래그만 여기에. 시크릿 값은 절대 여기에 넣지 말 것.
 # 예) 특정 에이전트 훅 비활성화:
-# ECC_DISABLED_HOOKS = "pre:edit-write:example-hook"
+# DISABLED_HOOKS = "pre:edit-write:example-hook"
