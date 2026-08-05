@@ -310,7 +310,7 @@ templates/stacks/<stack>/
 - [x] `new-feature.sh` 재작성 — 소스를 `_spec-templates/` 로 고정. 제품 폴더가 없으면 골격(`index.md`·`tasks/README.md`·빈 하위폴더)까지 만들되 `_template.md` 는 복사하지 않는다. 복사 시점에 `{{PRODUCT_SLUG}}` 를 치환한다.
 - [x] `setup.sh` — `PRODUCT_SLUG` 를 설치 치환 토큰에서 제거(`EPIC_ID`·`FEATURE_NAME` 과 같은 "스펙 시점" 토큰으로 재분류). 경로 토큰 치환 로직도 제거했다(경로에 슬러그가 박히는 대상이 사라졌다). 미치환 토큰 안내는 `| grep -v '_spec-templates/'` 로 갱신.
 - [x] **문서 동기화** — `SKILL.md`(description·②축·6·7단계)·`manifest.md`(산출물 행·토큰표·85+13+4=102)·킷/스킬 `README.md`·`agents-docs/README.md` 트리·`specs-index.md`(빈 등록표 + 죽은 `new-product.sh` 참조 제거)·`sdd-workflow.md`·`hx-checklist`/`hx-specify` 5하네스 각각·`docs/analysis/{02,03}`.
-- 검증: jvm·python·go 3조합 설치 각 **102개**(85+13+4, 변형 무관 불변). e2e로 제품 2개(`order`·`billing`) 생성 후 제품 폴더 내 `_template.md` 0건 · 잔여 `{{PRODUCT_SLUG}}` 0건 확인. 제품 폴더 유무 양쪽에서 `check-spec-freshness.sh`·`check-exec-plan-status.sh` 정상 종료.
+- 검증: jvm·python·go 3조합 설치 각 **104개**(87+13+4, 변형 무관 불변). e2e로 제품 2개(`order`·`billing`) 생성 후 제품 폴더 내 `_template.md` 0건 · 잔여 `{{PRODUCT_SLUG}}` 0건 확인. 제품 폴더 유무 양쪽에서 `check-spec-freshness.sh`·`check-exec-plan-status.sh` 정상 종료.
 
 ### 11.0 확정된 결정 (사용자 응답)
 

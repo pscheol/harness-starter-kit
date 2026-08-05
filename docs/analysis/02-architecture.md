@@ -15,7 +15,7 @@
 - 처리: 각 루트 하위 파일을 정렬 순회 → 경로를 `remap()`으로 매핑 → 존재+비force면 skip, 아니면 복사 후 토큰 치환, `*.sh`는 실행권한 부여.
 - 스택 순회는 `find "$root" -type f ! -path "*/arch/*"`로 변형 레이어를 건너뛴다(선택된 하나만 따로 복사).
 - 알 수 없는 스택·변형을 주면 각각 사용 가능한 목록을 출력하고 `exit 2`로 중단한다.
-- 모든 스택×변형 조합에서 설치 결과는 102개 파일(공통 85 + 스택 13 + 변형 4)로 동일하다.
+- 모든 스택×변형 조합에서 설치 결과는 104개 파일(공통 87 + 스택 13 + 변형 4)로 동일하다.
 
 ### 1.1 7개 설치 세그먼트
 
@@ -210,7 +210,8 @@ api/ configs/ deployments/ migrations/ test/ build/
 | `api-standards.md` | **스택별** | 응답 envelope · ErrorCode 매핑 · 예외 변환 · 요청 검증 · OpenAPI 문서화 |
 | `structure.md` | **변형별** | 레이아웃 · 패키지 컨벤션 · 통합 규약 · 구조 테스트 · 새 도메인/기능 착수 |
 | `tech.md` | **변형별** | 스택 표·버전 단일 소스(`libs.versions.toml` / `pyproject.toml` / `go.mod`) · 빌드·실행 명령 · 포트 규약 |
-| `code-comments.md` | 스택별 | 주석 표준 — 책임+Why+처리 흐름 · 언어별 예시(KDoc·Javadoc / docstring / Go doc) |
+| `code-comments.md` | 스택별 | 주석 표준 — 기본은 '없음'(Why·함정·외부 근거·억제 이유만) · 언어별 예시(KDoc·Javadoc / docstring / Go doc) |
+| `writing-style.md` | 공통 | 문체 원본 — 스펙·주석·커밋·리포트를 사람이 읽는 글로 |
 | `reliability.md` | 스택별 | timeout·retry·서킷브레이커 · 멱등성 · fail-closed · 성능 예산 · 언어별 동시성 함정 |
 | `quality-score.md` | **스택별** | 코드 품질 · Story/Epic DoD · 커버리지(도메인≥90%, 전체≥80%) · 검증 절차 |
 

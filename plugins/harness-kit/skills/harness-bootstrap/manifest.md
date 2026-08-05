@@ -7,7 +7,7 @@
 - **Kiro steering은 얇은 포인터** — `.kiro/steering/*` 는 규칙 본문을 담지 않고 `.agents/rules/*` 원본을 가리키기만 한다.
 - **단일 프로젝트** — 멀티 서비스/2계층 없음.
 - **스택 오버레이** — 하네스 골격(SDD·게이트 구조·에이전트 배선)은 한 벌, 언어 종속 규약(컨벤션·주석·보안·검증 명령)만 스택별로 갈아 끼운다.
-- **아키텍처 변형 레이어** — 아키텍처에 종속되는 파일은 4개뿐(`ARCHITECTURE.md`·`agents-rules/structure.md`·`agents-rules/tech.md`·`kiro-steering/structure.md`)이다. 이 4개만 `arch/<variant>/`에 두고 선택한 하나만 설치하므로 조합이 늘어도 설치 파일 수는 102개로 불변이다.
+- **아키텍처 변형 레이어** — 아키텍처에 종속되는 파일은 4개뿐(`ARCHITECTURE.md`·`agents-rules/structure.md`·`agents-rules/tech.md`·`kiro-steering/structure.md`)이다. 이 4개만 `arch/<variant>/`에 두고 선택한 하나만 설치하므로 조합이 늘어도 설치 파일 수는 104개로 불변이다.
 
 ## 스택 (STACK=…)
 
@@ -50,11 +50,11 @@
 
 ## 공통 vs 스택별 (무엇이 어디에 있나)
 
-| 영역 | `templates/common/` (85개) | `templates/stacks/<stack>/` (변형 무관 13개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
+| 영역 | `templates/common/` (87개) | `templates/stacks/<stack>/` (변형 무관 13개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
 |---|---|---|---|
 | 진입점 | `.pre-commit-config.yaml` | `AGENTS.md` · `CLAUDE.md` · `.gitignore` · `.github/workflows/verify.yml` | `root/ARCHITECTURE.md` |
-| 규칙 | `agent-harness.md` · `sdd-workflow.md` · `product.md` | `code-comments.md` · `api-standards.md` · `security.md` · `reliability.md` · `quality-score.md` · `guardrails.md` | `agents-rules/structure.md` · `agents-rules/tech.md` |
-| Kiro 포인터 | agent-harness · sdd-workflow · guardrails · security · api-standards · quality-score · reliability · product | `tech.md` · `code-comments.md` | `kiro-steering/structure.md` |
+| 규칙 | `agent-harness.md` · `sdd-workflow.md` · `product.md` · `writing-style.md` | `code-comments.md` · `api-standards.md` · `security.md` · `reliability.md` · `quality-score.md` · `guardrails.md` | `agents-rules/structure.md` · `agents-rules/tech.md` |
+| Kiro 포인터 | agent-harness · sdd-workflow · guardrails · security · api-standards · quality-score · reliability · product · writing-style | `tech.md` · `code-comments.md` | `kiro-steering/structure.md` |
 | 스크립트 | `check-exec-plan-status.sh` · `check-sdd-prerequisites.sh` · `check-spec-freshness.sh` · `new-feature.sh` | `verify.sh` (스택 검증 게이트 — 변형 단계는 존재 감지로 흡수) | — |
 | SDD 기록 | `agents-docs/` 전체 | — | — |
 | 에이전트 배선 | `claude/`·`codex/` 전체 | — | — |
@@ -62,7 +62,7 @@
 
 > 규칙 7종이 스택별인 이유: 주석 표준·보안 위험·신뢰성 패턴·DoD가 언어마다 실제로 다르기 때문이다(주석 규약, 동시성 함정, 커버리지 도구 등).
 > 반대로 **레이어 책임은 변형 무관 원칙으로 중립화**해 `guardrails.md`에 두고, 구체 경로·계약은 `structure.md`·`ARCHITECTURE.md`(변형별)로 위임한다.
-> 설치 합계 = 85 + 13 + 4 = **102개**(모든 스택·변형 동일).
+> 설치 합계 = 87 + 13 + 4 = **104개**(모든 스택·변형 동일).
 >
 > 슬래시 커맨드는 원본 1곳 + 4하네스 트리거. 본문 원본은 `.agents/rules/sdd-workflow.md` 하나이고,
 > `claude/commands/hx-*.md` 9종을 원본으로 나머지 3하네스(Cursor·Kiro·Codex) 트리를 **같은 본문으로 파생**시킨다.
@@ -101,7 +101,8 @@
 | `.agents/rules/api-standards.md` | envelope·ErrorCode 매핑·예외 변환·요청 검증·OpenAPI | ✅ | 인간 |
 | `.agents/rules/structure.md` | **변형별** 레이아웃·패키지 컨벤션·통합 규약·착수 워크플로·구조 테스트 | ✅ 변형별 | 인간 |
 | `.agents/rules/tech.md` | **변형별** 스택 표·버전 단일 소스·빌드/실행 명령·포트 규약 | ✅ 변형별 | 인간 |
-| `.agents/rules/code-comments.md` | 주석 표준(책임+Why+처리 흐름) · **언어별 예시**(KDoc/Javadoc · docstring · Go doc) | ✅ | 인간 |
+| `.agents/rules/code-comments.md` | 주석 표준(기본은 '없음' — Why·함정·외부 근거·억제 이유만) · **언어별 예시**(KDoc/Javadoc · docstring · Go doc) | ✅ | 인간 |
+| `.agents/rules/writing-style.md` | 문체 원본 — 스펙·주석·커밋·리포트를 사람이 읽는 글로 (작업 일지·공허한 문장 금지) | — | 인간 |
 | `.agents/rules/reliability.md` | timeout·retry·서킷·멱등·**언어별 동시성 함정** | ✅ | 인간 |
 | `.agents/rules/quality-score.md` | 코드품질·Story/Epic DoD·커버리지 도구 | ✅ | 인간 |
 | `.kiro/steering/*.md` | 위 원본을 가리키는 **얇은 포인터**(inclusion 유지) | 일부 ✅ | 인간 |

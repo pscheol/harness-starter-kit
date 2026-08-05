@@ -108,7 +108,7 @@ SKILL_DIR=~/.claude/plugins/.../skills/harness-bootstrap   # 또는 ~/.codex/plu
 bash "$SKILL_DIR/setup.sh" --dry-run --stack=python --arch=modular /path/to/project
 ```
 
-스택·변형 목록과 설치되는 파일 102개(변형과 무관하게 개수는 같다)는
+스택·변형 목록과 설치되는 파일 104개(변형과 무관하게 개수는 같다)는
 [스킬 README](plugins/harness-kit/skills/harness-bootstrap/README.md)와
 [manifest.md](plugins/harness-kit/skills/harness-bootstrap/manifest.md)에 정리해 두었다.
 
@@ -142,7 +142,7 @@ bootstrap이 끝나면 SDD 워크플로 9종이 `hx-` 접두사로 깔린다. �
 
 | 스킬 | 단계 | 하는 일 | 쓰기 | 만들어지는 것 |
 |---|---|---|---|---|
-| [`harness-bootstrap`](#harness-bootstrap--하네스-골격-설치) | 설치 | 리포에 하네스 골격 스캐폴딩 | O | 102개 파일 |
+| [`harness-bootstrap`](#harness-bootstrap--하네스-골격-설치) | 설치 | 리포에 하네스 골격 스캐폴딩 | O | 104개 파일 |
 | [`/hx-harness`](#hx-harness--하네스-컨텍스트-로드) | 상시 | 규칙·가드레일 컨텍스트 로드 | X | — |
 | [`/hx-specify`](#hx-specify--sdd-1단계-요구사항) | SDD 1 | 무엇을/왜 → requirements | O | `requirements/<feature>.md` |
 | [`/hx-clarify`](#hx-clarify--모호성-해소선택) | SDD 1.5 | 모호성 ≤5문답으로 해소 | O | requirements의 `## Clarifications` |

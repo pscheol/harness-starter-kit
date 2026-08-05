@@ -9,7 +9,7 @@ Claude Code · Codex · Kiro가 함께 작업한다. 규칙은 `.agents/rules/`,
 
 1. `AGENTS.md` — 이 목차(지금 파일)
 2. `ARCHITECTURE.md` — 이 프로젝트가 **선택한 아키텍처**의 원본(레이아웃·강제 계약·선택 기준·전환 가이드. 새 도메인/기능 작업 시 필수)
-3. `.agents/rules/` — 규칙 원본(가드레일·보안·API·구조·스택·제품·주석·하네스). 작업 유형에 맞는 파일을 직접 연다.
+3. `.agents/rules/` — 규칙 원본(가드레일·보안·API·구조·스택·제품·주석·문체·하네스). 작업 유형에 맞는 파일을 직접 연다.
 4. `.agents/docs/` — SDD 기록(product-<slug>-specs/{requirements,design,tasks}·decisions). 진입 `.agents/docs/README.md`.
 
 ## 에이전트 로딩 규칙 (3 에이전트, 원본 1곳)
@@ -36,7 +36,8 @@ Claude Code · Codex · Kiro가 함께 작업한다. 규칙은 `.agents/rules/`,
 | 기술 스택·빌드·실행 | `.agents/rules/tech.md` |
 | 제품·범위·우선순위 | `.agents/rules/product.md` |
 | 멀티 에이전트 하네스·SDD·exec-plan 게이트 | `.agents/rules/agent-harness.md` |
-| 주석 작성(책임+처리 흐름+Why·번역투 금지) | `.agents/rules/code-comments.md` |
+| 주석 작성(기본은 '없음' · Why·함정만) | `.agents/rules/code-comments.md` |
+| 문체(스펙·주석·커밋 — 사람이 읽는 글) | `.agents/rules/writing-style.md` |
 
 ## 핵심 가드레일 (요약 — 원본은 위 표)
 
@@ -45,7 +46,8 @@ Claude Code · Codex · Kiro가 함께 작업한다. 규칙은 `.agents/rules/`,
 - **권한은 두 곳에서**: 요청 경계(Spring Security) 1차 + 유스케이스 진입 2차. 판단 컨텍스트가 없으면 기본 거부. 권한 없는 접근 차단 테스트 필수.
 - Secret 평문 금지: 자격증명은 hash/암호화 저장 + 발급 시 1회만 원문 반환.
 - **응답은 공통 envelope**, 도메인은 프레임워크 무의존(Gradle 모듈 의존으로 컴파일 강제).
-- **주석은 책임+흐름+Why**: 함수는 책임 한 줄 + `처리 흐름:`(의도를 곁들인 단계) + 비자명한 Why. 번역투(라인 받아쓰기) 금지.
+- **주석은 기본이 '없음'**: Why·함정·외부 근거·억제 이유일 때만 쓴다. 단계별 흐름은 순서가 정합성인 함수에만 예외.
+- **글은 사람이 읽게**: 작업 일지(`대조 결과`·`~임을 확인했다`)와 공허한 문장을 쓰지 않는다(`writing-style.md`).
 - **기능 구현 시 docs 동시 갱신**: 인터페이스·flowchart·sequence·DB/쿼리·캐시·에러 명세를 같은 변경에 포함한다.
 
 ## 작업 방식 (SDD)

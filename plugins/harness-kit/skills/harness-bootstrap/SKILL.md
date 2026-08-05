@@ -13,7 +13,7 @@ description: 백엔드 단일 프로젝트에 하네스 엔지니어링 기본 �
 - **규칙은 공통 원본 한 곳** — 가드레일·보안·API 표준·기술 규약을 `.agents/rules/` 에 두고 Claude Code · Codex · Kiro 에이전트가 공유한다. 특정 에이전트가 소유하지 않는다.
 - **Kiro steering = 얇은 포인터** — `.kiro/steering/*` 는 규칙 본문 대신 `.agents/rules/*` 원본을 가리킨다.
 - **스택 오버레이** — 스택 무관 골격(`templates/common/`)은 한 벌만 두고, 언어별 규약(`templates/stacks/<stack>/`)을 그 위에 덮는다. 코드 컨벤션·주석 표준·검증 게이트는 스택마다 다르게 깔린다.
-- **아키텍처 변형(ARCH)** — 한 스택 안에서도 레이아웃은 하나가 아니다. 아키텍처에 종속되는 파일은 4개뿐(`ARCHITECTURE.md`·`.agents/rules/structure.md`·`.agents/rules/tech.md`·`.kiro/steering/structure.md`)이라, 이 4개만 `templates/stacks/<stack>/arch/<variant>/`에 두고 선택한 하나만 설치한다. 설치 파일 수는 변형과 무관하게 102개로 같다.
+- **아키텍처 변형(ARCH)** — 한 스택 안에서도 레이아웃은 하나가 아니다. 아키텍처에 종속되는 파일은 4개뿐(`ARCHITECTURE.md`·`.agents/rules/structure.md`·`.agents/rules/tech.md`·`.kiro/steering/structure.md`)이라, 이 4개만 `templates/stacks/<stack>/arch/<variant>/`에 두고 선택한 하나만 설치한다. 설치 파일 수는 변형과 무관하게 104개로 같다.
 - **슬래시 커맨드는 4개 하네스 공통** — SDD 워크플로 9종을 `hx-` 접두사로 깔되(`/hx-specify` → `/hx-plan` → `/hx-tasks` → `/hx-implement`), 본문 원본은 `.agents/rules/sdd-workflow.md` 한 곳이고 각 하네스 파일은 그것을 가리키는 얇은 트리거다. Claude Code(`.claude/commands/`) · Cursor(`.cursor/commands/`) · Kiro(IDE `.kiro/steering/` + CLI `.kiro/skills/`) · Codex(`.agents/skills/`). 접두사는 `/plan` 같은 흔한 이름이 타 플러그인과 충돌하는 것을 막는다.
 
 ## 지원 스택
