@@ -11,6 +11,7 @@
 
 > 가이드: design은 requirements를 "어떻게" 구현할지 확정한다. 구현자가 추측 없이
 > 코딩할 수 있을 만큼 인터페이스·데이터·오류·테스트를 구체화한다.
+> 선택한 방식과 **버린 대안의 이유**를 함께 적는다. 문체는 `.agents/rules/writing-style.md`.
 > **선행 조건**: requirements에 미해결 `[NEEDS CLARIFICATION]`이 남아 있으면 설계를 시작하지 말고 `/hx-clarify`로 되돌린다.
 
 ## 1. Overview

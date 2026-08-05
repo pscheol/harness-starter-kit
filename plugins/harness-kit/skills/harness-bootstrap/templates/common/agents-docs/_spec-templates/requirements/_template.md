@@ -13,6 +13,7 @@
 
 > 작성 가이드: requirements는 "무엇을/왜"만 다룬다. "어떻게"(기술 선택·구조)는 design에서.
 > 각 수용 기준은 테스트 가능해야 하며 EARS 형식을 따른다.
+> 문체는 `.agents/rules/writing-style.md` — 측정 불가한 형용사·공허한 문장을 쓰지 않는다.
 
 > [NEEDS CLARIFICATION] 규약 (필수): 미확정 항목은 추측·창작 금지. 대신 해당 위치에
 > `[NEEDS CLARIFICATION: 구체 질문]` 마커를 남긴다. **최대 3개**, 우선순위 `scope > 보안/프라이버시 > UX > 기술`.

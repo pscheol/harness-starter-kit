@@ -6,7 +6,7 @@
 하네스는 에이전트(Kiro · Claude Code · Codex)가 안전하고 예측 가능하게 일하도록 리포에 얹어두는 제어 구조다.
 
 여기 있는 규칙은 스택을 가리지 않는다. 빌드 명령이나 디렉터리 레이아웃, 언어별 주석처럼
-스택에 묶이는 규약은 `tech.md`·`structure.md`·`code-comments.md`가 맡는다.
+스택에 묶이는 규약은 `tech.md`·`structure.md`·`code-comments.md`가 맡고, 문체는 `writing-style.md`가 맡는다.
 
 이 리포는 하네스를 하나만 둔다. 서비스마다 하네스를 따로 두거나 루트와 서비스로 2계층을 나누지 않는다.
 모노레포가 커지면 그때 따로 설계하면 되고, 지금 필요하지 않은 구조를 미리 만들지 않는다.
@@ -52,7 +52,8 @@
 | [`structure.md`](./structure.md) | 헥사고날 레이아웃 · 패키지/디렉터리 컨벤션 · 새 도메인 착수 |
 | [`tech.md`](./tech.md) | 스택 예시(버전은 프로젝트 확정) · 빌드/실행 명령 · 의존성 단일 소스 · 포트 규약 |
 | [`product.md`](./product.md) | 제품 정체성·목표·범위·원칙·우선순위·KPI(채우기 템플릿) |
-| [`code-comments.md`](./code-comments.md) | 주석 표준(책임+Why+처리 흐름) · 프로젝트 언어별 예시 |
+| [`code-comments.md`](./code-comments.md) | 주석 표준(기본은 '없음' — Why·함정만) · 프로젝트 언어별 예시 |
+| [`writing-style.md`](./writing-style.md) | 문체 — 스펙·주석·커밋·리포트를 사람이 읽게 쓰는 규칙 |
 | [`reliability.md`](./reliability.md) | timeout·retry·서킷브레이커 · 멱등성 · fail-closed · 성능 예산 |
 | [`quality-score.md`](./quality-score.md) | 코드 품질 · Story/Epic DoD · 검증 절차 |
 

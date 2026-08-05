@@ -22,6 +22,7 @@ Codex, Kiro(`.kiro/steering/sdd-workflow.md`)는 모두 이 원본을 참조하�
 ## 공통 원칙 (모든 단계)
 
 - 추측 금지 (`.agents/rules/guardrails.md`): 확인 후 단정, 미확정은 `[NEEDS CLARIFICATION: 질문]` 마커로 남긴다(지어내지 않는다).
+- **문체는 `.agents/rules/writing-style.md`**: 모든 단계 산출물에 적용된다. 작업 과정 서술(`대조 결과`·`~임을 확인했다`)과 공허한 문장을 쓰지 않고, 결과와 사실만 남긴다.
 - **경계에서 파싱**: 외부/미확정 값은 추측한 형태로 진행하지 않는다.
 - **무엇/왜 vs 어떻게 분리**: requirements는 무엇을·왜(스택·API·코드 금지), design부터 어떻게.
 - 검증은 `scripts/verify.sh` 한 곳. 완료는 사용자 승인 게이트(active→check→**confirm**→completed).
