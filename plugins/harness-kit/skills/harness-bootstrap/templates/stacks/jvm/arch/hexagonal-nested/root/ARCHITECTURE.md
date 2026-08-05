@@ -1,4 +1,4 @@
-<!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · {{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}} 치환 후 사용. 스택: Kotlin/Java + Spring Boot(JVM) · 아키텍처: hexagonal -->
+<!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · {{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}} 치환 후 사용. 스택: Kotlin/Java + Spring Boot(JVM) · 아키텍처: hexagonal-nested -->
 
 # ARCHITECTURE — {{PROJECT_NAME}}
 
@@ -51,14 +51,14 @@ Kotlin/Java · Spring Boot(JVM) · Gradle(또는 Maven, wrapper) · Spring Data/
 
 한 바운디드 컨텍스트(`<ctx>`)는 `primary` · `application` · `domain` · `infra` 네 형제 모듈로 구성되고, 그 아래 `common`·`core` 공유 토대가 깔린다. 의존 방향을 Gradle 모듈 의존으로 강제(위반 시 컴파일 불가).
 
-이 변형은 **컨텍스트 최상위(flat)** 레이아웃이다. 컨텍스트 자체가 최상위 모듈 `{{PROJECT_SLUG}}-<ctx>`가 되고 4레이어가 그 자식으로 붙는다(예: `:{{PROJECT_SLUG}}-dispatch:infra`). 컨테이너 모듈 아래로 한 단계 더 묶는 `:{{PROJECT_SLUG}}-domain:<ctx>:infra` 형태를 원하면 `ARCH=hexagonal-nested` 변형을 쓴다 — 레이어 규칙과 의존 방향은 동일하고 모듈 경로 표기만 다르다.
+이 변형은 **도메인 컨테이너 아래 중첩(nested)** 레이아웃이다. 컨텍스트가 `{{PROJECT_SLUG}}-domain` 컨테이너 모듈 아래에 놓이고 4레이어가 그 자식으로 붙는다(예: `:{{PROJECT_SLUG}}-domain:dispatch:infra`). 컨텍스트를 최상위 모듈로 올린 `:{{PROJECT_SLUG}}-dispatch:infra` 형태를 원하면 기본 `ARCH=hexagonal` 변형을 쓴다 — 레이어 규칙과 의존 방향은 동일하고 모듈 경로 표기만 다르다.
 
 ```
         ┌──────────────────────────────────────────────┐
         │ :bootstrap  @SpringBootApplication (조립·실행) │
         └───────────────────────┬──────────────────────┘
                                 │ 조립
- ┌──────────── :{{PROJECT_SLUG}}-<ctx> ──────────────┐
+ ┌─────────── :{{PROJECT_SLUG}}-domain:<ctx> ───────────┐
  │  (예: {{DOMAIN_EXAMPLE}} · auth · ...)             │
  │  ┌──────────┐   ┌────────────────┐   ┌──────────┐ │
  │  │ primary  │──▶│  application    │◀──│  infra   │ │
@@ -83,10 +83,10 @@ Kotlin/Java · Spring Boot(JVM) · Gradle(또는 Maven, wrapper) · Spring Data/
 | 모듈 | 레이어 | 의존 가능 |
 |---|---|---|
 | `:bootstrap` | Bootstrap(@SpringBootApplication) | `common` + 각 도메인의 `primary`, `infra` |
-| `:{{PROJECT_SLUG}}-<ctx>:primary` | Inbound Adapter(REST) | `application`, `common` |
-| `:{{PROJECT_SLUG}}-<ctx>:infra` | Outbound Adapter(JPA 등) | `application`, `common`, `core` |
-| `:{{PROJECT_SLUG}}-<ctx>:application` | Use Case + Port | `domain`, `core` |
-| `:{{PROJECT_SLUG}}-<ctx>:domain` | Domain Model | `core` |
+| `:{{PROJECT_SLUG}}-domain:<ctx>:primary` | Inbound Adapter(REST) | `application`, `common` |
+| `:{{PROJECT_SLUG}}-domain:<ctx>:infra` | Outbound Adapter(JPA 등) | `application`, `common`, `core` |
+| `:{{PROJECT_SLUG}}-domain:<ctx>:application` | Use Case + Port | `domain`, `core` |
+| `:{{PROJECT_SLUG}}-domain:<ctx>:domain` | Domain Model | `core` |
 | `:common` | 공유 커널(web·envelope·error·filter) | `core` |
 | `:core` | Primitives(DomainException) | — (프레임워크 0) |
 

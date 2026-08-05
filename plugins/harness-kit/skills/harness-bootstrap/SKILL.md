@@ -1,6 +1,6 @@
 ---
 name: harness-bootstrap
-description: 백엔드 단일 프로젝트에 하네스 엔지니어링 기본 골격을 스캐폴딩한다. 스택은 jvm(Kotlin/Java+Spring) · python(FastAPI/ASGI) · go(표준 Go 레이아웃) 중에서 고르고, 아키텍처 변형(ARCH)은 jvm 5종(hexagonal·layered·modulith·feature·multimodule) · python 5종(hexagonal·layered·modular·django·ai-service) · go 4종(hexagonal·layered·feature·flat) 중에서 고른다. 진입점=목차(AGENTS.md/CLAUDE.md), 공통 규칙 원본(.agents/rules — Claude Code·Codex·Kiro 3개 에이전트 공유), Kiro 얇은 포인터(.kiro/steering), SDD 기록 시스템(.agents/docs — 템플릿 원본 _spec-templates + 제품 단위 product-<slug>-specs/{requirements,design,tasks} + decisions), 단일 검증 게이트(scripts/verify.sh)와 얇은 트리거(hook)를 한 번에 깐다. "하네스 초기 설정", "AGENTS.md 만들기", "에이전트 규칙 세팅", "harness bootstrap/scaffold", "steering 초기화", "exec-plan/SDD 구조 만들기" 요청 시 사용.
+description: 백엔드 단일 프로젝트에 하네스 엔지니어링 기본 골격을 스캐폴딩한다. 스택은 jvm(Kotlin/Java+Spring) · python(FastAPI/ASGI) · go(표준 Go 레이아웃) 중에서 고르고, 아키텍처 변형(ARCH)은 jvm 6종(hexagonal·hexagonal-nested·layered·modulith·feature·multimodule) · python 5종(hexagonal·layered·modular·django·ai-service) · go 4종(hexagonal·layered·feature·flat) 중에서 고른다. 진입점=목차(AGENTS.md/CLAUDE.md), 공통 규칙 원본(.agents/rules — Claude Code·Codex·Kiro 3개 에이전트 공유), Kiro 얇은 포인터(.kiro/steering), SDD 기록 시스템(.agents/docs — 템플릿 원본 _spec-templates + 제품 단위 product-<slug>-specs/{requirements,design,tasks} + decisions), 단일 검증 게이트(scripts/verify.sh)와 얇은 트리거(hook)를 한 번에 깐다. "하네스 초기 설정", "AGENTS.md 만들기", "에이전트 규칙 세팅", "harness bootstrap/scaffold", "steering 초기화", "exec-plan/SDD 구조 만들기" 요청 시 사용.
 ---
 
 # harness-bootstrap — 하네스 엔지니어링 초기 설정 스킬
@@ -30,7 +30,8 @@ description: 백엔드 단일 프로젝트에 하네스 엔지니어링 기본 �
 
 | STACK | ARCH | 언제 고르나 | 강제 규칙 |
 |---|---|---|---|
-| `jvm` | `hexagonal` | 도메인 규칙이 복잡하고 저장소·외부 시스템 교체 가능성이 있다(**멀티모듈** — 도메인 축으로 자름) | Gradle 모듈 그래프(컴파일) + Konsist |
+| `jvm` | `hexagonal` | 도메인 규칙이 복잡하고 저장소·외부 시스템 교체 가능성이 있다(**멀티모듈** — 도메인 축으로 자름). 컨텍스트가 최상위 모듈: `:<slug>-<ctx>:infra` | Gradle 모듈 그래프(컴파일) + Konsist |
+| `jvm` | `hexagonal-nested` | 위와 같되 컨텍스트가 많아 리포 루트를 정돈하고 싶다. 도메인 컨테이너 아래 중첩: `:<slug>-domain:<ctx>:infra` | 동일(레이어 규칙·의존 방향은 `hexagonal`과 같다) |
 | `jvm` | `layered` | 도메인 경계가 하나, CRUD 비중이 높다(단일 모듈) | ArchUnit `layeredArchitecture()` + 건너뛰기 금지 |
 | `jvm` | `modulith` | 도메인이 둘 이상이고 나중에 떼어낼 가능성이 있다(단일 모듈) | Spring Modulith `ApplicationModules.verify()`(순환·internal 접근·허용 의존) |
 | `jvm` | `feature` | 기능 영역이 여럿, 사람마다 다른 영역을 만진다(단일 모듈) | **ArchUnit 슬라이스**(`beFreeOfCycles`·`notDependOnEachOther`) |
@@ -82,7 +83,7 @@ description: 백엔드 단일 프로젝트에 하네스 엔지니어링 기본 �
    - 스택에 없는 변형을 주면 사용 가능한 목록을 출력하고 `exit 2`로 중단한다.
    - 기본 덮어쓰지 않음(skip). 전체 재생성 `--force`, 미리보기 `--dry-run`.
 5. **스택·변형 설정 마무리** — setup.sh가 출력하는 "다음 단계"를 따른다:
-   - `jvm`: `verify.sh`의 `GRADLE_DIR`, `tech.md`의 기준 버전. `layered`·`feature`·`multimodule`은 ArchUnit, `modulith`는 Spring Modulith, `hexagonal`은 Konsist 의존성과 구조/모듈 검증 테스트를 함께 넣어야 강제가 작동한다. 멀티모듈 변형(`hexagonal`·`multimodule`)은 `settings.gradle` 모듈 등록 + Spring Boot 플러그인을 실행 모듈에만 적용(나머지는 `bootJar`가 안 생긴다)까지 해야 한다. `multimodule`은 추가로 분할 축·네이밍 결정과 구조 테스트 자리표시자 채우기가 첫 작업이다(안 채우면 아무것도 검사하지 않는다).
+   - `jvm`: `verify.sh`의 `GRADLE_DIR`, `tech.md`의 기준 버전. `layered`·`feature`·`multimodule`은 ArchUnit, `modulith`는 Spring Modulith, `hexagonal`·`hexagonal-nested`는 Konsist 의존성과 구조/모듈 검증 테스트를 함께 넣어야 강제가 작동한다. 멀티모듈 변형(`hexagonal`·`hexagonal-nested`·`multimodule`)은 `settings.gradle` 모듈 등록 + Spring Boot 플러그인을 실행 모듈에만 적용(나머지는 `bootJar`가 안 생긴다)까지 해야 한다. `multimodule`은 추가로 분할 축·네이밍 결정과 구조 테스트 자리표시자 채우기가 첫 작업이다(안 채우면 아무것도 검사하지 않는다).
    - `python`: `pyproject.toml`의 `[tool.ruff]`·`[tool.mypy]`·`[tool.pytest]`·`[tool.importlinter]` 계약(골격은 `ARCHITECTURE.md` — 변형마다 계약이 다르다).
    - `go`: `go mod init`, `.golangci.yml`의 depguard 규칙(골격은 `ARCHITECTURE.md` — 변형마다 규칙이 다르다). `feature`·`flat`은 구조 테스트도 함께 둔다.
 6. **채우기** — `.agents/rules/product.md`·`ARCHITECTURE.md`·`.agents/rules/structure.md` 의 `{{플레이스홀더}}`.
