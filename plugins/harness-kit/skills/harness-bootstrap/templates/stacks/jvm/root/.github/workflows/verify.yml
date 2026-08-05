@@ -32,5 +32,10 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       # 검증 게이트 한 곳만 호출(exec-plan 일관성 + ./gradlew check + 선택 DB 격리 테스트).
-      - name: Run verify gate
+      # full 레벨 = 전체 게이트. 에이전트 Stop hook 은 턴마다 돌기 때문에 fast 레벨만 쓴다.
+      - name: Run verify gate (full)
+        env:
+          HARNESS_VERIFY_LEVEL: full
+          # 일회성 러너라 데몬을 남길 이유가 없다(로컬 기본값은 데몬 사용 — 콜드 스타트 회피).
+          GRADLE_ARGS: "--console=plain --no-daemon"
         run: bash scripts/verify.sh

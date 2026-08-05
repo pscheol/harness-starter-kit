@@ -3,17 +3,25 @@
 #
 # 검증 스크립트 (단일 강제 지점).
 # hook / CI / pre-commit 이 모두 이 스크립트 하나만 호출한다. 로직 복제 금지.
+#
+# 검증 레벨 (HARNESS_VERIFY_LEVEL, 기본 full):
+#   fast — 구조 점검 + 포맷 검사(단계 1~2)까지. 보통 1초 미만.
+#          Stop hook(에이전트가 턴을 마칠 때마다 실행)이 쓰는 레벨.
+#          컴파일이 필요한 단계(build·vet·lint·test)는 캐시가 비면 수 분이 걸려 제외한다.
+#   full — 전체 단계. pre-commit(pre-push)·CI 가 쓰는 레벨.
+#
 # 단일 Go 프로젝트 게이트:
-#   1) exec-plan 위치↔상태 일관성 (스택 무관, 항상)
-#   2) gofumpt -l            (포맷 드리프트 — 출력이 있으면 실패)
-#   3) go build ./...        (컴파일)
-#   4) go vet ./...          (표준 정적 분석)
-#   5) golangci-lint run     (린트 + depguard 레이어 강제)
-#   6) go test -race -cover  (테스트 + 경합 검출 + 커버리지 임계)
-#   7) govulncheck ./...     (선택 — 설치돼 있으면 실행)
+#   1) exec-plan 위치↔상태 일관성 (스택 무관, 항상)             — fast
+#   2) gofumpt -l            (포맷 드리프트 — 출력이 있으면 실패) — fast
+#   3) go build ./...        (컴파일)                          — full
+#   4) go vet ./...          (표준 정적 분석)                   — full
+#   5) golangci-lint run     (린트 + depguard 레이어 강제)       — full
+#   6) go test -race -cover  (테스트 + 경합 검출 + 커버리지 임계) — full
+#   7) govulncheck ./...     (선택 — 설치돼 있으면 실행)          — full
 # 여러 단계 실패를 한 번에 보고하려고 fail 로 누적한다.
 set -uo pipefail
 
+LEVEL="${HARNESS_VERIFY_LEVEL:-full}"
 fail=0
 
 # 커버리지 임계(%). 프로젝트 정책에 맞게 조정한다(quality-score.md 기준: 전체 80).
@@ -35,6 +43,16 @@ if [ -n "$FMT_OUT" ]; then
   echo "✖ 포맷 드리프트:"; echo "$FMT_OUT"
   echo "  → 'gofumpt -w .' (또는 'gofmt -w .') 로 정리"
   fail=1
+fi
+
+# ── fast 종료 지점 ───────────────────────────────────────────────────────────
+# 이후 단계는 모두 컴파일을 동반한다(build·vet·lint·test). 빌드 캐시가 비었거나
+# 의존성을 새로 받아야 하면 수 분이 걸린다. Stop hook 은 턴마다 실행되므로 여기서 끊고,
+# 전체 게이트는 pre-push 와 CI 가 책임진다.
+if [ "$LEVEL" = "fast" ]; then
+  if [ "$fail" -ne 0 ]; then echo "검증 실패(fast)"; exit 1; fi
+  echo "검증 통과(fast — 빌드·테스트는 pre-push·CI 에서 실행)"
+  exit 0
 fi
 
 # ── 3) 컴파일 ────────────────────────────────────────────────────────────────

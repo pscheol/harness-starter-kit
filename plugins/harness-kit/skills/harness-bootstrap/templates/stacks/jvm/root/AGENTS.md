@@ -58,7 +58,8 @@ Claude Code · Codex · Kiro가 함께 작업한다. 규칙은 `.agents/rules/`,
 | design | `.agents/docs/product-<slug>-specs/design/<feature>.md` | 어떻게 |
 | tasks | `.agents/docs/product-<slug>-specs/tasks/active/<feature>.md` | 실행 단계 |
 
-- 복잡 작업은 exec-plan에 계획을 남기고, 변경은 `./gradlew check`(= `scripts/verify.sh`)로 검증한다.
+- 복잡 작업은 exec-plan에 계획을 남기고, 변경은 `bash scripts/verify.sh`(= exec-plan 점검 + `./gradlew check`)로 검증한다.
+- 검증 레벨: Stop hook은 `fast`(구조 점검만, 수 초)로 돈다. 빌드·테스트를 포함한 `full`은 커밋·푸시 전에 직접 `bash scripts/verify.sh`를 실행해 통과시킨다 — **hook 통과는 full 통과가 아니다**(`.agents/rules/agent-harness.md` 참조).
 - API 변경은 `.agents/docs/openapi/`를 함께 갱신한다.
 - **exec-plan 완료 게이트**: DoD/검증 충족 시 `check/`로 옮기고(상태 `check`) 사용자 검증 후에만 `completed/`로 이동한다(임의 이동 금지).
 - 기술 부채는 `.agents/docs/tech-debt-tracker.md`에 등록한다.

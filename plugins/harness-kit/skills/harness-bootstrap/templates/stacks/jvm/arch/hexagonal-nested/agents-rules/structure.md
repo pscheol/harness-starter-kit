@@ -1,21 +1,21 @@
-<!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · Kotlin/Java + Spring · 아키텍처: hexagonal · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
+<!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · Kotlin/Java + Spring · 아키텍처: hexagonal-nested · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # 구조 · 멀티모듈 헥사고날 — {{PROJECT_NAME}}
 
 이 프로젝트는 **클린 아키텍처(헥사고날) + DDD**를 빌드 도구(Gradle 기본, Maven 선택)의 모듈 의존 그래프로 컴파일 레벨에서 강제한다.
 의존 방향 위반은 리뷰가 아니라 **컴파일 실패**로 막힌다(기계적 강제 우선). 아키텍처 상세 원본은 `ARCHITECTURE.md`.
 
-## 모듈 레이아웃 (단일 프로젝트) — 컨텍스트 최상위(flat)
+## 모듈 레이아웃 (단일 프로젝트) — 도메인 컨테이너 아래 중첩(nested)
 
 4개 공용 레이어 + **바운디드 컨텍스트(도메인)당 4모듈**.
-컨텍스트가 **최상위 모듈**(`{{PROJECT_SLUG}}-<ctx>`)이고 그 아래에 헥사고날 4레이어가 붙는다.
+컨텍스트는 `{{PROJECT_SLUG}}-domain` 컨테이너 모듈 **아래**에 놓이고, 그 아래에 헥사고날 4레이어가 붙는다.
 
 ```
 :{{PROJECT_SLUG}}-bootstrap                    @SpringBootApplication. common + 각 도메인 primary·infra 조립·실행
-:{{PROJECT_SLUG}}-<ctx>:primary                inbound(REST) 어댑터        → application, common
-:{{PROJECT_SLUG}}-<ctx>:infra                  outbound(JPA/쿼리 도구) 어댑터 → application, common, core
-:{{PROJECT_SLUG}}-<ctx>:application            유스케이스 + port(in/out)    → domain, core
-:{{PROJECT_SLUG}}-<ctx>:domain                 순수 Kotlin(Spring/JPA 무의존) → core
+:{{PROJECT_SLUG}}-domain:<ctx>:primary         inbound(REST) 어댑터        → application, common
+:{{PROJECT_SLUG}}-domain:<ctx>:infra           outbound(JPA/쿼리 도구) 어댑터 → application, common, core
+:{{PROJECT_SLUG}}-domain:<ctx>:application      유스케이스 + port(in/out)    → domain, core
+:{{PROJECT_SLUG}}-domain:<ctx>:domain          순수 Kotlin(Spring/JPA 무의존) → core
 :{{PROJECT_SLUG}}-common                       공유 커널(envelope·ErrorCode·GlobalExceptionHandler·RequestIdFilter) → core
 :{{PROJECT_SLUG}}-core                         순수 Kotlin primitives(DomainException 등). 프레임워크 0
 :{{PROJECT_SLUG}}-query                        (선택) 횡단 인프라 테이블용 쿼리 도구 DSL(audit/outbox 등)만
@@ -25,30 +25,31 @@
 컨텍스트를 `dispatch`·`reception`으로 잡으면 실제 경로는 이렇게 읽힌다.
 
 ```
-settings.gradle.kts 모듈 경로              디렉터리
-  :{{PROJECT_SLUG}}-dispatch:domain          {{PROJECT_SLUG}}-dispatch/domain/
-  :{{PROJECT_SLUG}}-dispatch:application     {{PROJECT_SLUG}}-dispatch/application/
-  :{{PROJECT_SLUG}}-dispatch:primary         {{PROJECT_SLUG}}-dispatch/primary/
-  :{{PROJECT_SLUG}}-dispatch:infra           {{PROJECT_SLUG}}-dispatch/infra/
-  :{{PROJECT_SLUG}}-reception:domain         {{PROJECT_SLUG}}-reception/domain/
+settings.gradle.kts 모듈 경로                    디렉터리
+  :{{PROJECT_SLUG}}-domain:dispatch:domain         {{PROJECT_SLUG}}-domain/dispatch/domain/
+  :{{PROJECT_SLUG}}-domain:dispatch:application    {{PROJECT_SLUG}}-domain/dispatch/application/
+  :{{PROJECT_SLUG}}-domain:dispatch:primary        {{PROJECT_SLUG}}-domain/dispatch/primary/
+  :{{PROJECT_SLUG}}-domain:dispatch:infra          {{PROJECT_SLUG}}-domain/dispatch/infra/
+  :{{PROJECT_SLUG}}-domain:reception:domain        {{PROJECT_SLUG}}-domain/reception/domain/
   …
 ```
 
 Gradle 기본 매핑(모듈 경로 = 디렉터리 경로)을 그대로 쓰므로 `projectDir` 재지정이 필요 없다.
+컨텍스트가 몇 개로 늘어도 리포 루트에는 `{{PROJECT_SLUG}}-domain/` 하나만 보인다.
 
-> **대안 레이아웃**: 컨텍스트를 `{{PROJECT_SLUG}}-domain` 컨테이너 아래로 한 단계 더 묶는 방식
-> (`:{{PROJECT_SLUG}}-domain:<ctx>:infra`)은 `ARCH=hexagonal-nested` 변형이다.
-> 컨텍스트가 많아 리포 루트가 번잡해질 때 유리하다. 레이어 규칙·의존 방향은 두 변형이 같다.
+> **대안 레이아웃**: 컨텍스트를 최상위 모듈로 올려 `:{{PROJECT_SLUG}}-<ctx>:infra` 로 쓰는 방식은
+> 기본 `ARCH=hexagonal` 변형이다. 경로가 한 단계 짧고 모듈명이 곧 컨텍스트를 가리킨다.
+> 레이어 규칙·의존 방향은 두 변형이 같다.
 
 ### 레이어 ↔ 의존 가능 (컴파일 강제)
 
 | 모듈 | 레이어 | 의존 가능 |
 |---|---|---|
 | `:{{PROJECT_SLUG}}-bootstrap` | Bootstrap | `common` + 각 도메인의 `primary`·`infra` |
-| `:{{PROJECT_SLUG}}-<ctx>:primary` | Inbound Adapter | `application`, `common` |
-| `:{{PROJECT_SLUG}}-<ctx>:infra` | Outbound Adapter | `application`, `common`, `core` |
-| `:{{PROJECT_SLUG}}-<ctx>:application` | Use Case + Port | `domain`, `core` |
-| `:{{PROJECT_SLUG}}-<ctx>:domain` | Domain Model | `core` |
+| `<ctx>:primary` | Inbound Adapter | `application`, `common` |
+| `<ctx>:infra` | Outbound Adapter | `application`, `common`, `core` |
+| `<ctx>:application` | Use Case + Port | `domain`, `core` |
+| `<ctx>:domain` | Domain Model | `core` |
 | `:{{PROJECT_SLUG}}-common` | 공유 커널(web) | `core` |
 | `:{{PROJECT_SLUG}}-core` | Primitives | — (프레임워크 0) |
 

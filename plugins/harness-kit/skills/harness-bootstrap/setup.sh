@@ -17,7 +17,10 @@
 #   --dry-run                실제로 쓰지 않고 계획만 출력
 #
 # 스택별 아키텍처 변형(ARCH):
-#   jvm    = hexagonal | layered | modulith | feature | multimodule
+#   jvm    = hexagonal | hexagonal-nested | layered | modulith | feature | multimodule
+#            hexagonal(기본) = 컨텍스트가 최상위 모듈    :<slug>-<ctx>:infra
+#            hexagonal-nested = 도메인 컨테이너 아래 중첩 :<slug>-domain:<ctx>:infra
+#            (레이어 규칙·의존 방향은 동일. 모듈 경로 표기와 디렉터리 배치만 다르다)
 #   python = hexagonal | layered | modular | django | ai-service
 #   go     = hexagonal | layered | feature | flat
 #   변형이 바꾸는 파일은 4개뿐이다 — ARCHITECTURE.md · .agents/rules/structure.md ·
@@ -208,8 +211,18 @@ case "$STACK" in
     echo "  2) .agents/rules/tech.md 의 기준 버전(Kotlin/Spring Boot/JDK)을 프로젝트에 맞게 확정"
     case "$ARCH" in
       hexagonal)
-        echo "  3) settings.gradle.kts 에 멀티모듈 등록: core·common + domain/<ctx>/{domain,application,primary,infra} + bootstrap"
+        echo "  3) settings.gradle.kts 에 멀티모듈 등록(컨텍스트 최상위): core·common + bootstrap"
+        echo "     + 컨텍스트마다 :$PROJECT_SLUG-<ctx>:{domain,application,primary,infra}"
+        echo "     디렉터리는 $PROJECT_SLUG-<ctx>/{domain,application,primary,infra}/ (Gradle 기본 매핑)"
         echo "     의존 방향은 모듈 그래프가 컴파일 레벨에서 강제한다(ARCHITECTURE.md §3.1)"
+        echo "     컨테이너 아래로 한 단계 더 묶고 싶으면 ARCH=hexagonal-nested 로 다시 설치"
+        ;;
+      hexagonal-nested)
+        echo "  3) settings.gradle.kts 에 멀티모듈 등록(도메인 컨테이너 아래 중첩): core·common + bootstrap"
+        echo "     + 컨텍스트마다 :$PROJECT_SLUG-domain:<ctx>:{domain,application,primary,infra}"
+        echo "     디렉터리는 $PROJECT_SLUG-domain/<ctx>/{domain,application,primary,infra}/ (Gradle 기본 매핑)"
+        echo "     의존 방향은 모듈 그래프가 컴파일 레벨에서 강제한다(ARCHITECTURE.md §3.1)"
+        echo "     컨텍스트를 최상위 모듈로 올리고 싶으면 ARCH=hexagonal 로 다시 설치"
         ;;
       layered)
         echo "  3) 단일 모듈 패키지 생성: config·common + controller/{docs,dto}·service·repository·entity"
@@ -290,6 +303,9 @@ echo "    SDD 는 제품 폴더를 미리 만들지 않는다. 첫 기능에서 
 echo "      scripts/new-feature.sh <product-slug> <feature>   (또는 /hx-specify)"
 echo "      → .agents/docs/product-<slug>-specs/{requirements,design,tasks} 생성 + specs-index.md 등록"
 echo "    템플릿 원본은 .agents/docs/_spec-templates/ 한 곳이다(제품 폴더에 복사되지 않는다)."
+echo "  · 검증 레벨: 에이전트 Stop hook 은 fast(구조 점검 + 가벼운 정적 검사, 수 초)만 돈다."
+echo "    빌드·테스트를 포함한 full 은 커밋·푸시 전에 직접 실행한다:  bash scripts/verify.sh"
+echo "    (hook 이 full 을 돌면 턴마다 빌드가 겹쳐 lock 경합으로 멈춘다. 그래서 나눠 둔 것이다)"
 echo "  · 미치환 토큰 확인:  grep -rn '{{' . --include='*.md' --include='*.sh' --include='*.yml' | grep -v '_spec-templates/'"
 echo "    (_spec-templates/ 의 {{PRODUCT_SLUG}}·{{FEATURE_NAME}}·{{EPIC_ID}} 는 의도적으로 남긴 토큰이다)"
 echo "  · 이 킷은 harness-kit 플러그인의 harness-bootstrap 스킬로도 쓸 수 있다"

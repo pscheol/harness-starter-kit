@@ -41,5 +41,8 @@ jobs:
           args: --version   # 설치만 하고 실행은 verify.sh 가 담당한다(게이트 1곳 원칙)
 
       # 검증 게이트 한 곳만 호출(exec-plan 일관성 + fmt + build + vet + lint + test -race + 커버리지).
-      - name: Run verify gate
+      # full 레벨 = 전체 게이트. 에이전트 Stop hook 은 턴마다 돌기 때문에 fast 레벨만 쓴다.
+      - name: Run verify gate (full)
+        env:
+          HARNESS_VERIFY_LEVEL: full
         run: bash scripts/verify.sh

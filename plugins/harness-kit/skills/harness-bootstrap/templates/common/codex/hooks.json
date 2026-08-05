@@ -1,5 +1,6 @@
 {
-  "_comment": "HARNESS STARTER KIT ({{PROJECT_NAME}}) — Claude 와 동일한 3-hook(PreToolUse=protect-sources, SessionStart=session-start, Stop=verify)을 codex/hooks/* 로 매핑. 경로는 프로젝트 루트 기준 상대경로. 절대경로가 필요하면 리포 루트로 바꿔라. codex 파서가 미지의 키를 거부하면 이 _comment 를 삭제하라.",
+  "_comment": "HARNESS STARTER KIT ({{PROJECT_NAME}}) — Claude 와 동일한 3-hook(PreToolUse=protect-sources, SessionStart=session-start, Stop=verify)을 codex/hooks/* 로 매핑. 경로는 프로젝트 루트 기준 상대경로. 절대경로가 필요하면 리포 루트로 바꿔라. codex 파서가 미지의 키를 거부하면 이 _comment 류와 timeout 을 삭제하라.",
+  "_comment_stopHook": "Stop hook 은 턴이 끝날 때마다 실행되므로 fast 레벨(구조 점검 + 가벼운 정적 검사, 수 초)만 돌린다 — 기본값은 .codex/hooks/verify.sh 안에 있다. 전체 빌드·테스트(full)는 pre-commit(pre-push)와 CI 담당이다. 턴마다 full 을 돌리면 빌드 도구 프로세스가 겹쳐 lock 경합으로 무한 대기에 빠진다.",
   "hooks": {
     "PreToolUse": [
       {
@@ -19,7 +20,7 @@
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "bash .codex/hooks/verify.sh" }
+          { "type": "command", "timeout": 180, "command": "bash .codex/hooks/verify.sh" }
         ]
       }
     ]

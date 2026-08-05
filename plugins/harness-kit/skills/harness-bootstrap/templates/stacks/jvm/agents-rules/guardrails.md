@@ -50,7 +50,7 @@
 
 ## 레이어 책임 (아키텍처 변형 무관 원칙 — 필수)
 
-아래는 **어떤 아키텍처 변형을 골랐든**(hexagonal · layered · modulith · feature · multimodule) 지키는 원칙이다.
+아래는 **어떤 아키텍처 변형을 골랐든**(hexagonal · hexagonal-nested · layered · modulith · feature · multimodule) 지키는 원칙이다.
 구체적인 패키지 경로·모듈 이름은 변형마다 다르므로 [`structure.md`](./structure.md)와 `ARCHITECTURE.md`가 원본이다.
 
 - 비즈니스 규칙은 안쪽에, 오케스트레이션은 바깥에 둔다.

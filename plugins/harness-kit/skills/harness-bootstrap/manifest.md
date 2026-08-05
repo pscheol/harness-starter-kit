@@ -23,7 +23,7 @@
 
 | STACK | 사용 가능한 ARCH | 변형별 강제 규칙이 사는 곳 |
 |---|---|---|
-| `jvm` | `hexagonal` · `layered` · `modulith` · `feature` · `multimodule` | `ARCHITECTURE.md`(hexagonal=Gradle 모듈 그래프+Konsist · multimodule=Gradle 모듈 그래프(등급 단방향)+ArchUnit/Konsist 누출 테스트 · layered/feature=ArchUnit 테스트 · modulith=Spring Modulith `verify()`) |
+| `jvm` | `hexagonal` · `hexagonal-nested` · `layered` · `modulith` · `feature` · `multimodule` | `ARCHITECTURE.md`(hexagonal·hexagonal-nested=Gradle 모듈 그래프+Konsist, 둘은 모듈 경로 표기만 다름 · multimodule=Gradle 모듈 그래프(등급 단방향)+ArchUnit/Konsist 누출 테스트 · layered/feature=ArchUnit 테스트 · modulith=Spring Modulith `verify()`) |
 | `python` | `hexagonal` · `layered` · `modular` · `django` · `ai-service` | `ARCHITECTURE.md`의 `[tool.importlinter]` 계약 골격 → `pyproject.toml` |
 | `go` | `hexagonal` · `layered` · `feature` · `flat` | `ARCHITECTURE.md`의 depguard 규칙 골격 → `.golangci.yml` (+ 구조 테스트) |
 
@@ -111,7 +111,7 @@
 | `.agents/docs/{specs-index,tech-debt-tracker}.md` | 전 제품 스펙 색인·전역 기술부채 | — | 인간 |
 | `.agents/docs/generated/README.md` | 에이전트가 만드는 문서 규약(손편집 금지) | — | 에이전트 |
 | `.agents/docs/references/README.md` | 압축 참고자료(*-llms.txt) 규약 | — | 인간/에이전트 |
-| `scripts/verify.sh` | **단일 강제 지점**(스택별 빌드·린트·타입·아키텍처·테스트 + 변형 전용 조건부 단계) | ✅ | 인간 |
+| `scripts/verify.sh` | **단일 강제 지점**(스택별 빌드·린트·타입·아키텍처·테스트 + 변형 전용 조건부 단계). `HARNESS_VERIFY_LEVEL`로 범위 분리 — `fast`(hook 전용: 구조 점검 + 가벼운 정적 검사) / `full`(기본, pre-push·CI) | ✅ | 인간 |
 | `scripts/check-exec-plan-status.sh` | exec-plan(tasks) 위치↔상태 일관성 검사(전 제품 순회) | — | 인간 |
 | `scripts/new-feature.sh` | SDD 기능 스캐폴딩(`_spec-templates/` → req/design/tasks 3종 생성). 제품 폴더가 없으면 골격까지 생성 | — | 인간/에이전트 |
 | `scripts/check-sdd-prerequisites.sh` | SDD 단계 선행조건 검사(design/tasks/implement) | — | 에이전트 |

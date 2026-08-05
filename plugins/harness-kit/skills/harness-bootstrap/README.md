@@ -28,7 +28,8 @@ Python(FastAPI/ASGI), Go(표준 Go 레이아웃) 중에서 고른다. 골격은 
 
 | STACK | ARCH | 레이아웃 | 강제 규칙 |
 |---|---|---|---|
-| `jvm` | `hexagonal` | (멀티모듈) `bootstrap`·`common`·`core` + `domain/<ctx>/{domain,application,primary,infra}` | Gradle 모듈 그래프 + Konsist |
+| `jvm` | `hexagonal` | (멀티모듈) `bootstrap`·`common`·`core` + `<slug>-<ctx>/{domain,application,primary,infra}` — 모듈 경로 `:<slug>-<ctx>:infra` | Gradle 모듈 그래프 + Konsist |
+| `jvm` | `hexagonal-nested` | (멀티모듈) 위와 같되 컨텍스트를 컨테이너 아래로 중첩 — `<slug>-domain/<ctx>/{…}`, 모듈 경로 `:<slug>-domain:<ctx>:infra` | 동일 |
 | `jvm` | `layered` | (단일 모듈) `{config,common,controller/{docs,dto},service,repository,entity}` | ArchUnit `layeredArchitecture()` + 건너뛰기 금지 |
 | `jvm` | `modulith` | (단일 모듈) `shared/` + `<module>/{공개 API 루트 타입, internal/…}` | Spring Modulith `ApplicationModules.verify()` |
 | `jvm` | `feature` | (단일 모듈) `config`·`common` + `<feature>/{api,web,service,repository,domain}` | ArchUnit 슬라이스(순환 금지·기능 독립) |
@@ -66,7 +67,7 @@ skills/harness-bootstrap/          ← 스킬 루트 (= SKILL_DIR)
     │   └── root/          .pre-commit-config.yaml
     └── stacks/
         ├── jvm/     root(AGENTS·CLAUDE·.gitignore·CI) · agents-rules 6종 · kiro-steering 2종 · scripts/verify.sh
-        │   └── arch/{hexagonal,layered,modulith,feature,multimodule}/{root/ARCHITECTURE.md, agents-rules/{structure,tech}.md, kiro-steering/structure.md}
+        │   └── arch/{hexagonal,hexagonal-nested,layered,modulith,feature,multimodule}/{root/ARCHITECTURE.md, agents-rules/{structure,tech}.md, kiro-steering/structure.md}
         ├── python/  (동일 구성) + arch/{hexagonal,layered,modular,django,ai-service}/
         └── go/      (동일 구성) + arch/{hexagonal,layered,feature,flat}/
 ```
@@ -118,7 +119,7 @@ STACK=python ARCH=modular PROJECT_NAME="MyApp" PROJECT_SLUG="my-app" PACKAGE_NS=
 cd /path/to/project
 grep -rn '{{' . --include='*.md' --include='*.sh'   # 미치환 토큰 확인
 $EDITOR .agents/rules/tech.md                        # 기준 스택 버전을 프로젝트에 맞게 조정
-bash scripts/verify.sh                               # 게이트 통과 확인
+bash scripts/verify.sh                               # 게이트 통과 확인(full — 빌드·테스트 포함)
 ```
 
 `PACKAGE_NS`는 스택마다 의미가 다르다: jvm=`com.example.myapp`(패키지) · python=`myapp`(최상위 패키지 → `src/myapp/`) · go=`github.com/org/my-app`(모듈 경로).
@@ -136,7 +137,7 @@ bash scripts/verify.sh                               # 게이트 통과 확인
 
 ## 스택 노트
 
-- **jvm** — Kotlin/Java · Spring Boot · Gradle(Kotlin DSL, `libs.versions.toml`) · JPA/ORM · 마이그레이션 도구 · Spring Security · ktlint/detekt. 멀티모듈 변형(`hexagonal`=컨텍스트당 4모듈 고정 규격, `multimodule`=분할 축 자유·등급 방향만 강제)은 의존 방향을 Gradle 모듈 경계로 컴파일 타임 강제하고, 단일 모듈 변형(`layered`·`modulith`·`feature`)은 구조 테스트가 강제를 담당한다. 빌드 DSL은 Java=Groovy·Kotlin=Kotlin DSL, 버전은 `libs.versions.toml` 단일 소스. 응답은 공통 envelope.
+- **jvm** — Kotlin/Java · Spring Boot · Gradle(Kotlin DSL, `libs.versions.toml`) · JPA/ORM · 마이그레이션 도구 · Spring Security · ktlint/detekt. 멀티모듈 변형(`hexagonal`·`hexagonal-nested`=컨텍스트당 4모듈 고정 규격(모듈 경로 표기만 다름), `multimodule`=분할 축 자유·등급 방향만 강제)은 의존 방향을 Gradle 모듈 경계로 컴파일 타임 강제하고, 단일 모듈 변형(`layered`·`modulith`·`feature`)은 구조 테스트가 강제를 담당한다. 빌드 DSL은 Java=Groovy·Kotlin=Kotlin DSL, 버전은 `libs.versions.toml` 단일 소스. 응답은 공통 envelope.
 - **python** — Python 3.12+ · FastAPI · SQLAlchemy 2.0(async) + Alembic · Pydantic v2(경계 전용) · uv · Ruff · mypy strict · pytest · import-linter. 도메인은 프레임워크 무의존(계약 린터가 강제), async 규약(blocking 금지·timeout 필수)은 규칙으로 정해뒀다.
 - **go** — Go 1.22+ · net/http · pgx/`database/sql` · golang-migrate/goose · `log/slog` · gofumpt · golangci-lint(depguard·gosec 등) · `go test -race`. 인터페이스는 소비자(`app`)가 선언, 에러는 값으로 전파(`%w`), 고루틴에는 소유자와 종료 조건.
 

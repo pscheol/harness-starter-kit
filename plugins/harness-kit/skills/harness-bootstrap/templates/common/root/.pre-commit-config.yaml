@@ -5,6 +5,9 @@
 #
 # 기본 스테이지는 pre-push 다(전체 빌드·린트·테스트 게이트는 무거워 매 커밋마다 돌리면 흐름을 끊는다).
 # 매 커밋에 돌리려면 아래 stages 를 [pre-commit] 으로 바꾸고 `pre-commit install` 로 재설치한다.
+#
+# 여기는 full 레벨이다 — 빌드·테스트를 포함한 전체 게이트를 책임지는 지점이 pre-push 와 CI 다.
+# 반대로 에이전트 Stop hook 은 턴마다 돌기 때문에 fast 레벨(구조 점검 + 가벼운 정적 검사)만 쓴다.
 default_install_hook_types: [pre-push]
 default_stages: [pre-push]
 
@@ -12,8 +15,9 @@ repos:
   - repo: local
     hooks:
       - id: verify
-        name: verify gate (scripts/verify.sh)
-        entry: bash scripts/verify.sh
+        name: verify gate (scripts/verify.sh — full)
+        # language: system 은 셸을 거치지 않는다. 환경변수는 env 로 넘긴다.
+        entry: env HARNESS_VERIFY_LEVEL=full bash scripts/verify.sh
         language: system
         pass_filenames: false      # 파일 목록을 넘기지 않는다 — 게이트는 프로젝트 전체를 본다.
         always_run: true
