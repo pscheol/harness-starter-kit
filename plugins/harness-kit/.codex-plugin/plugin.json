@@ -1,6 +1,6 @@
 {
   "name": "harness-kit",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "하네스 엔지니어링 스타터 킷 — 백엔드 리포에 에이전트 협업 골격을 스캐폴딩하는 스킬 모음",
   "author": {
     "name": "pscheol",
@@ -29,8 +29,8 @@
     ],
     "screenshots": [],
     "defaultPrompt": [
-      "harness-bootstrap 스킬로 이 리포에 하네스 골격을 세팅해줘.",
-      "이 프로젝트 스택과 아키텍처 변형을 판단하고 harness-bootstrap 스캐폴딩을 --dry-run 으로 미리 보여줘."
+      "hx-bootstrap 스킬로 이 리포에 하네스 골격을 세팅해줘.",
+      "이 프로젝트 스택과 아키텍처 변형을 판단하고 hx-bootstrap 스캐폴딩을 --dry-run 으로 미리 보여줘."
     ]
   }
 }

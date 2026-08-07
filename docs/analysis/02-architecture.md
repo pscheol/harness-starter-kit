@@ -15,7 +15,7 @@
 - 처리: 각 루트 하위 파일을 정렬 순회 → 경로를 `remap()`으로 매핑 → 존재+비force면 skip, 아니면 복사 후 토큰 치환, `*.sh`는 실행권한 부여.
 - 스택 순회는 `find "$root" -type f ! -path "*/arch/*"`로 변형 레이어를 건너뛴다(선택된 하나만 따로 복사).
 - 알 수 없는 스택·변형을 주면 각각 사용 가능한 목록을 출력하고 `exit 2`로 중단한다.
-- 모든 스택×변형 조합에서 설치 결과는 104개 파일(공통 87 + 스택 13 + 변형 4)로 동일하다.
+- 템플릿은 모든 스택×변형에서 106개(공통 89 + 스택 13 + 변형 4)로 동일하다. 실제 설치는 이 중 core 38 + 고른 에이전트(claude 14 · codex 14 · cursor 9 · kiro 31)만 깔린다.
 
 ### 1.1 7개 설치 세그먼트
 
@@ -24,12 +24,12 @@
 | 소스 (`<root>/…`) | 대상 | 역할 |
 |---|---|---|
 | `root/*` | `./` (프로젝트 루트) | `AGENTS.md`·`CLAUDE.md`·`.gitignore`·CI(스택별) + `ARCHITECTURE.md`(변형별) + pre-commit(공통) |
-| `agents-rules/*` | `.agents/rules/*` | **규칙 원본 11종** = 공통 3(`agent-harness`·`sdd-workflow`·`product`) + 스택별 6 + 변형별 2(`structure`·`tech`) |
+| `agents-rules/*` | `.agents/rules/*` | **규칙 원본 12종** = 공통 4(`agent-harness`·`sdd-workflow`·`product`·`design-principles`) + 스택별 6 + 변형별 2(`structure`·`tech`) |
 | `agents-docs/*` | `.agents/docs/*` | 기록/SDD 스캐폴딩 (전부 공통) |
 | `scripts/*` | `scripts/*` | 공통 4종(check-exec-plan-status·check-sdd-prerequisites·check-spec-freshness·new-feature) + 스택별 `verify.sh` |
 | `claude/*` | `.claude/*` | Claude 명령·훅·settings (전부 공통) |
 | `codex/*` | `.codex/*` | Codex config·훅 (전부 공통) |
-| `kiro-steering/*` | `.kiro/steering/*` | Kiro 얇은 포인터 11종 = 공통 8 + 스택별 2(`tech`·`code-comments`) + 변형별 1(`structure`) |
+| `kiro-steering/*` | `.kiro/steering/*` | Kiro 얇은 포인터 12종 = 공통 9 + 스택별 2(`tech`·`code-comments`) + 변형별 1(`structure`) |
 
 ### 1.2 치환 토큰표
 
@@ -52,11 +52,11 @@
 `{{PRODUCT_SLUG}}`는 `.agents/docs/_spec-templates/` 안에 남아 있다가 `new-feature.sh <slug>`가
 제품 폴더로 복사하는 시점에 치환된다.
 
-설치 후 미치환 토큰 점검은 `grep -rn '{{' . | grep -v '_spec-templates/'`로 한다
+설치 후 미치환 토큰 점검은 `grep -rn '{{' . | grep -vE '_spec-templates/|\{\{\.\.\.\}\}|PRODUCT_SLUG'`로 한다
 — `_spec-templates/`의 잔여 토큰은 의도된 것이라 제외하고 본다.
 
 `setup.sh`는 목적지 **경로**에 대한 토큰 치환을 하지 않는다. 경로에 슬러그가 박히는 유일한 대상이던
-`product-<slug>-specs/`가 설치되는 파일에서 빠졌기 때문이다(제품 폴더는 `new-feature.sh`가 만든다).
+`<slug>-specs/`가 설치되는 파일에서 빠졌기 때문이다(제품 폴더는 `new-feature.sh`가 만든다).
 
 ## 2. 아키텍처 변형과 계층 모델
 
@@ -65,7 +65,7 @@
 
 | STACK | 사용 가능한 ARCH | 비고 |
 |---|---|---|
-| `jvm` | `hexagonal` · `layered` · `modulith` · `feature` · `multimodule` | 멀티모듈은 `hexagonal`(컨텍스트당 4모듈 고정)·`multimodule`(분할 축 자유·등급 방향만 강제) 둘. 나머지 셋은 단일 모듈이라 구조 테스트가 강제를 담당 |
+| `jvm` | `hexagonal` · `hexagonal-nested` · `hexagonal-standalone` · `layered` · `layered-multimodule` · `modulith` · `feature` · `multimodule` | 멀티모듈 5종(헥사고날 3 + `layered-multimodule` + `multimodule`)은 모듈 그래프가 컴파일로 막고, 단일 모듈 3종(`layered`·`modulith`·`feature`)은 구조 테스트가 강제를 담당 |
 | `python` | `hexagonal` · `layered` · `modular` · `django` · `ai-service` | 계약은 전부 `[tool.importlinter]`로 표현 |
 | `go` | `hexagonal` · `layered` · `feature` · `flat` | 계약은 depguard + 구조 테스트로 표현 |
 
@@ -75,7 +75,7 @@
 
 | 스택 | 계층 표현 단위 | 컨텍스트 경로(`hexagonal`) | 강제 수단 |
 |---|---|---|---|
-| `jvm` | Gradle **모듈** | `:<slug>-domain:<ctx>:{domain,application,primary,infra}` | 모듈 의존 그래프(컴파일) + Konsist |
+| `jvm` | Gradle **모듈** | `:<slug>-<ctx>:{domain,application,primary,infra}` (기본 `hexagonal`. `hexagonal-nested`는 `:<slug>-domain:<ctx>:…`, `hexagonal-standalone`은 평면 `:<slug>-<ctx>-<layer>`) | 모듈 의존 그래프(컴파일) + Konsist |
 | `python` | **패키지**(src 레이아웃) | `src/<pkg>/<ctx>/{domain,application,primary,infra}` | import-linter 계약 + mypy strict |
 | `go` | **패키지**(표준 레이아웃) | `internal/<ctx>/{domain,app,primary/http,infra}` | `internal/`·import 사이클(컴파일) + depguard |
 
@@ -88,6 +88,8 @@
 | `modular`(py) · `feature`(jvm·go) | **기능 단위 독립** | ArchUnit 슬라이스(`notDependOnEachOther`) / `independence` 계약 / depguard 쌍 + 구조 테스트 |
 | `modulith`(jvm) | **모듈 공개 표면 = 루트 타입**, 구현은 `internal` | Spring Modulith `ApplicationModules.verify()`(순환·internal 접근·허용 의존) |
 | `multimodule`(jvm) | **모듈 등급**(실행→구성→공유) 단방향. 분할 축·이름은 프로젝트가 결정 | 모듈 의존 그래프(컴파일) + ArchUnit/Konsist 누출·순환 테스트 |
+| `hexagonal-standalone`(jvm) | **컨텍스트가 자기 core·common·bootstrap까지 소유**(7모듈·실행 단위 N개). 컨텍스트 간 공유 코드 0 | 모듈 그래프(레이어) + **구조 테스트**(컨텍스트 간 의존 — 컴파일러가 못 막는 유일한 경계) |
+| `layered-multimodule`(jvm) | **레이어 = 모듈**. 같은 계층 위에 실행 단위(api·batch·admin) 1~N개 | 모듈 그래프(레이어 단방향) + ArchUnit(엔티티 누출·트랜잭션 위치) + `api()`/`implementation()` 노출 범위 선택 |
 | `django`(py) | 쓰기=services / 읽기=selectors 형제 분리 + 앱 간 독립 | `layers = [views, "services : selectors", models]` + `independence` |
 | `ai-service`(py) | 프로바이더 SDK 격리 + 프롬프트 버전 자산 + eval 회귀 | forbidden 계약(SDK) + `evaluation/` 기준선 게이트 |
 | `flat`(go) | 파일이 경계 · **만료 조건이 있는 변형** | 최소 depguard + 파일 수 상한 구조 테스트 |
@@ -198,19 +200,20 @@ api/ configs/ deployments/ migrations/ test/ build/
 
 금지 목록의 구체 사례는 각 스택 `ARCHITECTURE.md`의 Anti-pattern 절에 있다.
 
-## 3. 규칙 원본 11종 (`.agents/rules/`) — 공통 3 + 스택별 6 + 변형별 2
+## 3. 규칙 원본 12종 (`.agents/rules/`) — 공통 4 + 스택별 6 + 변형별 2
 
 | 파일 | 소스 | 한 줄 요약 |
 |---|---|---|
 | `agent-harness.md` | 공통 | 하네스 규약 원본 — SSOT·완료 게이트·강제 레이어(1곳+N트리거)·규칙 변경 절차 |
 | `sdd-workflow.md` | 공통 | SDD 워크플로 원본 — specify→clarify→checklist→plan→tasks→analyze→implement(+converge)·산출 위치·게이트 |
 | `product.md` | 공통 | 제품 정체성·목표·범위·원칙·우선순위(P0/P1/P2)·KPI (채우기 템플릿) |
+| `design-principles.md` | 공통 | **설계 원칙 원본** — 클린 아키텍처 의존 규칙 · SOLID를 `원칙→위반 신호→고치는 법`으로 · 캡슐화/Tell Don't Ask/합성 · 과잉 설계 방지. 구조가 아니라 **그 구조 안에서 코드를 어떻게 짤지**를 정한다 |
 | `guardrails.md` | 스택별 | 행동 헌법 — 추측 금지 + docs 동시 갱신 + DDD 레이어 책임 + 언어별 실수 방지 |
 | `security.md` | 스택별 | 인증/인가 경계 · 접근 제어 이중 방어선 · secret 처리 · 언어별 고유 위험 |
 | `api-standards.md` | **스택별** | 응답 envelope · ErrorCode 매핑 · 예외 변환 · 요청 검증 · OpenAPI 문서화 |
 | `structure.md` | **변형별** | 레이아웃 · 패키지 컨벤션 · 통합 규약 · 구조 테스트 · 새 도메인/기능 착수 |
 | `tech.md` | **변형별** | 스택 표·버전 단일 소스(`libs.versions.toml` / `pyproject.toml` / `go.mod`) · 빌드·실행 명령 · 포트 규약 |
-| `code-comments.md` | 스택별 | 주석 표준 — 기본은 '없음'(Why·함정·외부 근거·억제 이유만) · 언어별 예시(KDoc·Javadoc / docstring / Go doc) |
+| `code-comments.md` | 스택별 | 주석 표준 — 기본은 '없음'(Why·함정·외부 근거·억제 이유·복잡한 함수의 절차) · 언어별 예시(KDoc·Javadoc / docstring / Go doc) |
 | `writing-style.md` | 공통 | 문체 원본 — 스펙·주석·커밋·리포트를 사람이 읽는 글로 |
 | `reliability.md` | 스택별 | timeout·retry·서킷브레이커 · 멱등성 · fail-closed · 성능 예산 · 언어별 동시성 함정 |
 | `quality-score.md` | **스택별** | 코드 품질 · Story/Epic DoD · 커버리지(도메인≥90%, 전체≥80%) · 검증 절차 |
@@ -223,11 +226,11 @@ api/ configs/ deployments/ migrations/ test/ build/
 
 ## 4. Kiro 얇은 포인터 (`.kiro/steering/`)
 
-Kiro용 11종은 원본과 **1:1**로 대응하는 얇은 포인터다. 각 파일은 `inclusion` front-matter +
+Kiro용 12종은 원본과 **1:1**로 대응하는 얇은 포인터다. 각 파일은 `inclusion` front-matter +
 "원본: `.agents/rules/<name>.md` — Claude·Codex·Kiro 공통" + 짧은 요약으로 구성되며, **규칙 본문을
 담지 않는다**.
 
-11종 중 8종은 공통, `tech`·`code-comments` 2종은 스택별, **`structure` 1종은 변형별**로 다른 요약을 담는다.
+12종 중 9종은 공통, `tech`·`code-comments` 2종은 스택별, **`structure` 1종은 변형별**로 다른 요약을 담는다.
 
 inclusion 방식은 둘:
 

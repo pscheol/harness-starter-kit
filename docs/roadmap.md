@@ -10,7 +10,7 @@
 
 ## 완료
 
-- **구조 재배치**: SDD를 제품 단위 `.agents/docs/product-<slug>-specs/{requirements,design,tasks/{active,check,completed}}` 로 배치. 전역 결정은 `decisions/`, 색인 `specs-index.md`, 전역 `tech-debt-tracker.md`.
+- **구조 재배치**: SDD를 제품 단위 `.agents/docs/<slug>-specs/{requirements,design,tasks/{active,check,completed}}` 로 배치. 전역 결정은 `decisions/`, 색인 `specs-index.md`, 전역 `tech-debt-tracker.md`.
 - **워크플로 원본 + 명령**: `.agents/rules/sdd-workflow.md`(specify→clarify→plan→tasks→analyze→implement) + Claude 명령 6종 + Kiro 포인터 + `scripts/{new-feature,check-sdd-prerequisites}.sh`.
 - **템플릿 강제 장치 각인**: requirements(우선순위 User Story P1/P2/P3 + 왜 + 독립 테스트 기준 + EARS `R#.#`, 측정가능·기술중립 Success Criteria `SC-###`, `[NEEDS CLARIFICATION]≤3` 규약, Edge Cases), design(Constitution Check 게이트 + Complexity Tracking, Quickstart e2e 검증, Research & Decisions), tasks(`T001 [P] [US1]` 포맷, Phase 구조 Setup→Foundational→User Story별→Polish, 의존 그래프·병렬 예시·구현 전략, 완료 승인 게이트 active→check→confirm→completed).
 - **self-contained 정리**: 킷에서 외부 방법론 킷 이름표·경로 참조 전부 제거(grep 0건).
@@ -301,12 +301,12 @@ templates/stacks/<stack>/
 
 ## Phase 11 — SDD 템플릿을 제품 폴더에서 분리 ✅ (완료: 이 세션)
 
-> **배경**: 사용자 실사용 제보. bootstrap이 `.agents/docs/product-<PROJECT_SLUG>-specs/` 를 씨앗 제품 폴더로 깔고 그 안에 `_template.md` 4종을 함께 두는 구조였다. 실제 SDD를 시작하면 ① 프로젝트 슬러그로 된 가짜 제품 폴더가 남고 ② `new-feature.sh` 가 새 제품 폴더를 만들 때 기존 제품에서 템플릿을 통째로 복사해 제품 수만큼 템플릿 사본이 늘어났다. "기본 템플릿인데 이름이 바뀌어 생성된다"는 지적이 정확했다.
+> **배경**: 사용자 실사용 제보. bootstrap이 `.agents/docs/<PROJECT_SLUG>-specs/` 를 씨앗 제품 폴더로 깔고 그 안에 `_template.md` 4종을 함께 두는 구조였다. 실제 SDD를 시작하면 ① 프로젝트 슬러그로 된 가짜 제품 폴더가 남고 ② `new-feature.sh` 가 새 제품 폴더를 만들 때 기존 제품에서 템플릿을 통째로 복사해 제품 수만큼 템플릿 사본이 늘어났다. "기본 템플릿인데 이름이 바뀌어 생성된다"는 지적이 정확했다.
 
 ### 완료 요약
 
-- [x] 템플릿 분리 — `agents-docs/product-{{PRODUCT_SLUG}}-specs/` → `agents-docs/_spec-templates/`. 제품과 무관한 복사 원본 한 벌로 승격하고, 용도를 명시하는 `_spec-templates/README.md` 를 신설했다. 씨앗 제품 폴더용 `.gitkeep` 3개는 제거.
-- [x] 제품 폴더는 설치하지 않는다 — `product-<slug>-specs/` 는 `new-feature.sh <slug> <feature>`(= `/hx-specify`)가 첫 기능에서 만든다. 설치 직후 `specs-index.md` 등록표는 비어 있다.
+- [x] 템플릿 분리 — `agents-docs/{{PRODUCT_SLUG}}-specs/` → `agents-docs/_spec-templates/`. 제품과 무관한 복사 원본 한 벌로 승격하고, 용도를 명시하는 `_spec-templates/README.md` 를 신설했다. 씨앗 제품 폴더용 `.gitkeep` 3개는 제거.
+- [x] 제품 폴더는 설치하지 않는다 — `<slug>-specs/` 는 `new-feature.sh <slug> <feature>`(= `/hx-specify`)가 첫 기능에서 만든다. 설치 직후 `specs-index.md` 등록표는 비어 있다.
 - [x] `new-feature.sh` 재작성 — 소스를 `_spec-templates/` 로 고정. 제품 폴더가 없으면 골격(`index.md`·`tasks/README.md`·빈 하위폴더)까지 만들되 `_template.md` 는 복사하지 않는다. 복사 시점에 `{{PRODUCT_SLUG}}` 를 치환한다.
 - [x] `setup.sh` — `PRODUCT_SLUG` 를 설치 치환 토큰에서 제거(`EPIC_ID`·`FEATURE_NAME` 과 같은 "스펙 시점" 토큰으로 재분류). 경로 토큰 치환 로직도 제거했다(경로에 슬러그가 박히는 대상이 사라졌다). 미치환 토큰 안내는 `| grep -v '_spec-templates/'` 로 갱신.
 - [x] **문서 동기화** — `SKILL.md`(description·②축·6·7단계)·`manifest.md`(산출물 행·토큰표·85+13+4=102)·킷/스킬 `README.md`·`agents-docs/README.md` 트리·`specs-index.md`(빈 등록표 + 죽은 `new-product.sh` 참조 제거)·`sdd-workflow.md`·`hx-checklist`/`hx-specify` 5하네스 각각·`docs/analysis/{02,03}`.
@@ -318,6 +318,85 @@ templates/stacks/<stack>/
 |---|---|
 | 씨앗 제품 폴더 | 아예 만들지 않는다 — 빈 껍데기 폴더가 남는 쪽보다 낫다 |
 | 템플릿 설치 위치 | 프로젝트 안 `.agents/docs/_spec-templates/` — 플러그인 경로는 설치 후 사라질 수 있어 `new-feature.sh` 가 의존할 수 없다 |
+
+---
+
+## Phase 12 — 에이전트 선택 설치 + 유지보수 스킬 (완료, v1.0.4)
+
+부트스트랩이 `.claude/`·`.codex/`·`.cursor/`·`.kiro/` 를 무조건 다 깔아, 쓰지도 않는
+에이전트 디렉터리가 리포에 남았다. 그리고 킷이 올라가도 이미 깔린 리포는 그대로였다.
+
+- [x] **에이전트 레이어 분리** — 템플릿 104개를 core 37 + claude 14(`claude/`+`root/CLAUDE.md`) ·
+  codex 14(`codex/`+`agents-skills/`) · cursor 9 · kiro 30(`kiro-steering/`+`kiro-skills/`)으로 가른다.
+  판정은 템플릿 상대경로 기준(`harness_agent_of`)이라 스택·변형 레이어에도 그대로 걸린다.
+- [x] `setup.sh` — `--agents=<목록|all>`·`--list-agents` 추가. 미지정 시 대상 리포의 에이전트
+  디렉터리 → 실행 CLI 환경변수 순으로 감지하고, 0건이면 `claude` 로 떨어진다.
+- [x] **상태 파일 신설** — `.agents/harness-kit.json`(버전·스택·변형·에이전트·치환값) +
+  `.agents/harness-kit.lock`(TSV: 설치 시점 원본 해시). 재실행 시 skip 되는 파일은 **이전 lock 의
+  해시를 물려받는다** — 안 그러면 사용자 수정본의 현재 해시가 원본 자리에 들어가 업데이트가 오판한다.
+- [x] **`lib/harness-lib.sh` 분리** — 경로 매핑·치환·해시·메타 IO를 세 스크립트가 공유한다.
+  설치와 업데이트가 같은 `harness_render` 를 써야 해시 비교가 성립한다.
+- [x] **`hx-agent-add` 스킬** — 메타에서 스택·변형·치환값을 복원해 다시 묻지 않는다.
+  기존 ∪ 추가 합집합으로 `setup.sh` 를 재호출한다(추가분만 넘기면 lock 에서 기존 파일이 사라진다).
+- [x] **`hx-update` 스킬** — 판정 5종(`new`/`same`/`update`/`conflict`/`orphan`).
+  수정본은 덮지 않고 `.new` 병기. `--accept-all` 은 `.bak` 백업 후 덮는다.
+  **충돌 시 lock 에는 옛 원본 해시를 그대로 물려준다** — 수정본 해시를 적으면 다음 실행에서
+  그것이 원본으로 읽혀 사용자 작업을 덮어쓴다(구현 중 실제로 발생해 잡은 결함).
+- [x] 슬래시 커맨드 `/agent-add`·`/update` 추가, `/bootstrap` 에 `--agents` 인자 반영.
+- [x] 템플릿 `.gitignore` 3종에 `*.new`·`*.bak` 추가(상태 파일 2종은 커밋 대상).
+- [x] 문서 동기화 — `SKILL.md`(원칙 2줄·절차 2-2단계·유지보수 표)·`manifest.md`(에이전트 분해표·
+  상태 파일 절·역할표 2행)·킷/스킬 `README.md`·`docs/analysis/{README,02}`·버전 1.0.3→1.0.4(4곳).
+- 검증: jvm/hexagonal/claude=53 · python/django/codex,kiro=83 · go/feature/all=106(각 +상태 파일 2).
+  미선택 에이전트 디렉터리 생성 0건. 갓 설치한 리포에서 업데이트 `conflict=0`.
+  사용자 수정 → 킷 변경 → 업데이트 시 `conflict` 1 + `update` 1, **재실행에도 conflict 유지**,
+  `.new` 채택 후 `same` 복귀까지 확인.
+
+---
+
+## Phase 13 — JVM 아키텍처 확장 + 설계 원칙 원본 + JVM 전용 스킬 계층 ✅ (완료: 이 세션)
+
+> **배경**: jvm 은 변형 6종이 있었지만 (a) 컨텍스트를 독립 배포 단위로 다루는 형태와
+> (b) 레이어를 모듈로 자르는 형태가 없었다. 또 "그 구조 안에서 코드를 어떻게 짜는가"(객체지향·클린
+> 아키텍처·SOLID)를 담은 규칙 원본이 없어 각 변형 문서가 조금씩 다르게 반복하고 있었다.
+> **사용자 결정(4문항)**: 부모+자식 스킬 구조 · 컨텍스트별 7모듈 전부 · 산출물은 문서·규칙만 · 언어는 실행 시 선택.
+
+### 완료 요약
+
+- [x] **`hexagonal-standalone` 변형 신설**(4파일) — 컨텍스트가 `core`·`common`·`bootstrap` 까지 소유하는 7모듈 자립형.
+      모듈명은 평면 하이픈 `:<slug>-<ctx>-<layer>`, 디렉터리는 `projectDir` 재지정으로 `<ctx>/<layer>/` 에 묶는다
+      (모듈명이 전역 유니크해 중첩 변형에 필요했던 `group` 분리·`archivesName` 유니크화가 사라진다).
+      실행 단위가 컨텍스트마다 하나. **컨텍스트 간 의존은 컴파일러가 못 막으므로** 구조 테스트의 `others` 목록이
+      유일한 기계적 방어선이라는 점, 그리고 지불하는 비용 4종(코드 중복·모듈 폭증·운영 표면·규약 드리프트)을 명시.
+- [x] **`layered-multimodule` 변형 신설**(4파일) — 레이어 = Gradle 모듈. 단일 모듈 `layered` 가 ArchUnit 으로만
+      지키던 레이어 방향을 컴파일러가 막고, 같은 계층 위에 실행 단위(api·batch·admin)를 여럿 둘 수 있다.
+      핵심 결정 지점을 문서화: **엔티티 노출 범위** — `service` 가 `domain` 을 `api()`(A, ArchUnit 이 막는다) vs
+      `implementation()`(B, 컴파일러가 막고 결과 모델 한 겹 추가)으로 노출하느냐. 채택 방식 기록란 포함.
+- [x] **`design-principles.md` 규칙 원본 신설**(스택 무관 core + kiro 얇은 포인터) — 클린 아키텍처 의존 규칙,
+      SOLID 5원칙을 `원칙 → 위반 신호 → 고치는 법` 형식으로, 객체지향(캡슐화·Tell Don't Ask·합성·불변),
+      적용 순서, **과잉 설계 방지**(원칙보다 우선). 3스택 `AGENTS.md` 규약표에 등록.
+- [x] **`setup.sh` 확장** — jvm ARCH 2종 추가 + 각각의 "다음 단계" 분기, `--lang=kotlin|java`(env `JVM_LANG`)로
+      `PRIMARY_LANGUAGE` 확정 및 빌드 DSL·구조 테스트 도구 안내 분기. jvm 아닌 스택에 `--lang` 을 주거나
+      모르는 값을 주면 `exit 2`.
+- [x] **JVM 스킬 계층 4종** — 부모 `hx-jvm-setup`(아키텍처 8종을 **고르는 순서로** 질문 + 언어 확정) +
+      자식 `hx-jvm-hexagonal`(3변형 선택·`settings.gradle` 등록·포트/어댑터·구조 테스트) ·
+      `hx-jvm-layered`(패키지·ArchUnit) · `hx-jvm-layered-multimodule`(모듈 등록·엔티티 노출 범위).
+      **설치 로직은 복제하지 않는다** — 전부 `hx-bootstrap/setup.sh` 를 호출한다.
+- [x] 문서 동기화 — `SKILL.md`(변형표 2행·파일 수·유지보수 표)·`manifest.md`(ARCH 목록·89+13+4=106·역할표)·
+      킷/스킬 `README.md`(구조 트리·스킬 표·JVM 절)·`commands/bootstrap.md`(`--lang`)·`hx-agent-add`(kiro 31)·
+      `docs/analysis/{README,02}`.
+- [x] **킷 스킬 이름을 `hx-` 로 통일**(디렉터리 + frontmatter `name` 둘 다) — `hx-bootstrap` · `hx-jvm-setup` ·
+      `hx-jvm-hexagonal` · `hx-jvm-layered` · `hx-jvm-layered-multimodule` · `hx-agent-add` · `hx-update`.
+      `:` 는 플러그인 네임스페이스 구분자로 예약돼 있어(`plugin-name:skill-name`, frontmatter `name` 은 마지막
+      세그먼트만 교체) `hx:jvm-*` 형태는 불가하고, 이름에 쓸 수 있는 것은 소문자·숫자·하이픈뿐이다.
+      플러그인 스킬은 `harness-kit:` 네임스페이스를 가져 프로젝트 레벨과 충돌하지 않고, 대상 리포에 깔리는
+      SDD 9종(`hx-specify`…`hx-harness`)과 이름이 하나도 겹치지 않아 짧은 형태(`/hx-jvm-setup`)도 안전하다.
+      **슬래시 커맨드 3종은 지우지 않았다** — 같은 이름으로 맞추면 "스킬이 커맨드보다 우선"이라 커맨드가
+      가려져 죽은 파일이 되므로, `bootstrap`·`agent-add`·`update` 이름 그대로 두고 얇은 트리거로 남겼다.
+      참조 171건 / 19개 파일 일괄 치환. `harness-kit`·`harness-starter-kit`·`harness_*` 함수·`HARNESS_*` 변수는 보존.
+- 검증: 신규 2변형 `--agents=all` dry-run 각 **106개**(기존 변형과 동일 — 변형 무관 불변 유지),
+      `--list-agents` 로 core 38 · kiro 31 확인, `bash -n` 통과, 잘못된 `--lang`·`--arch`·스택 밖 `--lang` 모두 `exit 2`.
+      이름 변경 후 재검증: 스킬 `name`↔디렉터리 7/7 일치 · 옛 이름 잔여 0건 · 설치 106개 · `hx-agent-add`→+31 ·
+      `hx-update --dry-run` `same=106 conflict=0` · 매니페스트 4종 JSON 유효.
 
 ---
 
