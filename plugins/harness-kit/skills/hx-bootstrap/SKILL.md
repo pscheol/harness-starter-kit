@@ -102,6 +102,8 @@ description: 백엔드 단일 프로젝트에 하네스 엔지니어링 기본 �
 6. **채우기** — `.agents/rules/product.md`·`ARCHITECTURE.md`·`.agents/rules/structure.md` 의 `{{플레이스홀더}}`.
    `.agents/docs/specs-index.md` 제품 등록표는 비어 있는 채로 시작한다 — 제품 폴더는 설치가 아니라
    `scripts/new-feature.sh <slug> <feature>`(또는 `/hx-specify`)가 첫 기능에서 만든다. 임의로 제품 폴더를 만들지 않는다.
+   단계 문서도 마찬가지다 — requirements 만 먼저 생기고 design·tasks 는 `--stage=design`·`--stage=tasks`
+   (즉 `/hx-plan`·`/hx-tasks`)가 그때 만든다. 미리 만들어 두면 보드와 단계 게이트가 함께 무력해진다.
 7. **검증** — `grep -rn '{{' . | grep -vE '_spec-templates/|\{\{\.\.\.\}\}|PRODUCT_SLUG'` 로 미치환 토큰 확인 후 `bash scripts/verify.sh` 통과를 확인하고 사용자에게 보고.
    `.agents/docs/_spec-templates/` 의 `{{PRODUCT_SLUG}}`·`{{FEATURE_NAME}}`·`{{EPIC_ID}}` 는 **의도적으로 남기는 토큰**이다(채우지 않는다).
 

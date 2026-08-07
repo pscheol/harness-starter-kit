@@ -21,6 +21,8 @@ tasks/                 (<slug>-specs/ 안)
 - 기능 외 인프라/메타 다단계 작업도 `active/`에 둘 수 있다.
 - 각 작업은 충족 요구사항 ID를 표기하고, 외부 상황 없이 계획만으로 재개 가능해야 한다.
 - 파일명: `<N>-<종류>-<이름>.md`(new-feature.sh 가 붙인다). 보드는 이 이름으로 그려진다.
+- 이 파일은 **design 승인 후** `scripts/new-feature.sh <slug> <feature> --stage=tasks` 로 만든다(`/hx-tasks` 가 실행한다).
+  미리 만들어 두지 않는다 — `active/` 에 파일이 있는 순간 보드는 그 기능을 🔨 구현으로 센다.
 - **잔여 작업 회수(append-only)**: 구현 후 남거나 새로 드러난 작업은 기존 Phase를 고쳐 쓰지 않고 파일 끝에 `## Phase N: Convergence` 를 덧붙여 회수한다(`/hx-converge` · 원본 `sdd-workflow.md`). 근거는 `scripts/check-spec-freshness.sh` 리포트.
 
 ## 진행 단계와 완료 게이트 (사용자 검증 필수)

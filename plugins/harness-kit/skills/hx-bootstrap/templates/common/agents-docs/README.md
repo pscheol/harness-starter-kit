@@ -63,14 +63,16 @@ AGENTS.md / CLAUDE.md / ARCHITECTURE.md    진입·아키텍처 원본
 기능 개발은 제품 폴더 안에서 스펙 단위로 진행한다(requirements → design → tasks).
 워크플로 원본은 `.agents/rules/sdd-workflow.md`에 있다.
 
-| 단계 | 위치 | 명령 |
-|---|---|---|
-| requirements | `<slug>-specs/requirements/<feature>.md` (진입: 제품 `index.md`) | `/hx-specify` (+ `/hx-clarify`) |
-| design | `<slug>-specs/design/<feature>.md` | `/hx-plan` |
-| tasks | `<slug>-specs/tasks/active/<feature>.md` → `check/` → `completed/` | `/hx-tasks` → `/hx-implement` |
+| 단계 | 위치 | 명령 | 파일이 생기는 시점 |
+|---|---|---|---|
+| requirements | `<slug>-specs/requirements/<feature>.md` (진입: 제품 `index.md`) | `/hx-specify` (+ `/hx-clarify`) | `new-feature.sh <slug> <feature>` |
+| design | `<slug>-specs/design/<feature>.md` | `/hx-plan` | `... --stage=design` |
+| tasks | `<slug>-specs/tasks/active/<feature>.md` → `check/` → `completed/` | `/hx-tasks` → `/hx-implement` | `... --stage=tasks` |
 
 단계 템플릿은 `_spec-templates/` 한 곳에만 두고 제품 폴더로 복사하지 않는다.
 제품 폴더는 `scripts/new-feature.sh <slug> <feature>`가 첫 기능을 만들 때 생성한다.
+**단계 문서도 그 단계에 들어갈 때 하나씩 만든다** — 빈 design·tasks 를 미리 깔면 보드가 곧장
+🔨 구현으로 뛰고 단계 게이트가 항상 통과한다(예외: 설계가 확정된 소규모 작업의 `--all`).
 정합성 점검은 `/hx-analyze`로 하며 읽기 전용이다. 각 단계는 사용자 승인을 받고 다음으로 넘어간다.
 전체 제품 목록은 `specs-index.md`, 제품을 가로지르는 결정은 `decisions/`에 있다.
 

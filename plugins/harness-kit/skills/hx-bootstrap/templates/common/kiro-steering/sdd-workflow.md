@@ -12,4 +12,5 @@ inclusion: always
 - 구현 후 잔여·후속 작업은 `/hx-converge`(append-only 회수, `## Phase N: Convergence`). 근거: `scripts/check-spec-freshness.sh`(신선도 리포트).
 - 요구사항=무엇/왜(우선순위 User Story·측정가능 SC·`[NEEDS CLARIFICATION]`), design=어떻게(+Constitution Check), tasks=`T### [P] [US]` 포맷.
 - 완료 게이트: tasks active → check → **사용자 승인** → completed(임의 이동 금지). 검증은 `scripts/verify.sh`.
-- 새 기능 스캐폴딩: `scripts/new-feature.sh <slug> <feature>` (제품 폴더가 없으면 함께 생성. 템플릿 원본은 `.agents/docs/_spec-templates/`).
+- 스캐폴딩은 **단계마다 한 번씩**: `scripts/new-feature.sh <slug> <feature>`(requirements) → `--stage=design` → `--stage=tasks`. 빈 design·tasks 를 미리 깔면 보드와 단계 게이트가 무력해진다. 설계가 확정된 소규모 작업만 `--all`.
+- 제품 폴더가 없으면 첫 실행이 함께 만든다. 템플릿 원본은 `.agents/docs/_spec-templates/`.

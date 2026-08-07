@@ -139,15 +139,15 @@
 | `.agents/rules/quality-score.md` | 코드품질·Story/Epic DoD·커버리지 도구 | ✅ | 인간 |
 | `.kiro/steering/*.md` | 위 원본을 가리키는 **얇은 포인터**(inclusion 유지) | 일부 ✅ | 인간 |
 | `.agents/docs/README.md` | 기록 시스템 자기서술 + 4대 축 매핑 | — | 인간 |
-| `.agents/docs/_spec-templates/{README, index, requirements/_template, design/_template, checklists/_template, tasks/{_template,README}}.md` | SDD 단계 템플릿 **원본 한 벌**(복사 원본). 제품 폴더 `<slug>-specs/` 는 설치가 아니라 `new-feature.sh` 가 첫 기능에서 만들며, 템플릿은 그리로 복사되지 않는다 | — | 인간→에이전트 실행 |
+| `.agents/docs/_spec-templates/{README, index, requirements/_template, design/_template, checklists/_template, tasks/{_template,README}}.md` | SDD 단계 템플릿 **원본 한 벌**(복사 원본). 제품 폴더 `<slug>-specs/` 는 설치가 아니라 `new-feature.sh` 가 첫 기능에서 만들며, 템플릿은 그리로 복사되지 않는다. 단계 문서는 그 단계에 들어갈 때 하나씩 렌더된다 | — | 인간→에이전트 실행 |
 | `.agents/docs/decisions/{index,_template,core-beliefs}.md` | 전역 설계 결정(ADR)·핵심 원칙 | — | 인간 |
 | `.agents/docs/{specs-index,tech-debt-tracker}.md` | 전 제품 스펙 색인·전역 기술부채 | — | 인간 |
 | `.agents/docs/generated/README.md` | 에이전트가 만드는 문서 규약(손편집 금지) | — | 에이전트 |
 | `.agents/docs/references/README.md` | 압축 참고자료(*-llms.txt) 규약 | — | 인간/에이전트 |
 | `scripts/verify.sh` | **단일 강제 지점**(스택별 빌드·린트·타입·아키텍처·테스트 + 변형 전용 조건부 단계). `HARNESS_VERIFY_LEVEL`로 범위 분리 — `fast`(hook 전용: 구조 점검 + 가벼운 정적 검사) / `full`(기본, pre-push·CI) | ✅ | 인간 |
 | `scripts/check-exec-plan-status.sh` | exec-plan(tasks) 위치↔상태 일관성 검사(전 제품 순회) | — | 인간 |
-| `scripts/new-feature.sh` | SDD 기능 스캐폴딩(`_spec-templates/` → req/design/tasks 3종 생성). 제품 폴더가 없으면 골격까지 생성 | — | 인간/에이전트 |
-| `scripts/check-sdd-prerequisites.sh` | SDD 단계 선행조건 검사(design/tasks/implement) | — | 에이전트 |
+| `scripts/new-feature.sh` | SDD 단계 문서 스캐폴딩(`_spec-templates/` → **그 단계 하나만**. `--stage=requirements`(기본)·`design`·`tasks`, 예외로 `--all` 3종). 제품 폴더가 없으면 골격까지 생성 | — | 인간/에이전트 |
+| `scripts/check-sdd-prerequisites.sh` | SDD 단계 선행조건 검사(design/tasks/implement). `--stage` 는 공백·등호 두 표기를 받고 모르는 단계는 거부 | — | 에이전트 |
 | `scripts/check-spec-freshness.sh` | 스펙이 최신인지 확인하는 리포트(읽기 전용·항상 exit 0). `/hx-converge` 근거 | — | 인간/에이전트 |
 | `.claude/settings.json` | 권한(deny) + defaultMode(기본 acceptEdits) + hook 3종 배선 | — | 인간 |
 | `.claude/commands/hx-harness.md` | `/hx-harness` 규칙 로드 명령 | — | 인간 |

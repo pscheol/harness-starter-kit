@@ -464,9 +464,12 @@ case "$STACK" in
     ;;
 esac
 echo "  · product.md · ARCHITECTURE.md · structure.md 의 {{플레이스홀더}} 채우기"
-echo "    SDD 는 제품 폴더를 미리 만들지 않는다. 첫 기능에서 만들어진다:"
-echo "      scripts/new-feature.sh <product-slug> <feature>   (또는 /hx-specify)"
-echo "      → .agents/docs/<slug>-specs/{requirements,design,tasks} 생성 + specs-index.md 등록"
+echo "    SDD 는 제품 폴더도 단계 문서도 미리 만들지 않는다. 단계에 들어갈 때 하나씩 생긴다:"
+echo "      scripts/new-feature.sh <product-slug> <feature>                  (또는 /hx-specify)"
+echo "      scripts/new-feature.sh <product-slug> <feature> --stage=design   (또는 /hx-plan)"
+echo "      scripts/new-feature.sh <product-slug> <feature> --stage=tasks    (또는 /hx-tasks)"
+echo "      → 첫 실행이 .agents/docs/<slug>-specs/ 골격 + specs-index.md 등록까지 함께 한다"
+echo "      빈 design·tasks 를 미리 깔면 보드가 곧장 구현으로 뛰고 단계 게이트가 무력해진다."
 echo "    템플릿 원본은 .agents/docs/_spec-templates/ 한 곳이다(제품 폴더에 복사되지 않는다)."
 echo "  · 검증 레벨: 에이전트 Stop hook 은 fast(구조 점검 + 가벼운 정적 검사, 수 초)만 돈다."
 echo "    빌드·테스트를 포함한 full 은 커밋·푸시 전에 직접 실행한다:  bash scripts/verify.sh"

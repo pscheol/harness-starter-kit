@@ -28,7 +28,16 @@ requirements/<feature>.md   (EARS + 우선순위 스토리) → 승인
 완료 처리: task 파일은 DoD/verify 충족 시 `tasks/check/`로 옮기고(상태 `check`) **사용자 검증**을 받는다.
 사용자 승인 후에만 `tasks/completed/`로 옮긴다(`active/` → `check/` → `completed/`. 상세: `tasks/README.md`).
 각 단계 템플릿 원본은 `../_spec-templates/` 한 곳이다(제품 폴더 안에는 템플릿을 두지 않는다).
-새 기능은 `scripts/new-feature.sh {{PRODUCT_SLUG}} <feature>`로 스캐폴딩한다.
+
+스캐폴딩은 **단계에 들어갈 때마다 한 번씩** 돌린다 — 그 단계 문서 하나만 생긴다.
+
+```bash
+scripts/new-feature.sh {{PRODUCT_SLUG}} <feature>                  # requirements
+scripts/new-feature.sh {{PRODUCT_SLUG}} <feature> --stage=design   # 요구사항 승인 후
+scripts/new-feature.sh {{PRODUCT_SLUG}} <feature> --stage=tasks    # 설계 승인 후
+```
+
+빈 design·tasks 를 미리 만들지 않는다. 미리 만들면 아래 보드가 곧장 🔨 구현으로 뛰어 요구·설계 칸이 빈다.
 
 ## 기준 문서 (원본)
 

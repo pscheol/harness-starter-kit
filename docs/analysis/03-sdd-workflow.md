@@ -15,7 +15,7 @@ specify → clarify → checklist → plan → tasks → analyze → implement
 
 | 명령 | 단계 | 하는 일 | 특성 |
 |---|---|---|---|
-| `/hx-specify` | 1. 요구사항 | `requirements/<feature>.md`를 무엇/왜로 채움(우선순위 User Story·측정가능 SC·`[NEEDS CLARIFICATION]`≤3) | `new-feature.sh`로 스캐폴딩, 자체검증 후 `in-review`→승인 |
+| `/hx-specify` | 1. 요구사항 | `requirements/<feature>.md`를 무엇/왜로 채움(우선순위 User Story·측정가능 SC·`[NEEDS CLARIFICATION]`≤3) | `new-feature.sh`로 **requirements만** 스캐폴딩, 자체검증 후 `in-review`→승인 |
 | `/hx-clarify` | 보조 | 모호성을 한 번에 하나씩 최대 5개 질문으로 해소, `## Clarifications`에 반영 | 스펙 즉시 갱신 |
 | `/hx-checklist` | 품질 게이트 | 요구사항 문장 자체의 "유닛테스트"(5축)로 PASS/FAIL 판정 | **읽기 전용**(스펙 미수정). "한 문서 품질" |
 | `/hx-plan` | 2. 설계 | `design/<feature>.md` 채우고 **Constitution Check 게이트** 통과 | 전제=requirements 승인. 위반은 Complexity Tracking에 정당화 |
@@ -88,8 +88,8 @@ SDD는 제품(바운디드 컨텍스트) 단위 묶음 `<slug>-specs/`로 관리
 
 | 스크립트 | 역할 |
 |---|---|
-| `new-feature.sh <slug> <feature>` | `_spec-templates/`의 `_template.md`를 복사해 제품 폴더에 `<feature>.md` 3종 생성(requirements·design·tasks/active). 제품 폴더가 없으면 골격(`index.md`·`tasks/README.md`·빈 하위폴더)까지 생성하며 이때 `{{PRODUCT_SLUG}}`를 치환한다. 템플릿 자체는 제품 폴더에 복사하지 않는다. 기존 파일 미덮어씀 |
-| `check-sdd-prerequisites.sh <slug> <feature> [--stage design\|tasks\|implement]` | 단계별 선행 문서(design=requirements, tasks=+design, implement=+tasks) 존재 확인 |
+| `new-feature.sh <slug> <feature> [--stage=S]` | `_spec-templates/`의 `_template.md`를 복사해 제품 폴더에 **그 단계 문서 하나만** 생성한다. `--stage=requirements`(기본) · `design` · `tasks`. 2·3단계는 requirements에서 키를 찾아 같은 파일명을 쓰고 선행 문서가 없으면 거부한다. 제품 폴더가 없으면 골격(`index.md`·`tasks/README.md`·빈 하위폴더)까지 생성하며 이때 `{{PRODUCT_SLUG}}`를 치환한다. 템플릿 자체는 제품 폴더에 복사하지 않는다. 기존 파일 미덮어씀. `--all`은 3종을 함께 만드는 예외 경로 |
+| `check-sdd-prerequisites.sh <slug> <feature> [--stage design\|tasks\|implement]` | 단계별 선행 문서(design=requirements, tasks=+design, implement=+tasks) 존재 확인. `--stage`는 공백·등호 두 표기를 받고 모르는 단계는 `exit 2`로 거부 |
 | `check-exec-plan-status.sh` | 제품별 `tasks/{active,check,completed}/` 순회, 첫 상태 라인과 폴더 일치 강제 |
 | `check-spec-freshness.sh` | 정체 draft/in-review·미해결 `[NEEDS CLARIFICATION:]`·정체 active tasks 리포트. **게이트 아님·항상 exit 0**. `/hx-converge` 근거 |
 | `verify.sh` | 단일 강제 게이트([04-enforcement.md](04-enforcement.md) 참조) |

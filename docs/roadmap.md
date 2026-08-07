@@ -400,6 +400,37 @@ templates/stacks/<stack>/
 
 ---
 
+## Phase 14 — SDD 단계 문서를 단계마다 생성 ✅ (완료: 2026-08-07)
+
+> **배경**: 사용자 실사용 제보 — "스펙에서 tasks, design, requirements를 한번에 기본 디폴트 값을 다 한번에
+> 생성하더라. 작업 단계 수행할 때마다 생성하게끔 하면 좋을 것 같다." 확인해 보니 편의 문제를 넘어
+> **강제 장치 두 개를 동시에 죽이고 있었다**. `board.sh` 는 파일이 놓인 위치로 칸반 상태를 계산하는데
+> 스캐폴딩이 `tasks/active/` 까지 함께 만들어 모든 기능이 생성 즉시 🔨 구현으로 떴고(📋 요구·🎨 설계 칸이
+> 영구히 빔), `check-sdd-prerequisites.sh` 의 단계 선행조건도 파일이 이미 있으니 항상 통과했다.
+
+### 완료 요약
+
+- [x] `new-feature.sh` 재작성 — `--stage=requirements`(기본)·`design`·`tasks` 도입. 그 단계 문서 하나만 렌더한다.
+      2·3단계는 새 키를 만들지 않고 `requirements/` 에서 키를 찾아 같은 파일명을 쓴다(짧은 이름·전체 키 둘 다 허용,
+      동명 후보가 여럿이면 후보를 보여주고 `exit 2`). `tasks` 는 design 부재 시 `exit 1` 로 거부.
+      예전 동작은 `--all` 로 남기되 "보드에서 곧장 🔨 구현으로 뜬다"는 경고를 출력한다. `--all` + `--stage` 는 거부.
+- [x] **`check-sdd-prerequisites.sh` 조용한 실패 수정**(작업 중 발견) — 파서가 `--stage tasks`(공백)만 받고
+      `--stage=tasks`(등호)는 조용히 무시해 requirements만 확인한 뒤 "선행조건 OK"를 냈다. `new-feature.sh` 가
+      등호 표기를 쓰게 되면서 게이트 우회 위험이 실제로 커졌다. 두 표기를 모두 받고, 모르는 단계 이름은
+      `exit 2` 로 거부하도록 고쳤다(오타가 requirements 검사로 조용히 떨어지지 않는다).
+- [x] 워크플로 원본 동기화 — `sdd-workflow.md` 에 "파일이 생기는 시점" 열과 "단계마다 그 단계 문서만 만든다" 절 추가,
+      `/hx-plan`·`/hx-tasks` 절 1번 항목에 각자 자기 단계 파일 생성 지시. Kiro 포인터도 갱신.
+- [x] 트리거 3종(`hx-specify`·`hx-plan`·`hx-tasks`) 수정 후 `sync-commands.sh` 로 4하네스 파생(12파일 동기화).
+- [x] 문서 동기화 — `setup.sh` 설치 후 안내 · `manifest.md`(스크립트 2행·템플릿 행) · `hx-bootstrap/SKILL.md` ·
+      `_spec-templates/{README,index}.md` · `_spec-templates/tasks/README.md` · `specs-index.md` ·
+      `agents-docs/README.md` · `docs/analysis/03-sdd-workflow.md` · `docs/guides/01-getting-started.md` · `README.md`.
+- 검증: 임시 디렉터리 e2e(go/layered/claude) — 1단계 후 보드 `📋 요구 (1)`, `--stage=design` 후 `🎨 설계 (1)`,
+      `--stage=tasks` 후 `🔨 구현 (1)` 로 정확히 이동. 재실행 멱등(`skip(존재)`), 동명 후보 다수 거부,
+      전체 키 지정 통과, `--all` 3종 + 경고, `--all`+`--stage` `exit 2`, 게이트 종료 코드 미충족 1·충족 0·오타 2 확인.
+      `check-exec-plan-status.sh` OK, `bash -n` 통과.
+
+---
+
 ## 작업 규칙
 
 - 각 Phase 끝에 `scripts/verify.sh` + 사용자 승인.
