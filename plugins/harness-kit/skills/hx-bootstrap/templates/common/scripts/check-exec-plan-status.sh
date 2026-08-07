@@ -48,5 +48,11 @@ if [ "$found_any" -eq 0 ]; then
 fi
 
 if [ "$fail" -ne 0 ]; then echo "exec-plan(tasks) 상태 일관성 실패"; exit 1; fi
+
+# 상태가 일관되면 보드를 실제 파일 위치에 맞춰 다시 그린다.
+# 이 한 줄 덕분에 task 파일을 active→check→completed 로 옮기기만 하면 보드가 따라온다
+# (사람이 표의 상태를 손으로 고칠 일이 없다). 실패해도 게이트를 막지 않는다.
+[ -f scripts/board.sh ] && { bash scripts/board.sh >/dev/null 2>&1 || true; }
+
 echo "exec-plan(tasks) 상태 일관성 OK"
 exit 0
