@@ -12,7 +12,7 @@
       "name": "harness-kit",
       "source": "./plugins/harness-kit",
       "description": "백엔드 프로젝트에 하네스 엔지니어링 적용.",
-      "version": "1.0.4",
+      "version": "1.0.5",
       "license": "MIT",
       "keywords": [
         "harness",

@@ -15,6 +15,7 @@ Claude Code, Codex, Kiro, Cursor 네 하네스에서 같은 규칙과 같은 슬
 harness-starter-kit/                        ← 마켓플레이스 루트
 ├── .claude-plugin/marketplace.json         Claude Code 마켓플레이스 매니페스트
 ├── .agents/plugins/marketplace.json        Codex 마켓플레이스 매니페스트
+├── install-kiro.sh                         Kiro 설치기 (마켓플레이스가 없는 하네스용)
 ├── plugins/
 │   └── harness-kit/                        ← 플러그인 루트
 │       ├── .claude-plugin/plugin.json      Claude Code 플러그인 매니페스트
@@ -68,7 +69,65 @@ codex plugin add harness-kit@harness-starter-kit
 codex plugin marketplace add <owner>/harness-starter-kit
 ```
 
-설치 확인은 Claude Code에서 `/plugin`, Codex에서 `codex plugin list`로 한다.
+### Kiro — `install-kiro.sh`
+
+Kiro에는 플러그인 마켓플레이스가 없다. 킷 루트의 `install-kiro.sh`가 그 자리를 대신한다.
+
+```bash
+bash install-kiro.sh                      # ~/.kiro/skills/ 에 킷 스킬 7종 설치
+bash install-kiro.sh --dry-run            # 계획만 출력
+bash install-kiro.sh --force              # 기존 파일도 덮어쓴다
+bash install-kiro.sh --uninstall          # 이 스크립트가 깐 것만 제거
+bash install-kiro.sh --home=/path/.kiro   # 대상 홈 지정 (환경변수 KIRO_HOME 도 가능)
+```
+
+**스킬 디렉터리를 통째로 복사한다.** 포인터가 아니라서 설치 후에는 이 리포가 없어도, 옮겨도 그대로 동작한다.
+
+```text
+~/.kiro/skills/
+├── hx-bootstrap/     SKILL.md + setup.sh + lib/ + templates/   (202개 파일)
+├── hx-jvm-setup/     SKILL.md
+├── hx-jvm-hexagonal/ · hx-jvm-layered/ · hx-jvm-layered-multimodule/
+├── hx-agent-add/     SKILL.md + add-agent.sh
+└── hx-update/        SKILL.md + update.sh
+```
+
+Kiro 스킬 규약은 `<홈>/skills/<스킬명>/SKILL.md` 다. 프로젝트 레벨(`.kiro/skills/`)과 같은 구조이며,
+**한 겹 더 감싸면(`skills/harness-kit/skills/…`) 인식되지 않는다.** 리포를 통째로 복사해 넣으면 이 함정에 빠진다.
+
+세션이 시작될 때 로드되므로 설치 후 `kiro-cli` 를 다시 켜야 `/hx-bootstrap` · `/hx-jvm-setup` 이 잡힌다.
+
+스크립트를 직접 불러도 된다. 리포 없이 설치본만으로 스캐폴딩까지 끝난다.
+
+```bash
+bash ~/.kiro/skills/hx-bootstrap/setup.sh --agents=kiro --dry-run <대상_리포>
+```
+
+설치 기록은 `~/.kiro/.harness-kit-manifest.json` 에 남는다.
+
+```json
+{
+  "kitVersion": "1.0.5",
+  "kitPath": "/path/to/harness-starter-kit",
+  "agent": "kiro",
+  "installedAt": "2026-01-01",
+  "managedDirs": ["skills/hx-bootstrap", "…"]
+}
+```
+
+`--uninstall` 은 **이 기록에 적힌 디렉터리만** 지운다. 같은 폴더에 있는 다른 도구의 스킬은
+건드리지 않는다. 킷을 갱신했으면 `--force` 로 다시 깐다.
+
+이 스크립트가 까는 것은 **킷 스킬**(리포에 골격을 깔아주는 쪽)이다. 대상 리포의 Kiro 배선
+(`.kiro/steering` · `.kiro/skills` · `.agents/rules`)은 `hx-bootstrap` 이 깐다:
+
+```bash
+bash plugins/harness-kit/skills/hx-bootstrap/setup.sh --agents=kiro <대상_리포>
+```
+
+### 설치 확인
+
+Claude Code는 `/plugin`, Codex는 `codex plugin list`, Kiro는 `~/.kiro/skills/hx-*` 확인 후 `/hx-` 로 부른다.
 플러그인과 스킬 목록은 세션이 시작될 때 로드되기 때문에, 설치 직후에는 재시작해야 보인다.
 
 ## 스킬 사용법
@@ -77,7 +136,7 @@ codex plugin marketplace add <owner>/harness-starter-kit
 
 | 층 | 스킬 | 사는 곳 | 언제 쓰나 |
 |---|---|---|---|
-| 킷 스킬 (7종) | `hx-bootstrap` · `hx-jvm-setup` · `hx-jvm-hexagonal` · `hx-jvm-layered` · `hx-jvm-layered-multimodule` · `hx-agent-add` · `hx-update` | 플러그인 — `harness-kit:` 네임스페이스가 붙는다 | 리포에 골격을 깔거나 유지할 때 |
+| 킷 스킬 (7종) | `hx-bootstrap` · `hx-jvm-setup` · `hx-jvm-hexagonal` · `hx-jvm-layered` · `hx-jvm-layered-multimodule` · `hx-agent-add` · `hx-update` | 플러그인 — `harness-kit:` 네임스페이스가 붙는다 (Kiro는 `install-kiro.sh` 가 깐 `~/.kiro/skills/hx-*`) | 리포에 골격을 깔거나 유지할 때 |
 | 프로젝트 스킬 (9종) | `hx-specify` · `hx-clarify` · `hx-checklist` · `hx-plan` · `hx-tasks` · `hx-analyze` · `hx-implement` · `hx-converge` · `hx-harness` | 대상 리포 — `hx-bootstrap` 이 설치해준다 | 깔린 리포에서 개발할 때, 매일 |
 
 플러그인 스킬은 `harness-kit:` 네임스페이스를 갖기 때문에 프로젝트 스킬과 **구조적으로 충돌하지 않는다**.

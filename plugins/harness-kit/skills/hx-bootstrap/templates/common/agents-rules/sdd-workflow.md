@@ -10,13 +10,48 @@ Codex, Kiro(`.kiro/steering/sdd-workflow.md`)는 모두 이 원본을 참조하�
 
 | 단계 | 위치 | 명령 |
 |---|---|---|
-| requirements | `.agents/docs/<slug>-specs/requirements/<feature>.md` | `/hx-specify` (+ `/hx-clarify`) |
-| (품질 검사) | `.agents/docs/<slug>-specs/checklists/<feature>-<도메인>.md` | `/hx-checklist` |
-| design | `.agents/docs/<slug>-specs/design/<feature>.md` | `/hx-plan` |
-| tasks | `.agents/docs/<slug>-specs/tasks/active/<feature>.md` | `/hx-tasks` → `/hx-implement` |
+| requirements | `.agents/docs/<slug>-specs/requirements/<N>-<종류>-<이름>.md` | `/hx-specify` (+ `/hx-clarify`) |
+| (품질 검사) | `.agents/docs/<slug>-specs/checklists/<N>-<종류>-<이름>-<도메인>.md` | `/hx-checklist` |
+| design | `.agents/docs/<slug>-specs/design/<N>-<종류>-<이름>.md` | `/hx-plan` |
+| tasks | `.agents/docs/<slug>-specs/tasks/active/<N>-<종류>-<이름>.md` | `/hx-tasks` → `/hx-implement` |
 | (정합성 검사) | 읽기 전용 리포트 | `/hx-analyze` |
 
-- 세 단계는 **같은 `<feature>` 파일명**을 쓴다. 새 기능/제품 스캐폴딩은 `scripts/new-feature.sh <slug> <feature>`.
+- 세 단계는 **같은 파일명**을 쓴다. 스캐폴딩은 `scripts/new-feature.sh <slug> <이름> [--type=T] [--priority=N]`.
+
+## 파일명 규약 — `<우선순위>-<종류>-<이름>.md`
+
+```text
+1-feat-checkout.md        2-fix-payment-timeout.md        5-refactor-order-port.md
+```
+
+| 자리 | 값 | 정하는 방법 |
+|---|---|---|
+| 우선순위 | 정수 | 생략 시 기존 최대 + 1. `--priority=N` 으로 지정 |
+| 종류 | `feat`(기본) · `fix` · `refactor` · `perf` · `chore` · `docs` | `--type=` |
+| 이름 | kebab-case | 위치 인자 |
+
+- **번호·종류를 이름에 직접 붙이지 않는다.** 스크립트가 거부한다(`fix-abc` → `--type=fix` 를 쓰라고 안내).
+- SDD 단위는 기능만이 아니다. 버그 수정도 requirements(재현·기대 동작) → design(원인·수정 범위) → tasks 를 갖는다.
+- 세 폴더가 같은 파일명을 공유해야 추적이 성립하므로 번호·종류도 셋 다 같이 간다.
+
+## 진행 보드 (자동 생성)
+
+`scripts/board.sh` 가 **파일이 놓인 위치**를 읽어 칸반을 그린다. 사람이 상태를 적지 않는다.
+
+| 위치 | 상태 |
+|---|---|
+| `requirements/` 에만 있음 | 📋 요구 |
+| `design/` 까지 있음 | 🎨 설계 |
+| `tasks/active/` | 🔨 구현 |
+| `tasks/check/` | 👀 검증(사용자 승인 대기) |
+| `tasks/completed/` | ✅ 완료 |
+
+- 전 제품 통합 보드는 `.agents/docs/specs-index.md`, 제품별 보드는 각 `<slug>-specs/index.md` 의
+  `<!-- BOARD:BEGIN -->` ~ `<!-- BOARD:END -->` 구간이다. **그 안을 손으로 고치지 않는다.**
+- 마커 밖의 **등록표는 사람이 쓴다**(제품 요약·출처 EPIC·담당 모듈). 보드는 진행 현황, 등록표는 카탈로그다.
+- task 파일을 옮길 때 **파일 안 `| 상태 |` 필드도 함께 바꾼다.** 위치와 상태가 어긋나면
+  `check-exec-plan-status.sh` 가 실패시키고 보드도 갱신되지 않는다.
+- 상태가 일관되면 그 스크립트가 `board.sh` 를 호출하므로 보드는 자동으로 따라온다.
 - 각 단계는 **사용자 승인 후** 다음으로 넘어간다. 전역 결정은 `.agents/docs/decisions/`.
 
 ## 공통 원칙 (모든 단계)
@@ -34,8 +69,8 @@ Codex, Kiro(`.kiro/steering/sdd-workflow.md`)는 모두 이 원본을 참조하�
 입력: (제품 slug + 기능 설명). 없으면 사용자에게 제품 slug와 한 줄 설명을 묻는다.
 
 1. **기능 short-name 도출**(2~4단어, action-noun). 제품 slug 확인(기존 `*-specs` 중 택 또는 신규).
-2. **스캐폴딩**: `scripts/new-feature.sh <slug> <feature>` 로 requirements/design/tasks 3종을 `.agents/docs/_spec-templates/` 원본에서 생성하고 제품 `index.md`에 등록. 제품 폴더가 없으면 골격까지 함께 만들어진다(설치가 미리 만들어 두지 않는다). 새 제품이면 `specs-index.md` 등록표에도 행을 추가한다.
-3. `requirements/<feature>.md` 를 채운다:
+2. **스캐폴딩**: `scripts/new-feature.sh <slug> <이름> [--type=T]` 로 requirements/design/tasks 3종을 `.agents/docs/_spec-templates/` 원본에서 생성하고 제품 `index.md`에 등록. 제품 폴더가 없으면 골격까지 함께 만들어진다(설치가 미리 만들어 두지 않는다). 새 제품이면 `specs-index.md` 등록표에도 행을 추가한다.
+3. `requirements/<N>-<종류>-<이름>.md` 를 채운다:
    - User Story(우선순위 P1/P2/P3): 각 스토리는 독립 테스트 가능하고, 하나만 구현해도 사용자에게 가치를 주도록 슬라이싱. "왜 이 우선순위"를 적는다.
    - **수용 기준**: 기존 EARS(`WHEN/IF/WHERE/WHILE ... THE 시스템 SHALL ...`) 유지 + 필요 시 `Given/When/Then` 병용.
    - Success Criteria(측정가능·기술중립): `SC-001…` (예: "체크아웃 3분 이내", "동시 1만 사용자"). 프레임워크·DB 언급 금지.
@@ -58,7 +93,7 @@ requirements↔design↔tasks **교차** 정합성은 `/hx-checklist`가 아니�
 
 입력: (제품·기능 + 도메인 초점). 도메인 생략 시 `requirements-quality`(기본).
 
-1. 대상 requirements를 읽고, `.agents/docs/_spec-templates/checklists/_template.md` 를 제품 폴더의 `checklists/<feature>-<도메인>.md` 로 복제한다(제품 폴더에 `checklists/` 가 없으면 만든다). 템플릿 자체를 제품 폴더에 복사하지 않는다.
+1. 대상 requirements를 읽고, `.agents/docs/_spec-templates/checklists/_template.md` 를 제품 폴더의 `checklists/<N>-<종류>-<이름>-<도메인>.md` 로 복제한다(제품 폴더에 `checklists/` 가 없으면 만든다). 템플릿 자체를 제품 폴더에 복사하지 않는다.
 2. 기본 5축을 `CHK-###` 로 PASS / FAIL / N·A 판정한다:
    - **완결성**: 스토리·수용기준·SC·NFR·엣지·scope·제약/가정 누락 없음.
    - **명료성**: 측정 불가 형용사(빠른·쉬운·안정적) 제거, 한 기준=한 동작, 구현 세부 누출 없음, `[NEEDS CLARIFICATION]`≤3.
@@ -71,7 +106,7 @@ requirements↔design↔tasks **교차** 정합성은 `/hx-checklist`가 아니�
 
 ## /hx-plan — 설계 생성
 
-전제: requirements 승인. 산출: `design/<feature>.md`.
+전제: requirements 승인. 산출: `design/<N>-<종류>-<이름>.md`.
 
 1. requirements와 `.agents/rules/*`(특히 guardrails·security·structure·api-standards·reliability), `ARCHITECTURE.md`를 읽는다.
 2. **Constitution Check (게이트)**: 설계가 규칙 원본을 위반하지 않는지 점검. 위반이 불가피하면 design의 "Complexity/대안" 섹션에 정당화를 남긴다(정당화 없으면 진행 금지).
@@ -81,7 +116,7 @@ requirements↔design↔tasks **교차** 정합성은 `/hx-checklist`가 아니�
 
 ## /hx-tasks — 작업 생성
 
-전제: design 승인. 산출: `tasks/active/<feature>.md`.
+전제: design 승인. 산출: `tasks/active/<N>-<종류>-<이름>.md`.
 
 1. requirements의 User Story(P1/P2/P3)와 design(컴포넌트·API·데이터)을 작업으로 변환한다.
 2. **작업 포맷(필수)**: `- [ ] T001 [P] [US1] 설명 + 정확한 파일/모듈 경로`.
@@ -129,7 +164,7 @@ requirements↔design↔tasks **교차** 정합성은 `/hx-checklist`가 아니�
 고쳐 쓰지 않고 새 회수 Phase만 덧붙인다(이력 보존). 이 명령은 **작업 목록 복구**지 스펙 수정이 아니다.
 
 1. **근거 수집**: `/hx-analyze` 커버리지 갭·코드리뷰 지적·escaped 버그·requirements의 Deferred 항목, 그리고 `scripts/check-spec-freshness.sh` 리포트(오래된 draft·미해결 `[NEEDS CLARIFICATION]`·정체된 active tasks).
-2. **append**: 대상 `tasks/active/<feature>.md` 끝에 `## Phase N: Convergence` 섹션을 추가하고, 잔여 작업을 `- [ ] T### [P] [US#] 설명 + 파일 경로` 포맷으로 이어붙인다. `T###` 순번은 기존 마지막 번호 다음부터 연속. 각 작업에 회수 출처(analyze ID·이슈 링크·마커 위치)를 근거로 표기.
+2. **append**: 대상 `tasks/active/<N>-<종류>-<이름>.md` 끝에 `## Phase N: Convergence` 섹션을 추가하고, 잔여 작업을 `- [ ] T### [P] [US#] 설명 + 파일 경로` 포맷으로 이어붙인다. `T###` 순번은 기존 마지막 번호 다음부터 연속. 각 작업에 회수 출처(analyze ID·이슈 링크·마커 위치)를 근거로 표기.
 3. **완료 기능의 재개방**: 이미 `completed/`로 옮겨진 기능이면 파일을 `active/`로 되돌리고 상태를 `active`로 바꾼 뒤 회수 Phase를 추가한다(완료 이력은 커밋 히스토리에 남는다).
 4. **스펙 결함이면 회수가 아니라 되돌림**: 요구 누락은 `/hx-specify`, 모호는 `/hx-clarify`, 설계 변경은 `/hx-plan`으로. `/hx-converge`는 스펙 문장을 고치지 않는다.
 5. **사용자 승인** 후 `/hx-implement`로 회수 Phase를 실행하고 완료 게이트(active→check→confirm→completed)를 다시 탄다.

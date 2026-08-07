@@ -39,7 +39,10 @@ requirements/<feature>.md   (EARS + 우선순위 스토리) → 승인
 - 도메인 ERD: `docs/<ERD>.md`
 - 아키텍처 가이드: `docs/<아키텍처>.md`
 
-## 스펙 등록표 (feature ↔ 상태)
+<!-- BOARD:BEGIN — scripts/board.sh 가 생성합니다. 손으로 고치지 마십시오. -->
+<!-- BOARD:END -->
+
+## 스펙 등록표 (feature ↔ 출처·소유)
 
 상태: ☐ 미작성 / ◐ 진행 / ☑ 완료. **담당 모듈** = 이 기능을 소유하는 도메인 모듈.
 
