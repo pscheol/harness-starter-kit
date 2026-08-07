@@ -1,5 +1,8 @@
 # harness-starter-kit 분석
 
+> **킷을 고칠 때 보는 문서다.** 킷을 *쓰는* 방법(설치·아키텍처 선택·JVM 세팅)은 [../guides/](../guides/) 에 있다.
+
+
 `harness-starter-kit/`(이하 "킷")의 현행 v1 구조를 다른 문서 없이도 읽을 수 있게 정리한 묶음이다.
 킷은 백엔드 단일 프로젝트(JVM · Python · Go 중 선택)를 위한 에이전트 하네스 스타터로,
 `setup.sh` 한 번으로 규칙 원본, SDD 워크플로, 검증 게이트, 에이전트 배선을 대상 리포에 설치한다.
@@ -10,8 +13,8 @@
 
 | 축 | 실체 | 요지 |
 |---|---|---|
-| 규칙 원본 | `.agents/rules/*.md` 11종 (공통 3 + 스택별 6 + 변형별 2) | 규칙 본문은 한 곳에만. 세 에이전트가 공유 |
-| 기록/SDD | `.agents/docs/` (제품 단위 `product-<slug>-specs/`) | 컨텍스트에 들어오지 않은 내용은 에이전트에게 없는 것과 같다. 스펙이 기준이고 코드가 결과물 |
+| 규칙 원본 | `.agents/rules/*.md` 12종 (공통 4 + 스택별 6 + 변형별 2) | 규칙 본문은 한 곳에만. 세 에이전트가 공유 |
+| 기록/SDD | `.agents/docs/` (제품 단위 `<slug>-specs/`) | 컨텍스트에 들어오지 않은 내용은 에이전트에게 없는 것과 같다. 스펙이 기준이고 코드가 결과물 |
 | 강제 게이트 | `scripts/verify.sh` 한 곳 | 강제 로직은 1곳, 트리거(훅·CI·pre-commit)는 N개가 이 한 곳만 호출 |
 | 에이전트 배선 | `.claude/` · `.codex/` · `.kiro/steering/` | 진입 파일은 목차, 상세는 원본으로 유도. 규칙 중복 금지 |
 
@@ -31,7 +34,7 @@
 | 문서 | 다루는 것 |
 |---|---|
 | [01-overview.md](01-overview.md) | 목적·구성·설계 원칙(1곳+N트리거, 자기완결 원칙, 3에이전트 공유, 스택 오버레이) |
-| [02-architecture.md](02-architecture.md) | `setup.sh` 설치 매핑(공통+스택+변형 3루트, 7 세그먼트)·아키텍처 변형과 계층 모델·규칙 원본 11종·Kiro 포인터·치환 토큰표 |
+| [02-architecture.md](02-architecture.md) | `setup.sh` 설치 매핑(공통+스택+변형 3루트, 7 세그먼트)·아키텍처 변형과 계층 모델·규칙 원본 12종·Kiro 포인터·치환 토큰표 |
 | [03-sdd-workflow.md](03-sdd-workflow.md) | 7 명령 + `/hx-converge`·SDD 문서 위치·완료 게이트·스크립트·템플릿 강제 장치 (스택 무관) |
 | [04-enforcement.md](04-enforcement.md) | 단일 게이트 `verify.sh`(스택별 단계)·N트리거(훅3·CI·pre-commit·kiro)·구조 테스트·settings·protect-sources |
 
@@ -51,12 +54,12 @@
 
 | STACK | 사용 가능한 ARCH |
 |---|---|
-| `jvm` | `hexagonal` · `multimodule`(이상 멀티모듈) · `layered` · `modulith` · `feature`(이상 단일 모듈) |
+| `jvm` | `hexagonal` · `hexagonal-nested` · `hexagonal-standalone` · `layered-multimodule` · `multimodule`(이상 멀티모듈) · `layered` · `modulith` · `feature`(이상 단일 모듈) |
 | `python` | `hexagonal` · `layered` · `modular` · `django` · `ai-service` |
 | `go` | `hexagonal` · `layered` · `feature` · `flat` |
 
 변형이 바꾸는 파일은 네 개뿐이다(`ARCHITECTURE.md`, `.agents/rules/structure.md`,
-`.agents/rules/tech.md`, `.kiro/steering/structure.md`). 그래서 조합이 늘어도 설치 파일 수는 104개로 같다.
+`.agents/rules/tech.md`, `.kiro/steering/structure.md`). 그래서 조합이 늘어도 설치 파일 수는 달라지지 않는다(실제 수는 고른 에이전트에 달렸다 — core 38 + 선택분).
 각 변형 문서에는 선택 기준, 승격 신호, 전환 절차가 함께 들어 있다.
 
 ## 읽는 순서

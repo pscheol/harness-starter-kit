@@ -34,7 +34,7 @@ harness-starter-kit/
 
 | 축 | 설치 후 위치 | 요지 |
 |---|---|---|
-| 규칙 원본 | `.agents/rules/*.md` (11종 = 공통 3 + 스택별 6 + 변형별 2) | 세 에이전트가 공유하는 규칙 본문의 단일 소스 |
+| 규칙 원본 | `.agents/rules/*.md` (12종 = 공통 4 + 스택별 6 + 변형별 2) | 세 에이전트가 공유하는 규칙 본문의 단일 소스 |
 | 기록/SDD | `.agents/docs/` | 스펙·설계·작업·결정이 모이는 곳. 제품 단위 묶음 |
 | 검증 게이트 | `scripts/verify.sh` | 강제 로직이 모이는 유일한 지점(스택별 빌드·린트·타입·테스트를 묶음) |
 | 에이전트 배선 | `.claude/` · `.codex/` · `.kiro/steering/` | 각 에이전트의 진입점·트리거(얇은 포인터) |
@@ -123,6 +123,6 @@ DoD와 `verify.sh` 통과는 완료의 필요조건이지, 그것만으로 완�
 
 ## 5. 이 묶음의 나머지 문서
 
-- [02-architecture.md](02-architecture.md) — 설치 매핑(공통+스택+변형 3루트, 7 세그먼트), 아키텍처 변형과 계층 모델, 규칙 원본 11종, Kiro 포인터, 치환 토큰표.
+- [02-architecture.md](02-architecture.md) — 설치 매핑(공통+스택+변형 3루트, 7 세그먼트), 아키텍처 변형과 계층 모델, 규칙 원본 12종, Kiro 포인터, 치환 토큰표.
 - [03-sdd-workflow.md](03-sdd-workflow.md) — 7 명령 + `/hx-converge`, SDD 문서 위치, 완료 게이트, 스크립트, 템플릿 강제 장치(스택 무관).
 - [04-enforcement.md](04-enforcement.md) — 단일 게이트 `verify.sh`(스택별 단계), N트리거(훅·CI·pre-commit·kiro), 구조 테스트, settings, protect-sources.

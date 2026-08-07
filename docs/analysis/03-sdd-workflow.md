@@ -34,7 +34,7 @@ specify → clarify → checklist → plan → tasks → analyze → implement
 
 ## 2. 산출 위치 (`.agents/docs/`)
 
-SDD는 제품(바운디드 컨텍스트) 단위 묶음 `product-<slug>-specs/`로 관리된다.
+SDD는 제품(바운디드 컨텍스트) 단위 묶음 `<slug>-specs/`로 관리된다.
 템플릿은 제품 폴더 밖 `_spec-templates/` **한 곳**에만 두고, 제품 폴더에는 복사하지 않는다
 (제품이 늘어도 템플릿 사본이 늘지 않는다).
 
@@ -49,7 +49,7 @@ SDD는 제품(바운디드 컨텍스트) 단위 묶음 `product-<slug>-specs/`�
 │   ├── checklists/_template.md
 │   ├── design/_template.md
 │   └── tasks/{_template.md, README.md}
-├── product-<slug>-specs/         # 제품 단위 SDD 묶음 (복수 가능)
+├── <slug>-specs/         # 제품 단위 SDD 묶음 (복수 가능)
 │                                 # ★ 설치가 아니라 new-feature.sh 가 첫 기능에서 만든다
 │   ├── index.md                  #   이 제품의 feature 등록표
 │   ├── requirements/             #   <feature>.md                     (/specify·/clarify)
@@ -66,7 +66,7 @@ SDD는 제품(바운디드 컨텍스트) 단위 묶음 `product-<slug>-specs/`�
 ```
 
 - 세 단계는 **같은 `<feature>` 파일명**으로 상호 추적한다(예: `requirements/order.md ↔ design/order.md ↔ tasks/active/order.md`).
-- 전역 결정은 `decisions/`(상태 `제안|채택|폐기`, 폐기해도 삭제 금지·상태만 변경). 기능별 설계는 `product-*/design/`.
+- 전역 결정은 `decisions/`(상태 `제안|채택|폐기`, 폐기해도 삭제 금지·상태만 변경). 기능별 설계는 `*-specs/design/`.
 - `generated/`는 코드/마이그레이션이 원본이고 손편집 금지, CI drift 검사 대상.
 
 ## 3. 완료 게이트 (`active → check → confirm → completed`)

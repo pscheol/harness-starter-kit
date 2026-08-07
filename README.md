@@ -4,7 +4,7 @@ Claude Code, Codex, Kiro, Cursor 네 하네스에서 같은 규칙과 같은 슬
 
 에이전트마다 규칙 파일을 따로 관리하다 보면 내용이 조금씩 어긋난다. 이 킷은 규칙을 `.agents/rules/`
 한 곳에만 두고 나머지 하네스는 그곳을 가리키게 만든다. 백엔드 리포에 그 골격을 한 번에 깔아주는
-`harness-bootstrap` 스킬을 배포한다.
+`hx-bootstrap` 스킬을 배포한다.
 
 설치하면 진입점 역할을 하는 `AGENTS.md` 목차, `.agents/rules`의 공통 규칙, SDD 기록 시스템,
 `scripts/verify.sh` 검증 게이트, 그리고 네 하네스에서 이름이 같은 SDD 슬래시 커맨드 9종이 생긴다.
@@ -19,18 +19,27 @@ harness-starter-kit/                        ← 마켓플레이스 루트
 │   └── harness-kit/                        ← 플러그인 루트
 │       ├── .claude-plugin/plugin.json      Claude Code 플러그인 매니페스트
 │       ├── .codex-plugin/plugin.json       Codex 플러그인 매니페스트
-│       ├── commands/bootstrap.md           /harness-kit:bootstrap 슬래시 커맨드
+│       ├── commands/                       /harness-kit:{bootstrap,agent-add,update}
 │       └── skills/
-│           └── harness-bootstrap/          ← 스킬 본체 (양쪽 하네스가 공유)
-│               ├── SKILL.md
-│               ├── setup.sh                스캐폴딩 실행기
-│               ├── manifest.md             무엇이 어디에 설치되나
-│               ├── README.md
-│               ├── tools/sync-commands.sh  킷 개발용 — 커맨드 파생 트리 재생성
-│               └── templates/              common/ + stacks/<stack>/ + arch/<변형>/
+│           ├── hx-bootstrap/          ← 설치 본체 (모든 스킬이 이것을 호출한다)
+│           │   ├── SKILL.md
+│           │   ├── setup.sh                스캐폴딩 실행기 (유일한 설치 로직)
+│           │   ├── manifest.md             무엇이 어디에 설치되나
+│           │   ├── README.md
+│           │   ├── lib/harness-lib.sh      경로 매핑 · 치환 · lock 공용 함수
+│           │   ├── tools/sync-commands.sh  킷 개발용 — 커맨드 파생 트리 재생성
+│           │   └── templates/              common/ + stacks/<stack>/ + arch/<변형>/
+│           ├── hx-jvm-setup/          ← JVM 전용 진입 (아키텍처 8종 선택)
+│           ├── hx-jvm-hexagonal/      ←   헥사고날 3변형 레시피
+│           ├── hx-jvm-layered/        ←   단일 모듈 레이어드 레시피
+│           ├── hx-jvm-layered-multimodule/  ← 멀티모듈 레이어드 레시피
+│           ├── hx-agent-add/          에이전트 배선 추가
+│           └── hx-update/             킷 새 버전 반영
 └── docs/
-    ├── roadmap.md                          계획과 완료 이력
-    └── analysis/                           설계·분석 문서
+    ├── README.md                           문서 지도 (여기서 시작)
+    ├── guides/                             사용 가이드 — 시작·아키텍처 선택·JVM 레시피
+    ├── analysis/                           킷 내부 구조 분석
+    └── roadmap.md                          계획과 완료 이력
 ```
 
 스킬 본체는 한 벌뿐이다. 하네스마다 다른 건 매니페스트 파일의 위치와 스키마뿐이다.
@@ -64,31 +73,37 @@ codex plugin marketplace add <owner>/harness-starter-kit
 
 ## 스킬 사용법
 
-스킬이 두 층으로 나뉘어 있어 헷갈리기 쉽다. 먼저 구분하고 넘어간다.
+이름은 전부 `hx-` 로 시작하지만 **사는 곳이 다른 두 층**이 있다. 먼저 구분하고 넘어간다.
 
-| 층 | 스킬 | 언제 쓰나 | 어떻게 들어오나 |
+| 층 | 스킬 | 사는 곳 | 언제 쓰나 |
 |---|---|---|---|
-| 킷 스킬 | `harness-bootstrap` (1종) | 리포에 하네스 골격을 깔 때, 한 번 | 마켓플레이스에서 플러그인 설치 |
-| 프로젝트 스킬 | `hx-*` (9종) | 깔린 리포에서 개발할 때, 매일 | `harness-bootstrap`이 대상 리포에 설치해준다 |
+| 킷 스킬 (7종) | `hx-bootstrap` · `hx-jvm-setup` · `hx-jvm-hexagonal` · `hx-jvm-layered` · `hx-jvm-layered-multimodule` · `hx-agent-add` · `hx-update` | 플러그인 — `harness-kit:` 네임스페이스가 붙는다 | 리포에 골격을 깔거나 유지할 때 |
+| 프로젝트 스킬 (9종) | `hx-specify` · `hx-clarify` · `hx-checklist` · `hx-plan` · `hx-tasks` · `hx-analyze` · `hx-implement` · `hx-converge` · `hx-harness` | 대상 리포 — `hx-bootstrap` 이 설치해준다 | 깔린 리포에서 개발할 때, 매일 |
 
-### 킷 스킬 — `harness-bootstrap`
+플러그인 스킬은 `harness-kit:` 네임스페이스를 갖기 때문에 프로젝트 스킬과 **구조적으로 충돌하지 않는다**.
+두 층의 이름도 겹치는 것이 하나도 없어서 짧은 형태(`/hx-jvm-setup`)로도 안전하게 부를 수 있다.
+
+### 킷 스킬 — `hx-bootstrap`
 
 대상 백엔드 리포에 `AGENTS.md`, `.agents/rules`, SDD 기록 시스템, `scripts/verify.sh`,
 `hx-*` 커맨드 9종을 한 번에 깐다.
 
-Claude Code에서는 슬래시 커맨드로 부른다.
+Claude Code에서는 스킬을 슬래시로 바로 부른다. 짧은 형태는 같은 이름의 다른 커맨드가 없을 때 동작한다.
 
 ```
-/harness-kit:bootstrap                          현재 디렉터리에 설치(스택·변형은 판단 후 질문)
-/harness-kit:bootstrap ~/work/api --dry-run     미리보기
-/harness-kit:bootstrap --stack=go --arch=feature
+/harness-kit:hx-bootstrap                       현재 디렉터리에 설치(스택·변형은 판단 후 질문)
+/hx-bootstrap ~/work/api --dry-run              미리보기 (짧은 형태)
+/hx-jvm-setup                                   JVM 전용 진입 — 아키텍처 8종 선택
 ```
 
-Codex는 플러그인 매니페스트에 커맨드 필드가 없어서 스킬로 부른다(`/skills` 목록 또는 `$harness-bootstrap`).
+`/harness-kit:bootstrap` · `/harness-kit:agent-add` · `/harness-kit:update` 세 커맨드도 그대로 남아 있다.
+스킬을 가리키는 얇은 트리거라 어느 쪽으로 불러도 결과는 같다.
+
+Codex는 플러그인 매니페스트에 커맨드 필드가 없어서 스킬로 부른다(`/skills` 목록 또는 `$hx-bootstrap`).
 어느 하네스든 자연어로도 걸린다.
 
 ```
-harness-bootstrap 스킬로 이 리포에 하네스 골격을 세팅해줘
+hx-bootstrap 스킬로 이 리포에 하네스 골격을 세팅해줘
 ```
 
 인자는 생략해도 된다. 에이전트가 대상 리포를 보고 판단하되, 애매하면 임의로 정하지 않고 묻는다.
@@ -97,20 +112,36 @@ harness-bootstrap 스킬로 이 리포에 하네스 골격을 세팅해줘
 |---|---|---|
 | 첫 위치 인자 | 대상 프로젝트 경로 | 현재 작업 디렉터리 |
 | `--stack=` | `jvm` · `python` · `go` | 빌드 파일로 판단(`build.gradle.kts`/`pom.xml`→jvm, `pyproject.toml`→python, `go.mod`→go) |
-| `--arch=` | 스택별 아키텍처 변형(jvm 5 · python 5 · go 4) | 기존 레이아웃에서 추론, 새 리포면 선택 기준을 제시하고 고르게 한다 |
+| `--arch=` | 스택별 아키텍처 변형(jvm 8 · python 5 · go 4) | 기존 레이아웃에서 추론, 새 리포면 선택 기준을 제시하고 고르게 한다 |
 | `--dry-run` | 설치 없이 파일 목록만 | 실제 설치 |
 
 기존 파일은 덮지 않는다(`↷ skip (존재)`). 덮으려면 `--force`를 명시해야 한다.
 플러그인 설치 없이 직접 실행하려면 스킬 폴더 절대경로를 `SKILL_DIR`로 잡는다.
 
 ```bash
-SKILL_DIR=~/.claude/plugins/.../skills/harness-bootstrap   # 또는 ~/.codex/plugins/...
+SKILL_DIR=~/.claude/plugins/.../skills/hx-bootstrap   # 또는 ~/.codex/plugins/...
 bash "$SKILL_DIR/setup.sh" --dry-run --stack=python --arch=modular /path/to/project
 ```
 
-스택·변형 목록과 설치되는 파일 104개(변형과 무관하게 개수는 같다)는
-[스킬 README](plugins/harness-kit/skills/harness-bootstrap/README.md)와
-[manifest.md](plugins/harness-kit/skills/harness-bootstrap/manifest.md)에 정리해 두었다.
+설치되는 파일 수는 **고른 에이전트**에 달렸다. 규칙·SDD·게이트(core 38개)는 항상 깔고,
+에이전트 배선은 쓰는 것만 얹는다 — claude 14 · codex 14 · cursor 9 · kiro 31.
+`.claude/`·`.codex/`·`.cursor/`·`.kiro/` 를 전부 만들지 않는다.
+
+```bash
+bash "$SKILL_DIR/setup.sh" --stack=python --arch=modular --list-agents /path/to/project
+# 감지 결과와 에이전트별 파일 수를 보여준다(설치하지 않는다)
+```
+
+나중에 다른 에이전트를 붙이거나(`hx-agent-add`) 킷 새 버전을 반영하려면(`hx-update`)
+설치 때 남는 `.agents/harness-kit.json`·`.agents/harness-kit.lock` 을 쓴다. 둘 다 커밋한다.
+
+처음이라면 [시작 가이드](docs/guides/01-getting-started.md)를 순서대로 따라가면 된다.
+아키텍처를 아직 못 골랐으면 [아키텍처 선택 가이드](docs/guides/02-choosing-architecture.md)의 결정 트리를,
+JVM이면 [JVM 실전 레시피](docs/guides/03-jvm-architecture-recipes.md)를 본다.
+
+스택·변형 목록과 파일→경로 맵은
+[스킬 README](plugins/harness-kit/skills/hx-bootstrap/README.md)와
+[manifest.md](plugins/harness-kit/skills/hx-bootstrap/manifest.md)에 정리해 두었다.
 
 ### 프로젝트 스킬 — `hx-*` 9종
 
@@ -142,7 +173,13 @@ bootstrap이 끝나면 SDD 워크플로 9종이 `hx-` 접두사로 깔린다. �
 
 | 스킬 | 단계 | 하는 일 | 쓰기 | 만들어지는 것 |
 |---|---|---|---|---|
-| [`harness-bootstrap`](#harness-bootstrap--하네스-골격-설치) | 설치 | 리포에 하네스 골격 스캐폴딩 | O | 104개 파일 |
+| [`hx-bootstrap`](#hx-bootstrap--하네스-골격-설치) | 설치 | 리포에 하네스 골격 스캐폴딩(3스택 공통 진입) | O | core 38 + 고른 에이전트 |
+| [`hx-jvm-setup`](#hx-jvm-setup--jvm-전용-진입) | 설치 | JVM 전용 진입 — 아키텍처 8종 선택 + 언어(Kotlin/Java) 확정 | O | 위와 동일(설치는 `setup.sh` 위임) |
+| `hx-jvm-hexagonal` | 설치 | 헥사고날 3변형 선택 + 모듈 등록·포트/어댑터·구조 테스트 레시피 | O | 위와 동일 |
+| `hx-jvm-layered` | 설치 | 단일 모듈 레이어드 + ArchUnit 구조 테스트 레시피 | O | 위와 동일 |
+| `hx-jvm-layered-multimodule` | 설치 | 멀티모듈 레이어드 + 엔티티 노출 범위 결정 레시피 | O | 위와 동일 |
+| `hx-agent-add` | 설치 | 에이전트 배선을 나중에 추가(cursor·kiro…) | O | 해당 에이전트 파일만 |
+| `hx-update` | 유지 | 킷 새 버전을 기존 리포에 반영 | O | 변경분 · 충돌은 `.new` |
 | [`/hx-harness`](#hx-harness--하네스-컨텍스트-로드) | 상시 | 규칙·가드레일 컨텍스트 로드 | X | — |
 | [`/hx-specify`](#hx-specify--sdd-1단계-요구사항) | SDD 1 | 무엇을/왜 → requirements | O | `requirements/<feature>.md` |
 | [`/hx-clarify`](#hx-clarify--모호성-해소선택) | SDD 1.5 | 모호성 ≤5문답으로 해소 | O | requirements의 `## Clarifications` |
@@ -155,7 +192,7 @@ bootstrap이 끝나면 SDD 워크플로 9종이 `hx-` 접두사로 깔린다. �
 
 ---
 
-### `harness-bootstrap` — 하네스 골격 설치
+### `hx-bootstrap` — 하네스 골격 설치
 
 스택(`jvm`·`python`·`go`)과 아키텍처 변형을 정한 뒤 `setup.sh`로 골격을 깐다.
 
@@ -165,6 +202,32 @@ Kiro용 얇은 포인터(`.kiro/steering`), SDD 기록 시스템(`.agents/docs`)
 
 설치가 끝나면 스택×변형별 후속 작업이 출력된다. 그다음 `/hx-harness`로 컨텍스트를 로드하고
 `/hx-specify`부터 시작하면 된다.
+
+### `hx-jvm-setup` — JVM 전용 진입
+
+JVM(Kotlin/Java + Spring)만 다루는 진입 스킬이다. `hx-bootstrap`이 3스택 공통이라 아키텍처 선택 안내가
+표 한 장으로 끝나는 데 비해, 이쪽은 **고르는 순서로 묻고** 언어까지 확정한 뒤 같은 `setup.sh`를 호출한다.
+
+묻는 것은 셋이다. 배포 단위가 하나인가 여럿인가, 도메인 규칙이 복잡한가, 무엇을 기준으로 나눌 것인가.
+그 답에 따라 jvm 아키텍처 8종 중 하나로 내려간다. 기존 코드가 있으면 그 레이아웃이 먼저다.
+
+| 갈림길 | 가는 곳 |
+|---|---|
+| 배포 단위 여럿 + 도메인이 무겁다 | `hexagonal-standalone` — 컨텍스트가 `core`·`common`·`bootstrap`까지 소유하는 7모듈 자립형 |
+| 배포 단위 여럿 + CRUD 위주(API·배치·관리자) | `layered-multimodule` — 레이어를 모듈로 |
+| 배포 단위 하나 + 도메인이 무겁다 | `hexagonal`(컨텍스트가 많으면 `hexagonal-nested`) |
+| 배포 단위 하나 + CRUD 위주 | `layered` |
+| 분할 축이 도메인/기능이다 | `modulith` · `feature` · `multimodule` |
+
+언어를 `--lang=kotlin|java`로 확정하면 빌드 DSL(Kotlin DSL / Groovy DSL)과 구조 테스트 도구(Konsist / ArchUnit)
+안내가 그에 맞춰 출력된다. 아직 못 정했으면 생략해도 된다.
+
+아키텍처가 정해지면 자식 스킬이 이어받는다 — `hx-jvm-hexagonal`(3변형 선택·`settings.gradle` 등록·포트/어댑터·
+구조 테스트) · `hx-jvm-layered`(패키지 생성·ArchUnit) · `hx-jvm-layered-multimodule`(모듈 등록·엔티티
+노출 범위 `api()` vs `implementation()` 결정). 자식 스킬만 단독으로 불러도 된다.
+
+**이 스킬들이 만드는 것은 규칙·문서·검증 게이트다.** `build.gradle.kts`와 소스 코드는 만들지 않는다 —
+무엇을 손으로 세워야 하는지를 순서와 함정까지 적어 줄 뿐이다.
 
 ### `/hx-harness` — 하네스 컨텍스트 로드
 
@@ -302,8 +365,8 @@ codex plugin marketplace upgrade                 # Codex
 ```bash
 # 1) templates/common/claude/commands/hx-*.md 를 고친다 (원본)
 # 2) 나머지 3하네스(Cursor · Kiro · Codex) 트리를 다시 만든다
-bash plugins/harness-kit/skills/harness-bootstrap/tools/sync-commands.sh
+bash plugins/harness-kit/skills/hx-bootstrap/tools/sync-commands.sh
 ```
 
-스킬 폴더명은 `SKILL.md` frontmatter의 `name`과 반드시 같아야 한다(`harness-bootstrap`).
+스킬 폴더명은 `SKILL.md` frontmatter의 `name`과 반드시 같아야 한다(`hx-bootstrap`).
 계획과 완료 이력은 [docs/roadmap.md](docs/roadmap.md)에 있다.

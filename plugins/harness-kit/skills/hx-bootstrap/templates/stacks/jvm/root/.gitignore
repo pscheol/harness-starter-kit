@@ -1,0 +1,33 @@
+# HARNESS STARTER KIT ({{PROJECT_NAME}}) — 프로젝트 위생. 스택에 맞게 가감하라.
+
+# OS
+.DS_Store
+.AppleDouble
+Thumbs.db
+
+# IDE / editor
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# Build (Gradle / Kotlin / Java)
+.gradle/
+build/
+out/
+bin/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Logs & temp
+*.log
+*.tmp
+*.harness.tmp
+# harness-update 산출물(병합용 임시본) — 상태 파일 harness-kit.json·lock 은 커밋한다
+*.new
+*.bak
+
+# Env / secrets — 원문 커밋 금지
+.env
+.env.*
+!.env.example
+*.local
