@@ -8,15 +8,26 @@ Codex, Kiro(`.kiro/steering/sdd-workflow.md`)는 모두 이 원본을 참조하�
 스펙을 기준으로 삼고 코드는 그 결과물로 본다. 기능은 requirements → design → tasks 순으로,
 제품(바운디드 컨텍스트) 폴더 안에서 진행한다. 각 단계 문서가 놓이는 위치는 다음과 같다.
 
-| 단계 | 위치 | 명령 |
-|---|---|---|
-| requirements | `.agents/docs/<slug>-specs/requirements/<N>-<종류>-<이름>.md` | `/hx-specify` (+ `/hx-clarify`) |
-| (품질 검사) | `.agents/docs/<slug>-specs/checklists/<N>-<종류>-<이름>-<도메인>.md` | `/hx-checklist` |
-| design | `.agents/docs/<slug>-specs/design/<N>-<종류>-<이름>.md` | `/hx-plan` |
-| tasks | `.agents/docs/<slug>-specs/tasks/active/<N>-<종류>-<이름>.md` | `/hx-tasks` → `/hx-implement` |
-| (정합성 검사) | 읽기 전용 리포트 | `/hx-analyze` |
+| 단계 | 위치 | 명령 | 파일이 생기는 시점 |
+|---|---|---|---|
+| requirements | `.agents/docs/<slug>-specs/requirements/<N>-<종류>-<이름>.md` | `/hx-specify` (+ `/hx-clarify`) | `--stage=requirements`(기본) |
+| (품질 검사) | `.agents/docs/<slug>-specs/checklists/<N>-<종류>-<이름>-<도메인>.md` | `/hx-checklist` | 명령이 템플릿을 복제 |
+| design | `.agents/docs/<slug>-specs/design/<N>-<종류>-<이름>.md` | `/hx-plan` | `--stage=design` |
+| tasks | `.agents/docs/<slug>-specs/tasks/active/<N>-<종류>-<이름>.md` | `/hx-tasks` → `/hx-implement` | `--stage=tasks` |
+| (정합성 검사) | 읽기 전용 리포트 | `/hx-analyze` | 파일 생성 없음 |
 
-- 세 단계는 **같은 파일명**을 쓴다. 스캐폴딩은 `scripts/new-feature.sh <slug> <이름> [--type=T] [--priority=N]`.
+- 세 단계는 **같은 파일명**을 쓴다. 스캐폴딩은 `scripts/new-feature.sh <slug> <이름> [--stage=S] [--type=T] [--priority=N]`.
+
+## 단계마다 그 단계 문서만 만든다
+
+빈 design·tasks 를 미리 깔지 않는다. 미리 깔면 강제 장치 두 개가 함께 죽는다.
+
+- **보드**는 파일이 놓인 위치로 상태를 계산한다 → 만들자마자 `tasks/active/` 가 생겨 모든 기능이 🔨 구현으로 뜨고 `📋 요구`·`🎨 설계` 칸이 영영 빈다.
+- **단계 게이트**(`check-sdd-prerequisites.sh`)는 선행 문서의 존재를 본다 → 항상 통과해 무력해진다.
+
+`/hx-plan`·`/hx-tasks` 가 각자 자기 단계 파일을 그때 만든다(`--stage=design` · `--stage=tasks`).
+2·3단계에는 이름만 줘도 되고(요구사항에서 키를 찾아낸다) 전체 키(`1-feat-create-order`)를 그대로 줘도 된다.
+설계가 이미 확정된 소규모 작업만 예외적으로 `--all` 로 3종을 함께 만든다 — 그 기능은 보드에서 곧장 🔨 구현으로 뜬다.
 
 ## 파일명 규약 — `<우선순위>-<종류>-<이름>.md`
 
@@ -69,7 +80,7 @@ Codex, Kiro(`.kiro/steering/sdd-workflow.md`)는 모두 이 원본을 참조하�
 입력: (제품 slug + 기능 설명). 없으면 사용자에게 제품 slug와 한 줄 설명을 묻는다.
 
 1. **기능 short-name 도출**(2~4단어, action-noun). 제품 slug 확인(기존 `*-specs` 중 택 또는 신규).
-2. **스캐폴딩**: `scripts/new-feature.sh <slug> <이름> [--type=T]` 로 requirements/design/tasks 3종을 `.agents/docs/_spec-templates/` 원본에서 생성하고 제품 `index.md`에 등록. 제품 폴더가 없으면 골격까지 함께 만들어진다(설치가 미리 만들어 두지 않는다). 새 제품이면 `specs-index.md` 등록표에도 행을 추가한다.
+2. **스캐폴딩**: `scripts/new-feature.sh <slug> <이름> [--type=T]` 로 **requirements 하나만** `.agents/docs/_spec-templates/` 원본에서 생성하고 제품 `index.md`에 등록. design·tasks 는 각각 `/hx-plan`·`/hx-tasks` 가 그때 만든다. 제품 폴더가 없으면 골격까지 함께 만들어진다(설치가 미리 만들어 두지 않는다). 새 제품이면 `specs-index.md` 등록표에도 행을 추가한다.
 3. `requirements/<N>-<종류>-<이름>.md` 를 채운다:
    - User Story(우선순위 P1/P2/P3): 각 스토리는 독립 테스트 가능하고, 하나만 구현해도 사용자에게 가치를 주도록 슬라이싱. "왜 이 우선순위"를 적는다.
    - **수용 기준**: 기존 EARS(`WHEN/IF/WHERE/WHILE ... THE 시스템 SHALL ...`) 유지 + 필요 시 `Given/When/Then` 병용.
@@ -108,7 +119,7 @@ requirements↔design↔tasks **교차** 정합성은 `/hx-checklist`가 아니�
 
 전제: requirements 승인. 산출: `design/<N>-<종류>-<이름>.md`.
 
-1. requirements와 `.agents/rules/*`(특히 guardrails·security·structure·api-standards·reliability), `ARCHITECTURE.md`를 읽는다.
+1. **design 파일 생성**: `scripts/new-feature.sh <slug> <이름|키> --stage=design`. requirements 가 없으면 스크립트가 거부한다(먼저 `/hx-specify`). 그다음 requirements와 `.agents/rules/*`(특히 guardrails·security·structure·api-standards·reliability), `ARCHITECTURE.md`를 읽는다.
 2. **Constitution Check (게이트)**: 설계가 규칙 원본을 위반하지 않는지 점검. 위반이 불가피하면 design의 "Complexity/대안" 섹션에 정당화를 남긴다(정당화 없으면 진행 금지).
 3. design 템플릿을 채운다: 아키텍처·시퀀스, 컴포넌트/인터페이스 시그니처, API(공통 envelope·error code), 데이터 모델(=data-model), 오류·보안·관측성, 테스트 전략 + Quickstart(end-to-end 검증 시나리오), 정확성 속성(PBT), 마이그레이션, 요구사항 추적 매트릭스.
 4. 미해결(`NEEDS CLARIFICATION`)이 남으면 **중단**하고 `/hx-clarify`로 되돌린다.
@@ -118,7 +129,7 @@ requirements↔design↔tasks **교차** 정합성은 `/hx-checklist`가 아니�
 
 전제: design 승인. 산출: `tasks/active/<N>-<종류>-<이름>.md`.
 
-1. requirements의 User Story(P1/P2/P3)와 design(컴포넌트·API·데이터)을 작업으로 변환한다.
+1. **tasks 파일 생성**: `scripts/new-feature.sh <slug> <이름|키> --stage=tasks`. design 이 없으면 스크립트가 거부한다(먼저 `/hx-plan`). 그다음 requirements의 User Story(P1/P2/P3)와 design(컴포넌트·API·데이터)을 작업으로 변환한다.
 2. **작업 포맷(필수)**: `- [ ] T001 [P] [US1] 설명 + 정확한 파일/모듈 경로`.
    - `T###` 실행 순번, `[P]` 병렬 가능(다른 파일·무의존), `[US1]` 스토리 추적(Setup/Foundational/Polish에는 스토리 라벨 없음).
 3. **Phase 구조**: Phase 1 Setup → Phase 2 Foundational(모든 스토리 차단 선행) → Phase 3+ User Story별(P 우선순위) → Polish. 각 작업에 충족 요구사항 ID·설계 §를 표기.
@@ -174,4 +185,5 @@ requirements↔design↔tasks **교차** 정합성은 `/hx-checklist`가 아니�
 ## 명령이 아니어도
 
 명령(슬래시)이 없는 에이전트(Codex 등)도 이 원본의 절차·산출 위치·게이트를 그대로 따른다.
-스캐폴딩만 `scripts/new-feature.sh`로 하고 각 단계 파일을 이 문서 기준으로 채운다.
+스캐폴딩만 `scripts/new-feature.sh`로 하되 **단계에 진입할 때마다 그 단계의 `--stage=` 로 한 번씩** 실행하고,
+만들어진 파일을 이 문서 기준으로 채운다.

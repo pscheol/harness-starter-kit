@@ -179,14 +179,21 @@ import 해 보고 `bash scripts/verify.sh` 가 **실패하는지** 확인한다.
 | `/hx-analyze` | 읽기 전용 리포트 | 세 문서 교차 정합성 |
 | `/hx-implement` | 코드 + `tasks/completed/` | Phase 순 구현 |
 
-**제품 폴더는 설치 산출물이 아니다.** `<slug>-specs/` 는 첫 기능에서 만들어진다.
+**제품 폴더도 단계 문서도 설치 산출물이 아니다.** `<slug>-specs/` 는 첫 기능에서 만들어지고,
+각 단계 문서는 그 단계에 들어갈 때 하나씩 생긴다.
 
 ```bash
-bash scripts/new-feature.sh <product-slug> <feature>   # 또는 /hx-specify 가 대신 실행
+bash scripts/new-feature.sh <product-slug> <feature>                  # requirements — /hx-specify 가 대신 실행
+bash scripts/new-feature.sh <product-slug> <feature> --stage=design   # 승인 후 — /hx-plan
+bash scripts/new-feature.sh <product-slug> <feature> --stage=tasks    # 승인 후 — /hx-tasks
 ```
 
 임의로 제품 폴더를 만들지 않는다. 템플릿 원본은 `.agents/docs/_spec-templates/` 한 곳뿐이고
 제품 폴더로 복사되지 않는다.
+
+빈 design·tasks 를 미리 만들지 않는 이유는 두 강제 장치가 파일의 존재를 신호로 쓰기 때문이다.
+보드는 파일이 놓인 위치로 상태를 계산하고, `check-sdd-prerequisites.sh` 는 선행 문서의 존재로
+단계 진입을 판정한다. 미리 깔면 모든 기능이 만들자마자 🔨 구현으로 뜨고 게이트는 항상 통과한다.
 
 ### 완료 게이트는 사람이 연다
 

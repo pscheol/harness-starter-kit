@@ -21,11 +21,16 @@
 ## 새 제품·기능 추가
 
 ```bash
-scripts/new-feature.sh <slug> <feature>   # 제품 폴더가 없으면 골격까지 함께 만든다
+scripts/new-feature.sh <slug> <feature>                  # requirements — 제품 폴더가 없으면 골격까지 만든다
+scripts/new-feature.sh <slug> <feature> --stage=design   # 요구사항 승인 후
+scripts/new-feature.sh <slug> <feature> --stage=tasks    # 설계 승인 후
 ```
 
 - 제품 폴더는 설치 시 미리 만들지 않는다. 첫 기능을 스캐폴딩할 때 생긴다
   (빈 껍데기 폴더가 쌓이지 않게 하려는 것이다).
+- 같은 이유로 **단계 문서도 미리 만들지 않는다**. 단계에 들어갈 때 그 단계 것만 만든다 —
+  빈 design·tasks 가 깔려 있으면 위 보드가 곧장 🔨 구현으로 뛰고 단계 게이트도 항상 통과한다.
+  설계가 이미 확정된 소규모 작업만 `--all` 로 3종을 함께 만든다.
 - `<slug>`는 도메인/주요 능력 단위(예: `auth`, `billing`, `order`). 프로젝트명과 같을 필요는 없다.
 - 단일 제품이면 하나로 시작하고, 경계가 커지면 분할한다(YAGNI).
 - 새 제품이 생기면 위 등록표에 행을 추가한다 — 이 표가 전 제품 진입점이다.

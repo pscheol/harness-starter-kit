@@ -306,7 +306,11 @@ JVM(Kotlin/Java + Spring)만 다루는 진입 스킬이다. `hx-bootstrap`이 3�
 무엇을, 왜 만드는지만 적는 단계다. 스택이나 API, 코드 이야기는 여기 쓰지 않는다.
 
 제품 slug와 기능 short-name을 정하고 `scripts/new-feature.sh <slug> <feature>`를 돌리면
-requirements/design/tasks 3종이 스캐폴딩되고 제품 `index.md`에 등록된다. 그다음 requirements를 채운다.
+**requirements 하나만** 스캐폴딩되고 제품 `index.md`에 등록된다. 그다음 requirements를 채운다.
+
+design·tasks는 이 시점에 만들지 않는다. 각각 `/hx-plan`·`/hx-tasks`가 그때 만든다. 빈 문서를 미리 깔면
+보드(파일 위치로 상태를 계산한다)가 곧장 🔨 구현으로 뛰고 단계 게이트도 항상 통과해버리기 때문이다.
+설계가 이미 확정된 소규모 작업만 `--all`로 3종을 함께 만든다.
 
 채울 내용은 우선순위가 붙은 User Story(P1/P2/P3, 각각 독립적으로 테스트 가능해야 한다),
 측정 가능하고 기술 중립적인 Success Criteria, 그리고 `[NEEDS CLARIFICATION]` 최대 3개다.
@@ -343,6 +347,9 @@ requirements에 남은 모호함을 질문으로 걷어낸다. `/hx-plan` 전에
 
 requirements가 승인되어야 시작할 수 있다(`scripts/check-sdd-prerequisites.sh <slug> <feature> --stage design`).
 
+design 파일은 이 단계에서 만든다 — `scripts/new-feature.sh <slug> <feature> --stage=design`.
+requirements가 없으면 스크립트가 거부한다. 이름만 줘도 requirements에서 키를 찾아 같은 파일명을 쓴다.
+
 requirements와 `.agents/rules/*`(guardrails·security·structure·api-standards·reliability), `ARCHITECTURE.md`를 읽고 쓴다.
 
 Constitution Check 게이트가 있다. 규칙 위반 여부를 먼저 점검하고, 어쩔 수 없이 위반해야 한다면
@@ -357,6 +364,9 @@ design의 Complexity/대안 섹션에 정당화를 적어야만 진행할 수 �
 ### `/hx-tasks` — SDD 3단계: 작업 분해
 
 design이 승인되어야 시작한다(`--stage tasks`).
+
+tasks 파일도 이 단계에서 만든다 — `scripts/new-feature.sh <slug> <feature> --stage=tasks`.
+design이 없으면 스크립트가 거부한다. 파일이 `tasks/active/`에 놓이는 순간 보드가 🔨 구현으로 넘어간다.
 
 작업 한 줄은 `- [ ] T001 [P] [US1] 설명 + 파일/모듈 경로` 형태다. `[P]`는 병렬 가능,
 `[US1]`은 User Story 추적용이다.
