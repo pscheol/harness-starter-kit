@@ -107,7 +107,7 @@ bash ~/.kiro/skills/hx-bootstrap/setup.sh --agents=kiro --dry-run <대상_리포
 
 ```json
 {
-  "kitVersion": "1.0.5",
+  "kitVersion": "1.0.6",
   "kitPath": "/path/to/harness-starter-kit",
   "agent": "kiro",
   "installedAt": "2026-01-01",
