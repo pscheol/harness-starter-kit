@@ -5,7 +5,7 @@
 | 문서 | 언제 읽나 | 담긴 것 |
 |---|---|---|
 | [01-getting-started.md](01-getting-started.md) | **처음 한 번** | 플러그인 설치 → 스택·아키텍처 결정 → 스캐폴딩 → 플레이스홀더 채우기 → 강제 도구 붙이기 → 첫 기능(SDD) → 검증 게이트. 자주 막히는 곳 표 포함 |
-| [02-choosing-architecture.md](02-choosing-architecture.md) | 설치 전 · 구조가 안 맞다고 느낄 때 | 17변형 결정 트리 · 기존 코드 판독표 · 스택별 전체 목록 · 헷갈리는 짝 비교 · 승격/후퇴 신호 |
+| [02-choosing-architecture.md](02-choosing-architecture.md) | 설치 전 · 구조가 안 맞다고 느낄 때 | 23변형 결정 트리 · 기존 코드 판독표 · 스택별 전체 목록 · 헷갈리는 짝 비교 · 승격/후퇴 신호 |
 | [03-jvm-architecture-recipes.md](03-jvm-architecture-recipes.md) | JVM 설치 직후 | 8변형별 `settings.gradle` 등록 · 의존 선언 · 구조 테스트 배치 · 공통 함정 |
 
 ## 읽는 순서

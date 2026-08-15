@@ -2,8 +2,9 @@
 
 ## 1. 킷은 무엇인가
 
-harness-starter-kit는 백엔드 단일 프로젝트를 위한 에이전트 하네스 스타터다. 대상 스택은
-`jvm`(Kotlin/Java + Spring), `python`(FastAPI/ASGI), `go`(표준 Go 레이아웃) 중에서 고른다.
+harness-starter-kit는 단일 프로젝트를 위한 에이전트 하네스 스타터다. 대상 스택은
+`jvm`(Kotlin/Java + Spring), `python`(FastAPI/ASGI), `go`(표준 Go 레이아웃),
+`web`(TypeScript + React), `electron`(TypeScript 데스크톱) 중에서 고른다.
 대상 리포에서 `setup.sh`를 한 번 실행하면 에이전트가 일관되고 안전하게 작업하는 데 필요한
 네 가지 골격이 깔린다. 규칙 원본, 기록/SDD 시스템, 검증 게이트, 에이전트 배선이다.
 
@@ -20,13 +21,19 @@ harness-starter-kit/
 ├── README.md         # 킷 사용법
 ├── SKILL.md          # 부트스트랩 스킬(설치 절차를 에이전트가 재사용)
 └── templates/
-    ├── common/       # 스택 무관 골격 (51개) — SDD·에이전트 배선·공통 규칙 3종
-    └── stacks/       # 스택 오버레이 (각 13개 + arch/<변형>/ 4개) — jvm · python · go
+    ├── common/       # 스택 무관 골격 (96개) — SDD·에이전트 배선·공통 규칙 8종
+    ├── domains/      # 여러 스택이 공유하는 규약 — frontend(8개) = web·electron 공용
+    ├── stacks/       # 스택 오버레이 (각 13개 + arch/<변형>/ 4개) — jvm · python · go · web · electron
+    └── optional/     # --modules= 로 켤 때만 — jira-workflow(10) · platform-guards(4)
 ```
 
-**스택 오버레이**가 v3의 핵심이다. 하네스 골격(SDD 기록 시스템·게이트 구조·3에이전트 배선)은 언어와
+**5층 오버레이**가 핵심이다. 하네스 골격(SDD 기록 시스템·게이트 구조·에이전트 배선)은 언어와
 무관하므로 한 벌만 두고, 언어에 따라 실제로 달라지는 것 — 아키텍처·디렉터리 레이아웃·주석 표준·
-보안 위험·동시성 함정·검증 명령 — 만 스택별로 갈아 끼운다.
+보안 위험·동시성 함정·검증 명령 — 만 스택별로 갈아 끼운다. 뒤 레이어가 앞 레이어를 덮는다.
+
+도메인 레이어는 **여러 스택이 같은 규약을 쓸 때만** 만든다. `web`·`electron` 이 `frontend` 를 공유하고,
+`jvm`·`python`·`go` 에는 도메인 디렉터리가 없다 — 규칙이 이미 언어별이라 스택 레이어가 그 역할을 한다.
+빈 `backend/` 를 만들어 두면 "여기 뭘 넣어야 하나"를 매번 다시 묻게 된다.
 
 `templates/` 내부 구조와 설치 매핑은 [02-architecture.md](02-architecture.md)에서 다룬다.
 
@@ -34,7 +41,7 @@ harness-starter-kit/
 
 | 축 | 설치 후 위치 | 요지 |
 |---|---|---|
-| 규칙 원본 | `.agents/rules/*.md` (12종 = 공통 4 + 스택별 6 + 변형별 2) | 세 에이전트가 공유하는 규칙 본문의 단일 소스 |
+| 규칙 원본 | `.agents/rules/*.md` (백엔드 16종 = 공통 8 + 스택별 6 + 변형별 2 · 프론트엔드 20종 = + 도메인 4) | 네 하네스가 공유하는 규칙 본문의 단일 소스 |
 | 기록/SDD | `.agents/docs/` | 스펙·설계·작업·결정이 모이는 곳. 제품 단위 묶음 |
 | 검증 게이트 | `scripts/verify.sh` | 강제 로직이 모이는 유일한 지점(스택별 빌드·린트·타입·테스트를 묶음) |
 | 에이전트 배선 | `.claude/` · `.codex/` · `.kiro/steering/` | 각 에이전트의 진입점·트리거(얇은 포인터) |

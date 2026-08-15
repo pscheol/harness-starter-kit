@@ -2,34 +2,41 @@
 
 ## 1. 설치 매핑 (`setup.sh`)
 
-`setup.sh`는 **세 개의 템플릿 루트**를 순서대로 순회하며 대상 리포로 복사하고 토큰을 치환한다.
+`setup.sh`는 **다섯 개의 템플릿 루트**를 순서대로 순회하며 대상 리포로 복사하고 토큰을 치환한다.
 
-1. `templates/common/` — 스택 무관 골격 51개
-2. `templates/stacks/<STACK>/` — 선택한 스택 전용 13개 (**`arch/` 하위는 제외하고 순회**)
-3. `templates/stacks/<STACK>/arch/<ARCH>/` — 선택한 아키텍처 변형 전용 4개
+1. `templates/common/` — 스택 무관 골격 96개
+2. `templates/domains/<DOMAIN>/` — 여러 스택이 공유하는 규약. `frontend` 8개(web·electron). 백엔드 3종은 이 레이어가 **없다**
+3. `templates/stacks/<STACK>/` — 선택한 스택 전용 13개 (**`arch/` 하위는 제외하고 순회**)
+4. `templates/stacks/<STACK>/arch/<ARCH>/` — 선택한 아키텍처 변형 전용 4개
+5. `templates/optional/<MODULE>/` — `--modules=` 로 고른 것만. `jira-workflow` 15 · `platform-guards` 4
 
-뒤에 복사되는 루트가 앞을 덮는다(경로가 겹치면 arch > stack > common).
+뒤에 복사되는 루트가 앞을 덮는다(경로가 겹치면 optional > arch > stack > domain > common).
 
 - 사용법: `STACK=python ARCH=modular PROJECT_NAME=… PROJECT_SLUG=… PACKAGE_NS=… bash setup.sh [대상경로]` (대상 생략 시 `$PWD`).
-- 옵션: `--stack=<jvm|python|go>`(기본 `jvm`), `--arch=<변형>`(기본 `hexagonal`) — 둘 다 환경변수 `STACK`·`ARCH`로도 지정. `--force`(존재해도 덮어씀, 기본은 skip), `--dry-run`(계획만 출력).
+- 옵션: `--stack=<jvm|python|go|web|electron>`(기본 `jvm`), `--arch=<변형>`(기본은 스택마다 다르다 — 백엔드 `hexagonal` · web `nextjs-app` · electron `main-renderer`) — 둘 다 환경변수 `STACK`·`ARCH`로도 지정. `--domain=`(스택에서 자동 결정), `--modules=`(기본 `none`), `--force`(존재해도 덮어씀, 기본은 skip), `--dry-run`(계획만 출력).
+- 목록 조회: `--list-agents`(감지 결과 + 에이전트별 파일 수) · `--list-modules`(모듈 이름 + 파일 수 + 설명). 둘 다 설치하지 않는다.
 - 처리: 각 루트 하위 파일을 정렬 순회 → 경로를 `remap()`으로 매핑 → 존재+비force면 skip, 아니면 복사 후 토큰 치환, `*.sh`는 실행권한 부여.
-- 스택 순회는 `find "$root" -type f ! -path "*/arch/*"`로 변형 레이어를 건너뛴다(선택된 하나만 따로 복사).
-- 알 수 없는 스택·변형을 주면 각각 사용 가능한 목록을 출력하고 `exit 2`로 중단한다.
-- 템플릿은 모든 스택×변형에서 106개(공통 89 + 스택 13 + 변형 4)로 동일하다. 실제 설치는 이 중 core 38 + 고른 에이전트(claude 14 · codex 14 · cursor 9 · kiro 31)만 깔린다.
+- 스택 순회는 `find "$root" -type f ! -path "*/arch/*"`로 변형 레이어를 건너뛴다(선택된 하나만 따로 복사). 모듈 순회는 `! -name ABOUT` 로 설명 파일을 건너뛴다.
+- 알 수 없는 스택·변형·모듈을 주면 각각 사용 가능한 목록을 출력하고 `exit 2`로 중단한다.
+- 템플릿 수는 스택군마다 다르다 — 백엔드 **113개**(공통 96 + 스택 13 + 변형 4), 프론트엔드 **121개**(+ 도메인 8). 실제 설치는 이 중 core(백엔드 42 · 프론트엔드 46) + 고른 에이전트(claude 14 · codex 14 · cursor 9 · kiro 34/38)만 깔린다.
 
-### 1.1 7개 설치 세그먼트
+### 1.1 설치 세그먼트
 
-`remap()`이 소스 세그먼트를 대상 경로로 옮긴다(세 루트 모두 같은 규칙).
+`remap()`이 소스 세그먼트를 대상 경로로 옮긴다(다섯 루트 모두 같은 규칙).
 
 | 소스 (`<root>/…`) | 대상 | 역할 |
 |---|---|---|
 | `root/*` | `./` (프로젝트 루트) | `AGENTS.md`·`CLAUDE.md`·`.gitignore`·CI(스택별) + `ARCHITECTURE.md`(변형별) + pre-commit(공통) |
-| `agents-rules/*` | `.agents/rules/*` | **규칙 원본 12종** = 공통 4(`agent-harness`·`sdd-workflow`·`product`·`design-principles`) + 스택별 6 + 변형별 2(`structure`·`tech`) |
+| `agents-rules/*` | `.agents/rules/*` | **규칙 원본** = 공통 8 + 도메인 4(프론트엔드만) + 스택별 6 + 변형별 2(`structure`·`tech`) |
+| `agents-root/*` | `.agents/*` | 에이전트 공용 설정 — 현재는 모듈 `jira-workflow` 의 `issue-tracker.yml` 하나 |
 | `agents-docs/*` | `.agents/docs/*` | 기록/SDD 스캐폴딩 (전부 공통) |
-| `scripts/*` | `scripts/*` | 공통 4종(check-exec-plan-status·check-sdd-prerequisites·check-spec-freshness·new-feature) + 스택별 `verify.sh` |
+| `agents-skills/*` | `.agents/skills/*` | **Codex 스킬** 탐색 경로(`$hx-specify` 로 멘션) |
+| `scripts/*` | `scripts/*` | 공통 4종(check-exec-plan-status·check-sdd-prerequisites·check-spec-freshness·new-feature) + 스택별 `verify.sh` + 모듈 `run-guards.sh`·`guards/` |
 | `claude/*` | `.claude/*` | Claude 명령·훅·settings (전부 공통) |
 | `codex/*` | `.codex/*` | Codex config·훅 (전부 공통) |
-| `kiro-steering/*` | `.kiro/steering/*` | Kiro 얇은 포인터 12종 = 공통 9 + 스택별 2(`tech`·`code-comments`) + 변형별 1(`structure`) |
+| `cursor/*` | `.cursor/*` | Cursor 프로젝트 슬래시 커맨드 |
+| `kiro-steering/*` | `.kiro/steering/*` | Kiro 얇은 포인터 = 공통 13 + 도메인 4(프론트엔드만) + 스택별 2(`tech`·`code-comments`) + 변형별 1(`structure`), 그리고 IDE 슬래시 커맨드 9종(`inclusion: manual`) |
+| `kiro-skills/*` | `.kiro/skills/*` | Kiro CLI 슬래시 커맨드 9종 |
 
 ### 1.2 치환 토큰표
 
@@ -39,11 +46,11 @@
 |---|---|---|
 | `{{PROJECT_NAME}}` | 프로젝트 표시 이름 | `PROJECT_SLUG` |
 | `{{PROJECT_SLUG}}` | 프로젝트 슬러그 | 대상 디렉터리 basename |
-| `{{PACKAGE_NS}}` | **스택별 의미 상이** — jvm=패키지 네임스페이스(`com.example.app`), python=최상위 패키지명(`myapp`→`src/myapp/`), go=모듈 경로(`github.com/org/app`) | 빈값(미치환) |
+| `{{PACKAGE_NS}}` | **스택별 의미 상이** — jvm=패키지 네임스페이스(`com.example.app`), python=최상위 패키지명(`myapp`→`src/myapp/`), go=모듈 경로(`github.com/org/app`), web=임포트 별칭 루트(`@`→`tsconfig` paths), electron=앱 ID(`com.example.app`→`electron-builder` 의 `appId`) | 빈값(미치환) |
 | `{{SERVICE_NAME}}` | 서비스 이름 | `PROJECT_SLUG` |
-| `{{PRIMARY_LANGUAGE}}` | 주 언어 | 스택 기본값(Kotlin/Java · Python · Go) |
-| `{{BUILD_TOOL}}` | 빌드 도구 | 스택 기본값(Gradle · uv · go) |
-| `{{TEST_CMD}}` | 테스트 명령 | 스택 기본값(`./gradlew check` · `pytest` · `go test -race ./...`) |
+| `{{PRIMARY_LANGUAGE}}` | 주 언어 | 스택 기본값(Kotlin/Java · Python · Go · TypeScript · TypeScript) |
+| `{{BUILD_TOOL}}` | 빌드 도구 | 스택 기본값(Gradle · uv · go · pnpm · pnpm + electron-builder) |
+| `{{TEST_CMD}}` | 테스트 명령 | 스택 기본값(`./gradlew check` · `pytest` · `go test -race ./...` · `pnpm test` · `pnpm test`) |
 | `{{DOMAIN_EXAMPLE}}` | 예시 도메인 명 | 빈값 |
 | `{{PROTECTED_PATH}}` | 편집 차단 경로 | `docs/references` |
 

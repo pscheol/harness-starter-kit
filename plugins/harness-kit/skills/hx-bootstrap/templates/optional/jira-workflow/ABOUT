@@ -1,0 +1,5 @@
+이슈 트래커(Jira 등) 연동 작업 규약 — 한 세션 = 한 활성 티켓 · pull gate · ID 로 전이 · 에이전트는 review 까지.
+설치물: .agents/rules/{issue-tracker-workflow,issue-agent-lock}.md · .kiro/steering/ 포인터 2 ·
+        .agents/issue-tracker.yml(접근 수단·상태/전이 ID·락 설정 — 전부 TBD) ·
+        /hx-issue(트래커 단품) · /hx-ticket(티켓→SDD→구현→리뷰 전 여정) 각 4 하네스
+설치 후 issue-tracker.yml 의 TBD 를 실제 값으로 채우기 전에는 읽기만 한다 — 설정은 hx-jira-setup 스킬.

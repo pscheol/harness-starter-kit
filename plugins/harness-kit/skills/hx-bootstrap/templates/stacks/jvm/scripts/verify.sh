@@ -17,8 +17,9 @@
 #
 # 단일 Kotlin/Spring(Gradle) 프로젝트 게이트:
 #   1) exec-plan 위치↔상태 일관성 (스택 무관, 항상)
-#   2) ./gradlew check (ktlint + test 등 포함)        — full
-#   3) (선택) DB 통합/격리 테스트가 있으면 실행        — full
+#   2) 플랫폼 가드 (scripts/run-guards.sh 가 있을 때만) — full
+#   3) ./gradlew check (ktlint + test 등 포함)        — full
+#   4) (선택) DB 통합/격리 테스트가 있으면 실행        — full
 # 여러 단계 실패를 한 번에 보고하려고 fail 로 누적한다.
 set -uo pipefail
 
@@ -37,7 +38,15 @@ if [ "$LEVEL" = "fast" ] && [ "${HARNESS_VERIFY_FAST_GRADLE:-0}" != "1" ]; then
   exit 0
 fi
 
-# ── 2) 빌드/린트/테스트 게이트 (Gradle check = ktlint + detekt + test) ────────
+# ── 2) 플랫폼 가드 (선택 모듈 platform-guards 를 깔면 생긴다) ────────────────
+# 배선 작업 없이 파일 존재만으로 잡힌다. 없으면 조용히 건너뛴다.
+# Gradle 보다 앞에 둔다 — 대부분 grep 수준이라 즉시 끝나고, 느린 빌드 전에 실패를 알린다.
+if [ -f scripts/run-guards.sh ]; then
+  echo "▶ 플랫폼 가드"
+  bash scripts/run-guards.sh || { echo "✖ 플랫폼 가드 실패"; fail=1; }
+fi
+
+# ── 3) 빌드/린트/테스트 게이트 (Gradle check = ktlint + detekt + test) ────────
 # 단일 Gradle 프로젝트. 기본은 프로젝트 루트의 gradlew 를 쓴다.
 # 코드가 하위 디렉터리(예: services/{{PROJECT_SLUG}}-api)에 있으면 GRADLE_DIR 를 그 경로로 바꾼다.
 GRADLE_DIR="."
@@ -58,7 +67,7 @@ if [ "$LEVEL" = "fast" ]; then
   exit 0
 fi
 
-# ── 3) (선택) DB 통합/격리 테스트 ────────────────────────────────────────────
+# ── 4) (선택) DB 통합/격리 테스트 ────────────────────────────────────────────
 # 프로젝트에 DB 통합/격리 테스트가 있을 때만 실행한다(없으면 자동 skip).
 # 컨테이너 기반 통합 테스트는 대부분 ./gradlew check 의 Testcontainers 로 충분하다.
 # 아래는 별도 DB 게이트가 필요할 때의 예시다(파일명·DB 종류는 프로젝트에 맞게 조정):

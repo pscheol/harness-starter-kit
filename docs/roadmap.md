@@ -431,6 +431,162 @@ templates/stacks/<stack>/
 
 ---
 
+## Phase 15 — 도메인 킷 확장(frontend: web · electron) + 선택 모듈 축 ✅ 완료 (v1.0.7)
+
+> **배경(사용자 요청)**: 킷이 백엔드 기준으로만 구성돼 있었다. "백엔드면 백엔드 키트, 프론트엔드면
+> 프론트엔드 키트, 모바일 앱이면 앱 구성"으로 고를 수 있어야 한다. 더불어 다른 프로젝트에서 쓰던
+> Electron 하네스(`docs/reference/harness/`)를 분석해 이 킷 구조에 맞게 흡수하고, 거기 있던
+> `jira-workflow` 를 담는다. 아키텍처는 **Electron 용**과 **React/Next.js 웹용**을 만든다.
+
+### 15.0 확정된 결정 (사용자 응답)
+
+| 항목 | 결정 |
+|---|---|
+| 구조 축 | **도메인 오버레이 추가** — 기존 `stacks/` 는 그대로 두고 `templates/domains/<domain>/` 레이어를 common 과 stack 사이에 끼운다. 기존 파일 이동 0 |
+| 이번 범위 | **web + electron** (mobile 은 다음 단계 — 같은 틀로 `mobile-rn` 을 얹는다) |
+| 선택 모듈 | **optional 모듈 축 신설** — `templates/optional/<module>/` + `--modules=` (`jira-workflow` · `platform-guards`) |
+| 참조 하네스 도입 | 4종 전부 — `reuse-before-new` · `verification-ladder` · `pr-review-policy`(negative knowledge) · `platform-guards` |
+| design-system | 모듈이 아니라 **frontend 도메인 기본 규칙**으로 승격(프론트 프로젝트에 선택 사항이 아니다) |
+
+### 15.1 레이어 모델 (5단)
+
+```text
+common/                        스택·도메인 무관 (SDD·에이전트 배선·공통 규칙)
+domains/<DOMAIN>/              여러 스택이 공유하는 규칙 — 현재 frontend 만 존재(backend 는 규칙이 이미 언어별)
+stacks/<STACK>/                언어·플랫폼 규약 (arch/ 제외)
+stacks/<STACK>/arch/<ARCH>/    아키텍처 변형 4파일
+optional/<MODULE>/             고른 팀만 (기본 none)
+```
+
+도메인 매핑: `jvm`·`python`·`go` → `backend` / `web`·`electron` → `frontend`.
+기본 ARCH 도 스택별로 갈린다: 백엔드 3종 `hexagonal` · `web` `nextjs-app` · `electron` `main-renderer`.
+
+### 15.2 완료
+
+- [x] **설치 엔진** — `lib/harness-lib.sh`: `HARNESS_ALL_MODULES`·`HARNESS_ALL_DOMAINS`,
+      `harness_domain_of`·`harness_default_arch`·`harness_normalize_modules`·`harness_meta_list`
+      (`harness_meta_agents`/`harness_meta_modules` 는 이것의 래퍼), `harness_remap` 에
+      `agents-root/`→`.agents/` 추가, `harness_write_meta` 가 `domain`·`modules` 를 함께 기록(7인자).
+- [x] **`setup.sh`** — `--domain=`·`--modules=`·`--list-modules` 추가, `layer_roots()` 로 순회 목록을
+      한 곳에서 만들어 복사와 `--list-agents` 집계가 같은 목록을 쓰게 함, `web`·`electron` 스택 기본
+      치환값과 "다음 단계" 분기(변형별 포함), 모듈 후속 작업 안내.
+      **도메인은 이름 검증과 디렉터리 존재를 분리**한다 — 이름이 유효 집합 밖이면 `exit 2`, 이름은 맞는데
+      디렉터리가 없으면(=backend) 조용히 건너뛴다. 이걸 합쳐 두면 `add-agent` 가 메타의 `domain` 을
+      되돌려줄 때마다 설치가 실패한다(구현 중 실제로 발생해 잡은 결함).
+- [x] **`update.sh`·`add-agent.sh`** — 메타에서 `domain`·`modules` 복원(구버전 메타는 스택에서 유도),
+      순회 목록에 도메인·모듈 레이어 포함, `harness_write_meta` 7인자 동기화, `add-agent` 가
+      `--domain`·`--modules` 를 그대로 되돌려줌(안 넘기면 모듈 파일이 lock 에서 사라져 orphan 이 된다).
+- [x] **공통 규칙 3종 + Kiro 포인터 3종** — `reuse-before-new`(Inventory 3갈래·재사용/확장/신규 판정·근거 기록),
+      `verification-ladder`(L0~L4 · 변경 종류별 최소 레벨 · `[VERIFICATION]` 생략 기록 블록 · fast/full 관계),
+      `pr-review-policy`(자동화 위임 선언 · 보는 순서 7단 · 지적 4조각 · 심각도 4단 · **negative knowledge 표**).
+      3스택 `AGENTS.md` 규약표에 3행 등록(등록 누락 = 규칙이 안 읽힘).
+- [x] **frontend 도메인 규칙 2종** — `design-system`(기준 문서 우선순위표·토큰 owner 표·컴포넌트 상태 8종·
+      밀도 축), `accessibility`(WCAG 2.2 AA·시맨틱 우선·키보드·이름/역할/상태·대비·모션·폼·검사 3단).
+- 회귀 검증: go/feature 설치 56 → `hx-agent-add --agents=kiro` → 90 → `hx-update --dry-run`
+      `same=90 conflict=0 orphan=0`. 메타에 `domain: backend` · `modules: []` 정상 기록.
+
+### 15.3 완료 (이어서)
+
+- [x] **frontend 도메인 규칙 2종 + Kiro 포인터 4종** — `ui-state.md`(서버/클라이언트/URL/폼 4종 분리 ·
+      파생 상태 저장 금지 · 낙관적 업데이트 롤백 순서 · 로딩/빈/에러/부분 4상태),
+      `frontend-performance.md`(웹 CWV·Electron 콜드 스타트/메모리/IPC p95·번들 예산 · 로딩 전략 ·
+      컴포지터 친화 속성만 · **측정 없이 고치지 않는다** 4단계 · main 프로세스를 막지 않는다).
+      도메인 레이어 합계 8개(규칙 4 + 포인터 4).
+- [x] **`stacks/web/` 13종 + arch 3변형 × 4** — `nextjs-app`(`server-only`/`client-only` 가 유일한 컴파일 강제) ·
+      `react-spa`(라우팅 한 곳 · 서버/클라이언트 상태 분리) · `feature-sliced`(6계층 허용 행렬 ·
+      슬라이스 `index.ts` 공개 API). `verify.sh` 7단계(exec-plan → 포맷 → [fast 종료] → lint → typecheck →
+      플랫폼 가드 → test → build), 패키지 매니저는 락파일로 자동 감지.
+- [x] **`stacks/electron/` 13종 + arch 3변형 × 4** — `main-renderer` · `feature` · `monorepo`.
+      `verify.sh` 에 **프로세스 경계 가드**를 `fast` 레벨로 넣었다(에이전트 턴마다 돈다):
+      `contextIsolation:false` · `nodeIntegration:true` · `sandbox:false` · `webSecurity:false` ·
+      `allowRunningInsecureContent:true` · `webviewTag:true` · `exposeInMainWorld(_, ipcRenderer)` 7종 차단.
+- [x] **`optional/jira-workflow/` 10** — `agents-root/issue-tracker.yml`(상태·전이 ID·락, 전부 `TBD`) ·
+      규칙 2종 · Kiro 포인터 3 · `/hx-issue` 4하네스 4파일. 한 세션 = 한 활성 티켓 · pull gate ·
+      **ID 로 전이**(표시 이름 금지) · 에이전트는 In Review 까지 · 락은 쓴 뒤 다시 읽어 확인.
+      설정 YAML 은 `<session-id>` 처럼 꺾쇠를 쓴다 — `{{...}}` 를 쓰면 "미치환 토큰 0" 점검에 걸린다.
+- [x] **`optional/platform-guards/` 4** — `scripts/run-guards.sh`(`scripts/guards/*.sh` 자동 발견,
+      `_` 접두는 건너뜀, 헤더 `# harness-guard-enforce: 0|1` 로 경고/강제, `GUARD_ENFORCE` 로 덮어씀) ·
+      `guards/_template.sh` · 규칙 + 포인터. 실행 중 `"$ran개"` 가 한글까지 변수명으로 먹혀 unbound 로
+      죽던 결함을 실제 실행으로 잡아 `${ran}개` 로 고쳤다(템플릿 전체를 같은 패턴으로 재검색 — 1건뿐).
+- [x] **`ABOUT` 제외** — `setup.sh` 의 `--list-modules` 는 `ABOUT` 첫 줄을 설명으로 읽는다. 그런데
+      `list_layer()` 에 제외가 없어 대상 리포 루트에 `ABOUT` 이 깔리고 `update.sh` 가 매번 새 파일로
+      밀어 넣고 있었다. 세 곳에 `! -name 'ABOUT'` 추가.
+- [x] **`verify.sh` 5종에 `run-guards.sh` 존재 감지** — jvm 은 Gradle 앞(느린 빌드 전에 실패를 알린다),
+      python·go·web 은 정적 검사 뒤 테스트 앞, electron 은 프로세스 경계 가드와 별개 단계. 전부 `full`.
+- [x] **진입 스킬 `hx-web-setup`·`hx-electron-setup`** — 고르는 순서로 묻고 같은 `setup.sh` 를 호출한다.
+      설치 로직 복제 없음. `plugin.json` 의 `"skills": ["./skills/"]` 자동 탐색이라 등록 작업도 없다.
+- [x] **문서 동기화** — `hx-bootstrap/{SKILL,manifest,README}.md` · 킷 `README.md` · `commands/bootstrap.md` ·
+      `hx-update`/`hx-agent-add` SKILL · `docs/analysis/{README,01,02}` · `docs/guides/{01,02}` ·
+      `install-kiro.sh` 안내 · 버전 1.0.6 → **1.0.7**(플러그인 2 · 마켓플레이스 2 · README 예시 1).
+      파일 수는 전부 실측으로 교체했다 — 백엔드 **113**(공통 96 + 스택 13 + 변형 4), 프론트엔드 **121**(+ 도메인 8),
+      core 42/46, kiro 34/38. `manifest.md` 의 낡은 89·106·38·31 을 전부 바로잡았다.
+
+- [x] **React/Next 공백 보완 + SSR 1급 취급**(사용자 지적 — 파일 추가 0, 기존 문서에 절만 늘렸다):
+      `web/agents-rules/guardrails.md` 에 **"서버 렌더링(SSR)과 하이드레이션"**(렌더 모드 4종 선택표 ·
+      하이드레이션 불일치 6원인 · 서버 코드 금기 · **미들웨어는 최종 방어선이 아니다**)과
+      **"리렌더와 메모이제이션 — 측정이 먼저다"** 두 절 추가.
+      `nextjs-app/ARCHITECTURE.md` §5 를 `렌더 전략(SSR)·하이드레이션·미들웨어·캐시` 로 확장(5.1~5.4),
+      §1 원칙표 3행 · §11 anti-pattern 8항 추가.
+      `react-spa/ARCHITECTURE.md` 에 §3.4 **SSR·프리렌더가 필요해지면**(이유별 최소 비용 답 표 —
+      프리렌더 → SSR 모드 → 프레임워크 전환 순) + anti-pattern 4항.
+      `feature-sliced/ARCHITECTURE.md` 에 §5.1 **FSD × SSR**(`app` 이 서버 진입 소유 · `shared` 에
+      브라우저 전용/모듈 최상위 상태 금지 · `'use client'` 경계 ≠ 슬라이스 경계) + anti-pattern 5항.
+      `electron/agents-rules/guardrails.md` 에 리렌더·메모 절(IPC 고빈도 이벤트 주의 포함).
+      검증: 설치 파일 수 121/113 불변, 하이드레이션 4파일 · 미들웨어 2 · 리렌더 6 · SSR 7파일에 등장.
+
+### 15.4 e2e 검증 결과
+
+- **전 조합 dry-run 23종** — jvm 8 · python 5 · go 4 는 각 113, web 3 · electron 3 은 각 121. 편차 0.
+- **기본 ARCH** — jvm/python/go `hexagonal` · web `nextjs-app` · electron `main-renderer`.
+- **거부** — `--stack=rust` · `--domain=mobile` · `--modules=nope` · `--agents=vscode` ·
+  `--stack=web --arch=hexagonal` · `--stack=electron --arch=nextjs-app` 전부 `exit 2` + 사용 가능 목록 출력.
+- **모듈 on/off**(web·agents=all) — none 121 · jira-workflow 131 · platform-guards 125 · all 135.
+- **`bash -n`** — `verify.sh` 5종 + `run-guards.sh` 통과.
+- **실제 설치**(electron/feature · claude,cursor · modules=all) — 미치환 토큰 0
+  (`.github/workflows/verify.yml` 의 `${{ github.ref }}` 는 GitHub Actions 식이라 대상 아님),
+  메타에 `domain: frontend` · `modules: [jira-workflow, platform-guards]` 정상 기록.
+- **프로세스 경계 가드** — `contextIsolation:false` + `nodeIntegration:true` 를 심으니
+  `HARNESS_VERIFY_LEVEL=fast` 에서 둘 다 잡고 `검증 실패(fast)`.
+- **왕복 회귀** — web/feature-sliced + claude + jira-workflow 설치 → `hx-agent-add --agents=kiro,codex`
+  → `hx-update --dry-run` 결과 `same=121 conflict=0 orphan=0`.
+- **구버전 메타 업그레이드** — `domain`·`modules` 필드가 없는 메타 + 도메인 규칙 4종 삭제 상태에서
+  `hx-update --dry-run` 이 도메인을 `frontend` 로 유도해 `new=4 same=56 conflict=0 orphan=0`.
+  (주의: `harness-kit.json` 의 배열은 **한 줄**이어야 파싱된다. 손으로 재포맷하면 에이전트가 통째로
+  orphan 이 된다 — 그래서 이 파일은 도구 전용이다.)
+
+### 15.5 이슈 트래커 연동 완결 (사용자 요청 — "티켓 안 쓰고 개발할 수도 있으니 모듈로")
+
+지적 두 가지가 정확했다. ① `/hx-issue` 는 트래커 단품 조작만 하고 **티켓↔SDD 를 잇는 흐름이 없었다.**
+② 킷이 **실제 호출 수단을 제공하지 않는데 그 사실을 설정 어디에도 적어 두지 않아서**, 에이전트가
+무엇으로 Jira 에 닿아야 하는지 모르는 상태였다. 규칙 문서 §5 는 "티켓 생성 = 사용자 요청 시에만" 이라
+적었는데 `agentBoundary` 에 대응 키가 없어 판정 불가이기도 했다.
+
+- [x] **`access` 절 신설**(`issue-tracker.yml`) — `method: mcp|cli|rest|none` + `mcpServer`·`cliCommand`·
+      `restAuth`·`restTokenEnv`·`restUserEnv`. **토큰은 환경변수 이름만** 적는다(커밋되는 파일이다).
+      `TBD`·`none` 이면 커맨드가 **트래커를 부르지 않는다** — 없는 MCP 도구를 부르면 실패가 아니라 혼란이 남는다.
+- [x] **`agentBoundary.mayCreate: false`** 추가 + 규칙 §9 티켓 생성 절(필수 필드 확인 · 중복 검색 ·
+      담당자/스프린트 비움 · **만든 뒤 자동 착수 금지** · 일괄 생성 금지).
+- [x] **규칙 §1.5 접근 수단 · §10 SDD 연계** — 티켓 상태 ↔ tasks 위치 대응표(To Do↔없음/draft ·
+      In Progress↔`tasks/active/` · In Review↔`tasks/check/` · Done↔`completed/`, 에이전트는 여기까지 안 간다),
+      **티켓 본문을 requirements 로 복사하지 않는다**(뽑을 것/안 뽑을 것), 없으면 `[NEEDS CLARIFICATION]`.
+- [x] **`/hx-ticket` 신규 4하네스** — 티켓 가져오기 → 착수(락+In Progress) → `/hx-specify`~`/hx-implement`
+      → 리뷰 요청(In Review + 락 해제)까지 한 흐름. **상태가 어긋나는 3지점**을 명시했다.
+      `--from-ticket`(스펙 초안까지) · `--resume`(이어받기).
+- [x] **`/hx-issue` 갱신** — §0 접근 수단·ID 채움 확인 단계 + `create` 서브커맨드. Claude 원본에서
+      나머지 3하네스를 파생 생성(드리프트 방지).
+- [x] **킷 스킬 `hx-jira-setup`** — 모듈 확인 → **접근 수단 결정**(짐작 금지) → 기본 정보 →
+      상태 ID 조회 → **전이 ID 조회**(상태 ID 와 다른 값, 현재 상태별로 다름) → 락 모드 → 경계 →
+      **읽기 스모크 → 테스트 티켓 전이 스모크** 순. 킷 스킬 9종 → **10종**.
+- 검증: `--list-modules` 가 `jira-workflow 15 files`. web/nextjs-app + claude + 모듈 설치 시 lock 66행
+      (core 46 + claude 14 + 모듈 core 3 + 모듈 claude 2 + 헤더). 미치환 토큰 0.
+      `hx-agent-add --agents=kiro,codex,cursor` 왕복 후 `same=136 conflict=0 orphan=0`(121 + 모듈 15).
+
+### 15.6 다음
+
+- `mobile-rn` 스택을 같은 틀로 얹는다(도메인 `mobile`). 레이어 모델·모듈 축은 그대로 재사용한다.
+
+---
+
 ## 작업 규칙
 
 - 각 Phase 끝에 `scripts/verify.sh` + 사용자 승인.

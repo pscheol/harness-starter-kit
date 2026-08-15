@@ -16,12 +16,13 @@
 #   3) ruff check            (린트 — 보안(S)·async(ASYNC)·버그(B) 룰 포함) — fast
 #   4) mypy                  (타입 계약)              — full
 #   5) lint-imports          (아키텍처 레이어 계약 = 컴파일 강제 대체물) — full
-#   6) pytest                (테스트 + 커버리지 임계) — full
-#   7) (조건부) manage.py 가 있으면 Django 점검 + 마이그레이션 드리프트 차단 — full
-#   8) (조건부) evaluation|evals 가 있고 EVAL_ON_VERIFY=1 이면 eval 스모크 — full
-#   9) (선택) DB 마이그레이션/격리 테스트가 있으면 실행 — full
+#   6) 플랫폼 가드           (scripts/run-guards.sh 가 있을 때만) — full
+#   7) pytest                (테스트 + 커버리지 임계) — full
+#   8) (조건부) manage.py 가 있으면 Django 점검 + 마이그레이션 드리프트 차단 — full
+#   9) (조건부) evaluation|evals 가 있고 EVAL_ON_VERIFY=1 이면 eval 스모크 — full
+#  10) (선택) DB 마이그레이션/격리 테스트가 있으면 실행 — full
 #
-# 7·8 은 아키텍처 변형(django · ai-service)을 위한 단계이지만 스크립트는 하나로 유지한다.
+# 8·9 는 아키텍처 변형(django · ai-service)을 위한 단계이지만 스크립트는 하나로 유지한다.
 # 변형마다 파일을 나누지 않고 **존재 감지 기반 선택 실행**으로 흡수한다("1곳 + N트리거" 원칙).
 # 여러 단계 실패를 한 번에 보고하려고 fail 로 누적한다.
 set -uo pipefail
@@ -101,12 +102,19 @@ run mypy $MYPY_TARGETS || { echo "✖ 타입 검사 실패"; fail=1; }
 echo "▶ lint-imports (레이어 계약)"
 run lint-imports || { echo "✖ 아키텍처 레이어 계약 위반"; fail=1; }
 
-# ── 6) 테스트 + 커버리지 ─────────────────────────────────────────────────────
+# ── 6) 플랫폼 가드 (선택 모듈 platform-guards 를 깔면 생긴다) ────────────────
+# 배선 작업 없이 파일 존재만으로 잡힌다. 없으면 조용히 건너뛴다.
+if [ -f scripts/run-guards.sh ]; then
+  echo "▶ 플랫폼 가드"
+  bash scripts/run-guards.sh || { echo "✖ 플랫폼 가드 실패"; fail=1; }
+fi
+
+# ── 7) 테스트 + 커버리지 ─────────────────────────────────────────────────────
 # addopts(커버리지·임계)는 pyproject.toml 의 [tool.pytest.ini_options] 원본을 따른다.
 echo "▶ pytest"
 run pytest || { echo "✖ 테스트 실패(또는 커버리지 임계 미달)"; fail=1; }
 
-# ── 7) (조건부) Django 게이트 — manage.py 가 있을 때만 ───────────────────────
+# ── 8) (조건부) Django 게이트 — manage.py 가 있을 때만 ───────────────────────
 # django 변형 대응. 모델을 고치고 마이그레이션을 만들지 않은 '드리프트'가 가장 흔한 사고라
 # 배포 전이 아니라 게이트에서 막는다.
 if [ -f manage.py ]; then
@@ -118,7 +126,7 @@ if [ -f manage.py ]; then
     || { echo "✖ 마이그레이션 드리프트 — 'python manage.py makemigrations' 로 생성 후 커밋"; fail=1; }
 fi
 
-# ── 8) (조건부) eval 회귀 스모크 — ai-service 변형 대응 ──────────────────────
+# ── 9) (조건부) eval 회귀 스모크 — ai-service 변형 대응 ──────────────────────
 # 기본은 비활성이다: 모델 호출은 비용이 들고 비결정적이므로 전체 eval 은 nightly 로 돌린다.
 # EVAL_ON_VERIFY=1 일 때만 스모크를 실행한다(프롬프트·모델·검색 설정을 바꾼 PR 에서 켠다).
 EVAL_DIR=""
@@ -138,7 +146,7 @@ if [ -n "$EVAL_DIR" ]; then
   fi
 fi
 
-# ── 9) (선택) DB 마이그레이션 / 격리 테스트 ──────────────────────────────────
+# ── 10) (선택) DB 마이그레이션 / 격리 테스트 ─────────────────────────────────
 # 프로젝트에 DB 게이트가 있을 때만 실행한다(없으면 자동 skip).
 # 대부분은 pytest 통합 테스트로 충분하다. 별도 게이트가 필요할 때만 아래를 쓴다.
 if [ -f scripts/db-migrate.sh ] && [ -f scripts/db-test.sh ]; then

@@ -4,7 +4,7 @@
 
 
 `harness-starter-kit/`(이하 "킷")의 현행 v1 구조를 다른 문서 없이도 읽을 수 있게 정리한 묶음이다.
-킷은 백엔드 단일 프로젝트(JVM · Python · Go 중 선택)를 위한 에이전트 하네스 스타터로,
+킷은 단일 프로젝트(JVM · Python · Go · Web · Electron 중 선택)를 위한 에이전트 하네스 스타터로,
 `setup.sh` 한 번으로 규칙 원본, SDD 워크플로, 검증 게이트, 에이전트 배선을 대상 리포에 설치한다.
 
 ## 요약
@@ -45,22 +45,38 @@
 | `jvm`(기본) | Kotlin/Java + Spring Boot, JDK LTS, Gradle(Maven 대안) | 멀티모듈 | Gradle 모듈 그래프 + Konsist | `./gradlew check` |
 | `python` | Python 3.12+ + FastAPI(ASGI) 또는 Django, SQLAlchemy 2.0, uv | src 레이아웃(django 변형은 루트) | import-linter 계약 + mypy strict | ruff→mypy→lint-imports→pytest |
 | `go` | Go 1.22+ + net/http, pgx, log/slog | 표준 Go 레이아웃 | `internal/`·import 사이클 + depguard | fmt→build→vet→lint→test -race |
+| `web` | TypeScript strict + React (Next.js/Vite) | 변형별 | **컴파일 강제 없음** — `strict` + ESLint import 경계 | fmt→lint→typecheck→가드→test→build |
+| `electron` | TypeScript strict + Electron | `src/{main,preload,renderer,shared}` 또는 워크스페이스 | 위 + 프로세스 권한 경계(게이트가 grep 차단) | 위 + 프로세스 경계 가드(`fast`) |
 
-스택과 변형에 관계없이 공통으로 깔고 가는 전제가 있다. DDD와 TDD, 관계형 DB(PostgreSQL/MySQL 등),
+백엔드 3종은 스택과 변형에 관계없이 공통 전제를 깔고 간다. DDD와 TDD, 관계형 DB(PostgreSQL/MySQL 등),
 권한은 요청 경계와 유스케이스 두 곳에서 확인, 비즈니스 규칙은 안쪽에 오케스트레이션은 바깥에,
 트랜잭션 경계는 한 곳에, 생성자 주입, 경계에서 파싱.
 
-## 아키텍처 변형 (ARCH=…, 기본 `hexagonal`)
+`web`·`electron` 은 `frontend` **도메인 레이어**를 공유한다(디자인 시스템·접근성·UI 상태·성능 4종).
+백엔드 3종에는 도메인 레이어가 없다 — 규칙이 이미 언어별이라 스택 레이어가 그 역할을 한다.
+
+## 아키텍처 변형 (ARCH=…)
+
+기본값은 스택마다 다르다 — 백엔드 3종 `hexagonal` · `web` `nextjs-app` · `electron` `main-renderer`.
 
 | STACK | 사용 가능한 ARCH |
 |---|---|
 | `jvm` | `hexagonal` · `hexagonal-nested` · `hexagonal-standalone` · `layered-multimodule` · `multimodule`(이상 멀티모듈) · `layered` · `modulith` · `feature`(이상 단일 모듈) |
 | `python` | `hexagonal` · `layered` · `modular` · `django` · `ai-service` |
 | `go` | `hexagonal` · `layered` · `feature` · `flat` |
+| `web` | `nextjs-app` · `react-spa` · `feature-sliced` |
+| `electron` | `main-renderer` · `feature` · `monorepo` |
 
 변형이 바꾸는 파일은 네 개뿐이다(`ARCHITECTURE.md`, `.agents/rules/structure.md`,
-`.agents/rules/tech.md`, `.kiro/steering/structure.md`). 그래서 조합이 늘어도 설치 파일 수는 달라지지 않는다(실제 수는 고른 에이전트에 달렸다 — core 38 + 선택분).
+`.agents/rules/tech.md`, `.kiro/steering/structure.md`). 그래서 조합이 늘어도 설치 파일 수는 달라지지 않는다(실제 수는 스택군과 고른 에이전트에 달렸다 — 백엔드 core 42 · 프론트엔드 core 46 + 선택분).
 각 변형 문서에는 선택 기준, 승격 신호, 전환 절차가 함께 들어 있다.
+
+## 선택 모듈 (`--modules=`, 기본 `none`)
+
+| 모듈 | 무엇을 넣나 |
+|---|---|
+| `jira-workflow` | 이슈 트래커 연동 — 한 세션 = 한 활성 티켓 · pull gate · **ID 로 전이** · 에이전트는 In Review 까지 |
+| `platform-guards` | 프로젝트 고유 불변식을 **문서 → 경고 가드 → 강제 가드** 3단으로 승격시키는 실행기 |
 
 ## 읽는 순서
 

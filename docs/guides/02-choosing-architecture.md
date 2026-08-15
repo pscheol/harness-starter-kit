@@ -1,6 +1,6 @@
 # 아키텍처 선택 가이드
 
-스택 3종 × 아키텍처 17변형 중 하나를 고르는 문서다. 고르고 나면 `ARCH` 값 하나가 정해지고,
+스택 5종 × 아키텍처 23변형 중 하나를 고르는 문서다. 고르고 나면 `ARCH` 값 하나가 정해지고,
 그 값이 `ARCHITECTURE.md` · `.agents/rules/structure.md` · `.agents/rules/tech.md` · `.kiro/steering/structure.md`
 **네 파일**을 결정한다. 나머지는 스택 안에서 공유되므로 변형을 바꿔도 설치 파일 수는 달라지지 않는다.
 
@@ -29,6 +29,12 @@
 | `controller`/`service`/`repository` 패키지(단일 모듈) | `jvm` / `layered` |
 | `@ApplicationModule` · `spring-modulith` 의존 | `jvm` / `modulith` |
 | 위 규격이 아닌 Gradle 멀티모듈 | `jvm` / `multimodule` |
+| `app/` 라우트 세그먼트(Next.js) | `web` / `nextjs-app` |
+| `src/{entities,features,widgets,shared}` | `web` / `feature-sliced` |
+| `src/` + `main.tsx`(위에 해당 없음) | `web` / `react-spa` |
+| `apps/` + `packages/` 워크스페이스 + `electron` 의존 | `electron` / `monorepo` |
+| `src/{main,renderer}/features/` | `electron` / `feature` |
+| `src/{main,preload,renderer,shared}` | `electron` / `main-renderer` |
 
 ---
 
@@ -43,12 +49,12 @@ Q1. 배포 단위(실행 프로세스)가 몇 개인가?
     └─ 하나 ─▶ Q2
 
 Q2. 도메인 규칙이 복잡한가? 저장소·외부 시스템을 교체할 가능성이 있는가?
-    ├─ 그렇다 ─┬─ 컨텍스트 3개 이하 ────────────────▶ hexagonal      (3스택 공통)
+    ├─ 그렇다 ─┬─ 컨텍스트 3개 이하 ────────────────▶ hexagonal      (백엔드 3스택 공통)
     │          └─ 그보다 많아 루트가 번잡 ───────────▶ jvm: hexagonal-nested
     └─ 아니다 ─▶ Q3
 
 Q3. 무엇을 기준으로 나눌 것인가?
-    ├─ 나누지 않는다(경계 하나·CRUD) ───────────────▶ layered        (3스택 공통)
+    ├─ 나누지 않는다(경계 하나·CRUD) ───────────────▶ layered        (백엔드 3스택 공통)
     ├─ 도메인 — 나중에 떼어낼 수도 ─────────────────▶ jvm: modulith / python: modular
     ├─ 기능 영역 — 사람마다 다른 영역 소유 ─────────▶ jvm·go: feature / python: modular
     ├─ 축을 직접 정하겠다(연동 대상·기술 관심사 등) ─▶ jvm: multimodule
@@ -59,6 +65,28 @@ Q3. 무엇을 기준으로 나눌 것인가?
 
 - 제품의 핵심 동작이 모델 호출(생성·RAG·에이전트)이다 → `python` / `ai-service`
 - Admin·인증·마이그레이션 등 배터리 포함이 최대 이득이다 → `python` / `django`
+
+### 프론트엔드는 다른 트리를 탄다
+
+백엔드의 Q1~Q3(배포 단위·도메인 무게·분할 축)은 프론트엔드에서 잘 갈리지 않는다. 두 질문이면 된다.
+
+```
+web
+  Q1. 서버 렌더링·서버 액션·서버 전용 데이터 접근이 필요한가?
+      ├─ 그렇다 ────────────────────────────────────▶ nextjs-app
+      └─ 아니다 ─▶ Q2
+  Q2. 기능 소유가 팀별로 갈리고 계층을 기계적으로 막고 싶은가?
+      ├─ 그렇다 ────────────────────────────────────▶ feature-sliced
+      └─ 아니다 ────────────────────────────────────▶ react-spa
+
+electron
+  Q1. 데스크톱 말고 다른 배포 단위(웹·CLI)와 코드를 공유하는가?
+      ├─ 그렇다 ────────────────────────────────────▶ monorepo
+      └─ 아니다 ─▶ Q2
+  Q2. main 과 renderer 양쪽에 같은 이름의 기능이 여럿 생기는가?
+      ├─ 그렇다 ────────────────────────────────────▶ feature
+      └─ 아니다 ────────────────────────────────────▶ main-renderer
+```
 
 ---
 
@@ -103,6 +131,27 @@ hexagonal-standalone   :my-app-order-infra          컨텍스트마다 core·com
 | `layered` | `internal/{handler,service,repository,model}` | 레이어 방향 + **handler↛repository** |
 | `feature` | `internal/<feature>/{handler,service,store,model}.go` | 기능 패키지 간 직접 import 금지 |
 | `flat` | `cmd/<app>/main.go` + `internal/app/` | 최소 규칙 + **파일 수 상한 감시** |
+
+### web (TypeScript + React) — 3종
+
+| ARCH | 레이아웃 | 강제 수단 |
+|---|---|---|
+| `nextjs-app` | `app/` 라우트 세그먼트 + `src/{components,features,lib,server}` | `server-only`/`client-only`(**유일한 컴파일 강제**) + ESLint import 제한 |
+| `react-spa` | `src/{app,pages,components,features,hooks,lib,api}` + `main.tsx` | ESLint import 규칙 + `strict` |
+| `feature-sliced` | `src/{app,pages,widgets,features,entities,shared}` — 슬라이스는 `index.ts` 만 노출 | ESLint `boundaries/element-types` 허용 행렬 |
+
+### electron (TypeScript + Electron) — 3종
+
+| ARCH | 레이아웃 | 강제 수단 |
+|---|---|---|
+| `main-renderer` | `src/{main,preload,renderer,shared}` — main 은 `ipc/`·`service/`·`store/` | 프로세스 경계 가드 + ESLint import 제한 |
+| `feature` | `src/*/features/<feature>/` — IPC 계약은 `shared/features/<f>/contract.ts` 한 곳 | 위 + 기능 간 직접 import 금지 |
+| `monorepo` | `apps/{desktop,web}` + `packages/{core,ui}` | 위 + 의존 방향 단방향(`apps → packages`) |
+
+**프론트엔드 3종의 강제는 전부 린터다.** 컴파일러가 레이어를 막아주지 않으므로
+**등록하지 않은 경계는 존재하지 않는 경계다.** 슬라이스·기능·워크스페이스를 늘리면 규칙에도 등록한다.
+예외는 둘 — Next.js 의 `server-only`/`client-only`(컴파일 에러), Electron 의 프로세스 경계 세 값
+(`contextIsolation`·`nodeIntegration`·`sandbox` — `verify.sh` 가 `fast` 레벨에서 grep 으로 차단).
 
 ---
 
@@ -151,6 +200,9 @@ hexagonal-standalone   :my-app-order-infra          컨텍스트마다 core·com
 | `common` 을 세 번째 컨텍스트로 복사하고 있다 | 자립형이 과하다 | `hexagonal-standalone` → `hexagonal` |
 | 한 기능을 고치는데 5개 모듈을 만진다 | 분할 축이 틀렸다 | 축을 도메인·기능으로 재설정 |
 | `flat` 의 파일이 7개를 넘었다 | 만료 | `go: flat` → `go: feature` |
+| `'use client'` 가 트리 위쪽으로 계속 올라간다 | 서버/클라이언트 경계가 무너졌다 | `nextjs-app` 재정비(잎에만 붙인다) |
+| 슬라이스 내부 파일을 가로질러 import 하고 있다 | 공개 API 규약이 죽었다 | `feature-sliced` 의 ESLint 규칙부터 복구 |
+| `shared/` 에 런타임 Node API 가 들어갔다 | 렌더러가 함께 import 한다 | `electron` 경계 재정비(타입·상수만) |
 | 컨텍스트의 배포 주기·팀·SLA가 완전히 갈렸다 | 분리 시점 | → 별도 리포(자립형이면 디렉터리 이동만) |
 
 ---
@@ -158,11 +210,13 @@ hexagonal-standalone   :my-app-order-infra          컨텍스트마다 core·com
 ## 5. 고른 다음
 
 ```bash
-# 3스택 공통 진입
-/harness-kit:hx-bootstrap --stack=<jvm|python|go> --arch=<변형> --dry-run
+# 5스택 공통 진입
+/harness-kit:hx-bootstrap --stack=<jvm|python|go|web|electron> --arch=<변형> --dry-run
 
-# JVM이면 전용 진입(선택 안내 + 언어 확정)
-/hx-jvm-setup
+# 스택별 전용 진입(고르는 순서로 묻고 같은 설치기를 부른다)
+/hx-jvm-setup        # + 언어(Kotlin/Java) 확정
+/hx-web-setup
+/hx-electron-setup
 ```
 
 설치가 끝나면 `setup.sh` 가 **스택×변형별 후속 작업**을 출력한다. 그것이 다음 할 일이다.

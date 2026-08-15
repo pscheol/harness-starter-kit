@@ -16,8 +16,9 @@
 #   3) go build ./...        (컴파일)                          — full
 #   4) go vet ./...          (표준 정적 분석)                   — full
 #   5) golangci-lint run     (린트 + depguard 레이어 강제)       — full
-#   6) go test -race -cover  (테스트 + 경합 검출 + 커버리지 임계) — full
-#   7) govulncheck ./...     (선택 — 설치돼 있으면 실행)          — full
+#   6) 플랫폼 가드           (scripts/run-guards.sh 가 있을 때만) — full
+#   7) go test -race -cover  (테스트 + 경합 검출 + 커버리지 임계) — full
+#   8) govulncheck ./...     (선택 — 설치돼 있으면 실행)          — full
 # 여러 단계 실패를 한 번에 보고하려고 fail 로 누적한다.
 set -uo pipefail
 
@@ -72,7 +73,14 @@ else
   echo "▶ golangci-lint (미설치 — 건너뜀). 레이어 강제가 꺼진 상태이므로 설치를 권장한다."
 fi
 
-# ── 6) 테스트 + 경합 검출 + 커버리지 ─────────────────────────────────────────
+# ── 6) 플랫폼 가드 (선택 모듈 platform-guards 를 깔면 생긴다) ────────────────
+# 배선 작업 없이 파일 존재만으로 잡힌다. 없으면 조용히 건너뛴다.
+if [ -f scripts/run-guards.sh ]; then
+  echo "▶ 플랫폼 가드"
+  bash scripts/run-guards.sh || { echo "✖ 플랫폼 가드 실패"; fail=1; }
+fi
+
+# ── 7) 테스트 + 경합 검출 + 커버리지 ─────────────────────────────────────────
 echo "▶ go test -race"
 if go test -race -covermode=atomic -coverprofile=coverage.out ./...; then
   TOTAL="$(go tool cover -func=coverage.out | awk '/^total:/ {gsub(/%/,"",$3); print $3}')"
@@ -87,7 +95,7 @@ else
   echo "✖ 테스트 실패"; fail=1
 fi
 
-# ── 7) (선택) 취약점 스캔 ────────────────────────────────────────────────────
+# ── 8) (선택) 취약점 스캔 ────────────────────────────────────────────────────
 if command -v govulncheck >/dev/null 2>&1; then
   echo "▶ govulncheck"
   govulncheck ./... || { echo "✖ 알려진 취약점 발견"; fail=1; }

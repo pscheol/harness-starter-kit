@@ -1,7 +1,7 @@
 {
   "name": "harness-kit",
-  "version": "1.0.6",
-  "description": "하네스 엔지니어링 스타터 킷 — 백엔드 리포에 에이전트 협업 골격을 스캐폴딩하는 스킬 모음",
+  "version": "1.0.7",
+  "description": "하네스 엔지니어링 스타터 킷 — 백엔드·프론트엔드 리포에 에이전트 협업 골격을 스캐폴딩하는 스킬 모음",
   "author": {
     "name": "pscheol",
     "email": "pscheol@gmail.com"
@@ -13,13 +13,16 @@
     "agents-md",
     "sdd",
     "backend",
+    "frontend",
+    "web",
+    "electron",
     "architecture"
   ],
   "skills": "./skills/",
   "interface": {
     "displayName": "Harness Kit",
-    "shortDescription": "백엔드 리포에 하네스 골격을 한 번에 스캐폴딩",
-    "longDescription": "AGENTS.md 진입점, .agents/rules 공통 규칙 원본(Claude Code · Codex · Kiro 공유), .kiro/steering 얇은 포인터, SDD 기록 시스템, scripts/verify.sh 단일 검증 게이트를 대상 백엔드 프로젝트에 설치한다. 스택은 jvm(Kotlin/Java+Spring) · python(FastAPI/Django) · go 중에서 고르고, 아키텍처 변형은 스택별 4~5종 중에서 고른다.",
+    "shortDescription": "백엔드·웹·데스크톱 리포에 하네스 골격을 한 번에 스캐폴딩",
+    "longDescription": "AGENTS.md 진입점, .agents/rules 공통 규칙 원본(Claude Code · Codex · Cursor · Kiro 공유), .kiro/steering 얇은 포인터, SDD 기록 시스템, scripts/verify.sh 단일 검증 게이트를 대상 프로젝트에 설치한다. 스택은 jvm(Kotlin/Java+Spring) · python(FastAPI/Django) · go · web(TypeScript+React) · electron 중에서 고르고, 아키텍처 변형은 스택별 3~8종 중에서 고른다. web·electron 은 frontend 도메인 규칙을 공유한다.",
     "developerName": "pscheol",
     "category": "Developer Tools",
     "capabilities": [

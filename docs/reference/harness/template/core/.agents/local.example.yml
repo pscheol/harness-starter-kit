@@ -1,0 +1,29 @@
+# .agents/local.example.yml
+#
+# 이 파일을 .agents/local.yml 로 복사해서 쓴다.
+# local.yml 은 git ignore 대상이며 작업자별 설정을 담는다.
+#
+# 실제 시크릿을 여기 적지 않는다. 환경변수 이름만 적는다.
+
+schemaVersion: 1
+kind: agent-local-settings
+
+identity:
+  displayName: TBD
+  gitName: TBD
+  gitEmail: TBD
+  defaultExecutor: TBD
+
+workspace:
+  root: .
+  repos:
+    main: .
+
+secrets:
+  # 값이 아니라 "어느 환경변수에서 읽는지"만 적는다.
+  gitTokenEnv: GIT_TOKEN
+
+permissions:
+  allowIssueTrackerWrite: false
+  allowRemoteMrCreate: false
+  allowNotify: false
