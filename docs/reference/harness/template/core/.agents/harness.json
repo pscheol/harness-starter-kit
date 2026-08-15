@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "_comment": "하네스 단일 설정. scripts/*.cjs 전체가 이 파일을 읽는다. 값이 프로젝트마다 달라지는 것은 모두 여기로 모은다.",
+
+  "project": {
+    "name": "{{PROJECT_NAME}}",
+    "key": "{{PROJECT_KEY}}",
+    "defaultBranch": "{{DEFAULT_BRANCH}}",
+    "docLanguage": "{{DOC_LANGUAGE}}"
+  },
+
+  "runtime": {
+    "packageManager": "{{PKG_MANAGER}}",
+    "minNodeMajor": "{{MIN_NODE_MAJOR}}",
+    "remoteInstallCommand": "{{CMD_CI_INSTALL}}"
+  },
+
+  "commands": {
+    "install": "{{CMD_INSTALL}}",
+    "dev": "{{CMD_DEV}}",
+    "lint": "{{CMD_LINT}}",
+    "typecheck": "{{CMD_TYPECHECK}}",
+    "test": "{{CMD_TEST}}",
+    "build": "{{CMD_BUILD}}"
+  },
+
+  "format": {
+    "formatCommand": "{{CMD_FORMAT_FILE}}",
+    "lintFixCommand": "{{CMD_LINT_FIX_FILE}}",
+    "formatExtensions": [
+      "ts",
+      "tsx",
+      "js",
+      "jsx",
+      "mjs",
+      "cjs",
+      "json",
+      "jsonc",
+      "css",
+      "scss",
+      "md",
+      "mdx",
+      "yml",
+      "yaml",
+      "html"
+    ],
+    "lintExtensions": ["ts", "tsx", "js", "jsx"],
+    "lintPathPrefixes": ["{{SOURCE_DIR}}/"]
+  },
+
+  "adapters": ["claude", "codex"],
+
+  "modules": ["core"],
+
+  "requiredPaths": [
+    "AGENTS.md",
+    ".agents/harness.json",
+    ".agents/rules/golden-rules.md",
+    ".agents/skills/README.md",
+    ".agents/docs/README.md",
+    ".agents/docs/product-specs/index.md"
+  ],
+
+  "symlinks": [
+    {
+      "link": "CLAUDE.md",
+      "target": "AGENTS.md",
+      "type": "file",
+      "adapter": "claude"
+    },
+    {
+      "link": ".claude/skills",
+      "target": "../.agents/skills",
+      "type": "dir",
+      "adapter": "claude"
+    }
+  ],
+
+  "guards": [],
+
+  "budget": {
+    "agentsMdMaxLines": 250,
+    "claudeMdMaxLines": 120,
+    "largeFileThreshold": 800
+  }
+}

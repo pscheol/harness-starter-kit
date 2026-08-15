@@ -1,0 +1,223 @@
+{
+  "schemaVersion": 1,
+  "name": "base-agent-harness",
+  "description": "프로젝트 중립 에이전트 하네스 베이스. 코어 + 선택 모듈 구성.",
+
+  "modules": {
+    "core": {
+      "required": true,
+      "description": "어떤 저장소에나 설치하는 최소 골격. 진입점·정책·SDD 기록계·검증 게이트·도구 어댑터.",
+      "source": "template/core",
+      "installs": [
+        "AGENTS.md",
+        ".agents/harness.json",
+        ".agents/rules/ (12)",
+        ".agents/docs/ (SDD 템플릿 + 지식 베이스 스텁)",
+        ".agents/skills/ (카탈로그 + 템플릿)",
+        ".agents/prompts/ (4)",
+        ".agents/local.example.yml",
+        "scripts/ (7)",
+        "adapters/.claude/ → 저장소 루트 .claude/",
+        "adapters/.codex/ → 저장소 루트 .codex/"
+      ]
+    },
+    "jira-workflow": {
+      "required": false,
+      "description": "이슈 트래커를 작업 큐로 사용. claim·상태 전이·동시성 락.",
+      "source": "template/optional/jira-workflow",
+      "installWhen": "팀이 이슈 트래커를 실제 작업 큐로 쓰고, 에이전트가 티켓 상태를 읽고 쓸 때",
+      "postInstallRequired": [
+        ".agents/issue-tracker.yml 의 statusIds / transitionIds / lockField 를 실제 값으로 채운다"
+      ]
+    },
+    "design-system": {
+      "required": false,
+      "description": "디자인 소스를 단일 진실로 강제. 임의 토큰 생성 방지.",
+      "source": "template/optional/design-system",
+      "installWhen": "디자인 도구에 기준 문서가 있고 UI 작업 비중이 있을 때",
+      "postInstallRequired": [
+        ".agents/rules/design-system.md 의 기준 문서 표와 토큰 owner 표를 채운다"
+      ]
+    },
+    "platform-guards": {
+      "required": false,
+      "description": "프로젝트 고유 불변 조건을 검사하는 가드 스크립트.",
+      "source": "template/optional/platform-guards",
+      "installWhen": "회귀가 반복되는 불변 조건이 있고 그것을 기계로 검사할 수 있을 때",
+      "postInstallRequired": [
+        "가드를 작성하고 .agents/harness.json 의 guards 에 등록한다",
+        "경고 단계로 시작해 위반 0건이 된 뒤 강제로 승격한다"
+      ]
+    }
+  },
+
+  "placeholders": {
+    "PROJECT_NAME": {
+      "description": "사람이 읽는 프로젝트 이름",
+      "example": "Acme Web Client"
+    },
+    "PROJECT_KEY": {
+      "description": "짧은 식별자. 이슈 키 접두사나 브랜치 슬러그에 쓴다",
+      "example": "ACME"
+    },
+    "DEFAULT_BRANCH": {
+      "description": "기준 브랜치",
+      "default": "main"
+    },
+    "DOC_LANGUAGE": {
+      "description": "문서·주석·응답 언어",
+      "default": "한국어"
+    },
+    "SOURCE_DIR": {
+      "description": "소스 루트 디렉터리",
+      "default": "src"
+    },
+    "PKG_MANAGER": {
+      "description": "패키지 매니저",
+      "default": "npm"
+    },
+    "MIN_NODE_MAJOR": {
+      "description": "최소 Node 메이저 버전 (숫자). 하네스 스크립트가 Node 로 동작하므로 Node 미사용 스택도 값이 필요하다",
+      "default": "20"
+    },
+    "CMD_INSTALL": { "description": "의존성 설치", "default": "npm install" },
+    "CMD_CI_INSTALL": {
+      "description": "원격/CI 재현 설치",
+      "default": "npm ci"
+    },
+    "CMD_DEV": { "description": "개발 실행", "default": "npm run dev" },
+    "CMD_LINT": { "description": "린트", "default": "npm run lint" },
+    "CMD_TYPECHECK": {
+      "description": "타입 검사. 없으면 빈 문자열",
+      "default": "npm run typecheck"
+    },
+    "CMD_TEST": { "description": "테스트", "default": "npm test" },
+    "CMD_BUILD": { "description": "빌드", "default": "npm run build" },
+    "CMD_PRECOMMIT": {
+      "description": "커밋 전 통합 게이트",
+      "default": "npm run precommit"
+    },
+    "CMD_VERIFY_HARNESS": {
+      "description": "하네스 계약 검사",
+      "default": "npm run harness:verify"
+    },
+    "CMD_FORMAT_FILE": {
+      "description": "단일 파일 포맷 (파일 경로가 인자로 붙는다)",
+      "default": "npx --no-install prettier --write"
+    },
+    "CMD_LINT_FIX_FILE": {
+      "description": "단일 파일 린트 자동 수정 (파일 경로가 인자로 붙는다)",
+      "default": "npx --no-install eslint --fix"
+    },
+    "TODAY": {
+      "description": "설치 날짜. 규칙 파일의 last_updated 에 들어간다",
+      "auto": true
+    }
+  },
+
+  "presets": {
+    "node-npm": {
+      "description": "Node + npm (기본)",
+      "values": {
+        "PKG_MANAGER": "npm",
+        "MIN_NODE_MAJOR": "20",
+        "CMD_INSTALL": "npm install",
+        "CMD_CI_INSTALL": "npm ci",
+        "CMD_DEV": "npm run dev",
+        "CMD_LINT": "npm run lint",
+        "CMD_TYPECHECK": "npm run typecheck",
+        "CMD_TEST": "npm test",
+        "CMD_BUILD": "npm run build",
+        "CMD_PRECOMMIT": "npm run precommit",
+        "CMD_VERIFY_HARNESS": "npm run harness:verify",
+        "CMD_FORMAT_FILE": "npx --no-install prettier --write",
+        "CMD_LINT_FIX_FILE": "npx --no-install eslint --fix"
+      }
+    },
+    "node-pnpm": {
+      "description": "Node + pnpm",
+      "values": {
+        "PKG_MANAGER": "pnpm",
+        "MIN_NODE_MAJOR": "20",
+        "CMD_INSTALL": "pnpm install",
+        "CMD_CI_INSTALL": "pnpm install --frozen-lockfile",
+        "CMD_DEV": "pnpm dev",
+        "CMD_LINT": "pnpm lint",
+        "CMD_TYPECHECK": "pnpm typecheck",
+        "CMD_TEST": "pnpm test",
+        "CMD_BUILD": "pnpm build",
+        "CMD_PRECOMMIT": "pnpm precommit",
+        "CMD_VERIFY_HARNESS": "pnpm harness:verify",
+        "CMD_FORMAT_FILE": "pnpm exec prettier --write",
+        "CMD_LINT_FIX_FILE": "pnpm exec eslint --fix"
+      }
+    },
+    "python-uv": {
+      "description": "Python + uv + ruff + pytest",
+      "values": {
+        "PKG_MANAGER": "uv",
+        "SOURCE_DIR": "src",
+        "MIN_NODE_MAJOR": "20",
+        "CMD_INSTALL": "uv sync",
+        "CMD_CI_INSTALL": "uv sync --frozen",
+        "CMD_DEV": "uv run python -m app",
+        "CMD_LINT": "uv run ruff check .",
+        "CMD_TYPECHECK": "uv run mypy .",
+        "CMD_TEST": "uv run pytest",
+        "CMD_BUILD": "uv build",
+        "CMD_PRECOMMIT": "bash scripts/precommit.sh",
+        "CMD_VERIFY_HARNESS": "node scripts/verify-harness.cjs",
+        "CMD_FORMAT_FILE": "uv run ruff format",
+        "CMD_LINT_FIX_FILE": "uv run ruff check --fix"
+      }
+    },
+    "go": {
+      "description": "Go 표준 툴체인",
+      "values": {
+        "PKG_MANAGER": "go",
+        "SOURCE_DIR": "internal",
+        "MIN_NODE_MAJOR": "20",
+        "CMD_INSTALL": "go mod download",
+        "CMD_CI_INSTALL": "go mod download",
+        "CMD_DEV": "go run ./cmd/app",
+        "CMD_LINT": "golangci-lint run",
+        "CMD_TYPECHECK": "go vet ./...",
+        "CMD_TEST": "go test ./...",
+        "CMD_BUILD": "go build ./...",
+        "CMD_PRECOMMIT": "bash scripts/precommit.sh",
+        "CMD_VERIFY_HARNESS": "node scripts/verify-harness.cjs",
+        "CMD_FORMAT_FILE": "gofmt -w",
+        "CMD_LINT_FIX_FILE": ""
+      }
+    }
+  },
+
+  "postInstall": {
+    "scripts": {
+      "description": "package.json 을 쓰는 프로젝트라면 다음 스크립트를 추가한다",
+      "entries": {
+        "bootstrap": "node scripts/bootstrap-harness.cjs",
+        "precommit": "node scripts/precommit.cjs",
+        "harness:verify": "node scripts/verify-harness.cjs",
+        "postinstall": "node scripts/bootstrap-harness.cjs"
+      }
+    },
+    "gitignore": [
+      ".agents/local.yml",
+      ".agents/local/",
+      ".agents/artifacts/",
+      ".agents/runs/",
+      ".agents/tmp/",
+      ".agents/cache/",
+      ".claude/settings.local.json"
+    ],
+    "mustFill": [
+      "AGENTS.md — Overview / Tech Stack / Project Structure / Project Invariants",
+      ".agents/rules/golden-rules.md §6 — 불변 조건 표",
+      ".agents/rules/pr-review-policy.md — negative knowledge 표, 중점 점검 영역",
+      ".agents/docs/architecture.md — 전체",
+      ".agents/docs/conventions.md — 전체",
+      ".agents/docs/knowledge/source-index.md — TBD 항목"
+    ]
+  }
+}

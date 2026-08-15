@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "_comment": "커밋 대상. 개인 권한은 settings.local.json 에 둔다. 훅은 공용 scripts/ 만 호출한다.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/assert-harness-context.cjs",
+            "statusMessage": "Checking harness context..."
+          },
+          {
+            "type": "command",
+            "command": "node scripts/install-pkgs-if-remote.cjs",
+            "statusMessage": "Checking dependencies..."
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/format-and-lint-hook.cjs",
+            "statusMessage": "Formatting & linting..."
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git status)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git show:*)",
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(grep:*)",
+      "Bash(rg:*)",
+      "Bash({{CMD_LINT}})",
+      "Bash({{CMD_TEST}})",
+      "Bash({{CMD_TYPECHECK}})",
+      "Bash({{CMD_BUILD}})",
+      "Bash({{CMD_DEV}})",
+      "Bash(mkdir -p .agents/artifacts/:*)"
+    ],
+    "ask": [
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(git checkout:*)",
+      "Bash(git merge:*)",
+      "Bash(git rebase:*)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(rm -rf:*)"
+    ]
+  }
+}

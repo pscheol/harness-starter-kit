@@ -1,0 +1,58 @@
+schemaVersion: 1
+kind: issue-tracker-config
+
+# 이슈 트래커 연동 설정.
+# 상태 ID / 전이 ID / 필드 키는 트래커 인스턴스마다 다르다.
+# 표시 이름은 언제든 바뀌므로 자동화는 반드시 ID 를 쓴다.
+
+tracker:
+  adapter: TBD # 예: atlassian-remote-mcp, github-issues, linear
+  siteUrl: TBD
+  projectKey: { { PROJECT_KEY } }
+  boardUrl: TBD
+
+# 표시 이름 (사람용). 자동화는 이 값을 쓰지 않는다.
+statusNames:
+  todo: TBD
+  in_progress: TBD
+  review: TBD
+  completion_waiting: TBD
+  done: TBD
+  blocked: TBD
+
+# 자동화가 쓰는 값. 반드시 채운다.
+statusIds:
+  todo: TBD
+  in_progress: TBD
+  review: TBD
+  completion_waiting: TBD
+  done: TBD
+
+# 상태 ID 와 전이 ID 는 다른 값이다.
+transitionIds:
+  to_todo: TBD
+  to_in_progress: TBD
+  to_review: TBD
+  to_completion_waiting: TBD
+  to_done: TBD
+
+# 동시 claim 방지용 필드. 커스텀 필드를 못 만들면 코멘트 기반으로 대체한다.
+lockField:
+  key: TBD
+  name: Agent Lock Expires At
+  schema: datetime
+
+selection:
+  # 구현 후보 조회. 트래커 질의 언어에 맞게 작성한다.
+  implementationQuery: TBD
+  rule: >
+    일반 구현 명령은 구현 + 브랜치 push + 기본 게이트까지 하고 review 에서 멈춘다.
+    한 세션은 한 번에 하나의 티켓만 진행 중으로 둔다.
+
+branch:
+  rule: '{type}/{issueKey}-{shortSlug}'
+  defaultBase: { { DEFAULT_BRANCH } }
+
+permissions:
+  # 기본은 읽기 전용. 쓰기는 인증과 명시적 사용자 요청이 모두 있을 때만.
+  allowWrite: false
