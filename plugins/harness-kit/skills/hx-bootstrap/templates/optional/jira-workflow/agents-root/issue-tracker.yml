@@ -1,0 +1,75 @@
+# HARNESS STARTER KIT · {{PROJECT_NAME}} — 선택 모듈: jira-workflow
+#
+# 이슈 트래커 연동 설정. 규약 원본은 .agents/rules/issue-tracker-workflow.md 다.
+#
+# ★ 전이는 **표시 이름이 아니라 ID** 로 한다.
+#   표시 이름("진행 중")은 번역·워크플로 수정으로 바뀐다. 바뀌면 자동화가 실패하는 게 아니라
+#   **조용히 엉뚱한 상태로 옮긴다.** 그게 이 파일이 존재하는 이유다.
+#
+# ★ TBD 가 하나라도 남아 있으면 /hx-issue 는 **읽기만** 한다(상태를 바꾸지 않는다).
+#   값을 채우기 전에 자동 전이를 켜지 않는다.
+
+tracker: TBD                 # jira | github | linear | …
+baseUrl: TBD                 # 예: https://<org>.atlassian.net
+projectKey: TBD              # 예: ABC
+
+# 브랜치·커밋·PR 에서 티켓을 찾을 때 쓰는 패턴.
+issueKeyPattern: TBD         # 예: ABC-[0-9]+
+
+# ── 트래커에 어떻게 닿는가 ─────────────────────────────────────────────────
+# 이 킷은 규약과 설정만 준다. **실제 호출 수단은 프로젝트가 붙인다.**
+# 여기가 TBD 면 에이전트는 "연동 수단이 없다"고 보고하고 트래커를 부르지 않는다
+# (추측으로 API 를 때리지 않는다). 채우는 절차는 hx-jira-setup 스킬.
+access:
+  method: TBD                # mcp | cli | rest | none
+  # method=mcp  — 그 하네스에 붙인 MCP 서버 이름. 도구 이름은 서버가 알려 준다
+  mcpServer: TBD             # 예: atlassian
+  # method=cli  — 실행할 명령. 인자 형식까지 적어 두면 에이전트가 헤매지 않는다
+  cliCommand: TBD            # 예: jira issue view <key> --output json
+  # method=rest — 인증 방식과 **환경변수 이름**. 토큰 원문을 여기 적지 않는다
+  restAuth: TBD              # 예: bearer | basic
+  restTokenEnv: TBD          # 예: JIRA_API_TOKEN  ← 이름만. 값은 절대 금지
+  restUserEnv: TBD           # 예: JIRA_USER_EMAIL (basic 일 때)
+
+# ── 상태 ID (표시 이름 아님) ────────────────────────────────────────────────
+# 트래커 API 로 조회해 채운다. 예: GET /rest/api/3/project/<key>/statuses
+statusIds:
+  todo: TBD
+  inProgress: TBD
+  inReview: TBD
+  done: TBD                  # 참조용. **에이전트는 이 상태로 옮기지 않는다**
+
+# ── 전이 ID ────────────────────────────────────────────────────────────────
+# 상태 ID 와 다른 값이다. "어느 상태에서 어느 상태로" 조합마다 따로 있다.
+# 예: GET /rest/api/3/issue/<key>/transitions (그 이슈의 현재 상태 기준으로 조회된다)
+transitionIds:
+  todoToInProgress: TBD
+  inProgressToInReview: TBD
+  inProgressToTodo: TBD      # 착수 철회(락 해제와 함께)
+
+# ── 에이전트 동시 작업 방지 락 ─────────────────────────────────────────────
+# 규약 원본: .agents/rules/issue-agent-lock.md
+lock:
+  mode: TBD                  # field | label | comment
+  field: TBD                 # mode=field 일 때 커스텀 필드 ID (예: customfield_10042)
+  labelPrefix: TBD           # mode=label 일 때 접두사 (예: agent-lock-)
+  ttlMinutes: TBD            # 이 시간이 지난 락은 stale 로 본다(권장 90~240)
+  ownerFormat: TBD           # 예: agent:<session-id>@<host> — 사람이 읽고 연락할 수 있게
+
+# ── 에이전트가 넘지 않는 선 ────────────────────────────────────────────────
+# 여기를 넓히기 전에 왜 필요한지 .agents/docs/decisions/ 에 남긴다.
+agentBoundary:
+  maxStatus: inReview        # 여기까지만 전이한다. done/close 는 사람의 판단이다
+  mayComment: true
+  mayAssign: false           # 담당자 변경은 사람이 한다
+  mayClose: false
+  mayEditDescription: false  # 원 요구사항을 에이전트가 고쳐 쓰지 않는다
+  mayCreate: false           # 티켓 생성. true 여도 사용자가 명시적으로 요청할 때만 만든다
+                             # (자동 생성은 보드를 노이즈로 채운다). 만든 뒤 자동 착수하지 않는다
+
+# ── 코멘트 규약 ────────────────────────────────────────────────────────────
+comment:
+  onStart: true              # 착수 알림(누가·언제·어느 브랜치)
+  onReview: true             # 리뷰 요청(PR 링크·검증 결과)
+  onBlocked: true            # 막힘(무엇이·무엇이 필요한지)
+  includeVerifyOutput: false # 게이트 전문을 붙이지 않는다. 결과 한 줄 + 링크

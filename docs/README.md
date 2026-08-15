@@ -15,7 +15,7 @@
 | 문서 | 한 줄 |
 |---|---|
 | [01-getting-started.md](guides/01-getting-started.md) | 설치 → 스택·아키텍처 결정 → 스캐폴딩 → 채우기 → 강제 도구 → 첫 기능 → 검증까지 순서대로 |
-| [02-choosing-architecture.md](guides/02-choosing-architecture.md) | 17변형 결정 트리 · 기존 코드 판독 · 승격/후퇴 신호 |
+| [02-choosing-architecture.md](guides/02-choosing-architecture.md) | 23변형 결정 트리 · 기존 코드 판독 · 승격/후퇴 신호 |
 | [03-jvm-architecture-recipes.md](guides/03-jvm-architecture-recipes.md) | jvm 8변형의 모듈 등록·의존 선언·구조 테스트 배치 |
 
 ## analysis/ — 킷 내부 구조

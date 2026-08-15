@@ -1,6 +1,6 @@
 ---
 name: hx-agent-add
-description: 이미 하네스가 깔린 리포에 에이전트(하네스 플랫폼) 배선을 나중에 덧붙인다. claude(.claude/ + CLAUDE.md) · codex(.codex/ + .agents/skills/) · cursor(.cursor/commands/) · kiro(.kiro/steering/ + .kiro/skills/) 중에서 고른다. 스택·아키텍처 변형·치환값은 .agents/harness-kit.json 에서 읽으므로 다시 묻지 않는다. "Cursor도 쓰게 해줘", "Kiro 붙여줘", "Codex 설정 추가", "다른 에이전트 추가", "에이전트 배선 깔아줘" 요청 시 사용.
+description: 이미 하네스가 깔린 리포에 에이전트(하네스 플랫폼) 배선을 나중에 덧붙인다. claude(.claude/ + CLAUDE.md) · codex(.codex/ + .agents/skills/) · cursor(.cursor/commands/) · kiro(.kiro/steering/ + .kiro/skills/) 중에서 고른다. 도메인·스택·아키텍처 변형·선택 모듈·치환값은 .agents/harness-kit.json 에서 읽으므로 다시 묻지 않는다. "Cursor도 쓰게 해줘", "Kiro 붙여줘", "Codex 설정 추가", "다른 에이전트 추가", "에이전트 배선 깔아줘" 요청 시 사용.
 ---
 
 # hx-agent-add — 하네스에 에이전트 추가
@@ -21,8 +21,11 @@ description: 이미 하네스가 깔린 리포에 에이전트(하네스 플랫�
 | `claude` | `.claude/` + `CLAUDE.md` | 14 | settings.json(권한·hook 배선) · hooks 3종 · `/hx-*` 커맨드 9종 · AGENTS.md 리다이렉트 |
 | `codex` | `.codex/` + `.agents/skills/` | 14 | config.toml · hooks.json · hooks 3종 · `$hx-*` 스킬 9종 |
 | `cursor` | `.cursor/commands/` | 9 | `/hx-*` 커맨드 9종 |
-| `kiro` | `.kiro/steering/` + `.kiro/skills/` | 31 | 규칙 얇은 포인터 22종(스택·변형별 포함) · CLI 스킬 9종 |
+| `kiro` | `.kiro/steering/` + `.kiro/skills/` | 34 (프론트엔드 38) | 규칙 얇은 포인터 16종(도메인·스택·변형별 포함) · IDE 슬래시 9종 · CLI 스킬 9종 |
 
+> `web`·`electron` 리포에서 `kiro` 가 4개 많은 건 `frontend` 도메인 규칙 포인터 4종 때문이다.
+> 선택 모듈이 켜져 있으면 그 모듈의 해당 에이전트 파일도 함께 깔린다(`jira-workflow` 는 claude·codex·cursor 각 2 · kiro 6 — `/hx-issue` 와 `/hx-ticket` 두 커맨드).
+>
 > 슬래시 커맨드 9종의 본문 원본은 `.agents/rules/sdd-workflow.md` 한 곳이다.
 > 각 에이전트 파일은 그것을 가리키는 얇은 트리거라, 여러 개를 깔아도 규칙이 중복되지 않는다.
 
@@ -32,7 +35,7 @@ description: 이미 하네스가 깔린 리포에 에이전트(하네스 플랫�
    대상 리포의 `pwd` 로 유추하지 않는다(플러그인 스킬은 대상 리포 바깥에 있다).
 2. **현재 상태 확인** — 무엇이 이미 깔렸는지 본다. 설치 안 된 리포면 `hx-bootstrap` 으로 보낸다.
    ```bash
-   cat <대상>/.agents/harness-kit.json          # stack · arch · agents
+   cat <대상>/.agents/harness-kit.json          # domain · stack · arch · agents · modules
    ```
 3. **추가할 에이전트 확정** — 사용자에게 묻는다. 임의로 전부 깔지 않는다.
    이미 있는 것을 다시 지정해도 안전하다(빠진 파일만 채워진다).

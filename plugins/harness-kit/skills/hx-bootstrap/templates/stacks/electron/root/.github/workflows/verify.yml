@@ -1,0 +1,48 @@
+# HARNESS STARTER KIT ({{PROJECT_NAME}}) — CI 검증 트리거(Electron).
+#
+# 이 워크플로는 로직을 담지 않는다. 검증 게이트인 scripts/verify.sh **한 곳만** 호출한다
+# ("1곳 + N트리거": hook·pre-commit·CI 가 모두 같은 스크립트를 부른다. 규칙 복제 금지).
+#
+# 패키징(설치 파일 생성·코드 서명)은 이 워크플로가 하지 않는다. 서명 비밀이 필요하고
+# OS 별 러너가 필요하므로 릴리스 워크플로로 분리한다.
+name: verify
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      # 패키지 매니저 — 프로젝트가 쓰는 것 하나만 남긴다(락파일과 일치해야 한다).
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      # Node — .agents/rules/tech.md 기준. Electron 이 번들하는 Node 버전과 맞춘다.
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      # 락파일 기준 재현 설치. 락을 갱신하는 설치(install)를 CI 에서 쓰지 않는다.
+      # Electron 바이너리 다운로드는 캐시가 없으면 느리다 — 필요하면 캐시 스텝을 추가한다.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # 검증 게이트 한 곳만 호출
+      # (exec-plan 일관성 + 포맷 + lint + typecheck + 프로세스 경계 가드 + test + build).
+      # full 레벨 = 전체 게이트. 에이전트 Stop hook 은 턴마다 돌기 때문에 fast 레벨만 쓴다.
+      - name: Run verify gate (full)
+        env:
+          HARNESS_VERIFY_LEVEL: full
+        run: bash scripts/verify.sh

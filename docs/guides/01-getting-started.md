@@ -1,6 +1,6 @@
 # 시작 가이드 — 설치부터 첫 기능까지
 
-빈 백엔드 리포에 하네스를 깔고 첫 기능을 SDD로 만들어 내는 데까지를 순서대로 따라간다.
+빈 리포(백엔드든 프론트엔드든)에 하네스를 깔고 첫 기능을 SDD로 만들어 내는 데까지를 순서대로 따라간다.
 중간에 판단이 필요한 지점에서는 **무엇을 근거로 정하는지**까지 적었다.
 
 전체 흐름은 이렇다.
@@ -45,8 +45,13 @@ codex plugin add harness-kit@harness-starter-kit
 | `jvm` | `build.gradle(.kts)` · `pom.xml` · `settings.gradle(.kts)` |
 | `python` | `pyproject.toml` · `manage.py` |
 | `go` | `go.mod` |
+| `electron` | `package.json` 에 `electron` 의존 |
+| `web` | `package.json`(위에 해당하지 않을 때) |
 
-아키텍처는 17변형 중 하나다. 결정 트리와 스택별 전체 목록은
+`web`·`electron` 은 `frontend` 도메인을 자동으로 함께 깐다(디자인 시스템·접근성·UI 상태·성능 4종).
+백엔드 3종에는 도메인 레이어가 없다 — 규칙이 이미 언어별이다.
+
+아키텍처는 23변형 중 하나다. 결정 트리와 스택별 전체 목록은
 [02-choosing-architecture.md](02-choosing-architecture.md) 에 있다. 요약하면 세 질문이다 —
 **배포 단위가 몇 개인가 · 도메인 규칙이 복잡한가 · 무엇을 기준으로 나눌 것인가.**
 
@@ -72,6 +77,18 @@ codex plugin add harness-kit@harness-starter-kit
 아키텍처가 이미 정해졌으면 자식 스킬을 바로 불러도 된다 —
 `/hx-jvm-hexagonal` · `/hx-jvm-layered` · `/hx-jvm-layered-multimodule`.
 
+### 웹·Electron도 전용 진입이 있다
+
+```
+/hx-web-setup           # nextjs-app · react-spa · feature-sliced
+/hx-electron-setup      # main-renderer · feature · monorepo
+```
+
+역시 고르는 순서로 묻고 같은 설치기를 부른다. 프론트엔드는 **컴파일 레벨의 레이어 강제가 없어서**
+설치 후 ESLint import 경계 규칙을 등록하는 것이 첫 작업이다 — 등록하지 않으면 `ARCHITECTURE.md` 가
+문서로만 남는다. Electron 은 여기에 더해 프로세스 경계(`contextIsolation`·`nodeIntegration`·`sandbox`)를
+게이트가 `fast` 레벨에서 직접 막는다.
+
 ### 직접 실행
 
 플러그인 없이 스크립트를 직접 돌릴 수도 있다.
@@ -91,7 +108,7 @@ PACKAGE_NS="com.example.myapi" DOMAIN_EXAMPLE="order" \
 |---|---|---|
 | `PROJECT_NAME` | 표시명 | `My API` |
 | `PROJECT_SLUG` | 리포 슬러그. **모듈 접두사로도 쓰인다** | `my-api` |
-| `PACKAGE_NS` | 스택마다 의미가 다르다 — jvm=패키지, python=최상위 패키지명, go=모듈 경로 | `com.example.myapi` |
+| `PACKAGE_NS` | 스택마다 의미가 다르다 — jvm=패키지, python=최상위 패키지명, go=모듈 경로, web=임포트 별칭 루트(`@`), electron=앱 ID | `com.example.myapi` |
 | `DOMAIN_EXAMPLE` | 예시 도메인. 문서 곳곳에 박힌다 | `order` |
 | `PROTECTED_PATH` | 수정 금지 참고 경로 | `docs/references`(기본) |
 
@@ -104,7 +121,29 @@ bash "$SKILL_DIR/setup.sh" --stack=jvm --arch=hexagonal --list-agents ~/work/my-
 감지 결과와 에이전트별 파일 수를 보여준다(설치하지 않는다). **`.claude`·`.codex`·`.cursor`·`.kiro`
 를 전부 만들지 않는다** — 안 쓰는 디렉터리는 리포만 지저분하게 한다. 나중에 `/hx-agent-add` 로 더할 수 있다.
 
-설치 수 = **core 38** + 고른 것(`claude` 14 · `codex` 14 · `cursor` 9 · `kiro` 31) + **상태 파일 2개**.
+설치 수 = **core** + 고른 것 + **상태 파일 2개**. core 와 `kiro` 는 스택군에 따라 다르다.
+
+| 스택군 | core | `claude` | `codex` | `cursor` | `kiro` | 전부 고를 때 |
+|---|---|---|---|---|---|---|
+| `jvm` · `python` · `go` | 42 | 14 | 14 | 9 | 34 | 113 |
+| `web` · `electron` | 46 | 14 | 14 | 9 | 38 | 121 |
+
+프론트엔드가 4개씩 많은 건 `web`·`electron` 이 공유하는 `frontend` 도메인 규칙 4종(디자인 시스템·
+접근성·UI 상태·성능)과 그 Kiro 포인터 4종 때문이다.
+
+### 선택 모듈은 필요할 때만 켠다
+
+```bash
+bash "$SKILL_DIR/setup.sh" --list-modules
+```
+
+| 모듈 | 파일 | 켤 때 |
+|---|---|---|
+| `jira-workflow` | 10 | Jira 등 이슈 트래커를 에이전트가 직접 전이시킬 때 |
+| `platform-guards` | 4 | 프로젝트 고유 불변식을 grep 가드로 승격시킬 때 |
+
+기본은 `none` 이다. `--modules=jira-workflow,platform-guards` 처럼 명시해야 깔린다.
+모든 프로젝트가 이슈 트래커를 자동화하지도, 고유 불변식을 갖지도 않는다.
 
 ### 실제 설치
 
@@ -115,7 +154,7 @@ bash "$SKILL_DIR/setup.sh" --stack=jvm --arch=hexagonal --list-agents ~/work/my-
 
 | 파일 | 무엇 | 왜 커밋하나 |
 |---|---|---|
-| `.agents/harness-kit.json` | 킷 버전·스택·변형·에이전트·치환값 | `/hx-agent-add`·`/hx-update` 가 다시 묻지 않는다 |
+| `.agents/harness-kit.json` | 킷 버전·도메인·스택·변형·에이전트·모듈·치환값 | `/hx-agent-add`·`/hx-update` 가 다시 묻지 않는다 |
 | `.agents/harness-kit.lock` | 파일별 **설치 시점 원본 해시** | 업데이트가 "사용자가 고친 파일"을 가려낸다 |
 
 ---
@@ -150,6 +189,8 @@ grep -rn '{{' . --include='*.md' | grep -vE '_spec-templates/|\{\{\.\.\.\}\}|PRO
 | `jvm` | `settings.gradle` 모듈 등록 · 의존 방향대로 빌드 스크립트 · **ArchUnit/Konsist 구조 테스트 배치** · Spring Boot 플러그인은 실행 모듈에만 |
 | `python` | `pyproject.toml` 의 `[tool.ruff]`·`[tool.mypy]`·`[tool.pytest]`·**`[tool.importlinter]` 계약** |
 | `go` | `go mod init` · **`.golangci.yml` 의 depguard 레이어 규칙** |
+| `web` | `package.json` 스크립트 이름을 게이트에 맞추기(`lint`·`typecheck`·`test`·`build`) · `tsconfig` 의 `strict` + `noUncheckedIndexedAccess` · **ESLint import 경계 규칙 등록** |
+| `electron` | 위 + 프로세스 경계(`contextIsolation: true`·`nodeIntegration: false`·`sandbox: true`) · **IPC 채널 목록을 한 파일에 모아 preload 화이트리스트로만 노출** · `electron-builder` 의 `appId` |
 
 계약·규칙의 골격은 설치된 `ARCHITECTURE.md` 안에 있다. 변형마다 다르다.
 JVM 변형별 구체 레시피는 [03-jvm-architecture-recipes.md](03-jvm-architecture-recipes.md).
@@ -246,7 +287,7 @@ bash scripts/verify.sh            # full — 빌드·테스트 포함
 
 ## 관련 문서
 
-- [02-choosing-architecture.md](02-choosing-architecture.md) — 17변형 결정 트리·전환 신호
+- [02-choosing-architecture.md](02-choosing-architecture.md) — 23변형 결정 트리·전환 신호
 - [03-jvm-architecture-recipes.md](03-jvm-architecture-recipes.md) — jvm 8변형 실전 레시피
 - [../../README.md](../../README.md) — 스킬·커맨드 레퍼런스
 - [../analysis/](../analysis/) — 킷 내부 구조(킷을 고칠 때)

@@ -66,6 +66,10 @@ fi
 CURRENT="$(harness_meta_agents "$META")"
 STACK="$(harness_meta_get "$META" stack)"
 ARCH="$(harness_meta_get "$META" arch)"
+# 도메인·모듈도 그대로 되돌려줘야 한다. 안 넘기면 setup.sh 가 lock 을 다시 쓰면서
+# 도메인 규칙과 모듈 파일이 목록에서 사라지고, 다음 업데이트가 그것들을 orphan 으로 본다.
+DOMAIN="$(harness_meta_get "$META" domain || true)"
+MODULES="$(harness_meta_modules "$META" || true)"
 harness_load_tokens "$META"
 export PROJECT_NAME PROJECT_SLUG PACKAGE_NS SERVICE_NAME \
        PRIMARY_LANGUAGE BUILD_TOOL TEST_CMD DOMAIN_EXAMPLE PROTECTED_PATH
@@ -87,7 +91,8 @@ NEW="${NEW# }"
 
 echo "▶ 에이전트 추가"
 echo "  대상    : $TARGET"
-echo "  스택    : $STACK · $ARCH"
+echo "  스택    : $STACK · $ARCH${DOMAIN:+  (도메인 $DOMAIN)}"
+echo "  모듈    : ${MODULES:-none}"
 echo "  기존    : $CURRENT"
 echo "  추가    : ${NEW:--} → 최종 $MERGED"
 echo ""
@@ -95,6 +100,7 @@ echo ""
 HARNESS_SKIP_NEXT_STEPS=1 \
   bash "$BOOTSTRAP_DIR/setup.sh" \
     --stack="$STACK" --arch="$ARCH" --agents="$MERGED" \
+    ${DOMAIN:+--domain="$DOMAIN"} --modules="${MODULES:-none}" \
     ${PASS[@]+"${PASS[@]}"} "$TARGET"
 
 case " ${PASS[*]-} " in

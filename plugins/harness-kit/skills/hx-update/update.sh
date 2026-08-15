@@ -63,20 +63,36 @@ TO_VERSION="$(harness_kit_version "$PLUGIN_DIR")"
 STACK="$(harness_meta_get "$META" stack)"
 ARCH="$(harness_meta_get "$META" arch)"
 AGENTS_SEL="$(harness_meta_agents "$META")"
+# domain·modules 는 나중에 생긴 필드다. 구버전 메타에는 없으므로 스택에서 유도하고,
+# 모듈은 없는 것으로 본다(설치된 적 없으니 그게 맞다).
+DOMAIN="$(harness_meta_get "$META" domain || true)"
+[ -z "$DOMAIN" ] && DOMAIN="$(harness_domain_of "$STACK")"
+MODULES_SEL="$(harness_meta_modules "$META" || true)"
 harness_load_tokens "$META"
 
 COMMON_DIR="$TEMPLATES/common"
+DOMAIN_DIR="${DOMAIN:+$TEMPLATES/domains/$DOMAIN}"
 STACK_DIR="$TEMPLATES/stacks/$STACK"
 ARCH_DIR="$STACK_DIR/arch/$ARCH"
 for d in "$COMMON_DIR" "$STACK_DIR" "$ARCH_DIR"; do
   [ -d "$d" ] || { echo "✖ 템플릿을 찾을 수 없다: $d" >&2; exit 1; }
 done
+# 도메인 공유 규칙이 없는 스택(backend)은 디렉터리 자체가 없다 — 정상이므로 건너뛴다.
+[ -n "$DOMAIN_DIR" ] && [ ! -d "$DOMAIN_DIR" ] && DOMAIN_DIR=""
+for m in $MODULES_SEL; do
+  [ -d "$TEMPLATES/optional/$m" ] || {
+    echo "⚠ 메타에 있는 모듈의 템플릿이 킷에서 사라졌다: $m (이번 실행에서 건너뛴다)" >&2
+    MODULES_SEL="$(echo " $MODULES_SEL " | sed "s| $m | |g" | tr -s ' ' | sed 's|^ ||;s| $||')"
+  }
+done
 
 echo "▶ 하네스 업데이트"
 echo "  대상      : $TARGET"
 echo "  킷 버전   : $FROM_VERSION → $TO_VERSION"
+echo "  도메인    : ${DOMAIN:-—}"
 echo "  스택      : $STACK · $ARCH"
 echo "  에이전트  : $AGENTS_SEL"
+echo "  선택 모듈 : ${MODULES_SEL:-none}"
 echo "  모드      : $([ $DRY_RUN = 1 ] && echo dry-run || echo write)$([ $ACCEPT_ALL = 1 ] && echo ' +accept-all')"
 echo ""
 
@@ -90,11 +106,13 @@ trap cleanup EXIT
 n_new=0; n_same=0; n_update=0; n_conflict=0; n_orphan=0
 conflicts=""
 
+# ABOUT 는 모듈 설명 파일이라 템플릿이 아니다(setup.sh 의 --list-modules 가 읽는다).
+# 여기서 빼지 않으면 업데이트가 대상 리포에 없는 ABOUT 을 '신규'로 계속 밀어 넣는다.
 list_layer() {
   if [ "${2:-0}" = 1 ]; then
-    find "$1" -type f ! -path "*/arch/*" ! -name '.DS_Store' | sort
+    find "$1" -type f ! -path "*/arch/*" ! -name '.DS_Store' ! -name 'ABOUT' | sort
   else
-    find "$1" -type f ! -name '.DS_Store' | sort
+    find "$1" -type f ! -name '.DS_Store' ! -name 'ABOUT' | sort
   fi
 }
 
@@ -185,9 +203,14 @@ run_layer() {
   done < <(list_layer "$root" "$skip_arch")
 }
 
+# 설치와 같은 순서·같은 라벨로 돌아야 lock 이 어긋나지 않는다(setup.sh 의 layer_roots 와 대응).
 run_layer "$COMMON_DIR" "common"
+[ -n "$DOMAIN_DIR" ] && run_layer "$DOMAIN_DIR" "$DOMAIN"
 run_layer "$STACK_DIR"  "$STACK" 1
 run_layer "$ARCH_DIR"   "$STACK/$ARCH"
+for m in $MODULES_SEL; do
+  run_layer "$TEMPLATES/optional/$m" "mod/$m"
+done
 
 # 이번 킷에 더는 없는 파일. 사용자가 계속 쓰고 있을 수 있어 지우지 않고 알리기만 한다.
 if [ -f "$LOCK" ]; then
@@ -202,7 +225,7 @@ fi
 
 if [ "$DRY_RUN" != 1 ]; then
   cp "$NEW_LOCK" "$LOCK"
-  harness_write_meta "$TARGET" "$TO_VERSION" "$STACK" "$ARCH" "$AGENTS_SEL"
+  harness_write_meta "$TARGET" "$TO_VERSION" "$DOMAIN" "$STACK" "$ARCH" "$AGENTS_SEL" "$MODULES_SEL"
 fi
 
 echo ""

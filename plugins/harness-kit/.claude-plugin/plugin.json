@@ -1,7 +1,7 @@
 {
   "name": "harness-kit",
-  "version": "1.0.6",
-  "description": "하네스 엔지니어링 스타터 킷 — 백엔드 리포에 에이전트 협업 골격을 스캐폴딩하는 스킬 모음",
+  "version": "1.0.7",
+  "description": "하네스 엔지니어링 스타터 킷 — 백엔드·프론트엔드 리포에 에이전트 협업 골격을 스캐폴딩하는 스킬 모음",
   "author": {
     "name": "pscheol",
     "email": "pscheol@gmail.com"
@@ -13,9 +13,12 @@
     "sdd",
     "spec-driven-development",
     "backend",
+    "frontend",
     "jvm",
     "python",
     "go",
+    "web",
+    "electron",
     "architecture"
   ],
   "license": "MIT",

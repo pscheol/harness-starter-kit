@@ -39,6 +39,9 @@ Claude Code · Codex · Kiro가 함께 작업한다. 규칙은 `.agents/rules/`,
 | 멀티 에이전트 하네스·SDD·exec-plan 게이트 | `.agents/rules/agent-harness.md` |
 | 주석 작성(기본은 '없음' · 타입 반복 금지) | `.agents/rules/code-comments.md` |
 | 문체(스펙·주석·커밋 — 사람이 읽는 글) | `.agents/rules/writing-style.md` |
+| 재사용 우선(새로 만들기 전 Inventory·판정 근거) | `.agents/rules/reuse-before-new.md` |
+| 검증 사다리(L0~L4·생략 기록 의무) | `.agents/rules/verification-ladder.md` |
+| 리뷰 정책(자동화 위임·심각도·negative knowledge) | `.agents/rules/pr-review-policy.md` |
 
 ## 핵심 가드레일 (요약 — 원본은 위 표)
 

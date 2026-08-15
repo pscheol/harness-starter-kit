@@ -13,6 +13,34 @@
 HARNESS_META_REL=".agents/harness-kit.json"
 HARNESS_LOCK_REL=".agents/harness-kit.lock"
 HARNESS_ALL_AGENTS="claude codex cursor kiro"
+HARNESS_ALL_MODULES="jira-workflow platform-guards"
+# 도메인 이름의 유효 집합. templates/domains/ 디렉터리 유무와는 별개다 —
+# backend 는 이름은 유효하지만 공유 규칙이 없어 디렉터리가 존재하지 않는다.
+HARNESS_ALL_DOMAINS="backend frontend"
+
+# ── 도메인 · 스택 ───────────────────────────────────────────────────────────
+#
+# 도메인은 "여러 스택이 실제로 공유하는 규칙"이 있을 때만 존재하는 레이어다.
+# frontend 는 web·electron 이 디자인 시스템·접근성·상태 관리 규약을 그대로 공유하므로
+# 도메인 레이어가 있고, backend 는 규칙이 이미 언어별(jvm·python·go)이라 비어 있다.
+# 빈 도메인은 디렉터리 자체가 없고, 호출자는 없으면 그냥 건너뛴다.
+harness_domain_of() {
+  case "$1" in
+    jvm|python|go) echo backend ;;
+    web|electron)  echo frontend ;;
+    *)             echo "" ;;
+  esac
+}
+
+# 스택마다 "가장 흔한 출발점"이 다르다. 백엔드는 헥사고날이지만 web 에는 그런 변형이
+# 아예 없다. 기본값을 스택 단위로 두지 않으면 web 설치가 매번 --arch 를 요구한다.
+harness_default_arch() {
+  case "$1" in
+    web)      echo nextjs-app ;;
+    electron) echo main-renderer ;;
+    *)        echo hexagonal ;;
+  esac
+}
 
 # ── 에이전트 ────────────────────────────────────────────────────────────────
 
@@ -38,6 +66,7 @@ harness_remap() {
     agents-rules/*)  echo ".agents/rules/${1#agents-rules/}" ;;
     agents-skills/*) echo ".agents/skills/${1#agents-skills/}" ;;
     agents-docs/*)   echo ".agents/docs/${1#agents-docs/}" ;;
+    agents-root/*)   echo ".agents/${1#agents-root/}" ;;   # 규칙도 기록도 아닌 .agents 직속 설정
     scripts/*)       echo "scripts/${1#scripts/}" ;;
     claude/*)        echo ".claude/${1#claude/}" ;;
     codex/*)         echo ".codex/${1#codex/}" ;;
@@ -82,6 +111,25 @@ harness_normalize_agents() {
 
 harness_agent_selected() {
   case " $2 " in *" $1 "*) return 0 ;; *) return 1 ;; esac
+}
+
+# ── 선택 모듈 ───────────────────────────────────────────────────────────────
+#
+# 모듈은 "어떤 팀은 쓰고 어떤 팀은 안 쓰는" 규약 묶음이다(이슈 트래커 연동·플랫폼 가드).
+# 안 쓰는 규칙 파일은 컨텍스트만 먹고, 지켜지지 않는 규칙은 나머지 규칙의 신뢰도를 깎는다.
+# 그래서 기본은 '설치 안 함'이고 명시할 때만 깔린다.
+harness_normalize_modules() {
+  local raw m out="" bad=""
+  raw="$(echo "$1" | tr ',' ' ')"
+  for m in $raw; do
+    if [ "$m" = all ]; then out="$HARNESS_ALL_MODULES"; bad=""; break; fi
+    if [ "$m" = none ]; then out=""; bad=""; break; fi
+    case " $HARNESS_ALL_MODULES " in
+      *" $m "*) case " $out " in *" $m "*) ;; *) out="$out $m" ;; esac ;;
+      *)        bad="$bad $m" ;;
+    esac
+  done
+  echo "${out# }|${bad# }"
 }
 
 # ── 해시 ────────────────────────────────────────────────────────────────────
@@ -133,12 +181,17 @@ harness_meta_get() {
   sed -n "s|.*\"${key}\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*|\1|p" "$file" | head -1
 }
 
-harness_meta_agents() {
-  local file="$1"
+# 평면 JSON 의 한 줄짜리 문자열 배열을 공백 구분 목록으로 읽는다.
+# 값이 없거나 키 자체가 없으면 빈 문자열이다(구버전 메타에는 modules 가 없다).
+harness_meta_list() {
+  local file="$1" key="$2"
   [ -f "$file" ] || return 1
-  sed -n 's|.*"agents"[[:space:]]*:[[:space:]]*\[\([^]]*\)\].*|\1|p' "$file" \
+  sed -n "s|.*\"${key}\"[[:space:]]*:[[:space:]]*\[\([^]]*\)\].*|\1|p" "$file" \
     | head -1 | tr -d '" ' | tr ',' ' '
 }
+
+harness_meta_agents()  { harness_meta_list "$1" agents; }
+harness_meta_modules() { harness_meta_list "$1" modules; }
 
 harness_kit_version() {
   local plugin_dir="$1" pj
@@ -151,23 +204,32 @@ harness_kit_version() {
   echo unknown
 }
 
+# 공백 구분 목록을 JSON 배열 본문("a", "b")으로 만든다. 비면 빈 문자열이다.
+harness_json_list() {
+  local x list=""
+  for x in $1; do list="$list, \"$x\""; done
+  echo "${list#, }"
+}
+
 # 메타를 통째로 다시 쓴다. installedAt 은 기존 값이 있으면 보존한다(최초 설치 시각이므로).
 harness_write_meta() {
-  local target="$1" version="$2" stack="$3" arch="$4" agents="$5"
-  local file="$target/$HARNESS_META_REL" installed today a list=""
+  local target="$1" version="$2" domain="$3" stack="$4" arch="$5" agents="$6" modules="${7:-}"
+  local file="$target/$HARNESS_META_REL" installed today list mlist
   today="$(date +%F)"
   installed="$(harness_meta_get "$file" installedAt 2>/dev/null || true)"
   [ -z "$installed" ] && installed="$today"
-  for a in $agents; do list="$list, \"$a\""; done
-  list="${list#, }"
+  list="$(harness_json_list "$agents")"
+  mlist="$(harness_json_list "$modules")"
 
   mkdir -p "$(dirname "$file")"
   cat > "$file" <<JSON
 {
   "kitVersion": "$version",
+  "domain": "$domain",
   "stack": "$stack",
   "arch": "$arch",
   "agents": [$list],
+  "modules": [$mlist],
   "installedAt": "$installed",
   "updatedAt": "$today",
   "tokens": {

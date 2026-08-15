@@ -1,0 +1,4 @@
+플랫폼 불변식을 문서 → 경고 가드 → 강제 가드 3단으로 승격시키는 규약과 실행기.
+설치물: .agents/rules/platform-invariants.md · .kiro/steering/platform-invariants.md ·
+        scripts/run-guards.sh · scripts/guards/_template.sh
+verify.sh 는 scripts/run-guards.sh 가 있으면 배선 없이 자동으로 호출한다.

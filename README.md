@@ -3,8 +3,8 @@
 Claude Code, Codex, Kiro, Cursor 네 하네스에서 같은 규칙과 같은 슬래시 커맨드를 쓰기 위한 스타터 킷이다.
 
 에이전트마다 규칙 파일을 따로 관리하다 보면 내용이 조금씩 어긋난다. 이 킷은 규칙을 `.agents/rules/`
-한 곳에만 두고 나머지 하네스는 그곳을 가리키게 만든다. 백엔드 리포에 그 골격을 한 번에 깔아주는
-`hx-bootstrap` 스킬을 배포한다.
+한 곳에만 두고 나머지 하네스는 그곳을 가리키게 만든다. 백엔드(JVM·Python·Go)든 프론트엔드(Web·Electron)든
+리포에 그 골격을 한 번에 깔아주는 `hx-bootstrap` 스킬을 배포한다.
 
 설치하면 진입점 역할을 하는 `AGENTS.md` 목차, `.agents/rules`의 공통 규칙, SDD 기록 시스템,
 `scripts/verify.sh` 검증 게이트, 그리고 네 하네스에서 이름이 같은 SDD 슬래시 커맨드 9종이 생긴다.
@@ -29,11 +29,14 @@ harness-starter-kit/                        ← 마켓플레이스 루트
 │           │   ├── README.md
 │           │   ├── lib/harness-lib.sh      경로 매핑 · 치환 · lock 공용 함수
 │           │   ├── tools/sync-commands.sh  킷 개발용 — 커맨드 파생 트리 재생성
-│           │   └── templates/              common/ + stacks/<stack>/ + arch/<변형>/
+│           │   └── templates/              common/ + domains/<domain>/ + stacks/<stack>/ + arch/<변형>/ + optional/<module>/
 │           ├── hx-jvm-setup/          ← JVM 전용 진입 (아키텍처 8종 선택)
 │           ├── hx-jvm-hexagonal/      ←   헥사고날 3변형 레시피
 │           ├── hx-jvm-layered/        ←   단일 모듈 레이어드 레시피
 │           ├── hx-jvm-layered-multimodule/  ← 멀티모듈 레이어드 레시피
+│           ├── hx-web-setup/          ← 웹 프론트엔드 진입 (아키텍처 3종 선택)
+│           ├── hx-electron-setup/     ← Electron 데스크톱 진입 (아키텍처 3종 선택)
+│           ├── hx-jira-setup/         ← 이슈 트래커 연동 설정 (선택 모듈을 켠 리포만)
 │           ├── hx-agent-add/          에이전트 배선 추가
 │           └── hx-update/             킷 새 버전 반영
 └── docs/
@@ -74,7 +77,7 @@ codex plugin marketplace add <owner>/harness-starter-kit
 Kiro에는 플러그인 마켓플레이스가 없다. 킷 루트의 `install-kiro.sh`가 그 자리를 대신한다.
 
 ```bash
-bash install-kiro.sh                      # ~/.kiro/skills/ 에 킷 스킬 7종 설치
+bash install-kiro.sh                      # ~/.kiro/skills/ 에 킷 스킬 10종 설치
 bash install-kiro.sh --dry-run            # 계획만 출력
 bash install-kiro.sh --force              # 기존 파일도 덮어쓴다
 bash install-kiro.sh --uninstall          # 이 스크립트가 깐 것만 제거
@@ -85,9 +88,12 @@ bash install-kiro.sh --home=/path/.kiro   # 대상 홈 지정 (환경변수 KIRO
 
 ```text
 ~/.kiro/skills/
-├── hx-bootstrap/     SKILL.md + setup.sh + lib/ + templates/   (202개 파일)
+├── hx-bootstrap/     SKILL.md + setup.sh + lib/ + templates/
 ├── hx-jvm-setup/     SKILL.md
 ├── hx-jvm-hexagonal/ · hx-jvm-layered/ · hx-jvm-layered-multimodule/
+├── hx-web-setup/     SKILL.md
+├── hx-electron-setup/ SKILL.md
+├── hx-jira-setup/    SKILL.md
 ├── hx-agent-add/     SKILL.md + add-agent.sh
 └── hx-update/        SKILL.md + update.sh
 ```
@@ -107,7 +113,7 @@ bash ~/.kiro/skills/hx-bootstrap/setup.sh --agents=kiro --dry-run <대상_리포
 
 ```json
 {
-  "kitVersion": "1.0.6",
+  "kitVersion": "1.0.7",
   "kitPath": "/path/to/harness-starter-kit",
   "agent": "kiro",
   "installedAt": "2026-01-01",
@@ -136,7 +142,7 @@ Claude Code는 `/plugin`, Codex는 `codex plugin list`, Kiro는 `~/.kiro/skills/
 
 | 층 | 스킬 | 사는 곳 | 언제 쓰나 |
 |---|---|---|---|
-| 킷 스킬 (7종) | `hx-bootstrap` · `hx-jvm-setup` · `hx-jvm-hexagonal` · `hx-jvm-layered` · `hx-jvm-layered-multimodule` · `hx-agent-add` · `hx-update` | 플러그인 — `harness-kit:` 네임스페이스가 붙는다 (Kiro는 `install-kiro.sh` 가 깐 `~/.kiro/skills/hx-*`) | 리포에 골격을 깔거나 유지할 때 |
+| 킷 스킬 (10종) | `hx-bootstrap` · `hx-jvm-setup` · `hx-jvm-hexagonal` · `hx-jvm-layered` · `hx-jvm-layered-multimodule` · `hx-web-setup` · `hx-electron-setup` · `hx-jira-setup` · `hx-agent-add` · `hx-update` | 플러그인 — `harness-kit:` 네임스페이스가 붙는다 (Kiro는 `install-kiro.sh` 가 깐 `~/.kiro/skills/hx-*`) | 리포에 골격을 깔거나 유지할 때 |
 | 프로젝트 스킬 (9종) | `hx-specify` · `hx-clarify` · `hx-checklist` · `hx-plan` · `hx-tasks` · `hx-analyze` · `hx-implement` · `hx-converge` · `hx-harness` | 대상 리포 — `hx-bootstrap` 이 설치해준다 | 깔린 리포에서 개발할 때, 매일 |
 
 플러그인 스킬은 `harness-kit:` 네임스페이스를 갖기 때문에 프로젝트 스킬과 **구조적으로 충돌하지 않는다**.
@@ -144,7 +150,7 @@ Claude Code는 `/plugin`, Codex는 `codex plugin list`, Kiro는 `~/.kiro/skills/
 
 ### 킷 스킬 — `hx-bootstrap`
 
-대상 백엔드 리포에 `AGENTS.md`, `.agents/rules`, SDD 기록 시스템, `scripts/verify.sh`,
+대상 리포에 `AGENTS.md`, `.agents/rules`, SDD 기록 시스템, `scripts/verify.sh`,
 `hx-*` 커맨드 9종을 한 번에 깐다.
 
 Claude Code에서는 스킬을 슬래시로 바로 부른다. 짧은 형태는 같은 이름의 다른 커맨드가 없을 때 동작한다.
@@ -153,6 +159,8 @@ Claude Code에서는 스킬을 슬래시로 바로 부른다. 짧은 형태는 �
 /harness-kit:hx-bootstrap                       현재 디렉터리에 설치(스택·변형은 판단 후 질문)
 /hx-bootstrap ~/work/api --dry-run              미리보기 (짧은 형태)
 /hx-jvm-setup                                   JVM 전용 진입 — 아키텍처 8종 선택
+/hx-web-setup                                   웹 프론트엔드 진입 — 아키텍처 3종 선택
+/hx-electron-setup                              Electron 데스크톱 진입 — 아키텍처 3종 선택
 ```
 
 `/harness-kit:bootstrap` · `/harness-kit:agent-add` · `/harness-kit:update` 세 커맨드도 그대로 남아 있다.
@@ -170,8 +178,9 @@ hx-bootstrap 스킬로 이 리포에 하네스 골격을 세팅해줘
 | 인자 | 의미 | 생략 시 |
 |---|---|---|
 | 첫 위치 인자 | 대상 프로젝트 경로 | 현재 작업 디렉터리 |
-| `--stack=` | `jvm` · `python` · `go` | 빌드 파일로 판단(`build.gradle.kts`/`pom.xml`→jvm, `pyproject.toml`→python, `go.mod`→go) |
-| `--arch=` | 스택별 아키텍처 변형(jvm 8 · python 5 · go 4) | 기존 레이아웃에서 추론, 새 리포면 선택 기준을 제시하고 고르게 한다 |
+| `--stack=` | `jvm` · `python` · `go` · `web` · `electron` | 빌드 파일로 판단(`build.gradle.kts`/`pom.xml`→jvm, `pyproject.toml`→python, `go.mod`→go, `package.json`+`electron` 의존→electron, `package.json`만→web) |
+| `--arch=` | 스택별 아키텍처 변형(jvm 8 · python 5 · go 4 · web 3 · electron 3) | 기존 레이아웃에서 추론, 새 리포면 선택 기준을 제시하고 고르게 한다 |
+| `--modules=` | 선택 모듈 `jira-workflow`(이슈 트래커 연동) · `platform-guards`(고유 불변식 가드) | **없음**. 필요할 때만 켠다 — 목록은 `--list-modules` |
 | `--dry-run` | 설치 없이 파일 목록만 | 실제 설치 |
 
 기존 파일은 덮지 않는다(`↷ skip (존재)`). 덮으려면 `--force`를 명시해야 한다.
@@ -182,9 +191,16 @@ SKILL_DIR=~/.claude/plugins/.../skills/hx-bootstrap   # 또는 ~/.codex/plugins/
 bash "$SKILL_DIR/setup.sh" --dry-run --stack=python --arch=modular /path/to/project
 ```
 
-설치되는 파일 수는 **고른 에이전트**에 달렸다. 규칙·SDD·게이트(core 38개)는 항상 깔고,
-에이전트 배선은 쓰는 것만 얹는다 — claude 14 · codex 14 · cursor 9 · kiro 31.
-`.claude/`·`.codex/`·`.cursor/`·`.kiro/` 를 전부 만들지 않는다.
+설치되는 파일 수는 **스택군과 고른 에이전트**에 달렸다. 규칙·SDD·게이트(core)는 항상 깔고,
+에이전트 배선은 쓰는 것만 얹는다. `.claude/`·`.codex/`·`.cursor/`·`.kiro/` 를 전부 만들지 않는다.
+
+| 스택군 | core | claude | codex | cursor | kiro | 전부 고를 때 |
+|---|---|---|---|---|---|---|
+| `jvm` · `python` · `go` | 42 | 14 | 14 | 9 | 34 | 113 |
+| `web` · `electron` | 46 | 14 | 14 | 9 | 38 | 121 |
+
+프론트엔드가 4개씩 많은 건 `web`·`electron` 이 공유하는 `frontend` 도메인 규칙(디자인 시스템·접근성·
+UI 상태·성능) 때문이다. 선택 모듈(`jira-workflow` 15 · `platform-guards` 4)은 여기에 더해진다.
 
 ```bash
 bash "$SKILL_DIR/setup.sh" --stack=python --arch=modular --list-agents /path/to/project
@@ -232,11 +248,13 @@ bootstrap이 끝나면 SDD 워크플로 9종이 `hx-` 접두사로 깔린다. �
 
 | 스킬 | 단계 | 하는 일 | 쓰기 | 만들어지는 것 |
 |---|---|---|---|---|
-| [`hx-bootstrap`](#hx-bootstrap--하네스-골격-설치) | 설치 | 리포에 하네스 골격 스캐폴딩(3스택 공통 진입) | O | core 38 + 고른 에이전트 |
+| [`hx-bootstrap`](#hx-bootstrap--하네스-골격-설치) | 설치 | 리포에 하네스 골격 스캐폴딩(5스택 공통 진입) | O | core + 고른 에이전트 |
 | [`hx-jvm-setup`](#hx-jvm-setup--jvm-전용-진입) | 설치 | JVM 전용 진입 — 아키텍처 8종 선택 + 언어(Kotlin/Java) 확정 | O | 위와 동일(설치는 `setup.sh` 위임) |
 | `hx-jvm-hexagonal` | 설치 | 헥사고날 3변형 선택 + 모듈 등록·포트/어댑터·구조 테스트 레시피 | O | 위와 동일 |
 | `hx-jvm-layered` | 설치 | 단일 모듈 레이어드 + ArchUnit 구조 테스트 레시피 | O | 위와 동일 |
 | `hx-jvm-layered-multimodule` | 설치 | 멀티모듈 레이어드 + 엔티티 노출 범위 결정 레시피 | O | 위와 동일 |
+| [`hx-web-setup`](#hx-web-setup--hx-electron-setup--프론트엔드-진입) | 설치 | 웹 전용 진입 — 아키텍처 3종 선택 + ESLint 경계 등록 안내 | O | 위와 동일 |
+| [`hx-electron-setup`](#hx-web-setup--hx-electron-setup--프론트엔드-진입) | 설치 | Electron 전용 진입 — 프로세스 경계 + 아키텍처 3종 선택 | O | 위와 동일 |
 | `hx-agent-add` | 설치 | 에이전트 배선을 나중에 추가(cursor·kiro…) | O | 해당 에이전트 파일만 |
 | `hx-update` | 유지 | 킷 새 버전을 기존 리포에 반영 | O | 변경분 · 충돌은 `.new` |
 | [`/hx-harness`](#hx-harness--하네스-컨텍스트-로드) | 상시 | 규칙·가드레일 컨텍스트 로드 | X | — |
@@ -253,9 +271,9 @@ bootstrap이 끝나면 SDD 워크플로 9종이 `hx-` 접두사로 깔린다. �
 
 ### `hx-bootstrap` — 하네스 골격 설치
 
-스택(`jvm`·`python`·`go`)과 아키텍처 변형을 정한 뒤 `setup.sh`로 골격을 깐다.
+스택(`jvm`·`python`·`go`·`web`·`electron`)과 아키텍처 변형을 정한 뒤 `setup.sh`로 골격을 깐다.
 
-깔리는 것은 진입점 목차(`AGENTS.md`/`CLAUDE.md`), 세 에이전트가 공유하는 공통 규칙(`.agents/rules`),
+깔리는 것은 진입점 목차(`AGENTS.md`/`CLAUDE.md`), 네 하네스가 공유하는 공통 규칙(`.agents/rules`),
 Kiro용 얇은 포인터(`.kiro/steering`), SDD 기록 시스템(`.agents/docs`), 검증 게이트(`scripts/verify.sh`),
 그리고 네 하네스 분의 `hx-*` 커맨드 9종이다.
 
@@ -287,6 +305,31 @@ JVM(Kotlin/Java + Spring)만 다루는 진입 스킬이다. `hx-bootstrap`이 3�
 
 **이 스킬들이 만드는 것은 규칙·문서·검증 게이트다.** `build.gradle.kts`와 소스 코드는 만들지 않는다 —
 무엇을 손으로 세워야 하는지를 순서와 함정까지 적어 줄 뿐이다.
+
+### `hx-web-setup` · `hx-electron-setup` — 프론트엔드 진입
+
+두 스킬은 `frontend` 도메인 규칙을 공유한다. 디자인 시스템(토큰이 원본), 접근성(시맨틱·키보드·대비·
+`prefers-reduced-motion`), UI 상태(서버/클라이언트/URL/폼 **4종을 섞지 않는다**), 성능(예산을 먼저 정하고
+**측정 없이 고치지 않는다**) 네 가지다. 스택에 두면 두 벌이 되고 곧 어긋나기 때문에 도메인 레이어에 둔다.
+
+프론트엔드에는 **컴파일 레벨의 레이어 강제가 없다.** 경계를 지키는 건 TypeScript `strict` 와 ESLint
+import 규칙뿐이라, 설치 후 그 규칙을 등록하지 않으면 `ARCHITECTURE.md` 는 문서로만 남는다.
+**등록하지 않은 경계는 존재하지 않는 경계다.**
+
+| 갈림길 | 가는 곳 |
+|---|---|
+| (web) 서버 렌더링·서버 액션·서버 전용 데이터 접근이 필요하다 | `nextjs-app` — `server-only`/`client-only` 가 유일한 컴파일 강제 |
+| (web) 기능 소유가 팀별로 갈리고 계층을 기계적으로 막고 싶다 | `feature-sliced` — FSD 6계층 + `boundaries/element-types` 허용 행렬 |
+| (web) 그 외 | `react-spa` — 라우팅을 한 곳에서 선언 |
+| (electron) 데스크톱 말고 다른 배포 단위와 코드를 공유한다 | `monorepo` — `apps/*` + `packages/*`, 의존 방향 단방향 |
+| (electron) main/renderer 양쪽에 같은 기능이 짝으로 여럿 생긴다 | `feature` — IPC 계약은 `shared/features/<f>/contract.ts` 한 곳 |
+| (electron) 그 외 | `main-renderer` — 프로세스 자체가 구조 |
+
+Electron 은 아키텍처가 폴더가 아니라 **권한 경계**에서 시작한다. main 은 Node 전권, preload 는 화이트리스트
+다리, renderer 는 권한 없는 웹이다. `contextIsolation: true` · `nodeIntegration: false` · `sandbox: true`
+세 값은 협상 대상이 아니고 — 하나라도 풀면 렌더러의 XSS 하나가 곧바로 로컬 코드 실행이 된다 —
+`scripts/verify.sh` 가 `fast` 레벨에서(즉 에이전트 턴마다) grep 으로 막는다. `ipcRenderer` 를 통째로
+`window` 에 붙이는 것도 같은 가드가 잡는다.
 
 ### `/hx-harness` — 하네스 컨텍스트 로드
 

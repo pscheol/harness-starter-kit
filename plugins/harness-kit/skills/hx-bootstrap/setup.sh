@@ -3,16 +3,32 @@
 # harness-starter-kit / setup.sh
 #
 # 하네스 엔지니어링 기본 골격을 대상 프로젝트에 스캐폴딩한다.
-# templates/common/(스택 무관) + templates/stacks/<STACK>/(스택 전용) 을
-# 프로젝트 표준 경로로 복사하고 {{PLACEHOLDER}} 를 치환한다.
+# 템플릿은 다섯 레이어이고 뒤 레이어가 앞 레이어를 덮는다:
+#   common/                        스택·도메인 무관 골격(SDD·에이전트 배선·공통 규칙)
+#   domains/<DOMAIN>/              여러 스택이 공유하는 도메인 규칙(현재 frontend 만 존재)
+#   stacks/<STACK>/                언어·플랫폼 규약(arch/ 제외)
+#   stacks/<STACK>/arch/<ARCH>/    아키텍처 변형 4종
+#   optional/<MODULE>/             고른 팀만 쓰는 규약 묶음(기본: 설치 안 함)
+# 각 파일은 프로젝트 표준 경로로 복사되며 {{PLACEHOLDER}} 가 치환된다.
 #
 # 사용법:
 #   STACK=python PROJECT_NAME="MyApp" PROJECT_SLUG="my-app" PACKAGE_NS="myapp" \
 #     bash setup.sh [대상경로]        # 대상경로 생략 시 현재 디렉터리
 #
 # 옵션:
-#   --stack=<jvm|python|go>  대상 스택 (기본: jvm, 환경변수 STACK 로도 지정 가능)
-#   --arch=<변형>            아키텍처 변형 (기본: hexagonal, 환경변수 ARCH 로도 지정 가능)
+#   --stack=<jvm|python|go|web|electron>
+#                            대상 스택 (기본: jvm, 환경변수 STACK 로도 지정 가능)
+#   --arch=<변형>            아키텍처 변형 (환경변수 ARCH 로도 지정 가능)
+#                            생략하면 스택 기본값 — 백엔드 3종=hexagonal ·
+#                            web=nextjs-app · electron=main-renderer
+#   --domain=<backend|frontend>
+#                            도메인 레이어를 직접 지정한다. 생략하면 스택에서 유도한다
+#                            (jvm·python·go→backend · web·electron→frontend)
+#   --modules=<목록>         선택 모듈 (jira-workflow,platform-guards · all · none)
+#                            기본 none. 안 쓰는 규칙은 컨텍스트만 먹고 나머지 규칙의
+#                            신뢰도를 깎으므로 실제로 쓸 것만 고른다
+#                            (환경변수 HARNESS_MODULES 로도 지정 가능)
+#   --list-modules           사용 가능한 모듈만 출력하고 종료
 #   --lang=<kotlin|java>     (jvm 전용) 주 언어. 생략하면 "Kotlin/Java" 로 남겨 나중에 확정한다
 #                            환경변수 JVM_LANG 로도 지정 가능. 빌드 DSL·구조 테스트 도구 안내가 갈린다
 #   --agents=<목록>          설치할 에이전트 (claude,codex,cursor,kiro 중 쉼표 구분 · all)
@@ -46,14 +62,24 @@
 #            layered-multimodule  = 레이어를 모듈로 자름(컴파일 강제) + 실행 단위 1~N개
 #   python = hexagonal | layered | modular | django | ai-service
 #   go     = hexagonal | layered | feature | flat
+#   web    = nextjs-app | react-spa | feature-sliced
+#            nextjs-app(기본)  = Next.js App Router — 서버/클라이언트 컴포넌트 경계가 축
+#            react-spa         = Vite + React Router 단일 페이지 앱(서버 렌더 없음)
+#            feature-sliced    = FSD 6계층(app·pages·widgets·features·entities·shared)
+#   electron = main-renderer | feature | monorepo
+#            main-renderer(기본) = main·preload·renderer 3프로세스 + 레이어
+#            feature             = 3프로세스 위에 기능 슬라이스(양쪽 같은 기능 이름)
+#            monorepo            = apps/{desktop,web} + packages/{core,ui} 워크스페이스
 #   변형이 바꾸는 파일은 4개뿐이다 — ARCHITECTURE.md · .agents/rules/structure.md ·
 #   .agents/rules/tech.md · .kiro/steering/structure.md.
 #   나머지 규칙·스크립트는 스택 안에서 공유한다.
 #
 # 스택별 {{PACKAGE_NS}} 의미:
-#   jvm    = 패키지 네임스페이스      (예: com.example.myapp)
-#   python = 최상위 패키지명          (예: myapp → src/myapp/)
-#   go     = 모듈 경로                (예: github.com/org/my-app → go.mod 의 module)
+#   jvm      = 패키지 네임스페이스    (예: com.example.myapp)
+#   python   = 최상위 패키지명        (예: myapp → src/myapp/)
+#   go       = 모듈 경로              (예: github.com/org/my-app → go.mod 의 module)
+#   web      = 임포트 별칭 루트       (예: @/ → tsconfig paths 의 baseUrl 매핑)
+#   electron = 앱 ID(역 도메인)       (예: com.example.myapp → electron-builder appId)
 #
 # 치환 토큰(환경변수로 전달, 비우면 해당 토큰은 그대로 남겨 나중에 채움):
 #   PROJECT_NAME PROJECT_SLUG PACKAGE_NS SERVICE_NAME
@@ -73,27 +99,50 @@ PLUGIN_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 FORCE=0
 DRY_RUN=0
 LIST_AGENTS=0
+LIST_MODULES=0
 TARGET=""
 STACK="${STACK:-jvm}"
-ARCH="${ARCH:-hexagonal}"
+# ARCH 기본값은 스택마다 다르다(web 에는 hexagonal 이 없다). 인자를 다 읽고 나서 채운다.
+ARCH="${ARCH:-}"
+DOMAIN="${DOMAIN:-}"
 JVM_LANG="${JVM_LANG:-}"
 AGENTS_ARG="${HARNESS_AGENTS:-}"
+MODULES_ARG="${HARNESS_MODULES:-}"
 for arg in "$@"; do
   case "$arg" in
     --force)        FORCE=1 ;;
     --dry-run)      DRY_RUN=1 ;;
     --list-agents)  LIST_AGENTS=1 ;;
+    --list-modules) LIST_MODULES=1 ;;
     --stack=*)      STACK="${arg#--stack=}" ;;
     --arch=*)       ARCH="${arg#--arch=}" ;;
+    --domain=*)     DOMAIN="${arg#--domain=}" ;;
     --lang=*)       JVM_LANG="${arg#--lang=}" ;;
     --agents=*)     AGENTS_ARG="${arg#--agents=}" ;;
+    --modules=*)    MODULES_ARG="${arg#--modules=}" ;;
     -*)             echo "알 수 없는 옵션: $arg" >&2; exit 2 ;;
     *)              TARGET="$arg" ;;
   esac
 done
 TARGET="${TARGET:-$PWD}"
+[ -z "$ARCH" ]   && ARCH="$(harness_default_arch "$STACK")"
+[ -z "$DOMAIN" ] && DOMAIN="$(harness_domain_of "$STACK")"
+
+if [ "$LIST_MODULES" = 1 ]; then
+  echo "▶ 선택 모듈 (기본은 설치하지 않는다)"
+  echo ""
+  for m in $HARNESS_ALL_MODULES; do
+    d="$TEMPLATES/optional/$m"
+    n="$(find "$d" -type f ! -name '.DS_Store' ! -name 'ABOUT' 2>/dev/null | wc -l | tr -d ' ')"
+    printf "  %-16s %3s files   %s\n" "$m" "$n" "$(head -1 "$d/ABOUT" 2>/dev/null || echo '')"
+  done
+  echo ""
+  echo "  사용:  --modules=jira-workflow,platform-guards   (전체는 all, 명시적 없음은 none)"
+  exit 0
+fi
 
 COMMON_DIR="$TEMPLATES/common"
+DOMAIN_DIR="${DOMAIN:+$TEMPLATES/domains/$DOMAIN}"
 STACK_DIR="$TEMPLATES/stacks/$STACK"
 ARCH_DIR="$STACK_DIR/arch/$ARCH"
 
@@ -111,6 +160,38 @@ if [ ! -d "$ARCH_DIR" ]; then
   echo "  사용 가능: $(find "$STACK_DIR/arch" -mindepth 1 -maxdepth 1 -type d -exec basename {} \; 2>/dev/null | sort | tr '\n' ' ')" >&2
   exit 2
 fi
+# 도메인은 이름 검증과 디렉터리 존재를 따로 본다.
+#  · 이름이 유효 집합 밖이면 오타다 → 멈춘다.
+#  · 이름은 맞는데 디렉터리가 없으면 "공유 규칙이 아직 없는 도메인"이다(backend 가 그렇다).
+#    이건 정상이므로 조용히 건너뛴다 — 여기서 멈추면 add-agent 가 메타의 domain 을
+#    되돌려줄 때마다 설치가 실패한다.
+if [ -n "$DOMAIN" ]; then
+  case " $HARNESS_ALL_DOMAINS " in
+    *" $DOMAIN "*) ;;
+    *)
+      echo "✖ 알 수 없는 도메인: '$DOMAIN'" >&2
+      echo "  사용 가능: $HARNESS_ALL_DOMAINS" >&2
+      exit 2
+      ;;
+  esac
+fi
+[ -n "$DOMAIN_DIR" ] && [ ! -d "$DOMAIN_DIR" ] && DOMAIN_DIR=""
+
+# 선택 모듈. 기본은 none — 지켜지지 않는 규칙은 나머지 규칙의 신뢰도를 깎는다.
+MODULES_SEL=""
+if [ -n "$MODULES_ARG" ]; then
+  MODULES_NORM="$(harness_normalize_modules "$MODULES_ARG")"
+  MODULES_SEL="${MODULES_NORM%%|*}"
+  MODULES_REJECTED="${MODULES_NORM#*|}"
+  if [ -n "$MODULES_REJECTED" ]; then
+    echo "✖ 알 수 없는 모듈: $MODULES_REJECTED" >&2
+    echo "  사용 가능: $HARNESS_ALL_MODULES   (전체는 all, 명시적 없음은 none)" >&2
+    exit 2
+  fi
+fi
+for m in $MODULES_SEL; do
+  [ -d "$TEMPLATES/optional/$m" ] || { echo "✖ 모듈 템플릿이 없다: $TEMPLATES/optional/$m" >&2; exit 1; }
+done
 # --lang 은 jvm 전용이다. 값 검증을 여기서 한 번만 하고 안내 문구용 변수를 확정한다
 # (오타를 조용히 넘기면 "다음 단계"가 엉뚱한 빌드 도구를 안내하게 된다).
 JVM_DSL=""; JVM_ARCH_TEST=""
@@ -131,11 +212,13 @@ TARGET="$(cd "$TARGET" && pwd)"
 
 # 한 템플릿 레이어의 파일을 나열한다. skip_arch=1 이면 arch/ 하위를 뺀다
 # (변형 레이어는 선택된 하나만 따로 복사하므로).
+# ABOUT 는 --list-modules 가 읽는 모듈 설명 파일이다. 템플릿이 아니므로 복사 대상에서 뺀다
+# (빼지 않으면 대상 리포 루트에 정체불명의 ABOUT 파일이 생긴다).
 list_layer() {
   if [ "${2:-0}" = 1 ]; then
-    find "$1" -type f ! -path "*/arch/*" ! -name '.DS_Store' | sort
+    find "$1" -type f ! -path "*/arch/*" ! -name '.DS_Store' ! -name 'ABOUT' | sort
   else
-    find "$1" -type f ! -name '.DS_Store' | sort
+    find "$1" -type f ! -name '.DS_Store' ! -name 'ABOUT' | sort
   fi
 }
 
@@ -164,26 +247,33 @@ else
   fi
 fi
 
+# 이번 설치가 순회할 템플릿 루트를 순서대로 뱉는다: "<경로>|<라벨>|<arch제외?>".
+# 복사·집계가 같은 목록을 써야 --list-agents 의 숫자와 실제 설치 수가 어긋나지 않는다.
+layer_roots() {
+  echo "$COMMON_DIR|common|0"
+  [ -n "$DOMAIN_DIR" ] && echo "$DOMAIN_DIR|$DOMAIN|0"
+  echo "$STACK_DIR|$STACK|1"
+  echo "$ARCH_DIR|$STACK/$ARCH|0"
+  local m
+  for m in $MODULES_SEL; do echo "$TEMPLATES/optional/$m|mod/$m|0"; done
+  return 0
+}
+
 # 에이전트별로 설치될 파일 수를 미리 센다(core 는 'core' 이름으로 조회).
 count_for() {
-  local want="$1" n=0 src rel
-  while IFS= read -r src; do
-    rel="${src#"$COMMON_DIR"/}"
-    [ "$(harness_agent_of "$rel")" = "$want" ] && n=$((n+1))
-  done < <(list_layer "$COMMON_DIR")
-  while IFS= read -r src; do
-    rel="${src#"$STACK_DIR"/}"
-    [ "$(harness_agent_of "$rel")" = "$want" ] && n=$((n+1))
-  done < <(list_layer "$STACK_DIR" 1)
-  while IFS= read -r src; do
-    rel="${src#"$ARCH_DIR"/}"
-    [ "$(harness_agent_of "$rel")" = "$want" ] && n=$((n+1))
-  done < <(list_layer "$ARCH_DIR")
+  local want="$1" n=0 spec root skip src rel
+  while IFS= read -r spec; do
+    root="${spec%%|*}"; skip="${spec##*|}"
+    while IFS= read -r src; do
+      rel="${src#"$root"/}"
+      [ "$(harness_agent_of "$rel")" = "$want" ] && n=$((n+1))
+    done < <(list_layer "$root" "$skip")
+  done < <(layer_roots)
   echo "$n"
 }
 
 if [ "$LIST_AGENTS" = 1 ]; then
-  echo "▶ 에이전트 감지 — $TARGET  ($STACK · $ARCH)"
+  echo "▶ 에이전트 감지 — $TARGET  ($STACK · $ARCH${DOMAIN:+ · 도메인 $DOMAIN}${MODULES_SEL:+ · 모듈 $MODULES_SEL})"
   echo ""
   # 한글은 표시폭이 바이트 수와 달라 printf 폭 지정이 어긋난다. 그래서 정렬이 필요한
   # 두 열(이름·파일 수)만 ASCII 로 두고 설명은 마지막에 몰아 둔다.
@@ -236,6 +326,18 @@ case "$STACK" in
     TEST_CMD="${TEST_CMD:-go test -race ./...}"
     PACKAGE_NS_HINT="모듈 경로 (예: github.com/org/$PROJECT_SLUG)"
     ;;
+  web)
+    PRIMARY_LANGUAGE="${PRIMARY_LANGUAGE:-TypeScript}"
+    BUILD_TOOL="${BUILD_TOOL:-pnpm}"
+    TEST_CMD="${TEST_CMD:-pnpm test}"
+    PACKAGE_NS_HINT="임포트 별칭 루트 (예: @ → tsconfig paths 의 \"@/*\")"
+    ;;
+  electron)
+    PRIMARY_LANGUAGE="${PRIMARY_LANGUAGE:-TypeScript}"
+    BUILD_TOOL="${BUILD_TOOL:-pnpm + electron-builder}"
+    TEST_CMD="${TEST_CMD:-pnpm test}"
+    PACKAGE_NS_HINT="앱 ID (역 도메인, 예: com.example.$PROJECT_SLUG)"
+    ;;
   *)
     PRIMARY_LANGUAGE="${PRIMARY_LANGUAGE:-}"
     BUILD_TOOL="${BUILD_TOOL:-}"
@@ -246,8 +348,10 @@ esac
 
 echo "▶ 하네스 스캐폴딩"
 echo "  대상        : $TARGET"
+echo "  도메인      : ${DOMAIN:-—}$([ -z "$DOMAIN_DIR" ] && echo '  (공유 규칙 레이어 없음 — 규칙이 이미 스택별)')"
 echo "  스택        : $STACK  ($PRIMARY_LANGUAGE · $BUILD_TOOL)"
 echo "  아키텍처    : $ARCH"
+echo "  선택 모듈   : ${MODULES_SEL:-none}  (목록: --list-modules)"
 [ -n "$JVM_DSL" ] && echo "  언어        : $JVM_LANG  ($JVM_DSL · 구조 테스트 $JVM_ARCH_TEST)"
 echo "  에이전트    : $AGENTS_SEL  ($AGENTS_ORIGIN)"
 echo "                └ 나머지는 설치하지 않는다. 나중에 추가: hx-agent-add 스킬"
@@ -323,12 +427,14 @@ copy_tree() {
   done < <(list_layer "$root" "$skip_arch")
 }
 
-copy_tree "$COMMON_DIR" "common"
-copy_tree "$STACK_DIR"  "$STACK" 1
-copy_tree "$ARCH_DIR"   "$STACK/$ARCH"
+while IFS= read -r spec; do
+  root="${spec%%|*}"; rest="${spec#*|}"
+  copy_tree "$root" "${rest%|*}" "${spec##*|}"
+done < <(layer_roots)
 
 if [ "$DRY_RUN" != 1 ]; then
-  harness_write_meta "$TARGET" "$(harness_kit_version "$PLUGIN_DIR")" "$STACK" "$ARCH" "$AGENTS_SEL"
+  harness_write_meta "$TARGET" "$(harness_kit_version "$PLUGIN_DIR")" \
+    "$DOMAIN" "$STACK" "$ARCH" "$AGENTS_SEL" "$MODULES_SEL"
 fi
 
 echo ""
@@ -462,7 +568,80 @@ case "$STACK" in
     esac
     echo "  4) bash scripts/verify.sh 로 게이트(fmt→build→vet→lint→test -race) 통과 확인"
     ;;
+  web)
+    echo "  1) package.json 스크립트 이름을 게이트에 맞춘다 — lint · typecheck · test · build"
+    echo "     verify.sh 가 이 이름으로 부른다. 이름을 바꾸려면 verify.sh 도 함께 고친다"
+    echo "  2) tsconfig.json 에 \"strict\": true + noUncheckedIndexedAccess 를 켠다"
+    echo "     경계 타입은 zod(또는 동급)로 파싱한다 — API 응답을 as 로 단정하지 않는다"
+    echo "  3) ESLint 에 import 경계 규칙을 넣는다(골격은 ARCHITECTURE.md §4)"
+    echo "     이게 없으면 레이어 규칙이 문서로만 남는다 — 프론트엔드에는 컴파일 강제가 없다"
+    case "$ARCH" in
+      nextjs-app)
+        echo "  4) app/ 라우트 세그먼트 + src/{components,features,lib,server} 생성"
+        echo "     서버/클라이언트 경계가 이 변형의 축이다 — 'use client' 는 잎 컴포넌트에만 붙인다"
+        echo "     서버 전용 모듈에는 import 'server-only' 를 넣어 클라이언트 번들 유입을 컴파일 에러로 만든다"
+        echo "     데이터 접근은 server/ 에서만. 클라이언트가 DB·비밀키에 닿는 경로를 만들지 않는다"
+        ;;
+      react-spa)
+        echo "  4) src/{app,pages,components,features,hooks,lib,api} + main.tsx 생성"
+        echo "     라우팅은 한 곳(app/routes.tsx)에서 선언한다 — 화면마다 흩뿌리면 코드 스플리팅 지점이 사라진다"
+        echo "     서버 상태는 TanStack Query(또는 동급), 클라이언트 상태는 별도 — 둘을 한 스토어에 섞지 않는다"
+        ;;
+      feature-sliced)
+        echo "  4) src/{app,pages,widgets,features,entities,shared} 6계층 생성"
+        echo "     각 슬라이스는 index.ts 공개 API 만 노출한다. 내부 파일을 가로질러 import 하지 않는다"
+        echo "     계층 방향(위→아래)과 같은 계층 간 직접 import 금지를 ESLint boundaries 규칙에 등록한다"
+        echo "     등록하지 않은 슬라이스는 검사되지 않는다 — 슬라이스를 늘리면 규칙에도 등록한다"
+        ;;
+    esac
+    echo "  5) pnpm install 후 bash scripts/verify.sh 로 게이트(구조→포맷→lint→typecheck→test→build) 통과 확인"
+    ;;
+  electron)
+    echo "  1) 프로세스 경계를 먼저 세운다 — main(Node 권한) · preload(다리) · renderer(웹, 권한 없음)"
+    echo "     BrowserWindow 는 contextIsolation: true · nodeIntegration: false · sandbox: true 로 연다"
+    echo "     이 세 값은 협상 대상이 아니다. 하나라도 풀면 렌더러 XSS 가 곧바로 로컬 코드 실행이 된다"
+    echo "  2) IPC 채널 목록을 한 파일에 모으고 preload 에서 화이트리스트로만 노출한다"
+    echo "     ipcRenderer 를 통째로 window 에 붙이지 않는다(노출 = 임의 채널 호출 허용)"
+    echo "     main 핸들러는 인자를 스키마로 파싱한 뒤 쓴다 — 렌더러 입력은 신뢰 경계 밖이다"
+    case "$ARCH" in
+      main-renderer)
+        echo "  3) src/{main,preload,renderer,shared} 생성 — main 은 ipc/·service/·store/ 로 나눈다"
+        echo "     shared/ 에는 타입과 채널 상수만 둔다(런타임 Node API 금지 — 렌더러가 함께 import 한다)"
+        ;;
+      feature)
+        echo "  3) src/{main,preload,renderer,shared}/features/<feature>/ 로 양쪽에 같은 기능 이름을 둔다"
+        echo "     기능의 IPC 계약은 shared/features/<feature>/contract.ts 한 곳이다"
+        echo "     기능 간 직접 import 금지 — 조립은 main/index.ts 와 renderer/app 에서만 한다"
+        ;;
+      monorepo)
+        echo "  3) apps/{desktop,web} + packages/{core,ui} 워크스페이스를 만든다(pnpm-workspace.yaml)"
+        echo "     packages/core 는 Electron·DOM 어느 쪽에도 의존하지 않는다 — 그래야 양쪽이 함께 쓴다"
+        echo "     의존 방향은 apps → packages 단방향. packages 가 apps 를 참조하면 순환이다"
+        ;;
+    esac
+    echo "  4) electron-builder 설정에 appId(= PACKAGE_NS)·서명·자동 업데이트 채널을 등록한다"
+    echo "  5) pnpm install 후 bash scripts/verify.sh 로 게이트(구조→포맷→lint→typecheck→IPC 가드→test→build) 확인"
+    ;;
 esac
+if [ -n "$MODULES_SEL" ]; then
+  echo "  · 선택 모듈 후속 작업:"
+  for m in $MODULES_SEL; do
+    case "$m" in
+      jira-workflow)
+        echo "    - .agents/issue-tracker.yml 의 access·statusIds·transitionIds·lock 을 실제 값으로 채운다"
+        echo "      표시 이름이 아니라 ID 로 전이한다. 안 채우고 자동화를 켜면 엉뚱한 상태로 옮긴다"
+        echo "      킷은 트래커 호출 수단을 주지 않는다 — MCP/CLI/REST 중 무엇으로 닿을지 access 에 적는다"
+        echo "      이 설정을 순서대로 안내하는 킷 스킬이 있다: hx-jira-setup"
+        echo "      커맨드는 둘이다 — /hx-issue(트래커 단품) · /hx-ticket(티켓→SDD→구현→리뷰 전 여정)"
+        ;;
+      platform-guards)
+        echo "    - scripts/guards/ 에 가드를 쓰고 scripts/run-guards.sh 가 잡는지 확인한다"
+        echo "      verify.sh 는 run-guards.sh 가 있으면 자동으로 부른다(배선 작업 없음)"
+        echo "      새 가드는 GUARD_ENFORCE=0(경고)으로 시작해 위반 0건이 된 뒤 강제로 올린다"
+        ;;
+    esac
+  done
+fi
 echo "  · product.md · ARCHITECTURE.md · structure.md 의 {{플레이스홀더}} 채우기"
 echo "    SDD 는 제품 폴더도 단계 문서도 미리 만들지 않는다. 단계에 들어갈 때 하나씩 생긴다:"
 echo "      scripts/new-feature.sh <product-slug> <feature>                  (또는 /hx-specify)"
