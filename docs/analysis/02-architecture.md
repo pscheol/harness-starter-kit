@@ -4,21 +4,22 @@
 
 `setup.sh`는 **다섯 개의 템플릿 루트**를 순서대로 순회하며 대상 리포로 복사하고 토큰을 치환한다.
 
-1. `templates/common/` — 스택 무관 골격 96개
+1. `templates/common/` — 스택 무관 골격 259개(규칙·SDD·스크립트·hook·역할·커맨드·기능 문서 생성기)
 2. `templates/domains/<DOMAIN>/` — 여러 스택이 공유하는 규약. `frontend` 8개(web·electron). 백엔드 3종은 이 레이어가 **없다**
-3. `templates/stacks/<STACK>/` — 선택한 스택 전용 13개 (**`arch/` 하위는 제외하고 순회**)
+3. `templates/stacks/<STACK>/` — 선택한 스택 전용 14개 (**`arch/` 하위는 제외하고 순회**)
 4. `templates/stacks/<STACK>/arch/<ARCH>/` — 선택한 아키텍처 변형 전용 4개
-5. `templates/optional/<MODULE>/` — `--modules=` 로 고른 것만. `jira-workflow` 15 · `platform-guards` 4
+5. `templates/optional/<MODULE>/` — `--modules=` 로 고른 것만. `jira-workflow` 15 · `platform-guards` 4 · `multi-harness` 8
 
 뒤에 복사되는 루트가 앞을 덮는다(경로가 겹치면 optional > arch > stack > domain > common).
 
 - 사용법: `STACK=python ARCH=modular PROJECT_NAME=… PROJECT_SLUG=… PACKAGE_NS=… bash setup.sh [대상경로]` (대상 생략 시 `$PWD`).
 - 옵션: `--stack=<jvm|python|go|web|electron>`(기본 `jvm`), `--arch=<변형>`(기본은 스택마다 다르다 — 백엔드 `hexagonal` · web `nextjs-app` · electron `main-renderer`) — 둘 다 환경변수 `STACK`·`ARCH`로도 지정. `--domain=`(스택에서 자동 결정), `--modules=`(기본 `none`), `--force`(존재해도 덮어씀, 기본은 skip), `--dry-run`(계획만 출력).
 - 목록 조회: `--list-agents`(감지 결과 + 에이전트별 파일 수) · `--list-modules`(모듈 이름 + 파일 수 + 설명). 둘 다 설치하지 않는다.
-- 처리: 각 루트 하위 파일을 정렬 순회 → 경로를 `remap()`으로 매핑 → 존재+비force면 skip, 아니면 복사 후 토큰 치환, `*.sh`는 실행권한 부여.
+- 처리: 각 루트 하위 파일을 정렬 순회 → 경로를 `remap()`으로 매핑(`__PROJECT_SLUG__` 같은 파일 이름 토큰도 바꾼다) → 존재+비force면 skip, 아니면 복사 후 토큰 치환, 실행 파일(`*.sh`·git hook)은 실행권한 부여.
+- 끝에 `.agents/harness.json`(하네스 이름·스택·고른 에이전트)을 쓰고 `tools/docs/feature_docs.py build`를 한 번 돌려 `docs/features/*.html`을 만든다.
 - 스택 순회는 `find "$root" -type f ! -path "*/arch/*"`로 변형 레이어를 건너뛴다(선택된 하나만 따로 복사). 모듈 순회는 `! -name ABOUT` 로 설명 파일을 건너뛴다.
 - 알 수 없는 스택·변형·모듈을 주면 각각 사용 가능한 목록을 출력하고 `exit 2`로 중단한다.
-- 템플릿 수는 스택군마다 다르다 — 백엔드 **113개**(공통 96 + 스택 13 + 변형 4), 프론트엔드 **121개**(+ 도메인 8). 실제 설치는 이 중 core(백엔드 42 · 프론트엔드 46) + 고른 에이전트(claude 14 · codex 14 · cursor 9 · kiro 34/38)만 깔린다.
+- 템플릿 수는 스택군마다 다르다 — 백엔드 **277개**(공통 259 + 스택 14 + 변형 4), 프론트엔드 **285개**(+ 도메인 8). 실제 설치는 이 중 core(백엔드 187 · 프론트엔드 191) + 고른 에이전트(claude 19 · codex 8 · cursor 11 · kiro 52/56)만 깔린다.
 
 ### 1.1 설치 세그먼트
 
@@ -26,17 +27,20 @@
 
 | 소스 (`<root>/…`) | 대상 | 역할 |
 |---|---|---|
-| `root/*` | `./` (프로젝트 루트) | `AGENTS.md`·`CLAUDE.md`·`.gitignore`·CI(스택별) + `ARCHITECTURE.md`(변형별) + pre-commit(공통) |
-| `agents-rules/*` | `.agents/rules/*` | **규칙 원본** = 공통 8 + 도메인 4(프론트엔드만) + 스택별 6 + 변형별 2(`structure`·`tech`) |
-| `agents-root/*` | `.agents/*` | 에이전트 공용 설정 — 현재는 모듈 `jira-workflow` 의 `issue-tracker.yml` 하나 |
-| `agents-docs/*` | `.agents/docs/*` | 기록/SDD 스캐폴딩 (전부 공통) |
-| `agents-skills/*` | `.agents/skills/*` | **Codex 스킬** 탐색 경로(`$hx-specify` 로 멘션) |
-| `scripts/*` | `scripts/*` | 공통 4종(check-exec-plan-status·check-sdd-prerequisites·check-spec-freshness·new-feature) + 스택별 `verify.sh` + 모듈 `run-guards.sh`·`guards/` |
-| `claude/*` | `.claude/*` | Claude 명령·훅·settings (전부 공통) |
-| `codex/*` | `.codex/*` | Codex config·훅 (전부 공통) |
-| `cursor/*` | `.cursor/*` | Cursor 프로젝트 슬래시 커맨드 |
-| `kiro-steering/*` | `.kiro/steering/*` | Kiro 얇은 포인터 = 공통 13 + 도메인 4(프론트엔드만) + 스택별 2(`tech`·`code-comments`) + 변형별 1(`structure`), 그리고 IDE 슬래시 커맨드 9종(`inclusion: manual`) |
-| `kiro-skills/*` | `.kiro/skills/*` | Kiro CLI 슬래시 커맨드 9종 |
+| `root/*` | `./` (프로젝트 루트) | `README.md`(공통) + `AGENTS.md`·`CLAUDE.md`·`.gitignore`·CI(스택별) + `ARCHITECTURE.md`(변형별) |
+| `agents-rules/*` | `.agents/rules/*` | **규칙 원본** = 공통 12 + 도메인 4(프론트엔드만) + 스택별 6 + 변형별 2(`structure`·`tech`) |
+| `agents-root/*` | `.agents/*` | 역할 원본 `roles/` 다섯 · `verify-checks.json`(changed 계획기의 경로별 검사) · 모듈 `jira-workflow` 의 `issue-tracker.yml` |
+| `agents-docs/*` | `.agents/docs/*` | 기록/SDD 스캐폴딩 · 안내(`guides/`) (전부 공통) |
+| `agents-skills/*` | `.agents/skills/*` | **커맨드 본문 원본 11종**(core). Codex 스킬 탐색 경로이기도 하다(`$hx-specify` 로 멘션) |
+| `scripts/*` | `scripts/*` | 검증 진입·changed 계획기·하네스 검사·이슈 SDD 명령·보드·세션 협업·유지보수 검사·hook·git hook·가드 + 스택별 `verify.sh` + 모듈 `run-guards.sh` |
+| `tools/*` | `tools/*` | 기능 문서 생성기 `tools/docs/` + 모듈 `multi-harness` 의 `tools/harness/` |
+| `docs/*` | `docs/*` | 기능 문서 원고 골격 `docs/features/_src/`(catalog·단계 원고 공통, `docs.config.json` 스택별) |
+| `claude/*` | `.claude/*` | settings(hook 배선) · 커맨드 포인터 11 · 역할 5 · 규칙 포인터 |
+| `codex/*` | `.codex/*` | config · hooks.json(hook 배선) · 역할 5 |
+| `cursor/*` | `.cursor/*` | Cursor 커맨드 포인터 11 |
+| `kiro-steering/*` | `.kiro/steering/*` | Kiro 얇은 포인터 = 공통 17 + 도메인 4(프론트엔드만) + 스택별 2(`tech`·`code-comments`) + 변형별 1(`structure`), 그리고 IDE 슬래시 커맨드 11종(`inclusion: manual`) |
+| `kiro-skills/*` | `.kiro/skills/*` | Kiro CLI 슬래시 커맨드 포인터 11종 |
+| `kiro-agents/*` · `kiro-hooks/*` · `kiro-root/*` | `.kiro/agents/*` · `.kiro/hooks/*` · `.kiro/*` | 조율 에이전트 `<slug>.json` + 역할 5 · hook 셋 · 안내 |
 
 ### 1.2 치환 토큰표
 
@@ -207,12 +211,17 @@ api/ configs/ deployments/ migrations/ test/ build/
 
 금지 목록의 구체 사례는 각 스택 `ARCHITECTURE.md`의 Anti-pattern 절에 있다.
 
-## 3. 규칙 원본 12종 (`.agents/rules/`) — 공통 4 + 스택별 6 + 변형별 2
+## 3. 규칙 원본 (`.agents/rules/`) — 공통 12 + 스택별 6 + 변형별 2 (+ 프론트엔드 도메인 4)
 
 | 파일 | 소스 | 한 줄 요약 |
 |---|---|---|
 | `agent-harness.md` | 공통 | 하네스 규약 원본 — SSOT·완료 게이트·강제 레이어(1곳+N트리거)·규칙 변경 절차 |
-| `sdd-workflow.md` | 공통 | SDD 워크플로 원본 — specify→clarify→checklist→plan→tasks→analyze→implement(+converge)·산출 위치·게이트 |
+| `sdd-workflow.md` | 공통 | SDD 워크플로 원본 — 이슈 폴더 위치·키·승인, SDLC 단계(S1~S8), specify→clarify→checklist→plan→tasks→analyze→implement→docs(+converge)·완료 상태 |
+| `code-maintenance.md` | 공통 | 새 코드·리팩터링·리뷰 기준 — 패키지 책임·이름·함수 50줄·조건 함수·mapper·OpenAPI·변경 시험 |
+| `session-collaboration.md` | 공통 | 동시 세션 — 실제 세션 ID 로 파일 점유 등록·공지·충돌 확인, 다른 세션 변경을 되돌리지 않기 |
+| `git-workflow.md` | 공통 | 브랜치·커밋 형식, 이슈 키와 브랜치 이름, 여러 리포면 두 단계 커밋 |
+| `platform-invariants.md` | 공통 | 불변식을 문서 → 경고 가드 → 강제 가드로 올리는 절차 |
+| `reuse-before-new.md` · `verification-ladder.md` · `pr-review-policy.md` | 공통 | 새로 만들기 전 탐색 순서 · 주장의 근거 등급과 검증 레벨 · PR 크기와 리뷰 심각도 |
 | `product.md` | 공통 | 제품 정체성·목표·범위·원칙·우선순위(P0/P1/P2)·KPI (채우기 템플릿) |
 | `design-principles.md` | 공통 | **설계 원칙 원본** — 클린 아키텍처 의존 규칙 · SOLID를 `원칙→위반 신호→고치는 법`으로 · 캡슐화/Tell Don't Ask/합성 · 과잉 설계 방지. 구조가 아니라 **그 구조 안에서 코드를 어떻게 짤지**를 정한다 |
 | `guardrails.md` | 스택별 | 행동 헌법 — 추측 금지 + docs 동시 갱신 + DDD 레이어 책임 + 언어별 실수 방지 |
@@ -233,22 +242,23 @@ api/ configs/ deployments/ migrations/ test/ build/
 
 ## 4. Kiro 얇은 포인터 (`.kiro/steering/`)
 
-Kiro용 12종은 원본과 **1:1**로 대응하는 얇은 포인터다. 각 파일은 `inclusion` front-matter +
+Kiro 규칙 포인터는 원본과 **1:1**로 대응한다(백엔드 20종 · 프론트엔드 24종). 각 파일은 `inclusion` front-matter +
 "원본: `.agents/rules/<name>.md` — Claude·Codex·Kiro 공통" + 짧은 요약으로 구성되며, **규칙 본문을
 담지 않는다**.
 
-12종 중 9종은 공통, `tech`·`code-comments` 2종은 스택별, **`structure` 1종은 변형별**로 다른 요약을 담는다.
+17종은 공통, `tech`·`code-comments` 2종은 스택별, **`structure` 1종은 변형별**로 다른 요약을 담는다.
+`.agents/rules/`의 규칙마다 포인터가 있는지는 `check_harness.py`가 검사한다.
 
 inclusion 방식은 둘:
 
-- `inclusion: always` (9종): `agent-harness`·`guardrails`·`product`·`quality-score`·`reliability`·`sdd-workflow`·`security`·`structure`·`tech`.
+- `inclusion: always`: `api-standards`·`code-comments`를 뺀 나머지 전부.
 - `inclusion: fileMatch` (2종):
   - `api-standards.md` → `**/primary/**|.agents/docs/openapi/**`
-  - `code-comments.md` → **스택별 패턴**: jvm `**/*.kt|**/*.java|**/*.sql` · python `**/*.py|**/*.sql` · go `**/*.go|**/*.sql`
+  - `code-comments.md` → **스택별 패턴**(예: python `**/*.py|**/*.sql|**/*.yml|**/*.yaml`)
 
 ## 5. 진입 파일 (`root/`)
 
-진입 파일 3종은 모두 **스택별**로 설치된다(스택 한 줄·검증 명령·아키텍처 본문이 다르기 때문).
+진입 파일 3종은 **스택별**로 설치된다(스택 한 줄·검증 명령·아키텍처 본문이 다르기 때문). 사람이 읽는 `README.md`는 공통이다(하네스 · SDLC 단계 · 검증 명령 · 기능 문서 위치).
 
 - `AGENTS.md` — 에이전트 작업 가이드. "상세가 아니라 목차". 3에이전트 로딩 규칙·규약 표·핵심 가드레일 요약·규칙 변경 절차. "규칙 본문은 어느 에이전트도 소유하지 않는다".
 - `CLAUDE.md` — Claude Code 진입 파일(짧음). `AGENTS.md`를 단일 진입점으로 위임 + 스택 한 줄(검증 게이트 명령).

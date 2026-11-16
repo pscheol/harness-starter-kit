@@ -1,7 +1,6 @@
 ---
 inclusion: always
 ---
-<!-- HARNESS TEMPLATE · Kiro 얇은 포인터. 규칙 본문 금지. -->
 # 설계 원칙 — 객체지향 · 클린 아키텍처 · SOLID (포인터)
 
 원본: `.agents/rules/design-principles.md` — Claude·Codex·Kiro 공통. 클래스·인터페이스를 새로 만들거나 기존 설계를 바꾸기 전에 연다. 레이아웃·모듈 경계는 `ARCHITECTURE.md`·`.agents/rules/structure.md`가 정한다.

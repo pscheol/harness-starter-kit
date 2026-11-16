@@ -3,9 +3,18 @@
 # 전 제품 스펙 색인 (SDD 최상위 진입점)
 
 이 프로젝트의 SDD는 제품(바운디드 컨텍스트) 단위 묶음으로 관리한다.
-각 묶음은 `<slug>-specs/` 폴더이며 그 안에 `requirements/` · `design/` · `tasks/` 3단계를 둔다.
+각 묶음은 `<slug>-specs/` 폴더이고, 이슈 하나가 `issues/<key>/` 폴더 하나다(`requirements.md` → `design.md` → `tasks/active.md`). 단계는 `.agents/rules/sdd-workflow.md` 「SDLC 단계」를 따른다.
 
 <!-- BOARD:BEGIN — scripts/board.sh 가 생성합니다. 손으로 고치지 마십시오. -->
+
+## 전체 보드 (전 제품)
+
+| 📋 요구 (0) | 🎨 설계 (0) | 🔨 구현 (0) | 👀 검증 (0) | ✅ 완료 (0) | ⛔ 폐기 (0) |
+|---|---|---|---|---|---|
+| — | — | — | — | — | — |
+
+> 아직 제품이 없습니다. `scripts/new-feature.sh <slug> <feature>` 로 시작하십시오.
+
 <!-- BOARD:END -->
 
 ## 제품 등록표

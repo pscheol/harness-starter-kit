@@ -1,0 +1,4 @@
+interface:
+  display_name: "hx-analyze"
+  short_description: "SDD 정합성 검사"
+  default_prompt: "$hx-analyze 스킬로 요청한 작업을 진행해 주세요."

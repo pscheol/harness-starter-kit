@@ -1,141 +1,148 @@
-# 03. SDD 워크플로 — 명령·산출 위치·게이트·강제 장치
+# 03. SDD 워크플로 — SDLC 단계·이슈 폴더·게이트·강제 장치
 
 SDD(Spec-Driven Development)는 스펙을 기준으로 삼고 코드를 그 결과물로 본다. 워크플로 원본은
-`.agents/rules/sdd-workflow.md` 한 곳이며, Claude 슬래시 명령·Codex·Kiro는 이 원본을 참조하는
-얇은 트리거다("1곳 + N트리거").
+`.agents/rules/sdd-workflow.md` 한 곳이다. 커맨드 본문은 `.agents/skills/hx-*/SKILL.md`에 있고
+스킬이 원본의 해당 절을 읽는다. Claude·Cursor 커맨드와 Kiro 스킬·steering 은 스킬을 가리키는 한 줄 포인터다.
 
-## 1. 명령 체인
+1.0.8부터 SDD 는 SDLC 단계를 따르고, 이슈마다 폴더 하나에 요구·설계·작업·검증을 모은다.
+이슈 문서는 변경 기록이고, 기능 문서(`docs/features/`)는 구현된 기능의 현재 모습이다. S7 에서 둘을 맞춘다.
 
-원본이 규정하는 흐름:
+## 1. SDLC 단계와 명령
 
-```text
-specify → clarify → checklist → plan → tasks → analyze → implement
-                                                        (구현 후) → converge
+```mermaid
+flowchart LR
+  S1["S1 분석<br/>/hx-specify"] --> S2["S2 기획<br/>정책·화면"]
+  S2 --> S3["S3 설계<br/>/hx-plan"]
+  S3 --> S4["S4 계획<br/>/hx-tasks"]
+  S4 --> S5["S5 구현<br/>/hx-implement"]
+  S5 --> S6["S6 테스트<br/>verify.sh"]
+  S6 --> S7["S7 문서 반영<br/>/hx-docs"]
+  S7 --> S8["S8 완료<br/>사용자 승인"]
+  S8 -.잔여 작업.-> C["/hx-converge"]
+  C -.-> S5
 ```
 
-| 명령 | 단계 | 하는 일 | 특성 |
-|---|---|---|---|
-| `/hx-specify` | 1. 요구사항 | `requirements/<feature>.md`를 무엇/왜로 채움(우선순위 User Story·측정가능 SC·`[NEEDS CLARIFICATION]`≤3) | `new-feature.sh`로 **requirements만** 스캐폴딩, 자체검증 후 `in-review`→승인 |
-| `/hx-clarify` | 보조 | 모호성을 한 번에 하나씩 최대 5개 질문으로 해소, `## Clarifications`에 반영 | 스펙 즉시 갱신 |
-| `/hx-checklist` | 품질 게이트 | 요구사항 문장 자체의 "유닛테스트"(5축)로 PASS/FAIL 판정 | **읽기 전용**(스펙 미수정). "한 문서 품질" |
-| `/hx-plan` | 2. 설계 | `design/<feature>.md` 채우고 **Constitution Check 게이트** 통과 | 전제=requirements 승인. 위반은 Complexity Tracking에 정당화 |
-| `/hx-tasks` | 3. 작업 | design을 실행가능 `tasks/active/<feature>.md`로 분해 | 전제=design 승인. `T001 [P] [US1]` 포맷 |
-| `/hx-analyze` | 검사 | requirements·design·tasks 3문서의 정합성·커버리지·규칙 충돌 리포트 | **읽기 전용**(파일 미수정). "세 문서 간 정합성" |
-| `/hx-implement` | 4. 구현 | tasks를 Phase 순서로 실행, 변경마다 verify.sh 검증 | 전제=tasks 승인. 완료 게이트(active→check→승인→completed) |
-| `/hx-converge` | 회수 | 구현 후 잔여·후속 작업을 tasks에 append-only(`## Phase N: Convergence`)로 되살림 | **append-only**(이력 재작성 금지). 근거=check-spec-freshness.sh |
+| 단계 | 산출(이슈) | 산출(기능 문서) | 명령 | 게이트 |
+|---|---|---|---|---|
+| S1 분석 | requirements — 스토리·`R#.#`·SC | 원고 §요구사항 | `/hx-specify` · `/hx-clarify` | requirements `approved` |
+| S2 기획 | requirements §정책(`P-#`)·§화면 | 원고 §정책·§화면 · `_src/mockups` | `/hx-specify` · `/hx-checklist` | 같은 승인 |
+| S3 설계 | design — 순서도·시퀀스·상태·DB·인덱스·캐시 키·동시성·API | 원고 §흐름·§시퀀스·§상태 전이 · catalog 배정 | `/hx-plan` · `/hx-analyze` | Constitution Check · design `approved` |
+| S4 계획 | `tasks/active.md` | 백로그 추적(생성) | `/hx-tasks` | — |
+| S5 구현 | 코드·시험·OpenAPI 스냅숏 | — | `/hx-implement` · `/hx-maintain` | changed 검증 |
+| S6 테스트 | tasks `[VERIFICATION]` | 원고 §테스트 | `scripts/verify.sh` | 검증 사다리 레벨 |
+| S7 문서 반영 | tasks Polish 체크 | 원고·배정 갱신 → 생성 → 검사 | `/hx-docs` | `feature_docs.py check` 통과 |
+| S8 완료 | `check.md` → 사용자 검수 → `completed.md` | 원고 §변경 영향 | — | 사용자 승인 |
 
-모든 SDD 명령은 얇은 트리거다 — 명령 파일에 절차 본문이 없고, 전부 `sdd-workflow.md`의 해당 절을
-로드해 수행한다. 별도로 `/hx-harness` 명령이 있는데, 이건 SDD가 아니라 작업 시작 시 하네스 컨텍스트
-(`AGENTS.md`·규칙 원본·docs·`ARCHITECTURE.md`·core-beliefs)를 로드하는 용도다.
+- S2 는 S1 과 같은 requirements 에 쓴다. 화면이 없는 이슈는 §화면에 "화면 없음"을 쓴다.
+- 기능 문서 생성기가 없는 리포는 S7 을 건너뛰고 이유를 tasks 결과에 적는다.
+- `/hx-harness`(규칙 로드)와 `/hx-maintain`(코드 유지보수 기준)은 단계가 아니라 상시 명령이다.
 
-**역할 분담**: `/hx-checklist`는 한 문서(요구사항)의 품질, `/hx-analyze`는 세 문서 간 정합성.
-둘 다 읽기 전용이고, `/hx-converge`는 append-only다 — 파괴적 편집을 하는 SDD 명령은 없다(구현은 코드
-편집이고 스펙은 승인 흐름을 거친다).
+**역할 분담**: `/hx-checklist`는 한 문서(요구사항)의 품질, `/hx-analyze`는 세 문서 사이 정합성을 본다.
+둘 다 스펙을 고치지 않는다. `/hx-converge`는 append-only 다 — 기존 Phase·이력을 지우지 않는다.
 
 ## 2. 산출 위치 (`.agents/docs/`)
 
-SDD는 제품(바운디드 컨텍스트) 단위 묶음 `<slug>-specs/`로 관리된다.
-템플릿은 제품 폴더 밖 `_spec-templates/` **한 곳**에만 두고, 제품 폴더에는 복사하지 않는다
-(제품이 늘어도 템플릿 사본이 늘지 않는다).
+SDD 는 제품(바운디드 컨텍스트) 단위 `<slug>-specs/` 안에서 이슈 폴더로 관리된다.
+템플릿은 `_spec-templates/` 한 곳에만 두고 이슈 폴더로 복사하지 않는다(단계에 들어갈 때 그 단계 문서만 렌더한다).
 
 ```text
 .agents/docs/
 ├── README.md                     # 기록 시스템 자기서술
-├── specs-index.md                # 전 제품 스펙 색인(최상위 진입점)
-├── _spec-templates/              # SDD 단계 템플릿 원본 한 벌 — 설치되는 파일(제품 아님)
-│   ├── README.md                 #   이 폴더가 복사 원본임을 명시
-│   ├── index.md                  #   제품 색인 템플릿({{PRODUCT_SLUG}} 미치환 상태로 보관)
-│   ├── requirements/_template.md
+├── specs-index.md                # 전 제품 등록표 + SDD 보드(board.sh 가 만든다)
+├── _spec-templates/              # 단계 템플릿 원본 한 벌
+│   ├── requirements/_template.md #   S1·S2 — 스토리·EARS·SC·정책 표·화면 표·기능 문서 칸
+│   ├── design/_template.md       #   S3 — §4.3 순서도 · §4.4 상태 전이 · §7.1 쿼리→인덱스 · §7.2 캐시 · §7.3 동시성
 │   ├── checklists/_template.md
-│   ├── design/_template.md
-│   └── tasks/{_template.md, README.md}
-├── <slug>-specs/         # 제품 단위 SDD 묶음 (복수 가능)
-│                                 # ★ 설치가 아니라 new-feature.sh 가 첫 기능에서 만든다
-│   ├── index.md                  #   이 제품의 feature 등록표
-│   ├── requirements/             #   <feature>.md                     (/specify·/clarify)
-│   ├── checklists/               #   <feature>-<도메인>.md             (/checklist)
-│   ├── design/                   #   <feature>.md                     (/plan)
-│   └── tasks/                    #   README.md
-│       ├── active/               #     진행 중                        (/tasks·/implement)
-│       ├── check/                #     검증 완료·사용자 확인 대기
-│       └── completed/            #     사용자 승인 완료(이력 보존)
-├── decisions/                    # 전역 ADR + core-beliefs (기능·제품 횡단)
-├── tech-debt-tracker.md          # 전역 기술 부채 추적기
-├── generated/                    # 에이전트 생성물(손편집 금지, 코드/스키마에서 재생성)
-└── references/                   # 압축 참고자료(*-llms.txt)
+│   └── tasks/{_template.md, README.md}   # S4 — Polish 에 문서 반영(/hx-docs) 작업
+├── <slug>-specs/                 # ★ new-feature.sh 가 첫 이슈에서 만든다
+│   ├── index.md                  #   이 제품의 이슈 등록표
+│   └── issues/
+│       └── 1-feat-upload-policy/ #   키 = <순번>-<종류>-<이름>
+│           ├── requirements.md
+│           ├── design.md
+│           ├── checklists/<focus>.md
+│           └── tasks/
+│               ├── active.md     #   상태마다 파일 하나 — 동시에 둘 이상 두지 않는다
+│               ├── check.md
+│               ├── completed.md
+│               └── superseded.md
+├── decisions/                    # 전역 ADR + core-beliefs
+├── guides/                       # sdd-pattern · harness-engineering · doc-standards · agent-collaboration
+├── tech-debt-tracker.md
+├── generated/                    # 에이전트 생성물(손편집 금지)
+└── references/
 ```
 
-- 세 단계는 **같은 `<feature>` 파일명**으로 상호 추적한다(예: `requirements/order.md ↔ design/order.md ↔ tasks/active/order.md`).
-- 전역 결정은 `decisions/`(상태 `제안|채택|폐기`, 폐기해도 삭제 금지·상태만 변경). 기능별 설계는 `*-specs/design/`.
-- `generated/`는 코드/마이그레이션이 원본이고 손편집 금지, CI drift 검사 대상.
+- 키는 `<순번>-<종류>-<이름>`이다. 종류는 `feat`·`fix`·`refactor`·`perf`·`chore`·`docs`, 이름은 kebab-case.
+  순번은 생성 식별자일 뿐이고 우선순위는 requirements 에 따로 적는다. 외부 트래커 번호를 지어내지 않는다.
+- 옛 단계별 폴더(`requirements/<key>.md`·`design/<key>.md`·`tasks/<state>/<key>.md`)는 읽고 이어 쓴다.
+  자동으로 옮기지 않는다. 새 이슈를 옛 형식으로 만들 때만 `--legacy`를 쓴다.
+- 경로는 추측하지 않는다. `check-sdd-prerequisites.sh`가 출력하는 `BASE`·`REQUIREMENTS`·`DESIGN`·`TASKS`를 쓴다.
 
-## 3. 완료 게이트 (`active → check → confirm → completed`)
+## 3. 승인과 완료 게이트
 
-작업 생애주기는 폴더 이동으로 표현되고 상태값이 이를 따른다.
+- requirements·design 은 상태가 정확히 `approved`일 때만 다음 문서를 만든다. 파일이 있다는 것을 승인으로 보지 않는다.
+- 세 문서를 한 번에 만드는 `--all`은 승인 게이트를 건너뛰므로 없다.
+- 완료는 `tasks/active.md` → `tasks/check.md` → `tasks/completed.md` 이동과 상태 필드 변경으로 표현한다.
+  DoD·verify·S7 검사를 통과하면 check 로 옮기고 사용자 검수를 요청한다. 명시 승인 뒤에만 completed 로 옮긴다.
+- 대체된 계획은 `superseded.md`로 두고 후속 이슈와 이유를 적는다.
 
-1. **active** — 진행 중.
-2. **check** — DoD와 `verify.sh`를 충족하면 에이전트가 `check/`로 이동 + 상태 변경 + 근거 기록 + 사용자에게 검증 요청.
-3. **completed** — 사용자의 명시적 승인(confirm) 뒤에만 에이전트가 `completed/`로 이동.
-
-핵심: "verify.sh 통과는 완료의 필요조건이지, 그것만으로 완료가 되지는 않는다 — 최종 승인은 사람." 에이전트가
-승인 없이 `check → completed`로 전환하는 것은 금지(자동완료 금지)다.
-
-이 게이트를 규정하는 문서는 세 곳이 일치한다: 제품 `index.md`, `tasks/_template.md`(완료 처리 섹션),
-`tasks/README.md`(생애주기 섹션). 기계적 강제는 `scripts/check-exec-plan-status.sh`가 위치↔상태
-일관성을 검사하는 것으로 보완한다(자세히는 [04-enforcement.md](04-enforcement.md)).
+`check_harness.py --plans-only`(`check-exec-plan-status.sh`가 부른다)가 파일 위치와 상태 필드가 같은지,
+check·completed 에 미완료 작업이 없는지 검사한다. "사용자가 승인했는가"는 사람 단계라 스크립트가 강제하지 못한다.
 
 ## 4. SDD 스크립트
 
 | 스크립트 | 역할 |
 |---|---|
-| `new-feature.sh <slug> <feature> [--stage=S]` | `_spec-templates/`의 `_template.md`를 복사해 제품 폴더에 **그 단계 문서 하나만** 생성한다. `--stage=requirements`(기본) · `design` · `tasks`. 2·3단계는 requirements에서 키를 찾아 같은 파일명을 쓰고 선행 문서가 없으면 거부한다. 제품 폴더가 없으면 골격(`index.md`·`tasks/README.md`·빈 하위폴더)까지 생성하며 이때 `{{PRODUCT_SLUG}}`를 치환한다. 템플릿 자체는 제품 폴더에 복사하지 않는다. 기존 파일 미덮어씀. `--all`은 3종을 함께 만드는 예외 경로 |
-| `check-sdd-prerequisites.sh <slug> <feature> [--stage design\|tasks\|implement]` | 단계별 선행 문서(design=requirements, tasks=+design, implement=+tasks) 존재 확인. `--stage`는 공백·등호 두 표기를 받고 모르는 단계는 `exit 2`로 거부 |
-| `check-exec-plan-status.sh` | 제품별 `tasks/{active,check,completed}/` 순회, 첫 상태 라인과 폴더 일치 강제 |
-| `check-spec-freshness.sh` | 정체 draft/in-review·미해결 `[NEEDS CLARIFICATION:]`·정체 active tasks 리포트. **게이트 아님·항상 exit 0**. `/hx-converge` 근거 |
-| `verify.sh` | 단일 강제 게이트([04-enforcement.md](04-enforcement.md) 참조) |
+| `new-feature.sh <slug> <name> [--stage=S] [--type=T] [--number=N] [--legacy]` | 이슈 폴더에 **그 단계 문서 하나만** 만든다. 앞 단계가 `approved`가 아니면 거부한다. 제품 폴더가 없으면 골격까지 만들고 `{{PRODUCT_SLUG}}`를 치환한다. 기존 파일을 덮지 않는다 |
+| `check-sdd-prerequisites.sh <slug> <key> --stage=design\|tasks\|implement` | 선행 문서와 승인 상태 확인, 실제 경로(`BASE`·`REQUIREMENTS`·`DESIGN`·`TASKS`) 출력 |
+| `check-exec-plan-status.sh` | 이슈 tasks 파일 위치↔상태 일관성(새 형식은 엄격, 옛 형식은 상태 토큰) |
+| `check-spec-freshness.sh` | 정체된 draft·미해결 `[NEEDS CLARIFICATION:]`·정체된 active tasks 리포트. 게이트가 아니다(항상 exit 0). `/hx-converge` 근거 |
+| `board.sh [--check]` | `specs-index.md`의 SDD 보드를 파일 위치로 다시 만든다. `--check`는 어긋나면 실패하고 파일을 쓰지 않는다 |
+| `sdd-layout.py scaffold\|prerequisites\|board\|plans\|freshness` | 위 셸 진입점들이 부르는 파이썬 구현(`scripts/harness/sdd_*.py`) |
 
-명령(LLM 프롬프트)과 스크립트(결정론 셋업)를 분리한다 — 경로·스캐폴딩은 스크립트가, 내용 생성은
-에이전트가 한다.
+명령(LLM 프롬프트)과 스크립트(결정론적 셋업)를 나눈다 — 경로·스캐폴딩·상태 검사는 스크립트가, 내용은 에이전트가 쓴다.
 
-## 5. 템플릿 강제 장치 (각인 마커)
+## 5. 템플릿 강제 장치
 
-SDD 품질은 템플릿에 직접 각인된 마커로 강제된다. 템플릿은 서식이 아니라 **에이전트를 제약하는
-프롬프트**다.
+템플릿은 서식이 아니라 에이전트를 제약하는 프롬프트다.
 
-### 5.1 requirements/_template.md
+### 5.1 requirements/_template.md (S1·S2)
 
-- **[NEEDS CLARIFICATION] 규약**: 미확정은 추측·창작 금지, `[NEEDS CLARIFICATION: 구체 질문]` 마커. 최대 3개, 우선순위 `scope > 보안/프라이버시 > UX > 기술`. 그 외 사소 미확정은 합리적 기본값 + Assumptions 기록.
-- **§5 우선순위 User Story**: `P1/P2/P3`로 슬라이싱, P1이 가장 중요. 각 스토리는 독립 개발·테스트·시연 가능하고 하나만 구현해도 사용자 가치를 준다. 추적 ID = `US1`,`US2`…, 수용 기준 = EARS(`WHEN/IF/WHERE/WHILE … SHALL …`) `R1.1`,`R1.2`….
-- **§6 Success Criteria**: `SC-001`… 측정가능·기술중립(프레임워크·DB·언어 이름 금지, 형용사 대신 숫자·비율·시간).
+- **[NEEDS CLARIFICATION] 규약**: 미확정은 추측하지 않고 `[NEEDS CLARIFICATION: 구체 질문]`으로 둔다. 최대 3개, 우선순위 `scope > 보안/프라이버시 > UX > 기술`.
+- **우선순위 User Story**: `P1/P2/P3`, 각 스토리는 독립 개발·시험·시연 가능. 추적 ID `US1`…, 수용 기준은 EARS `R1.1`….
+- **Success Criteria**: `SC-001`… 측정 가능·기술 중립.
+- **정책 표(S2 기획 · 필수)**: `| ID | 규칙 | 강제 위치 |`. 업무 규칙을 조건과 결과로 적고, 강제 위치는 design 에서 정한 뒤 구현하고 나서 실제 클래스·제약 이름으로 고친다. 권한·한도·상태 제약·보존·암호화가 여기 온다.
+- **화면 표(화면이 있을 때)**: `| 화면 ID | 경로 | 상태(빈·로딩·오류·권한 없음) | 목업 |`. 화면이 없으면 "화면 없음" 한 줄. 목업은 `docs/features/_src/mockups/<단위>/<경로>.png`.
+- **기능 문서 칸**: S7 에서 갱신할 기능 ID(`catalog.json`).
 
-### 5.2 design/_template.md (17개 섹션)
+### 5.2 design/_template.md (S3)
 
-- §3 Constitution Check 게이트(체크박스): 추측 금지·경계 파싱(guardrails) / 보안·접근 제어(security) / 레이어 단방향 의존(structure) / API 표준(api-standards) / 안정성(reliability) / (프로젝트별 추가). 헌법은 `.agents/rules/*` + `decisions/core-beliefs.md`. 위반 불가피 시 §3.1에 정당화 없으면 진행 금지.
-- §3.1 Complexity Tracking: (위반 / 왜 필요한가 / 기각한 더 단순한 대안) 표.
-- §11.1 Quickstart: end-to-end 검증 시나리오(선행·실행·기대 결과). tasks Polish와 `/hx-analyze`가 참조.
-- **§14 Research & Decisions**: 결정 로그 + 대안 비교(ADR).
-- 선행 조건: requirements에 미해결 `[NEEDS CLARIFICATION]`이 있으면 설계 시작 금지, `/hx-clarify`로 복귀. §16 요구사항 추적 매트릭스가 `R#.#`을 설계 요소로 매핑.
+- Constitution Check 게이트: guardrails·security·structure·api-standards·reliability 와 영속성 경계(`structure.md`가 정한 스키마·도구·위치) 점검. 불가피한 위반은 Complexity Tracking 에 정당화가 없으면 진행 금지.
+- §4.3 순서도 · §4.4 상태 전이(Mermaid) — 기능 문서 §흐름·§상태 전이로 옮겨진다.
+- §7.1 쿼리→인덱스(필수) `| 쿼리(어댑터.메서드) | 조건·정렬 칸 | 쓰는 인덱스 | 예상 행 수·근거 |`
+- §7.2 캐시(해당 시) `| 캐시 이름 | 키 형식 | TTL·저장소 | 채우는 곳 | 무효화 시점 |` — 없으면 "캐시 없음 — 이유"
+- §7.3 동시성 제어(필수) `| 경합 지점 | 방식 | 잠금 키·범위 | 실패·재시도 처리 |` — 방식은 비관적 잠금·낙관적 `@Version`·분산 락·고유 제약·멱등 키 중에서 고른다
+- Quickstart(end-to-end 시나리오) · Research & Decisions · 요구사항 추적 매트릭스(`R#.#` → 설계 요소).
 
 ### 5.3 checklists/_template.md — CHK-### 5축
 
-"요구사항의 유닛테스트". 코드가 아니라 스펙 문장의 품질을 검사한다. 판정 `PASS`(`[x]`)·`FAIL`(`[ ]`)·`N/A`(`[-]`).
-
 | 축 | 번호대 | 검사 |
 |---|---|---|
-| 완결성 | CHK-001~008 | 우선순위+"왜", 독립 테스트 기준, EARS `R#.#`, `SC-###`, NFR, Edge/오류, scope, 제약·가정 |
-| 명료성 | CHK-101~105 | 측정불가 형용사 정량화, 한 수용기준=한 동작, 대명사 모호성, `[NEEDS CLARIFICATION]≤3`, 구현 세부 누출 금지 |
-| 일관성 | CHK-201~205 | 한 용어, 모순 없음, 도메인 규약 일치, 헌법 충돌 없음, 우선순위 product.md/KPI 일치 |
-| 측정가능성 | CHK-301~304 | `SC-###` 숫자·비율·시간, SC 기술중립, 관찰가능 결과, 성능·용량 측정 조건 |
-| 커버리지 | CHK-401~405 | 스토리 출처 역추적, `R#.#`↔SC/검증수단, 추적 매트릭스, 각 스토리 최소1개 `[US#]` 작업, 요구 없는 작업 없음 |
+| 완결성 | CHK-001~008 | 우선순위+"왜", 독립 시험 기준, EARS `R#.#`, `SC-###`, NFR, Edge/오류, scope, 제약·가정 |
+| 명료성 | CHK-101~105 | 측정 불가 형용사 정량화, 한 수용 기준=한 동작, 대명사 모호성, `[NEEDS CLARIFICATION]≤3`, 구현 세부 누출 금지 |
+| 일관성 | CHK-201~205 | 한 용어, 모순 없음, 도메인 규약 일치, 헌법 충돌 없음, 우선순위 일치 |
+| 측정가능성 | CHK-301~304 | `SC-###` 숫자·비율·시간, SC 기술 중립, 관찰 가능 결과, 성능 측정 조건 |
+| 커버리지 | CHK-401~405 | 스토리 출처, `R#.#`↔SC/검증 수단, 추적 매트릭스, 스토리마다 `[US#]` 작업, 요구 없는 작업 없음 |
 
-### 5.4 tasks/_template.md
+### 5.4 tasks/_template.md (S4)
 
-- **작업 포맷**: `- [ ] T001 [P] [US1] 설명 + 정확한 파일/모듈 경로`. `T###`=전역 유일 순번(완료 시 `[X]`), `[P]`=병렬 가능(다른 파일·무의존일 때만, 같은 파일이면 금지), `[US1]`=소속 User Story.
-- **Phase 구조**: Phase 1 Setup → Phase 2 Foundational(모든 스토리 차단 선행) → Phase 3+ User Story별(P1→P2→P3, P1=🎯 핵심) → Phase N Polish. 각 스토리 Phase에 목표·독립 테스트(design §11.1 참조)·Checkpoint.
-- **TDD**: 첫 작업이 "테스트 작성(성공+최소1 실패+권한 없는 접근 차단) 구현 전 실패 확인".
-- **DoD 체크박스**: `verify.sh` 통과, 성공+최소1 실패, 401/403·권한 없는 접근 차단, `quality-score.md` 충족, API 변경 시 openapi 갱신, Quickstart 통과.
+- 작업 포맷 `- [ ] T001 [P] [US1] 설명 + 파일 경로`. `[P]`는 다른 파일·무의존일 때만.
+- Phase: Setup → Foundational → User Story 별(P1→P2→P3) → Polish. Polish 에 문서 반영(`/hx-docs`)과 `feature_docs.py check`를 둔다.
+- `## 검증 (DoD)` 체크 목록(verify 통과 · 성공+실패 시험 · 401/403 · 품질 점수 · OpenAPI 스냅숏 · 기능 문서 검사 · Quickstart)과 `## 완료 처리`(active → check → 승인 → completed).
+- `결과` 절에 실제 실행한 명령과 결과(통과/실패 수)를 적는다. 실행하지 않은 검증을 통과로 적지 않는다.
 
 ## 6. 결정·부채 기록
 
-- `decisions/` — 전역 ADR(`_template.md`: 맥락·결정·근거·대안·결과) + `core-beliefs.md`(핵심 원칙, 상태 채택). 색인에 없으면 없는 것으로 본다.
-- `tech-debt-tracker.md` — 전역 기술 부채 표(ID·항목·위치·심각도·상태). 발견 즉시 등록, 해결 시 PR 링크로 closed, 항목 삭제 금지(이력 보존).
+- `decisions/` — 전역 ADR(맥락·결정·근거·대안·결과) + `core-beliefs.md`. 폐기해도 지우지 않고 상태만 바꾼다.
+- `tech-debt-tracker.md` — 전역 기술 부채 표. 발견 즉시 등록, 해결 시 링크와 함께 closed, 항목 삭제 금지.

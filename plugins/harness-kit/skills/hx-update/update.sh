@@ -131,7 +131,7 @@ process_file() {
   if [ "$owner" != core ] && ! harness_agent_selected "$owner" "$AGENTS_SEL"; then
     return 0
   fi
-  dest_rel="$(harness_remap "$rel")"
+  dest_rel="$(harness_dest_name "$(harness_remap "$rel")")"
   dest="$TARGET/$dest_rel"
   echo "$dest_rel" >> "$SEEN"
 
@@ -145,7 +145,7 @@ process_file() {
     if [ "$DRY_RUN" != 1 ]; then
       mkdir -p "$(dirname "$dest")"
       cp "$tmp" "$dest"
-      case "$dest" in *.sh) chmod +x "$dest" ;; esac
+      harness_is_executable "$dest_rel" && chmod +x "$dest"
     fi
     harness_lock_append "$NEW_LOCK" "$new_sha" "$layer" "$owner" "$dest_rel"
     return 0
@@ -167,7 +167,7 @@ process_file() {
     n_update=$((n_update+1))
     if [ "$DRY_RUN" != 1 ]; then
       cp "$tmp" "$dest"
-      case "$dest" in *.sh) chmod +x "$dest" ;; esac
+      harness_is_executable "$dest_rel" && chmod +x "$dest"
     fi
     harness_lock_append "$NEW_LOCK" "$new_sha" "$layer" "$owner" "$dest_rel"
     return 0
@@ -179,7 +179,7 @@ process_file() {
     if [ "$DRY_RUN" != 1 ]; then
       cp "$dest" "$dest.bak"
       cp "$tmp" "$dest"
-      case "$dest" in *.sh) chmod +x "$dest" ;; esac
+      harness_is_executable "$dest_rel" && chmod +x "$dest"
     fi
     harness_lock_append "$NEW_LOCK" "$new_sha" "$layer" "$owner" "$dest_rel"
     return 0
@@ -226,6 +226,7 @@ fi
 if [ "$DRY_RUN" != 1 ]; then
   cp "$NEW_LOCK" "$LOCK"
   harness_write_meta "$TARGET" "$TO_VERSION" "$DOMAIN" "$STACK" "$ARCH" "$AGENTS_SEL" "$MODULES_SEL"
+  [ -f "$TARGET/.agents/harness.json" ] || harness_write_manifest "$TARGET" "$STACK" "$AGENTS_SEL"
 fi
 
 echo ""

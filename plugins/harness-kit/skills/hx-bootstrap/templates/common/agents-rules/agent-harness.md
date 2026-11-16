@@ -45,7 +45,10 @@
 | 파일 | 무엇 |
 |---|---|
 | [`agent-harness.md`](./agent-harness.md) | 이 파일. 하네스 규약·완료 게이트·강제 레이어·규칙 변경 절차 |
-| [`sdd-workflow.md`](./sdd-workflow.md) | SDD 워크플로 원본(specify→clarify→plan→tasks→analyze→implement)·문서 위치·게이트 |
+| [`sdd-workflow.md`](./sdd-workflow.md) | SDD 워크플로·SDLC 단계(S1~S8)·이슈 폴더·`/hx-docs` |
+| [`session-collaboration.md`](./session-collaboration.md) | 공동 세션 — 소유 경로 등록·공지·충돌 |
+| [`code-maintenance.md`](./code-maintenance.md) | 패키지 책임·이름·판단 함수·mapper·API 문서·변경 시험 |
+| [`git-workflow.md`](./git-workflow.md) | 브랜치·커밋·PR |
 | [`guardrails.md`](./guardrails.md) | 행동 헌법(추측 금지) + 주석 규약 요약 + DDD 레이어 책임 |
 | [`security.md`](./security.md) | 인증/인가 경계 · 접근 제어 이중 방어선 · secret 처리 · 언어별 고유 위험 · 감사 |
 | [`api-standards.md`](./api-standards.md) | 응답 envelope · ErrorCode 매핑 · 예외 변환 · OpenAPI 문서화 |
@@ -59,25 +62,33 @@
 
 ## 기록/SDD 시스템 = `.agents/docs/`
 
-기능은 스펙 단위로 다룬다(SDD: requirements → design → tasks).
+기능은 이슈 하나에 폴더 하나다(SDD: requirements → design → tasks). 단계와 산출물은 [`sdd-workflow.md`](./sdd-workflow.md) 「SDLC 단계」(S1 분석 → S8 완료)가 원본이다.
 
 | 단계 | 위치 |
 |---|---|
-| requirements | `.agents/docs/<slug>-specs/requirements/<feature>.md` (진입 제품 `index.md`) |
-| design | `.agents/docs/<slug>-specs/design/<feature>.md` (핵심 원칙은 `.agents/docs/decisions/core-beliefs.md`) |
-| tasks(실행 계획) | `.agents/docs/<slug>-specs/tasks/active/<feature>.md` |
+| requirements | `.agents/docs/<slug>-specs/issues/<key>/requirements.md` |
+| design | `.agents/docs/<slug>-specs/issues/<key>/design.md` |
+| tasks | `.agents/docs/<slug>-specs/issues/<key>/tasks/active.md` → `check.md` → `completed.md` |
 
-- `generated/`(에이전트가 만드는 문서, 손편집 금지)와 `references/`(압축 참고자료)는 스펙 단계가 아니라 보조 레이어다.
-- 기술 부채는 발견하는 대로 `.agents/docs/tech-debt-tracker.md`에 등록하고 미루지 않는다.
+- 새 이슈는 `bash scripts/new-feature.sh <slug> <이름>` 으로 만들고, 다음 단계는 승인 뒤 `--stage=design`·`--stage=tasks`.
+- `generated/`(에이전트가 만드는 문서, 손편집 금지)와 `references/`(압축 참고자료)는 보조 레이어다.
+- 기술 부채는 발견하는 대로 `.agents/docs/tech-debt-tracker.md`에 등록한다.
+
+## 기능 문서 = `docs/features/` (SDLC S7)
+
+이슈 문서는 바뀐 이유와 과정이고, 기능 문서는 구현된 기능의 현재 모습이다. `tools/docs/feature_docs.py` 가 코드·OpenAPI·DB 카탈로그에서 API·테이블·인덱스·캐시·잠금·시험·화면을 뽑고, `docs/features/_src` 원고(요구·정책·흐름·시퀀스·상태·변경 영향)와 합쳐 HTML 을 만든다.
+
+- 이슈를 check 로 옮기기 전에 `/hx-docs` 로 원고·배정을 고치고 `build` 뒤 `check` 를 통과시킨다.
+- 새 API·테이블·캐시·화면이 어느 기능에도 배정되지 않으면 검사가 실패한다. 사용법은 `tools/docs/README.md`.
 
 ## exec-plan 완료 게이트 (사용자 검증 필수)
 
 상태 전이: `active/` → `check/` → `completed/`.
 
-- 복잡한 작업은 착수 전에 `.agents/docs/<slug>-specs/tasks/active/<feature>.md`에 계획을 남기고 진행한다.
-- DoD와 verify를 충족했다고 해서 바로 `completed/`로 옮기지 않는다. 상태를 `check`로 바꿔 `check/`로 옮기고,
+- 복잡한 작업은 착수 전에 `.agents/docs/<slug>-specs/issues/<key>/tasks/active.md`에 계획을 남기고 진행한다.
+- DoD와 verify를 충족했다고 해서 바로 `completed/`로 옮기지 않는다. 상태를 `check`로 바꿔 `tasks/check.md`로 옮기고,
   무엇을 어떻게 확인했는지 요약해 사용자에게 검증을 요청한다.
-- 사용자가 명시적으로 승인한 뒤에만 `completed`로 바꾸고 `completed/`로 옮긴다.
+- 사용자가 명시적으로 승인한 뒤에만 `completed`로 바꾸고 `tasks/completed.md`로 옮긴다.
 - 위치와 상태가 어긋나지 않는지는 `scripts/check-exec-plan-status.sh`가 검사한다.
 
 ## 강제 레이어 분리 (문서는 부탁, 스크립트는 강제)
@@ -95,22 +106,25 @@
 
 ### 검증 레벨 — 트리거마다 무게가 다르다
 
-게이트는 하나지만, 부르는 쪽의 실행 빈도가 다르므로 `HARNESS_VERIFY_LEVEL`로 범위를 나눈다.
+게이트는 `scripts/verify.sh` 하나지만 범위를 셋으로 나눈다. 원본은 [`verification-ladder.md`](./verification-ladder.md)다.
 
-| 레벨 | 범위 | 쓰는 트리거 | 대략 소요 |
-|---|---|---|---|
-| `fast` | 구조 점검(exec-plan 상태) + 프로세스 기동이 싼 정적 검사 | 에이전트 Stop hook | 수 초 이내 |
-| `full` (기본) | fast + 컴파일·타입·테스트·커버리지·DB 게이트 | pre-commit(pre-push), CI, 사람이 직접 실행 | 수 분 |
+| 레벨 | 범위 | 실행 |
+|---|---|---|
+| changed(기본) | 바뀐 파일과 매핑된 시험·정적 검사·경로 검사(`.agents/verify-checks.json`) | `bash scripts/verify.sh --files <paths>` · Stop hook · git hook |
+| fast | 하네스 구조·SDD 상태·기능 문서·포맷·린트. 빌드 도구를 띄우지 않는다 | `HARNESS_VERIFY_LEVEL=fast bash scripts/verify.sh` |
+| full | fast + 컴파일·타입·전체 시험·커버리지 | `bash scripts/verify.sh --full` |
 
-Stop hook은 **에이전트가 턴을 마칠 때마다** 실행된다. 여기에 전체 빌드·테스트를 걸면 두 가지가 깨진다.
-앞 실행이 끝나기 전에 다음 실행이 겹쳐 빌드 도구 lock 경합으로 무한 대기에 빠지고,
-정상일 때조차 응답마다 수 분을 기다리게 된다. 그래서 hook은 `fast`만 쓴다.
-**커밋·푸시 전에는 `bash scripts/verify.sh`를 직접 실행해 `full`을 통과시켜야 한다** — hook 통과는 full 통과가 아니다.
+- Stop hook 과 git hook(`bash scripts/install-git-hooks.sh` 로 건다)은 changed 다. changed·fast 통과는 full 통과가 아니다.
+- `--plan` 은 실행할 명령·제외·미확인을 먼저 보인다. 시험 0개를 통과로 보고하지 않는다.
+- 레이어 의존 방향 같은 아키텍처 불변식은 문서로 부탁하지 말고 도구가 막게 한다([`structure.md`](./structure.md)·[`tech.md`](./tech.md)).
 
-- 변경했으면 항상 `scripts/verify.sh`로 검증하고(기본 `full`) 결과를 함께 제시한다.
-- 레이어 의존 방향 같은 아키텍처 불변식은 문서로 부탁하지 말고 도구가 막게 한다
-  ([`structure.md`](./structure.md)·[`tech.md`](./tech.md) 참조). 강제 수단은 스택마다 다르다
-  (빌드 모듈 그래프, import 계약 린터, 아키텍처 테스트). 기계가 막는 위반은 리뷰 가드보다 우선한다.
+### hook 배선
+
+Claude·Codex·Kiro hook 은 로직 없이 `scripts/hooks/*`(세션 안내 · 보호 경로 쓰기 차단 · Stop 게이트)를 부른다. 같은 파일을 모든 에이전트가 쓴다.
+
+## 공동 세션
+
+여러 세션(Claude·Codex·Kiro)이 같은 리포를 고치면 [`session-collaboration.md`](./session-collaboration.md)를 따른다. 실제 세션 ID 로 소유 파일을 등록하고(`python3 scripts/session-coordination.py register --files`), 공지는 수신함에서 확인한다. 코드를 고치기 전에는 [`code-maintenance.md`](./code-maintenance.md)를 읽는다.
 
 ## 규칙 변경 절차 (내용이 어긋나지 않게)
 

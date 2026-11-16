@@ -21,10 +21,10 @@ harness-starter-kit/
 ├── README.md         # 킷 사용법
 ├── SKILL.md          # 부트스트랩 스킬(설치 절차를 에이전트가 재사용)
 └── templates/
-    ├── common/       # 스택 무관 골격 (96개) — SDD·에이전트 배선·공통 규칙 8종
+    ├── common/       # 스택 무관 골격 (259개) — SDD·에이전트 배선·공통 규칙 12종·세션 협업·기능 문서 생성기
     ├── domains/      # 여러 스택이 공유하는 규약 — frontend(8개) = web·electron 공용
-    ├── stacks/       # 스택 오버레이 (각 13개 + arch/<변형>/ 4개) — jvm · python · go · web · electron
-    └── optional/     # --modules= 로 켤 때만 — jira-workflow(10) · platform-guards(4)
+    ├── stacks/       # 스택 오버레이 (각 14개 + arch/<변형>/ 4개) — jvm · python · go · web · electron
+    └── optional/     # --modules= 로 켤 때만 — jira-workflow(15) · platform-guards(4) · multi-harness(8)
 ```
 
 **5층 오버레이**가 핵심이다. 하네스 골격(SDD 기록 시스템·게이트 구조·에이전트 배선)은 언어와
@@ -37,14 +37,15 @@ harness-starter-kit/
 
 `templates/` 내부 구조와 설치 매핑은 [02-architecture.md](02-architecture.md)에서 다룬다.
 
-## 2. 네 개의 축
+## 2. 다섯 개의 축
 
 | 축 | 설치 후 위치 | 요지 |
 |---|---|---|
-| 규칙 원본 | `.agents/rules/*.md` (백엔드 16종 = 공통 8 + 스택별 6 + 변형별 2 · 프론트엔드 20종 = + 도메인 4) | 네 하네스가 공유하는 규칙 본문의 단일 소스 |
-| 기록/SDD | `.agents/docs/` | 스펙·설계·작업·결정이 모이는 곳. 제품 단위 묶음 |
-| 검증 게이트 | `scripts/verify.sh` | 강제 로직이 모이는 유일한 지점(스택별 빌드·린트·타입·테스트를 묶음) |
-| 에이전트 배선 | `.claude/` · `.codex/` · `.kiro/steering/` | 각 에이전트의 진입점·트리거(얇은 포인터) |
+| 규칙 원본 | `.agents/rules/*.md` (백엔드 20종 = 공통 12 + 스택별 6 + 변형별 2 · 프론트엔드 24종 = + 도메인 4) | 네 하네스가 공유하는 규칙 본문의 단일 소스 |
+| 기록/SDD | `.agents/docs/` | 스펙·설계·작업·결정이 모이는 곳. 제품 단위 묶음 안에 이슈 폴더(`issues/<key>/`). SDLC 단계 S1~S8 |
+| 검증 게이트 | `scripts/verify.sh` | 강제 로직이 모이는 유일한 지점(스택별 빌드·린트·타입·테스트를 묶음). 기본 changed — 바뀐 파일에 필요한 검사만 고른다 |
+| 기능 문서 | `docs/features/` · `tools/docs/` | 구현된 기능의 현재 모습(12단계 + 기능별 페이지 + Scalar API 명세). S7 `/hx-docs` 가 이슈마다 갱신한다 |
+| 에이전트 배선 | `.claude/` · `.codex/` · `.cursor/` · `.kiro/` | 각 에이전트의 진입점·트리거(얇은 포인터). hook 본문은 `scripts/hooks/` 한 벌 |
 
 아키텍처의 원본은 `ARCHITECTURE.md`(루트), 규칙의 원본은 `.agents/rules/`, 기록의 원본은
 `.agents/docs/`다. 진입 파일(`AGENTS.md`·`CLAUDE.md`·Kiro steering)은 목차이지 상세를 담아두는 곳이 아니다 —
@@ -59,7 +60,7 @@ pre-commit — 은 로직을 복제하지 않고 이 한 곳을 **호출만** �
 
 - 원본 강제(이식 가능): `scripts/verify.sh` = exec-plan 일관성 검사(스택 무관) + 스택 게이트 + (선택) DB 통합·구조 테스트.
   스택 게이트는 jvm=`./gradlew check`, python=`ruff→mypy→lint-imports→pytest`, go=`fmt→build→vet→golangci-lint→test -race`.
-- 에이전트별 가속기: Claude 훅·Codex config·Kiro 훅은 로직 없이 트리거만.
+- 에이전트별 가속기: Claude·Codex·Kiro hook 배선은 로직 없이 `scripts/hooks/`의 같은 파일을 부른다. Stop hook·git hook 은 changed 레벨로 돈다.
 
 이 원칙 덕분에 검증 기준이 에이전트마다 갈라지지 않고, 규칙을 바꿀 때 한 곳만 고치면 된다.
 자세한 강제 레이어는 [04-enforcement.md](04-enforcement.md).

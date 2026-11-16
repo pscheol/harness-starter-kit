@@ -1,0 +1,4 @@
+interface:
+  display_name: "hx-plan"
+  short_description: "설계 작성"
+  default_prompt: "$hx-plan 스킬로 요청한 작업을 진행해 주세요."

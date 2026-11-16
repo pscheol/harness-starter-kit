@@ -266,3 +266,14 @@ REFACTOR 중복 제거·의도 드러내기
 1. 분할 축을 도메인으로 바꾼다. 레이어는 도메인 안의 패키지가 된다.
 2. 단일 모듈 안에서 모듈 경계를 지키려면 `modulith`(Spring Modulith `verify()`), 기능 슬라이스 독립이 목적이면 `feature`(ArchUnit 슬라이스).
 3. 해당 `ARCH`로 재설치.
+
+## 구성도
+
+> 설치 직후 그림이다. 실제 모듈·저장소·외부 연동으로 고친다(하네스 검사기는 Mermaid 그림이 있는지 본다).
+
+```mermaid
+flowchart LR
+  client["클라이언트"] -->|"HTTP"| service["{{SERVICE_NAME}}"]
+  service --> store[("저장소")]
+  service -.-> external["외부 연동"]
+```

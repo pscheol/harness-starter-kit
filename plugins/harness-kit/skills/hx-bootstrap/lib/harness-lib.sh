@@ -13,7 +13,7 @@
 HARNESS_META_REL=".agents/harness-kit.json"
 HARNESS_LOCK_REL=".agents/harness-kit.lock"
 HARNESS_ALL_AGENTS="claude codex cursor kiro"
-HARNESS_ALL_MODULES="jira-workflow platform-guards"
+HARNESS_ALL_MODULES="jira-workflow platform-guards multi-harness"
 # 도메인 이름의 유효 집합. templates/domains/ 디렉터리 유무와는 별개다 —
 # backend 는 이름은 유효하지만 공유 규칙이 없어 디렉터리가 존재하지 않는다.
 HARNESS_ALL_DOMAINS="backend frontend"
@@ -50,9 +50,10 @@ harness_agent_of() {
   case "$1" in
     claude/*)                       echo claude ;;
     root/CLAUDE.md)                 echo claude ;;   # AGENTS.md 로 보내는 Claude 전용 리다이렉트
-    codex/*|agents-skills/*)        echo codex ;;    # .agents/skills 는 Codex 스킬 탐색 경로다
+    codex/*)                        echo codex ;;
     cursor/*)                       echo cursor ;;
-    kiro-steering/*|kiro-skills/*)  echo kiro ;;
+    kiro-steering/*|kiro-skills/*|kiro-agents/*|kiro-hooks/*|kiro-root/*)  echo kiro ;;
+    # agents-skills/* 는 core 다 — .agents/skills/hx-* 가 스킬 원본이고 Claude 커맨드·Kiro 스킬·Cursor 커맨드는 그 원본을 가리킨다.
     *)                              echo core ;;
   esac
 }
@@ -63,6 +64,9 @@ harness_remap() {
     root/*)          echo "${1#root/}" ;;
     kiro-steering/*) echo ".kiro/steering/${1#kiro-steering/}" ;;
     kiro-skills/*)   echo ".kiro/skills/${1#kiro-skills/}" ;;
+    kiro-agents/*)   echo ".kiro/agents/${1#kiro-agents/}" ;;
+    kiro-hooks/*)    echo ".kiro/hooks/${1#kiro-hooks/}" ;;
+    kiro-root/*)     echo ".kiro/${1#kiro-root/}" ;;
     agents-rules/*)  echo ".agents/rules/${1#agents-rules/}" ;;
     agents-skills/*) echo ".agents/skills/${1#agents-skills/}" ;;
     agents-docs/*)   echo ".agents/docs/${1#agents-docs/}" ;;
@@ -283,4 +287,42 @@ harness_lock_replace() {
     harness_lock_init "$lock"
   fi
   harness_lock_append "$lock" "$sha" "$layer" "$agent" "$path"
+}
+
+
+# ── 파일 이름 토큰 · 하네스 매니페스트 ────────────────────────────────────────
+
+# 설치 경로 속 `__PROJECT_SLUG__` 를 실제 값으로 바꾼다(Kiro 조율 에이전트 파일 이름).
+harness_dest_name() {
+  local rel="$1"
+  if [ -n "${PROJECT_SLUG:-}" ]; then
+    echo "${rel//__PROJECT_SLUG__/$PROJECT_SLUG}"
+  else
+    echo "$rel"
+  fi
+}
+
+# 실행 권한: *.sh · *.py 스크립트와 확장자 없는 git hook.
+harness_is_executable() {
+  case "$1" in
+    *.sh|scripts/*.py|scripts/git-hooks/*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+# .agents/harness.json — 하네스 검사기·세션 조율·변경 검증이 읽는 매니페스트(unit · agents).
+# 킷 메타(.agents/harness-kit.json)와 목적이 다르다: 이 파일은 하네스 스크립트가 읽는 식별자다.
+harness_write_manifest() {
+  local target="$1" stack="$2" agents="$3" path="$1/.agents/harness.json" list="" a
+  for a in $agents; do list="$list${list:+, }\"$a\""; done
+  mkdir -p "$(dirname "$path")"
+  cat > "$path" <<JSON
+{
+  "unit": "${PROJECT_SLUG:-project}",
+  "title": "${PROJECT_NAME:-Project}",
+  "stack": "$stack",
+  "agents": [$list],
+  "shared": []
+}
+JSON
 }

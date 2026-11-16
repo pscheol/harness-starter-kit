@@ -1,7 +1,6 @@
 ---
 inclusion: always
 ---
-<!-- HARNESS TEMPLATE ({{PROJECT_NAME}}) · Kiro 얇은 포인터. 규칙 본문 금지. -->
 # 문체 (포인터)
 
 원본: `.agents/rules/writing-style.md` — 스펙 문서·주석·커밋 메시지·리포트에 모두 적용된다.

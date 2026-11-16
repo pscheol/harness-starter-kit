@@ -408,7 +408,7 @@ copy_tree() {
       count_excluded=$((count_excluded+1))
       continue
     fi
-    dest_rel="$(harness_remap "$rel")"
+    dest_rel="$(harness_dest_name "$(harness_remap "$rel")")"
     dest="$TARGET/$dest_rel"
 
     if [ -e "$dest" ] && [ "$FORCE" != 1 ]; then
@@ -420,7 +420,7 @@ copy_tree() {
     echo "  ✎ write [$label/$owner] $dest_rel"
     if [ "$DRY_RUN" != 1 ]; then
       harness_render "$src" "$dest"
-      case "$dest" in *.sh) chmod +x "$dest" ;; esac
+      harness_is_executable "$dest_rel" && chmod +x "$dest"
       harness_lock_append "$LOCK" "$(harness_sha256 "$dest")" "$label" "$owner" "$dest_rel"
     fi
     count_written=$((count_written+1))
@@ -435,6 +435,13 @@ done < <(layer_roots)
 if [ "$DRY_RUN" != 1 ]; then
   harness_write_meta "$TARGET" "$(harness_kit_version "$PLUGIN_DIR")" \
     "$DOMAIN" "$STACK" "$ARCH" "$AGENTS_SEL" "$MODULES_SEL"
+  harness_write_manifest "$TARGET" "$STACK" "$AGENTS_SEL"
+  # 기능 문서 사이트를 처음 한 번 만든다(네트워크 없음). 그래야 설치 직후 fast 게이트의 문서 검사가 통과한다.
+  if [ -f "$TARGET/tools/docs/feature_docs.py" ] && command -v python3 >/dev/null 2>&1; then
+    (cd "$TARGET" && python3 tools/docs/feature_docs.py build >/dev/null) \
+      && echo "  ✎ 기능 문서 사이트 생성: docs/features/ (그림·API 화면용 스크립트는 'python3 tools/docs/feature_docs.py refresh vendor')" \
+      || echo "  ⚠ 기능 문서 생성 실패 — 설치 뒤 'python3 tools/docs/feature_docs.py build' 를 직접 실행하라"
+  fi
 fi
 
 echo ""
