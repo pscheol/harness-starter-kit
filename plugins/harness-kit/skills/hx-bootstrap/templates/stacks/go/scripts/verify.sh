@@ -4,11 +4,11 @@
 # 검증 스크립트 (단일 강제 지점).
 # hook / CI / pre-commit 이 모두 이 스크립트 하나만 호출한다. 로직 복제 금지.
 #
-# 검증 레벨 (HARNESS_VERIFY_LEVEL, 기본 full):
+# 검증 레벨 (HARNESS_VERIFY_LEVEL — 지정하지 않으면 changed: 아래 진입 블록이 verify-changed.py 로 넘긴다):
 #   fast — 구조 점검 + 포맷 검사(단계 1~2)까지. 보통 1초 미만.
-#          Stop hook(에이전트가 턴을 마칠 때마다 실행)이 쓰는 레벨.
+#          `--fast` 로 명시할 때 돈다. Stop hook·git hook 은 changed(바뀐 파일에 필요한 검사만)로 돈다.
 #          컴파일이 필요한 단계(build·vet·lint·test)는 캐시가 비면 수 분이 걸려 제외한다.
-#   full — 전체 단계. pre-commit(pre-push)·CI 가 쓰는 레벨.
+#   full — 전체 단계. `--full` 로 명시하거나 CI(HARNESS_VERIFY_LEVEL=full)가 쓴다.
 #
 # 단일 Go 프로젝트 게이트:
 #   1) exec-plan 위치↔상태 일관성 (스택 무관, 항상)             — fast
@@ -22,6 +22,13 @@
 # 여러 단계 실패를 한 번에 보고하려고 fail 로 누적한다.
 set -uo pipefail
 
+# BEGIN HARNESS VERIFICATION ENTRY
+# 레벨을 지정하지 않으면(기본 changed) 바뀐 파일에 필요한 검증만 고른다 — scripts/verify-changed.py.
+# --fast · --full · HARNESS_VERIFY_LEVEL=fast|full 이면 아래 본문이 돈다.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/verify-entry.sh"
+# END HARNESS VERIFICATION ENTRY
+cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 2
+
 LEVEL="${HARNESS_VERIFY_LEVEL:-full}"
 fail=0
 
@@ -31,6 +38,15 @@ COVERAGE_MIN="${COVERAGE_MIN:-80}"
 # ── 1) 구조 점검 (문서/하네스 일관성). 항상 실행 — 규칙 문서를 기계적으로 보조. ────
 echo "▶ exec-plan 상태 일관성"
 bash scripts/check-exec-plan-status.sh || { echo "✖ exec-plan 상태 일관성 실패"; fail=1; }
+
+echo "▶ 하네스 구조(문서 기준·SDD 상태·에이전트 배선)"
+python3 scripts/check_harness.py || { echo "✖ 하네스 구조 검사 실패"; fail=1; }
+
+# 기능 문서(SDLC S7). 생성기가 있으면 배정·원고·스냅숏 지문·생성 결과를 검사한다(파일을 쓰지 않는다).
+if [ -f tools/docs/feature_docs.py ]; then
+  echo "▶ 기능 문서"
+  python3 tools/docs/feature_docs.py check || { echo "✖ 기능 문서 검사 실패 — /hx-docs 로 원고·배정을 고치고 build"; fail=1; }
+fi
 
 # ── 2) 포맷 (gofumpt — 없으면 gofmt 로 폴백) ─────────────────────────────────
 echo "▶ 포맷 검사"
@@ -49,10 +65,10 @@ fi
 # ── fast 종료 지점 ───────────────────────────────────────────────────────────
 # 이후 단계는 모두 컴파일을 동반한다(build·vet·lint·test). 빌드 캐시가 비었거나
 # 의존성을 새로 받아야 하면 수 분이 걸린다. Stop hook 은 턴마다 실행되므로 여기서 끊고,
-# 전체 게이트는 pre-push 와 CI 가 책임진다.
+# 전체 게이트는 `--full` 과 CI 가 책임진다.
 if [ "$LEVEL" = "fast" ]; then
   if [ "$fail" -ne 0 ]; then echo "검증 실패(fast)"; exit 1; fi
-  echo "검증 통과(fast — 빌드·테스트는 pre-push·CI 에서 실행)"
+  echo "검증 통과(fast — 빌드·테스트는 --full·CI 에서 실행)"
   exit 0
 fi
 

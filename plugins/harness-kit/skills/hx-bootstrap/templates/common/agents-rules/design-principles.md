@@ -1,5 +1,3 @@
-<!-- HARNESS STARTER KIT · 설계 원칙 원본(스택 무관). Claude Code · Codex · Kiro 공통. -->
-
 # 설계 원칙 — 객체지향 · 클린 아키텍처 · SOLID
 
 이 문서는 **어떤 구조를 고를지가 아니라 그 구조 안에서 코드를 어떻게 짤지**의 원본이다.
@@ -198,3 +196,11 @@ order.cancel(reason)
 - API 응답·에러 계약: `.agents/rules/api-standards.md`
 - 코드 품질 기준·DoD: `.agents/rules/quality-score.md`
 - 주석 규약: `.agents/rules/code-comments.md`
+
+## 패키지의 단일 책임
+
+패키지는 기존 컨텍스트·레이어 아래에서 업무 기능 또는 기술 책임을 갖는다.
+서비스 한 클래스를 여러 클래스로 나눈 뒤 모두 같은 거대 service 패키지에 쌓지 않는다.
+변경 이유·호출부·수명·권한/트랜잭션 소유를 기준으로 묶고 단위의 기존 패키지 축을 유지한다.
+adapter의 저장 호출과 mapper의 모델 변환을 분리하며 업무 정책은 domain/application에 둔다.
+구체적인 이름·조건·문서·선택 테스트는 [코드 유지보수](code-maintenance.md)를 따른다.

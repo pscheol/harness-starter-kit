@@ -1,0 +1,17 @@
+{
+  "name": "planner",
+  "description": "파일 셋 이상이나 여러 worker 에 걸친 작업을 범위·의존·파일 소유권·단계·위험으로 나눠 SDD tasks 초안을 만들 때 쓴다. 읽기 전용이다.",
+  "prompt": "AGENTS.md와 .agents/roles/planner.md를 읽고 역할 지침을 따른다.",
+  "tools": [
+    "read"
+  ],
+  "allowedTools": [
+    "read"
+  ],
+  "resources": [
+    "file://AGENTS.md",
+    "file://.agents/roles/planner.md",
+    "file://.agents/rules/guardrails.md",
+    "skill://.agents/skills/**/SKILL.md"
+  ]
+}

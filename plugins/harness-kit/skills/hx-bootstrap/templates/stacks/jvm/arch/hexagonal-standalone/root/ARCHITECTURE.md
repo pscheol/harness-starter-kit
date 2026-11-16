@@ -312,3 +312,14 @@ REFACTOR 중복 제거·의도 드러내기
 2. 남은 리포의 `settings.gradle.kts`에서 `context("<ctx>")` 한 줄을 지운다.
 3. `contract` 모듈로 통합했다면 그 부분만 HTTP/이벤트로 바꾼다.
 4. 새 리포에 `hx-bootstrap`을 `ARCH=hexagonal`(컨텍스트 1개)로 설치한다.
+
+## 구성도
+
+> 설치 직후 그림이다. 실제 모듈·저장소·외부 연동으로 고친다(하네스 검사기는 Mermaid 그림이 있는지 본다).
+
+```mermaid
+flowchart LR
+  client["클라이언트"] -->|"HTTP"| service["{{SERVICE_NAME}}"]
+  service --> store[("저장소")]
+  service -.-> external["외부 연동"]
+```

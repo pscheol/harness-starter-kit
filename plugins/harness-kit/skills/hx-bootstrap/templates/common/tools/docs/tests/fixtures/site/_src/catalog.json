@@ -1,0 +1,31 @@
+{
+ "areas": [
+  {
+   "id": "NOTE",
+   "name": "노트",
+   "order": 1,
+   "summary": "노트"
+  }
+ ],
+ "features": [
+  {
+   "id": "F-NOTE-01",
+   "name": "노트",
+   "area": "NOTE",
+   "summary": "노트 만들기·읽기·지우기",
+   "match": {
+    "demo-server": {
+     "packages": [
+      "im.demo.note.**"
+     ]
+    },
+    "caches": [
+     "demo-server:note-list"
+    ],
+    "tables": [
+     "note.nte_audit"
+    ]
+   }
+  }
+ ]
+}

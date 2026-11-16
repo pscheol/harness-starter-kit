@@ -1,0 +1,6 @@
+{"openapi": "3.1.0", "info": {"title": "Demo", "version": "v1"}, "paths": {
+ "/api/v1/notes": {"get": {"operationId": "list", "summary": "노트 목록", "tags": ["note"], "responses": {"200": {"description": "OK"}}},
+                   "post": {"operationId": "create", "summary": "노트 만들기", "tags": ["note"], "responses": {"200": {"description": "OK"}}}},
+ "/api/v1/notes/{noteId}": {"get": {"operationId": "getNote", "summary": "노트 하나", "tags": ["note"], "responses": {"200": {"description": "OK"}}}},
+ "/api/v1/notes/{id}": {"delete": {"operationId": "delete", "summary": "노트 지우기", "tags": ["note"], "responses": {"200": {"description": "OK"}}}}
+}}

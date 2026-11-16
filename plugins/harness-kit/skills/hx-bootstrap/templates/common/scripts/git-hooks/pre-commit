@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# 커밋 전에 사용자 전역 pre-commit 을 먼저 부르고, 색인에 올린 파일의 검증을 부른다.
+# 연결은 하네스 루트에서 `bash scripts/install-git-hooks.sh` — 리포 로컬 core.hooksPath 를 이 폴더로 건다.
+set -uo pipefail
+HOOKS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HARNESS_ROOT="$(cd "$HOOKS_DIR/../.." && pwd)"
+. "$HOOKS_DIR/global-hook.sh"
+
+if global="$(global_hook pre-commit)"; then
+  echo "▶ 전역 pre-commit — $global"
+  "$global" "$@" || exit $?
+fi
+
+level="${HARNESS_VERIFY_LEVEL:-changed}"
+case "$level" in changed|fast|full) ;; *) echo "알 수 없는 검증 레벨: $level" >&2; exit 2 ;; esac
+files=()
+if [ "$level" = changed ] && [ -f "$HARNESS_ROOT/scripts/verify-changed.py" ]; then
+  selected="$(mktemp "${TMPDIR:-/tmp}/pre-commit-paths.XXXXXX")" || exit 1
+  trap 'rm -f "$selected"' EXIT
+  git diff --cached --name-only -z >"$selected" || exit $?
+  while IFS= read -r -d '' path; do files+=("$path"); done <"$selected"
+fi
+# git 이 hook 에 넘긴 GIT_DIR · GIT_INDEX_FILE 이 남으면 게이트 안의 테스트가 임시 리포에서 부르는 git 이 이 리포 색인에 쓴다.
+unset $(git rev-parse --local-env-vars)
+if [ "$level" = changed ] && [ -f "$HARNESS_ROOT/scripts/verify-changed.py" ]; then
+  if [ "${#files[@]}" -eq 0 ]; then
+    echo "검증 생략: 색인에 올린 변경 파일이 없다. full 통과를 뜻하지 않는다."
+    exit 0
+  fi
+  echo "▶ 리포 게이트(changed — 색인 파일) — $HARNESS_ROOT"
+  python3 "$HARNESS_ROOT/scripts/verify-changed.py" --files "${files[@]}" </dev/null
+else
+  [ "$level" = changed ] && level=fast
+  echo "▶ 리포 게이트($level) — $HARNESS_ROOT"
+  HARNESS_VERIFY_LEVEL="$level" bash "$HARNESS_ROOT/scripts/verify.sh" </dev/null
+fi

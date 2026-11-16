@@ -7,7 +7,12 @@ Claude Code, Codex, Kiro, Cursor 네 하네스에서 같은 규칙과 같은 슬
 리포에 그 골격을 한 번에 깔아주는 `hx-bootstrap` 스킬을 배포한다.
 
 설치하면 진입점 역할을 하는 `AGENTS.md` 목차, `.agents/rules`의 공통 규칙, SDD 기록 시스템,
-`scripts/verify.sh` 검증 게이트, 그리고 네 하네스에서 이름이 같은 SDD 슬래시 커맨드 9종이 생긴다.
+`scripts/verify.sh` 검증 게이트, 네 하네스에서 이름이 같은 슬래시 커맨드 11종, 그리고 기능 문서 생성기(`tools/docs`)가 생긴다.
+
+1.0.8부터 SDD는 SDLC 단계(S1 분석 → S2 기획 → S3 설계 → S4 계획 → S5 구현 → S6 테스트 → S7 문서 반영 → S8 완료)를 따른다.
+이슈마다 `.agents/docs/<slug>-specs/issues/<key>/`에 requirements·design·tasks를 두고, 구현이 끝나면 `/hx-docs`가
+기능 문서(`docs/features/`)를 갱신한다. 기능 문서는 요구사항·정책·화면·시스템 설계·흐름·시퀀스·DB·캐시·API·시험·목업
+12단계 페이지와 기능별 페이지로 된 정적 사이트이고, API 명세는 Scalar로 보여 준다. → [기능 문서](#기능-문서--toolsdocs)
 
 ## 구조
 
@@ -113,7 +118,7 @@ bash ~/.kiro/skills/hx-bootstrap/setup.sh --agents=kiro --dry-run <대상_리포
 
 ```json
 {
-  "kitVersion": "1.0.7",
+  "kitVersion": "1.0.8",
   "kitPath": "/path/to/harness-starter-kit",
   "agent": "kiro",
   "installedAt": "2026-01-01",
@@ -143,7 +148,7 @@ Claude Code는 `/plugin`, Codex는 `codex plugin list`, Kiro는 `~/.kiro/skills/
 | 층 | 스킬 | 사는 곳 | 언제 쓰나 |
 |---|---|---|---|
 | 킷 스킬 (10종) | `hx-bootstrap` · `hx-jvm-setup` · `hx-jvm-hexagonal` · `hx-jvm-layered` · `hx-jvm-layered-multimodule` · `hx-web-setup` · `hx-electron-setup` · `hx-jira-setup` · `hx-agent-add` · `hx-update` | 플러그인 — `harness-kit:` 네임스페이스가 붙는다 (Kiro는 `install-kiro.sh` 가 깐 `~/.kiro/skills/hx-*`) | 리포에 골격을 깔거나 유지할 때 |
-| 프로젝트 스킬 (9종) | `hx-specify` · `hx-clarify` · `hx-checklist` · `hx-plan` · `hx-tasks` · `hx-analyze` · `hx-implement` · `hx-converge` · `hx-harness` | 대상 리포 — `hx-bootstrap` 이 설치해준다 | 깔린 리포에서 개발할 때, 매일 |
+| 프로젝트 스킬 (11종) | `hx-specify` · `hx-clarify` · `hx-checklist` · `hx-plan` · `hx-tasks` · `hx-analyze` · `hx-implement` · `hx-docs` · `hx-converge` · `hx-harness` · `hx-maintain` | 대상 리포 — `hx-bootstrap` 이 설치해준다 | 깔린 리포에서 개발할 때, 매일 |
 
 플러그인 스킬은 `harness-kit:` 네임스페이스를 갖기 때문에 프로젝트 스킬과 **구조적으로 충돌하지 않는다**.
 두 층의 이름도 겹치는 것이 하나도 없어서 짧은 형태(`/hx-jvm-setup`)로도 안전하게 부를 수 있다.
@@ -151,7 +156,7 @@ Claude Code는 `/plugin`, Codex는 `codex plugin list`, Kiro는 `~/.kiro/skills/
 ### 킷 스킬 — `hx-bootstrap`
 
 대상 리포에 `AGENTS.md`, `.agents/rules`, SDD 기록 시스템, `scripts/verify.sh`,
-`hx-*` 커맨드 9종을 한 번에 깐다.
+`hx-*` 커맨드 11종, 기능 문서 생성기(`tools/docs`)와 원고 골격(`docs/features/_src`)을 한 번에 깐다.
 
 Claude Code에서는 스킬을 슬래시로 바로 부른다. 짧은 형태는 같은 이름의 다른 커맨드가 없을 때 동작한다.
 
@@ -180,7 +185,7 @@ hx-bootstrap 스킬로 이 리포에 하네스 골격을 세팅해줘
 | 첫 위치 인자 | 대상 프로젝트 경로 | 현재 작업 디렉터리 |
 | `--stack=` | `jvm` · `python` · `go` · `web` · `electron` | 빌드 파일로 판단(`build.gradle.kts`/`pom.xml`→jvm, `pyproject.toml`→python, `go.mod`→go, `package.json`+`electron` 의존→electron, `package.json`만→web) |
 | `--arch=` | 스택별 아키텍처 변형(jvm 8 · python 5 · go 4 · web 3 · electron 3) | 기존 레이아웃에서 추론, 새 리포면 선택 기준을 제시하고 고르게 한다 |
-| `--modules=` | 선택 모듈 `jira-workflow`(이슈 트래커 연동) · `platform-guards`(고유 불변식 가드) | **없음**. 필요할 때만 켠다 — 목록은 `--list-modules` |
+| `--modules=` | 선택 모듈 `jira-workflow`(이슈 트래커 연동) · `platform-guards`(고유 불변식 가드) · `multi-harness`(여러 리포·단위 하네스의 공통 파일 배포와 게이트) | **없음**. 필요할 때만 켠다 — 목록은 `--list-modules` |
 | `--dry-run` | 설치 없이 파일 목록만 | 실제 설치 |
 
 기존 파일은 덮지 않는다(`↷ skip (존재)`). 덮으려면 `--force`를 명시해야 한다.
@@ -196,11 +201,13 @@ bash "$SKILL_DIR/setup.sh" --dry-run --stack=python --arch=modular /path/to/proj
 
 | 스택군 | core | claude | codex | cursor | kiro | 전부 고를 때 |
 |---|---|---|---|---|---|---|
-| `jvm` · `python` · `go` | 42 | 14 | 14 | 9 | 34 | 113 |
-| `web` · `electron` | 46 | 14 | 14 | 9 | 38 | 121 |
+| `jvm` · `python` · `go` | 187 | 19 | 8 | 11 | 52 | 277 |
+| `web` · `electron` | 191 | 19 | 8 | 11 | 56 | 285 |
 
 프론트엔드가 4개씩 많은 건 `web`·`electron` 이 공유하는 `frontend` 도메인 규칙(디자인 시스템·접근성·
-UI 상태·성능) 때문이다. 선택 모듈(`jira-workflow` 15 · `platform-guards` 4)은 여기에 더해진다.
+UI 상태·성능) 때문이다. 선택 모듈(`jira-workflow` 15 · `platform-guards` 4 · `multi-harness` 8)은 여기에 더해진다.
+core 에는 규칙·SDD 템플릿·검증 스크립트·세션 협업 도구·역할 정의와 기능 문서 생성기가 들어 있다.
+설치 끝에 `tools/docs/feature_docs.py build`가 한 번 돌아 `docs/features/*.html`이 생긴다(위 수에 없다).
 
 ```bash
 bash "$SKILL_DIR/setup.sh" --stack=python --arch=modular --list-agents /path/to/project
@@ -218,15 +225,29 @@ JVM이면 [JVM 실전 레시피](docs/guides/03-jvm-architecture-recipes.md)를 
 [스킬 README](plugins/harness-kit/skills/hx-bootstrap/README.md)와
 [manifest.md](plugins/harness-kit/skills/hx-bootstrap/manifest.md)에 정리해 두었다.
 
-### 프로젝트 스킬 — `hx-*` 9종
+### 프로젝트 스킬 — `hx-*` 11종
 
-bootstrap이 끝나면 SDD 워크플로 9종이 `hx-` 접두사로 깔린다. 네 하네스에서 이름이 같다.
+bootstrap이 끝나면 커맨드 11종이 `hx-` 접두사로 깔린다. 네 하네스에서 이름이 같다.
 
 ```
-/hx-specify → (/hx-clarify · /hx-checklist) → /hx-plan → /hx-tasks → (/hx-analyze) → /hx-implement → (/hx-converge)
+S1·S2 /hx-specify → (/hx-clarify · /hx-checklist) → S3 /hx-plan → S4 /hx-tasks → (/hx-analyze)
+      → S5·S6 /hx-implement → S7 /hx-docs → S8 완료(사용자 승인) → (/hx-converge)
 ```
 
-괄호 안은 선택 단계다. 이와 별개로 `/hx-harness`가 작업 시작 시 규칙 전체를 로드한다.
+괄호 안은 선택 단계다. 이와 별개로 `/hx-harness`가 작업 시작 시 규칙 전체를 로드하고,
+`/hx-maintain`이 새 코드·리팩터링·리뷰에 코드 유지보수 기준(`.agents/rules/code-maintenance.md`)을 적용한다.
+
+| 단계 | 커맨드 | 남는 것 |
+|---|---|---|
+| S1 분석 | `/hx-specify` | requirements — User Story(P1/P2/P3) · 요구(R#.#) · Success Criteria |
+| S2 기획 | `/hx-specify` | requirements — 정책 표(P-#) · 화면 표(없으면 "화면 없음") · 갱신할 기능 문서 ID |
+| S3 설계 | `/hx-plan` | design — 시퀀스 · 순서도(§4.3) · 상태 전이(§4.4) · API · 테이블 · 쿼리→인덱스(§7.1) · 캐시 키(§7.2) · 동시성(§7.3) |
+| S4 계획 | `/hx-tasks` | `tasks/active.md` — Polish 에 문서 반영 작업과 문서 검사 명령 |
+| S5 구현 · S6 테스트 | `/hx-implement` | 코드 · 시험 · `[VERIFICATION]` 기록 |
+| S7 문서 반영 | `/hx-docs` | `docs/features/_src` 원고 · 생성 HTML · `feature_docs.py check` 통과 |
+| S8 완료 | 사용자 승인 | `tasks/check.md` → 승인 뒤 `tasks/completed.md` |
+
+단계마다 사용자 승인을 받고 넘어간다. 원본은 `.agents/rules/sdd-workflow.md`의 「SDLC 단계」 절이다.
 
 | 하네스 | 설치 경로 | 호출 |
 |---|---|---|
@@ -236,7 +257,8 @@ bootstrap이 끝나면 SDD 워크플로 9종이 `hx-` 접두사로 깔린다. �
 | Kiro (CLI) | `.kiro/skills/hx-*/SKILL.md` | `/hx-specify` |
 | Codex | `.agents/skills/hx-*/SKILL.md` | `$hx-specify` (목록은 `/skills`) |
 
-본문은 `.agents/rules/sdd-workflow.md` 한 곳에만 있고, 각 하네스 파일은 그 절을 가리키는 얇은 트리거다.
+커맨드 본문은 `.agents/skills/hx-*/SKILL.md` 한 곳에 있고(스킬이 `.agents/rules/sdd-workflow.md`의 해당 절을 읽는다),
+나머지 하네스 파일은 그 스킬을 가리키는 한 줄 포인터다.
 `hx-` 접두사를 붙인 건 `/plan`이나 `/analyze` 같은 흔한 이름이 다른 플러그인과 부딪히는 걸 막기 위해서다.
 
 > Codex 경로에 주의한다. 프로젝트 로컬 `.codex/prompts/`는 탐색 경로가 아니다(유저 홈 전용이고
@@ -258,14 +280,16 @@ bootstrap이 끝나면 SDD 워크플로 9종이 `hx-` 접두사로 깔린다. �
 | `hx-agent-add` | 설치 | 에이전트 배선을 나중에 추가(cursor·kiro…) | O | 해당 에이전트 파일만 |
 | `hx-update` | 유지 | 킷 새 버전을 기존 리포에 반영 | O | 변경분 · 충돌은 `.new` |
 | [`/hx-harness`](#hx-harness--하네스-컨텍스트-로드) | 상시 | 규칙·가드레일 컨텍스트 로드 | X | — |
-| [`/hx-specify`](#hx-specify--sdd-1단계-요구사항) | SDD 1 | 무엇을/왜 → requirements | O | `requirements/<feature>.md` |
-| [`/hx-clarify`](#hx-clarify--모호성-해소선택) | SDD 1.5 | 모호성 ≤5문답으로 해소 | O | requirements의 `## Clarifications` |
-| [`/hx-checklist`](#hx-checklist--스펙-품질-게이트선택) | SDD 1.5 | 요구사항 문장 품질 판정 | O | `checklists/<feature>-<도메인>.md` |
-| [`/hx-plan`](#hx-plan--sdd-2단계-설계) | SDD 2 | 어떻게 → design + 헌법 검사 | O | `design/<feature>.md` |
-| [`/hx-tasks`](#hx-tasks--sdd-3단계-작업-분해) | SDD 3 | design → 실행 가능한 작업 목록 | O | `tasks/active/<feature>.md` |
-| [`/hx-analyze`](#hx-analyze--교차-정합성-검사선택) | SDD 3.5 | 세 문서 교차 정합성·커버리지 | X | 읽기 전용 리포트 |
-| [`/hx-implement`](#hx-implement--sdd-4단계-구현) | SDD 4 | Phase 순 구현 + 완료 게이트 | O | 코드 + `tasks/completed/` |
-| [`/hx-converge`](#hx-converge--잔여-작업-회수선택) | SDD 5 | 잔여·후속 작업 회수 | O(append-only) | `## Phase N: Convergence` |
+| [`/hx-maintain`](#hx-maintain--코드-유지보수-기준) | 상시 | 새 코드·리팩터링·리뷰에 유지보수 기준 적용 | O | 코드 · 시험 |
+| [`/hx-specify`](#hx-specify--s1s2-요구사항정책화면) | S1·S2 | 무엇을/왜 + 정책·화면 → requirements | O | `issues/<key>/requirements.md` |
+| [`/hx-clarify`](#hx-clarify--모호성-해소선택) | S2 | 모호성 ≤5문답으로 해소 | O | requirements의 `## Clarifications` |
+| [`/hx-checklist`](#hx-checklist--스펙-품질-게이트선택) | S2 | 요구사항 문장 품질 판정 | O | `issues/<key>/checklists/<도메인>.md` |
+| [`/hx-plan`](#hx-plan--s3-설계) | S3 | 어떻게 → design + 헌법 검사 | O | `issues/<key>/design.md` |
+| [`/hx-tasks`](#hx-tasks--s4-작업-분해) | S4 | design → 실행 가능한 작업 목록 | O | `issues/<key>/tasks/active.md` |
+| [`/hx-analyze`](#hx-analyze--교차-정합성-검사선택) | S4 | 세 문서 교차 정합성·커버리지 | X | 읽기 전용 리포트 |
+| [`/hx-implement`](#hx-implement--s5s6-구현과-시험) | S5·S6 | Phase 순 구현 + 완료 게이트 | O | 코드 + `tasks/check.md` |
+| [`/hx-docs`](#hx-docs--s7-문서-반영) | S7 | 기능 문서 원고 갱신 · 생성 · 검사 | O | `docs/features/_src/features/<ID>.md` · HTML |
+| [`/hx-converge`](#hx-converge--잔여-작업-회수선택) | 회수 | 잔여·후속 작업 회수 | O(append-only) | `## Phase N: Convergence` |
 
 ---
 
@@ -275,7 +299,7 @@ bootstrap이 끝나면 SDD 워크플로 9종이 `hx-` 접두사로 깔린다. �
 
 깔리는 것은 진입점 목차(`AGENTS.md`/`CLAUDE.md`), 네 하네스가 공유하는 공통 규칙(`.agents/rules`),
 Kiro용 얇은 포인터(`.kiro/steering`), SDD 기록 시스템(`.agents/docs`), 검증 게이트(`scripts/verify.sh`),
-그리고 네 하네스 분의 `hx-*` 커맨드 9종이다.
+네 하네스 분의 `hx-*` 커맨드 11종, 그리고 기능 문서 생성기와 원고 골격이다.
 
 설치가 끝나면 스택×변형별 후속 작업이 출력된다. 그다음 `/hx-harness`로 컨텍스트를 로드하고
 `/hx-specify`부터 시작하면 된다.
@@ -339,24 +363,34 @@ Electron 은 아키텍처가 폴더가 아니라 **권한 경계**에서 시작�
 `.agents/docs/decisions/core-beliefs.md`이고, 필요하면 `.kiro/steering/*`까지 본다.
 
 이때 주입되는 가드레일은 이렇다. 확인하지 않은 것을 단정하지 않기, 입력은 경계에서 검증하기,
-권한과 데이터 격리는 저장소 레벨이 최종 방어선이라는 것, Secret 평문 금지, 복잡한 작업은
-`tasks/active/`에 계획을 남기기, 변경은 `scripts/verify.sh`로 검증하기.
+권한과 데이터 격리는 애플리케이션과 저장소 양쪽에서 강제하기, Secret 평문 금지, 복잡한 작업은
+이슈 폴더의 `tasks/active.md`에 계획을 남기기, 변경은 `scripts/verify.sh`(기본 changed)로 검증하기.
+동시에 여러 세션이 일하면 `scripts/session-coordination.py`로 파일 점유를 등록하고 공지를 확인한다.
+
+### `/hx-maintain` — 코드 유지보수 기준
+
+새 코드·버그 수정·동작 보존 리팩터링·리뷰에 `.agents/rules/code-maintenance.md`를 적용한다.
+패키지 책임, 읽히는 이름, 의미 있는 조건 함수(predicate), adapter/mapper 분리, 함수 50줄 상한,
+OpenAPI 문서와 계약 테스트를 함께 본다. 신규·버그는 실패하는 시험부터, 리팩터링은 현재 동작을 잡는 시험부터 쓴다.
+`python3 scripts/check-maintenance.py --files <파일>`이 후보를 경고로 알려 준다(실패 판정이 아니다).
 
 `/hx-harness <실제 요청>` 형태로 부르면 규칙을 읽은 뒤 이어서 그 요청을 수행한다.
 
-### `/hx-specify` — SDD 1단계: 요구사항
+### `/hx-specify` — S1·S2: 요구사항·정책·화면
 
-무엇을, 왜 만드는지만 적는 단계다. 스택이나 API, 코드 이야기는 여기 쓰지 않는다.
+무엇을, 왜 만드는지와 지켜야 할 정책·화면을 적는 단계다. 스택이나 API, 코드 이야기는 여기 쓰지 않는다.
 
 제품 slug와 기능 short-name을 정하고 `scripts/new-feature.sh <slug> <feature>`를 돌리면
-**requirements 하나만** 스캐폴딩되고 제품 `index.md`에 등록된다. 그다음 requirements를 채운다.
+`.agents/docs/<slug>-specs/issues/<N>-<type>-<feature>/requirements.md` **하나만** 스캐폴딩되고
+제품 `index.md`에 등록된다(`--type=feat|fix|refactor|…`, 기본 feat). 그다음 requirements를 채운다.
 
 design·tasks는 이 시점에 만들지 않는다. 각각 `/hx-plan`·`/hx-tasks`가 그때 만든다. 빈 문서를 미리 깔면
 보드(파일 위치로 상태를 계산한다)가 곧장 🔨 구현으로 뛰고 단계 게이트도 항상 통과해버리기 때문이다.
-설계가 이미 확정된 소규모 작업만 `--all`로 3종을 함께 만든다.
+세 문서를 한 번에 만드는 `--all`은 승인 게이트를 건너뛰므로 지원하지 않는다. requirements·design은 상태가 정확히 `approved`여야 다음 문서를 만든다.
 
 채울 내용은 우선순위가 붙은 User Story(P1/P2/P3, 각각 독립적으로 테스트 가능해야 한다),
-측정 가능하고 기술 중립적인 Success Criteria, 그리고 `[NEEDS CLARIFICATION]` 최대 3개다.
+측정 가능하고 기술 중립적인 Success Criteria, `[NEEDS CLARIFICATION]` 최대 3개,
+그리고 S2 기획인 정책 표(P-#: 규칙·근거·위반 시 동작)와 화면 표(화면이 없으면 "화면 없음"), 갱신할 기능 문서 ID다.
 
 품질 자체검증을 최대 3회 돌린 뒤 상태를 `in-review`로 바꾸고 사용자 승인을 받는다.
 그다음은 `/hx-clarify` 또는 `/hx-plan`이다.
@@ -376,7 +410,7 @@ requirements에 남은 모호함을 질문으로 걷어낸다. `/hx-plan` 전에
 요구사항의 유닛테스트에 해당한다. 기능이 아니라 스펙 문장 자체의 품질을 본다. 읽기 전용이라
 스펙을 고치지 않는다.
 
-`.agents/docs/_spec-templates/checklists/_template.md`를 제품 폴더의 `checklists/<feature>-<도메인>.md`로
+`.agents/docs/_spec-templates/checklists/_template.md`를 이슈 폴더의 `checklists/<도메인>.md`로
 복제한 뒤, 완결성·명료성·일관성·측정가능성·커버리지 5축을 `CHK-###`로 PASS/FAIL/N·A 판정한다.
 근거는 스펙에서 인용하고, 확인할 수 없으면 `[NEEDS CLARIFICATION]`으로 둔다.
 도메인 초점(security·api·data·ux)을 주면 해당 항목이 추가된다.
@@ -386,7 +420,7 @@ requirements에 남은 모호함을 질문으로 걷어낸다. `/hx-plan` 전에
 
 한 문서의 품질을 보는 게 `/hx-checklist`, 세 문서 사이의 정합성을 보는 게 `/hx-analyze`다.
 
-### `/hx-plan` — SDD 2단계: 설계
+### `/hx-plan` — S3: 설계
 
 requirements가 승인되어야 시작할 수 있다(`scripts/check-sdd-prerequisites.sh <slug> <feature> --stage design`).
 
@@ -400,23 +434,25 @@ design의 Complexity/대안 섹션에 정당화를 적어야만 진행할 수 �
 
 채울 내용은 아키텍처와 시퀀스, 인터페이스 시그니처, API(envelope·error code), 데이터 모델,
 오류/보안/관측성, 테스트 전략과 Quickstart, 정확성 속성(PBT), 요구사항 추적 매트릭스다.
+S3에서는 순서도(§4.3)·상태 전이(§4.4)·쿼리→인덱스 표(§7.1)·캐시 키와 무효화(§7.2)·동시성(잠금·멱등, §7.3)도 채운다.
+이 그림과 표가 S7에서 기능 문서로 옮겨진다.
 
 `NEEDS CLARIFICATION`이 남아 있으면 중단하고 `/hx-clarify`로 간다.
 사용자 승인을 받으면 `/hx-tasks`로 넘어간다.
 
-### `/hx-tasks` — SDD 3단계: 작업 분해
+### `/hx-tasks` — S4: 작업 분해
 
 design이 승인되어야 시작한다(`--stage tasks`).
 
 tasks 파일도 이 단계에서 만든다 — `scripts/new-feature.sh <slug> <feature> --stage=tasks`.
-design이 없으면 스크립트가 거부한다. 파일이 `tasks/active/`에 놓이는 순간 보드가 🔨 구현으로 넘어간다.
+design이 없으면 스크립트가 거부한다. 이슈 폴더에 `tasks/active.md`가 생기는 순간 보드가 🔨 구현으로 넘어간다.
 
 작업 한 줄은 `- [ ] T001 [P] [US1] 설명 + 파일/모듈 경로` 형태다. `[P]`는 병렬 가능,
 `[US1]`은 User Story 추적용이다.
 
 Phase는 Setup → Foundational(차단 선행) → User Story별(P 순) → Polish 순으로 구성하고,
 각 작업에 요구사항 ID와 설계 § 를 표기한다. 의존 그래프, 병렬 실행 예시, 구현 전략(핵심 우선 /
-점진 인도)도 함께 넣는다. 상태는 `active`다.
+점진 인도)도 함께 넣는다. Polish에는 문서 반영(`/hx-docs`) 작업과 문서 검사 명령을 둔다. 상태는 `active`다.
 
 승인 후 `/hx-analyze`나 `/hx-implement`로 간다.
 
@@ -431,17 +467,25 @@ requirements·design·tasks 세 문서 사이의 정합성을 본다. 읽기 전
 리포트는 `ID·심각도·유형·위치·발견·권고` 표와 커버리지 매트릭스 요약, 심각도별 집계로 낸다.
 보완은 사용자 승인을 받은 뒤 `/hx-specify`·`/hx-clarify`·`/hx-plan`·`/hx-tasks`로 되돌아가 수행한다.
 
-### `/hx-implement` — SDD 4단계: 구현
+### `/hx-implement` — S5·S6: 구현과 시험
 
 tasks가 승인되어야 시작한다(`--stage implement`).
 
 tasks를 Phase 순서대로 실행한다. `[P]`는 병렬로 돌리되 같은 파일을 건드리는 작업은 순차로 한다.
 TDD를 우선하고, 테스트를 요청받았다면 실패를 확인한 뒤 구현한다. 완료한 작업은 `- [X]`로 체크하고
-변경할 때마다 `scripts/verify.sh`를 돌린다.
+변경할 때마다 `scripts/verify.sh --files <변경 파일> --tests <관련 시험>`을 돌린다.
 
-완료 게이트에는 사용자 승인이 필수다. DoD와 verify를 충족하면 task 파일을 `tasks/check/`로 옮기고
-상태를 `check`로 바꾼 뒤 근거를 기록하고 사용자에게 검증을 요청한다. 승인을 받은 뒤에만
-`tasks/completed/`로 옮기고 상태를 `completed`로 바꾼다. 에이전트가 임의로 completed로 바꾸는 건 금지다.
+완료 게이트에는 사용자 승인이 필수다. DoD와 verify를 충족하고 S7(`/hx-docs`)까지 마치면
+`tasks/active.md`를 `tasks/check.md`로 옮기고 상태를 `check`로 바꾼 뒤 근거를 기록하고 사용자에게 검증을 요청한다.
+승인을 받은 뒤에만 `tasks/completed.md`로 옮기고 상태를 `completed`로 바꾼다. 에이전트가 임의로 completed로 바꾸는 건 금지다.
+
+### `/hx-docs` — S7: 문서 반영
+
+이번 이슈가 바꾼 기능의 문서를 고친다. requirements의 「기능 문서」 칸과 변경 파일로 범위를 정하고,
+OpenAPI·마이그레이션이 바뀌었으면 `refresh openapi`·`refresh schema`로 원본을 갱신한다.
+새 operation·테이블·캐시·화면은 `catalog.json`의 기능에 배정한다(`stats`의 미배정·중복이 0이어야 한다).
+`python3 tools/docs/feature_docs.py brief <기능 ID>`가 그 기능에 닿는 코드 사실을 모아 주고,
+그것을 출발점으로 원고 절 12개를 고친 뒤 `build`와 `check`를 통과시킨다. 생성 HTML은 손으로 고치지 않는다.
 
 ### `/hx-converge` — 잔여 작업 회수(선택)
 
@@ -452,15 +496,42 @@ TDD를 우선하고, 테스트를 요청받았다면 실패를 확인한 뒤 구
 그리고 `scripts/check-spec-freshness.sh` 리포트(오래된 draft, 미해결 `[NEEDS CLARIFICATION]`,
 정체된 active tasks)를 쓴다.
 
-`tasks/active/<feature>.md` 끝에 `## Phase N: Convergence`를 추가하고 T 순번을 이어 붙인다.
+이슈의 `tasks/active.md` 끝에 `## Phase N: Convergence`를 추가하고 T 순번을 이어 붙인다.
 각 작업에는 어디서 회수했는지(analyze ID, 이슈, 마커 위치)를 근거로 표기한다.
-이미 `completed/`로 옮긴 기능이면 파일을 `active/`로 되돌린다. 완료 이력은 커밋에 남으니 괜찮다.
+이미 `tasks/completed.md`로 옮긴 이슈면 같은 이슈의 `tasks/active.md`로 되돌린다. 완료 이력은 커밋에 남으니 괜찮다.
 
 스펙 자체에 결함이 있다면 회수가 아니라 되돌림이다. 요구가 빠졌으면 `/hx-specify`,
 모호하면 `/hx-clarify`, 설계가 바뀌어야 하면 `/hx-plan`으로 간다.
 `/hx-converge`는 작업 목록을 복구하는 것이지 스펙을 고치는 게 아니다.
 
 승인을 받으면 `/hx-implement`로 회수 Phase를 실행하고 완료 게이트를 다시 탄다.
+
+## 기능 문서 — `tools/docs`
+
+구현한 기능을 개발자가 읽고 코드를 따라갈 수 있게 정리한 정적 사이트를 만든다. 표준 라이브러리만 쓰는 Python 생성기다.
+
+```bash
+python3 tools/docs/feature_docs.py build          # docs/features/*.html 생성
+python3 tools/docs/feature_docs.py check          # 원고 절·작성 전 표시·미배정·원본 변경·생성물 불일치·끊긴 링크 검사
+python3 tools/docs/feature_docs.py stats          # 미배정·중복 operation·테이블·캐시·화면 수
+python3 tools/docs/feature_docs.py brief F-NOTE-01  # 한 기능에 닿는 코드 사실 모음(원고 출발점)
+python3 tools/docs/feature_docs.py refresh vendor   # Scalar·Mermaid 를 잠금 파일 판으로 받아 리포에 둔다
+```
+
+| 사이트 구성 | 내용 |
+|---|---|
+| 단계 페이지 12개 | 요구사항 정의 · 정책 · IA·화면 목록 · 백로그 추적 · 시스템 설계 · 기능 흐름 · 시퀀스 · DB 설계 · 캐시·동시성 · API 명세 · 시험 명세 · 목업 |
+| 기능 페이지 | 기능마다 원고 12절(개요 · 요구사항 · 정책 · 화면 · 흐름 · 시퀀스 · 상태 전이 · 데이터 · 캐시·동시성 · API · 테스트 · 변경 영향) + 코드에서 뽑은 표(operation · 테이블 · 캐시 · 화면 · 시험 · SDD 이슈) |
+| API 명세 | 단위별 Scalar 페이지. 태그는 기능 이름이고, operation 설명 끝에 구현 함수 · 호출 경로 · 닿는 테이블과 인덱스 · 캐시 키 · 잠금 · 멱등 · 시퀀스 그림 · 시험을 덧붙인다 |
+
+생성기가 코드에서 읽는 것은 OpenAPI 스냅숏, 마이그레이션을 빈 PostgreSQL에 적용한 DB 카탈로그(테이블·인덱스·제약),
+Kotlin 정적 분석(컨트롤러 → 서비스 → 리포지터리 → 테이블, 캐시 어노테이션, 잠금, 멱등 키, 예약 작업),
+FastAPI 경로, Next.js 화면과 그 화면이 부르는 API, 시험 파일 수(JUnit · Kotest · pytest · vitest · flutter), SDD 이슈다.
+설정은 `docs/features/_src/docs.config.json`(단위·원본 경로·DB)과 `catalog.json`(영역·기능·배정 규칙)이다.
+외부 CDN을 부르지 않는다 — Scalar와 Mermaid는 `refresh vendor`가 integrity를 확인해 `docs/features/assets/vendor/`에 둔다.
+
+`.agents/verify-checks.json`이 문서·생성기·소스 경로 변경에 문서 검사를 묶어 두어, changed 게이트가 그 경로를 바꾼 커밋에서 `check`를 함께 고른다.
+명령과 배정 규칙은 설치본의 `tools/docs/README.md`에 있다.
 
 ## 개발
 
@@ -471,13 +542,21 @@ codex plugin marketplace upgrade                 # Codex
 /plugin marketplace update harness-starter-kit   # Claude Code
 ```
 
-슬래시 커맨드를 고칠 때는 원본 한 곳만 고치고 파생 트리를 다시 만든다.
-파생 파일을 직접 고치면 하네스 사이에 내용이 어긋난다.
+슬래시 커맨드를 고칠 때는 원본 한 곳만 고치고 포인터를 다시 만든다.
+포인터를 직접 고치면 하네스 사이에 설명이 어긋난다.
 
 ```bash
-# 1) templates/common/claude/commands/hx-*.md 를 고친다 (원본)
-# 2) 나머지 3하네스(Cursor · Kiro · Codex) 트리를 다시 만든다
+# 1) templates/common/agents-skills/hx-*/SKILL.md 를 고친다 (원본 — 설치 위치 .agents/skills, Codex 가 직접 읽는다)
+# 2) Claude · Cursor · Kiro(IDE·CLI) 포인터를 다시 만든다
 bash plugins/harness-kit/skills/hx-bootstrap/tools/sync-commands.sh
+bash plugins/harness-kit/skills/hx-bootstrap/tools/sync-commands.sh --check   # 어긋나면 1
+```
+
+킷 시험은 빈 임시 폴더에 스택마다 설치해 보고, 설치본 안에서 하네스 검사기 · 기능 문서 build/check ·
+하네스 스크립트 시험을 돌린다. 네트워크는 쓰지 않는다(수 분 걸린다).
+
+```bash
+python3 -m unittest discover -s tests -p "test_*.py"
 ```
 
 스킬 폴더명은 `SKILL.md` frontmatter의 `name`과 반드시 같아야 한다(`hx-bootstrap`).

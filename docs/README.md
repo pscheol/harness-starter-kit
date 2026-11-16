@@ -23,7 +23,7 @@
 | 문서 | 한 줄 |
 |---|---|
 | [README.md](analysis/README.md) | 5종 색인 + 한 장 요약 |
-| [01-overview.md](analysis/01-overview.md) | 킷이 무엇을 푸는가 · 4대 축 · 파일 지도 |
+| [01-overview.md](analysis/01-overview.md) | 킷이 무엇을 푸는가 · 다섯 축 · 파일 지도 |
 | [02-architecture.md](analysis/02-architecture.md) | 설치 매핑(3루트 · 7세그먼트) · 변형과 계층 모델 · 규칙 원본 12종 · 치환 토큰 |
 | [03-sdd-workflow.md](analysis/03-sdd-workflow.md) | SDD 9단계의 산출·게이트·되돌림 규칙 |
 | [04-enforcement.md](analysis/04-enforcement.md) | 강제 수단(1곳 + N트리거) · 검증 레벨 · 완료 게이트 |

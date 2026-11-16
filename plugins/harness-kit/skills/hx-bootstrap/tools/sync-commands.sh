@@ -1,57 +1,73 @@
 #!/usr/bin/env bash
-# 킷 개발용 도구 — 대상 프로젝트에 설치되지 않는다(templates/ 밖).
+# ─────────────────────────────────────────────────────────────────────────────
+# 킷 개발용 — 스킬 원본에서 에이전트별 포인터를 만든다. 대상 리포에 설치되지 않는다.
 #
-# 슬래시 커맨드 원본은 templates/common/claude/commands/hx-*.md 9종이다.
-# 이 스크립트가 거기서 나머지 3개 하네스 트리를 파생시킨다:
+# 원본: templates/common/agents-skills/hx-*/SKILL.md (설치 위치 .agents/skills — core)
+# 만드는 것(원본 description 을 그대로 쓰는 한 줄 포인터):
+#   templates/common/claude/commands/hx-*.md
+#   templates/common/cursor/commands/hx-*.md
+#   templates/common/kiro-skills/hx-*/SKILL.md
+#   templates/common/kiro-steering/hx-*.md
 #
-#   .cursor/commands/hx-*.md         Cursor 프로젝트 커맨드 (frontmatter 없이 본문 전체가 프롬프트)
-#   .kiro/steering/hx-*.md           Kiro IDE  (inclusion: manual → 슬래시 메뉴 노출)
-#   .kiro/skills/hx-*/SKILL.md       Kiro CLI  (스킬명이 곧 슬래시 커맨드)
-#   .agents/skills/hx-*/SKILL.md     Codex     ($hx-specify 로 멘션 · /skills 로 목록)
-#
-# 커맨드 본문을 고쳤으면 claude/commands/ 만 고치고 이 스크립트를 다시 돌린다.
-# Codex 는 프로젝트 로컬 .codex/prompts/ 를 탐색하지 않으므로(유저 홈 전용 + deprecated)
-# .agents/skills/ 를 쓴다.
+#   bash tools/sync-commands.sh          # 쓴다
+#   bash tools/sync-commands.sh --check  # 쓰지 않고 다르면 1
+# ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
+cd "$(dirname "${BASH_SOURCE[0]}")/../templates/common"
 
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-COMMON="${1:-$SCRIPT_DIR/../templates/common}"
-SRC="$COMMON/claude/commands"
+CHECK=0
+[ "${1:-}" = --check ] && CHECK=1
+differ=0
 
-[ -d "$SRC" ] || { echo "✗ 원본 없음: $SRC" >&2; exit 2; }
-
-CURSOR="$COMMON/cursor/commands"
-KIRO_ST="$COMMON/kiro-steering"
-KIRO_SK="$COMMON/kiro-skills"
-CODEX_SK="$COMMON/agents-skills"
-mkdir -p "$CURSOR" "$KIRO_SK" "$CODEX_SK"
-
-# frontmatter 2행의 description 값
-desc_of() { sed -n '2s/^description: //p' "$1"; }
-
-# frontmatter(--- ~ ---)를 걷어낸 본문.
-# $ARGUMENTS 는 Claude 전용 치환이라, 인자를 지원하지 않는 하네스용 문구로 바꾼다.
-body_of() {
-  awk 'BEGIN{n=0} /^---$/{n++; next} n>=2' "$1" \
-    | sed 's/\$ARGUMENTS/이 명령 뒤에 이어서 적은 내용/g' \
-    | sed '/./,$!d'
+emit() {
+  local path="$1" content="$2"
+  if [ "$CHECK" = 1 ]; then
+    if [ ! -f "$path" ] || [ "$(cat "$path")" != "$content" ]; then
+      echo "✖ 다름: $path"
+      differ=1
+    fi
+    return 0
+  fi
+  mkdir -p "$(dirname "$path")"
+  printf '%s\n' "$content" > "$path"
 }
 
-n=0
-for f in "$SRC"/hx-*.md; do
-  name="$(basename "$f" .md)"
-  desc="$(desc_of "$f")"
-  body="$(body_of "$f")"
-  [ -n "$desc" ] || { echo "✗ description 없음: $f" >&2; exit 2; }
+for skill in agents-skills/hx-*/SKILL.md; do
+  name="$(basename "$(dirname "$skill")")"
+  description="$(awk -F': ' '/^description:/{sub(/^description: /,""); print; exit}' "$skill")"
+  pointer="\`.agents/skills/$name/SKILL.md\`를 읽고 그대로 수행한다. 규칙 원본은 \`.agents/rules/\`다."
+  emit "claude/commands/$name.md" "---
+description: $description
+---
 
-  { printf '# %s\n\n> %s\n\n' "$name" "$desc"; printf '%s\n' "$body"; } > "$CURSOR/$name.md"
+$pointer
 
-  { printf -- '---\ninclusion: manual\ndescription: %s\n---\n\n' "$desc"; printf '%s\n' "$body"; } > "$KIRO_ST/$name.md"
+입력: \$ARGUMENTS"
+  emit "cursor/commands/$name.md" "---
+description: $description
+---
 
-  mkdir -p "$KIRO_SK/$name" "$CODEX_SK/$name"
-  { printf -- '---\nname: %s\ndescription: %s\n---\n\n' "$name" "$desc"; printf '%s\n' "$body"; } > "$KIRO_SK/$name/SKILL.md"
-  { printf -- '---\nname: %s\ndescription: %s\n---\n\n' "$name" "$desc"; printf '%s\n' "$body"; } > "$CODEX_SK/$name/SKILL.md"
-  n=$((n+1))
+$pointer
+
+입력: \$ARGUMENTS"
+  emit "kiro-skills/$name/SKILL.md" "---
+name: $name
+description: $description
+---
+
+$pointer
+
+입력: \$ARGUMENTS"
+  emit "kiro-steering/$name.md" "---
+inclusion: manual
+description: $description
+---
+
+$pointer"
 done
 
-echo "✔ 원본 ${n}종 → 파생 $((n*4))개 (cursor · kiro-steering · kiro-skills · agents-skills)"
+if [ "$CHECK" = 1 ]; then
+  [ "$differ" = 0 ] && echo "✔ 스킬 포인터 일치"
+  exit "$differ"
+fi
+echo "✔ 스킬 포인터를 만들었다"

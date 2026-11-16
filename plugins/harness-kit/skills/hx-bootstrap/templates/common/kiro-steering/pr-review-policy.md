@@ -1,7 +1,6 @@
 ---
 inclusion: always
 ---
-<!-- HARNESS TEMPLATE ({{PROJECT_NAME}}) · Kiro 얇은 포인터. 규칙 본문 금지. -->
 # 리뷰 정책 (포인터)
 
 원본: `.agents/rules/pr-review-policy.md` — 코드를 리뷰하거나 리뷰 지적을 받을 때 연다.

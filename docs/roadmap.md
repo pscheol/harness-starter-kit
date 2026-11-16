@@ -587,6 +587,27 @@ optional/<MODULE>/             고른 팀만 (기본 none)
 
 ---
 
+## Phase 16 — SDLC 단계형 SDD · 기능 문서 · Knots 하네스 흡수 ✅ (v1.0.8)
+
+Knots 프로젝트에서 키운 하네스·SDD 구조를 공통 템플릿으로 옮겼다.
+옮기는 일은 Knots 리포의 `tools/harness/kit_export/export.py --kit <킷 경로>`가 한다(이식 → 일반화 덧씌움 → 포인터 생성). 다시 돌려도 이 판과 차이가 없다(2026-11-10 확인).
+
+| 묶음 | 내용 |
+|---|---|
+| SDLC 단계 | `sdd-workflow.md` 「SDLC 단계」 S1 분석 → S2 기획(정책·화면) → S3 설계 → S4 계획 → S5 구현 → S6 테스트 → S7 문서 반영 → S8 완료. 템플릿 셋에 정책·화면·순서도·상태·쿼리→인덱스·캐시·동시성 절 |
+| 이슈 폴더 SDD | `issues/<key>/{requirements,design,tasks/active}.md` · `scripts/sdd-layout.py` · 보드 |
+| 기능 문서 | `tools/docs/feature_docs.py`(build·check·check --assets·brief·refresh openapi·schema·vendor) · `docs/features/` · Scalar API 명세(Mermaid 그림) · 스킬 `/hx-docs`. `check` 는 생성기가 읽는 파일 전부를 changed 문서 규칙이 덮는지 스스로 대조한다 |
+| 변경 범위 검증 | `scripts/verify-entry.sh` + `verify-changed.py` — 기본 changed, `--fast`·`--full`. 경로 검사 `.agents/verify-checks.json`(`covers` 로 생성물·외부 라이브러리·fixture 를 검사가 책임), 언어 묶음별 계획, git 에서 지운 시험은 권고 |
+| 세션 조율 | `scripts/session-coordination.py`(점유·공지·수신 확인) · `session-collaboration.md` |
+| 하네스 검사기 | `scripts/check_harness.py` — 설치한 에이전트(`.agents/harness.json` `agents`)만 필수로 본다. 빈 목록·모르는 이름은 오류 |
+| 공용 hook | `scripts/hooks/*` 한 벌을 Claude·Codex·Kiro 가 함께 쓴다(옛 `.claude/hooks`·`.codex/hooks` 는 orphan) |
+| 역할 | `.agents/roles` 5종 + Claude·Codex·Kiro 배선 |
+| 선택 모듈 | `multi-harness` — 메인 → 도메인 → 단위 등록표·배포·드리프트(`tools/harness`) |
+| 스킬 원본 | `.agents/skills/hx-*`(core). `tools/sync-commands.sh` 가 Claude·Cursor 커맨드와 Kiro 포인터를 만든다 |
+| 시험 | `tests/test_install.py` — 스택 다섯 설치·토큰·검사기·new-feature·문서 생성기·update·보호 경로 토큰·커맨드 포인터 일치(`sync-commands.sh --check`), 설치본 안 하네스 자체 시험(`tests/harness_scripts`) |
+| 일반화 | 이식본의 프로젝트 고유 문장(조회 도구 이름·워크플로 엔진·LLM 등급·단위 등록표 경로)을 일반 규칙으로 바꿨다. 보호 경로는 다시 `{{PROTECTED_PATH}}` 토큰(hook·deny·가드) |
+| 문서 | README·manifest·스킬 README·`docs/analysis` 01~04·시작 가이드를 커맨드 11종·파일 수(277/285)·이슈 SDD·changed·기능 문서 기준으로 다시 썼다 |
+
 ## 작업 규칙
 
 - 각 Phase 끝에 `scripts/verify.sh` + 사용자 승인.

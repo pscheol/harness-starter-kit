@@ -326,3 +326,14 @@ export interface AccountLookup {
 - 주석 규약 원본: `.agents/rules/code-comments.md`
 - 에이전트 진입: `./AGENTS.md`·`./CLAUDE.md`
 - SDD 기록: `.agents/docs/README.md`
+
+## 구성도
+
+> 설치 직후 그림이다. 실제 모듈·저장소·외부 연동으로 고친다(하네스 검사기는 Mermaid 그림이 있는지 본다).
+
+```mermaid
+flowchart LR
+  client["클라이언트"] -->|"HTTP"| service["{{SERVICE_NAME}}"]
+  service --> store[("저장소")]
+  service -.-> external["외부 연동"]
+```

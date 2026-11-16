@@ -6,11 +6,12 @@
 |---|---|
 | 상태 | active \| check \| completed |
 | SDD 단계 | tasks |
-| 연계 | ../requirements/{{FEATURE_NAME}}.md (req), ../design/{{FEATURE_NAME}}.md (design) |
+| 연계 | ../../requirements/{{FEATURE_NAME}}.md (req), ../../design/{{FEATURE_NAME}}.md (design) |
 
 > 가이드: 각 작업은 코딩 에이전트가 바로 실행 가능한 단위로 쪼갠다.
 > 작업마다 (a) 건드리는 파일/모듈, (b) 충족 요구사항 ID, (c) 검증 방법을 명시한다.
-> 검증은 `scripts/verify.sh`(빌드/린트/테스트)로 한다.
+> 검증은 `scripts/verify.sh --files <paths> --tests <tests>`로 변경 범위부터 실행한다. full은 `--full`로 명시한다.
+> **선행 조건**: requirements와 design의 상태가 `approved`이고 사용자가 이 tasks 계획을 승인해야 구현을 시작한다.
 
 ## 작업 포맷 *(필수)*
 
@@ -19,7 +20,7 @@
 - **`T###`**: 실행 순번(전역 유일). 완료 시 `- [X]`로 체크.
 - **`[P]`**: 병렬 가능 표시 — 다른 파일이고 선행 의존이 없을 때만. 같은 파일을 건드리면 `[P]` 금지(순차).
 - **`[US1]`**: 이 작업이 속한 User Story 추적(requirements의 `US1`/`US2`…). Setup·Foundational·Polish 작업에는 스토리 라벨을 붙이지 않는다.
-- 설명에는 **정확한 파일/모듈 경로**를 포함한다(예: `services/{{PROJECT_SLUG}}-api/.../XxxService.kt`).
+- 설명에는 **정확한 파일/모듈 경로**를 포함한다(예: `services/{{SERVICE_NAME}}/.../XxxService.kt`).
 
 ## Phase 구조
 
@@ -77,6 +78,7 @@
 **목적**: 여러 스토리에 걸친 마무리.
 
 - [ ] TXXX [P] 문서/OpenAPI 갱신 (`.agents/docs/openapi/`)
+- [ ] TXXX 문서 반영(S7, `/hx-docs`) — 기능 원고·catalog 배정·스냅숏 갱신 뒤 `python3 tools/docs/feature_docs.py check` 통과(생성기가 없는 리포는 이유를 결과에 적는다)
 - [ ] TXXX design §11.1 **Quickstart 검증 시나리오** 실행
 - [ ] TXXX 성능/보안 하드닝, 리팩터링
 
@@ -118,16 +120,17 @@ T008 [P] [US2] 모델 B (파일 b.kt)   # 다른 파일·무의존 → 병렬 �
 - [ ] 성공 + 최소 1개 실패 케이스 테스트
 - [ ] 인증 필요 시 401/403 케이스, 권한 없는 접근 차단 테스트
 - [ ] `.agents/rules/quality-score.md` 체크리스트 충족
-- [ ] API 변경 시 `.agents/docs/openapi/` 갱신
+- [ ] API 변경 시 OpenAPI 스냅숏 갱신(경로는 그 하네스 `api-standards.md`)
+- [ ] 기능 문서 검사 통과(S7 `/hx-docs`, 생성기가 없는 리포는 이유를 결과에 적는다)
 - [ ] design §11.1 Quickstart 시나리오 통과
 
 ## 완료 처리 (사용자 검증 게이트)
 
-1. DoD와 `scripts/verify.sh`를 충족하면 상태를 `check`로 바꾸고, 파일을 `check/`로 이동한다(active → check).
+1. DoD·`scripts/verify.sh`·S7 문서 검사를 충족하면 상태를 `check`로 바꾸고 파일을 옮긴다 — 새 형식은 `tasks/active.md` → `tasks/check.md`, 기존 형식은 `tasks/active/<key>.md` → `tasks/check/<key>.md`.
 2. `결과` 섹션에 검증 근거(빌드/테스트/린트 결과)를 적고 **사용자에게 검증·확인을 요청**한다.
-3. **사용자 승인(confirm) 후에만** 상태를 `completed`로 바꾸고 파일을 `completed/`로 이동, 결과/PR 링크를 남긴다.
+3. **사용자 승인(confirm) 후에만** 상태를 `completed`로 바꾸고 `tasks/completed.md`(기존 형식은 `tasks/completed/<key>.md`)로 옮긴 뒤 결과/PR 링크를 남긴다.
 
-> 에이전트는 사용자 승인 없이 `completed`로 전환하거나 `completed/`로 이동하지 않는다.
+> 에이전트는 사용자 승인 없이 `completed`로 바꾸거나 completed 위치로 옮기지 않는다.
 > (에이전트 자동완료를 금지하고 harness의 사용자 승인 게이트를 적용한다.)
 
 ## 결과 / PR
@@ -141,3 +144,10 @@ T008 [P] [US2] 모델 B (파일 b.kt)   # 다른 파일·무의존 → 병렬 �
 ```
 
 (작업 후 기록)
+
+## 세션 소유권과 검증 범위
+
+| 실제 세션 ID | 소유 파일/패키지 | 변경 테스트 | 계약/문서 영향 | full 선택/이유 |
+|---|---|---|---|---|
+
+새 이슈의 상태는 tasks/active.md → check.md → 사용자 검수 → completed.md다. legacy는 상태 디렉터리를 이동한다.

@@ -1,7 +1,6 @@
 ---
 inclusion: always
 ---
-<!-- HARNESS TEMPLATE ({{PROJECT_NAME}}) · Kiro 얇은 포인터. 규칙 본문 금지. -->
 # 재사용 우선 (포인터)
 
 원본: `.agents/rules/reuse-before-new.md` — 새 파일·컴포넌트·유틸·타입·엔드포인트를 만들기 전에 연다.

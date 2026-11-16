@@ -1,0 +1,8 @@
+{
+  "name": "feature-docs",
+  "private": true,
+  "description": "기능 문서 사이트 자산(assets/*.js) 시험. 의존성 없이 node 내장 시험 실행기를 쓴다. 생성기 본체는 Python(feature_docs.py)이다.",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs"
+  }
+}

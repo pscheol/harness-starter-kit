@@ -71,19 +71,23 @@ Python(FastAPI/ASGI), Go(표준 Go 레이아웃), Web(TypeScript + React), Elect
 ```
 skills/hx-bootstrap/          ← 스킬 루트 (= SKILL_DIR)
 ├── README.md · SKILL.md · setup.sh · manifest.md
-├── tools/sync-commands.sh         킷 개발용 — 커맨드 원본에서 3하네스 트리 재생성(설치 안 됨)
+├── tools/sync-commands.sh         킷 개발용 — 스킬 원본에서 Claude·Cursor·Kiro 포인터 재생성(설치 안 됨, --check)
 └── templates/
-    ├── common/           ★ 스택 무관 골격 (모든 스택 공통 설치 · 96개)
-    │   ├── agents-rules/  agent-harness · sdd-workflow · product · writing-style · design-principles · reuse-before-new · verification-ladder · pr-review-policy
-    │   ├── agents-docs/   SDD 기록 (README · specs-index · _spec-templates/{index,requirements,design,checklists,tasks} · decisions · tech-debt-tracker · generated · references) — <slug>-specs/ 는 설치가 아니라 new-feature.sh 가 만든다
-    │   ├── kiro-steering/ 규칙 포인터 13종 + hx-* 9종(Kiro IDE 슬래시 · inclusion: manual)
-    │   ├── kiro-skills/   hx-*/SKILL.md 9종 (Kiro CLI 슬래시)
-    │   ├── agents-skills/ hx-*/SKILL.md 9종 (Codex — $hx-specify 로 멘션)
-    │   ├── claude/        settings.json · commands/(hx- 9종) · hooks/
-    │   ├── codex/         hooks.json · config.toml · hooks/
-    │   ├── cursor/        commands/(hx- 9종) — Cursor 프로젝트 슬래시
-    │   ├── scripts/       check-exec-plan-status · check-sdd-prerequisites · check-spec-freshness · new-feature
-    │   └── root/          .pre-commit-config.yaml
+    ├── common/           ★ 스택 무관 골격 (모든 스택 공통 설치 · 259개)
+    │   ├── agents-rules/  agent-harness · sdd-workflow · product · writing-style · design-principles · reuse-before-new · verification-ladder · pr-review-policy · git-workflow · platform-invariants · code-maintenance · session-collaboration
+    │   ├── agents-docs/   SDD 기록 (README · specs-index · _spec-templates/{index,requirements,design,checklists,tasks} · decisions · guides · tech-debt-tracker · generated · references) — <slug>-specs/issues/<key>/ 는 new-feature.sh 가 만든다
+    │   ├── agents-root/   roles/(planner·explorer·worker·reviewer·docs-researcher) · verify-checks.json
+    │   ├── agents-skills/ hx-*/SKILL.md 11종 — 커맨드 본문 원본(core, Codex 가 직접 읽는다)
+    │   ├── kiro-steering/ 규칙 포인터 17종 + hx-* 11종(Kiro IDE 슬래시 · inclusion: manual)
+    │   ├── kiro-skills/   hx-*/SKILL.md 11종 (Kiro CLI 슬래시 · 포인터)
+    │   ├── kiro-agents/ · kiro-hooks/ · kiro-root/   조율 에이전트 + 역할 5 · hook 3 · 안내
+    │   ├── claude/        settings.json · commands/(hx- 11종 포인터) · agents/(역할 5) · rules/
+    │   ├── codex/         hooks.json · config.toml · agents/(역할 5)
+    │   ├── cursor/        commands/(hx- 11종 포인터) — Cursor 프로젝트 슬래시
+    │   ├── scripts/       verify-entry · verify-changed · check_harness · new-feature · sdd-layout · board · session-coordination · check-maintenance · check-* · hooks/ · git-hooks/ · guards/ · harness/
+    │   ├── tools/docs/    기능 문서 생성기(feature_docs.py · docskit · 시험 · vendor.lock.json · schema-snapshot.sh)
+    │   ├── docs/features/_src/  기능 문서 원고 골격(catalog.json · stages/00~12)
+    │   └── root/          README.md
     ├── domains/          ★ 여러 스택이 공유하는 규약만 (스택이 하나뿐이면 만들지 않는다)
     │   └── frontend/      agents-rules{design-system,accessibility,ui-state,frontend-performance} + kiro 포인터 4 — web·electron 공용
     ├── stacks/
@@ -95,17 +99,18 @@ skills/hx-bootstrap/          ← 스킬 루트 (= SKILL_DIR)
     │   └── electron/(동일 구성) + arch/{main-renderer,feature,monorepo}/   ← verify.sh 에 프로세스 경계 가드
     └── optional/         ★ --modules= 로 켤 때만 (기본 none)
         ├── jira-workflow/    issue-tracker.yml · 규칙 2 · /hx-issue + /hx-ticket 각 4하네스 · Kiro 포인터 3
-        └── platform-guards/  run-guards.sh · guards/_template.sh · 규칙 1 · Kiro 포인터 1
+        ├── platform-guards/  run-guards.sh · guards/_template.sh · 규칙 1 · Kiro 포인터 1
+        └── multi-harness/    tools/harness/{sync,sync_safety,gates,install_verification_entry}.py + 시험 4 — 여러 리포·단위 하네스
 ```
 
-스택별 6종 규칙(변형 무관): `code-comments` · `api-standards` · `security` · `reliability` · `quality-score` · `guardrails`.
+스택별 6종 규칙(변형 무관): `code-comments` · `api-standards` · `security` · `reliability` · `quality-score` · `guardrails`. 스택마다 `docs/features/_src/docs.config.json`(기능 문서 단위 설정)도 따로 있다.
 변형별 4종: `root/ARCHITECTURE.md` · `agents-rules/structure.md` · `agents-rules/tech.md` · `kiro-steering/structure.md`.
 설치 순서는 common → domains/&lt;DOMAIN&gt; → stack(`arch/` 제외) → arch/&lt;ARCH&gt; → optional/&lt;MODULE&gt; 이며, 뒤 레이어가 앞을 덮는다.
 각 모듈 폴더의 `ABOUT` 첫 줄이 `--list-modules` 설명이고, `ABOUT` 자체는 설치되지 않는다.
 
 ## 슬래시 커맨드 (4개 하네스)
 
-SDD 워크플로 9종이 `hx-` 접두사로 깔린다. 본문 원본은 `.agents/rules/sdd-workflow.md` 한 곳이고, 각 하네스 파일은 그 절을 가리키는 얇은 트리거다.
+커맨드 11종이 `hx-` 접두사로 깔린다. 본문 원본은 `.agents/skills/hx-*/SKILL.md`이고(스킬이 `.agents/rules/sdd-workflow.md`의 절을 읽는다), 나머지 하네스 파일은 그 스킬을 가리키는 한 줄 포인터다.
 
 | 하네스 | 설치 경로 | 호출 |
 |---|---|---|
@@ -115,11 +120,11 @@ SDD 워크플로 9종이 `hx-` 접두사로 깔린다. 본문 원본은 `.agents
 | Kiro (CLI) | `.kiro/skills/hx-*/SKILL.md` | `/hx-specify` |
 | Codex | `.agents/skills/hx-*/SKILL.md` | `$hx-specify` (목록은 `/skills`) |
 
-흐름: `/hx-specify` → (`/hx-clarify` · `/hx-checklist`) → `/hx-plan` → `/hx-tasks` → (`/hx-analyze`) → `/hx-implement` → (`/hx-converge`). 별도로 `/hx-harness` 가 규칙을 로드한다.
+흐름(SDLC): S1·S2 `/hx-specify` → (`/hx-clarify` · `/hx-checklist`) → S3 `/hx-plan` → S4 `/hx-tasks` → (`/hx-analyze`) → S5·S6 `/hx-implement` → S7 `/hx-docs` → S8 완료(사용자 승인) → (`/hx-converge`). 별도로 `/hx-harness` 가 규칙을 로드하고 `/hx-maintain` 이 코드 유지보수 기준을 적용한다.
 
 > **Codex 주의** — 프로젝트 로컬 `.codex/prompts/` 는 탐색 경로가 아니다(유저 홈 전용 + deprecated). 그래서 Codex 공식 프로젝트 스킬 경로인 `.agents/skills/` 를 쓴다.
 >
-> **커맨드를 고칠 때** — `templates/common/claude/commands/hx-*.md` 만 고치고 `tools/sync-commands.sh` 를 실행해 나머지 3하네스를 재생성한다. 직접 고치면 드리프트가 생긴다.
+> **커맨드를 고칠 때** — `templates/common/agents-skills/hx-*/SKILL.md` 만 고치고 `tools/sync-commands.sh` 를 실행해 Claude·Cursor·Kiro 포인터를 다시 만든다. 포인터를 직접 고치면 설명이 어긋난다(`--check` 로 확인).
 
 ## 규칙 공유 흐름
 

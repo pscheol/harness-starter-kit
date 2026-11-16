@@ -1,0 +1,61 @@
+{
+ "checks": [
+  {
+   "id": "feature-docs",
+   "paths": [
+    "docs/features/*",
+    "tools/docs/*",
+    "ARCHITECTURE.md",
+    ".agents/docs/*",
+    "*/.agents/docs/*",
+    "src/*",
+    "*/src/*",
+    "tests/*",
+    "*/tests/*",
+    "test/*",
+    "*/test/*",
+    "*/db/migration/*",
+    "*/openapi/*",
+    "tools/harness/units.json"
+   ],
+   "command": [
+    "python3",
+    "tools/docs/feature_docs.py",
+    "check"
+   ],
+   "cwd": "."
+  },
+  {
+   "id": "feature-docs-assets",
+   "paths": [
+    "docs/features/assets/*"
+   ],
+   "command": [
+    "python3",
+    "tools/docs/feature_docs.py",
+    "check",
+    "--assets"
+   ],
+   "cwd": ".",
+   "covers": true
+  },
+  {
+   "id": "feature-docs-fixtures",
+   "paths": [
+    "tools/docs/tests/fixtures/*"
+   ],
+   "command": [
+    "python3",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "tests",
+    "-p",
+    "test_*.py"
+   ],
+   "cwd": "tools/docs",
+   "covers": true
+  }
+ ]
+}
