@@ -8,6 +8,14 @@ for verification_argument in "$@"; do
   esac
 done
 
+# 에이전트 세션의 full 은 CI 몫이다(설계 01 R2.6). 사람 터미널 · CI · 상위 게이트가 부른 하위 단위는 그대로 돈다.
+if [ "${HARNESS_VERIFY_LEVEL:-changed}" = full ]; then
+  verification_hook="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/hooks/block_full_verify.py"
+  if [ -f "$verification_hook" ]; then
+    python3 "$verification_hook" --entry-check || exit $?
+  fi
+fi
+
 if [ "${HARNESS_VERIFY_LEVEL:-changed}" = changed ]; then
   verification_script_directory="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   if [ ! -f "$verification_script_directory/verify-changed.py" ]; then

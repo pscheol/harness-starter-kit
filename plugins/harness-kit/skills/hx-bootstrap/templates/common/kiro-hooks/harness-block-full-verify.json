@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "전체 검증(full) 차단",
+      "trigger": "PreToolUse",
+      "description": "에이전트 세션에서 verify.sh --full 같은 전체 검증 요청을 막는다. 전체 검증은 CI가 돈다. 판정 원본은 scripts/hooks/block_full_verify.py 하나이고 Claude Code·Codex 도 같은 파일을 부른다.",
+      "matcher": "execute_bash|executeBash|shell",
+      "action": {
+        "type": "command",
+        "command": "bash -c 'r=\"$PWD\"; while [ \"$r\" != / ] && [ ! -f \"$r/.agents/harness.json\" ]; do r=\"$(dirname \"$r\")\"; done; h=\"$r/scripts/hooks/$1\"; [ -f \"$h\" ] || exit 0; exec bash \"$h\"' _ block-full-verify.sh",
+        "timeout": 15
+      }
+    }
+  ]
+}

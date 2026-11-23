@@ -21,6 +21,16 @@
             "timeout": 15
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'r=\"$PWD\"; while [ \"$r\" != / ] && [ ! -f \"$r/.agents/harness.json\" ]; do r=\"$(dirname \"$r\")\"; done; h=\"$r/scripts/hooks/$1\"; [ -f \"$h\" ] || exit 0; exec bash \"$h\"' _ block-full-verify.sh",
+            "timeout": 15
+          }
+        ]
       }
     ],
     "Stop": [

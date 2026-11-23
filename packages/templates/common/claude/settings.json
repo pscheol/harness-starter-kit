@@ -25,6 +25,15 @@
             "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/protect-sources.sh"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/block-full-verify.sh"
+          }
+        ]
       }
     ],
     "Stop": [
