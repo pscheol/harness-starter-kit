@@ -29,7 +29,7 @@
 - R4.2 새 설치 직후 `doctor --check`는 exit 0.
 - R5.1 `repair`는 `missing`·`stale`·생성물의 `drifted`와 병합 키 누락을 되돌리고, 사람이 고친 템플릿 복사 파일(`copy`)은 건드리지 않는다.
 - R6.1 `uninstall`은 킷 소유이면서 고치지 않은 파일을 지우고, 병합한 설정에서 킷 몫만 뺀다. 고친 파일은 남기고 목록을 출력한다.
-- R7.1 플러그인 스킬 `hx-bootstrap`·`hx-update`·`hx-agent-add`는 CLI를 부른다. Node가 없거나 18 미만이면 setup.sh·update.sh·add-agent.sh로 내려간다(v2.0 한 버전 동안).
+- R7.1 플러그인 스킬 `hx-bootstrap`·`hx-update`·`hx-agent-add`는 CLI를 부른다. Node가 없거나 18.3 미만이면 setup.sh·update.sh·add-agent.sh로 내려간다(v2.0 한 버전 동안).
 - R8.1 모든 명령은 `--json`을 받고, 사람용 출력과 같은 정보를 JSON 한 개로 stdout에 낸다.
 
 ## 3. 설계
@@ -374,11 +374,11 @@ v1(TSV) 읽기:
 ```text
 hx-bootstrap SKILL.md 절차
 1. 대화로 스택·변형·하네스·모듈·토큰·이슈 키를 받는다(지금 SKILL.md 질문 그대로).
-2. node --version 이 v18 이상이면:
+2. Node 18.3 이상이면(갈래는 skills/hx-bootstrap/kit.sh 가 고른다 — HK-12):
      node "<이 스킬 폴더>/bin/harness-kit.js" plan --cwd "<대상>" --stack … --yes --json
    계획 요약(파일 수, skip-user 수)을 사람에게 보여 주고 승인을 받는다.
      node "<이 스킬 폴더>/bin/harness-kit.js" init --cwd "<대상>" --stack … --yes
-3. Node 가 없거나 18 미만이면:
+3. Node 가 없거나 18.3 미만이면:
      STACK=… bash "<이 스킬 폴더>/setup.sh" --arch=… --agents=… "<대상>"
    출력 첫 줄에 "Node 18.3 이 없어 setup.sh 로 설치했다. v2.1 부터는 Node 가 필요하다"를 붙인다.
 ```

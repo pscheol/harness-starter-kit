@@ -73,7 +73,7 @@ dependencies {
 ```
 
 - **실행 단위가 여럿이라 `bootRun`이 하나가 아니다.** 로컬에서 전체를 띄우려면 `docker compose` 또는 각 `bootRun`을 별도 셸에서 돌린다.
-- 컨텍스트 하나만 만졌다면 그 컨텍스트만 검증할 수 있다: `./gradlew :{{PROJECT_SLUG}}-<ctx>-bootstrap:check`. 다만 **커밋 전 게이트는 전체**(`bash scripts/verify.sh`)다 — 부분 검증은 작업 중 피드백용이다.
+- 컨텍스트 하나만 만졌다면 그 컨텍스트만 검증할 수 있다: `./gradlew :{{PROJECT_SLUG}}-<ctx>-bootstrap:check`. 다만 **MR 전 게이트는 `bash scripts/verify.sh --affected`**이고 전체 검증은 CI가 돈다 — 부분 검증은 작업 중 피드백용이다.
 - 강제 게이트는 `scripts/verify.sh` 한 곳(`./gradlew check --no-daemon -q`). hook/CI/pre-commit은 이를 호출하는 얇은 트리거(`.agents/rules/agent-harness.md`).
 - 빌드·배포 아티팩트는 **컨텍스트마다 JAR + 컨테이너 하나씩**이다. 배포 파이프라인도 컨텍스트 수만큼 필요하다.
 

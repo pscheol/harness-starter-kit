@@ -68,7 +68,7 @@ Claude Code · Codex · Kiro가 함께 작업한다. 규칙은 `.agents/rules/`,
 | tasks | `.agents/docs/issues/<키>-<이름>/tasks.md` | 실행 단계 |
 
 - 복잡 작업은 exec-plan에 계획을 남기고, 변경은 `bash scripts/verify.sh`(fmt·build·vet·lint·race 테스트)로 검증한다.
-- 검증 레벨: Stop hook은 `fast`(구조 점검 + 포맷, 1초 미만)로 돈다. build·vet·lint·test까지 도는 `full`은 커밋·푸시 전에 직접 `bash scripts/verify.sh`를 실행해 통과시킨다 — **hook 통과는 full 통과가 아니다**(`.agents/rules/agent-harness.md` 참조).
+- 검증 레벨: Stop hook은 `fast`(구조 점검 + 포맷, 1초 미만)로 돈다. MR 전에는 `bash scripts/verify.sh --affected`, build·vet·lint·test까지 도는 `full`은 CI가 돈다 — **hook 통과는 full 통과가 아니다**(`.agents/rules/agent-harness.md` 참조).
 - API 변경은 `api/`의 OpenAPI 스펙과 `.agents/docs/openapi/`를 함께 갱신한다.
 - **exec-plan 완료 게이트**: DoD/검증 충족 시 tasks.md를 `state: check`로 바꾸고 사용자 검증 후에만 `completed`로 바꾼다(임의 변경 금지).
 - 기술 부채는 `.agents/docs/tech-debt-tracker.md`에 등록한다.
