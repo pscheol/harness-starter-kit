@@ -32,18 +32,13 @@ AGENTS.md / CLAUDE.md / ARCHITECTURE.md    진입·아키텍처 원본
 .agents/docs/
   README.md                이 문서
   specs-index.md           전 제품 스펙 색인(SDD 최상위 진입점)
-  _spec-templates/         SDD 단계 템플릿 — 복사해서 쓰는 원본 한 벌(제품 아님, 설치 시 생성)
-    index.md · requirements/_template.md · design/_template.md
+  _spec-templates/         SDD 단계 템플릿 — 복사해서 쓰는 원본 한 벌(이슈 아님, 설치 시 생성)
+    requirements/_template.md · design/_template.md
     checklists/_template.md · tasks/{_template.md, README.md}
-  <slug>-specs/    제품(바운디드 컨텍스트) 단위 SDD 묶음 — 복수 가능
-                           설치가 아니라 new-feature.sh 가 첫 기능에서 만든다
-    index.md                 이 제품의 feature 등록표
-    requirements/            SDD requirements 단계 (<feature>.md)
-    design/                  SDD design 단계 (<feature>.md)
-    checklists/              요구사항 품질 판정 (<feature>-<도메인>.md)
-    tasks/                   SDD tasks 단계 (= 실행 계획, 완료 게이트)
-      README.md
-      active/ · check/ · completed/
+  issues/<키>-<이름>/      이슈 하나 = 폴더 하나 — new-feature.sh 가 첫 단계에서 만든다
+    requirements.md · design.md · tasks.md   상태는 문서 머리(status · state)
+    checklists/              요구사항 품질 판정 (<도메인>.md)
+  <영역>-specs/            옛 구조(읽기 전용) — sdd-layout.py migrate 로 issues/ 로 옮긴다
   decisions/               전역 설계 결정(ADR) + core-beliefs (제품 횡단)
   tech-debt-tracker.md     전역 기술 부채 추적기
   generated/               에이전트가 만드는 문서(손편집 금지)
@@ -60,21 +55,20 @@ AGENTS.md / CLAUDE.md / ARCHITECTURE.md    진입·아키텍처 원본
 
 ## SDD (Spec-Driven Development)
 
-기능 개발은 제품 폴더 안에서 스펙 단위로 진행한다(requirements → design → tasks).
+기능 개발은 이슈 폴더 하나에서 스펙 단위로 진행한다(requirements → design → tasks).
 워크플로 원본은 `.agents/rules/sdd-workflow.md`에 있다.
 
 | 단계 | 위치 | 명령 | 파일이 생기는 시점 |
 |---|---|---|---|
-| requirements | `<slug>-specs/requirements/<feature>.md` (진입: 제품 `index.md`) | `/hx-specify` (+ `/hx-clarify`) | `new-feature.sh <slug> <feature>` |
-| design | `<slug>-specs/design/<feature>.md` | `/hx-plan` | `... --stage=design` |
-| tasks | `<slug>-specs/tasks/active/<feature>.md` → `check/` → `completed/` | `/hx-tasks` → `/hx-implement` | `... --stage=tasks` |
+| requirements | `issues/<키>-<이름>/requirements.md` | `/hx-specify` (+ `/hx-clarify`) | `new-feature.sh <키\|--next> <이름> --area <영역>` |
+| design | `issues/<키>-<이름>/design.md` | `/hx-plan` | `new-feature.sh <키> --stage=design` |
+| tasks | `issues/<키>-<이름>/tasks.md`(`state`: active → check → completed) | `/hx-tasks` → `/hx-implement` | `new-feature.sh <키> --stage=tasks` |
 
-단계 템플릿은 `_spec-templates/` 한 곳에만 두고 제품 폴더로 복사하지 않는다.
-제품 폴더는 `scripts/new-feature.sh <slug> <feature>`가 첫 기능을 만들 때 생성한다.
+단계 템플릿은 `_spec-templates/` 한 곳에만 두고 이슈 폴더로 복사하지 않는다.
 **단계 문서도 그 단계에 들어갈 때 하나씩 만든다** — 빈 design·tasks 를 미리 깔면 보드가 곧장
-🔨 구현으로 뛰고 단계 게이트가 항상 통과한다(예외: 설계가 확정된 소규모 작업의 `--all`).
+구현으로 뛰고 단계 게이트가 항상 통과한다. `--all` 은 지원하지 않는다.
 정합성 점검은 `/hx-analyze`로 하며 읽기 전용이다. 각 단계는 사용자 승인을 받고 다음으로 넘어간다.
-전체 제품 목록은 `specs-index.md`, 제품을 가로지르는 결정은 `decisions/`에 있다.
+영역별 이슈 보드는 `specs-index.md`, 이슈를 가로지르는 결정은 `decisions/`에 있다.
 
 ## 문서를 최신으로 유지하기
 

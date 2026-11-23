@@ -38,7 +38,7 @@
 
 | 할 일 | 명령 |
 |---|---|
-| 기능 시작 | `bash scripts/new-feature.sh <slug> <이름>` |
+| 기능 시작 | `bash scripts/new-feature.sh <키\|--next> <이름> --area <영역>` |
 | 기능 문서 | `python3 tools/docs/feature_docs.py build` · `check` |
 | 보드 갱신 | `bash scripts/board.sh` |
 

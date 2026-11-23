@@ -8,7 +8,7 @@
 ## 문서 위치 구분
 
 - `docs/` — 사람이 읽는 기획·분석 원본(PRD·아키텍처·ERD·API 명세·백로그).
-- `.agents/docs/` — 에이전트가 보는 SDD 문서(`<slug>-specs/{requirements,design,tasks}`·`decisions`)와 생성물.
+- `.agents/docs/` — 에이전트가 보는 SDD 문서(`issues/<키>-<이름>/{requirements,design,tasks}.md`·`decisions`)와 생성물.
 - `references/`(이 디렉터리) — 판단할 때 곁에 두고 보는 자료(외부 라이브러리 요약·코드에서 뽑은 지도·참고 구현).
 
 ## 프로젝트 내 참고 코드

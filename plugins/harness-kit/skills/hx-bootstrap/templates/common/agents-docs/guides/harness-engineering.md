@@ -39,7 +39,7 @@ Böckeler(martinfowler.com "Harness engineering")는 하네스의 제어를 둘�
 | 규칙 | `.agents/rules/*.md` | 규범 원본 | 공통(`sdd-workflow` · `writing-style` · `git-workflow` 등) + 고유(`guardrails` · `structure` · `tech` 등) |
 | 역할 | `.agents/roles/*.md` | 서브에이전트 다섯(explorer · reviewer · planner · worker · docs-researcher) 본문 | 공통 |
 | 스킬 | `.agents/skills/hx-*/SKILL.md` | SDD 명령의 절차 원본 | 공통 |
-| 기록 | `.agents/docs/` | SDD(`<slug>-specs/`) · 결정(`decisions/`) · 부채(`tech-debt-tracker.md`) · 설명서(`guides/`) · 템플릿(`_spec-templates/`) | 템플릿·설명서는 공통, 기록은 고유 |
+| 기록 | `.agents/docs/` | SDD(`issues/<키>-<이름>/`) · 결정(`decisions/`) · 부채(`tech-debt-tracker.md`) · 설명서(`guides/`) · 템플릿(`_spec-templates/`) | 템플릿·설명서는 공통, 기록은 고유 |
 | 도구 배선 | `.claude/` · `.codex/` · `.kiro/` | 도구별 역할 등록 · 명령 · hook. 본문 없이 원본 경로를 가리킨다 | 공통 |
 | 게이트 | `scripts/verify.sh` | 모든 트리거가 부르는 검증 진입점 | 고유 |
 | 검사 도구 | `scripts/check_harness.py` · `check-exec-plan-status.sh` · `board.sh` · `check-sdd-prerequisites.sh` · `run-guards.sh` · `scripts/guards/` | 구조 · SDD 상태 · 보드 · 단계 선행조건 · 가드 | 공통(단위 고유 가드 · `scripts/check_unit.py`는 고유) |

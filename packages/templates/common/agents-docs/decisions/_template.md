@@ -8,7 +8,7 @@
 | 날짜 | YYYY-MM-DD |
 | 대체 | (폐기 시) 대체 ADR 링크 |
 
-> 이 문서는 **제품·기능을 가로지르는 전역 결정**만 담는다. 특정 기능의 설계는 `*-specs/design/<feature>.md` 에 둔다.
+> 이 문서는 **제품·기능을 가로지르는 전역 결정**만 담는다. 특정 기능의 설계는 `issues/<키>-<이름>/design.md` 에 둔다.
 > 항상 지켜야 하는 규범이 되면 `.agents/rules/` 원본으로 승격한다.
 
 ## 1. 맥락 (Context)
@@ -37,4 +37,4 @@
 ## 6. 관련
 
 - 규칙 원본: `.agents/rules/<file>.md`
-- 영향받는 제품/기능 설계: `<slug>-specs/design/<feature>.md`
+- 영향받는 이슈 설계: `issues/<키>-<이름>/design.md`

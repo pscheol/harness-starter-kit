@@ -6,9 +6,9 @@
 ```mermaid
 flowchart LR
   request["요구 requirements.md"] --> approval1["사용자 승인"] --> design["설계 design.md"]
-  design --> approval2["사용자 승인"] --> tasks["작업 tasks/active.md"]
-  tasks --> tests["변경 테스트 · 리뷰"] --> check["tasks/check.md"]
-  check --> approval3["사용자 검수"] --> completed["tasks/completed.md"]
+  design --> approval2["사용자 승인"] --> tasks["작업 tasks.md"]
+  tasks --> tests["변경 테스트 · 리뷰"] --> check["state: check"]
+  check --> approval3["사용자 검수"] --> completed["state: completed"]
 ```
 
 ## SDLC 단계와 기능 문서
@@ -33,29 +33,31 @@ flowchart LR
 ## 새 이슈 시작
 
 ```bash
-bash scripts/new-feature.sh recording upload-policy --type=refactor
+bash scripts/new-feature.sh --next upload-policy --area recording --type=refactor
+bash scripts/new-feature.sh KNOTS-17 upload-policy --area recording   # Jira 키가 있을 때
 ```
 
-기본 결과는 `.agents/docs/recording-specs/issues/1-refactor-upload-policy/requirements.md`다.
-실제 번호는 기존 새/legacy 이슈를 함께 보고 결정한다. 번호를 이름에 붙이지 않고 `--number`를 사용한다.
-트래커 ID는 출처에 기록한다. 단계에 들어가기 전에 그 문서만 만들고 빈 다음 단계를 생성하지 않는다.
+결과는 `.agents/docs/issues/<키>-upload-policy/requirements.md`다. `--next` 는 base 트리 · 작업 트리 · 브랜치 이름 · worktree 에서
+쓰인 번호의 최댓값 + 1 을 키로 쓴다(`issueKey.source = kit`). Jira 를 쓰는 리포(`source = jira`)는 Jira 키를 그대로 넣는다.
+종류는 이름에 붙이지 않고 `--type` 으로 준다. 단계에 들어가기 전에 그 문서만 만들고 빈 다음 단계를 생성하지 않는다.
 
 ## 다음 단계
 
 ```bash
-bash scripts/check-sdd-prerequisites.sh recording 1-refactor-upload-policy --stage=design
-bash scripts/new-feature.sh recording 1-refactor-upload-policy --stage=design
-bash scripts/new-feature.sh recording 1-refactor-upload-policy --stage=tasks
+bash scripts/check-sdd-prerequisites.sh KNOTS-17 --stage=design
+bash scripts/new-feature.sh KNOTS-17 --stage=design
+bash scripts/new-feature.sh KNOTS-17 --stage=tasks
 ```
 
-requirements approved 뒤 design, design approved 뒤 tasks를 만든다. 경로는 선행조건 명령 출력에서 읽는다.
-승인 여부를 파일 존재로 대신하지 않는다. 짧은 이름 후보가 여러 개거나 같은 키가 두 layout에 있으면 중복을 해결한다.
+requirements `status: approved` 뒤 design, design `approved` 뒤 tasks를 만든다. 경로는 선행조건 명령 출력에서 읽는다.
+승인 여부를 파일 존재로 대신하지 않는다. 같은 키 폴더가 둘이면 하나로 정리한다.
 
-## 기존 이슈
+## 옛 이슈
 
-기존 `.agents/docs/<slug>-specs/{requirements,design,tasks/<state>}/<key>.md`는 이동하지 않는다.
-그 이슈의 다음 단계도 기존 경로에 만든다. 새 작업을 legacy로 만들 필요가 있으면 `--legacy`를 명시한다.
-보드·상태·신선도는 두 형식을 함께 읽는다. 이관을 별도 작업으로 승인받기 전 일괄 이동하지 않는다.
+옛 `.agents/docs/<영역>-specs/{issues,requirements,design,tasks/<상태>}/` 는 읽기만 한다. 기존 문서 수정과 상태 폴더 이동은 통과하고,
+새 이슈 폴더 · 단계 문서를 더하면 fast 검증이 실패한다. 이어서 쓸 옛 이슈는 옮긴다:
+`python3 scripts/sdd-layout.py migrate --dry-run` → `.agents/state/migrate-map.json` 확인 · 수정 → `--apply --map … --rewrite-links`.
+보드 · 상태 · 신선도는 새 구조와 옛 두 구조를 함께 읽는다.
 
 ## 무엇을 적는가
 
@@ -65,8 +67,8 @@ tasks에는 실제 파일 소유권·T번호·선행 의존·검증 명령·실�
 
 ## 완료
 
-DoD와 계획한 검증 뒤 active.md를 check.md로 옮기고 상태를 check로 바꾼다.
-사용자가 결과를 확인한 뒤 completed.md로 옮긴다. legacy는 상태 디렉터리를 이동한다.
+DoD와 계획한 검증 뒤 `tasks.md` 머리의 `state`를 `check`로 바꾼다(파일은 옮기지 않는다).
+사용자가 결과를 확인한 뒤 `completed`로 바꾼다.
 대체 계획은 superseded로 두고 후속 이슈와 이유를 남긴다. 완료 기록과 미완료 작업을 지우지 않는다.
 
 ## 보드와 검증
