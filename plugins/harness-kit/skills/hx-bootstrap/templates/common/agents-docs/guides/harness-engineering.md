@@ -146,7 +146,7 @@ flowchart TD
 |---|---|---|---|
 | pre-commit | 리포 로컬 `core.hooksPath=scripts/git-hooks` | 사용자 전역 pre-commit(있으면) → 그 하네스 `scripts/verify.sh` | changed |
 | pre-push | 같음 | 전역 pre-push(같은 인자 · ref 목록) → `scripts/verify.sh`. 지우기만 하는 push 는 게이트를 건너뛴다 | changed, full 명시 선택 |
-| 사람 | — | `bash scripts/verify.sh` | changed(기본), --full 또는 HARNESS_VERIFY_LEVEL=fast |
+| 사람 | — | `bash scripts/verify.sh` | changed(기본), MR 전 --affected, HARNESS_VERIFY_LEVEL=fast. full은 CI |
 | 원격 CI | 아직 없다. GoCD 에서 돌릴 예정이고 파이프라인 설정은 리포 밖에 둔다(`.gitlab-ci.yml`·GitHub Actions 는 두지 않는다) | — | — |
 
 `verify-gate.sh`가 Stop hook 에서 지키는 것:
@@ -165,7 +165,7 @@ changed 계획기(`verify-changed.py`)가 명령을 고르는 규칙:
 - 프로젝트는 가장 가까운 `pyproject.toml`·`package.json`·`pubspec.yaml`, 없으면 `tests/` 폴더다. 한 프로젝트에 언어가 섞이면(파이썬 도구 + 사이트 JS) 언어 묶음마다 따로 고른다. JS 는 그 프로젝트에 `package.json`이 있어야 실행기(vitest · `node --test` .mjs)를 고른다.
 - `.agents/verify-checks.json` 경로 규칙: `paths`에 맞는 파일이 바뀌면 `command`를 더한다. `"covers": true`면 그 경로의 코드 파일(생성물 · 리포에 둔 외부 라이브러리 · 시험 입력 fixture)은 관련 시험을 찾지 않고 그 명령이 책임진다. 파일마다 시험을 둘 수 없는 경로에만 쓴다.
 - 지운 시험 파일은 돌릴 수 없으므로 권고(recommendations)로 남긴다 — 대체 시험이 그 경우를 덮는지 확인한다.
-hook 통과는 full 통과가 아니다. 전체 검증은 `bash scripts/verify.sh --full`로 명시하고 실행 수준을 기록한다([검증 사다리](../../rules/verification-ladder.md)).
+hook 통과는 full 통과가 아니다. MR 전에는 `bash scripts/verify.sh --affected`를 돌리고 전체 검증(full)은 CI 결과로 기록한다([검증 사다리](../../rules/verification-ladder.md)).
 
 git hook 연결:
 
@@ -289,7 +289,7 @@ sequenceDiagram
 
 1. 메인 리포 `tools/harness/shared/`의 원본을 고친다. 새 규칙 파일이면 `.kiro/steering/<규칙>.md` 포인터도 같이 만든다.
 2. 변경 전 `python3 tools/harness/sync.py --snapshot <path>`, 수정 후 `--baseline <path>`로 등록 하네스에 배포한다. 지문 충돌은 파일을 덮지 않고 확인한다.
-3. 메인 리포 루트에서 `python3 tools/harness/sync.py --check`로 배포 드리프트를 확인하고 `bash scripts/verify.sh --files <변경 파일> --tests <관련 테스트>`로 선택 검증한다. 도메인·단위 전체 구조 검사는 `HARNESS_VERIFY_LEVEL=fast bash scripts/verify.sh`, 전체 빌드·테스트는 `bash scripts/verify.sh --full`로 선택한다.
+3. 메인 리포 루트에서 `python3 tools/harness/sync.py --check`로 배포 드리프트를 확인하고 `bash scripts/verify.sh --files <변경 파일> --tests <관련 테스트>`로 선택 검증한다. 도메인·단위 전체 구조 검사는 `HARNESS_VERIFY_LEVEL=fast bash scripts/verify.sh`, MR 전에는 `bash scripts/verify.sh --affected`, 전체 빌드·테스트(full)는 CI가 돈다.
 4. 두 단계로 커밋한다. 바뀐 도메인 리포마다 커밋·push 한 뒤, 메인 리포에서 `tools/harness/shared` 변경과 도메인 포인터(`git add <도메인 폴더>`)를 커밋·push 한다.
 
 메인 리포를 먼저 push 하면 다른 사람이 받을 때 아직 없는 도메인 커밋을 가리킨다. 순서와 브랜치 이름은 [git 워크플로](../../rules/git-workflow.md)가 원본이다.
@@ -331,6 +331,6 @@ sequenceDiagram
 
 ## 공동 세션과 선택 검증
 
-현재 실행 기준은 [공동 세션 안내](agent-collaboration.md)다. 기본 검증은 changed, full은 --full로 명시한다.
+현재 실행 기준은 [공동 세션 안내](agent-collaboration.md)다. 기본 검증은 changed, MR 전은 --affected, full은 CI가 돈다.
 새 SDD 기본은 이슈 폴더이며 legacy를 이동하지 않는다. 상세는 [SDD 설명서](sdd-pattern.md)다.
 세 도구가 공통 코드/협업 규칙과 hook을 읽고, 세션 표식과 빌드 잠금을 구분한다. 공지 게시와 실제 수신 확인을 구분한다.

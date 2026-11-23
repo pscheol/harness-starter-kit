@@ -50,14 +50,14 @@ bash scripts/verify.sh --session <registered-session-id>
 관계가 불명확하거나 테스트가 없으면 대상을 명시하도록 안내하고 통과로 보고하지 않는다.
 TypeScript 타입 검사는 프로젝트 계약을 확인하므로 파일 단위 테스트보다 넓을 수 있다. 테스트 선택과 타입 검사 범위를 구분한다.
 
-## 전체 검증 선택
+## MR 전 검증
 
 ```bash
-bash scripts/verify.sh --full
+bash scripts/verify.sh --affected
 HARNESS_VERIFY_LEVEL=fast bash scripts/verify.sh
 ```
 
-full은 기존 전체 빌드/테스트이며 fast는 기존 하네스 구조 검사다. 둘 모두 changed 결과와 구분한다.
+affected는 base 이후 바뀐 모듈과 그 모듈을 쓰는 모듈의 검사이고, fast는 하네스 구조 검사다. 전체 빌드/테스트(full)는 CI가 돈다. 셋 모두 changed 결과와 구분한다.
 공유 모듈·계약·DB/RLS·동시성·암호화 변경은 관련 소비자·통합 검증 확대를 계획에 적는다.
 구현되지 않은 검사, timeout, skip, 실패를 통과로 바꾸지 않는다.
 

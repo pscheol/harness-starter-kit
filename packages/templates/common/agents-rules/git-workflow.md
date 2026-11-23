@@ -87,7 +87,7 @@ feat: Stage 0 M2 스키마와 불변식 — mtg 8테이블·권한 회수·회�
 
 - 제목은 커밋 제목과 같은 형식.
 - 본문에 SDD 세 문서 경로를 링크한다. 리뷰어가 요구사항을 열어봐야 정확성을 판정할 수 있다.
-- 변경 범위 테스트를 실행하고 검증 수준을 PR에 적는다. full은 `bash scripts/verify.sh --full`로 명시한다. hook 결과와 전체 검증 결과를 구분한다.
+- 변경 범위 테스트와 `bash scripts/verify.sh --affected`를 실행하고 검증 수준을 PR에 적는다. 전체 검증(full)은 CI가 돌고, PR에는 그 결과 링크를 적는다. hook 결과와 CI 결과를 구분한다.
 - 리뷰 기준은 `.agents/rules/pr-review-policy.md`.
 
 ## exec-plan 상태와 브랜치

@@ -10,4 +10,4 @@
 - 설정 형식의 정적 검사와 설치된 Kiro 클라이언트의 실제 실행 확인은 별개다.
 
 새 코드·리팩토링은 `.agents/rules/code-maintenance.md`, 공동 세션은 `.agents/rules/session-collaboration.md`를 읽는다.
-변경 검증은 `bash scripts/verify.sh --files <paths> --tests <tests> --plan`, 전체는 `--full`로 명시한다.
+변경 검증은 `bash scripts/verify.sh --files <paths> --tests <tests> --plan`, MR 전에는 `--affected`, 전체(full)는 CI가 돈다.

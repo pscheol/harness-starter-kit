@@ -26,6 +26,6 @@ description: 하네스 컨텍스트를 로드한다 (작업 시작 시 실행)
 - AI 티 나는 글 금지: `1차 방어선`·`심장부` 같은 비유, `단순히 A가 아니라 B다` 같은 상투구 대신 무슨 일이 실제로 일어나는지 그대로 쓴다(`writing-style.md` §6).
 - 기능별 패키지와 레이어의 변경 이유를 하나씩 정한다. 읽히는 이름, 조건의 의미를 나타내는 정책 함수, adapter/mapper 책임 분리와 OpenAPI/Swagger·문서의 실제 계약을 확인한다. 패턴·상수·추상화는 구체적인 변경·재사용 필요가 있을 때 적용한다.
 - 새 복잡한 작업은 `.agents/docs/<slug>-specs/issues/<N-type-name>/tasks/active.md`에 계획을 남긴다. 요구·설계는 같은 이슈 폴더의 `requirements.md`·`design.md`다. 진행 중 기존 stage별 명세는 옮기지 않는다.
-- 변경한 단위 테스트를 RED→GREEN으로 실행한 뒤 `python3 scripts/verify-changed.py --files <변경 파일>` 또는 `--session <실제 세션 ID>`로 검증한다. 기본 게이트는 changed, 전체 검증은 `bash scripts/verify.sh --full`로 선택한다. changed·fast 통과는 full 통과가 아니다.
+- 변경한 단위 테스트를 RED→GREEN으로 실행한 뒤 `python3 scripts/verify-changed.py --files <변경 파일>` 또는 `--session <실제 세션 ID>`로 검증한다. 기본 게이트는 changed, MR 전에는 `bash scripts/verify.sh --affected`, 전체 검증(full)은 CI가 돈다. changed·fast 통과는 full 통과가 아니다.
 
 그 다음 사용자의 실제 요청을 수행하라: 이 명령 뒤에 이어서 적은 내용

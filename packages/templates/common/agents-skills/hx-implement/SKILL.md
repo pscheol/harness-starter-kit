@@ -17,6 +17,6 @@ SDD 워크플로 원본 `.agents/rules/sdd-workflow.md` 의 `/hx-implement` 절�
 
 경로: 새 이슈는 `.agents/docs/<slug>-specs/issues/<key>/`, 기존 이슈는 원래 위치를 유지한다.
 `scripts/check-sdd-prerequisites.sh`의 BASE/REQUIREMENTS/DESIGN/TASKS 출력으로 경로를 해석하고, legacy 디렉터리를 새 기본값으로 가정하지 않는다.
-검증: `bash scripts/verify.sh --files <변경 경로> --tests <관련 테스트>`부터 실행한다. `--plan`으로 확인하고 full은 `--full`로 명시한다.
+검증: `bash scripts/verify.sh --files <변경 경로> --tests <관련 테스트>`부터 실행한다. `--plan`으로 범위를 확인하고, MR 전에는 `bash scripts/verify.sh --affected`를 돌린다. 전체 검증(full)은 CI가 돈다.
 
 SDLC: S5·S6 뒤 S7 — check 로 옮기기 전에 `/hx-docs` 로 기능 문서를 반영하고 검사를 통과시킨다(생성기가 없는 리포는 이유를 적는다).

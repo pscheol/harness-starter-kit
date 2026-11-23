@@ -22,7 +22,7 @@
 | `## 구조` | 디렉터리 트리(2~3단계)와 각 폴더의 한 줄 설명 | 파일 하나하나의 설명 |
 | `## 준비물` | 도구와 버전 표 · 버전 원본 파일(`build.gradle.kts`·`pyproject.toml`·`package.json`·`.tool-versions` 등) | 설치 튜토리얼 전문 |
 | `## 실행` | 따로 받았을 때 · 메인 리포 안일 때(나눠서) · 환경 변수 원본(`.env.example`) | 운영 배포 |
-| `## 검증` | `bash scripts/verify.sh --files <paths>`(changed) · `bash scripts/verify.sh --full`(명시 전체) · `HARNESS_VERIFY_LEVEL=fast bash scripts/verify.sh` · 무엇이 도는지 한 줄 · 명령 표의 원본 링크(§6) | 개별 도구 명령을 다시 나열 |
+| `## 검증` | `bash scripts/verify.sh --files <paths>`(changed) · `bash scripts/verify.sh --affected`(MR 전) · full은 CI · `HARNESS_VERIFY_LEVEL=fast bash scripts/verify.sh` · 무엇이 도는지 한 줄 · 명령 표의 원본 링크(§6) | 개별 도구 명령을 다시 나열 |
 | `## 하네스` | 진입 문서(AGENTS·CLAUDE·Kiro) · 첫 SDD 명령 · 설명서 링크 · 상위 층 포인터 | 규칙 본문 |
 | `## 기여` | 브랜치 이름 · 커밋 형식 · 리뷰 기준 링크 · 두 단계 커밋(도메인 리포 → 메인 리포 포인터) · git hook 연결 명령 | git 사용법 일반 |
 

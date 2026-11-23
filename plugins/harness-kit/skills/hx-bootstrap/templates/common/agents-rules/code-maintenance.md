@@ -177,7 +177,7 @@ BDD는 `Given` 입력·상태, `When` 실제 동작, `Then` 반환값·상태·�
 
 먼저 변경한 함수·클래스의 단위 테스트를 선택한다. SQL·인증·외부 계약·상태 저장을 바꾸면 인접 경계 테스트도 포함한다.
 테스트 선택은 단위 manifest·runner의 실제 selector로 하고 명령·선택 이유·통과/실패 수를 남긴다.
-full 전체 검증은 명시적으로 선택한 뒤 실행한다. hook/fast/선택 테스트 통과를 full 통과로 쓰지 않는다.
+전체 검증(full)은 CI가 돈다. hook/fast/changed/affected 통과를 full 통과로 쓰지 않는다.
 동시에 실행 중인 다른 세션의 Gradle·모델·DB 작업은 [session-collaboration](./session-collaboration.md)의 협업 기록을 확인한 뒤 조율한다.
 일괄 test·format·code generation으로 배정 밖 파일을 바꾸지 않는다.
 
@@ -186,12 +186,12 @@ full 전체 검증은 명시적으로 선택한 뒤 실행한다. hook/fast/선�
 ```bash
 bash scripts/verify.sh --files <변경-상대-파일> --tests <관련-상대-테스트-파일> --plan
 bash scripts/verify.sh --files <변경-상대-파일> --tests <관련-상대-테스트-파일>
-bash scripts/verify.sh --full
+bash scripts/verify.sh --affected
 ```
 
-마지막 명령은 전체 검증을 선택했을 때 실행한다. 기본 `bash scripts/verify.sh`는 changed 선택 경로다.
+마지막 명령은 MR 전에 실행한다(바꾼 모듈과 그 모듈을 쓰는 모듈). 기본 `bash scripts/verify.sh`는 changed 선택 경로다.
 선택할 테스트가 불명확하면 테스트 경로를 지정하거나 미검증으로 보고한다. 빠진 테스트를 통과로 쓰지 않는다.
-`HARNESS_VERIFY_LEVEL=fast`는 구조·정적 검증, `HARNESS_VERIFY_LEVEL=full`은 명시적 전체 검증이다.
+`HARNESS_VERIFY_LEVEL=fast`는 구조·정적 검증이다. 전체 검증(full)은 CI가 돌고, 에이전트 세션에서는 훅이 막는다.
 
 ## 8. 선택 파일 경고 검사
 

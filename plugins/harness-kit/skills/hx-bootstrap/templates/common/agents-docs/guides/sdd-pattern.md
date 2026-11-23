@@ -78,5 +78,5 @@ bash scripts/verify.sh --files <changed-files> --tests <related-tests> --plan
 ```
 
 check는 읽기 전용, 두 번째 명령은 명시적 보드 갱신이다. 다른 편집과 충돌하면 원문을 덮지 않고 다시 확인한다.
-검증은 변경 대상부터 시작하고 full은 `bash scripts/verify.sh --full`로 선택한다.
+검증은 변경 대상부터 시작하고, MR 전에는 `bash scripts/verify.sh --affected`를 돌린다. 전체 검증(full)은 CI가 돈다.
 BDD 시나리오·단위/통합/계약·E2E·사람 확인 중 실제 수행한 범위만 보고한다.

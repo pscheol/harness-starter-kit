@@ -111,8 +111,9 @@
 | 레벨 | 범위 | 실행 |
 |---|---|---|
 | changed(기본) | 바뀐 파일과 매핑된 시험·정적 검사·경로 검사(`.agents/verify-checks.json`) | `bash scripts/verify.sh --files <paths>` · Stop hook · git hook |
+| affected | base 이후 바뀐 모듈과 그 모듈을 쓰는 모듈의 검사. MR 전에 돈다 | `bash scripts/verify.sh --affected` |
 | fast | 하네스 구조·SDD 상태·기능 문서·포맷·린트. 빌드 도구를 띄우지 않는다 | `HARNESS_VERIFY_LEVEL=fast bash scripts/verify.sh` |
-| full | fast + 컴파일·타입·전체 시험·커버리지 | `bash scripts/verify.sh --full` |
+| full | fast + 컴파일·타입·전체 시험·커버리지. CI가 돈다(에이전트 세션에서는 훅이 막는다) | CI |
 
 - Stop hook 과 git hook(`bash scripts/install-git-hooks.sh` 로 건다)은 changed 다. changed·fast 통과는 full 통과가 아니다.
 - `--plan` 은 실행할 명령·제외·미확인을 먼저 보인다. 시험 0개를 통과로 보고하지 않는다.

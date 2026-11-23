@@ -9,4 +9,4 @@
 - 사용자 전역 설정과 자격증명을 설치하거나 덮어쓰지 않는다.
 
 새 코드·리팩토링은 `.agents/rules/code-maintenance.md`, 공동 세션은 `.agents/rules/session-collaboration.md`를 읽는다.
-변경 검증은 `bash scripts/verify.sh --files <paths> --tests <tests> --plan`, 전체는 `--full`로 명시한다.
+변경 검증은 `bash scripts/verify.sh --files <paths> --tests <tests> --plan`, MR 전에는 `--affected`, 전체(full)는 CI가 돈다.
