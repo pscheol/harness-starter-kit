@@ -111,14 +111,14 @@ describe("repair", () => {
     expect(fs.existsSync(path.join(target, A))).toBe(true);
   });
 
-  it("설치 안 됨은 exit 3, mirror · render · merge 항목은 exit 3", async () => {
+  it("설치 안 됨은 exit 3, 모르는 op 항목은 exit 3(mirror · render · merge 는 HK-13 뒤 받는다)", async () => {
     expect((await run(["repair", "--cwd", tmpDir()])).code).toBe(3);
     const { target, templates, cli } = await installedFixture();
-    patchLock(target, { ".claude/settings.json": { op: "render", owner: "kit", from: ".agents/x.md" } });
+    patchLock(target, { ".claude/settings.json": { op: "symlink", owner: "kit", from: ".agents/x.md" } });
     fs.rmSync(path.join(target, A));
     const r = await cli("repair", ["--json", "--templates", templates]);
     expect(r.code).toBe(3);
-    expect(json(r).error.message).toContain("지원하지 않는다");
+    expect(json(r).error.message).toMatch(/모른다|지원하지 않는다/);
     expect(fs.existsSync(path.join(target, A))).toBe(false);
   });
 });

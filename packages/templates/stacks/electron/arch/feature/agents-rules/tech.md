@@ -1,3 +1,15 @@
+---
+paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
+  - "**/*.mjs"
+  - "**/*.cjs"
+  - "**/package.json"
+  - "**/tsconfig*.json"
+  - "pnpm-workspace.yaml"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · Electron · 아키텍처: feature · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # 기술 스택 / 실행 환경 — {{PROJECT_NAME}} (feature)

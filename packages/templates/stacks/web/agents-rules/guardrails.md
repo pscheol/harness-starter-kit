@@ -1,3 +1,17 @@
+---
+paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
+  - "**/*.mjs"
+  - "**/*.cjs"
+  - "**/package.json"
+  - "**/tsconfig*.json"
+  - "pnpm-workspace.yaml"
+  - ".agents/docs/**"
+  - "ARCHITECTURE.md"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · 웹 프론트엔드 · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # 개발 가드레일 — {{PROJECT_NAME}}
@@ -94,7 +108,7 @@
 ## 하네스 작업 규칙
 
 - 규칙 원본은 `.agents/rules/`, 기록/SDD 원본은 `.agents/docs/`다. 진입 파일(AGENTS.md 등)은 목차일 뿐 상세를 중복 보관하지 않는다.
-- 규칙이 바뀌면 `.agents/rules/`의 원본을 **먼저** 고치고 진입 파일·kiro 포인터를 동기화한다(절차: [`agent-harness.md`](./agent-harness.md)).
+- 규칙이 바뀌면 `.agents/rules/`의 원본을 **먼저** 고치고 진입 파일을 맞춘다. 하네스 폴더의 복사본 · 생성물은 `npx harness-kit repair`가 다시 만든다(절차: [`agent-harness.md`](./agent-harness.md)).
 - 복잡한 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 계획을 남기고 진행한다.
 - 기술 부채는 `.agents/docs/tech-debt-tracker.md`에 등록한다.
 - 변경은 `scripts/verify.sh`(포맷·lint·typecheck·가드·test·build)로 검증한 뒤 결과를 제시한다.

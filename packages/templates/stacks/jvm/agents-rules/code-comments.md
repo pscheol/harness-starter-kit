@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/*.kt"
+  - "**/*.kts"
+  - "**/*.java"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · Kotlin/Java + Spring · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # 주석 작성 가이드
@@ -5,7 +11,7 @@
 > 기본값은 **주석 없음**이다. 코드가 스스로 말하게 두고, 코드로 말할 수 없는 것만 주석으로 적는다.
 > 문장을 어떻게 쓸지는 [`writing-style.md`](./writing-style.md)가 정한다. 이 파일은 **어디에 얼마나** 쓸지를 정한다.
 
-이 문서가 주석 표준의 원본이다. steering·진입 파일은 요약과 포인터만 둔다.
+이 문서가 주석 표준의 원본이다. 진입 파일은 요약만 두고, 하네스 폴더의 규칙 파일은 이 원본의 복사본 · 생성물이다.
 
 ## 주석을 다는 경우 (이 다섯뿐)
 

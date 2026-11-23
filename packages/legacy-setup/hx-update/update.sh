@@ -202,14 +202,24 @@ done < "$PLAN_DIR/winners"
 
 # 이번 킷에 더는 없는 파일. 사용자가 계속 쓰고 있을 수 있어 지우지 않고 알리기만 한다.
 if [ -f "$LOCK" ]; then
-  while IFS=$'\t' read -r sha _layer _owner path; do
+  while IFS=$'\t' read -r sha layer _owner path; do
     case "$sha" in '#'*|'') continue ;; esac
     [ -n "$path" ] || continue
+    # 배치 줄과 하네스 폴더의 옛 포인터는 아래 배치 단계(projection.py)가 판정한다(HK-13).
+    case "$layer" in mirror|render|merge|merge+) continue ;; esac
+    case "$path" in .claude/*|.codex/*|.cursor/*|.kiro/*|CLAUDE.md) continue ;; esac
     grep -qxF "$path" "$SEEN" && continue
     echo "  orphan    $path   (킷에서 빠짐 — 그대로 둔다)"
     n_orphan=$((n_orphan+1))
   done < "$LOCK"
 fi
+
+# 하네스 배치(HK-13): copy 판정 뒤의 원본으로 복사본 · 생성물 · 병합을 다시 만들고 새 lock 에 배치 줄을 덧붙인다.
+# 사람이 고친 생성물은 덮지 않고 .new 를 쓴다. v1 포인터는 복사본 · 생성물로 바뀐다.
+project_flags=()
+[ "$ACCEPT_ALL" = 1 ] && project_flags+=(--accept-all)
+[ "$DRY_RUN" = 1 ] && project_flags+=(--dry-run)
+harness_project update "$TARGET" "$NEW_LOCK" "$LOCK" "$AGENTS_SEL" ${project_flags[@]+"${project_flags[@]}"}
 
 if [ "$DRY_RUN" != 1 ]; then
   cp "$NEW_LOCK" "$LOCK"

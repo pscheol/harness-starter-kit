@@ -97,7 +97,7 @@ flowchart LR
 ## 관련 문서
 ```
 
-Kiro steering 포인터(`.kiro/steering/<규칙>.md`)는 front matter(`inclusion`)와 원본 경로, 요약 3~6줄만 둔다.
+Kiro steering(`.kiro/steering/<규칙>.md`)은 규칙 원본에서 만든 생성물이다(직접 쓰지 않는다).
 
 ## 6. 원본 한 곳 — 어떤 사실을 어디에 두는가
 

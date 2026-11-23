@@ -1,3 +1,13 @@
+---
+paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
+  - "**/*.mjs"
+  - "**/*.cjs"
+  - "ARCHITECTURE.md"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · Electron · 아키텍처: monorepo · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # 구조 · 워크스페이스(apps + packages) — {{PROJECT_NAME}}

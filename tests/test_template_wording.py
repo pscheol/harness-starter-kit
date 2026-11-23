@@ -226,9 +226,14 @@ class FullBeforeCommitTest(unittest.TestCase):
         self.assertFalse(any(p.search("MR 전에는 `bash scripts/verify.sh --affected`, `full`은 CI가 돈다") for p in BEFORE_COMMIT))
 
     def test_entry_files_do_not_grow(self):
+        # CLAUDE.md 는 템플릿이 아니라 배치가 만든다: @AGENTS.md + 킷 블록(HK-13 R4, design §5.1).
+        spec = json.loads((TEMPLATES / "common/scripts/harness/projection.json").read_text(encoding="utf-8"))
+        claude_md = ("@AGENTS.md\n\n" + "\n".join(spec["claudeBlock"]) + "\n").encode("utf-8")
+        self.assertLessEqual(len(claude_md) - len("@AGENTS.md\n\n"), 1536)
         for stack, limit in ENTRY_BYTES.items():
             root = TEMPLATES / "stacks" / stack / "root"
-            size = sum(len((root / name).read_bytes()) for name in ("AGENTS.md", "CLAUDE.md"))
+            self.assertFalse((root / "CLAUDE.md").exists(), f"{stack}: CLAUDE.md 템플릿이 남았다")
+            size = len((root / "AGENTS.md").read_bytes()) + len(claude_md)
             with self.subTest(stack=stack):
                 self.assertLessEqual(size, limit)
                 self.assertIn("--affected", (root / "AGENTS.md").read_text(encoding="utf-8"))

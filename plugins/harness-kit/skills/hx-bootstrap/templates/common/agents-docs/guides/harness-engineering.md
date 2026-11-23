@@ -78,7 +78,7 @@ flowchart TD
 
 | 도구 | 진입 | 이 폴더에서 시작하면 함께 읽는 것 | 역할 · 명령 · hook |
 |---|---|---|---|
-| Claude Code | `CLAUDE.md`(`@AGENTS.md` 가져오기) | 시작 폴더와 그 상위 폴더의 `CLAUDE.md`를 모두 이어 붙인다. 설정(`.claude/settings.json`)은 시작한 폴더 것만 쓴다. `.agents/`는 자동으로 읽지 않는다 | `.claude/agents/*.md`(front matter `name` · `description` · `tools`) · `.claude/commands/hx-*.md` · settings 의 SessionStart · PreToolUse · Stop hook |
+| Claude Code | `CLAUDE.md`(`@AGENTS.md` 가져오기) | 시작 폴더와 그 상위 폴더의 `CLAUDE.md`를 모두 이어 붙인다. 설정(`.claude/settings.json`)은 시작한 폴더 것만 쓴다. `.agents/`는 자동으로 읽지 않는다(규칙 · 스킬 · 역할은 `.claude/` 아래 복사본 · 생성물로 둔다) | `.claude/agents/*.md`(front matter `name` · `description` · `tools`) · `.claude/skills/hx-*/` · `.claude/rules/*.md`(`paths`) · settings 의 SessionStart · PreToolUse · Stop hook |
 | Codex | `AGENTS.md` | git 리포 루트부터 시작 폴더까지의 `AGENTS.md`를 이어 읽는다(합계 32 KiB 상한). `.codex/config.toml` · `.agents/skills` · `.codex/hooks.json`은 프로젝트 루트(가장 가까운 `.git` — submodule 안이면 그 submodule)부터 시작 폴더까지 `.codex/`가 있는 폴더마다 읽고, 같은 키·같은 이름의 역할은 시작 폴더 쪽이 이긴다. 신뢰하지 않은 폴더의 `.codex/`는 읽지 않는다 | `config.toml`이 `agents/*.toml` 다섯 역할을 등록 · 스킬 `$hx-*` · `hooks.json` |
 | Kiro | `.kiro/steering/*.md`(front matter `inclusion`) · `AGENTS.md` | 연 workspace 의 `.kiro/`만 읽는다. 이 하네스 루트를 workspace 로 연다. 커스텀 에이전트에는 steering 이 자동으로 붙지 않는다. CLI 기본 엔진(V2)은 `.kiro/hooks`를 읽지 않고 고른 에이전트 JSON 의 `hooks`만 쓴다 | `.kiro/agents/*.json`(하네스 id 이름의 조율 에이전트 + 역할 다섯, `resources`로 원본을 넘긴다) · `.kiro/skills/hx-*` · `.kiro/hooks/*.json`(v1) |
 
@@ -271,7 +271,7 @@ sequenceDiagram
 | 하네스 문서의 상대 링크는 하네스 루트 안을 가리키고 끊기지 않는다 | [문서 기준](doc-standards.md) §1 | `check_harness.py` `link_errors` | fast | `link escapes harness root: …` · `broken link: …` |
 | README 7절 · AGENTS ≤ 150줄 · CLAUDE ≤ 40줄 · ARCHITECTURE Mermaid · 역할 7절 · Claude 역할 `tools` · 닫힌 코드 펜스 | [문서 기준](doc-standards.md) | `check_harness.py` `doc_errors` | fast | `README.md: missing section '## 기여' — see …` · `unclosed code fence at line N` |
 | 필수 파일 · 설정 파싱 · Codex 역할 필드 · Kiro hook v1 · Kiro resource 경로 | [하네스 규약](../../rules/agent-harness.md) | `check_harness.py` `config_errors` | fast | `missing required file` · `Codex role needs developer_instructions` |
-| 규칙마다 Kiro 포인터 · 스킬마다 Claude · Kiro 포인터 · 역할 정의는 원본 역할을 가리킨다 | [하네스 규약](../../rules/agent-harness.md) | `check_harness.py` `pointer_errors` | fast | `missing Kiro rule pointer` · `role file must point to .agents/roles/<역할>.md` |
+| 규칙마다 Kiro steering · 스킬마다 Claude · Kiro 복사본 · 역할 생성물은 원본 역할 경로를 적는다 | [하네스 규약](../../rules/agent-harness.md) | `check_harness.py` `pointer_errors` | fast | `missing Kiro steering` · `role file must point to .agents/roles/<역할>.md` |
 | 공통 파일은 원본에서만 고친다 | [하네스 규약](../../rules/agent-harness.md) | 메인 리포 `sync.py --check` | 메인 리포 fast | `differs: <경로>` |
 | task 위치와 상태가 같고 check · completed 에 미완료 작업이 없다 | [SDD 규약](../../rules/sdd-workflow.md) | `check_harness.py --plans-only`(`check-exec-plan-status.sh`가 부른다) | fast | `state mismatch, expected check, found ['active']` · `unchecked task in check` |
 | 보드 구간을 손으로 고치지 않는다 | [SDD 규약](../../rules/sdd-workflow.md) | `board.sh --check` | fast | `✖ SDD 보드가 현재 파일 위치와 다릅니다. bash scripts/board.sh 로 갱신하십시오.` |
@@ -287,7 +287,7 @@ sequenceDiagram
 
 **공통 규칙**(공통 파일 전부 — 규칙 · 역할 · 스킬 · 템플릿 · 배선 · SDD 스크립트 · 이 설명서):
 
-1. 메인 리포 `tools/harness/shared/`의 원본을 고친다. 새 규칙 파일이면 `.kiro/steering/<규칙>.md` 포인터도 같이 만든다.
+1. 메인 리포 `tools/harness/shared/`의 원본을 고친다. 새 규칙 파일이면 `npx harness-kit repair`로 하네스 폴더 생성물을 만든다.
 2. 변경 전 `python3 tools/harness/sync.py --snapshot <path>`, 수정 후 `--baseline <path>`로 등록 하네스에 배포한다. 지문 충돌은 파일을 덮지 않고 확인한다.
 3. 메인 리포 루트에서 `python3 tools/harness/sync.py --check`로 배포 드리프트를 확인하고 `bash scripts/verify.sh --files <변경 파일> --tests <관련 테스트>`로 선택 검증한다. 도메인·단위 전체 구조 검사는 `HARNESS_VERIFY_LEVEL=fast bash scripts/verify.sh`, MR 전에는 `bash scripts/verify.sh --affected`, 전체 빌드·테스트(full)는 CI가 돈다.
 4. 두 단계로 커밋한다. 바뀐 도메인 리포마다 커밋·push 한 뒤, 메인 리포에서 `tools/harness/shared` 변경과 도메인 포인터(`git add <도메인 폴더>`)를 커밋·push 한다.
@@ -297,7 +297,7 @@ sequenceDiagram
 **고유 규칙**:
 
 1. 그 하네스 `.agents/rules/<규칙>.md`를 고친다.
-2. `.kiro/steering/<규칙>.md` 포인터와 `AGENTS.md` 규칙 색인을 맞춘다.
+2. `AGENTS.md` 규칙 색인을 맞추고 `npx harness-kit repair`로 복사본 · 생성물을 다시 만든다.
 3. 그 하네스 루트에서 `bash scripts/verify.sh`.
 4. 도메인 리포 안이면 그 리포에 커밋·push 하고, 메인 리포 안이면 포인터를 올린다.
 

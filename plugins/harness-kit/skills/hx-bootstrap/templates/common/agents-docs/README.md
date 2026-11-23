@@ -20,10 +20,10 @@
 |---|---|---|
 | 공통/Codex | `AGENTS.md` (+ 정책 설정) | 목차 + 정책 |
 | Claude Code | `CLAUDE.md` (+ `.claude/`) | 진입 + 설정·명령(SDD 슬래시 명령 포함)·hook |
-| Kiro | `.kiro/steering/*.md` | `.agents/rules` 를 가리키는 얇은 포인터 + 이 기록 시스템 참조 |
+| Kiro | `.kiro/steering/*.md` | `.agents/rules` 원본에서 만든 생성물 + 이 기록 시스템 참조 |
 
 규칙을 바꿀 때는 `.agents/rules/`(규칙)나 `.agents/docs/`(기록)를 먼저 고치고,
-그다음 진입 파일과 steering 포인터를 맞춘다.
+그다음 진입 파일을 맞춘다. steering 등 하네스 폴더 생성물은 `npx harness-kit repair`가 다시 만든다.
 
 ## 구조 (제품 단위 SDD)
 
@@ -51,7 +51,7 @@ AGENTS.md / CLAUDE.md / ARCHITECTURE.md    진입·아키텍처 원본
 - 전부 중요하다고 표시하면 무엇이 중요한지 알 수 없다. 핵심 제약만 항상 로드하고
   나머지는 작업할 때 링크를 따라 연다.
 - 깊이 있는 내용은 `.agents/docs/`(기록)와 `.agents/rules/`(규칙)에 둔다. 각 문서가 자기 주제의 기준이고,
-  진입 파일이나 steering 포인터에는 요약과 링크만 남긴다.
+  진입 파일에는 요약과 링크만 남긴다.
 
 ## SDD (Spec-Driven Development)
 

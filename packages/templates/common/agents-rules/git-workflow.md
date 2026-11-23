@@ -1,3 +1,10 @@
+---
+paths:
+  - ".agents/docs/issues/**"
+  - "scripts/git-hooks/**"
+  - ".github/**"
+  - ".gitlab-ci.yml"
+---
 # Git 워크플로 — 브랜치·커밋·PR
 
 **작업 단위는 SDD 기능 하나다.** 브랜치 하나 = 이슈 폴더의 `requirements` → `design` → `tasks` 한 벌 = PR 하나.

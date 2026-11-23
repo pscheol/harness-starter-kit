@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/*.go"
+  - "ARCHITECTURE.md"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · Go 백엔드 · 아키텍처: hexagonal · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # 구조 · 표준 Go 레이아웃 + 헥사고날 — {{PROJECT_NAME}}

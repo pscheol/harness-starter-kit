@@ -16,6 +16,8 @@ import { readTemplate, resolveCandidates, type Overlap } from "./resolve";
 import type { Selection } from "./selection";
 import { substitute } from "./tokens";
 
+const PROJECTION_OPS = new Set(["mirror", "render", "merge"]);
+
 export const UPDATE_ACTIONS = [
   "new", "restore", "update", "same", "conflict", "replace", "orphan", "delete", "skip-user", "skip-external", "skip-pack", "forget",
 ] as const;
@@ -49,6 +51,8 @@ export interface UpdatePlan {
   counts: Record<UpdateAction, number>;
   overlaps: Overlap[];
   excludedByHarness: number;
+  /** 이번 킷의 copy 설치 경로(D) */
+  wantPaths: Set<string>;
 }
 
 export interface UpdateInput {
@@ -203,7 +207,8 @@ function forgetSet(raw: string[], locked: Map<string, LockEntry>, want: Map<stri
 
 export function buildUpdatePlan(input: UpdateInput): UpdatePlan {
   const { want, overlaps, excludedByHarness } = wanted(input);
-  const locked = new Map(input.lock.entries.map((e) => [e.path, e]));
+  // mirror · render · merge 는 배치 엔진(projection/engine judgeUpdate)이 판정한다.
+  const locked = new Map(input.lock.entries.filter((e) => !PROJECTION_OPS.has(e.op)).map((e) => [e.path, e]));
   const forget = forgetSet(input.forget, locked, want);
   const ctx: Ctx = { target: input.target, ancestors: new AncestorCheck(input.target, fs.realpathSync(input.target)), acceptAll: input.acceptAll, prune: input.prune };
   const counts = Object.fromEntries(UPDATE_ACTIONS.map((a) => [a, 0])) as Record<UpdateAction, number>;
@@ -215,5 +220,5 @@ export function buildUpdatePlan(input: UpdateInput): UpdatePlan {
     counts[j.op.action] += 1;
     if (j.entry) entries.push(j.entry);
   }
-  return { ops, entries, counts, overlaps, excludedByHarness };
+  return { ops, entries, counts, overlaps, excludedByHarness, wantPaths: new Set(want.keys()) };
 }

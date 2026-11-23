@@ -6,6 +6,10 @@ import { isInside, lstatOrNull } from "./fsx";
 import { sha256 } from "./hash";
 import { isExecutable, type Layout } from "./layout";
 import { readTemplate, resolveCandidates, type Overlap } from "./resolve";
+import type { Finding } from "../adapters/types";
+import { judgeInstall, type ProjectionPlan } from "../projection/engine";
+import { prepare } from "../projection/flow";
+import { loadSpecOrNull } from "../projection/spec";
 import type { Selection } from "./selection";
 import { substitute } from "./tokens";
 
@@ -46,6 +50,9 @@ export interface Plan {
   excludedByHarness: number;
   generated: GeneratedFile[];
   counts: Counts;
+  /** 하네스 배치(HK-13). 템플릿에 projection.json 이 없으면 null */
+  projection: ProjectionPlan | null;
+  projectionFindings: Finding[];
 }
 
 export interface PlanMode {
@@ -186,5 +193,16 @@ export function buildPlan(args: {
   const generated = [manifestPlan(target, ancestors, manifestContent(selection, tokens), mode.adopt)];
   const counts: Counts = { create: 0, replace: 0, same: 0, "skip-user": 0, excludedByHarness: res.excludedByHarness, overlapped: res.overlaps.length };
   for (const o of ops) counts[o.action] += 1;
-  return { target, ops, overlaps: res.overlaps, excludedByHarness: res.excludedByHarness, generated, counts };
+  const { projection, projectionFindings } = planProjection(args, ops);
+  return { target, ops, overlaps: res.overlaps, excludedByHarness: res.excludedByHarness, generated, counts, projection, projectionFindings };
+}
+
+/** copy 를 적용한 뒤의 원본으로 배치 작업을 정한다(HK-13 design §6.1 · §6.2). */
+function planProjection(args: { templatesDir: string; target: string; selection: Selection; tokens: Record<string, string>; mode: PlanMode }, ops: PlannedOp[]): { projection: ProjectionPlan | null; projectionFindings: Finding[] } {
+  const spec = loadSpecOrNull(args.templatesDir);
+  if (!spec) return { projection: null, projectionFindings: [] };
+  const writes = new Map(ops.filter((o) => o.action === "create" || o.action === "replace").map((o) => [o.path, { content: o.content, executable: o.executable }]));
+  const p = prepare({ target: args.target, spec, tokens: args.tokens, agents: args.selection.agents, writes, copyPaths: ops.map((o) => o.path) });
+  const projection = judgeInstall({ target: args.target, spec, tokens: args.tokens, sources: p.sources, wants: p.wants, prev: [], force: args.mode.force });
+  return { projection, projectionFindings: p.findings };
 }

@@ -20,6 +20,10 @@ import type { Selection } from "../core/selection";
 import { locateTemplates, type TemplatesLocation } from "../core/templates";
 import { compareSemver, VERSION } from "../core/version";
 import { shellQuote, V1_LOCK_BACKUP } from "./update";
+import type { Finding } from "../adapters/types";
+import { applyProjection, type ProjectionPlan } from "../projection/engine";
+import { mergeEntries, projectionConflicts, projectionData, projectionLines } from "../projection/flow";
+import type { OverlayWrite } from "../projection/view";
 
 export const CHANGE_ACTIONS = [
   "create", "restore", "same", "keep", "relayer", "update", "conflict",
@@ -123,6 +127,20 @@ export interface ChangeResult {
   ops: ChangeOp[];
   entries: LockEntry[];
   manifest: ManifestChange | null;
+  /** 하네스 배치(HK-13). 템플릿에 projection.json 이 없으면 null */
+  projection?: ProjectionPlan | null;
+  projectionFindings?: Finding[];
+}
+
+/** 쓰기 전 원본 보기: copy 쓰기(create · restore · update)와 지우기를 겹친다. */
+export function changeOverlay(ops: ChangeOp[]): { writes: Map<string, OverlayWrite>; deletes: Set<string> } {
+  const writes = new Map<string, OverlayWrite>();
+  const deletes = new Set<string>();
+  for (const o of ops) {
+    if ((o.action === "create" || o.action === "restore" || o.action === "update") && o.content) writes.set(o.path, { content: o.content, executable: o.executable === true });
+    else if (o.action === "delete") deletes.add(o.path);
+  }
+  return { writes, deletes };
 }
 
 /** 쓰기. 기능 문서 결과를 준다. */
@@ -143,6 +161,8 @@ export function applyChange(ctx: Ctx, l: Loaded, after: Selection, r: ChangeResu
       }
     }
     removeEmptyDirs(target, deleted);
+    current = "배치(mirror · render · merge)";
+    if (r.projection) applyProjection(target, r.projection.ops);
     const m = r.manifest;
     current = MANIFEST_PATH;
     if (m && (m.action === "create" || m.action === "replace")) writeFileAtomic(full(MANIFEST_PATH), m.content, false);
@@ -153,7 +173,8 @@ export function applyChange(ctx: Ctx, l: Loaded, after: Selection, r: ChangeResu
   const docs: FeatureDocsResult = featureDocsAllowed(target, r.entries)
     ? buildFeatureDocs(target, ctx.io.env)
     : { status: "skipped", reason: "tools/docs/ 에 킷 판이 아닌 파일이 있다" };
-  const lockText = serializeLock({ schema: "harness-kit.lock/v2", kit: { version: inst.lock.kit.version ?? inst.meta.kit.version, source: inst.lock.kit.source }, packs: inst.lock.packs, entries: r.entries });
+  const entries = r.projection ? mergeEntries(r.entries, r.projection) : r.entries;
+  const lockText = serializeLock({ schema: "harness-kit.lock/v2", kit: { version: inst.lock.kit.version ?? inst.meta.kit.version, source: inst.lock.kit.source }, packs: inst.lock.packs, entries });
   const meta = mergeMetaForUpdate(inst.meta, { version: inst.meta.kit.version, selection: after, tokens: l.tokens, today: today(ctx.io) });
   const state: [string, Buffer][] = [
     ...(inst.lockFormat === "v1" ? ([[V1_LOCK_BACKUP, fs.readFileSync(full(LOCK_REL))]] as [string, Buffer][]) : []),
@@ -173,6 +194,7 @@ export function applyChange(ctx: Ctx, l: Loaded, after: Selection, r: ChangeResu
 
 export function conflictsOf(r: ChangeResult): Record<string, unknown>[] {
   const out = r.ops.filter((o) => o.action === "conflict").map((o) => ({ path: o.path, new: o.newFile ?? null, diff: o.newFile ? `diff -u ${shellQuote(o.path)} ${shellQuote(o.newFile)}` : null }));
+  out.push(...(projectionConflicts(r.projection ?? null) as typeof out));
   if (r.manifest?.action === "conflict") {
     const n = r.manifest.newFile;
     out.push({ path: MANIFEST_PATH, new: n ?? null, diff: n ? `diff -u ${shellQuote(MANIFEST_PATH)} ${shellQuote(n)}` : null });
@@ -232,6 +254,8 @@ export function report(ctx: Ctx, l: Loaded, rep: Report): { data: Record<string,
     featureDocs: rep.featureDocs,
     state: [META_REL, LOCK_REL, ...(l.inst.lockFormat === "v1" ? [V1_LOCK_BACKUP] : [])],
   };
+  const projection = projectionData(rep.result.projection ?? null, rep.result.projectionFindings ?? []);
+  if (projection) data.projection = projection;
   const counts = Object.entries(countsOf(rep.result.ops)).filter(([, n]) => n > 0).map(([k, n]) => `${k} ${n}`).join(" · ");
   const lines = [
     `harness-kit ${rep.command} — ${l.target}`,
@@ -240,6 +264,7 @@ export function report(ctx: Ctx, l: Loaded, rep: Report): { data: Record<string,
     ...(l.droppedModules.length ? [`  ⚠ 킷에 없는 모듈을 메타에서 뺀다: ${l.droppedModules.join(", ")}`] : []),
     ...shown.map(opLine),
     `  파일: ${counts || "바꿀 것 없음"}`,
+    ...projectionLines(rep.result.projection ?? null, rep.result.projectionFindings ?? [], ctx.quiet),
   ];
   if (m && m.action !== "same") lines.push(`  매니페스트 ${MANIFEST_PATH}: ${m.action}${m.newFile ? ` → ${m.newFile}` : ""}`);
   if (conflicts.length) {

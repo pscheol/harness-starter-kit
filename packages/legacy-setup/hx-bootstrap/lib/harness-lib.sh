@@ -479,6 +479,28 @@ harness_lock_replace() {
 }
 
 
+# ── 하네스 배치(HK-13) ──────────────────────────────────────────────────────
+#
+# `.agents/` 원본(규칙 · 스킬 · 역할)에서 하네스 폴더의 복사본(mirror) · 생성물(render) · 병합(merge)을 만든다.
+# 킷 판 projection.py 를 부른다(대상 리포에 깔린 코드는 실행하지 않는다). CLI 어댑터와 같은 결과를 낸다(시험이 묶는다).
+# 배치 줄은 lock 에 '<sha>\t<mirror|render|merge|merge+>\t<하네스>\t<경로>' 로 덧붙는다.
+#   harness_project <setup|update> <대상> <쓸 lock> <이전 lock|""> <에이전트 목록> [--force] [--accept-all] [--dry-run]
+harness_project() {
+  local mode="$1" target="$2" lock="$3" prev="$4" agents="$5" py
+  shift 5
+  py="$TEMPLATES/common/scripts/harness/projection.py"
+  [ -f "$py" ] || return 0
+  if ! command -v python3 >/dev/null 2>&1; then
+    echo "  ⚠ python3 가 없어 하네스 배치(복사본 · 생성물)를 건너뛴다 — python3 를 깐 뒤 'python3 scripts/harness/projection.py sync'" >&2
+    return 0
+  fi
+  local -a extra=()
+  [ -n "$prev" ] && [ -f "$prev" ] && extra+=(--prev-lock "$prev")
+  PYTHONDONTWRITEBYTECODE=1 python3 -B "$py" apply --mode "$mode" --root "$target" --lock "$lock" \
+    --agents "$(echo "$agents" | tr ' ' ',')" --token "PROTECTED_PATH=${PROTECTED_PATH:-}" \
+    ${extra[@]+"${extra[@]}"} "$@"
+}
+
 # ── 파일 이름 토큰 · 하네스 매니페스트 ────────────────────────────────────────
 
 # 설치 경로 속 `__PROJECT_SLUG__` 를 실제 값으로 바꾼다(Kiro 조율 에이전트 파일 이름).

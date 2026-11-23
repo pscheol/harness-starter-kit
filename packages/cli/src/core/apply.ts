@@ -2,6 +2,7 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { applyProjection } from "../projection/engine";
 import { fsError } from "./errors";
 import { writeFileAtomic } from "./fsx";
 import { LOCK_REL } from "./lock";
@@ -72,6 +73,8 @@ export function applyPlan(args: {
       current = g.path;
       writeFileAtomic(full(target, g.path), g.content, false);
     }
+    current = "배치(mirror · render · merge)";
+    if (plan.projection) applyProjection(target, plan.projection.ops);
   } catch (err) {
     throw fsError(err, `쓰기 실패 ${current}`);
   }

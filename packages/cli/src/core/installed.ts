@@ -22,8 +22,8 @@ export interface Installed {
   lockAmbiguous: boolean;
 }
 
-/** 이 판이 다루는 op. 나머지(mirror · render · merge)는 P18 어댑터 몫이다. */
-export type EntryKind = "copy" | "none";
+/** lock op(README §6). mirror · render · merge 는 배치 엔진(projection/)이 다룬다. */
+export type EntryKind = "copy" | "none" | "mirror" | "render" | "merge";
 
 const NOT_INSTALLED_HINT = "설치는 harness-kit init";
 
@@ -52,9 +52,12 @@ export function entryKind(e: LockEntry): EntryKind {
   switch (e.op) {
     case "copy":
     case "none":
+    case "mirror":
+    case "render":
+    case "merge":
       return e.op;
     default:
-      throw new CliError(EXIT.STATE, `lock 항목 ${e.path} 의 op '${e.op}' 는 이 판(${VERSION})에서 지원하지 않는다`, "mirror · render · merge 는 P18 판 CLI 로 실행한다");
+      throw new CliError(EXIT.STATE, `lock 항목 ${e.path} 의 op '${e.op}' 는 이 판(${VERSION})에서 지원하지 않는다`, "새 판 CLI 로 실행한다");
   }
 }
 

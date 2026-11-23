@@ -56,6 +56,24 @@
    ],
    "cwd": "tools/docs",
    "covers": true
+  },
+  {
+   "id": "harness-layout",
+   "paths": [
+    ".agents/*",
+    ".claude/*",
+    ".codex/*",
+    ".cursor/*",
+    ".kiro/*",
+    "AGENTS.md",
+    "CLAUDE.md",
+    ".gitattributes"
+   ],
+   "command": [
+    "python3",
+    "scripts/harness/check_layout.py"
+   ],
+   "cwd": "."
   }
  ]
 }

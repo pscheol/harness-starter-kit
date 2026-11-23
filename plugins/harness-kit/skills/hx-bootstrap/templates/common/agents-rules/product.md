@@ -1,3 +1,9 @@
+---
+paths:
+  - ".agents/docs/**"
+  - "docs/**"
+  - "README.md"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · 스택 무관 공통 규칙 · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 · 아래 빈칸은 프로젝트에 맞게 채운다 -->
 
 # 제품 컨텍스트 — {{PROJECT_NAME}}

@@ -1,3 +1,15 @@
+---
+paths:
+  - "**/*.kt"
+  - "**/*.kts"
+  - "**/*.java"
+  - "**/*.gradle"
+  - "**/*.gradle.kts"
+  - "gradle/**"
+  - "**/pom.xml"
+  - "**/*.yml"
+  - "**/*.yaml"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · Kotlin/Java + Spring · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # 보안 가드레일 — {{PROJECT_NAME}}

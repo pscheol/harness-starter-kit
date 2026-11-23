@@ -22,9 +22,9 @@ description: 이미 하네스가 깔린 리포에 에이전트(하네스 플랫�
 | `claude` | `.claude/` + `CLAUDE.md` | 14 | settings.json(권한·hook 배선) · hooks 3종 · `/hx-*` 커맨드 9종 · AGENTS.md 리다이렉트 |
 | `codex` | `.codex/` + `.agents/skills/` | 14 | config.toml · hooks.json · hooks 3종 · `$hx-*` 스킬 9종 |
 | `cursor` | `.cursor/commands/` | 9 | `/hx-*` 커맨드 9종 |
-| `kiro` | `.kiro/steering/` + `.kiro/skills/` | 34 (프론트엔드 38) | 규칙 얇은 포인터 16종(도메인·스택·변형별 포함) · IDE 슬래시 9종 · CLI 스킬 9종 |
+| `kiro` | `.kiro/steering/` + `.kiro/skills/` | 배치(원본에서 생성) | 규칙 steering(`paths` → `fileMatch`) · IDE 명령 steering · CLI 스킬 복사본 |
 
-> `web`·`electron` 리포에서 `kiro` 가 4개 많은 건 `frontend` 도메인 규칙 포인터 4종 때문이다.
+> 하네스 폴더 파일은 `.agents/` 원본에서 만든다. 정확한 수는 `harness-kit plan --json`.
 > 선택 모듈이 켜져 있으면 그 모듈의 해당 에이전트 파일도 함께 깔린다(`jira-workflow` 는 claude·codex·cursor 각 2 · kiro 6 — `/hx-issue` 와 `/hx-ticket` 두 커맨드).
 > 정확한 수는 `--dry-run --json` 의 `counts` 가 낸다.
 

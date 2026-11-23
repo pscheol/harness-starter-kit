@@ -6,7 +6,10 @@ import { resolvedLock } from "../core/legacy-lock";
 import type { LockEntry } from "../core/lock";
 import { assertModuleDirs, parseNames, relayered, shareOf, winnerLayers, withNames, type Names } from "../core/selection-change";
 import { skipByOwner, wanted, type Want } from "../core/update-plan";
-import { ancestorsOf, applyChange, currentOf, dryRunOf, kitOf, isKitCopy, loadForChange, manifestChange, report, type ChangeOp, type ChangeResult, type Cur, type Loaded } from "./change";
+import { judgeInstall } from "../projection/engine";
+import { needsHuman, prepare } from "../projection/flow";
+import { loadSpecOrNull } from "../projection/spec";
+import { ancestorsOf, applyChange, changeOverlay, currentOf, dryRunOf, kitOf, isKitCopy, loadForChange, manifestChange, report, type ChangeOp, type ChangeResult, type Cur, type Loaded } from "./change";
 
 const kitEntry = (p: string, w: Want): LockEntry => ({ path: p, op: "copy", owner: "kit", sha256: w.sha256, layer: w.layer });
 const userEntry = (p: string, layer: string): LockEntry => ({ path: p, op: "copy", owner: "user", sha256: null, layer });
@@ -52,7 +55,13 @@ function planAdd(l: Loaded, names: Names): { after: ReturnType<typeof withNames>
     locked.set(p, { ...e, layer });
   }
   const manifest = manifestChange(l, ancestors, after);
-  return { after, result: { ops, entries: [...locked.values()], manifest } };
+  const spec = loadSpecOrNull(l.loc.dir);
+  if (!spec) return { after, result: { ops, entries: [...locked.values()], manifest, projection: null } };
+  // 설치 판정(design §6.2): 새 하네스 몫은 create, 이미 있는 배치는 keep(add-agent.sh = setup.sh 재실행과 같다).
+  const { writes, deletes } = changeOverlay(ops);
+  const p = prepare({ target: l.target, spec, tokens: l.tokens, agents: after.agents, writes, deletes, copyPaths: want.keys() });
+  const projection = judgeInstall({ target: l.target, spec, tokens: l.tokens, sources: p.sources, wants: p.wants, prev: l.inst.lock.entries, force: false });
+  return { after, result: { ops, entries: [...locked.values()], manifest, projection, projectionFindings: p.findings } };
 }
 
 export function runAdd(ctx: Ctx): CommandResult {
@@ -66,6 +75,6 @@ export function runAdd(ctx: Ctx): CommandResult {
   const featureDocs = dryRun ? null : applyChange(ctx, l, after, result);
   const notes = already.length ? [`  · 이미 켜져 있다 — 그 몫에서 빠진 파일만 채운다: ${already.join(", ")}`] : [];
   const { data, lines } = report(ctx, l, { command: "add", names: { ...names, already }, after, result, dryRun, featureDocs, notes });
-  const conflict = result.ops.some((o) => o.action === "conflict") || result.manifest?.action === "conflict";
+  const conflict = result.ops.some((o) => o.action === "conflict") || result.manifest?.action === "conflict" || needsHuman(result.projection ?? null, result.projectionFindings ?? []);
   return { code: conflict ? EXIT.HUMAN : EXIT.OK, data, lines };
 }

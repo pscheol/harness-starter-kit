@@ -1,3 +1,10 @@
+---
+name: worker
+description: 고칠 파일과 기대 동작이 정해진 작업을 배정 파일 안에서 테스트 먼저(RED → GREEN) 구현할 때 쓴다.
+mode: write
+tools: [read, search, shell, write]
+class: implement
+---
 # worker — {{PROJECT_NAME}}
 
 ## 목적
@@ -22,8 +29,8 @@
 
 ## 절차
 
-1. `AGENTS.md`·`.agents/rules/guardrails.md`·[코드 유지보수](../rules/code-maintenance.md)·[세션 협업](../rules/session-collaboration.md)과 배정 파일, 그 파일의 테스트를 읽는다. 실제 세션 ID로 상태·공지를 확인하고 명시적으로 배정받은 파일만 점유한다. 읽음을 승인으로 기록하지 않는다.
-2. 새로 만들기 전에 같은 역할의 기존 구현을 찾는다([재사용 우선](../rules/reuse-before-new.md)).
+1. `AGENTS.md`·`.agents/rules/guardrails.md`·코드 유지보수(`.agents/rules/code-maintenance.md`)·세션 협업(`.agents/rules/session-collaboration.md`)과 배정 파일, 그 파일의 테스트를 읽는다. 실제 세션 ID로 상태·공지를 확인하고 명시적으로 배정받은 파일만 점유한다. 읽음을 승인으로 기록하지 않는다.
+2. 새로 만들기 전에 같은 역할의 기존 구현을 찾는다(재사용 우선(`.agents/rules/reuse-before-new.md`)).
 3. RED — 기대 동작을 확인하는 테스트를 쓰고 돌려 실패를 본다. 실패 이유가 "기능 없음"인지 확인한다. 컴파일 오류나 오타로 난 실패는 RED 로 치지 않는다.
 4. GREEN — 테스트를 통과시키는 최소 구현을 쓰고 다시 돌린다.
 5. 정리 — 기능별 패키지와 레이어 책임, 의미 있는 이름, 정책 함수, adapter/mapper 분리, 재사용 범위를 확인하고 바뀐 동작의 테스트를 다시 돌린다. API·상태·저장소 계약이 바뀌면 소유 단위의 OpenAPI/Swagger·사용 문서를 같은 작업에 포함한다.
@@ -34,7 +41,7 @@
 
 ## 출력
 
-바꾼 파일 · RED/GREEN 증거 · 실행한 검증과 결과 · 남긴 것. 끝에 [검증 사다리](../rules/verification-ladder.md) §3 블록을 붙인다.
+바꾼 파일 · RED/GREEN 증거 · 실행한 검증과 결과 · 남긴 것. 끝에 검증 사다리(`.agents/rules/verification-ladder.md`) §3 블록을 붙인다.
 
 예:
 

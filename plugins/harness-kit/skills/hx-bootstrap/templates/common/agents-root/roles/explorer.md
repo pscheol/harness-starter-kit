@@ -1,3 +1,10 @@
+---
+name: explorer
+description: 코드·설정에서 정의·호출 경로·영향 범위를 근거 줄과 함께 찾아야 할 때 쓴다. 읽기 전용이다.
+mode: read-only
+tools: [read, search]
+class: explore
+---
 # explorer — {{PROJECT_NAME}}
 
 ## 목적
@@ -11,7 +18,7 @@
 |---|---|
 | "X 는 어디서 정의되고 누가 부르나" 같은 위치·호출 경로 질문 | 고칠 파일이 이미 정해진 구현 → worker |
 | 바꾸기 전에 영향 범위(호출부·테스트·설정)를 알아야 할 때 | 변경이 맞는지 판정 → reviewer |
-| 같은 역할의 기존 구현이 있는지 찾을 때([재사용 우선](../rules/reuse-before-new.md) Inventory) | 라이브러리·프레임워크의 공식 동작 → docs-researcher |
+| 같은 역할의 기존 구현이 있는지 찾을 때(재사용 우선(`.agents/rules/reuse-before-new.md`) Inventory) | 라이브러리·프레임워크의 공식 동작 → docs-researcher |
 | 여러 폴더를 훑어야 해서 호출한 쪽의 컨텍스트를 아낄 때 | 작업 분해와 순서 → planner |
 
 ## 입력

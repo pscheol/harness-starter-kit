@@ -1,3 +1,12 @@
+---
+paths:
+  - "**/*.tsx"
+  - "**/*.jsx"
+  - "**/*.vue"
+  - "**/*.css"
+  - "**/*.scss"
+  - "**/*.html"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · frontend 도메인 공통 규칙(web·electron 공유) -->
 
 # 디자인 시스템 — 값은 만들지 않고 가져온다

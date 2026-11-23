@@ -260,18 +260,18 @@ class SharedHarnessTest(unittest.TestCase):
         self.track_note("../../outside.md", track=False)
         self.assert_ok(self.check())
 
-    def test_rule_without_kiro_pointer_fails(self):
+    def test_rule_without_kiro_steering_fails(self):
         rule = self.first_rule()
         (self.root / ".kiro/steering" / rule.name).unlink()
-        self.assert_fails(self.check(), "missing Kiro rule pointer")
+        self.assert_fails(self.check(), "missing Kiro steering")
 
     def test_kiro_pointer_without_rule_fails(self):
         (self.root / ".kiro/steering/orphan.md").write_text("---\ninclusion: always\n---\n원본: `.agents/rules/orphan.md`\n")
         self.assert_fails(self.check(), "orphan")
 
-    def test_skill_without_agent_pointers_fails(self):
-        (self.root / ".claude/commands/hx-plan.md").unlink()
-        self.assert_fails(self.check(), "missing canonical skill pointer")
+    def test_skill_without_agent_copy_fails(self):
+        shutil.rmtree(self.root / ".claude/skills/hx-plan")
+        self.assert_fails(self.check(), ".claude/skills/hx-plan/SKILL.md: missing skill copy")
 
     def test_kiro_resource_cannot_escape(self):
         agent = self.root / ".kiro/agents/worker.json"

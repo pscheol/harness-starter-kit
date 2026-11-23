@@ -303,12 +303,15 @@ class CliUpdateParityTest(unittest.TestCase):
         self.assertEqual(o.cli_run.stderr, "")
         return o, json.loads(o.cli_run.stdout)
 
-    def assert_same_tree(self, o: Outcome, *, drop_sh: set[str] = frozenset(), dirs: bool = True) -> None:
+    def assert_same_tree(self, o: Outcome, *, drop_sh: set[str] = frozenset(), drop_cli: set[str] = frozenset(), dirs: bool = True) -> None:
         sh_files, sh_dirs = snapshot(o.sh)
         cl_files, cl_dirs = snapshot(o.cli)
         for rel in drop_sh:
             self.assertIn(rel, sh_files, f"update.sh 쪽에 {rel} 가 있어야 한다")
             del sh_files[rel]
+        for rel in drop_cli:
+            self.assertIn(rel, cl_files, f"CLI 쪽에 {rel} 가 있어야 한다")
+            del cl_files[rel]
         self.assertEqual(sorted(set(sh_files) - set(cl_files)), [], "update.sh 에만 있는 파일")
         self.assertEqual(sorted(set(cl_files) - set(sh_files)), [], "CLI 에만 있는 파일")
         self.assertEqual(sorted(r for r in sh_files if sh_files[r][1] != cl_files[r][1]), [], "내용")
@@ -318,13 +321,14 @@ class CliUpdateParityTest(unittest.TestCase):
             self.assertEqual(sorted(sh_dirs ^ cl_dirs), [], "폴더 목록")
         self.assertGreater(len(sh_files), 100)
 
-    def assert_lock_means_same(self, o: Outcome, *, pruned: set[str] = frozenset(), user: set[str] = frozenset()) -> None:
+    def assert_lock_means_same(self, o: Outcome, *, pruned: set[str] = frozenset(), user: set[str] = frozenset(),
+                               cli_only: set[str] = frozenset()) -> None:
         old = lock_hashes(o.base / LOCK)
         sh = lock_hashes(o.sh / LOCK)
         lock = json.loads((o.cli / LOCK).read_text(encoding="utf-8"))
         self.assertEqual(lock["schema"], "harness-kit.lock/v2")
         entries = {e["path"]: e for e in lock["entries"]}
-        self.assertEqual(set(entries), (set(old) | set(sh)) - pruned, "lock 경로 = 옛 v1 경로 ∪ update.sh 새 경로 − prune")
+        self.assertEqual(set(entries), (set(old) | set(sh) | cli_only) - pruned, "lock 경로 = 옛 v1 경로 ∪ update.sh 새 경로 − prune")
         for rel, e in entries.items():
             if rel in user:
                 self.assertEqual((e["owner"], e.get("sha256")), ("user", None), rel)
@@ -388,8 +392,12 @@ class CliUpdateParityTest(unittest.TestCase):
     def test_05_user_owned_files_are_left_alone(self):
         o, j = self.ran("05-user-owned")
         self.assertEqual(o.cli_run.returncode, 0)
-        self.assert_same_tree(o, drop_sh={f"{NEW_RULE[1]}.new"})  # design §7 U1
-        self.assert_lock_means_same(o, user={NEW_RULE[1]})
+        # design §7 U1: update.sh 는 사람 파일 옆에 .new 를 남기고, 그 원본의 배치를 미룬다(HK-13 §6.3).
+        # CLI 는 .new 없이 사람 파일을 그대로 원본으로 삼아 배치한다 — 차이는 이 한 경로뿐이다.
+        projected = ".claude/rules/zz-hk11-new.md"
+        self.assert_same_tree(o, drop_sh={f"{NEW_RULE[1]}.new"}, drop_cli={projected})
+        self.assert_lock_means_same(o, user={NEW_RULE[1]}, cli_only={projected})
+        self.assertEqual((o.cli / projected).read_bytes(), (o.cli / NEW_RULE[1]).read_bytes())
         self.assertEqual((o.cli / "notes/mine.md").read_text(encoding="utf-8"), "사람 메모\n")
         self.assertEqual([op["action"] for op in j["ops"] if op["path"] == NEW_RULE[1]], ["skip-user"])
         before = snapshot(o.cli)

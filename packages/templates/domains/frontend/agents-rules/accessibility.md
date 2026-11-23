@@ -1,3 +1,12 @@
+---
+paths:
+  - "**/*.tsx"
+  - "**/*.jsx"
+  - "**/*.vue"
+  - "**/*.css"
+  - "**/*.scss"
+  - "**/*.html"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · frontend 도메인 공통 규칙(web·electron 공유) -->
 
 # 접근성 — 기준선은 협상 대상이 아니다

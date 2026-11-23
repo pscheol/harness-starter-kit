@@ -248,7 +248,7 @@ harness:                            # 하네스별 덮어쓰기(선택)
 
 스킬: 킷 스킬(`.agents/skills/hx-*/SKILL.md`)의 frontmatter에는 `context: fork`가 아닌 한 `model`·`effort`를 두지 않는다. Claude Code에서 스킬의 모델·effort는 그 턴이 끝날 때까지 주 세션에 적용되기 때문이다. 어댑터는 링크하기 전에 스킬 frontmatter를 읽어, 킷 스킬이 이를 어기면 오류(`skill-model-field`), 팩·프로젝트 스킬이면 경고를 낸다.
 
-생성 결과(모두 원본을 읽으라는 짧은 지시 + `summary`):
+생성 결과(HK-13: 원본을 읽으라는 지시만 두지 않고 역할 본문 전체를 그 자리에 넣는다 — 아래 예시의 지시문 · `<summary>` 자리가 본문이다. Kiro는 `prompt`에 본문을 넣고 `resources`에서 역할 원본을 뺀다):
 
 ```text
 .claude/agents/reviewer.md
@@ -421,12 +421,12 @@ expires: 2026-12-31          # date + 30일
 
 | 겹 | 언제 | 하는 일 |
 |---|---|---|
-| 동기화 훅 `harness-sync-projection` | 에이전트가 `.agents/skills/**` · `.agents/rules/**` · `.agents/roles/**`를 Write · Edit한 뒤(PostToolUse) | `python3 scripts/harness/sync_projection.py --changed <경로>`가 그 원본의 `mirror` · `render` 대상을 다시 만들고 lock의 해시를 고친다. 성공하면 출력 0바이트, 실패하면 한 줄(200바이트 이하) |
+| 동기화 훅 `harness-sync-projection` | 에이전트가 `.agents/skills/**` · `.agents/rules/**` · `.agents/roles/**`를 Write · Edit한 뒤(PostToolUse) | `python3 scripts/harness/projection.py sync --changed <경로>`가 그 원본의 `mirror` · `render` 대상을 다시 만들고 lock의 해시를 고친다. 성공하면 출력 0바이트, 실패하면 한 줄(200바이트 이하) |
 | 보호 훅 `harness-protect-generated` | 에이전트가 `mirror` · `render` 대상을 Write · Edit하려 할 때(PreToolUse) | exit 2와 "생성 파일이다. 원본 `<from>`을 고친다" |
 | 배치 검사 | `verify.sh --fast` · changed · affected(`harness-layout`) | `stale` · `drifted` · `symlink-found`를 오류로 낸다(3.9) |
-| 되돌리기 | 사람이 | `npx harness-kit repair`, Node가 없으면 `python3 scripts/harness/sync_projection.py --all` |
+| 되돌리기 | 사람이 | `npx harness-kit repair`, Node가 없으면 `python3 scripts/harness/projection.py sync` |
 
-- `sync_projection.py`는 Python 표준 라이브러리만 쓴다. `mirror`는 그대로 복사하고, `render`(Cursor `.mdc` · Kiro steering · 역할)는 frontmatter만 바꾸는 규칙이라 TS 어댑터와 같은 결과를 내도록 둘을 같은 fixture로 시험한다(02 §3.15와 같은 방식).
+- `projection.py`(HK-13, `projection_wants.py` · `projection_engine.py` · `projection_render.py` · `projection_merge.py`)는 Python 표준 라이브러리만 쓴다. `mirror`는 그대로 복사하고, `render`(Cursor `.mdc` · Kiro steering · 역할)는 frontmatter만 바꾸는 규칙이라 TS 어댑터와 같은 결과를 내도록 둘을 같은 fixture로 시험한다(02 §3.15와 같은 방식).
 - 사람이 편집기로 원본을 고치면 훅이 돌지 않는다. 그때는 커밋 전 fast 검증이 `stale`로 알려 주고, 출력에 고칠 명령을 적는다.
 - `.gitattributes`에 생성 경로(`.claude/skills/hx-*/**` · `.claude/rules/**` · `.claude/agents/**` · `.cursor/commands/hx-*` · `.cursor/rules/**` · `.kiro/skills/hx-*/**` · `.kiro/steering/**`)를 `linguist-generated=true`로 적어 MR diff에서 접히게 한다. 킷 몫 줄만 `merge`로 넣는다.
 - 복사본이 생겨도 세션 토큰은 늘지 않는다. 하네스는 원본이 아니라 복사본 하나만 읽는다.

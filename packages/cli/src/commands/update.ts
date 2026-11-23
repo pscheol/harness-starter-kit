@@ -17,6 +17,13 @@ import type { Selection } from "../core/selection";
 import { locateTemplates } from "../core/templates";
 import { buildUpdatePlan, wanted, type UpdateAction, type UpdateOp, type UpdatePlan } from "../core/update-plan";
 import { compareSemver, VERSION } from "../core/version";
+import type { Finding } from "../adapters/types";
+import type { LockEntry } from "../core/lock";
+import { shellQuote } from "../core/shell";
+import { applyProjection, judgeUpdate, PROJECTION_OPS, type ProjectionPlan } from "../projection/engine";
+import { mergeEntries, needsHuman, prepare, projectionConflicts, projectionData, projectionLines } from "../projection/flow";
+import { loadSpecOrNull } from "../projection/spec";
+import type { OverlayWrite } from "../projection/view";
 
 export const V1_LOCK_BACKUP = ".agents/state/harness-kit.lock.v1.bak";
 
@@ -29,10 +36,7 @@ function full(target: string, rel: string): string {
   return path.join(target, ...rel.split("/"));
 }
 
-/** 셸에 붙여 넣을 수 있게 필요할 때만 작은따옴표로 감싼다. */
-export function shellQuote(s: string): string {
-  return /^[A-Za-z0-9_./@%+=:,-]+$/.test(s) ? s : `'${s.replace(/'/g, "'\\''")}'`;
-}
+export { shellQuote };
 
 function checkFlags(ctx: Ctx): string | undefined {
   for (const [flag, message] of Object.entries(LATER_FLAGS)) if (bool(ctx.values, flag)) throw usageError(message);
@@ -87,7 +91,7 @@ interface Written {
   v1Backup: Buffer | null;
 }
 
-function applyUpdate(target: string, plan: UpdatePlan, w: Written): void {
+function applyUpdate(target: string, plan: UpdatePlan, w: Written, projection: ProjectionPlan | null): void {
   let current = "";
   try {
     const deleted: string[] = [];
@@ -104,6 +108,8 @@ function applyUpdate(target: string, plan: UpdatePlan, w: Written): void {
       }
     }
     removeEmptyDirs(target, deleted);
+    current = "배치(mirror · render · merge)";
+    if (projection) applyProjection(target, projection.ops);
     const state: [string, Buffer | null][] = [
       [MANIFEST_PATH, w.manifest],
       [V1_LOCK_BACKUP, w.v1Backup],
@@ -139,8 +145,8 @@ function humanLines(ctx: Ctx, head: string[], plan: UpdatePlan, shown: UpdateOp[
   return lines;
 }
 
-function writtenState(ctx: Ctx, target: string, inst: Installed, plan: UpdatePlan, sel: Selection, tokens: Record<string, string>, source: string): Written {
-  const lockText = serializeLock({ schema: "harness-kit.lock/v2", kit: { version: VERSION, source }, packs: inst.lock.packs, entries: plan.entries });
+function writtenState(ctx: Ctx, target: string, inst: Installed, entries: LockEntry[], sel: Selection, tokens: Record<string, string>, source: string): Written {
+  const lockText = serializeLock({ schema: "harness-kit.lock/v2", kit: { version: VERSION, source }, packs: inst.lock.packs, entries });
   const meta = mergeMetaForUpdate(inst.meta, { version: VERSION, selection: sel, tokens, today: today(ctx.io) });
   const manifest = lstatOrNull(full(target, MANIFEST_PATH)) ? null : manifestContent(sel, tokens);
   const v1Backup = inst.lockFormat === "v1" ? fs.readFileSync(full(target, LOCK_REL)) : null;
@@ -169,17 +175,22 @@ export function runUpdate(ctx: Ctx): CommandResult {
   const prune = bool(ctx.values, "prune");
   const shaOf = (): Map<string, string> => new Map([...wanted({ layout, templatesDir: loc.dir, selection, tokens }).want].map(([p, d]) => [p, d.sha256]));
   const { lock, ambiguous } = resolvedLock(inst, target, shaOf);
-  const raw = buildUpdatePlan({ layout, templatesDir: loc.dir, target, selection, tokens, lock, acceptAll: bool(ctx.values, "accept-all"), prune, forget: list(ctx.values, "forget") });
-  const plan: UpdatePlan = { ...raw, ops: raw.ops.map((o) => (ambiguous.has(o.path) && AMBIGUOUS_ACTIONS.has(o.action) && !o.reason ? { ...o, reason: AMBIGUOUS_REASON } : o)) };
+  const acceptAll = bool(ctx.values, "accept-all");
+  const raw = buildUpdatePlan({ layout, templatesDir: loc.dir, target, selection, tokens, lock, acceptAll, prune, forget: list(ctx.values, "forget") });
+  const marked: UpdatePlan = { ...raw, ops: raw.ops.map((o) => (ambiguous.has(o.path) && AMBIGUOUS_ACTIONS.has(o.action) && !o.reason ? { ...o, reason: AMBIGUOUS_REASON } : o)) };
+  const projection = projectionForUpdate({ target, templatesDir: loc.dir, tokens, agents: selection.agents, inst, plan: marked, acceptAll });
+  const plan = withoutClaimed(marked, projection?.plan ?? null);
+  const entries = projection ? mergeEntries(plan.entries, projection.plan) : [...plan.entries, ...inst.lock.entries.filter((e) => PROJECTION_OPS.has(e.op))];
   const dryRun = bool(ctx.values, "dry-run");
-  const w = writtenState(ctx, target, inst, plan, selection, tokens, loc.source);
-  if (!dryRun) applyUpdate(target, plan, w);
+  const w = writtenState(ctx, target, inst, entries, selection, tokens, loc.source);
+  if (!dryRun) applyUpdate(target, plan, w, projection?.plan ?? null);
   const board: BoardResult = dryRun ? { status: "skipped", reason: "dry-run" } : refreshBoard(target, io.env, boardBlocker(plan));
 
   const keptModified = prune && plan.ops.some((o) => o.action === "orphan" && o.modified);
-  const code = plan.counts.conflict > 0 || keptModified ? EXIT.HUMAN : EXIT.OK;
+  const human = projection ? needsHuman(projection.plan, projection.findings) : false;
+  const code = plan.counts.conflict > 0 || keptModified || human ? EXIT.HUMAN : EXIT.OK;
   const shown = plan.ops.filter((o) => o.action !== "same" && (!ctx.quiet || o.action === "conflict"));
-  const conflicts = conflictList(plan);
+  const conflicts = [...conflictList(plan), ...projectionConflicts(projection?.plan ?? null)];
   const counts = { ...plan.counts, excludedByHarness: plan.excludedByHarness, overlapped: plan.overlaps.length };
   const data: Record<string, unknown> = {
     command: "update",
@@ -197,11 +208,40 @@ export function runUpdate(ctx: Ctx): CommandResult {
     board,
     state: [META_REL, LOCK_REL, ...(w.v1Backup ? [V1_LOCK_BACKUP] : [])],
   };
+  if (projection) data.projection = projectionData(projection.plan, projection.findings);
   const head = [
     `harness-kit update — ${target}`,
     `  킷: ${inst.meta.kit.version} → ${VERSION} · 메타 ${inst.metaFormat} · lock ${inst.lockFormat}`,
     selectionLine(selection),
     ...(droppedModules.length ? [`  ⚠ 킷에 없는 모듈을 뺀다: ${droppedModules.join(", ")}`] : []),
   ];
-  return { code, data, lines: humanLines(ctx, head, plan, shown, conflicts, dryRun, board) };
+  const lines = humanLines(ctx, head, plan, shown, conflicts, dryRun, board);
+  if (projection) lines.splice(head.length + shown.length + 1, 0, ...projectionLines(projection.plan, projection.findings, ctx.quiet));
+  else if (inst.lock.entries.some((e) => PROJECTION_OPS.has(e.op))) lines.splice(head.length + shown.length + 1, 0, "  배치: 이 템플릿에 projection.json 이 없다 — 배치 항목은 그대로 둔다");
+  return { code, data, lines };
+}
+
+/** copy 판정 뒤의 원본으로 배치를 판정한다(design §6.3). 템플릿에 배치 상수가 없으면 null — 배치 항목을 그대로 둔다. */
+function projectionForUpdate(args: { target: string; templatesDir: string; tokens: Record<string, string>; agents: string[]; inst: Installed; plan: UpdatePlan; acceptAll: boolean }): { plan: ProjectionPlan; findings: Finding[] } | null {
+  const spec = loadSpecOrNull(args.templatesDir);
+  if (!spec) return null;
+  const writes = new Map<string, OverlayWrite>();
+  const deletes = new Set<string>();
+  for (const o of args.plan.ops) {
+    if ((o.action === "new" || o.action === "restore" || o.action === "update" || o.action === "replace") && o.content) writes.set(o.path, { content: o.content, executable: o.executable === true });
+    else if (o.action === "conflict" && o.newFile && o.content) writes.set(o.newFile, { content: o.content, executable: false });
+    else if (o.action === "delete" && o.removeFile) deletes.add(o.path);
+  }
+  const p = prepare({ target: args.target, spec, tokens: args.tokens, agents: args.agents, writes, deletes, copyPaths: args.plan.wantPaths });
+  const plan = judgeUpdate({ target: args.target, spec, tokens: args.tokens, sources: p.sources, wants: p.wants, prev: args.inst.lock.entries, copyNow: args.plan.wantPaths, acceptAll: args.acceptAll, retire: true });
+  return { plan, findings: p.findings };
+}
+
+/** 배치가 가져간 경로(v1 포인터 · retire)를 copy 판정에서 뺀다. 개수도 다시 센다. */
+function withoutClaimed(plan: UpdatePlan, projection: ProjectionPlan | null): UpdatePlan {
+  if (!projection || projection.claimed.size === 0) return plan;
+  const ops = plan.ops.filter((o) => !projection.claimed.has(o.path));
+  const counts = Object.fromEntries(Object.keys(plan.counts).map((k) => [k, 0])) as Record<UpdateAction, number>;
+  for (const o of ops) counts[o.action] += 1;
+  return { ...plan, ops, counts, entries: plan.entries.filter((e) => !projection.claimed.has(e.path)) };
 }
