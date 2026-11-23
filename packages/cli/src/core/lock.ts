@@ -6,6 +6,11 @@ import { formatJson } from "./json";
 export const LOCK_REL = ".agents/harness-kit.lock";
 export const LOCK_SCHEMA = "harness-kit.lock/v2";
 const V1_HEADER = "# harness-kit lock v1";
+/**
+ * v1 lock 표시 줄(HK-12 R12.6). 이 줄이 있는 lock 은 설치 전부터 있던 파일을 해시 '-'(킷 판과 같으면 그 해시)로 적었다.
+ * 없는 lock(v1.0.8 이하)은 미리 있던 파일을 그 파일 해시로 적어서 sha(C) = B 만으로는 킷 파일과 가리지 못한다.
+ */
+export const V1_MARK = "# pre-existing: -";
 const OPS = new Set(["copy", "mirror", "render", "merge", "none"]);
 
 export interface LockEntry {
@@ -95,13 +100,23 @@ function parseV2(text: string): LockV2 {
   };
 }
 
-export function parseLockText(text: string): { format: "v1" | "v2"; lock: LockV2 } {
-  if (text.startsWith(V1_HEADER)) return { format: "v1", lock: parseV1(text) };
-  if (text.trim() === "") throw new Error("비어 있다");
-  return { format: "v2", lock: parseV2(text) };
+export interface ParsedLock {
+  format: "v1" | "v2";
+  lock: LockV2;
+  /** 표시 줄 없는 v1 — 기준 해시가 미리 있던 파일의 해시일 수 있다(legacy-lock.ts) */
+  ambiguous: boolean;
 }
 
-export type LockRead = { status: "missing" } | { status: "invalid"; error: string } | { status: "ok"; format: "v1" | "v2"; lock: LockV2 };
+export function parseLockText(text: string): ParsedLock {
+  if (text.startsWith(V1_HEADER)) {
+    const marked = text.split("\n").some((l) => l.replace(/\r$/, "") === V1_MARK);
+    return { format: "v1", lock: parseV1(text), ambiguous: !marked };
+  }
+  if (text.trim() === "") throw new Error("비어 있다");
+  return { format: "v2", lock: parseV2(text), ambiguous: false };
+}
+
+export type LockRead = { status: "missing" } | { status: "invalid"; error: string } | ({ status: "ok" } & ParsedLock);
 
 export function readLock(file: string): LockRead {
   let text: string;

@@ -111,7 +111,7 @@ function assertInstallable(target: string): void {
     throw new CliError(EXIT.STATE, `대상이 폴더가 아니다: ${target}`);
   }
   if (fs.existsSync(path.join(target, META_REL))) {
-    throw new CliError(EXIT.STATE, `이미 설치된 리포다: ${path.join(target, META_REL)}`, "킷 갱신은 harness-kit update, 하네스 · 모듈 추가는 harness-kit add(다음 조각)다. 지금 상태는 harness-kit doctor");
+    throw new CliError(EXIT.STATE, `이미 설치된 리포다: ${path.join(target, META_REL)}`, "킷 갱신은 harness-kit update, 하네스 · 모듈 추가는 harness-kit add 다. 지금 상태는 harness-kit doctor");
   }
 }
 

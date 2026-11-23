@@ -20,6 +20,8 @@ export interface Ctx {
   io: Io;
   command: string;
   values: Values;
+  /** add · remove 의 이름 */
+  positionals: string[];
   json: boolean;
   quiet: boolean;
 }

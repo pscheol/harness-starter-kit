@@ -103,7 +103,7 @@ function withD(p: string, w: Want, action: UpdateAction, extra: Partial<UpdateOp
 }
 
 /** O 가 kit · copy 가 아니면 쓰지 않는다(표의 위 다섯 줄). */
-function skipByOwner(e: LockEntry): { action: UpdateAction; reason?: string } | null {
+export function skipByOwner(e: LockEntry): { action: UpdateAction; reason?: string } | null {
   switch (ownerKind(e.owner)) {
     case "user":
       return { action: "skip-user" };
