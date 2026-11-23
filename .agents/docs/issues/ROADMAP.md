@@ -28,9 +28,9 @@
 | HK-10 | v1.1 | setup.sh 층 겹침 · 치환 특수 문자 | 02 §3.5 · §3.6 | HK-8 | 끝 |
 | HK-11 | P17 | CLI update · repair · uninstall | 02 §3.10 · §3.12 · §3.13 | HK-8 | 끝 |
 | HK-12 | P17 | CLI add · remove · outdated · 스킬 전환 + 설치 전 파일 보존 · 스택 문구 · README 표 · later-wins update 동일성 | 02 §3.3 · §3.14 | HK-11 | 끝 |
-| HK-13 | P18 | 배치 엔진: 하네스 어댑터 · mirror · render · merge · 규칙 paths 자동 로드 · 역할 파일 · CLAUDE.md 블록 · check_layout | 03 · 12 | HK-12 | 진행 |
+| HK-13 | P18 | 배치 엔진: 하네스 어댑터 · mirror · render · merge · 규칙 paths 자동 로드 · 역할 파일 · CLAUDE.md 블록 · check_layout | 03 · 12 | HK-12 | 끝 |
 | HK-24 | P18 | 훅: hooks.json 생성 · dispatch · hook_root(worktree) · 동기화 · 보호 훅 · 업그레이드 공지 · 세션 시작 예산 | 03 §3.4 · §3.10~§3.12 | HK-13 | 대기 |
-| HK-25 | P17 보강 | v1 첫 업데이트 병합(문서 줄 병합 · JSON 키 병합 · 코드 .new) · platform-guards 모듈 삭제 | 사용자 결정 | HK-13 | 대기 |
+| HK-25 | P17 보강 | v1 첫 업데이트 병합(문서 줄 병합 · JSON 키 병합 · 코드 .new) · platform-guards 모듈 삭제 | 사용자 결정 | HK-13 | 진행 |
 | HK-14 | P18 | 확장 층(회사 팩 · 개인 층 · 게이트 하한) | 04 | HK-13 | 대기 |
 | HK-15 | P19 | worktree 운영 | 05 | HK-13 | 대기 |
 | HK-16 | P23 | 정적 분석 · SARIF · 새 문제만 막는 게이트 · CI 템플릿 · 지표 | 09 §3.2~§3.7 · §3.9 | HK-8 | 끝 |
@@ -45,7 +45,7 @@
 ## 진행 방식
 
 - 슬롯 A: HK-11(끝) → HK-16 → HK-23 → HK-17 → HK-18 → HK-19 → HK-21
-- 슬롯 B: HK-9/10(끝) → HK-12(끝) → HK-13 → HK-25 → HK-24 → HK-14 → HK-15 → HK-20 → HK-22
+- 슬롯 B: HK-9/10(끝) → HK-12(끝) → HK-13(끝) → HK-25 → HK-24 → HK-14 → HK-15 → HK-20 → HK-22
 - HK-12는 HK-9 · HK-10과 같은 파일(플러그인 문서 · setup.sh · CLI 겹침)을 건드려서 HK-9/10을 합친 뒤에 띄운다. 합친 뒤 HK-11 update 동일성 시험이 HK-9의 update.sh 보드 재생성 · HK-10 겹침 순서를 따라가는지 HK-12에서 맞춘다.
 - 합칠 때마다 깨끗한 worktree에서 시험 전체(`pnpm -C packages/cli test` · `node scripts/gen-plugins.mjs --check` · `python3 -m unittest discover -s tests -p "test_*.py"`)를 돌린다.
 
@@ -55,3 +55,5 @@
 - 승인 대기 설계 문서: HK-9 ~ HK-12 design.md는 에이전트가 approved로 두었다. 사람 확인이 필요하다.
 - (정함) v1.0.8 첫 update의 구별 불가 파일은 문서는 줄 병합, JSON은 키 병합, 코드는 .new → HK-25.
 - `outdated`의 기본 원격(배포 원격이 정해지면 `package.json` repository 등).
+- (HK-13) 처음 v1.0.8 lock을 올릴 때 `.agents/rules|skills|roles`도 구별 불가로 보아 배치를 미룬다 → HK-25에서 사용자 편한 쪽으로 정한다.
+- (HK-13) 확인 필요: Kiro `fileMatchPattern` 배열, Cursor `globs` 쉼표 목록, Claude `paths`가 Read로 연 파일에도 걸리는지(수동).
