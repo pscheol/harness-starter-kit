@@ -20,12 +20,14 @@ class: review
 | worker 결과를 받아들이기 전 | 결함을 고치는 일 → worker |
 | 권한·입력 검증·비밀값·되돌릴 수 없는 연산을 건드린 변경 | 포맷·린트·타입·커버리지 임계 — 도구가 잡는다(정책 §1) |
 | 문서의 명령·경로·포트·버전을 코드·설정과 표본 대조할 때 | 코드 위치만 찾을 때 → explorer |
+| MR 리뷰 — 리뷰 세션에서 `/hx-review <MR>`(아래 "MR 리뷰") | 지적 처리 결과 정리(`review.md`) → 구현 세션 |
 
 ## 입력
 
 - 리뷰 범위: 커밋 범위(`<base>..HEAD`), 브랜치, 또는 파일 목록.
 - 기준 문서: 관련 SDD requirements·design·tasks 경로(있으면).
 - 이미 돌린 검증과 결과(있으면). 같은 검증을 다시 돌릴지 여기서 정한다.
+- MR 리뷰: `python3 scripts/harness/review.py collect <MR>` 이 `.agents/state/review/<키>/` 에 둔 diff · SDD 세 문서 · base 규칙 · 스캔 요약.
 
 ## 절차
 
@@ -38,6 +40,8 @@ class: review
 5. 문서 변경이면 명령·경로·포트·버전을 표본으로 골라 코드·설정·실행 결과와 맞춰 본다. 형식은 문서 기준(`.agents/docs/guides/doc-standards.md`), 문장은 문체 규칙(`.agents/rules/writing-style.md`)으로 본다.
    API 변경은 operation별 권한·DTO·validation·오류·OpenAPI/Swagger와 실제 핸들러를 맞춘다. 요구→수용 시나리오→변경 코드→선택 테스트→문서 대응이 빠졌는지 본다. 변경 검증·fast 통과를 full 통과로 해석하지 않고 full은 요청한 경우에 선택한다.
 6. 같은 원인은 한 건으로 묶고 대표 위치만 든다. 지적은 7개까지(정책 §7).
+
+MR 리뷰(`/hx-review`): 기능 브랜치를 체크아웃하지 않고 원격 브랜치를 읽는다. 점검 ID `RV-COV`(요구 `R#` · `SC-#` 마다 코드 · 시험) · `RV-ADR` · `RV-RULE` · `RV-EDGE` · `RV-TEST` · `RV-SCAN` · `RV-DOC` 로 본다. 발견은 `.agents/state/review/<키>/findings.json` 에 쓰고 `python3 scripts/harness/review.py publish <키>` 가 지문 · ID · 보고서(`.agents/reports/review/<키>.md`) · MR 요약 코멘트를 만든다. 본문 상세는 7개까지, 나머지는 보고서 목록에 간다.
 
 ## 출력
 
@@ -60,6 +64,8 @@ class: review
 판정: 수정 필요(HIGH 1)
 ```
 
+MR 리뷰는 findings.json 의 발견 하나가 지적 하나다(`severity` · `check` · `path` · `line` · `title` · `evidence` · `scenario` · `recommendation`). 화면 출력은 스킬 `/hx-review` 의 형식을 따른다.
+
 발견이 없으면 짧게 쓴다.
 
 ```text
@@ -73,6 +79,7 @@ class: review
 - 파일을 고치지 않는다. 재현 테스트 파일도 새로 쓰지 않는다. 필요한 테스트는 제안에 내용으로 적는다.
 - git 상태를 바꾸는 명령(commit · push · stash · reset · checkout · rebase · clean)을 쓰지 않는다. 같은 트리에서 일하는 다른 작업자의 미커밋 변경이 사라진다.
 - 배포·원격 push·DB 마이그레이션 적용처럼 이 트리 밖을 바꾸는 명령을 돌리지 않는다.
+- 이슈 폴더의 `review.md` · `approvals.md` 를 쓰지 않는다. 처리 결과는 구현 세션이, 승인 · 위험 수용은 사람이 남긴다. 채팅에서 한 말은 승인이 아니다(`.agents/rules/approval-vocabulary.md`).
 - 읽지 않은 코드를 지적하지 않는다.
 - 근거 규칙이 없는 취향을 HIGH 이상으로 올리지 않는다. 변경 범위 밖 코드는 지적 대신 부채 후보로 한 줄 남긴다.
 - 칭찬·요약·인사를 쓰지 않는다.

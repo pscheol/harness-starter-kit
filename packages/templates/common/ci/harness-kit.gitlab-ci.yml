@@ -13,9 +13,12 @@ stages:
   - affected
   - full
 
+# MR 요약 코멘트(설계 09 §3.7 "보고"): affected 끝에서 verify.sh 가 glab 으로 scan 구간 하나를 고친다. CI_JOB_TOKEN 은 노트를 쓰지 못하므로
+# api 범위 프로젝트 토큰을 마스킹한 CI 변수 GITLAB_TOKEN 으로 둔다. glab · 토큰이 없으면 경고 한 줄이고 판정은 그대로다.
 .harness-kit-setup:
   variables:
     GIT_DEPTH: "0"
+    GITLAB_HOST: "$CI_SERVER_HOST"
 
 harness:fast:
   extends: .harness-kit-setup

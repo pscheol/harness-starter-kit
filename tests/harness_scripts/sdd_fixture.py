@@ -63,6 +63,8 @@ class SddCase(unittest.TestCase):
         gitconfig.write_text(
             "[user]\n\tname = sdd test\n\temail = sdd@example.com\n"
             "[init]\n\tdefaultBranch = develop\n[protocol \"file\"]\n\tallow = always\n"
+            # git 2.54 는 커밋 뒤 maintenance 를 따로 띄운다. 시험 폴더 정리 · submodule 복제와 겹쳐 파일이 사라진다.
+            "[maintenance]\n\tauto = false\n[gc]\n\tauto = 0\n"
         )
         inherited = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
         self.env = {

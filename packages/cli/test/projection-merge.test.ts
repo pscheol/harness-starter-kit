@@ -58,6 +58,9 @@ describe("CLAUDE.md 블록(§5.1, 03 §3.8)", () => {
 
 describe("settings.json(§5.2, 03 §3.5 · §5 #6)", () => {
   const want = settingsWant(spec, { PROTECTED_PATH: "docs/references" });
+  // HK-23(VQ-R12): 승인 기록 · 기준선 · 관리 페이지 토큰 · 승인 로그
+  const approvalDeny = ["Edit(//**/approvals.md)", "Edit(//**/.agents/quality-baseline.json)", "Edit(//**/.agents/state/dashboard.token)", "Edit(//**/.agents/state/approvals-log.jsonl)", "Read(//**/.agents/state/dashboard.token)"];
+  const deny = ["Edit(//**/docs/references/**)", ...approvalDeny];
   const others = {
     hooks: {
       Stop: [{ hooks: [{ type: "command", command: "other-stop-1" }] }, { hooks: [{ type: "command", command: "other-stop-2" }] }],
@@ -70,13 +73,14 @@ describe("settings.json(§5.2, 03 §3.5 · §5 #6)", () => {
     const r = ok(settings.merge(null, want));
     const j = JSON.parse(r.text);
     expect(Object.keys(j)).toEqual(["permissions", "hooks"]);
-    expect(j.permissions).toEqual({ deny: ["Edit(//**/docs/references/**)"] });
+    expect(j.permissions).toEqual({ deny });
     expect(Object.keys(j.hooks)).toEqual(["SessionStart", "PreToolUse", "Stop"]);
     expect(r.keys).toEqual([
-      "permissions.deny:Edit(//**/docs/references/**)",
+      ...deny.map((rule) => `permissions.deny:${rule}`),
       "hooks.SessionStart:harness-session-start",
       "hooks.PreToolUse:harness-protect-sources",
       "hooks.PreToolUse:harness-block-full-verify",
+      "hooks.PreToolUse:harness-protect-approvals",
       "hooks.Stop:harness-verify-gate",
     ]);
     expect(r.text).toBe(`${JSON.stringify(j, null, 2)}\n`);
@@ -90,7 +94,7 @@ describe("settings.json(§5.2, 03 §3.5 · §5 #6)", () => {
     const j = JSON.parse(once.text);
     expect(j.hooks.Stop.map((g: any) => g.hooks[0].command)).toEqual(["other-stop-1", "other-stop-2", 'bash "$CLAUDE_PROJECT_DIR"/scripts/hooks/verify-gate.sh']);
     expect(j.hooks.PreToolUse[0]).toEqual(others.hooks.PreToolUse[0]);
-    expect(j.permissions).toEqual({ allow: ["Bash(ls)"], deny: ["Edit(//**/docs/references/**)"] });
+    expect(j.permissions).toEqual({ allow: ["Bash(ls)"], deny });
     expect(ok(settings.merge(once.text, want, once.keys)).text).toBe(once.text);
     const back = settings.unmerge(once.text, once.keys, want);
     expect(back).toEqual({ ok: true, text: start, empty: false });
@@ -116,7 +120,7 @@ describe("settings.json(§5.2, 03 §3.5 · §5 #6)", () => {
   it("deny: lock 키에 있는데 이번에 원하지 않으면 뺀다 · 다른 값은 둔다", () => {
     const cur = `${JSON.stringify({ permissions: { deny: ["Edit(//**/old/**)", "Read(.env)"] } }, null, 2)}\n`;
     const r = ok(settings.merge(cur, want, ["permissions.deny:Edit(//**/old/**)"]));
-    expect(JSON.parse(r.text).permissions.deny).toEqual(["Read(.env)", "Edit(//**/docs/references/**)"]);
+    expect(JSON.parse(r.text).permissions.deny).toEqual(["Read(.env)", ...deny]);
   });
 
   it("해석할 수 없으면 conflict, 키 확인", () => {

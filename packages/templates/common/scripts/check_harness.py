@@ -17,6 +17,7 @@ from urllib.parse import unquote
 
 sys.dont_write_bytecode = True
 
+from harness.approvals_guard import base_errors as approval_errors
 from harness.sdd_issues import plan_errors
 from harness.sdd_keys import issue_key_errors, legacy_frozen_errors
 from harness.sdd_layout import sdd_lock
@@ -337,6 +338,8 @@ def main():
         errors += ignored_errors(ROOT) + link_errors(ROOT) + config_errors(ROOT) + pointer_errors(ROOT) + doc_errors(ROOT) + unit_errors(ROOT)
         # check-issue-keys(R7.9) · check-legacy-frozen(R7.7): base 와 같은 키 · 다른 이름, 옛 구조에 새 문서.
         errors += issue_key_errors(ROOT) + legacy_frozen_errors(ROOT)
+        # 승인 기록 덧붙이기 전용(VQ-R14) · 새 기록 형식 · done 승인 없는 completed(VQ-R13), base merge-base 대비(설계 09 §3.8).
+        errors += approval_errors(ROOT)
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 1

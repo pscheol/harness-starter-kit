@@ -19,6 +19,7 @@ from harness.verify_affected import affected_plan
 from harness.verify_changes import changed_files, expand_gitlink_files, resolve_base, session_files
 from harness.verify_paths import safe_file, units_for
 from harness.verify_planner import verification_plan
+from harness.mr_comment import report_scan
 from harness.quality_run import analyze
 from harness.verify_record import record_result, write_record
 from harness.verify_runner import execute_plan
@@ -158,6 +159,11 @@ def main():
         result, exit_code = execute_plan(plan, options.timeout, options.lock_timeout, options.budget)
         result, exit_code = with_analysis(root, options, result, exit_code)
         print(summary_text(result) if options.summary else json.dumps(result, ensure_ascii=False, indent=2))
+        # CI 의 MR 실행이면 요약 코멘트 scan 구간을 고친다(설계 09 §3.7 "보고"). 실패해도 판정을 바꾸지 않는다(경고 한 줄).
+        if options.level == "affected":
+            line = report_scan(root, result)
+            if line:
+                print(line, file=sys.stdout if options.summary else sys.stderr)
     except (ValueError, OSError) as error:
         result, exit_code = {"status": "incomplete", "level": options.level, "error": str(error), "test_commands": 0}, 2
         print(summary_text(result) if options.summary else json.dumps(result, ensure_ascii=False))

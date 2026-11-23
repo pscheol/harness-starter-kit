@@ -1,4 +1,4 @@
-"""품질 게이트 판정(설계 09 §3.6) — 새 문제 · 의존성 · 새 코드 중복률 · 복잡도(new-or-worsened) · required 분석기.
+"""품질 게이트 판정(설계 09 §3.6) — 새 문제 · 의존성 · 새 코드 중복률 · 복잡도(new-or-worsened) · required 분석기 · 열린 리뷰 지적.
 
 `enforceAt` 레벨이고 기준선이 있으면 위반이 failed, 아니면 warned 다. CI 에서 미완료 분석기가 있으면 failed(VQ-R7).
 """
@@ -108,14 +108,38 @@ def mode_of(config, level, has_baseline):
     return "report"
 
 
-def evaluate(config, level, findings, outcomes, changed, has_baseline, in_ci):
-    """게이트 결과 {status, mode, checks, incomplete, values}."""
+def review_checks(config, states):
+    """열린 리뷰 지적(설계 09 §3.6 review.openMax · VQ-R4). states 는 review_state 결과 목록(없으면 skipped)."""
+    if not states:
+        return [skipped("review.openMax", "no-review")]
+    limits = (config.get("review") or {}).get("openMax") or {}
+    checks = []
+    for severity in ("CRITICAL", "HIGH"):
+        items = [f"{state['key']}:{item['id']}" for state in states for item in state["findings"]
+                 if item["severity"] == severity and item["state"] in ("open", "fix-required")]
+        checks.append(limited(f"review.openMax.{severity}", len(items), limits.get(severity), items))
+    return checks
+
+
+def review_status(config, level, checks):
+    """리뷰 위반은 기준선과 상관없이 enforceAt 에서 failed, warnAt 에서 warned, 그 밖은 보고만 한다."""
+    failed = [check for check in checks if check["status"] == "failed"]
+    if level in config["enforceAt"]:
+        return bool(failed)
+    for check in failed:
+        check["status"] = "warned" if level in config["warnAt"] else "reported"
+    return False
+
+
+def evaluate(config, level, findings, outcomes, changed, has_baseline, in_ci, review=None):
+    """게이트 결과 {status, mode, checks, incomplete, values}. review 는 review_state 결과 목록."""
     new = [finding for finding in findings if finding.get("new")]
     checks = new_issue_checks(config, new)
     checks.append(dependency_check(config, new))
     duplication, percent = duplication_check(config, findings, outcomes, changed)
     complexity, worsened = complexity_check(config, findings, outcomes, changed)
-    checks.extend([duplication, complexity, skipped("coverage.newCodeMinPercent", "no-calculator"), skipped("review.openMax", "no-calculator")])
+    checks.extend([duplication, complexity, skipped("coverage.newCodeMinPercent", "no-calculator")])
+    reviews = review_checks(config, review)
     incomplete = incomplete_of(outcomes)
     if in_ci:
         checks.append(limited("analyzers.required", len(incomplete), 0, [item["analyzer"] for item in incomplete]))
@@ -124,13 +148,16 @@ def evaluate(config, level, findings, outcomes, changed, has_baseline, in_ci):
     if mode != "enforce":
         for check in violations:
             check["status"] = "warned"
-    if in_ci and incomplete:
+    review_failed = review_status(config, level, reviews)
+    review_warned = any(check["status"] == "warned" for check in reviews)
+    checks.extend(reviews)
+    if (in_ci and incomplete) or review_failed:
         status = "failed"
     elif violations and mode == "enforce":
         status = "failed"
     elif incomplete:
         status = "incomplete"
-    elif violations:
+    elif violations or review_warned:
         status = "warned"
     else:
         status = "passed"

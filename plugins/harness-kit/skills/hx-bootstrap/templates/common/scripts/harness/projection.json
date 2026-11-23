@@ -11,7 +11,12 @@
   ],
   "claudeSettings": {
     "deny": [
-      "Edit(//**/{{PROTECTED_PATH}}/**)"
+      "Edit(//**/{{PROTECTED_PATH}}/**)",
+      "Edit(//**/approvals.md)",
+      "Edit(//**/.agents/quality-baseline.json)",
+      "Edit(//**/.agents/state/dashboard.token)",
+      "Edit(//**/.agents/state/approvals-log.jsonl)",
+      "Read(//**/.agents/state/dashboard.token)"
     ],
     "hooks": [
       {
@@ -41,6 +46,16 @@
         "hook": {
           "type": "command",
           "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/block-full-verify.sh"
+        }
+      },
+      {
+        "id": "harness-protect-approvals",
+        "event": "PreToolUse",
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash",
+        "script": "scripts/hooks/protect-approvals.sh",
+        "hook": {
+          "type": "command",
+          "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/protect-approvals.sh"
         }
       },
       {
@@ -109,6 +124,11 @@
       {
         "matcher": "write",
         "command": "bash -c 'r=\"$PWD\"; while [ \"$r\" != / ] && [ ! -f \"$r/.agents/harness.json\" ]; do r=\"$(dirname \"$r\")\"; done; h=\"$r/scripts/hooks/$1\"; [ -f \"$h\" ] || exit 0; exec bash \"$h\"' _ protect-sources.sh",
+        "timeout_ms": 15000
+      },
+      {
+        "matcher": "write",
+        "command": "bash -c 'r=\"$PWD\"; while [ \"$r\" != / ] && [ ! -f \"$r/.agents/harness.json\" ]; do r=\"$(dirname \"$r\")\"; done; h=\"$r/scripts/hooks/$1\"; [ -f \"$h\" ] || exit 0; exec bash \"$h\"' _ protect-approvals.sh",
         "timeout_ms": 15000
       }
     ]

@@ -5,6 +5,7 @@
 
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -16,7 +17,7 @@ from pathlib import Path
 
 from harness.quality_baseline import classify
 from harness.quality_config import SEVERITIES, ConfigError, load_baseline, load_gate, load_registry
-from harness.quality_gate import evaluate
+from harness.quality_gate import evaluate, review_checks, review_status
 from harness.quality_git import changed_lines, head_info, renamed_paths
 from harness.quality_outputs import write_outputs
 from harness.quality_select import check_version, expand, mirror, plan, resolve, rules_value, scope_values, tool_name
@@ -237,15 +238,55 @@ def config_failure(level, error, environ):
     return {"status": status, "gate": status, "reason": "config", "lines": [f"✖ 정적 분석 설정 오류({level}): {error}"], "exitCode": EXIT[status], "incomplete": [{"analyzer": "*", "reason": "config"}]}
 
 
+REVIEW_BRANCH = re.compile(r"^(?:feat|fix|refactor|perf|chore|docs)/([A-Z][A-Z0-9]{1,9}-[0-9]+)-")
+
+
+def review_states(root, level, environ):
+    """게이트의 review.openMax 입력(VQ-R4). full 은 로컬 보고서가 있는 이슈 전부, affected · changed 는 현재 브랜치 이슈 하나.
+    CI 에서 로컬 보고서가 없으면(affected) MR 요약 코멘트 review 구간을 읽는다. changed 는 로컬 보고서만 본다."""
+    from harness import review_state
+    from harness.sdd_issues import find_issue
+
+    try:
+        if level == "full":
+            return review_state.all_states(root)
+        branch = environ.get("GITHUB_HEAD_REF") or environ.get("CI_MERGE_REQUEST_SOURCE_BRANCH_NAME") or (head_info(root).get("branch") or "")
+        match = REVIEW_BRANCH.match(branch)
+        if not match:
+            return []
+        folder = find_issue(root, match.group(1))
+        state = review_state.issue_state(root, folder, environ=environ if level == "affected" else {})
+    except (OSError, ValueError):
+        return []
+    return [state] if state else []
+
+
+def review_only(root, level, environ):
+    """분석기 등록이 없어도 열린 리뷰 지적은 판정한다. 리뷰 보고서도 없으면 줄 없이 skipped."""
+    try:
+        gate_config = load_gate(root, environ)
+    except ConfigError:
+        return skipped_result("no-registry")
+    states = review_states(root, level, environ)
+    if not states:
+        return skipped_result("no-registry")
+    checks = review_checks(gate_config, states)
+    failed = review_status(gate_config, level, checks)
+    status = "failed" if failed else ("warned" if any(check["status"] == "warned" for check in checks) else "passed")
+    gate = {"status": status, "checks": checks}
+    return {"status": status, "gate": status, "mode": "review-only", "exitCode": EXIT.get(status, 0), "newIssues": {}, "incomplete": [],
+            "analyzers": {}, "lines": [gate_line(gate, level)]}
+
+
 def analyze(root, level, files, reference=None, environ=None):
-    """정적 분석 · 게이트 한 번. 등록 파일이 없으면 줄 없이 skipped."""
+    """정적 분석 · 게이트 한 번. 등록 파일 · 리뷰 보고서가 둘 다 없으면 줄 없이 skipped."""
     environ = dict(os.environ if environ is None else environ)
     root = Path(root).resolve()
     clock = time.monotonic()
     try:
         registry = load_registry(root, environ)
         if registry is None:
-            return skipped_result("no-registry")
+            return review_only(root, level, environ)
         gate_config = load_gate(root, environ)
         baseline = load_baseline(root, environ)
     except ConfigError as error:
@@ -255,7 +296,7 @@ def analyze(root, level, files, reference=None, environ=None):
     findings = normalized(outcomes, root)
     findings = classify(findings, baseline, renamed_paths(root, (baseline or {}).get("commit")), date.today())
     changed = changed_lines(root, reference, files) if level != "full" or reference else {}
-    gate = evaluate(gate_config, level, findings, outcomes, changed, baseline is not None, in_ci(environ))
+    gate = evaluate(gate_config, level, findings, outcomes, changed, baseline is not None, in_ci(environ), review_states(root, level, environ))
     head = head_info(root)
     context = {
         "level": level, "head": head, "reference": reference, "seconds": round(time.monotonic() - clock, 1),
