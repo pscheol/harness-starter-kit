@@ -99,22 +99,13 @@ echo ""
 NEW_LOCK="$(mktemp)"
 SEEN="$(mktemp)"
 RENDER="$(mktemp -d)"
+PLAN_DIR="$(mktemp -d)"
 harness_lock_init "$NEW_LOCK"
-cleanup() { rm -rf "$NEW_LOCK" "$SEEN" "$RENDER"; }
+cleanup() { rm -rf "$NEW_LOCK" "$SEEN" "$RENDER" "$PLAN_DIR"; }
 trap cleanup EXIT
 
 n_new=0; n_same=0; n_update=0; n_conflict=0; n_orphan=0
 conflicts=""
-
-# ABOUT 는 모듈 설명 파일이라 템플릿이 아니다(setup.sh 의 --list-modules 가 읽는다).
-# 여기서 빼지 않으면 업데이트가 대상 리포에 없는 ABOUT 을 '신규'로 계속 밀어 넣는다.
-list_layer() {
-  if [ "${2:-0}" = 1 ]; then
-    find "$1" -type f ! -path "*/arch/*" ! -name '.DS_Store' ! -name 'ABOUT' | sort
-  else
-    find "$1" -type f ! -name '.DS_Store' ! -name 'ABOUT' | sort
-  fi
-}
 
 # 한 파일을 판정하고 그대로 처리한다.
 #
@@ -125,13 +116,8 @@ list_layer() {
 #  4. lock 에는 '킷이 준 원본'의 해시를 적는다(리포의 현재 내용이 아니다). conflict 는
 #     옛 원본 해시를 그대로 물려주어야 다음 실행에서도 수정본으로 인식된다.
 process_file() {
-  local src="$1" rel="$2" layer="$3" owner dest_rel dest tmp new_sha cur_sha lock_sha
+  local src="$1" dest_rel="$2" layer="$3" owner="$4" dest tmp new_sha cur_sha lock_sha
 
-  owner="$(harness_agent_of "$rel")"
-  if [ "$owner" != core ] && ! harness_agent_selected "$owner" "$AGENTS_SEL"; then
-    return 0
-  fi
-  dest_rel="$(harness_dest_name "$(harness_remap "$rel")")"
   dest="$TARGET/$dest_rel"
   echo "$dest_rel" >> "$SEEN"
 
@@ -196,21 +182,13 @@ process_file() {
   harness_lock_append "$NEW_LOCK" "${lock_sha:--}" "$layer" "$owner" "$dest_rel"
 }
 
-run_layer() {
-  local root="$1" label="$2" skip_arch="${3:-0}" src
-  while IFS= read -r src; do
-    process_file "$src" "${src#"$root"/}" "$label"
-  done < <(list_layer "$root" "$skip_arch")
-}
-
-# 설치와 같은 순서·같은 라벨로 돌아야 lock 이 어긋나지 않는다(setup.sh 의 layer_roots 와 대응).
-run_layer "$COMMON_DIR" "common"
-[ -n "$DOMAIN_DIR" ] && run_layer "$DOMAIN_DIR" "$DOMAIN"
-run_layer "$STACK_DIR"  "$STACK" 1
-run_layer "$ARCH_DIR"   "$STACK/$ARCH"
-for m in $MODULES_SEL; do
-  run_layer "$TEMPLATES/optional/$m" "mod/$m"
-done
+# 설치와 같은 순서·같은 라벨로 돈다(setup.sh 와 같은 harness_layer_roots). 같은 설치 경로가 두 레이어에 있으면
+# 뒤 레이어 판 하나만 판정한다 — setup.sh 첫 설치가 깐 판과 같아야 다음 실행에서 conflict 가 생기지 않는다(HK-10 R10.1).
+harness_candidates "$AGENTS_SEL" < <(harness_layer_roots "$TEMPLATES" "$DOMAIN_DIR" "$DOMAIN" "$STACK" "$ARCH" "$MODULES_SEL") > "$PLAN_DIR/candidates"
+harness_last_wins "$PLAN_DIR/candidates" "$PLAN_DIR/winners" "$PLAN_DIR/losers"
+while IFS=$'\t' read -r label owner src dest_rel; do
+  process_file "$src" "$dest_rel" "$label" "$owner"
+done < "$PLAN_DIR/winners"
 
 # 이번 킷에 더는 없는 파일. 사용자가 계속 쓰고 있을 수 있어 지우지 않고 알리기만 한다.
 if [ -f "$LOCK" ]; then

@@ -114,7 +114,8 @@ describe("init · plan", () => {
     expect(paths).toEqual([...paths].sort());
     expect(new Set(paths).size).toBe(paths.length);
     expect(paths).not.toContain(".agents/harness.json");
-    expect(lock.entries.find((e: { path: string }) => e.path === "scripts/guards/_template.sh")).toMatchObject({ layer: "common", owner: "kit" });
+    // 겹치는 경로는 뒤 레이어(모듈)가 이긴다(HK-10 R10.1).
+    expect(lock.entries.find((e: { path: string }) => e.path === "scripts/guards/_template.sh")).toMatchObject({ layer: "optional/platform-guards", owner: "kit" });
     expect(fs.existsSync(path.join(target, ".agents/harness.json"))).toBe(true);
     expect(r.stdout).toContain("생성");
   });

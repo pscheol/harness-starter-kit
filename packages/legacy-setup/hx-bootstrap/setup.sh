@@ -210,17 +210,13 @@ fi
 mkdir -p "$TARGET"
 TARGET="$(cd "$TARGET" && pwd)"
 
-# 한 템플릿 레이어의 파일을 나열한다. skip_arch=1 이면 arch/ 하위를 뺀다
-# (변형 레이어는 선택된 하나만 따로 복사하므로).
-# ABOUT 는 --list-modules 가 읽는 모듈 설명 파일이다. 템플릿이 아니므로 복사 대상에서 뺀다
-# (빼지 않으면 대상 리포 루트에 정체불명의 ABOUT 파일이 생긴다).
-list_layer() {
-  if [ "${2:-0}" = 1 ]; then
-    find "$1" -type f ! -path "*/arch/*" ! -name '.DS_Store' ! -name 'ABOUT' | sort
-  else
-    find "$1" -type f ! -name '.DS_Store' ! -name 'ABOUT' | sort
-  fi
-}
+# 설치 계획(후보 · 이긴 것 · 진 것)을 담는 임시 폴더와 재실행 때 떠 두는 이전 lock.
+# return 0 이 없으면 PREV_LOCK 이 빈 첫 설치·dry-run 에서 [ -n "" ] 가 1을 반환하고,
+# EXIT trap 의 반환값이 스크립트 exit code 를 덮어써 성공이 실패로 보고된다.
+PLAN_DIR="$(mktemp -d)"
+PREV_LOCK=""
+cleanup() { rm -rf "$PLAN_DIR"; [ -n "$PREV_LOCK" ] && rm -f "$PREV_LOCK"; return 0; }
+trap cleanup EXIT
 
 # 어떤 에이전트를 깔지 정한다. 명시가 있으면 그것이 이기고, 없으면 감지한다.
 # 감지도 비면 claude 로 떨어진다 — 아무것도 안 깔면 하네스가 동작하지 않기 때문이다.
@@ -247,32 +243,16 @@ else
   fi
 fi
 
-# 이번 설치가 순회할 템플릿 루트를 순서대로 뱉는다: "<경로>|<라벨>|<arch제외?>".
+# 이번 설치가 순회할 템플릿 루트를 순서대로 뱉는다: "<경로>|<라벨>|<arch제외?>" (update.sh 와 같은 함수).
 # 복사·집계가 같은 목록을 써야 --list-agents 의 숫자와 실제 설치 수가 어긋나지 않는다.
-layer_roots() {
-  echo "$COMMON_DIR|common|0"
-  [ -n "$DOMAIN_DIR" ] && echo "$DOMAIN_DIR|$DOMAIN|0"
-  echo "$STACK_DIR|$STACK|1"
-  echo "$ARCH_DIR|$STACK/$ARCH|0"
-  local m
-  for m in $MODULES_SEL; do echo "$TEMPLATES/optional/$m|mod/$m|0"; done
-  return 0
-}
+layer_roots() { harness_layer_roots "$TEMPLATES" "$DOMAIN_DIR" "$DOMAIN" "$STACK" "$ARCH" "$MODULES_SEL"; }
 
-# 에이전트별로 설치될 파일 수를 미리 센다(core 는 'core' 이름으로 조회).
-count_for() {
-  local want="$1" n=0 spec root skip src rel
-  while IFS= read -r spec; do
-    root="${spec%%|*}"; skip="${spec##*|}"
-    while IFS= read -r src; do
-      rel="${src#"$root"/}"
-      [ "$(harness_agent_of "$rel")" = "$want" ] && n=$((n+1))
-    done < <(list_layer "$root" "$skip")
-  done < <(layer_roots)
-  echo "$n"
-}
+# 에이전트별로 설치될 파일 수(core 는 'core' 이름으로 조회). 겹치는 경로는 이긴 한 번만 센다.
+count_for() { awk -F'\t' -v want="$1" '$2 == want' "$PLAN_DIR/all-winners" | wc -l | tr -d ' '; }
 
 if [ "$LIST_AGENTS" = 1 ]; then
+  harness_candidates "$HARNESS_ALL_AGENTS" < <(layer_roots) > "$PLAN_DIR/all"
+  harness_last_wins "$PLAN_DIR/all" "$PLAN_DIR/all-winners" "$PLAN_DIR/all-losers"
   echo "▶ 에이전트 감지 — $TARGET  ($STACK · $ARCH${DOMAIN:+ · 도메인 $DOMAIN}${MODULES_SEL:+ · 모듈 $MODULES_SEL})"
   echo ""
   # 한글은 표시폭이 바이트 수와 달라 printf 폭 지정이 어긋난다. 그래서 정렬이 필요한
@@ -365,10 +345,15 @@ echo "  PROTECTED   : $PROTECTED_PATH"
 echo "  모드        : $([ $DRY_RUN = 1 ] && echo dry-run || echo write)$([ $FORCE = 1 ] && echo ' +force')"
 echo ""
 
-count_written=0; count_skipped=0; count_excluded=0
+count_written=0; count_skipped=0; count_overlapped=0
+
+# 설치 계획: 레이어 순서대로 후보를 모으고, 같은 설치 경로는 뒤 레이어 하나만 남긴다(HK-10 R10.1).
+# 고르지 않은 에이전트의 파일은 여기서 걸러 낸다(HARNESS_EXCLUDED).
+harness_candidates "$AGENTS_SEL" < <(layer_roots) > "$PLAN_DIR/candidates"
+count_excluded="$HARNESS_EXCLUDED"
+harness_last_wins "$PLAN_DIR/candidates" "$PLAN_DIR/winners" "$PLAN_DIR/losers"
 
 LOCK="$TARGET/$HARNESS_LOCK_REL"
-PREV_LOCK=""
 if [ "$DRY_RUN" != 1 ]; then
   mkdir -p "$(dirname "$LOCK")"
   # 재실행 시 lock 을 그냥 새로 쓰면, 이미 사용자가 고쳐 둔 파일의 '현재' 해시가
@@ -380,10 +365,6 @@ if [ "$DRY_RUN" != 1 ]; then
   fi
   harness_lock_init "$LOCK"
 fi
-# return 0 이 없으면 PREV_LOCK 이 빈 첫 설치·dry-run 에서 [ -n "" ] 가 1을 반환하고,
-# EXIT trap 의 반환값이 스크립트 exit code 를 덮어써 성공이 실패로 보고된다.
-cleanup() { [ -n "$PREV_LOCK" ] && rm -f "$PREV_LOCK"; return 0; }
-trap cleanup EXIT
 
 # skip 된 파일의 해시를 정한다. 이전 lock 에 기록이 있으면 그것이 원본 해시다.
 inherited_hash() {
@@ -392,45 +373,33 @@ inherited_hash() {
   if [ -n "$old" ]; then echo "$old"; else harness_sha256 "$TARGET/$path"; fi
 }
 
-# 한 템플릿 루트(common · stacks/<stack> · stacks/<stack>/arch/<arch>)를 대상에 복사한다.
-# 뒤에 복사하는 레이어가 앞 레이어를 덮는다(--force 시): common → stack → arch.
-#
-# 처리 흐름:
-#  1. 소속 에이전트 판정 — 고르지 않은 에이전트의 파일은 여기서 걸러 낸다.
-#  2. 기존 파일 보호 — --force 가 없으면 건드리지 않는다(사용자가 채운 값이 날아간다).
-#  3. 렌더 후 해시 기록 — lock 에 남긴 해시가 나중에 '사용자가 고쳤는가'의 기준이 된다.
-copy_tree() {
-  local root="$1" label="$2" skip_arch="${3:-0}" src rel owner dest_rel dest
-  while IFS= read -r src; do
-    rel="${src#"$root"/}"
-    owner="$(harness_agent_of "$rel")"
-    if [ "$owner" != core ] && ! harness_agent_selected "$owner" "$AGENTS_SEL"; then
-      count_excluded=$((count_excluded+1))
-      continue
-    fi
-    dest_rel="$(harness_dest_name "$(harness_remap "$rel")")"
-    dest="$TARGET/$dest_rel"
-
-    if [ -e "$dest" ] && [ "$FORCE" != 1 ]; then
-      echo "  ↷ skip (존재)   $dest_rel"
-      count_skipped=$((count_skipped+1))
-      [ "$DRY_RUN" != 1 ] && harness_lock_append "$LOCK" "$(inherited_hash "$dest_rel")" "$label" "$owner" "$dest_rel"
-      continue
-    fi
-    echo "  ✎ write [$label/$owner] $dest_rel"
-    if [ "$DRY_RUN" != 1 ]; then
-      harness_render "$src" "$dest"
-      harness_is_executable "$dest_rel" && chmod +x "$dest"
-      harness_lock_append "$LOCK" "$(harness_sha256 "$dest")" "$label" "$owner" "$dest_rel"
-    fi
-    count_written=$((count_written+1))
-  done < <(list_layer "$root" "$skip_arch")
+# 계획의 한 줄(이긴 레이어의 파일)을 대상에 복사한다.
+#  1. 기존 파일 보호 — --force 가 없으면 건드리지 않는다(사용자가 채운 값이 날아간다).
+#  2. 렌더 후 해시 기록 — lock 에 남긴 해시가 나중에 '사용자가 고쳤는가'의 기준이 된다.
+install_file() {
+  local label="$1" owner="$2" src="$3" dest_rel="$4" dest="$TARGET/$4"
+  if [ -e "$dest" ] && [ "$FORCE" != 1 ]; then
+    echo "  ↷ skip (존재)   $dest_rel"
+    count_skipped=$((count_skipped+1))
+    [ "$DRY_RUN" != 1 ] && harness_lock_append "$LOCK" "$(inherited_hash "$dest_rel")" "$label" "$owner" "$dest_rel"
+    return 0
+  fi
+  echo "  ✎ write [$label/$owner] $dest_rel"
+  if [ "$DRY_RUN" != 1 ]; then
+    harness_render "$src" "$dest"
+    harness_is_executable "$dest_rel" && chmod +x "$dest"
+    harness_lock_append "$LOCK" "$(harness_sha256 "$dest")" "$label" "$owner" "$dest_rel"
+  fi
+  count_written=$((count_written+1))
 }
 
-while IFS= read -r spec; do
-  root="${spec%%|*}"; rest="${spec#*|}"
-  copy_tree "$root" "${rest%|*}" "${spec##*|}"
-done < <(layer_roots)
+while IFS=$'\t' read -r label owner src dest_rel; do
+  install_file "$label" "$owner" "$src" "$dest_rel"
+done < "$PLAN_DIR/winners"
+while IFS=$'\t' read -r loser winner dest_rel; do
+  echo "  ⤳ 겹침 — 뒤 레이어가 이긴다 [$loser → $winner] $dest_rel"
+  count_overlapped=$((count_overlapped+1))
+done < "$PLAN_DIR/losers"
 
 if [ "$DRY_RUN" != 1 ]; then
   harness_write_meta "$TARGET" "$(harness_kit_version "$PLUGIN_DIR")" \
@@ -445,7 +414,7 @@ if [ "$DRY_RUN" != 1 ]; then
 fi
 
 echo ""
-echo "✔ 완료: write=$count_written, skip=$count_skipped, 미선택 에이전트로 제외=$count_excluded $([ $DRY_RUN = 1 ] && echo '(dry-run — 실제 변경 없음)')"
+echo "✔ 완료: write=$count_written, skip=$count_skipped, 미선택 에이전트로 제외=$count_excluded$([ "$count_overlapped" -gt 0 ] && echo ", 겹침(뒤 레이어)=$count_overlapped") $([ $DRY_RUN = 1 ] && echo '(dry-run — 실제 변경 없음)')"
 if [ "$DRY_RUN" != 1 ]; then
   echo "  상태 파일: $HARNESS_META_REL · $HARNESS_LOCK_REL"
 fi

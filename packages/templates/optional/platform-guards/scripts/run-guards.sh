@@ -24,6 +24,10 @@
 #   GUARD_DIR=<경로> 가드 디렉터리 변경 (기본 scripts/guards)
 set -uo pipefail
 
+# 어느 디렉터리에서 불러도 이 하네스 루트를 기준으로 동작한다.
+HARNESS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$HARNESS_ROOT"
+
 GUARD_DIR="${GUARD_DIR:-scripts/guards}"
 fail=0
 ran=0

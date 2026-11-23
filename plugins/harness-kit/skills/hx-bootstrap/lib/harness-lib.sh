@@ -10,6 +10,9 @@
 #   .agents/harness-kit.lock  파일별 설치 시점 해시 — 업데이트가 '사용자가 고친 파일'을 가린다
 # ─────────────────────────────────────────────────────────────────────────────
 
+# bash 5.2 이상은 ${v//패턴/대체} 의 대체 안 & 를 일치 문자열로 읽는다(patsub_replacement). 3.2 와 같게 끈다.
+shopt -u patsub_replacement 2>/dev/null || true
+
 HARNESS_META_REL=".agents/harness-kit.json"
 HARNESS_LOCK_REL=".agents/harness-kit.lock"
 HARNESS_ALL_AGENTS="claude codex cursor kiro"
@@ -136,6 +139,66 @@ harness_normalize_modules() {
   echo "${out# }|${bad# }"
 }
 
+# ── 레이어 · 설치 후보(뒤 레이어가 이긴다) ─────────────────────────────────
+#
+# 레이어 순서: common → domains/<도메인> → stacks/<스택>(arch/ 제외) → stacks/<스택>/arch/<변형> → optional/<모듈>.
+# 같은 설치 경로가 두 레이어에 있으면 뒤 레이어 판 하나만 쓰고 lock 에 한 줄만 남긴다(CLI layout.json overlap: last).
+
+# 한 레이어의 템플릿 파일. skip_arch=1 이면 arch/ 아래를 뺀다(변형 레이어는 고른 하나만 따로 돈다).
+# ABOUT 는 --list-modules 가 읽는 모듈 설명 파일이라 템플릿이 아니다(빼지 않으면 대상 리포 루트에 ABOUT 이 생긴다).
+harness_list_layer() {
+  if [ "${2:-0}" = 1 ]; then
+    find "$1" -type f ! -path "*/arch/*" ! -name '.DS_Store' ! -name 'ABOUT' | sort
+  else
+    find "$1" -type f ! -name '.DS_Store' ! -name 'ABOUT' | sort
+  fi
+}
+
+# 이번 설치가 도는 레이어를 순서대로 "<경로>|<라벨>|<arch 제외>" 로 낸다. setup.sh · update.sh 가 같이 쓴다
+# (순서나 라벨이 어긋나면 lock 이 어긋난다). 도메인 폴더가 없으면(backend) domain_dir 을 비워서 넘긴다.
+harness_layer_roots() {
+  local templates="$1" domain_dir="$2" domain="$3" stack="$4" arch="$5" modules="$6" m
+  echo "$templates/common|common|0"
+  [ -n "$domain_dir" ] && echo "$domain_dir|$domain|0"
+  echo "$templates/stacks/$stack|$stack|1"
+  echo "$templates/stacks/$stack/arch/$arch|$stack/$arch|0"
+  for m in $modules; do echo "$templates/optional/$m|mod/$m|0"; done
+  return 0
+}
+
+# stdin 의 레이어 줄로 설치 후보를 "<라벨>\t<소속>\t<템플릿 경로>\t<설치 경로>" 로 낸다.
+# 고르지 않은 에이전트의 파일은 HARNESS_EXCLUDED 에 센다 — 서브셸에서 부르면 수가 사라지므로 리다이렉트로 부른다.
+harness_candidates() {
+  local agents="$1" spec root rest label skip src rel owner
+  HARNESS_EXCLUDED=0
+  while IFS= read -r spec; do
+    root="${spec%%|*}"; rest="${spec#*|}"; label="${rest%|*}"; skip="${spec##*|}"
+    while IFS= read -r src; do
+      rel="${src#"$root"/}"
+      owner="$(harness_agent_of "$rel")"
+      if [ "$owner" != core ] && ! harness_agent_selected "$owner" "$agents"; then
+        HARNESS_EXCLUDED=$((HARNESS_EXCLUDED+1))
+        continue
+      fi
+      printf '%s\t%s\t%s\t%s\n' "$label" "$owner" "$src" "$(harness_dest_name "$(harness_remap "$rel")")"
+    done < <(harness_list_layer "$root" "$skip")
+  done
+}
+
+# 같은 설치 경로의 후보 중 마지막(뒤 레이어) 줄만 <이긴 것> 에 원래 순서로 남긴다.
+# 진 후보는 "<진 라벨>\t<이긴 라벨>\t<설치 경로>" 로 <진 것> 에 적는다.
+harness_last_wins() {
+  LC_ALL=C awk -F'\t' -v losers="$3" '
+    { line[NR] = $0; label[NR] = $1; dest[NR] = $4; last[$4] = NR }
+    END {
+      printf "" > losers
+      for (i = 1; i <= NR; i++) {
+        if (last[dest[i]] == i) print line[i]
+        else printf "%s\t%s\t%s\n", label[i], label[last[dest[i]]], dest[i] > losers
+      }
+    }' "$1" > "$2"
+}
+
 # ── 해시 ────────────────────────────────────────────────────────────────────
 
 # macOS(shasum)·Linux(sha256sum) 어느 쪽이든 같은 값을 낸다. 둘 다 없으면 '-'.
@@ -156,15 +219,43 @@ HARNESS_TOKENS="PROJECT_NAME PROJECT_SLUG PACKAGE_NS SERVICE_NAME
                 PRIMARY_LANGUAGE BUILD_TOOL TEST_CMD DOMAIN_EXAMPLE PROTECTED_PATH"
 
 # 파일 안의 {{TOKEN}} 을 같은 이름의 환경변수 값으로 바꾼다(빈 값은 건드리지 않는다).
+# 값은 글자 그대로 들어간다 — & · | · \ · 줄바꿈을 해석하지 않는다(CLI 의 리터럴 치환과 같다).
+# 값은 환경변수로 넘겨 ENVIRON 으로 읽는다(awk -v 는 \ 를 해석한다). RS 를 \001 로 두어 파일 전체를 한 레코드로 읽으므로
+# 마지막 줄바꿈 유무 · CRLF 가 그대로다. 토큰은 HARNESS_TOKENS 순서로 차례로 바꾼다(앞 값 안의 뒤 토큰도 바뀐다).
 # PRODUCT_SLUG·FEATURE_NAME·EPIC_ID 가 목록에 없는 건 스펙 작성 시점에 정해지기 때문이다.
 harness_subst() {
-  local f="$1" tmp="${1}.harness.tmp" k v; local -a args=()
+  local f="$1" tmp="${1}.harness.tmp" k names=""; local -a values=()
   for k in $HARNESS_TOKENS; do
-    v="${!k:-}"
-    [ -n "$v" ] && args+=( -e "s|{{${k}}}|${v}|g" )
+    [ -n "${!k:-}" ] || continue
+    names="$names $k"
+    values+=("HX_SUBST_$k=${!k}")
   done
-  [ ${#args[@]} -eq 0 ] && return 0
-  LC_ALL=C sed "${args[@]}" "$f" > "$tmp" && mv "$tmp" "$f"
+  [ -z "$names" ] && return 0
+  env "${values[@]}" HX_SUBST_NAMES="$names" LC_ALL=C awk '
+    function literal(s, from, to,   out, at, n) {
+      out = ""; n = length(from)
+      while ((at = index(s, from)) > 0) { out = out substr(s, 1, at - 1) to; s = substr(s, at + n) }
+      return out s
+    }
+    BEGIN { RS = "\001"; count = split(ENVIRON["HX_SUBST_NAMES"], names, " ") }
+    {
+      s = $0
+      for (i = 1; i <= count; i++) s = literal(s, "{{" names[i] "}}", ENVIRON["HX_SUBST_" names[i]])
+      if (NR > 1) printf "%s", RS
+      printf "%s", s
+    }' "$f" > "$tmp" && mv "$tmp" "$f"
+}
+
+# 값을 JSON 문자열(따옴표 포함)로 낸다. " · \ · 제어 문자를 이스케이프한다(Node JSON.stringify 와 같다).
+harness_json_str() {
+  HX_JSON_VALUE="$1" LC_ALL=C awk 'BEGIN {
+    for (i = 1; i < 32; i++) esc[sprintf("%c", i)] = sprintf("\\u%04x", i)
+    esc["\b"] = "\\b"; esc["\f"] = "\\f"; esc["\n"] = "\\n"; esc["\r"] = "\\r"; esc["\t"] = "\\t"
+    esc["\""] = "\\\""; esc["\\"] = "\\\\"
+    s = ENVIRON["HX_JSON_VALUE"]; out = ""
+    for (i = 1; i <= length(s); i++) { c = substr(s, i, 1); out = out ((c in esc) ? esc[c] : c) }
+    printf "\"%s\"", out
+  }'
 }
 
 # 템플릿을 치환까지 끝낸 상태로 dest 에 만든다. 설치와 업데이트가 같은 함수를 써야
@@ -326,6 +417,19 @@ PY
 JSON
 }
 
+# 메타 tokens.<이름> 의 값. python3 가 있으면 JSON 으로 읽어 이스케이프(\\ · \")를 푼다.
+# python3 가 없거나 JSON 이 깨졌으면 sed 로 읽는다(이스케이프가 든 값은 다르게 읽힌다).
+harness_meta_token() {
+  local file="$1" key="$2"
+  if command -v python3 >/dev/null 2>&1 && python3 -c '
+import json, sys
+tokens = json.load(open(sys.argv[1], encoding="utf-8")).get("tokens") or {}
+value = tokens.get(sys.argv[2], "")
+sys.stdout.write(value if isinstance(value, str) else "")
+' "$file" "$key" 2>/dev/null; then return 0; fi
+  harness_meta_get "$file" "$key"
+}
+
 # 메타의 tokens 를 환경변수로 올린다. 이미 값이 있는 변수는 덮지 않는다
 # — 호출자가 명시적으로 준 값이 항상 이긴다.
 harness_load_tokens() {
@@ -333,7 +437,7 @@ harness_load_tokens() {
   [ -f "$file" ] || return 1
   for k in $HARNESS_TOKENS; do
     [ -n "${!k:-}" ] && continue
-    v="$(harness_meta_get "$file" "$k" || true)"
+    v="$(harness_meta_token "$file" "$k" || true)"
     if [ -n "$v" ]; then printf -v "$k" '%s' "$v"; export "${k?}"; fi
   done
   return 0
@@ -387,15 +491,19 @@ harness_is_executable() {
 
 # .agents/harness.json — 하네스 검사기·세션 조율·변경 검증이 읽는 매니페스트(unit · agents).
 # 킷 메타(.agents/harness-kit.json)와 목적이 다르다: 이 파일은 하네스 스크립트가 읽는 식별자다.
+# 값은 JSON 으로 이스케이프한다(CLI manifestContent 와 같은 바이트).
 harness_write_manifest() {
-  local target="$1" stack="$2" agents="$3" path="$1/.agents/harness.json" list="" a
+  local target="$1" stack="$2" agents="$3" path="$1/.agents/harness.json" list="" a unit title kind
   for a in $agents; do list="$list${list:+, }\"$a\""; done
+  unit="$(harness_json_str "${PROJECT_SLUG:-project}")"
+  title="$(harness_json_str "${PROJECT_NAME:-Project}")"
+  kind="$(harness_json_str "$stack")"
   mkdir -p "$(dirname "$path")"
   cat > "$path" <<JSON
 {
-  "unit": "${PROJECT_SLUG:-project}",
-  "title": "${PROJECT_NAME:-Project}",
-  "stack": "$stack",
+  "unit": $unit,
+  "title": $title,
+  "stack": $kind,
   "agents": [$list],
   "shared": []
 }

@@ -1,7 +1,6 @@
 ---
 inclusion: always
 ---
-<!-- HARNESS TEMPLATE ({{PROJECT_NAME}}) · Kiro 얇은 포인터. 규칙 본문 금지. -->
 # 플랫폼 불변식 (포인터)
 
 원본: `.agents/rules/platform-invariants.md` — 불변식을 발견했거나 가드를 만들 때 연다.

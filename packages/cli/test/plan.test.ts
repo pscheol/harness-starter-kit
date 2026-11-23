@@ -57,22 +57,23 @@ describe("작업 목록", () => {
     expect(plan.counts).toMatchObject({ create: plan.ops.length, same: 0, replace: 0, "skip-user": 0, excludedByHarness: 3, overlapped: 1 });
   });
 
-  it("같은 설치 경로가 두 레이어에 있으면 앞 레이어가 이긴다(overlap first)", () => {
+  it("같은 설치 경로가 두 레이어에 있으면 뒤 레이어가 이긴다(실제 layout.json, overlap last)", () => {
     const tpl = fixtureTemplates(BASIC_FILES);
     const plan = makePlan(tpl, { agents: "claude", modules: "platform-guards" }, tmpDir());
     const guard = op(plan, "scripts/guards/_template.sh");
-    expect(guard.content.toString()).toBe("common\n");
-    expect(guard.layer).toBe("common");
-    expect(plan.overlaps).toEqual([
-      { path: "scripts/guards/_template.sh", layers: ["common", "optional/platform-guards"], winner: "common" },
-    ]);
-  });
-
-  it("overlap last 로 바꾸면 뒤 레이어가 이긴다", () => {
-    const tpl = fixtureTemplates(BASIC_FILES, { overlap: "last" });
-    const guard = op(makePlan(tpl, { agents: "claude", modules: "platform-guards" }, tmpDir()), "scripts/guards/_template.sh");
     expect(guard.content.toString()).toBe("module\n");
     expect(guard.layer).toBe("optional/platform-guards");
+    expect(plan.overlaps).toEqual([
+      { path: "scripts/guards/_template.sh", layers: ["common", "optional/platform-guards"], winner: "optional/platform-guards" },
+    ]);
+    expect(plan.ops.filter((o) => o.path === "scripts/guards/_template.sh")).toHaveLength(1);
+  });
+
+  it("overlap first 로 바꾸면 앞 레이어가 이긴다", () => {
+    const tpl = fixtureTemplates(BASIC_FILES, { overlap: "first" });
+    const guard = op(makePlan(tpl, { agents: "claude", modules: "platform-guards" }, tmpDir()), "scripts/guards/_template.sh");
+    expect(guard.content.toString()).toBe("common\n");
+    expect(guard.layer).toBe("common");
   });
 
   it("레이어 · 치환 · 실행 비트 · 경로 토큰 · 해시", () => {
