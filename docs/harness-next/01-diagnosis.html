@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>01 진단 — 하네스 다음 단계</title>
+  <meta name="description" content="harness-starter-kit v1.0.8이 하는 일, 2026년에 바깥에서 바뀐 것(Agent Skills 표준, 설치기 4종, AI-DLC, Entire, 채널톡 사례, 브랜치·worktree), knots-platform과 hr-vision-3d에서 본 것.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../ai-dlc/assets/aidlc.css">
+  <link rel="stylesheet" href="assets/next.css">
+  <script src="../ai-dlc/assets/aidlc.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+  <header class="site-head">
+    <div class="phase-band" aria-hidden="true"><span></span><span></span><span></span></div>
+    <nav class="site-nav" aria-label="문서 목록">
+      <a class="home" href="index.html">하네스 다음 단계</a>
+      <ol>
+        <li><a href="01-diagnosis.html" aria-current="page"><span class="num">01</span>진단</a></li>
+        <li><a href="02-direction.html"><span class="num">02</span>방향</a></li>
+        <li><a href="03-plan.html"><span class="num">03</span>계획</a></li>
+        <li><a href="04-usage.html"><span class="num">04</span>활용</a></li>
+        <li><a href="05-principles.html"><span class="num">05</span>원칙·확장</a></li>
+      </ol>
+    </nav>
+  </header>
+
+  <main id="main" class="page">
+    <nav class="page-toc" aria-label="이 장의 절">
+      <p class="toc-title">이 장에서</p>
+      <ol>
+        <li><a href="#kit">지금 킷이 하는 일</a></li>
+        <li><a href="#standards">표준: 스킬 위치가 모였다</a></li>
+        <li><a href="#installers">설치기 네 가지</a></li>
+        <li><a href="#aidlc">AI-DLC v2</a></li>
+        <li><a href="#entire">Entire</a></li>
+        <li><a href="#channel">채널톡 사례</a></li>
+        <li><a href="#branches">브랜치와 worktree</a></li>
+        <li><a href="#knots">현장 1: knots-platform</a></li>
+        <li><a href="#hdr">현장 2: hr-vision-3d</a></li>
+        <li><a href="#skills-here">이 컴퓨터의 스킬</a></li>
+        <li><a href="#verdict">판정</a></li>
+      </ol>
+    </nav>
+
+    <article class="prose">
+      <h1 class="page-title">무엇이 맞았고 무엇이 낡았나</h1>
+      <p class="lede">이 장은 판단 근거만 모은다. 지금 킷의 구조, 2026년에 바깥에서 바뀐 표준과 도구, 킷을 실제로 쓴 두 프로젝트에서 생긴 일을 차례로 보고 마지막 절에서 맞았던 것·낡은 것·빈 것으로 나눈다.</p>
+
+      <h2 id="kit">지금 킷이 하는 일 (v1.0.8)</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th scope="col">축</th><th scope="col">하는 일</th><th scope="col">근거</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">배포</th><td>Claude Code·Codex는 플러그인 마켓플레이스, Kiro는 <code>install-kiro.sh</code>가 <code>~/.kiro/skills/</code>에 킷 스킬 10종을 깐다</td><td><code>.claude-plugin/marketplace.json</code>, <code>install-kiro.sh</code></td></tr>
+            <tr><th scope="row">설치 엔진</th><td>플러그인 스킬 <code>hx-bootstrap</code>이 <code>setup.sh</code>를 실행한다. bash 약 1,530줄(setup 672 · lib 328 · update 251 · add-agent 120 · install-kiro 159). 설치를 시작하려면 에이전트 세션이 있어야 한다</td><td><code>skills/hx-bootstrap/</code></td></tr>
+            <tr><th scope="row">템플릿</th><td>5층 오버레이(common → domains → stacks → arch → optional). 파일 481개, 스택 5종, 변형 23종, 선택 모듈 3종</td><td><code>hx-bootstrap/templates/</code></td></tr>
+            <tr><th scope="row">원본</th><td><code>.agents/rules/</code> 12종, <code>.agents/skills/hx-*</code> 11종, <code>.agents/roles/</code> 5종, <code>.agents/docs/</code> SDD 기록</td><td><code>templates/common/agents-*</code></td></tr>
+            <tr><th scope="row">하네스 연결</th><td>포인터·요약 파일 62개(Claude 12 · Cursor 11 · Kiro steering 28 · Kiro skills 11)와 역할 파일 16개(Claude 5 · Codex 5 · Kiro 6)를 손으로 유지한다</td><td><code>templates/common/{claude,cursor,kiro-*,codex}</code></td></tr>
+            <tr><th scope="row">설치 기록</th><td><code>.agents/harness-kit.json</code>(선택값)과 <code>.agents/harness-kit.lock</code>(파일별 설치 시점 해시). 업데이트는 new · same · update · conflict · orphan으로 판정하고, 고친 파일은 <code>.new</code>로 옆에 둔다</td><td><code>hx-update/update.sh</code></td></tr>
+            <tr><th scope="row">검증</th><td><code>scripts/verify.sh</code> 한 곳. 훅·pre-commit·GitHub Actions가 그것을 부른다</td><td><code>analysis/04-enforcement.md</code></td></tr>
+            <tr><th scope="row">브랜치</th><td><code>main ← develop ← &lt;종류&gt;/&lt;이름&gt;</code>. SDD 하나 = 브랜치 하나 = PR 하나. 기능 브랜치 위에 브랜치를 따지 않는다</td><td><code>.agents/rules/git-workflow.md</code></td></tr>
+            <tr><th scope="row">동시 세션</th><td>같은 체크아웃에서 <code>session-coordination.py</code>로 파일을 점유한다(TTL 1,800초, 공지·확인)</td><td><code>.agents/rules/session-collaboration.md</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>포인터 파일은 대부분 한 줄이다: "<code>.agents/skills/hx-plan/SKILL.md</code>를 읽고 그대로 수행한다." 에이전트는 포인터를 읽고 원본을 다시 읽는다. Kiro steering 17개와 역할 파일 16개는 원본 요약까지 담고 있어서, 원본을 고치면 요약을 따로 고쳐야 한다. 스킬 하나를 추가하면 원본 1곳과 포인터 4곳을 고친다(<code>tools/sync-commands.sh</code>가 포인터 일부를 다시 만든다).</p>
+
+      <h2 id="standards">표준: 스킬 위치가 모였다</h2>
+      <p>Anthropic이 2025-12-18에 Agent Skills 형식(<code>SKILL.md</code>)을 공개 표준으로 냈고, 2026년 상반기에 주요 하네스가 프로젝트 스킬을 <code>.agents/skills/</code>에서 읽기 시작했다. 킷이 원본 자리로 고른 폴더와 같다.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th scope="col">하네스</th><th scope="col">프로젝트 스킬을 읽는 곳</th><th scope="col">출처 종류</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Codex</th><td><code>.agents/skills/</code>(작업 폴더에서 저장소 루트까지)</td><td>제3자 정리 · 킷 현행 동작</td></tr>
+            <tr><th scope="row">Cursor 2.4+</th><td><code>.agents/skills/</code>, <code>.cursor/skills/</code>, 호환용 <code>.claude/skills/</code></td><td>제3자 정리</td></tr>
+            <tr><th scope="row">GitHub Copilot</th><td><code>.github/skills/</code>, <code>.claude/skills/</code>, <code>.agents/skills/</code></td><td>제3자 정리</td></tr>
+            <tr><th scope="row">Gemini CLI</th><td><code>.gemini/skills/</code>, <code>.agents/skills/</code></td><td>제3자 정리</td></tr>
+            <tr><th scope="row">Claude Code</th><td><code>.claude/skills/</code>만. 스킬 폴더 하나를 다른 곳으로 거는 심볼릭 링크를 지원하고, <code>.claude/commands/</code>는 "예전 형식"이다</td><td>공식 문서</td></tr>
+            <tr><th scope="row">Kiro</th><td>CLI는 <code>.kiro/skills/</code>, IDE는 <code>.kiro/steering/</code></td><td>킷 현행 동작</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">제3자 정리로만 확인한 항목은 P18 착수 전에 각 하네스의 공식 문서와 실제 버전으로 다시 확인한다(<a href="03-plan.html#p18">03장 P18</a>).</p>
+
+      <h2 id="installers">설치기 비교</h2>
+      <p>2026년 11월 기준으로 프로젝트에 에이전트 규칙·스킬을 까는 도구를 저장소 코드와 문서로 확인했다.</p>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col"></th><th scope="col">Vercel skills</th><th scope="col">aidlc-workflows v2</th><th scope="col">킷 v1.0.8</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">시작</th><td><code>npx skills add &lt;repo&gt;</code></td><td><code>aidlc config --harness &lt;h&gt;</code>(네이티브 바이너리)</td><td>세션에서 <code>hx-bootstrap</code></td></tr>
+            <tr><th scope="row">원본 → 하네스</th><td>원본 <code>.agents/skills/</code> 1벌 + 하네스 폴더에 링크(<code>--copy</code>로 복사)</td><td>하네스별로 미리 만든 묶음</td><td>원본 + 손으로 쓴 포인터</td></tr>
+            <tr><th scope="row">기록</th><td><code>skills-lock.json</code>: 해시 · 커밋</td><td>소유 기준선 · <code>.aidlc-version</code></td><td>json + lock(해시)</td></tr>
+            <tr><th scope="row">고친 파일</th><td>확인 못 함</td><td>충돌로 멈추고 <code>--force</code>를 요구</td><td><code>.new</code>로 옆에 둔다</td></tr>
+            <tr><th scope="row">점검·제거</th><td class="yes">list · check · update · remove</td><td class="yes">doctor · update · uninstall</td><td class="no">update만</td></tr>
+            <tr><th scope="row">플러그인 병행</th><td>—</td><td>—</td><td>Claude·Codex 마켓플레이스</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>네 도구 모두 원본은 한 벌이고, 하네스마다 필요한 파일은 설치기가 만든다. 포인터 파일을 손으로 유지하는 곳은 없다. 킷의 기록 방식(고친 파일을 <code>.new</code>로 남기는 3자 비교)은 이들보다 보수적이고, 빠진 것은 점검(<code>doctor</code>)·복구·제거와 에이전트 세션 없이 실행하는 진입점이다.</p>
+
+      <h2 id="aidlc">AI-DLC v2</h2>
+      <p>개념과 단계는 <a href="../ai-dlc/02-workflow.html">AI-DLC 핸드북 02장</a>에 있다. 설치 관점에서 볼 것은 셋이다.</p>
+      <ul>
+        <li>v2는 엔진 설치형이다. 네이티브 바이너리 <code>aidlc</code>를 설치하고 프로젝트에서 <code>aidlc config --harness claude|kiro|codex|cursor|opencode|copilot</code>, <code>aidlc doctor</code>를 돌린다. <code>update</code>·<code>uninstall</code>이 있다.</li>
+        <li>자기 파일의 소유 기준선을 갖고, 고친 파일은 충돌로 보고 <code>--force</code>를 요구한다. 킷과 같은 폴더(<code>.claude/</code>)에 쓰면 두 설치기가 서로의 파일을 모른다.</li>
+        <li>knots에서는 Claude 하네스로만 설치됐다. 같은 리포를 Codex·Kiro로 열면 AI-DLC 흐름이 없다(<a href="#knots">아래</a>).</li>
+      </ul>
+
+      <h2 id="entire">Entire</h2>
+      <p>전 GitHub CEO Thomas Dohmke가 2026-02에 세운 회사의 도구다. CLI(<a href="https://github.com/entireio/cli">entireio/cli</a>)는 MIT, Go, 최신 0.13.4(2026-11-13)이다. 방법론이 아니고, 에이전트 세션 기록을 커밋에 묶어 남기는 기록 도구다.</p>
+      <dl class="terms">
+        <dt>설치<small>계정 없이</small></dt>
+        <dd><code>brew install --cask entireio/tap/entire</code> → 저장소에서 <code>entire enable</code>. 에이전트 훅과 git 훅(<code>prepare-commit-msg</code> · <code>post-commit</code> · <code>pre-push</code>)을 깐다. Claude Code에는 <code>.claude/settings.json</code>에 훅 7개를 넣는다.</dd>
+        <dt>하네스<small>내장 · 외부</small></dt>
+        <dd>내장: Claude Code, Codex, Cursor(재개 없음), Copilot CLI, OpenCode, Antigravity, Factory, Pi. Kiro는 외부 에이전트(<code>entire-agent-kiro</code>)로만 붙는다. Gemini CLI 지원은 0.11.3에서 빠졌다.</dd>
+        <dt>기록<small>무엇을</small></dt>
+        <dd>프롬프트와 응답, 도구 호출, 바뀐 파일, 모델, 토큰, 줄 단위 AI 귀속. 서브에이전트 기록은 부모 체크포인트 안에 들어간다.</dd>
+        <dt>저장<small>어디에</small></dt>
+        <dd>커밋할 때 체크포인트가 생기고 커밋 메시지에 <code>Entire-Checkpoint</code> 트레일러가 붙는다. 기록은 <code>refs/entire/checkpoints/…</code> ref에 두고 작업 브랜치에는 커밋을 더하지 않는다. <code>pre-push</code> 때 함께 올라간다.</dd>
+        <dt>주의<small>공개 저장소</small></dt>
+        <dd>문서 원문: "If that repository is public, anyone can read them." 대화 원문이 원격에 올라간다. 별도 원격(<code>--checkpoint-remote</code>)이나 올리지 않기(<code>--skip-push-sessions</code>)를 고를 수 있다.</dd>
+        <dt>동시 세션<small>알려진 한계</small></dt>
+        <dd>같은 폴더에서 여러 세션이 돌다 하나가 커밋하면 모든 세션이 그 체크포인트에 묶인다. 문서의 해법은 세션마다 worktree를 나누는 것이다.</dd>
+        <dt>GitLab<small>부분 지원</small></dt>
+        <dd>체크포인트는 일반 git ref라 gitlab.com 원격에도 코드와 함께 올라간다. 기록을 별도 리포에 두는 <code>--checkpoint-remote gitlab:&lt;그룹&gt;/&lt;리포&gt;</code>는 v0.11.0부터 gitlab.com만 된다(자체 설치형 GitLab은 미지원, 이슈 #2033). entire.io 웹 보기·Trails·미러·이슈 연결은 GitHub 전용이다. GitLab의 squash 병합은 커밋 본문을 버려 <code>Entire-Checkpoint</code> 트레일러가 사라지므로 squash 커밋 메시지 템플릿에 <code>%{all_commits}</code>를 넣어야 한다.</dd>
+        <dt>GUI 클라이언트<small>Sourcetree 등</small></dt>
+        <dd>훅이 <code>entire</code>를 절대 경로로 부르게 바뀌어(v0.4.9) 셸 설정을 읽지 않는 GUI 클라이언트에서도 돈다. Xcode에서 <code>entire: command not found</code>로 실패하던 문제가 이것으로 해결됐다. Sourcetree를 따로 다룬 문서·이슈는 없고, 체크포인트를 보여 주는 화면도 없다.</dd>
+        <dt>변화 속도<small>0.x</small></dt>
+        <dd>0.10.0에서 저장 방식이 브랜치에서 ref로 바뀌고 <code>rewind</code>가 삭제됐다. 0.11.5에서 섀도 브랜치가 없어졌다. 버전을 고정해서 써야 한다.</dd>
+      </dl>
+      <p>이 저장소의 <a href="../Entire_AI-DLC_함께쓰기.html">Entire와 AI-DLC 함께 쓰기</a>는 둘을 층으로 나눈다. AI-DLC는 "무엇을 왜, 누가 승인하나", Entire는 "변경을 어디에 남기고 병합해도 되나"를 맡는다. 그 문서는 Kiro를 "지원 목록에 없음"으로 적었는데, 외부 에이전트로는 붙는다.</p>
+
+      <h2 id="channel">채널톡 사례</h2>
+      <p><a href="https://tech.channel.io/kr/articles/d87a6773">「백엔드 개발자 한 명이 팀처럼 일하는 법」</a>(2026-11-19). 별도 SDD 절차 없이 이슈 단위 흐름 하나로 일한다.</p>
+      <ul>
+        <li>흐름: 이슈 → 코드 읽기와 계획(사람이 확정) → 구현 → 빌드·테스트 → 여러 관점 리뷰 → PR → CI 대응 → 회고. 처음에는 단계마다 승인했고, 지금은 요구사항이 모호할 때와 머지 직전에만 멈춘다.</li>
+        <li>세션: 이슈마다 워커 세션, 프로젝트마다 PM 세션(상태 파일만 보고 병합·리뷰 요청·보류를 판정), 그 위에 오케스트레이터. 세션마다 git worktree를 쓴다.</li>
+        <li>리뷰: 스펙·백엔드·보안·도메인·설계 관점 에이전트를 동시에 돌리고, 코드는 Claude가 쓰고 리뷰는 Codex가 한다.</li>
+        <li>머지 뒤: 검증 환경 자동 배포 → E2E. 같은 시나리오가 두 번 실패하면 멈추고 사람에게 알린다. 운영 배포는 사람이 누른다.</li>
+        <li>한계: PM·오케스트레이터를 들인 뒤 사람 개입 횟수가 두 배 넘게 늘었다고 스스로 적었다.</li>
+      </ul>
+
+      <h2 id="branches">브랜치와 worktree</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th scope="col">도구</th><th scope="col">사실</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Claude Code</th><td><code>claude -w &lt;name&gt;</code>은 <code>.claude/worktrees/&lt;name&gt;/</code>에 <code>worktree-&lt;name&gt;</code> 브랜치를 만든다. 서브에이전트에 <code>isolation: worktree</code>를 주면 자기 worktree에서 돈다. <code>WorktreeCreate</code>·<code>WorktreeRemove</code> 훅으로 생성 방식을 바꿀 수 있다</td></tr>
+            <tr><th scope="row">Codex 앱</th><td><code>$CODEX_HOME/worktrees</code>에 detached worktree를 만든다. 브랜치 기본 접두사는 <code>codex/</code></td></tr>
+            <tr><th scope="row">Copilot 클라우드</th><td><code>copilot/</code> 브랜치 하나에만 push하고, 시작하자마자 draft PR을 연다</td></tr>
+            <tr><th scope="row">GitHub</th><td>스택 PR(<code>gh stack</code>)이 2026-07-30 공개 프리뷰. merge queue는 <code>merge_group</code> 이벤트에 required check가 걸려야 한다. 둘 다 GitHub 전용이다</td></tr>
+            <tr><th scope="row">DORA 2025</th><td>AI를 기존 관행의 "amplifier"로 보고, 강한 버전 관리 관행과 작은 배치를 AI 효과를 키우는 역량으로 꼽는다</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>벤더 기본값은 모두 "기준 브랜치에서 짧게 딴 브랜치, 세션마다 분리된 작업 폴더"다. 킷은 같은 체크아웃에서 파일 점유로 동시 작업을 조율하고 worktree 규칙이 없다.</p>
+
+      <h2 id="knots">현장 1: knots-platform</h2>
+      <p>메인 리포 + 도메인 submodule 8개 + 단위 하네스 23곳(<code>tools/harness/units.json</code>). 킷 1.0.7, jvm/hexagonal, 에이전트 claude·codex·kiro, 모듈 platform-guards로 설치했다. GitLab과 GoCD를 쓴다.</p>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col">관찰</th><th scope="col">근거</th><th scope="col">킷에 주는 뜻</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>설치 기록이 둘로 갈렸다. 킷 lock은 2026-10 이후 갱신되지 않았고, 실제 배포는 별도 도구가 맡는다</td><td><code>tools/harness/sync.py</code> · <code>units.json</code> · 단위별 <code>.agents/harness.json</code></td><td>킷이 다층 단위를 모르면 현장이 배포 도구를 따로 만든다. <code>hx-update</code>는 그 도구를 모른다</td></tr>
+            <tr><td>AI-DLC가 <code>.agents</code>를 거치지 않고 <code>.claude/</code>에 직접 설치됐다. 추적 파일 405개 중 362개. Codex·Kiro 쪽에는 없다</td><td><code>.claude/{agents/aidlc-*,skills/aidlc*,…}</code>, 커밋 <code>18edf261e</code></td><td>외부 도구의 파일을 알아보고 건드리지 않는 기능이 필요하다</td></tr>
+            <tr><td><code>aidlc/…/intents/</code>가 비어 있는데 훅 17개가 매 세션 돈다</td><td><code>.claude/settings.json</code>, 세션 기록 62개</td><td>쓰지 않는 도구도 상시 비용이 든다. 모듈은 기본 꺼짐이어야 한다</td></tr>
+            <tr><td>루트 <code>.claude/settings.json</code>은 배포 대상에서 빠져 손으로 관리한다</td><td><code>units.json</code> exclude</td><td>설정 파일을 통째로 덮는 방식으로는 다른 도구의 훅과 같이 쓸 수 없다</td></tr>
+            <tr><td>세션마다 상시로 읽히는 문서가 약 61KB다</td><td><code>AGENTS.md</code> 12KB · <code>.claude/CLAUDE.md</code> 23KB · active-memory 약 26KB</td><td>상시 컨텍스트 크기를 검사할 기준이 필요하다</td></tr>
+            <tr><td>에이전트가 완료 확인으로 전체 검증을 돌린다. 상위 리포에서 한 번 돌리면 도메인 리포 전부를 차례로 full로 돌아 1~2시간이 걸린다</td><td>SDD 기록 59곳의 <code>verify.sh --full</code>, 도메인 하나 4~14분</td><td>완료 기준을 바꾼 기능 검증으로 옮기고 전체 검증은 CI로 보내야 한다</td></tr>
+            <tr><td>동시 세션이 체크아웃 하나를 같이 써서, 다른 세션 변경이 섞인 상태를 임시 index로 커밋했다. worktree는 쓰지 않는다</td><td><code>…/handoff-2026-11-13.md</code>, <code>git worktree list</code> 1줄</td><td>세션 격리 규칙과 도구가 필요하다</td></tr>
+            <tr><td>점유 상태 파일 25MB(세션 99 · 공지 352), 부채 목록 196KB, 스크린샷 369개를 추적한다</td><td><code>.agents/coordination/state.json</code> 등</td><td>기록 파일에 보존 기한이 필요하다</td></tr>
+            <tr><td>규칙에 없는 브랜치 접두를 쓴다: <code>feat/154-desktop-parity</code>, <code>deploy/*</code>, <code>exp/*</code>, <code>eval/*</code></td><td><code>git branch -a</code></td><td>브랜치 규칙이 이슈 번호와 실험 브랜치를 담지 못한다</td></tr>
+            <tr><td><code>.claude/CLAUDE.md</code>가 <code>AGENTS.md</code>에 없는 절을 가리킨다</td><td>"Where things live" 절 부재</td><td>점검이 링크 대상의 존재까지 봐야 한다</td></tr>
+            <tr><td>킷에 없는 도구가 이미 있다: 시험 탐색 보강, submodule 점검, 도메인 간 경로 가드, 킷 역수출 도구</td><td><code>verify_native.py</code> · <code>verify_suites.py</code> · <code>check-submodules.sh</code> · <code>no-cross-domain-paths.sh</code> · <code>kit_export/</code></td><td>다시 가져올 후보다(<a href="02-direction.html#fieldwork">02장 현장에서 다시 가져오기</a>)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="hdr">현장 2: hr-vision-3d</h2>
+      <p>부모 리포 + submodule 2개(프런트, 브리지). 킷으로 설치하지 않은 수제 하네스이고, GitLab을 쓴다. 통합 브랜치는 <code>dev</code>, 브랜치 이름은 <code>feat/HDRV3D-&lt;n&gt;-&lt;slug&gt;</code>이다.</p>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col">관찰</th><th scope="col">근거</th><th scope="col">킷에 주는 뜻</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>포인터를 <code>CLAUDE.md</code> 하나로 줄였고, 포인터 관련 마찰이 없다</td><td><code>CLAUDE.md</code> → <code>AGENTS.md</code></td><td>포인터 수를 줄이는 방향이 현장에서도 맞았다</td></tr>
+            <tr><td>리포 간 조율 규칙이 있다: 계약 확정 → submodule마다 서브에이전트 병렬 → 부모가 경계 검증 → 정해진 순서로 커밋</td><td><code>.agents/rules/cross-repo-orchestration.md</code></td><td>킷에는 이 규칙이 없다</td></tr>
+            <tr><td>부모 SDD 목록에 submodule별 SHA 열이 있다</td><td><code>.agents/docs/product-specs/index.md</code></td><td>포인터 커밋과 SDD를 이어 준다</td></tr>
+            <tr><td>"반영해·push해·머지해"만 승인으로 보는 규칙이 있는데, 설정은 <code>git push</code>·<code>git commit</code>을 무조건 허용한다</td><td><code>verification-ladder.md</code> · <code>.claude/settings.local.json</code></td><td>승인 게이트가 문서로만 있다. 설정과 짝을 맞춰야 한다</td></tr>
+            <tr><td>전역 <code>core.hooksPath</code>가 submodule의 LFS hook을 가리는 것으로 보인다(추정)</td><td><code>~/.gitconfig</code></td><td>git hook 연결 방식을 점검 항목에 넣는다</td></tr>
+            <tr><td>GitLab CI가 하네스 파이프라인을 include로 부른다</td><td><code>.gitlab-ci.yml</code> → <code>.agents/ci/harness.gitlab-ci.yml</code></td><td>킷 CI 템플릿은 GitHub Actions뿐이다</td></tr>
+            <tr><td>규칙을 submodule 두 곳에 손으로 따로 둔다</td><td><code>reuse-before-new.md</code> 등</td><td>다층 배포 기능이 있으면 손 복사가 필요 없다</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>두 프로젝트 모두 GitLab + submodule + 통합 브랜치(<code>develop</code>/<code>dev</code>)를 쓴다. worktree, Entire, Cursor는 어느 쪽에도 없다.</p>
+
+      <h2 id="skills-here">이 컴퓨터의 스킬</h2>
+      <p>스킬은 하네스마다 다른 폴더에 깔리고, 플러그인 스킬은 버전별 캐시 안에 있다. 2026-11-23에 이 컴퓨터에서 <code>SKILL.md</code> 수를 위치별로 셌다.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th scope="col">위치</th><th scope="col">수</th><th scope="col">읽는 하네스</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>~/.claude/skills</code></td><td>221</td><td>Claude Code</td></tr>
+            <tr><td><code>~/.agents/skills</code></td><td>156</td><td>Codex · Cursor · Gemini CLI 등</td></tr>
+            <tr><td><code>~/.kiro/skills</code></td><td>143</td><td>Kiro CLI</td></tr>
+            <tr><td><code>~/.codex/skills</code> · <code>~/.cursor/skills</code> · <code>~/.gemini/skills</code></td><td>2 · 2 · 1</td><td>각 하네스</td></tr>
+            <tr><td>Claude 플러그인 캐시(마켓플레이스 14곳)</td><td>1,278</td><td>Claude Code(버전 중복 포함)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>설계·기획(<code>service-planning-agent</code>, <code>pm-execution:*</code>, <code>ui-ux-pro-max</code>), 검증(<code>security-review</code>, <code>code-review</code>), 문서(<code>gstack-document-release</code>) 같은 스킬이 이미 깔려 있다. 그런데 어떤 스킬이 어느 하네스에서 되는지, 킷 흐름의 어느 단계에 쓸 만한지는 아무 데서도 보이지 않는다.</p>
+
+      <h2 id="verdict">판정</h2>
+      <h3>맞았던 것 <span class="tag keep">유지</span></h3>
+      <ul>
+        <li>원본을 <code>.agents/</code> 한 곳에 둔 것. 표준 스킬 위치와 같아졌다.</li>
+        <li>검증 게이트 한 곳 + 여러 트리거. 하네스가 바뀌어도 완료 판정 기준은 그대로다.</li>
+        <li>고친 파일을 덮지 않는 업데이트. 조사한 설치기 중 이보다 보수적인 것은 없다.</li>
+        <li>에이전트·모듈 선택 설치. aidlc도 대상 하네스를 골라 깐다.</li>
+      </ul>
+      <h3>낡은 것 <span class="tag change">바꿈</span></h3>
+      <ul>
+        <li>손으로 쓴 포인터·요약 62개와 역할 파일 16개. 원본과 요약이 갈라질 수 있고, 스킬 하나를 더하면 다섯 곳을 고친다.</li>
+        <li>에이전트 세션 안에서만 시작되는 설치. CI·스크립트·새 장비에서 바로 돌릴 진입점이 없다.</li>
+        <li><code>.claude/commands/</code>. Claude Code가 예전 형식으로 분류했다.</li>
+        <li>설정 파일 통째 복사. 다른 도구의 훅이 있는 리포에서는 덮거나 배포에서 빼야 한다.</li>
+      </ul>
+      <h3>빈 것 <span class="tag new">새로</span></h3>
+      <ul>
+        <li>점검·복구·제거(<code>doctor</code> · <code>repair</code> · <code>uninstall</code>)와 외부 도구 파일 인식.</li>
+        <li>다층 단위(units) 배포. knots가 <code>sync.py</code>로 따로 만들었다.</li>
+        <li>세션별 worktree 규칙과 정리 도구, base 브랜치 설정, GitLab·GoCD 템플릿.</li>
+        <li>AI-DLC 없이 킷만으로 하는 Intent·Unit 분해, AI-DLC·Entire를 선택 모듈로 켜고 끄는 방법, Unit을 SDD 이슈로 잇는 자리, 운영 피드백(<a href="../ai-dlc/05-apply.html#kit">핸드북 05장</a>).</li>
+        <li>하네스별 역할 분리, 자체 리뷰 에이전트, 보안·품질 스캔, 승인의 기계 강제.</li>
+        <li>진행 상황과 문서를 한 곳에서 보는 화면, 흩어진 스킬을 단계별로 찾는 목록.</li>
+        <li>상시 컨텍스트 크기 기준, 기록 파일 보존 기한.</li>
+      </ul>
+
+      <nav class="pager" aria-label="이전·다음 장">
+        <a href="index.html"><small>이전</small><span>요약</span></a>
+        <a class="next" href="02-direction.html"><small>다음</small><span>02 방향</span></a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-foot">
+    <p>harness-starter-kit 문서 · 2026-11-23 기준 · 제안 단계이며 아직 구현되지 않았다.</p>
+  </footer>
+</body>
+</html>

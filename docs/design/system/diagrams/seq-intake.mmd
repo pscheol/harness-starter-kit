@@ -1,0 +1,33 @@
+%%{init: {"theme": "base", "fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "themeVariables": {"fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "fontSize": "15px", "actorBkg": "#ffffff", "actorBorder": "#14213d", "actorTextColor": "#14213d", "actorLineColor": "#aeb9c7", "signalColor": "#46536b", "signalTextColor": "#14213d", "noteBkgColor": "#fbe6e9", "noteBorderColor": "#c8102e", "noteTextColor": "#14213d", "labelBoxBkgColor": "#f5f7fa", "labelBoxBorderColor": "#aeb9c7", "labelTextColor": "#14213d", "loopTextColor": "#14213d"}}}%%
+sequenceDiagram
+  autonumber
+  actor PO as PO(사람)
+  participant UI as 관리 페이지 · CLI
+  participant EXT as Jira · Notion
+  participant DS as 설계 세션
+  participant FS as intents/INT-8
+  participant AI as AI-DLC(선택)
+  rect rgba(231, 234, 251, 0.55)
+    PO->>UI: 새 요구사항(텍스트 · 첨부) 또는 intake --from
+    opt 출처가 Jira · Notion
+      UI->>EXT: 에픽 · 페이지 읽기(토큰은 환경 변수)
+      EXT-->>UI: 제목 · 본문 · 첨부
+    end
+    UI->>FS: intake.md · attachments/ · 추출본(gitleaks 검사)
+    UI->>DS: 작업 요청 "INT-8 접수됨. /hx-intent INT-8"
+  end
+  alt flow.design = kit
+    DS->>FS: intent.md(draft) · questions.md
+    Note over DS,FS: feature · change · refactor는 먼저 역공학 → codebase 게이트
+    PO->>UI: 질문 답(선택지 · PIN)
+    UI->>FS: questions.md answered
+    DS->>FS: 스토리 · EARS · units.json → in-review
+    PO->>UI: intent 승인(PIN · 문구)
+    UI->>FS: approvals.md 덧붙임 · status approved
+  else flow.design = aidlc
+    DS->>AI: /aidlc (intake.md 경로를 첫 요청으로)
+    PO->>AI: 질문 답 · 승인(사람 입력 확인 훅)
+    UI->>AI: sync aidlc: 산출물 읽기
+    UI->>FS: intent.json · units.json · approvals.md(source: aidlc)
+  end
+  Note over PO,FS: 이후 같다: 기획물 → plans 승인 → /hx-specify --from-unit → issues/키/requirements.md

@@ -1,0 +1,47 @@
+%%{init: {"theme": "base", "fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "themeVariables": {"fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "fontSize": "16px", "primaryColor": "#ffffff", "primaryBorderColor": "#14213d", "primaryTextColor": "#14213d", "lineColor": "#46536b", "clusterBkg": "#f5f7fa", "clusterBorder": "#aeb9c7", "edgeLabelBackground": "#f5f7fa"}, "flowchart": {"curve": "basis", "padding": 16, "nodeSpacing": 40, "rankSpacing": 48}}}%%
+graph TD
+  subgraph RT["런타임"]
+    DASH["관리 페이지 서버<br/>127.0.0.1 · packages/dashboard"]
+    SES["역할별 세션<br/>설계 · 구현 · 리뷰 · 문서"]
+    WT["worktree<br/>../&lt;repo&gt;.worktrees/&lt;키&gt;"]
+  end
+  subgraph R["설치된 리포"]
+    AG[".agents 원본<br/>rules · skills · roles · hooks.json<br/>harness-kit.json · lock"]
+    HF["하네스 폴더<br/>.claude · .codex · .cursor · .kiro"]
+    SDD[".agents/docs<br/>intents · issues · ops"]
+    VS["훅 → scripts/verify.sh<br/>scripts/harness/*.py"]
+    ST[".agents/state · reports<br/>커밋 안 함"]
+  end
+  subgraph K["킷 저장소 · 배포물"]
+    SK["플러그인 스킬(생성물)<br/>plugins/harness-kit · hx-bootstrap"]
+    TPL["templates 층<br/>common · domains · stacks · arch"]
+    MOD["선택 모듈 · 회사 팩<br/>module.json · pack.json"]
+    CLI["CLI 엔진<br/>packages/cli/src/core → dist/cli.js"]
+    AD["하네스 어댑터<br/>packages/cli/src/adapters"]
+  end
+  SK -- "부른다" --> CLI
+  TPL --> CLI
+  MOD --> CLI
+  CLI -- "copy · lock" --> AG
+  CLI --> AD
+  AD -- "mirror · render · merge" --> HF
+  AG -. "원본" .-> HF
+  AG -. "SDD 템플릿" .-> SDD
+  HF -- "훅 배선" --> VS
+  SDD -. "게이트 조건" .-> VS
+  VS -- "verify-last · SARIF" --> ST
+  HF -- "진입 · 스킬 · 역할" --> SES
+  SDD <-- "읽기 · 쓰기" --> SES
+  SDD <-- "읽기 · 저장 · 승인" --> DASH
+  DASH -. "세션 · 검증 결과 읽기" .-> ST
+  DASH -- "작업 요청" --> SES
+  SES -- "이슈 세션" --> WT
+  classDef design fill:#e7eafb,stroke:#3046c5,stroke-width:2px,color:#14213d
+  classDef build fill:#fbf1dc,stroke:#c98a12,stroke-width:2px,color:#14213d
+  classDef ops fill:#ddf2eb,stroke:#0b7a5e,stroke-width:2px,color:#14213d
+  classDef store fill:#f5f7fa,stroke:#6b778c,stroke-width:1.5px,color:#46536b
+  class SK,TPL,MOD,CLI,AD build
+  class AG,SDD design
+  class HF,VS build
+  class ST store
+  class DASH,SES,WT ops

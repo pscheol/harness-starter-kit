@@ -1,0 +1,36 @@
+%%{init: {"theme": "base", "fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "themeVariables": {"fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "fontSize": "15px", "actorBkg": "#ffffff", "actorBorder": "#14213d", "actorTextColor": "#14213d", "actorLineColor": "#aeb9c7", "signalColor": "#46536b", "signalTextColor": "#14213d", "noteBkgColor": "#fbe6e9", "noteBorderColor": "#c8102e", "noteTextColor": "#14213d", "labelBoxBkgColor": "#f5f7fa", "labelBoxBorderColor": "#aeb9c7", "labelTextColor": "#14213d", "loopTextColor": "#14213d"}}}%%
+sequenceDiagram
+  autonumber
+  actor H as 사람(개발자 · QA · 운영)
+  participant IS as 구현 세션(worktree)
+  participant V as verify.sh
+  participant G as GitLab · CI
+  participant RV as 리뷰 세션(Codex)
+  participant OPS as 배포 시스템 · ops/
+  rect rgba(231, 234, 251, 0.55)
+    Note over H,IS: requirements · design · tasks 승인 뒤
+    H->>IS: wt new KEY · /hx-implement
+  end
+  rect rgba(251, 241, 220, 0.55)
+    loop Bolt마다
+      IS->>V: --changed(바꾼 파일 · 연결 테스트 · 정적 분석)
+      V-->>IS: passed · failed · incomplete
+    end
+    IS->>V: --affected(MR 전 한 번)
+    IS->>G: push · MR
+    G->>G: base판 verify.sh affected · SARIF · 품질 게이트
+    RV->>G: /hx-review: 원격 diff 읽기 · 요약 코멘트 1개
+    IS->>IS: 지적 처리 → review.md 커밋
+  end
+  Note over H,G: mr 승인 → 병합 → done 승인
+  H->>G: 승인(관리 페이지 · approve · MR 플랫폼)
+  rect rgba(221, 242, 235, 0.6)
+    opt autoVerify 켬
+      G->>OPS: 검증 환경 배포 · 스모크 · E2E · 롤백 시험
+    end
+    H->>OPS: deploy plan → 배포 기록(PLAN)
+    Note over H,OPS: deploy 승인(D1~D7, high면 2명)
+    OPS->>OPS: deploy.py check --require-approved → 운영 배포 → result
+    H->>OPS: ops new: 운영 기록(지표 · 장애 · 다음 후보)
+    OPS-->>H: intake --from ops: 다음 Intent · bug 이슈 · 규칙 후보
+  end

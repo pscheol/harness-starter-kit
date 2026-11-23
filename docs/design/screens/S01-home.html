@@ -1,0 +1,415 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S01 홈 · harness-kit 관리 페이지</title>
+<link rel="stylesheet" href="assets/app.css">
+<style>
+  .home { display: grid; grid-template-columns: minmax(0, 1fr) 356px; gap: 16px; align-items: start; }
+  .q-head { padding-bottom: 8px; }
+  .q-head h2 { font-size: var(--fs-xl); }
+  .q-head .total { display: inline-grid; place-items: center; min-width: 26px; height: 24px; padding: 0 7px; margin-left: 2px; border-radius: 12px; background: var(--gate); color: #fff; font-size: var(--fs-s); font-weight: 700; }
+  .q-group { border-top: 1px solid var(--rule-soft); }
+  .q-group > h3 {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px 4px;
+    font-size: var(--fs-s); font-weight: 700; color: var(--ink-soft);
+  }
+  .q-group > h3 .n { color: var(--ink-faint); font-weight: 600; }
+  .q-group > h3 .where { margin-left: auto; font-weight: 500; font-size: var(--fs-xs); color: var(--ink-faint); }
+  .q-row {
+    display: grid;
+    grid-template-columns: 14px 104px minmax(0, 1fr) 138px 112px;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 16px;
+    transition: background var(--dur) var(--ease);
+  }
+  .q-row:hover { background: #fafbfd; }
+  .q-row .t { font-weight: 600; }
+  .q-row > .dia { width: 8px; height: 8px; }
+  .q-row .why { margin-top: 1px; font-size: var(--fs-s); color: var(--ink-soft); text-wrap: pretty; }
+  .q-row .why b { color: var(--gate-ink); font-weight: 700; }
+  .q-row .btn { justify-self: end; }
+  .q-row .me { margin-left: 6px; }
+  .q-row .size { display: grid; gap: 4px; font-size: var(--fs-xs); color: var(--ink-faint); }
+  .q-row .size .bar-track { height: 6px; }
+  .q-row .size .bar-fill { background: var(--gate); opacity: 0.75; }
+
+  .today-sum { display: flex; flex-wrap: wrap; gap: 4px 14px; padding: 0 16px 10px; font-size: var(--fs-s); color: var(--ink-soft); }
+  .today-sum b { color: var(--ink); font-weight: 700; margin-right: 4px; }
+  .today-sum .bad b { color: var(--gate-ink); }
+  .tl { list-style: none; padding: 2px 16px 12px; display: grid; gap: 0; }
+  .tl li { display: grid; grid-template-columns: 44px 12px minmax(0, 1fr); gap: 8px; align-items: start; padding: 6px 0; font-size: var(--fs-s); }
+  .tl time { font-family: var(--font-code); font-size: var(--fs-xs); color: var(--ink-faint); padding-top: 2px; }
+  .tl .mk { margin-top: 5px; }
+  .tl .who { font-weight: 600; }
+
+  .sess { list-style: none; padding: 0 8px 8px; }
+  .sess li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 7px 8px; border-radius: var(--r-ctl); }
+  .sess li:hover { background: #fafbfd; }
+  .sess .nm { font-family: var(--font-code); font-size: var(--fs-s); font-weight: 600; }
+  .sess .meta { display: flex; gap: 6px; align-items: center; margin-top: 2px; font-size: var(--fs-xs); color: var(--ink-faint); }
+  .sess .st { font-size: var(--fs-xs); color: var(--ink-soft); text-align: right; }
+
+  .int { padding: 0 16px 14px; }
+  .int h3 { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-m); margin: 10px 0 4px; }
+  .int h3 .key { font-size: var(--fs-xs); color: var(--design-ink); }
+  .u-row { display: grid; grid-template-columns: 34px 96px minmax(0, 1fr) 138px 150px; gap: 10px; align-items: center; padding: 5px 0; font-size: var(--fs-s); border-top: 1px solid var(--rule-soft); }
+  .u-row .u { font-family: var(--font-code); font-size: var(--fs-xs); color: var(--ink-faint); }
+  .chip-contract { display: inline-flex; align-items: center; margin-right: 2px; padding: 0 5px; border: 1px dashed var(--ink-soft); border-radius: var(--r-chip); font-size: var(--fs-xs); font-weight: 700; line-height: 16px; color: var(--ink); }
+  .u-row .stt { display: flex; align-items: center; gap: 6px; justify-content: flex-end; color: var(--ink-soft); font-size: var(--fs-xs); }
+  /* 오른쪽 단: Unit 줄을 두 줄로 접는다(게이트 레일은 홈 왼쪽 목록에 이미 있다) */
+  .int .u-row { grid-template-columns: 30px auto minmax(0, 1fr); row-gap: 2px; }
+  .int .u-row > [data-rail] { display: none; }
+  .int .u-row .stt { grid-column: 2 / -1; justify-content: flex-start; }
+
+  /* 13 · 14 처리할 일 흐름: 14일 추이(스파크라인) · 게이트별(막대). 한 계열이라 범례 대신 제목이 이름을 말한다 */
+  .q-viz { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); gap: 0; border-top: 1px solid var(--rule-soft); }
+  .q-viz > div { min-width: 0; padding: 8px 16px 6px; }
+  .q-viz > div + div { border-left: 1px solid var(--rule-soft); }
+  .qv-h { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-xs); color: var(--ink-faint); }
+  .qv-h b { color: var(--ink-soft); font-weight: 700; }
+  .qv-h .note { margin-left: auto; text-align: right; }
+  .co-on .qv-h { padding-left: 14px; }
+  /* 막대 아래 게이트 레일: 단계 색 빈 마름모, 처리할 일이 있으면 빨간 마름모(홈 줄의 게이트 레일과 같은 뜻) */
+  .qg-dia { stroke-width: 1.5; stroke-linejoin: round; fill: var(--raised); }
+  .qg-dia.design { stroke: var(--design); }
+  .qg-dia.build { stroke: var(--build); }
+  .qg-dia.ops { stroke: var(--ops); }
+  .qg-dia.wait { fill: var(--gate); stroke: var(--gate); }
+  .qg-dot { fill: var(--rule-strong); }
+
+  @media (max-width: 1180px) {
+    .q-viz { grid-template-columns: minmax(0, 1fr); }
+    .q-viz > div + div { border-left: 0; border-top: 1px solid var(--rule-soft); }
+    .home { grid-template-columns: minmax(0, 1fr) 300px; }
+    .q-row { grid-template-columns: 14px 92px minmax(0, 1fr) auto; }
+    .q-row > [data-rail], .q-row > .rail-slot { display: none; }
+    .q-row .size { display: none; }
+    .u-row { grid-template-columns: 34px 96px minmax(0, 1fr) 150px; }
+    .u-row > [data-rail] { display: none; }
+    .sess li { grid-template-columns: 10px minmax(0, 1fr); }
+    .sess .st { grid-column: 2; text-align: left; }
+  }
+  .sk-row { display: grid; grid-template-columns: 14px 104px 1fr 138px 112px; gap: 12px; align-items: center; padding: 14px 16px; }
+</style>
+</head>
+<body data-state="default">
+<a class="skip-link" href="#main">본문으로 건너뛰기</a>
+<div class="app">
+  <aside class="rail" data-nav="home" data-co="12" data-co-pos="in"></aside>
+  <div class="work">
+    <header class="topbar">
+      <div>
+        <h1>홈</h1>
+        <p class="sub">11월 23일 월요일 · 10:52에 파일을 다시 읽었다</p>
+      </div>
+      <div class="top-meta" data-co="11">
+        <label class="search"><svg class="i"><use href="#i-search"/></svg><span class="sr-only">이슈 키나 문서 찾기</span><input type="text" placeholder="이슈 키 · 문서 찾기"><kbd>/</kbd></label>
+        <a class="tag build" href="S09-harness.html"><svg class="i"><use href="#i-alert"/></svg>doctor 경고 2</a>
+        <a class="tag line" href="S09-harness.html">kit 2.0.0 · 2.0.1 있음</a>
+      </div>
+    </header>
+
+    <main id="main" class="content">
+      <div class="home">
+        <div class="stack-y">
+          <section class="panel lift" aria-labelledby="q-title" data-co="1">
+            <div class="panel-head q-head">
+              <h2 id="q-title">처리할 일 <span class="total" data-state-show="default error readonly">9</span></h2>
+              <div class="aside">
+                <div class="seg" data-single role="group" aria-label="보기" data-co="2">
+                  <button type="button" aria-pressed="true">모두 <span class="n">9</span></button>
+                  <button type="button" aria-pressed="false">내가 할 것 <span class="n">3</span></button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 13 · 14 처리할 일 흐름 -->
+            <div class="q-viz" data-state-show="default error readonly">
+              <div data-co="13">
+                <p class="qv-h"><b>14일 추이</b><span>하루 끝 건수</span><span class="note" id="qTrendNote"></span></p>
+                <div class="vz" id="qTrend"></div>
+              </div>
+              <div data-co="14">
+                <p class="qv-h"><b>게이트별</b><span>지금 9건이 어느 게이트 앞에 있나</span><span class="note" id="qGateNote"></span></p>
+                <div class="vz" id="qGate"></div>
+              </div>
+            </div>
+
+            <!-- 오류: 소스 하나를 읽지 못함 -->
+            <div class="panel-body" data-state-show="error">
+              <div class="banner err" role="alert">
+                <svg class="i"><use href="#i-alert"/></svg>
+                <div><b>검증 결과를 읽지 못했다.</b> <span class="path">.agents/state/verify-last.json</span> 14번째 줄 JSON 형식 오류. 열린 CRITICAL·HIGH가 빠졌을 수 있다. 나머지 목록은 10:52 기준이다.</div>
+                <div class="act"><button class="btn sm" type="button"><svg class="i"><use href="#i-refresh"/></svg>다시 읽기</button></div>
+              </div>
+            </div>
+
+            <!-- 로딩 -->
+            <div data-state-show="loading" aria-busy="true" aria-label="목록을 읽는 중">
+              <div class="sk-row"><span class="sk" style="height:10px"></span><span class="sk"></span><span class="sk" style="width:70%"></span><span class="sk"></span><span class="sk"></span></div>
+              <div class="sk-row"><span class="sk" style="height:10px"></span><span class="sk"></span><span class="sk" style="width:55%"></span><span class="sk"></span><span class="sk"></span></div>
+              <div class="sk-row"><span class="sk" style="height:10px"></span><span class="sk"></span><span class="sk" style="width:62%"></span><span class="sk"></span><span class="sk"></span></div>
+              <div class="sk-row"><span class="sk" style="height:10px"></span><span class="sk"></span><span class="sk" style="width:48%"></span><span class="sk"></span><span class="sk"></span></div>
+              <p class="panel-foot">문서 머리 · 승인 기록 · 검증 결과 · 질문 파일 · worktree 목록을 읽는 중이다.</p>
+            </div>
+
+            <!-- 비어 있음 -->
+            <div class="empty" data-state-show="empty">
+              <svg class="i" style="width:28px;height:28px;color:var(--ops)"><use href="#i-ok"/></svg>
+              <h3>지금 처리할 일은 없다</h3>
+              <p>열린 CRITICAL·HIGH, 승인을 기다리는 문서, 답이 없는 질문, 정리할 worktree, doctor 경고가 생기면 이 순서로 여기에 모인다. 10:52에 확인했다. 진행 중인 일은 진행 화면에서 본다.</p>
+              <a class="btn sm" href="S02-progress.html">진행 보기<svg class="i"><use href="#i-chev"/></svg></a>
+            </div>
+
+            <div data-state-show="default error readonly">
+              <div class="q-group" data-co="3">
+                <h3>막힌 것 <span class="n">2</span><span class="where">열린 CRITICAL·HIGH · 열려 있으면 MR을 승인할 수 없다</span></h3>
+                <div class="q-row">
+                  <span class="dia" aria-hidden="true"></span>
+                  <span class="key">HDRV3D-21</span>
+                  <div class="grow"><div class="t">결제수단 등록 <span class="tag solid-gate me">CRITICAL 새로 1</span></div>
+                    <p class="why">품질 게이트 실패 · gitleaks · PG 시크릿 키 · changed 검증 실패 10:44</p></div>
+                  <span data-rail="intent:ok plans:ok requirements:ok design:ok tasks:ok mr:now"></span>
+                  <a class="btn sm" href="S06-verify.html">검증 보기</a>
+                </div>
+                <div class="q-row">
+                  <span class="dia" aria-hidden="true"></span>
+                  <span class="key">KNOTS-18</span>
+                  <div class="grow"><div class="t">녹화 품질 저하 수정 <span class="tag gate me">리뷰 HIGH 1</span></div>
+                    <p class="why">MR !231 · 위험 수용인지 수정 필요인지 정한다 · mr approvers</p></div>
+                  <span data-rail="intent:skip plans:skip requirements:ok design:ok tasks:ok mr:wait"></span>
+                  <a class="btn sm" href="S06-verify.html#review">리뷰 판단</a>
+                </div>
+              </div>
+
+              <div class="q-group" data-co="4">
+                <h3>승인 대기 <span class="n">1</span><span class="where">내 git 사용자가 승인자인 것 · approvers에 내 user.email이 있다</span></h3>
+                <div class="q-row">
+                  <span class="dia" aria-hidden="true"></span>
+                  <span class="key">HDRV3D-12</span>
+                  <div class="grow"><div class="t">업로드 임시 파일 정리<span class="tag gate me">내 차례</span></div>
+                    <p class="why"><b>requirements 다시 승인</b> · R2.3을 고쳐 승인이 stale → in-review · approvers po</p></div>
+                  <span data-rail="intent:ok plans:skip requirements:wait design:now"></span>
+                  <a class="btn approve sm" href="S03-issue.html" data-state-show="default error">열어서 승인</a><a class="btn sm" href="S03-issue.html?state=readonly" data-state-show="readonly">열기</a>
+                </div>
+              </div>
+
+              <div class="q-group" data-co="5">
+                <h3>답할 질문 <span class="n">2</span><span class="where">[NEEDS CLARIFICATION]이 남으면 승인할 수 없다</span></h3>
+                <div class="q-row">
+                  <span class="dia" aria-hidden="true"></span>
+                  <span class="key">INT-7</span>
+                  <div class="grow"><div class="t">결제 개편 · Q3 부분 환불 상계<span class="tag gate me">내 차례</span></div>
+                    <p class="why">권장안 A(설계 세션) · 답할 그룹 po · U-2 정산 requirements가 기다린다</p></div>
+                  <span data-rail="intent:ok plans:ok requirements:now"></span>
+                  <a class="btn sm" href="S04-questions.html">답하기</a>
+                </div>
+                <div class="q-row">
+                  <span class="dia" aria-hidden="true"></span>
+                  <span class="key">INT-7</span>
+                  <div class="grow"><div class="t">결제 개편 · Q5 실패 알림 채널<span class="tag gate me">내 차례</span></div>
+                    <p class="why">선택지 3개 · 답할 그룹 po · ops · U-3 알림이 백로그에 묶여 있다</p></div>
+                  <span data-rail="intent:ok plans:ok"></span>
+                  <a class="btn sm" href="S04-questions.html">답하기</a>
+                </div>
+              </div>
+
+              <div class="q-group" data-co="6">
+                <h3>다른 사람 승인 대기 <span class="n">1</span><span class="where">approvers에 내 git 사용자가 없다</span></h3>
+                <div class="q-row">
+                  <span class="dia" aria-hidden="true"></span>
+                  <span class="key">HDRV3D-22</span>
+                  <div class="grow"><div class="t">정산 주기와 지급</div>
+                    <p class="why"><b>design 승인 대기</b> · 1일째 · approvers&nbsp;dev</p></div>
+                  <span data-rail="intent:ok plans:ok requirements:ok design:wait"></span>
+                  <a class="btn sm" href="S03-issue.html">열기</a>
+                </div>
+              </div>
+
+              <div class="q-group" data-co="7">
+                <h3>정리 대기 <span class="n">2 · 3.1GB</span><span class="where">worktree · 리포당 3개 중 3개 · 정리는 터미널에서</span></h3>
+                <div class="q-row">
+                  <span class="dia" aria-hidden="true"></span>
+                  <span class="key">KNOTS-17</span>
+                  <div class="grow"><div class="t">desktop-parity</div>
+                    <p class="why">변경 없음 · 모두 push · 병합됨 · 3일 전 사용</p></div>
+                  <div class="size"><span>1.9GB</span><div class="bar-track"><div class="bar-fill" style="width:61%"></div></div></div>
+                  <a class="btn sm" href="S07-workspace.html">명령 보기</a>
+                </div>
+                <div class="q-row">
+                  <span class="dia" aria-hidden="true"></span>
+                  <span class="key">HDRV3D-09</span>
+                  <div class="grow"><div class="t">upload-progress</div>
+                    <p class="why">변경 없음 · 모두 push · 병합됨 · 6일 전 사용</p></div>
+                  <div class="size"><span>1.2GB</span><div class="bar-track"><div class="bar-fill" style="width:39%"></div></div></div>
+                  <a class="btn sm" href="S07-workspace.html">명령 보기</a>
+                </div>
+              </div>
+
+              <div class="q-group">
+                <h3>하네스 점검 <span class="n">1</span><span class="where">doctor</span></h3>
+                <div class="q-row">
+                  <span class="dia" aria-hidden="true"></span>
+                  <span class="key">doctor</span>
+                  <div class="grow"><div class="t">Kiro steering 1개가 원본과 다르다</div>
+                    <p class="why"><span class="path">.kiro/steering/git-workflow.md</span> · npx harness-kit repair</p></div>
+                  <span class="rail-slot"></span>
+                  <a class="btn sm" href="S09-harness.html">하네스 보기</a>
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </div>
+
+        <div class="stack-y">
+          <section class="panel" aria-labelledby="today-title" data-co="8">
+            <div class="panel-head"><h2 id="today-title">오늘</h2><div class="aside">11월 23일</div></div>
+            <p class="today-sum"><span><b>1</b>승인</span><span><b>3</b>문서 저장</span><span><b>2</b>세션 요청</span><span class="bad"><b>9</b>검증 중 실패 2</span></p>
+            <ol class="tl" data-state-show="default empty error readonly">
+              <li><time>10:44</time><span class="dot bad mk"></span><span><span class="who mono">api-worker</span> changed 검증 실패 · 2분 14초 · <span class="key">HDRV3D-21</span></span></li>
+              <li><time>10:42</time><span class="dot idle mk"></span><span>김지윤 → <span class="who mono">design-desk</span> 작업 요청 · <span class="key">HDRV3D-12</span></span></li>
+              <li><time>10:38</time><span class="dia design mk"></span><span>김지윤 requirements.md 저장 · R2.3 · <span class="key">HDRV3D-12</span></span></li>
+              <li><time>09:51</time><span class="dia build mk"></span><span>이준호 tasks 계획 승인 · <span class="key">HDRV3D-21</span></span></li>
+              <li><time>09:20</time><span class="dot mk"></span><span><span class="who mono">review-codex</span> MR !231 리뷰 · HIGH 1, MEDIUM 2 · <span class="key">KNOTS-18</span></span></li>
+              <li><time>09:02</time><span class="dot mk"></span><span><span class="who mono">docs-kiro</span> 대기함 요청 1건 받음 · <span class="key">KNOTS-17</span> 기능 문서</span></li>
+            </ol>
+            <div class="panel-body" data-state-show="loading"><span class="sk" style="width:80%;margin:6px 0"></span><span class="sk" style="width:64%;margin:10px 0"></span><span class="sk" style="width:72%;margin:10px 0"></span></div>
+          </section>
+
+          <section class="panel" aria-labelledby="sess-title" data-co="9">
+            <div class="panel-head"><h2 id="sess-title">켜 둔 세션</h2><div class="aside">4개 · 같은 컴퓨터</div></div>
+            <ul class="sess">
+              <li><span class="dot busy" title="일하는 중"></span><div><div class="nm">api-worker</div><div class="meta"><span class="harness"><b class="cc">C</b>Claude Code</span><span class="tag build">구현</span><span class="key">HDRV3D-21</span></div></div><span class="st">일하는 중<br>도구 호출 4분</span></li>
+              <li><span class="dot idle" title="쉬는 중"></span><div><div class="nm">design-desk</div><div class="meta"><span class="harness"><b class="cc">C</b>Claude Code</span><span class="tag design">설계</span><span class="key">HDRV3D-12</span></div></div><span class="st">쉬는 중<br>요청 받음 10:42</span></li>
+              <li><span class="dot off" title="수신함 없음"></span><div><div class="nm">review-codex</div><div class="meta"><span class="harness"><b class="cx">X</b>Codex</span><span class="tag build">리뷰</span><span class="key">KNOTS-18</span></div></div><span class="st">대기함 0</span></li>
+              <li><span class="dot off" title="수신함 없음"></span><div><div class="nm">docs-kiro</div><div class="meta"><span class="harness"><b class="kr">K</b>Kiro</span><span class="tag ops">문서</span><span class="key">KNOTS-17</span></div></div><span class="st">대기함 1</span></li>
+            </ul>
+            <p class="panel-foot">Codex · Kiro는 수신함이 없어 요청을 대기함에 둔다. 다음 세션 시작 때 훅이 건수와 첫 요청 한 줄만 싣고 나머지는 <span class="mono">dispatch list</span>로 본다.</p>
+          </section>
+
+          <section class="panel" aria-labelledby="int-title" data-co="10">
+            <div class="panel-head"><h2 id="int-title">진행 중인 Intent</h2><div class="aside"><a href="S02-progress.html">보드</a><span aria-hidden="true">·</span><a href="S12-workflow.html">흐름<svg class="i s"><use href="#i-chev"/></svg></a></div></div>
+            <div class="int">
+              <h3>결제 개편 <span class="key">INT-7</span></h3>
+              <div class="u-row"><span class="u">U-4</span><span class="key">HDRV3D-24</span><span><span class="chip-contract">계약</span> API 결제 이벤트</span><span data-rail="intent:ok plans:ok requirements:ok design:ok"></span><span class="stt">design 승인됨 · 다음 tasks</span></div>
+              <div class="u-row"><span class="u">U-1</span><span class="key">HDRV3D-21</span><span>결제수단 등록</span><span data-rail="intent:ok plans:ok requirements:ok design:ok tasks:ok mr:now"></span><span class="stt">구현 중 <span class="bolts" aria-label="Bolt 4개 중 2개 끝"><i class="done"></i><i class="done"></i><i class="now"></i><i></i></span> 2/4</span></div>
+              <div class="u-row"><span class="u">U-2</span><span class="key">HDRV3D-22</span><span>정산 주기와 지급</span><span data-rail="intent:ok plans:ok requirements:ok design:wait"></span><span class="stt"><span class="dia"></span>design 승인 대기</span></div>
+              <div class="u-row"><span class="u">U-3</span><span class="key">HDRV3D-23</span><span>결제 실패 알림</span><span data-rail="intent:ok plans:ok"></span><span class="stt">백로그 · Q5 대기</span></div>
+              <h3>업로드 정리 <span class="key">INT-3</span></h3>
+              <div class="u-row"><span class="u">U-2</span><span class="key">HDRV3D-12</span><span>업로드 임시 파일 정리</span><span data-rail="intent:ok plans:skip requirements:wait design:now"></span><span class="stt"><span class="dia"></span>요구사항 승인 대기</span></div>
+              <div class="u-row"><span class="u">U-3</span><span class="key">HDRV3D-13</span><span>업로드 감사 로그</span><span data-rail="intent:ok plans:skip requirements:now"></span><span class="stt">요구사항 작성</span></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+<script>
+/* 13 · 14 처리할 일 흐름(예시 데이터). 실제 화면은 GET /api/v1/overview?days=14의 history(하루 끝 건수)와
+ * items[].gate(그 항목이 막고 있는 게이트)를 센다. 게이트 밖 = 정리 대기 · 하네스 점검. */
+(function () {
+  "use strict";
+  var TREND = [6, 7, 7, 5, 5, 6, 6, 8, 10, 9, 8, 8, 8, 9];
+  var GATES = [
+    { n: "Intent", s: "design", v: 0, w: [] },
+    { n: "기획물", s: "design", v: 0, w: [] },
+    { n: "요구사항", s: "design", v: 3, w: ["HDRV3D-12 다시 승인", "INT-7 Q3 답", "INT-7 Q5 답"] },
+    { n: "설계", s: "design", v: 1, w: ["HDRV3D-22 다른 사람 승인"] },
+    { n: "tasks", s: "build", v: 0, w: [] },
+    { n: "MR", s: "build", v: 2, w: ["HDRV3D-21 CRITICAL 1", "KNOTS-18 리뷰 HIGH 1"] },
+    { n: "완료", s: "ops", v: 0, w: [] },
+    { n: "배포", s: "ops", v: 0, w: [] },
+    { n: "게이트 밖", s: "", v: 3, w: ["정리 대기 2", "doctor 1"], out: true }
+  ];
+  var V = window.HXViz, NS = "http://www.w3.org/2000/svg";
+  var DAYS = V.days(11, 23, TREND.length);
+  function dayName(d) { return d.m + "월 " + d.d + "일 " + d.w; }
+  function short(d) { return d.m + "-" + d.d; }
+
+  function drawTrend() {
+    var host = document.getElementById("qTrend");
+    var max = 0;
+    TREND.forEach(function (v, i) { if (v > TREND[max]) max = i; });
+    document.getElementById("qTrendNote").textContent = "가장 많은 날 " + short(DAYS[max]) + " " + TREND[max] + "건";
+    V.line(host, {
+      h: 72, m: { l: 6, r: 30, t: 18, b: 20 },
+      values: TREND, labels: DAYS.map(function (d, i) { return dayName(d) + (i === DAYS.length - 1 ? " · 10:52까지" : ""); }),
+      y: { min: 0, max: 12 }, floor: true, area: true,
+      xTicks: [[0, short(DAYS[0]), "start"], [TREND.length - 1, "오늘", "end", true]],
+      extra: [{ i: max, label: String(TREND[max]) }],
+      endLabel: function (v) { return v + "건"; },
+      fmt: function (v) { return v + "건"; }, name: "처리할 일",
+      label: "처리할 일 14일 추이, 가장 많은 날 " + dayName(DAYS[max]) + " " + TREND[max] + "건. " +
+        DAYS.map(function (d, i) { return d.m + "월 " + d.d + "일 " + TREND[i] + "건"; }).join(", ") + ". 왼쪽 오른쪽 화살표로 날마다 본다."
+    });
+  }
+
+  function diamond(g, cx, y, fill, stroke) {
+    var r = 5, cy = y + 9;
+    var p = document.createElementNS(NS, "path");
+    p.setAttribute("d", "M" + cx + " " + (cy - r) + " L" + (cx + r) + " " + cy + " L" + cx + " " + (cy + r) + " L" + (cx - r) + " " + cy + " Z");
+    p.setAttribute("class", "qg-dia " + fill + " " + stroke);
+    g.appendChild(p);
+  }
+
+  function drawGates() {
+    var host = document.getElementById("qGate");
+    var top = 0;
+    GATES.forEach(function (g, i) { if (!g.out && g.v > GATES[top].v) top = i; });
+    document.getElementById("qGateNote").textContent = GATES[top].n + " 앞에 가장 많다";
+    V.cols(host, {
+      h: 88, m: { l: 2, r: 2, t: 18, b: 34 }, bw: 14, max: 3,
+      values: GATES.map(function (g) { return g.v; }),
+      labels: GATES.map(function (g) { return g.out ? "게이트 밖" : g.n + " 게이트"; }),
+      xLabels: GATES.map(function (g) { return g.n; }),
+      clsOf: function (v, i) { return GATES[i].out ? "faint" : "gate"; },
+      valueLabel: function (v) { return v > 0 ? String(v) : ""; },
+      zeroMark: true,
+      marks: function (g, cx, y, i) {
+        var gt = GATES[i];
+        if (gt.out) {
+          var c = document.createElementNS(NS, "circle");
+          c.setAttribute("cx", cx); c.setAttribute("cy", y + 9); c.setAttribute("r", 3.5);
+          c.setAttribute("class", "qg-dot");
+          g.appendChild(c);
+        } else diamond(g, cx, y, gt.v > 0 ? "wait" : "open", gt.s);
+      },
+      tip: function (i) {
+        var g = GATES[i];
+        var rows = [{ v: g.v + "건", n: g.out ? "정리 · 점검" : "이 게이트 앞", key: g.out ? "" : "gate" }];
+        g.w.forEach(function (w) { rows.push({ v: "", n: w, sub: rows.length === 1 }); });
+        return rows;
+      },
+      start: top,
+      label: "게이트별 처리할 일. " + GATES.map(function (g) { return g.n + " " + g.v + "건" + (g.w.length ? "(" + g.w.join(", ") + ")" : ""); }).join(", ") + ". 왼쪽 오른쪽 화살표로 게이트마다 본다."
+    });
+  }
+
+  function draw() {
+    var st = document.body.getAttribute("data-state");
+    if (st === "loading" || st === "empty") return;
+    drawTrend();
+    drawGates();
+  }
+  document.addEventListener("hx:ready", draw);
+  V.onResize(draw);
+})();
+
+/* 처리할 일이 없으면 진행 중인 Intent를 왼쪽 단으로 옮긴다(두 단 높이를 맞춘다) */
+document.addEventListener("hx:ready", function () {
+  if (document.body.getAttribute("data-state") !== "empty") return;
+  var left = document.querySelector(".home > .stack-y");
+  var intent = document.querySelector('[aria-labelledby="int-title"]');
+  if (left && intent) left.appendChild(intent);
+});
+</script>
+</body>
+</html>

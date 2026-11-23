@@ -1,0 +1,41 @@
+%%{init: {"theme": "base", "fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "themeVariables": {"fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "fontSize": "16px", "primaryColor": "#ffffff", "primaryBorderColor": "#14213d", "primaryTextColor": "#14213d", "lineColor": "#46536b", "clusterBkg": "#f5f7fa", "clusterBorder": "#aeb9c7", "edgeLabelBackground": "#f5f7fa", "actorBkg": "#ffffff", "actorBorder": "#14213d", "actorTextColor": "#14213d", "actorLineColor": "#aeb9c7", "signalColor": "#46536b", "signalTextColor": "#14213d", "noteBkgColor": "#ffffff", "noteBorderColor": "#aeb9c7", "noteTextColor": "#14213d", "sequenceNumberColor": "#ffffff"}, "flowchart": {"curve": "basis", "padding": 18, "nodeSpacing": 36, "rankSpacing": 46}}}%%
+graph TD
+  subgraph P0["0 Initialization · 자동"]
+    direction LR
+    A0["워크스페이스 탐지 · 상태 초기화"]
+  end
+  subgraph P1["1 Ideation · 무엇을 왜"]
+    direction LR
+    A1["Intent Capture"] --> A2["Scope Definition"] --> A3["Approval & Handoff"]
+  end
+  G1{"게이트"}
+  subgraph P2["2 Inception · 무엇을 어떻게 나누나"]
+    direction LR
+    B1["Requirements<br/>Analysis"] --> B2["Domain<br/>Design"] --> B3["Units<br/>Generation"] --> B4["Contract<br/>Design"] --> B5["Delivery Planning<br/>bolt-plan.md"]
+  end
+  G2{"게이트"}
+  subgraph P3["3 Construction · Unit마다 반복"]
+    direction LR
+    C1["Functional · NFR<br/>Infrastructure Design"] --> C2["Code Generation"] --> C3["Build and Test<br/>CI Pipeline"]
+  end
+  G3{"게이트"}
+  subgraph P4["4 Operation · 모두 조건부"]
+    direction LR
+    D1["배포 파이프라인<br/>환경 · 배포 실행"] --> D2["관측 · 장애 대응<br/>성능 검증"] --> D3["Feedback &<br/>Optimization"]
+  end
+  A0 --> A1
+  A3 --> G1 --> B1
+  B5 --> G2 --> C1
+  C3 --> G3 --> D1
+  classDef inception fill:#e7eafb,stroke:#3046c5,stroke-width:2px,color:#14213d
+  classDef construction fill:#fbf1dc,stroke:#c98a12,stroke-width:2px,color:#14213d
+  classDef operations fill:#ddf2eb,stroke:#0b7a5e,stroke-width:2px,color:#14213d
+  classDef gate fill:#fbe6e9,stroke:#c8102e,stroke-width:2px,color:#c8102e
+  classDef plain fill:#ffffff,stroke:#14213d,stroke-width:2px,color:#14213d
+  classDef external fill:#ffffff,stroke:#6b778c,stroke-width:1.5px,stroke-dasharray:5 4,color:#46536b
+  classDef store fill:#f5f7fa,stroke:#6b778c,stroke-width:1.5px,color:#46536b
+  class A0 plain
+  class A1,A2,A3,B1,B2,B3,B4,B5 inception
+  class C1,C2,C3 construction
+  class D1,D2,D3 operations
+  class G1,G2,G3 gate

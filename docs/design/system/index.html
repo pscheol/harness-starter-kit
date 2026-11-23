@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>1–4 개요·구성 — harness-starter-kit v2 전체 시스템 설계서</title>
+  <meta name="description" content="harness-starter-kit v2의 전체 시스템 설계서. 목적·범위·사용자·원칙, 시스템 컨텍스트와 경계, 킷 저장소·설치된 리포·런타임 구성요소, 층 우선순위와 하네스 배치 방식, lock 소유.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../../ai-dlc/assets/aidlc.css">
+  <link rel="stylesheet" href="../../harness-next/assets/next.css">
+  <link rel="stylesheet" href="assets/system.css">
+  <script src="../../ai-dlc/assets/aidlc.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+  <header class="site-head">
+    <div class="phase-band" aria-hidden="true"><span></span><span></span><span></span></div>
+    <nav class="site-nav" aria-label="문서 목록">
+      <a class="home" href="index.html">전체 시스템 설계서</a>
+      <ol>
+        <li><a href="index.html" aria-current="page"><span class="num">1–4</span>개요·구성</a></li>
+        <li><a href="02-data-and-flows.html"><span class="num">5–6</span>데이터·흐름</a></li>
+        <li><a href="03-trust-and-delivery.html"><span class="num">7–11</span>보안·배포·결정</a></li>
+        <li><a href="../README.md"><span class="num">계약</span>설계서 README</a></li>
+      </ol>
+    </nav>
+  </header>
+
+  <main id="main" class="page">
+    <nav class="page-toc" aria-label="이 장의 절">
+      <p class="toc-title">이 장에서</p>
+      <ol>
+        <li><a href="#overview">1 개요</a></li>
+        <li><a href="#principles">1.3 원칙 10개</a></li>
+        <li><a href="#configs">1.4 두 구성</a></li>
+        <li><a href="#context">2 시스템 컨텍스트</a></li>
+        <li><a href="#components">3 구성요소 뷰</a></li>
+        <li><a href="#kit-repo">3.1 킷 저장소</a></li>
+        <li><a href="#installed">3.2 설치된 리포</a></li>
+        <li><a href="#runtime">3.3 런타임</a></li>
+        <li><a href="#layers">4 계층과 배치</a></li>
+        <li><a href="#projection">4.2 배치 방식</a></li>
+        <li><a href="#ownership">4.3 lock 소유</a></li>
+      </ol>
+    </nav>
+
+    <article class="prose">
+      <h1 class="page-title">하네스와 시스템이 맞물리는 방식</h1>
+      <p class="lede">킷 저장소, 킷을 설치한 리포, 그 리포에서 도는 세션·관리 페이지·worktree, 리포 밖 시스템을 한 문서에 놓고 경계와 연결을 적는다. 구성요소 안쪽은 설계서 01~14에 있고 여기서는 절 번호로 가리킨다. <a href="../README.md">설계서 README 공통 계약</a>과 다르면 README가 이긴다.</p>
+      <p class="status-line"><span>상태 <b>설계 초안 · 구현 전</b></span><span>기준일 <b>2026-11-23</b></span><span>대상 <b>킷 개발자와 그 작업을 맡는 에이전트</b></span></p>
+
+      <ul class="legend" aria-label="그림 색의 뜻">
+        <li class="blue">설계 · 원본</li>
+        <li class="amber">구현 · 검증 · 킷이 만드는 것</li>
+        <li class="teal">반영 · 운영 · 결과</li>
+        <li class="red">사람 결정 · 게이트</li>
+        <li class="gray">외부 · 기계 기록</li>
+      </ul>
+
+      <h2 id="overview"><span class="section-no">1</span>개요</h2>
+
+      <h3 id="purpose">1.1 목적과 범위</h3>
+      <p>요구사항 접수에서 운영 기록까지를 한 리포 안의 문서와 사람 승인, <code>scripts/verify.sh</code> 판정으로 잇는다. 같은 흐름이 Claude Code · Codex · Cursor · Kiro 어느 하네스에서 열어도 같은 원본과 같은 게이트를 쓴다.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th scope="col">넣는 것</th><th scope="col">넣지 않는 것</th></tr></thead>
+          <tbody>
+            <tr><td>킷 저장소(템플릿 층 · 플러그인 스킬 · CLI · 어댑터 · 모듈), 회사 팩 형식</td><td>제품 코드, 외부 도구(AI-DLC · Entire) 내부 동작</td></tr>
+            <tr><td>설치된 리포의 원본 · 하네스 배치 · 검증 · 훅 · 문서 · 상태</td><td>운영 배포 명령 자체, 환경 만들기, 모니터링 도구 연결(<a href="../14-deploy-and-ops.md">14</a> §1)</td></tr>
+            <tr><td>로컬 관리 페이지, worktree, 세션 등록과 작업 요청</td><td>화면 디자인(<a href="../screens/index.html">screens</a>), 네트워크에 공개하는 서버, 화면에서 셸 명령 실행</td></tr>
+            <tr><td>리포 밖 시스템과의 경계(GitLab · CI · Jira · Notion · 분석기)</td><td>사용자 전역 설정 · 자격 증명 쓰기</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="users">1.2 사용자</h3>
+      <p>로그인은 없다. 그 컴퓨터 git의 <code>user.name</code> · <code>user.email</code>이 신원이고, <code>approvers</code>가 비어 있으면 그 리포의 git 사용자 누구나 승인한다(README §3 · §5).</p>
+      <div class="table-wrap bleed">
+        <table>
+          <thead><tr><th scope="col">사용자</th><th scope="col">하는 일</th><th scope="col">주로 쓰는 곳</th><th scope="col">기본 승인 게이트</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">PO</th><td>요구사항 접수, 질문 답, 범위 · Unit 분해 · 기획물 · requirements 승인</td><td>관리 페이지 S11 · S04 · S03, Jira</td><td><code>intent</code> · <code>plans</code> · <code>requirements</code> · <code>done</code></td></tr>
+            <tr><th scope="row">개발자</th><td>현재 상태 확인, design 트레이드오프, tasks 계획, 리뷰 지적 판단, MR</td><td>터미널 · IDE, 관리 페이지 S03 · S06, GitLab</td><td><code>codebase</code> · <code>design</code> · <code>tasks</code> · <code>mr</code></td></tr>
+            <tr><th scope="row">QA</th><td>수용 기준이 시험 가능한지, 검증 결과, 완료</td><td>관리 페이지 S06, CI 결과</td><td><code>done</code></td></tr>
+            <tr><th scope="row">운영</th><td>배포 승인, 운영 기록, 다음 요구사항 선택, worktree 정리 승인</td><td>관리 페이지 S10 · S07, 배포 시스템</td><td><code>deploy</code></td></tr>
+            <tr><th scope="row">에이전트 세션</th><td>초안 · 코드 · 리뷰 · 문서를 쓰고 검증을 돌린다. 승인 기록은 쓰지 못한다</td><td>설계 · 구현 Claude Code, 리뷰 Codex, 문서 Kiro(D7 추천값)</td><td>없음</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="principles">1.3 원칙 10개</h3>
+      <p>README §1의 원칙을 시스템의 어느 자리가 지키는지로 다시 적는다. 원칙 10(토큰)이 다른 원칙과 부딪히면 원칙 10을 먼저 지킨다.</p>
+      <div class="table-wrap bleed">
+        <table>
+          <thead><tr><th scope="col">번호</th><th scope="col">원칙</th><th scope="col">지키는 자리</th></tr></thead>
+          <tbody>
+            <tr class="top"><th scope="row">10<span class="tag decide">최우선</span></th><td>킷을 도입해도 토큰 소모량이 늘지 않는다. CLI · 관리 페이지 · 훅 · 스크립트는 모델을 부르지 않고, 모델 작업은 사람이 시킨 작업 안에서만 돈다</td><td>세션에 덧붙이는 양의 상한과 릴리스 전후 측정(<a href="03-trust-and-delivery.html#tokens">9.1</a>), 모델을 부를 수 있는 구성요소 표(<a href="03-trust-and-delivery.html#model-calls">9.2</a>)</td></tr>
+            <tr><th scope="row">1</th><td>원본은 <code>.agents/</code> 한 곳</td><td>하네스 폴더는 <code>mirror</code> · <code>render</code> · <code>merge</code> 결과(실제 파일, 링크·포인터 없음)만 두고 lock에 적는다. <code>doctor</code>와 fast 검증이 어긋남을 잡는다(<a href="#projection">4.2</a>)</td></tr>
+            <tr><th scope="row">2</th><td>완료 판정은 <code>scripts/verify.sh</code> 한 곳</td><td>훅 · git 훅 · CI · CLI는 부르기만 한다. MR 파이프라인은 base 브랜치의 판으로 판정한다(<a href="../09-verification-quality.md">09</a> VQ-R11)</td></tr>
+            <tr><th scope="row">3</th><td>사람이 고친 파일과 다른 도구의 파일은 덮지 않는다</td><td><code>update</code> 3방향 비교와 <code>.new</code>, 주인 <code>user</code> · <code>external:*</code>(<a href="#ownership">4.3</a>)</td></tr>
+            <tr><th scope="row">4</th><td>외부 도구 원본 파일은 고치지 않는다</td><td>외부 파일은 <code>op: none</code>으로 기록만 하고, 킷 명령 전후 sha256이 같아야 한다(<a href="../10-modules.md">10</a> MD-R7)</td></tr>
+            <tr><th scope="row">5</th><td>AI-DLC · Entire 없이도 전 흐름이 돈다</td><td>두 모듈은 기본 꺼짐. 릴리스마다 킷만 구성으로 운영 기록까지 도는 e2e 시험(<a href="../11-migration-and-release.md">11</a> §3.4)</td></tr>
+            <tr><th scope="row">6</th><td>AI-DLC 원칙 다섯 가지는 모듈과 상관없이 지킨다</td><td><code>/hx-intent</code>, Unit = 이슈 = 브랜치, 게이트 하한, <code>approvals.md</code>(<a href="../13-aidlc-coverage.md">13</a>: 142항목 중 충족 117)</td></tr>
+            <tr><th scope="row">7</th><td>프로젝트 밖에는 쓰지 않는다</td><td>사용자 폴더는 스킬 목록과, 사람이 켰을 때의 사용량 보고에서만 읽는다(<a href="../07-skills-inventory.md">07</a>, <a href="../12-model-routing.md">12</a> §3.9)</td></tr>
+            <tr><th scope="row">8</th><td>사람이 연 세션의 모델 · effort는 바꾸지 않는다</td><td>등급은 위임 역할에만. <code>implement</code> · <code>design</code> · <code>review</code>는 <code>inherit</code>로 잠근다(<a href="../12-model-routing.md">12</a> §3.2 · §3.10)</td></tr>
+            <tr><th scope="row">9</th><td>화면 없이도 모든 기능이 돈다</td><td>서버와 CLI가 <code>packages/cli/src/core/</code>를 같이 부르고 <code>--json</code> 출력이 같다(<a href="../06-dashboard.md">06</a> §3.15)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="configs">1.4 두 구성: 킷만 · 모듈을 켬</h3>
+      <p>모듈은 <code>module.json</code>에 선언한 파일 · 훅 · 설정만 깔고, 끄면 킷 몫만 빠진다. 어느 구성이든 SDD 이후 단계는 같은 <code>units.json</code>과 <code>approvals.md</code>를 읽는다.</p>
+      <div class="table-wrap bleed">
+        <table>
+          <thead><tr><th scope="col">자리</th><th scope="col">킷만(기본)</th><th scope="col">모듈을 켰을 때</th><th scope="col">뒤 단계가 읽는 것</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">설계(Intent · Unit)</th><td><code>/hx-intent</code> → <code>intent.md</code> · <code>units.json</code></td><td><code>aidlc</code>: AI-DLC가 설계 단계를 돌리고 <code>sync aidlc</code>가 <code>intent.json</code> · <code>units.json</code>으로 옮긴다</td><td><code>units.json</code>(같은 형식)</td></tr>
+            <tr><th scope="row">승인</th><td>관리 페이지 · 사람 터미널 <code>approve</code></td><td><code>jira-workflow</code>: Jira 사람 전이를 가져온다. <code>aidlc</code>: AI-DLC 승인 기록을 가져온다(승인자가 있을 때)</td><td><code>approvals.md</code></td></tr>
+            <tr><th scope="row">요구사항 출처</th><td>관리 페이지 S11, <code>/hx-intent --new</code>, 운영 기록</td><td><code>jira-workflow</code> · <code>notion</code>: 에픽 · 페이지를 접수로 가져온다</td><td><code>intake.md</code> · <code>attachments/</code></td></tr>
+            <tr><th scope="row">이슈 키 · 상태</th><td>킷 키 <code>&lt;PREFIX&gt;-&lt;n&gt;</code>, 보드가 여덟 상태를 계산</td><td><code>jira-workflow</code>: Jira 키, 에이전트 몫 상태 전이와 링크 동기화</td><td><code>issues/&lt;키&gt;-&lt;이름&gt;/</code></td></tr>
+            <tr><th scope="row">대화 기록</th><td>남기지 않는다. SDD ↔ 커밋 ↔ MR 링크와 handoff 문서</td><td><code>entire</code>: 구현 하네스 하나에만 커밋별 체크포인트</td><td>관리 페이지 체크포인트 칸</td></tr>
+            <tr><th scope="row">리포 구성</th><td>단일 리포</td><td><code>multi-harness</code>: 상위 리포 + submodule, 배포 단위 등록표 <code>tools/harness/units.json</code></td><td>상위 게이트가 바뀐 도메인만 부른다(<a href="../01-v1.1-verify-and-issues.md">01</a> R4)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>릴리스마다 두 구성(킷만 / 킷 + AI-DLC + Entire)으로 요구사항 하나를 운영 기록까지 돌리는 시험을 통과한다(<a href="../11-migration-and-release.md">11</a> §3.4, <code>e2e-stub</code> 두 구성 합계 5분 이하).</p>
+
+      <h2 id="context"><span class="section-no">2</span>시스템 컨텍스트</h2>
+      <p>시스템의 중심은 킷을 설치한 리포 하나다. 킷은 파일과 lock을 넣어 주고 빠지며, 그 뒤의 일은 리포 안 파일과 리포 스크립트가 한다.</p>
+      <figure class="diagram bleed">
+        <a href="diagrams/context.svg"><img src="diagrams/context.svg" width="1941" height="551" alt="가운데 설치된 리포(.agents 원본, SDD 문서, scripts/verify.sh, 훅, 127.0.0.1 관리 페이지)가 있다. 왼쪽에서 harness-starter-kit 배포물이 init·update로 파일과 lock을 넣고, 사람(PO·개발자·QA·운영)이 터미널과 관리 페이지로 요구사항·답·승인을 넣고, 사람이 프롬프트를 준 에이전트 세션(Claude Code·Codex·Cursor·Kiro)이 문서·코드를 쓰고 훅과 verify.sh를 돈다. 오른쪽으로 리포는 GitLab·GitHub에 push·MR을 올리고 원격은 CI 파이프라인에서 base판 verify.sh를 돈다. Jira와는 상태·링크와 에픽·승인 전이를, Notion에서는 요구사항을, AI-DLC와는 Intent·Unit·승인 기록을 주고받는다. Entire에는 구현 하네스의 체크포인트를 남기고, 정적 분석 도구는 verify.sh가 실행해 SARIF로 모은다. 선택 시스템은 회색이다" loading="lazy" decoding="async"></a>
+        <figcaption>시스템 컨텍스트. 회색은 선택이거나 킷이 실행만 하는 외부 도구다. <a class="edit" href="diagrams/context.mmd">편집 원본(.mmd)</a> · <a class="edit" href="diagrams/context.excalidraw">excalidraw</a></figcaption>
+      </figure>
+
+      <h3 id="boundaries">2.1 경계를 넘는 것</h3>
+      <div class="table-wrap bleed">
+        <table>
+          <thead><tr><th scope="col">경계</th><th scope="col">넘는 것</th><th scope="col">넘지 않는 것</th><th scope="col">설계</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">킷 배포물 → 리포</th><td>템플릿 파일, <code>harness-kit.json</code>, lock v2</td><td>사용자 전역 폴더 쓰기, 런타임 의존 패키지</td><td><a href="../02-cli-engine.md">02</a> §3.7 · §3.9</td></tr>
+            <tr><th scope="row">사람 → 리포</th><td>요구사항 · 첨부, 질문 답, 승인 4경로, 리뷰 판단</td><td>채팅에서 한 말은 승인이 아니다</td><td>README §3, <a href="../06-dashboard.md">06</a> §3.7</td></tr>
+            <tr><th scope="row">세션 ↔ 리포</th><td>세션이 문서 · 코드를 쓴다. 훅이 세션 등록 · 검증 · 차단을 한다</td><td><code>approvals.md</code> · 기준선 · 대시보드 토큰 쓰기, <code>--full</code> 검증</td><td><a href="../03-projection-and-hooks.md">03</a> §3.4, <a href="../09-verification-quality.md">09</a> §3.8</td></tr>
+            <tr><th scope="row">리포 → GitLab · GitHub</th><td>이슈 브랜치, MR, <code>/hx-review</code> 요약 코멘트 1개</td><td>에이전트의 base 직접 push</td><td><a href="../09-verification-quality.md">09</a> §3.1 · §3.8</td></tr>
+            <tr><th scope="row">원격 → CI</th><td>base 브랜치의 <code>verify.sh</code> · <code>scripts/harness/</code> · 검증 설정으로 affected · full 판정</td><td>MR이 바꾼 검증 코드는 병합 뒤부터 쓴다. CI는 모델을 부르지 않는다</td><td><a href="../09-verification-quality.md">09</a> VQ-R11 · §3.7</td></tr>
+            <tr><th scope="row">리포 ↔ Jira</th><td>리포 → Jira: 에이전트 몫 상태 전이, 원격 링크. Jira → 리포: 에픽 접수, 사람이 한 승인 전이</td><td>에이전트의 승인 전이, 이슈 설명 덮어쓰기</td><td><a href="../10-modules.md">10</a> §3.4</td></tr>
+            <tr><th scope="row">Notion → 리포</th><td>페이지 · DB 항목 → <code>intake.md</code> · 첨부. <code>writeBack</code>을 켜면 키와 게이트 상태를 되쓴다</td><td>다시 가져올 때 자동 덮어쓰기(차이를 사람이 고른다)</td><td><a href="../10-modules.md">10</a> §3.6</td></tr>
+            <tr><th scope="row">AI-DLC → 리포</th><td>AI-DLC 산출물에서 Intent · Unit 목록 · 승인 기록</td><td>AI-DLC 원본 파일 수정, 구현 단계(구현은 킷 SDD)</td><td><a href="../10-modules.md">10</a> §3.2</td></tr>
+            <tr><th scope="row">리포 → Entire</th><td>구현 하네스 세션의 체크포인트, 커밋 트레일러</td><td>공개 원격이면 체크포인트 push 안 함(D6 추천값)</td><td><a href="../10-modules.md">10</a> §3.3</td></tr>
+            <tr><th scope="row">리포 ↔ 정적 분석 도구</th><td><code>analyzers.json</code>에 등록한 도구를 레벨별로 실행, SARIF 2.1.0</td><td>킷이 분석기를 설치하거나 Semgrep 규칙을 넣지 않는다</td><td><a href="../09-verification-quality.md">09</a> §3.3~3.5</td></tr>
+            <tr><th scope="row">비밀값</th><td>환경 변수(<code>JIRA_API_TOKEN</code> · <code>NOTION_TOKEN</code> · CI 토큰)</td><td>리포 · <code>harness-kit.json</code> · 문서 · 예시</td><td><a href="../10-modules.md">10</a> §3.4 · §3.6</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="components"><span class="section-no">3</span>구성요소 뷰</h2>
+      <p>킷 저장소의 구성요소는 설치 때만 돈다. 설치된 리포의 구성요소는 Node 없이도 돌고(리포 스크립트는 Python 표준 라이브러리), 런타임 구성요소는 사람이 띄운 프로세스 안에서만 돈다.</p>
+      <figure class="diagram bleed">
+        <a href="diagrams/components.svg"><img src="diagrams/components.svg" width="1912" height="1172" alt="세 묶음. 위 왼쪽 킷 저장소·배포물: 생성물인 플러그인 스킬(plugins/harness-kit)이 packages/cli의 CLI 엔진을 부르고, 템플릿 층과 선택 모듈·회사 팩이 CLI 엔진에 들어가며, CLI 엔진이 하네스 어댑터를 쓴다. 가운데 설치된 리포: CLI가 .agents 원본에 copy하고 lock을 쓰며, 어댑터가 하네스 폴더에 mirror·render·merge한다. .agents 원본은 하네스 폴더의 원본이고 SDD 템플릿을 .agents/docs에 준다. 하네스 폴더의 훅 배선이 훅과 scripts/verify.sh를 부르고, .agents/docs가 게이트 조건을 주며, verify.sh가 verify-last와 SARIF를 .agents/state·reports에 쓴다. 아래 오른쪽 런타임: 하네스 폴더가 역할별 세션에 진입 파일·스킬·역할을 주고, 세션과 .agents/docs는 서로 읽고 쓴다. 관리 페이지 서버(packages/dashboard)는 .agents/docs를 읽고 저장·승인하며 state를 읽고 세션에 작업 요청을 보낸다. 세션은 이슈마다 worktree에서 일한다" loading="lazy" decoding="async"></a>
+        <figcaption>구성요소. 앰버는 킷이 만들거나 실행하는 것, 파랑은 원본과 문서, 청록은 런타임이다. <a class="edit" href="diagrams/components.mmd">편집 원본(.mmd)</a> · <a class="edit" href="diagrams/components.excalidraw">excalidraw(그림 한 장)</a></figcaption>
+      </figure>
+
+      <h3 id="kit-repo">3.1 킷 저장소</h3>
+      <p>pnpm 워크스페이스 모노레포다. 원본은 <code>packages/</code> 한 곳이고, 플러그인 폴더는 원본에서 만든 생성물이다(<a href="../02-cli-engine.md">02</a> §3.1).</p>
+      <div class="table-wrap bleed">
+        <table>
+          <thead><tr><th scope="col">구성요소</th><th scope="col">자리</th><th scope="col">맡는 일</th><th scope="col">설계</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">템플릿 층</th><td><code>packages/templates/</code> common · domains · stacks · arch · optional, <code>layout.json</code>, 리포 스크립트</td><td>설치할 파일, 설치 경로 규칙, 토큰 치환 목록</td><td><a href="../02-cli-engine.md">02</a> §3.4~3.6</td></tr>
+            <tr><th scope="row">CLI 엔진</th><td><code>packages/cli/src/core/</code> → <code>dist/cli.js</code> 한 파일, <code>dependencies</code> 0</td><td>작업 목록을 만들고 적용한다. lock, <code>update</code> · <code>doctor</code> · <code>repair</code> · <code>uninstall</code></td><td><a href="../02-cli-engine.md">02</a> §3.1 · §3.7~3.13</td></tr>
+            <tr><th scope="row">하네스 어댑터</th><td><code>packages/cli/src/adapters/&lt;id&gt;.ts</code></td><td>하네스마다 mirror · render · merge 작업 목록만 낸다(링크 없음). 파일은 엔진이 쓴다. 새 하네스는 파일 하나와 등록 한 줄</td><td><a href="../03-projection-and-hooks.md">03</a> §3.1~3.3</td></tr>
+            <tr><th scope="row">선택 모듈</th><td><code>packages/templates/optional/&lt;id&gt;/module.json</code>, 연결 코드 <code>packages/cli/src/modules/</code></td><td>켠 모듈의 파일 · 훅 · 설정 키 · 외부 경로 · 요구 도구 · 설치 · 충돌을 선언한다</td><td><a href="../10-modules.md">10</a> §3.1</td></tr>
+            <tr><th scope="row">관리 페이지</th><td><code>packages/dashboard/</code>(서버 · 화면), <code>packages/flow-view/</code>(React Flow 소스, 결과물 번들만 dashboard로)</td><td>서버 · 읽기 모듈 · 쓰기 규칙 · 화면. CLI 번들에 같이 묶는다</td><td><a href="../06-dashboard.md">06</a> §3.1 · §3.16, <a href="../screens/index.html">screens</a></td></tr>
+            <tr><th scope="row">Node 없는 설치</th><td><code>packages/legacy-setup/</code>(<code>setup.sh</code> · <code>lib/</code>)</td><td>v2.0 동안만. Node 18 미만이면 플러그인 스킬이 여기로 내려간다</td><td><a href="../02-cli-engine.md">02</a> §3.14</td></tr>
+            <tr><th scope="row">플러그인(생성물)</th><td><code>plugins/harness-kit/</code>: 얇은 스킬 <code>hx-*</code>, <code>bin/harness-kit.js</code> · <code>templates/</code> · <code>setup.sh</code> 사본</td><td>Claude · Codex 마켓플레이스와 Kiro 설치가 받아 가는 폴더. <code>scripts/gen-plugins.mjs</code>가 만들고 커밋한다. 손으로 고치면 생성물 시험이 실패한다</td><td><a href="../02-cli-engine.md">02</a> §3.1 · §3.14</td></tr>
+            <tr><th scope="row">회사 팩</th><td>별도 git 리포 · npm 패키지, <code>pack.json</code></td><td>회사 규칙 · 스킬 · 훅을 킷 위에 얹는다. <code>pack new</code>로 시작한다</td><td><a href="../04-extension-layers.md">04</a> §3.2~3.4 · §3.9</td></tr>
+            <tr><th scope="row">릴리스 도구</th><td><code>scripts/release.sh</code> · <code>gen-plugins.mjs</code>, <code>tests/</code></td><td>다섯 매니페스트 버전을 같이 올리고 플러그인을 다시 만든 뒤 생성물 · 동일성 · e2e 시험을 돈다</td><td><a href="../11-migration-and-release.md">11</a> §3.5</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="installed">3.2 설치된 리포</h3>
+      <div class="table-wrap bleed">
+        <table>
+          <thead><tr><th scope="col">구성요소</th><th scope="col">자리</th><th scope="col">맡는 일</th><th scope="col">설계</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">원본</th><td><code>.agents/rules</code> · <code>skills</code> · <code>roles</code> · <code>hooks.json</code> · <code>skill-map.json</code></td><td>규칙 · 스킬 · 역할 · 훅의 하나뿐인 원본</td><td>README §4, <a href="../03-projection-and-hooks.md">03</a></td></tr>
+            <tr><th scope="row">설정 · 설치 기록</th><td><code>.agents/harness-kit.json</code> · <code>harness-kit.lock</code></td><td>선택값 · 게이트 · 승인자 · 역할 배치 / 항목별 <code>op</code> · <code>owner</code> · sha256</td><td>README §5 · §6</td></tr>
+            <tr><th scope="row">하네스 폴더</th><td><code>.claude</code> · <code>.codex</code> · <code>.cursor</code> · <code>.kiro</code>, <code>CLAUDE.md</code></td><td>원본에서 링크 · 생성 · 병합한 결과만 둔다. 손으로 유지하는 킷 파일 0개</td><td><a href="../03-projection-and-hooks.md">03</a> §3.2</td></tr>
+            <tr><th scope="row">검증</th><td><code>scripts/verify.sh</code>, <code>scripts/harness/*.py</code>, <code>verify-checks.json</code> · <code>analyzers.json</code> · <code>quality-gate.json</code></td><td>레벨별 검증, 게이트 판정(<code>sdd_gates.py</code>), 정적 분석과 품질 게이트</td><td><a href="../01-v1.1-verify-and-issues.md">01</a>, <a href="../09-verification-quality.md">09</a></td></tr>
+            <tr><th scope="row">하네스 훅</th><td><code>scripts/hooks/*</code>, 모든 하네스가 <code>dispatch.sh</code>를 거친다</td><td>세션 시작 · 도구 전 · Stop · worktree 이벤트. 입력의 <code>cwd</code>에서 하네스 루트를 찾는다</td><td><a href="../03-projection-and-hooks.md">03</a> §3.4 · §3.10</td></tr>
+            <tr><th scope="row">git 훅</th><td><code>scripts/git-hooks/</code>(<code>core.hooksPath</code>)</td><td><code>approvals.md</code> 덧붙이기 검사, 승인 없는 상태 변경 거부, 에이전트의 base push 거부</td><td><a href="../09-verification-quality.md">09</a> §3.8</td></tr>
+            <tr><th scope="row">문서</th><td><code>.agents/docs/</code> intents · issues · codebase · decisions · ops · rule-candidates, <code>docs/features/</code></td><td>Intent · Unit · SDD · 승인 · 운영 기록 · 기능 문서</td><td><a href="../08-design-stage.md">08</a>, <a href="../01-v1.1-verify-and-issues.md">01</a> §3.7, <a href="../14-deploy-and-ops.md">14</a></td></tr>
+            <tr><th scope="row">상태 · 리포트</th><td><code>.agents/state/</code> · <code>.agents/reports/</code>(커밋 안 함)</td><td>마지막 검증, 세션 등록, 대기함, SARIF, 지표, 백업</td><td><a href="02-data-and-flows.html#files">5.1</a></td></tr>
+            <tr><th scope="row">리포 스크립트</th><td><code>worktree.py</code> · <code>check_layout.py</code> · <code>approve.py</code> · <code>deploy.py</code> · <code>codebase_scan.py</code> · <code>delivery_metrics.py</code></td><td>Node 없이 매일 쓰는 명령</td><td>README §7</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3 id="runtime">3.3 런타임</h3>
+      <div class="table-wrap bleed">
+        <table>
+          <thead><tr><th scope="col">구성요소</th><th scope="col">도는 곳</th><th scope="col">맡는 일</th><th scope="col">설계</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">역할별 세션</th><td>설계 · 문서: 메인 폴더. 구현: 이슈 worktree. 리뷰: 원격 diff만 읽는다</td><td>D7 추천값 설계 · 구현 Claude Code, 리뷰 Codex, 문서 Kiro. 세션 시작 훅이 역할을 알린다</td><td><a href="../../harness-next/02-direction.html#roles">HN02 실행 배치</a>, <a href="../06-dashboard.md">06</a> §3.9</td></tr>
+            <tr><th scope="row">위임 역할</th><td>세션 안 하위 에이전트</td><td><code>explorer</code> · <code>planner</code> · <code>summarizer</code> 등. <code>light</code> · <code>standard</code> 등급은 위임에만 쓴다</td><td><a href="../12-model-routing.md">12</a> §3.2~3.5</td></tr>
+            <tr><th scope="row">관리 페이지 서버</th><td>사람 터미널의 <code>npx harness-kit dashboard</code>, <code>127.0.0.1</code></td><td>읽기, 문서 저장, 승인, 질문 답, 세션 작업 요청. 커밋 · push · worktree 생성은 하지 않는다</td><td><a href="../06-dashboard.md">06</a></td></tr>
+            <tr><th scope="row">worktree</th><td><code>../&lt;repo&gt;.worktrees/&lt;키&gt;-&lt;이름&gt;/</code>, 리포당 3개</td><td>같은 리포에서 쓰는 세션이 둘 이상일 때 둘째부터 만든다. clean · push 확인 뒤 <code>wt done</code>이 지운다</td><td><a href="../05-worktree.md">05</a></td></tr>
+            <tr><th scope="row">세션 등록 · 대기함</th><td>메인 폴더 <code>.agents/state/sessions/</code> · <code>dispatch-queue/</code></td><td>세션 생존 판정(pid · 소켓), 작업 요청 전달</td><td><a href="../06-dashboard.md">06</a> §3.9 · §3.10</td></tr>
+            <tr><th scope="row">CI 파이프라인</th><td>GitLab CI · GoCD · GitHub Actions 템플릿</td><td>affected · full 검증, 품질 게이트, 선택 배포 단계. <code>verify.sh</code> · <code>deploy.py</code>만 부른다</td><td><a href="../09-verification-quality.md">09</a> §3.7, <a href="../14-deploy-and-ops.md">14</a> §3.5</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="layers"><span class="section-no">4</span>계층과 배치</h2>
+      <p>설치할 파일은 층을 차례로 쌓아 정하고(<code>resolve</code>), 그 결과가 <code>.agents/</code> 원본이 된다. 하네스 폴더는 그 원본에서 다시 만든다. 두 단계 모두 lock에 남는다.</p>
+      <figure class="diagram bleed">
+        <a href="diagrams/layers-projection.svg"><img src="diagrams/layers-projection.svg" width="2666" height="629" alt="왼쪽에서 킷 층(common → domains → stacks → arch → optional, owner kit) 다음 회사 팩(owner pack, packs 배열 순서)이 같은 경로면 이기고, 그다음 프로젝트(owner user)가 이긴다. 그 해석 결과가 .agents 원본이 된다. 개인 층(.agents/local, 개인 lock)은 더하기만 하고, 킷 코드 상수인 하한(게이트 4개, floor 훅 3개, 보호 경로 deny)은 어느 층도 낮추지 못한다. .agents 원본에서 네 방식으로 배치한다: native 그대로 읽기(Codex·Cursor의 AGENTS.md, Codex의 .agents/skills), mirror 실제 파일 복사(.claude/skills·.claude/rules·.kiro/skills), render 원본에서 생성(fileMatch를 단 .kiro/steering, globs를 단 .cursor/rules/*.mdc, .cursor/commands, 역할 파일), merge(CLAUDE.md 블록, .claude/settings.json, .codex/hooks.json, config.toml의 harness- 키만). native를 뺀 배치와 copy 항목은 harness-kit.lock에 op·owner·sha256으로 남고, 어긋나면 doctor --check와 check_layout.py가 fast 검증에서 실패시킨다. 동기화 훅·보호 훅·fast 검사(stale·drifted·symlink-found)가 복사본과 생성 파일을 원본과 맞춘다" loading="lazy" decoding="async"></a>
+        <figcaption>층 해석과 하네스 배치. <a class="edit" href="diagrams/layers-projection.mmd">편집 원본(.mmd)</a> · <a class="edit" href="diagrams/layers-projection.excalidraw">excalidraw</a></figcaption>
+      </figure>
+
+      <h3 id="precedence">4.1 층과 우선순위</h3>
+      <p>순서는 <code>common → domains → stacks → arch → optional(모듈, 메타 순서) → packs(배열 순서) → project</code>이고, 같은 경로는 뒤가 이긴다. 팩 둘이 같은 경로나 같은 훅 id를 내면 충돌이고, 그때는 아무것도 쓰지 않고 exit 4로 끝낸다(<a href="../04-extension-layers.md">04</a> §3.5).</p>
+      <div class="table-wrap bleed">
+        <table>
+          <thead><tr><th scope="col">층</th><th scope="col">lock <code>owner</code></th><th scope="col">원본 자리</th><th scope="col">커밋</th><th scope="col"><code>update</code> 때</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">1 킷</th><td><code>kit</code>(<code>layer</code>: common · 스택 · <code>optional/&lt;id&gt;</code>)</td><td>킷 템플릿 → <code>.agents/</code> 등</td><td>예</td><td>교체. 사람이 고친 파일은 <code>.new</code>로 옆에</td></tr>
+            <tr><th scope="row">2 회사 팩</th><td><code>pack:&lt;이름&gt;</code></td><td>팩 리포 · 패키지 → <code>.agents/</code> 등</td><td>예(배치 결과)</td><td><code>update --packs</code>일 때만 같은 규칙</td></tr>
+            <tr><th scope="row">3 프로젝트</th><td><code>user</code></td><td><code>.agents/</code> 안 팀 파일</td><td>예</td><td>건드리지 않는다</td></tr>
+            <tr><th scope="row">4 개인</th><td>개인 lock</td><td><code>.agents/local/</code></td><td>아니오</td><td>건드리지 않는다. 더하기만 하고 <code>roles</code> · <code>git.ide</code>만 덮는다</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>하한은 킷 코드 상수(<code>packages/cli/src/core/floor.ts</code>, <code>sdd_layout.py</code>의 <code>GATE_FLOOR</code>)라 설정으로 바꾸지 못한다: 게이트 requirements · design · mr · done, floor 훅 <code>harness-protect-sources</code> · <code>harness-block-full-verify</code> · <code>harness-verify-gate</code>, 보호 경로 deny. 개인 층이 이 값을 약하게 하는 키(<code>flow.gates</code> · <code>approvers</code> · <code>verify</code> · <code>risk</code> · <code>codebase</code>)는 무시하고 <code>doctor</code>가 경고한다(README §5).</p>
+
+      <h3 id="projection">4.2 배치 방식</h3>
+      <div class="table-wrap bleed">
+        <table>
+          <thead><tr><th scope="col">방식</th><th scope="col">하는 일</th><th scope="col">예</th><th scope="col">lock <code>op</code></th><th scope="col">어긋남 판정</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">native</th><td>하네스가 원본을 그대로 읽는다. 파일을 만들지 않는다</td><td>Codex · Cursor의 <code>AGENTS.md</code>, Codex의 <code>.agents/skills/</code></td><td>없음</td><td>—</td></tr>
+            <tr><th scope="row">copy</th><td>층 해석 결과를 원본 자리에 설치한다</td><td><code>.agents/rules/*.md</code></td><td><code>copy</code></td><td><code>drifted</code>(정보) · <code>missing</code></td></tr>
+            <tr><th scope="row">mirror</th><td>리포 안 원본을 실제 파일로 그대로 복사한다. 원본을 고치면 동기화 훅이 다시 만들고, 복사본을 고치면 보호 훅이 막는다. 심볼릭 링크는 쓰지 않는다</td><td><code>.claude/skills/hx-*</code> · <code>.claude/rules/*</code> · <code>.kiro/skills/hx-*</code></td><td><code>mirror</code></td><td><code>stale</code> · <code>drifted</code> · <code>symlink-found</code></td></tr>
+            <tr><th scope="row">render</th><td>원본에서 생성하고 원본 해시를 <code>fromSha256</code>으로 남긴다</td><td><code>.kiro/steering/*.md</code>(<code>fileMatch</code>), <code>.cursor/rules/*.mdc</code>(<code>globs</code>), 역할 파일 3종, <code>.cursor/commands/</code>(본문 전체)</td><td><code>render</code></td><td><code>stale</code> · <code>drifted</code></td></tr>
+            <tr><th scope="row">merge</th><td>설정 파일에서 <code>harness-</code> id 항목만 넣고 바꾸고 뺀다. 다른 도구의 항목과 순서는 그대로</td><td><code>CLAUDE.md</code> 킷 블록, <code>.claude/settings.json</code>, <code>.codex/hooks.json</code> · <code>config.toml</code></td><td><code>merge</code>(키 목록)</td><td><code>merge-missing</code></td></tr>
+                        <tr><th scope="row">none</th><td>기록만 한다</td><td>외부 도구가 만든 파일</td><td><code>none</code></td><td><code>foreign</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>훅은 <code>.agents/hooks.json</code>에 한 번 적고, 어댑터가 추상 이벤트(<code>session-start</code> · <code>pre-tool</code> · <code>stop</code> · <code>worktree-create</code> …)를 하네스 이벤트 이름으로 바꿔 병합 · 생성한다(<a href="../03-projection-and-hooks.md">03</a> §3.4). 원본 한 줄을 고치면 fast 검증이 <code>stale</code>로 실패하고, <code>repair</code> 뒤 통과한다.</p>
+
+      <h3 id="ownership">4.3 lock 소유</h3>
+      <div class="table-wrap bleed">
+        <table>
+          <thead><tr><th scope="col"><code>owner</code></th><th scope="col">생기는 때</th><th scope="col"><code>update</code></th><th scope="col"><code>uninstall</code></th><th scope="col"><code>remove &lt;모듈&gt;</code></th></tr></thead>
+          <tbody>
+            <tr><th scope="row"><code>kit</code></th><td>킷 층에서 깐 파일</td><td>sha가 기록과 같으면 교체, 다르면 <code>.new</code></td><td>고치지 않은 것만 지운다</td><td><code>layer: optional/&lt;id&gt;</code> 항목만 같은 규칙</td></tr>
+            <tr><th scope="row"><code>pack:&lt;이름&gt;</code></th><td>팩에서 깐 파일</td><td><code>--packs</code>일 때만</td><td><code>--keep-packs</code>가 없으면 킷과 같다</td><td>—</td></tr>
+            <tr><th scope="row"><code>user</code></th><td>사람이 고쳤거나 원래 있던 파일, <code>init --adopt</code>, <code>update --forget</code></td><td>건드리지 않는다</td><td>남긴다</td><td>—</td></tr>
+            <tr><th scope="row"><code>external:&lt;도구&gt;</code></th><td>모듈 <code>add</code> 뒤 <code>externalPaths</code>에 맞게 새로 생긴 파일</td><td>건드리지 않는다</td><td>남긴다</td><td>lock에서만 빼고 파일은 둔다</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>훅과 리포 스크립트는 작업 폴더에서 위로 올라가 <code>.agents/harness-kit.json</code> 또는 <code>.agents/harness.json</code>(multi-harness 하위 단위)이 있는 가장 가까운 폴더를 하네스 루트로 쓴다(README §10). 그래서 worktree에서 연 세션의 Stop 훅은 그 worktree를 검증한다.</p>
+
+      <nav class="pager" aria-label="이전·다음 장">
+        <a href="../README.md"><small>계약</small><span>설계서 README</span></a>
+        <a class="next" href="02-data-and-flows.html"><small>다음</small><span>5–6 데이터·흐름</span></a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-foot">
+    <p>harness-starter-kit v2 전체 시스템 설계서 · 2026-11-23 기준 · 설계 초안이며 아직 구현되지 않았다.</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S07 작업 공간 · harness-kit 관리 페이지</title>
+<link rel="stylesheet" href="assets/app.css">
+<style>
+  .cap { display: grid; grid-template-columns: 230px minmax(0, 1fr) 300px; gap: 0; margin-bottom: 16px; }
+  .cap > div { padding: 14px 18px; border-right: 1px solid var(--rule-soft); }
+  .cap > div:last-child { border-right: 0; }
+  .cap .lbl { font-size: var(--fs-xs); color: var(--ink-faint); font-weight: 600; }
+  .cap .big { display: flex; align-items: baseline; gap: 6px; margin-top: 2px; font-size: var(--fs-xxl); font-weight: 700; letter-spacing: -0.02em; }
+  .cap .big small { font-size: var(--fs-s); color: var(--ink-faint); font-weight: 600; }
+  .slots { display: flex; gap: 4px; margin-top: 8px; }
+  .slots i { width: 40px; height: 8px; border-radius: 2px; background: var(--build); }
+  .slots i.done { background: var(--gate); opacity: 0.7; }
+  .disk { position: relative; margin-top: 10px; }
+  .disk .stack { height: 14px; }
+  .disk .limit { position: absolute; top: -4px; height: 22px; width: 2px; background: var(--ink); border-radius: 1px; }
+  .disk .scale { display: flex; justify-content: space-between; margin-top: 4px; font-size: 11px; color: var(--ink-faint); font-family: var(--font-code); }
+  .lg { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; font-size: var(--fs-xs); color: var(--ink-soft); }
+  .lg span { display: inline-flex; align-items: center; gap: 6px; }
+  .lg .sw { width: 10px; height: 10px; border-radius: 2px; }
+  .cap .warn { display: flex; gap: 8px; align-items: flex-start; font-size: var(--fs-s); color: var(--ink); }
+  .cap .warn .i { color: var(--build-ink); margin-top: 2px; }
+
+  .wt td { vertical-align: top; }
+  .wt .p { display: grid; gap: 2px; }
+  .wt .chk { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .wt .chk .i { width: 14px; height: 14px; }
+  .wt .yes { color: var(--ops-ink); }
+  .wt .no { color: var(--build-ink); }
+  .wt .acts { display: flex; gap: 6px; justify-content: flex-end; }
+  .wt tr.main td { background: #fafbfd; }
+  .lower { display: grid; grid-template-columns: 470px minmax(0, 1fr); gap: 16px; margin-top: 16px; align-items: start; }
+  .gc-list { list-style: none; padding: 0 16px; display: grid; gap: 0; }
+  .gc-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; padding: 9px 0; border-top: 1px solid var(--rule-soft); font-size: var(--fs-s); }
+  .gc-list .ok3 { grid-column: 1 / -1; display: flex; gap: 12px; font-size: var(--fs-xs); color: var(--ops-ink); }
+  .gc-list .ok3 span { display: inline-flex; align-items: center; gap: 4px; }
+  .confirm { margin: 12px 0 0; padding: 12px 16px 14px; border-top: 1px solid #e3a3ad; background: #fff8f9; border-radius: 0 0 var(--r-panel) var(--r-panel); }
+  .confirm label { display: flex; gap: 8px; align-items: flex-start; font-size: var(--fs-s); }
+  .confirm input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--gate); }
+  .confirm .row { display: flex; gap: 8px; margin-top: 10px; }
+  .cmdline { flex: 1; min-width: 0; padding: 6px 10px; border: 1px solid var(--rule); border-radius: 5px; background: var(--raised); font-family: var(--font-code); font-size: var(--fs-xs); color: var(--ink-faint); overflow-wrap: anywhere; }
+  .cmdline.on { color: var(--ink); border-color: var(--rule-strong); }
+  .lease { font-family: var(--font-code); font-size: var(--fs-xs); color: var(--ink-soft); }
+</style>
+</head>
+<body data-state="default">
+<a class="skip-link" href="#main">본문으로 건너뛰기</a>
+<div class="app">
+  <aside class="rail" data-nav="workspace"></aside>
+  <div class="work">
+    <header class="topbar">
+      <div>
+        <h1>작업 공간</h1>
+        <p class="sub">worktree 자리 <span class="path">../knots-platform.worktrees/</span> · 동시에 쓰는 세션이 둘 이상일 때만 만든다</p>
+      </div>
+      <div class="top-meta">
+        <label class="search"><svg class="i"><use href="#i-search"/></svg><span class="sr-only">이슈 키나 문서 찾기</span><input type="text" placeholder="이슈 키 · 문서 찾기"><kbd>/</kbd></label>
+      </div>
+    </header>
+
+    <main id="main" class="content">
+      <section class="panel lift cap" aria-label="worktree 한도와 용량" data-co="1">
+        <div>
+          <span class="lbl">worktree · git.maxPerRepo</span>
+          <div class="big">3 <small>/ 3</small></div>
+          <div class="slots" aria-label="3칸 중 3칸 사용, 2칸은 정리 대기"><i title="HDRV3D-21 사용 중"></i><i class="done" title="KNOTS-17 정리 대기"></i><i class="done" title="HDRV3D-09 정리 대기"></i></div>
+        </div>
+        <div>
+          <span class="lbl">용량 · 합계 5.7GB · 경고 기준 8GB</span>
+          <div class="disk">
+            <div class="stack" role="img" aria-label="HDRV3D-21 2.6GB, KNOTS-17 1.9GB, HDRV3D-09 1.2GB, 합계 5.7GB, 기준 8GB">
+              <span style="width:32.5%;background:var(--build)" title="HDRV3D-21 2.6GB 사용 중"></span>
+              <span style="width:23.75%;background:var(--gate);opacity:.7" title="KNOTS-17 1.9GB 정리 대기"></span>
+              <span style="width:15%;background:var(--gate);opacity:.7" title="HDRV3D-09 1.2GB 정리 대기"></span>
+              <span style="width:28.75%;background:var(--sunken)"></span>
+            </div>
+            <span class="limit" style="left:calc(100% - 2px)"></span>
+            <div class="scale"><span>0</span><span>2GB</span><span>4GB</span><span>6GB</span><span>8GB</span></div>
+          </div>
+          <div class="lg"><span><i class="sw" style="background:var(--build)"></i>사용 중 2.6GB</span><span><i class="sw" style="background:var(--gate);opacity:.7"></i>정리 대기 3.1GB</span><span class="muted">.git은 공유 · 의존성은 링크 · CARGO_TARGET_DIR 공유</span></div>
+        </div>
+        <div>
+          <p class="warn"><svg class="i"><use href="#i-alert"/></svg><span>한도가 찼다. 새 worktree를 만들려면 정리 대기 2개 중 하나를 지운다. <span class="mono">wt new</span>가 지금은 막는다.</span></p>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="wt-title" data-co="2">
+        <div class="panel-head"><h2 id="wt-title">worktree</h2><div class="aside"><span class="mono">git worktree list</span> · 10:52</div></div>
+        <table class="tbl wt">
+          <thead><tr><th>이슈</th><th>경로 · 브랜치</th><th>변경</th><th>push</th><th class="r">용량</th><th>마지막 사용</th><th>세션</th><th class="r">동작</th></tr></thead>
+          <tbody>
+            <tr class="main">
+              <td><span class="key">HDRV3D-12</span><br><span class="xs muted">메인 폴더</span></td>
+              <td><div class="p"><span class="path">~/dev/knots-platform/</span><span class="path">feat/HDRV3D-12-upload-cleanup</span></div></td>
+              <td><span class="chk no"><svg class="i"><use href="#i-alert"/></svg>바뀐 파일 1</span></td>
+              <td><span class="chk yes"><svg class="i"><use href="#i-ok"/></svg>모두 push</span></td>
+              <td class="r muted">—</td><td class="muted">10:38</td>
+              <td><span class="mono">design-desk</span></td>
+              <td class="r xs muted">worktree 아님</td>
+            </tr>
+            <tr>
+              <td><span class="key">HDRV3D-21</span><br><span class="tag build">구현</span></td>
+              <td><div class="p"><span class="path">../knots-platform.worktrees/HDRV3D-21-payment-methods</span><span class="path">feat/HDRV3D-21-payment-methods</span></div></td>
+              <td><span class="chk no"><svg class="i"><use href="#i-alert"/></svg>바뀐 파일 3</span></td>
+              <td><span class="chk no"><svg class="i"><use href="#i-alert"/></svg>안 올린 커밋 2</span></td>
+              <td class="r">2.6GB</td><td>4분 전</td>
+              <td><span class="mono">api-worker</span></td>
+              <td><div class="acts"><a class="btn sm" href="#" title="vscode://file/… 링크로 연다"><svg class="i"><use href="#i-ext"/></svg>IDE로 열기</a><button class="btn sm" type="button" disabled title="바뀐 파일 3 · 안 올린 커밋 2 · 끝의 정의를 만족하지 않는다">끝내기 명령</button></div></td>
+            </tr>
+            <tr>
+              <td><span class="key">KNOTS-17</span><br><span class="tag gate">정리 대기</span></td>
+              <td><div class="p"><span class="path">../knots-platform.worktrees/knots-domain-app/KNOTS-17-desktop-parity</span><span class="path">feat/KNOTS-17-desktop-parity · submodule knots-domain-app</span></div></td>
+              <td><span class="chk yes"><svg class="i"><use href="#i-ok"/></svg>없음</span></td>
+              <td><span class="chk yes"><svg class="i"><use href="#i-ok"/></svg>모두 push · 병합됨</span></td>
+              <td class="r">1.9GB</td><td>3일 전</td>
+              <td class="muted">없음</td>
+              <td><div class="acts"><a class="btn sm" href="#" title="vscode://file/… 링크로 연다"><svg class="i"><use href="#i-ext"/></svg>IDE로 열기</a><button class="btn sm" type="button" data-toast="복사했다 · python3 scripts/harness/worktree.py done KNOTS-17"><svg class="i"><use href="#i-copy"/></svg>끝내기 명령</button></div></td>
+            </tr>
+            <tr>
+              <td><span class="key">HDRV3D-09</span><br><span class="tag gate">정리 대기</span></td>
+              <td><div class="p"><span class="path">../knots-platform.worktrees/HDRV3D-09-upload-progress</span><span class="path">feat/HDRV3D-09-upload-progress</span></div></td>
+              <td><span class="chk yes"><svg class="i"><use href="#i-ok"/></svg>없음</span></td>
+              <td><span class="chk yes"><svg class="i"><use href="#i-ok"/></svg>모두 push · 병합됨</span></td>
+              <td class="r">1.2GB</td><td>6일 전</td>
+              <td class="muted">없음</td>
+              <td><div class="acts"><a class="btn sm" href="#" title="vscode://file/… 링크로 연다"><svg class="i"><use href="#i-ext"/></svg>IDE로 열기</a><button class="btn sm" type="button" data-toast="복사했다 · python3 scripts/harness/worktree.py done HDRV3D-09"><svg class="i"><use href="#i-copy"/></svg>끝내기 명령</button></div></td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <div class="lower">
+        <section class="panel" aria-labelledby="gc-title" data-co="3">
+          <div class="panel-head"><h2 id="gc-title">정리 목록</h2><div class="aside"><span class="mono">wt gc</span> · 미리 보기만</div></div>
+          <ul class="gc-list">
+            <li><span><span class="key">KNOTS-17</span> desktop-parity</span><span class="num">1.9GB</span>
+              <span class="ok3"><span><svg class="i s"><use href="#i-ok"/></svg>변경 없음</span><span><svg class="i s"><use href="#i-ok"/></svg>안 올린 커밋 0</span><span><svg class="i s"><use href="#i-ok"/></svg>병합됨</span></span></li>
+            <li><span><span class="key">HDRV3D-09</span> upload-progress</span><span class="num">1.2GB</span>
+              <span class="ok3"><span><svg class="i s"><use href="#i-ok"/></svg>변경 없음</span><span><svg class="i s"><use href="#i-ok"/></svg>안 올린 커밋 0</span><span><svg class="i s"><use href="#i-ok"/></svg>병합됨</span></span></li>
+          </ul>
+          <div class="confirm" data-co="4">
+            <label><input type="checkbox" id="gcok"><span>목록의 2개(3.1GB)를 지우는 데 동의한다. 브랜치는 원격에 남고, submodule worktree는 폴더를 지운 뒤 <span class="mono">git worktree prune</span>까지 한다.</span></label>
+            <div class="row"><span class="cmdline" id="gccmd" aria-disabled="true">python3 scripts/harness/worktree.py gc --apply</span><button class="btn danger" type="button" id="gcgo" disabled><svg class="i"><use href="#i-copy"/></svg>명령 복사</button></div>
+            <p class="xs muted" style="margin-top:8px">화면은 지우지 않는다. 사람이 터미널에서 실행한다. 에이전트는 사람이 요청할 때만 --apply를 쓴다.</p>
+          </div>
+        </section>
+
+        <section class="panel" aria-labelledby="ss-title" data-co="5">
+          <div class="panel-head"><h2 id="ss-title">켜 둔 세션과 점유 파일</h2><div class="aside"><span class="path">.agents/state/sessions/</span> · 본인만 읽기</div></div>
+          <table class="tbl">
+            <thead><tr><th>세션</th><th>역할 · 이슈</th><th>폴더</th><th>상태</th><th>점유</th></tr></thead>
+            <tbody>
+              <tr><td><span class="harness"><b class="cc">C</b><span class="mono">api-worker</span></span></td><td><span class="tag build">구현</span> <span class="key">HDRV3D-21</span></td><td class="path">worktrees/HDRV3D-21</td><td><span class="flex"><span class="dot busy"></span>일하는 중</span></td><td class="lease">payment/** 쓰기</td></tr>
+              <tr><td><span class="harness"><b class="cc">C</b><span class="mono">design-desk</span></span></td><td><span class="tag design">설계</span> <span class="key">HDRV3D-12</span></td><td class="path">메인 폴더</td><td><span class="flex"><span class="dot idle"></span>쉬는 중</span></td><td class="lease">issues/HDRV3D-12-*/design.md</td></tr>
+              <tr><td><span class="harness"><b class="cx">X</b><span class="mono">review-codex</span></span></td><td><span class="tag build">리뷰</span> <span class="key">KNOTS-18</span></td><td class="path">메인 폴더 · 읽기만</td><td><span class="flex"><span class="dot off"></span>대기함 0</span></td><td class="lease muted">없음 · 원격 diff만 읽는다</td></tr>
+              <tr><td><span class="harness"><b class="kr">K</b><span class="mono">docs-kiro</span></span></td><td><span class="tag ops">문서</span> <span class="key">KNOTS-17</span></td><td class="path">메인 폴더</td><td><span class="flex"><span class="dot off"></span>쓰기 차례 대기</span></td><td class="lease muted">없음 · 메인 폴더는 한 번에 하나</td></tr>
+            </tbody>
+          </table>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+<script src="assets/app.js"></script>
+<script>
+document.addEventListener("hx:ready", function () {
+  var c = document.getElementById("gcok"), b = document.getElementById("gcgo");
+  var cmd = document.getElementById("gccmd");
+  c.addEventListener("change", function () { b.disabled = !c.checked; cmd.classList.toggle("on", c.checked); });
+  b.addEventListener("click", function () { HX.toast("복사했다 · 터미널에서 실행한다 · worktree.py gc --apply"); });
+});
+</script>
+</body>
+</html>

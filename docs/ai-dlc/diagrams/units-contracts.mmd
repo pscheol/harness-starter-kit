@@ -1,0 +1,39 @@
+%%{init: {"theme": "base", "fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "themeVariables": {"fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "fontSize": "16px", "primaryColor": "#ffffff", "primaryBorderColor": "#14213d", "primaryTextColor": "#14213d", "lineColor": "#46536b", "clusterBkg": "#f5f7fa", "clusterBorder": "#aeb9c7", "edgeLabelBackground": "#f5f7fa", "actorBkg": "#ffffff", "actorBorder": "#14213d", "actorTextColor": "#14213d", "actorLineColor": "#aeb9c7", "signalColor": "#46536b", "signalTextColor": "#14213d", "noteBkgColor": "#ffffff", "noteBorderColor": "#aeb9c7", "noteTextColor": "#14213d", "sequenceNumberColor": "#ffffff"}, "flowchart": {"curve": "basis", "padding": 18, "nodeSpacing": 36, "rankSpacing": 46}}}%%
+graph LR
+  SSO["사내 SSO"]
+  subgraph U1["U-1 회의실 카탈로그"]
+    direction TB
+    R1["회의실 · 설비<br/>운영 시간 · 점검 상태"]
+    DB1[("rooms")]
+    R1 --- DB1
+  end
+  subgraph U2["U-2 예약 · 핵심 Unit"]
+    direction TB
+    R2["생성 · 취소<br/>충돌 규칙"]
+    DB2[("reservations")]
+    R2 --- DB2
+  end
+  subgraph U3["U-3 캘린더 동기화"]
+    direction TB
+    R3["이벤트 구독<br/>재시도"]
+    DB3[("sync_state")]
+    R3 --- DB3
+  end
+  GW["그룹웨어 캘린더"]
+  SSO -- "JWT" --> R2
+  R2 -- "계약 1 · 회의실 조회 API" --> R1
+  R2 -- "계약 2 · ReservationCreated<br/>ReservationCancelled" --> R3
+  R3 -- "반영" --> GW
+
+  classDef inception fill:#e7eafb,stroke:#3046c5,stroke-width:2px,color:#14213d
+  classDef construction fill:#fbf1dc,stroke:#c98a12,stroke-width:2px,color:#14213d
+  classDef operations fill:#ddf2eb,stroke:#0b7a5e,stroke-width:2px,color:#14213d
+  classDef gate fill:#fbe6e9,stroke:#c8102e,stroke-width:2px,color:#c8102e
+  classDef plain fill:#ffffff,stroke:#14213d,stroke-width:2px,color:#14213d
+  classDef external fill:#ffffff,stroke:#6b778c,stroke-width:1.5px,stroke-dasharray:5 4,color:#46536b
+  classDef store fill:#f5f7fa,stroke:#6b778c,stroke-width:1.5px,color:#46536b
+  class R1 inception
+  class R2 construction
+  class R3 operations
+  class DB1,DB2,DB3 store
+  class SSO,GW external

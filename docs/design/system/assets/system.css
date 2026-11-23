@@ -1,0 +1,65 @@
+/* 전체 시스템 설계서 — ../../../ai-dlc/assets/aidlc.css · ../../../harness-next/assets/next.css 위에 얹는 추가분.
+ * 색 의미는 같다: 파랑 = 설계·원본, 앰버 = 구현·검증·킷이 만드는 것, 청록 = 반영·운영·결과, 빨강 = 사람 결정·게이트.
+ */
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem 1rem;
+  margin: 0 0 1.5rem;
+  padding: 0;
+  list-style: none;
+  font-size: var(--step--1);
+  color: var(--ink-soft);
+}
+.legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+}
+.legend li::before {
+  content: "";
+  width: 0.85rem;
+  height: 0.85rem;
+  border-radius: 2px;
+  border: 2px solid var(--swatch, var(--ink));
+  background: var(--swatch-wash, var(--paper-raised));
+}
+.legend .blue { --swatch: var(--inception); --swatch-wash: var(--inception-wash); }
+.legend .amber { --swatch: var(--construction); --swatch-wash: var(--construction-wash); }
+.legend .teal { --swatch: var(--operations); --swatch-wash: var(--operations-wash); }
+.legend .red { --swatch: var(--gate); --swatch-wash: var(--gate-wash); }
+.legend .gray { --swatch: #6b778c; --swatch-wash: var(--paper); }
+
+/* 최우선 원칙 */
+tr.top > th,
+tr.top > td {
+  background: color-mix(in srgb, var(--gate-wash) 55%, var(--paper-raised));
+}
+tr.top > th .tag {
+  margin-left: 0.375rem;
+}
+
+/* 표 안 코드가 칸을 밀어내지 않게 */
+.table-wrap td code,
+.table-wrap th code {
+  overflow-wrap: anywhere;
+}
+
+.section-no {
+  margin-right: 0.5rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-faint);
+}
+
+.diagram figcaption .edit {
+  white-space: nowrap;
+}
+
+ol.flow-steps {
+  padding-left: 1.25rem;
+}
+ol.flow-steps > li + li {
+  margin-top: 0.25rem;
+}

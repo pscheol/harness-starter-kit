@@ -1,0 +1,36 @@
+%%{init: {"theme": "base", "fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "themeVariables": {"fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "fontSize": "16px", "primaryColor": "#ffffff", "primaryBorderColor": "#14213d", "primaryTextColor": "#14213d", "lineColor": "#46536b", "clusterBkg": "#f5f7fa", "clusterBorder": "#aeb9c7", "edgeLabelBackground": "#f5f7fa", "actorBkg": "#ffffff", "actorBorder": "#14213d", "actorTextColor": "#14213d", "actorLineColor": "#aeb9c7", "signalColor": "#46536b", "signalTextColor": "#14213d", "noteBkgColor": "#ffffff", "noteBorderColor": "#aeb9c7", "noteTextColor": "#14213d", "sequenceNumberColor": "#ffffff"}, "flowchart": {"curve": "basis", "padding": 18, "nodeSpacing": 36, "rankSpacing": 46}}}%%
+graph LR
+  a1["AI-DLC · Intent"]
+  a2["AI-DLC · Mob Elaboration<br/>스토리 · NFR · 질문"]
+  a3["AI-DLC · Unit 분해 · 계약"]
+  a4["AI-DLC · 도메인 · 논리 설계<br/>ADR"]
+  a5["AI-DLC · Bolt"]
+  a6["AI-DLC · 검증 · 사람 승인"]
+  a7["AI-DLC · Operations 피드백"]
+  k1["킷 S1 분석 · S2 기획<br/>/hx-specify · /hx-clarify"]
+  k3["킷 S3 설계 · design.md<br/>§6 API · §7 · §14 ADR"]
+  k4["킷 S4 계획<br/>tasks의 User Story Phase"]
+  k5["킷 S5 구현 · S6 verify.sh"]
+  k8["킷 S7 문서 반영<br/>S8 사용자 승인"]
+  kd["킷 tech-debt-tracker"]
+  a1 -. "상위 Intent 문서 없음" .-> k1
+  a2 --> k1
+  a3 -. "이슈 안 API만" .-> k3
+  a4 --> k3
+  a5 --> k4
+  a6 --> k5
+  a6 --> k8
+  a7 -. "되돌리는 흐름 없음" .-> kd
+  linkStyle 0,2,7 stroke:#c8102e,stroke-width:2px,color:#c8102e
+  classDef inception fill:#e7eafb,stroke:#3046c5,stroke-width:2px,color:#14213d
+  classDef construction fill:#fbf1dc,stroke:#c98a12,stroke-width:2px,color:#14213d
+  classDef operations fill:#ddf2eb,stroke:#0b7a5e,stroke-width:2px,color:#14213d
+  classDef gate fill:#fbe6e9,stroke:#c8102e,stroke-width:2px,color:#c8102e
+  classDef plain fill:#ffffff,stroke:#14213d,stroke-width:2px,color:#14213d
+  classDef external fill:#ffffff,stroke:#6b778c,stroke-width:1.5px,stroke-dasharray:5 4,color:#46536b
+  classDef store fill:#f5f7fa,stroke:#6b778c,stroke-width:1.5px,color:#46536b
+  class a1,a2,a3 inception
+  class a4,a5 construction
+  class a6 gate
+  class a7 operations
+  class k1,k3,k4,k5,k8,kd plain

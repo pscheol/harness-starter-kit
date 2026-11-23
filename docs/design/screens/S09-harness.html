@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S09 하네스 · harness-kit 관리 페이지</title>
+<link rel="stylesheet" href="assets/app.css">
+<style>
+  .hgrid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+  .doc-sum { display: flex; gap: 16px; padding: 0 16px 10px; font-size: var(--fs-s); color: var(--ink-soft); }
+  .doc-sum b { color: var(--ink); font-size: var(--fs-l); margin-right: 3px; }
+  .doc-sum .w b { color: var(--build-ink); }
+  .dl { list-style: none; padding: 0 16px 12px; display: grid; }
+  .dl li { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 9px 0; border-top: 1px solid var(--rule-soft); font-size: var(--fs-s); }
+  .dl li .i { margin-top: 2px; width: 15px; height: 15px; }
+  .dl .w .i { color: var(--build-ink); }
+  .dl .p .i { color: var(--ops); }
+  .dl .sub { display: block; margin-top: 2px; font-size: var(--fs-xs); color: var(--ink-faint); }
+  .cmd { display: inline-flex; align-items: center; gap: 6px; padding: 2px 4px 2px 8px; border: 1px solid var(--rule); border-radius: 5px; background: var(--paper); font-family: var(--font-code); font-size: var(--fs-xs); white-space: nowrap; }
+  .cmd button { display: inline-grid; place-items: center; width: 22px; height: 22px; border: 0; border-radius: 4px; background: transparent; color: var(--ink-soft); cursor: pointer; }
+  .cmd button:hover { background: var(--sunken); color: var(--ink); }
+  .flow { padding: 0 16px 12px; display: grid; gap: 9px; }
+  .flow .row { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 12px; align-items: center; font-size: var(--fs-s); }
+  .flow .k { font-family: var(--font-code); font-size: var(--fs-xs); color: var(--ink-soft); }
+  .flow .seg button[disabled] { cursor: default; }
+  .flow .seg button[aria-pressed="false"] { color: var(--ink-faint); }
+  .locks { display: flex; flex-wrap: wrap; gap: 6px; }
+  .ro { display: flex; align-items: center; gap: 8px; padding: 9px 16px; border-top: 1px solid var(--rule-soft); font-size: var(--fs-xs); color: var(--ink-faint); }
+  .lay td { vertical-align: top; }
+  .me { display: flex; align-items: center; gap: 6px; padding: 0 16px 10px; font-size: var(--fs-s); color: var(--ink-soft); }
+  .me .i { color: var(--ink-faint); }
+  .me b { font-family: var(--font-code); font-size: var(--fs-s); font-weight: 600; color: var(--ink); }
+  .me .muted { margin-left: auto; font-size: var(--fs-xs); }
+  .apv td, .tight td { padding-top: 7px; padding-bottom: 7px; }
+  .apv .can { display: inline-flex; align-items: center; gap: 5px; color: var(--ops-ink); font-weight: 600; }
+  .apv .none { color: var(--ink-soft); }
+  /* 7 버전 흐름: 빈 점 = 나온 판, 막대 = 이 리포에 깔린 판(지금 판은 상태 색 + 오른쪽 글) */
+  .vtl { padding: 8px 16px 10px; border-top: 1px solid var(--rule-soft); }
+  .vtl-h { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; font-size: var(--fs-xs); color: var(--ink-faint); }
+  .vtl-h b { color: var(--ink-soft); font-weight: 700; }
+  .vtl .vz { margin-top: 2px; }
+  .vtl-rel { fill: var(--raised); stroke: var(--ink-soft); stroke-width: 1.5; }
+  .vtl-track { stroke: var(--rule); stroke-width: 1; }
+  .vtl-old { fill: var(--rule-strong); }
+  .vtl-now { stroke: var(--ink); stroke-width: 1; }
+  .co-on .vtl-h { padding-left: 14px; }
+  .lay .n { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--sunken); font-weight: 700; font-size: var(--fs-xs); }
+</style>
+</head>
+<body data-state="default">
+<a class="skip-link" href="#main">본문으로 건너뛰기</a>
+<div class="app">
+  <aside class="rail" data-nav="harness"></aside>
+  <div class="work">
+    <header class="topbar">
+      <div>
+        <h1>하네스</h1>
+        <p class="sub">설정은 읽기만 한다 · 바꾸려면 <span class="path">.agents/harness-kit.json</span>을 고쳐 MR로 올린다</p>
+      </div>
+      <div class="top-meta"><span class="tag line">schema harness-kit/v2</span><span class="tag line">stack jvm · arch hexagonal</span></div>
+    </header>
+
+    <main id="main" class="content">
+      <div class="hgrid">
+        <div class="stack-y">
+          <section class="panel lift" aria-labelledby="dr-title" data-co="1">
+            <div class="panel-head"><h2 id="dr-title">doctor</h2><div class="aside">10:50 · <span class="cmd">npx harness-kit doctor<button type="button" aria-label="명령 복사" data-toast="복사했다 · npx harness-kit doctor"><svg class="i s"><use href="#i-copy"/></svg></button></span></div></div>
+            <p class="doc-sum"><span><b>18</b>통과</span><span class="w"><b>2</b>경고</span><span><b>0</b>실패</span></p>
+            <ul class="dl">
+              <li class="w"><svg class="i"><use href="#i-alert"/></svg><span>개인 층이 <span class="mono">flow.gates</span>를 바꾸려 해서 무시했다<span class="sub path">.agents/local/harness-kit.local.json:7 · 개인 층은 roles · git.ide만 덮는다</span></span><span class="tag build">개인 층</span></li>
+              <li class="w"><svg class="i"><use href="#i-alert"/></svg><span>Kiro steering 1개가 원본과 다르다(render)<span class="sub path">.kiro/steering/git-workflow.md ← .agents/rules/git-workflow.md</span></span><span class="cmd">npx harness-kit repair<button type="button" aria-label="명령 복사" data-toast="복사했다 · npx harness-kit repair"><svg class="i s"><use href="#i-copy"/></svg></button></span></li>
+              <li class="p"><svg class="i"><use href="#i-ok"/></svg><span>배치 일치 · link 42 · render 11 · merge 3 · copy 61<span class="sub">harness-kit.lock v2와 실제 파일 sha256 비교</span></span><span></span></li>
+            </ul>
+            <p class="panel-foot">통과 17개 더 보기 · 화면에서 셸 명령은 실행하지 않는다. 명령은 복사해 터미널에서 돌린다.</p>
+          </section>
+
+          <section class="panel" aria-labelledby="vr-title" data-co="2">
+            <div class="panel-head"><h2 id="vr-title">버전과 업데이트</h2><div class="aside">npx harness-kit outdated · 10:50</div></div>
+            <table class="tbl tight">
+              <thead><tr><th>구성</th><th>설치</th><th>최신</th><th>상태</th><th>올리는 방법</th></tr></thead>
+              <tbody>
+                <tr><td>harness-kit</td><td class="mono">2.0.0</td><td class="mono">2.0.1</td><td><span class="tag build">업데이트 있음</span></td><td><span class="cmd">npx harness-kit update<button type="button" aria-label="명령 복사" data-toast="복사했다 · npx harness-kit update"><svg class="i s"><use href="#i-copy"/></svg></button></span></td></tr>
+                <tr><td>회사 팩 acme</td><td class="mono">1.2.0</td><td class="mono">1.3.0</td><td><span class="tag build">업데이트 있음</span></td><td class="xs soft">packs 버전을 올리는 MR</td></tr>
+                <tr><td>AI-DLC</td><td class="muted">꺼짐</td><td class="mono">2.12.1</td><td><span class="tag">모듈 꺼짐</span></td><td class="xs soft">검증 범위 <span class="mono">&gt;=2.11 &lt;3</span></td></tr>
+                <tr><td>Entire</td><td class="muted">꺼짐</td><td class="mono">0.13.4</td><td><span class="tag">모듈 꺼짐</span></td><td class="xs soft">검증 범위 <span class="mono">&gt;=0.13 &lt;0.14</span></td></tr>
+                <tr><td>Claude Code</td><td class="mono">2.1.231</td><td class="mono">2.1.231</td><td><span class="tag ops">최신</span></td><td class="xs soft">세션 수신함은 2.1.224 이상</td></tr>
+              </tbody>
+            </table>
+            <div class="vtl" data-co="7">
+              <p class="vtl-h"><b>버전 흐름</b><span>10월부터 · 빈 점 = 나온 판 · 막대 = 이 리포에 깔린 판 · 꺼진 모듈(AI-DLC · Entire)은 뺐다</span></p>
+              <div class="vz" id="verTl"></div>
+              <div id="verTbl"></div>
+            </div>
+          </section>
+
+          <section class="panel" aria-labelledby="ly-title" data-co="6">
+            <div class="panel-head"><h2 id="ly-title">확장 층 · 무엇이 무엇을 덮었나</h2></div>
+            <table class="tbl lay tight">
+              <thead><tr><th>층</th><th>주인</th><th class="r">파일</th><th>덮은 것 · 더한 것</th></tr></thead>
+              <tbody>
+                <tr><td><span class="n">1</span> 킷</td><td class="mono xs">kit</td><td class="r">118</td><td class="xs">사람이 고친 <span class="path">rules/git-workflow.md</span> 옆에 <span class="path">.new</span> 1개</td></tr>
+                <tr><td><span class="n">2</span> 회사 팩</td><td class="mono xs">pack:acme</td><td class="r">9</td><td class="xs"><span class="path">rules/acme-security.md</span> 더함 · 게이트 하한 유지</td></tr>
+                <tr><td><span class="n">3</span> 프로젝트</td><td class="mono xs">user</td><td class="r">14</td><td class="xs"><span class="path">rules/api-standard.md</span>가 킷 것을 덮음</td></tr>
+                <tr><td><span class="n">4</span> 개인</td><td class="mono xs">local</td><td class="r">3</td><td class="xs">스킬 2 더함 · <span class="mono">flow.gates</span> 덮기는 무시(doctor 경고)</td></tr>
+              </tbody>
+            </table>
+          </section>
+        </div>
+
+        <div class="stack-y">
+          <section class="panel" aria-labelledby="fl-title" data-co="3">
+            <div class="panel-head"><h2 id="fl-title">흐름 설정</h2><div class="aside"><svg class="i s"><use href="#i-lock"/></svg>읽기만</div></div>
+            <div class="flow">
+              <div class="row"><span class="k">flow.design</span><div class="seg" role="group" aria-label="설계 방식"><button type="button" aria-pressed="true" disabled>kit · 킷 설계</button><button type="button" aria-pressed="false" disabled>aidlc</button></div></div>
+              <div class="row"><span class="k">flow.record</span><div class="seg" role="group" aria-label="세션 기록"><button type="button" aria-pressed="true" disabled>none · 기록 안 함</button><button type="button" aria-pressed="false" disabled>entire</button></div></div>
+              <div class="row"><span class="k">flow.gates</span><span data-rail="intent:ok plans:ok requirements:ok design:ok tasks:ok mr:ok done:ok deploy:ok" data-labels data-step="50"></span></div>
+              <div class="row"><span class="k" style="font-family:var(--font-text)">줄일 수 없음</span><div class="locks"><span class="tag gate"><svg class="i"><use href="#i-lock"/></svg>requirements</span><span class="tag gate"><svg class="i"><use href="#i-lock"/></svg>design</span><span class="tag gate"><svg class="i"><use href="#i-lock"/></svg>MR</span><span class="tag gate"><svg class="i"><use href="#i-lock"/></svg>완료</span></div></div>
+              <div class="row"><span class="k">verify</span><span class="small">full은 CI에서만 <span class="mono">(fullOnlyInCI: true)</span> · base <span class="mono">develop</span></span></div>
+            </div>
+          </section>
+
+          <section class="panel" aria-labelledby="ap-title" data-co="4">
+            <div class="panel-head"><h2 id="ap-title">승인 권한</h2><div class="aside"><span><span class="mono">approvers</span> · 게이트별 · 선택</span></div></div>
+            <p class="me"><svg class="i s"><use href="#i-commit"/></svg><span>이 체크아웃의 git 사용자 <b>jiyoon.kim@acme.dev</b></span><span class="muted">git config user.email</span></p>
+            <table class="tbl apv">
+              <thead><tr><th>게이트</th><th>approvers</th><th>이 git 사용자</th></tr></thead>
+              <tbody>
+                <tr><td>Intent · 기획물 · 요구사항</td><td><span class="mono">po</span> <span class="muted xs">그룹 · 이메일 2</span></td><td><span class="can"><svg class="i s"><use href="#i-ok"/></svg>승인 가능</span></td></tr>
+                <tr><td>설계 · tasks · MR</td><td><span class="mono">dev</span> <span class="muted xs">그룹 · 이메일 2</span></td><td class="muted">안 됨</td></tr>
+                <tr><td>완료</td><td><span class="mono">qa</span> · <span class="mono">po</span> <span class="muted xs">그룹 둘 중 하나</span></td><td><span class="can"><svg class="i s"><use href="#i-ok"/></svg>승인 가능</span></td></tr>
+                <tr><td>배포</td><td><span class="none">비어 있음 → 이 리포 git 사용자 누구나</span></td><td><span class="can"><svg class="i s"><use href="#i-ok"/></svg>승인 가능</span></td></tr>
+              </tbody>
+            </table>
+            <p class="ro"><svg class="i s"><use href="#i-lock"/></svg>로그인 · 회원 정보는 없다. 승인자는 git user.email로 맞추고, 사람 확인은 dashboard를 연 터미널의 PIN이다.</p>
+          </section>
+
+          <section class="panel" aria-labelledby="ro-title" data-co="5">
+            <div class="panel-head"><h2 id="ro-title">역할 배정</h2><div class="aside">roles · D7 추천값 · 개인 층 덮기 없음</div></div>
+            <table class="tbl tight">
+              <thead><tr><th>역할</th><th>하네스</th><th>역할 파일</th><th>지금 세션</th></tr></thead>
+              <tbody>
+                <tr><td><span class="tag design">설계</span></td><td><span class="harness"><b class="cc">C</b>Claude Code</span></td><td class="mono xs">designer</td><td class="mono xs">design-desk</td></tr>
+                <tr><td><span class="tag build">구현</span></td><td><span class="harness"><b class="cc">C</b>Claude Code</span></td><td class="mono xs">worker</td><td class="mono xs">api-worker</td></tr>
+                <tr><td><span class="tag build">리뷰</span></td><td><span class="harness"><b class="cx">X</b>Codex</span></td><td class="mono xs">reviewer</td><td class="mono xs">review-codex</td></tr>
+                <tr><td><span class="tag ops">문서</span></td><td><span class="harness"><b class="kr">K</b>Kiro</span></td><td class="mono xs">documenter</td><td class="mono xs">docs-kiro</td></tr>
+              </tbody>
+            </table>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+<script>
+/* 7 버전 흐름(예시 데이터). 실제 화면은 harness-kit.lock의 설치 기록(git log)과 POST /harness/outdated가 가져온 판 목록을 쓴다.
+ * 최신 확인은 네트워크라 버튼을 누를 때만 나온 판을 다시 읽는다. */
+(function () {
+  "use strict";
+  var V = window.HXViz;
+  var ROWS = [
+    { n: "harness-kit", rel: [["1.0.7", "10-28"], ["1.0.8", "11-05"], ["2.0.0", "11-14"], ["2.0.1", "11-21"]], inst: [["1.0.7", "10-29"], ["1.0.8", "11-06"], ["2.0.0", "11-15"]], st: "build" },
+    { n: "회사 팩 acme", rel: [["1.1.0", "10-08"], ["1.2.0", "10-24"], ["1.3.0", "11-19"]], inst: [["1.1.0", "10-09"], ["1.2.0", "10-27"]], st: "build" },
+    { n: "Claude Code", rel: [["2.1.205", "10-09"], ["2.1.218", "10-30"], ["2.1.224", "11-12"], ["2.1.231", "11-21"]], inst: [["2.1.205", "10-10"], ["2.1.218", "10-31"], ["2.1.224", "11-13"], ["2.1.231", "11-21"]], st: "ops" }
+  ];
+  var START = new Date(2026, 9, 1), TODAY = new Date(2026, 10, 23), SPAN = (TODAY - START) / 864e5;
+  function day(md) { var p = md.split("-"); return (new Date(2026, Number(p[0]) - 1, Number(p[1])) - START) / 864e5; }
+  function ko(md) { var p = md.split("-"); return Number(p[0]) + "월 " + Number(p[1]) + "일"; }
+  function lag(r) {
+    var cur = r.inst[r.inst.length - 1][0], last = r.rel[r.rel.length - 1];
+    if (cur === last[0]) return { t: "최신", d: 0 };
+    var d = Math.round(SPAN - day(last[1]));
+    return { t: d + "일 뒤", d: d };
+  }
+  function draw() {
+    var host = document.getElementById("verTl");
+    var W = host.clientWidth; if (!W) return;
+    host.textContent = "";
+    var lw = 104, m = { l: lw, r: 52, t: 6, b: 20 }, rowH = 34;
+    var H = m.t + rowH * ROWS.length + m.b, pw = W - m.l - m.r;
+    function X(d) { return m.l + (d / SPAN) * pw; }
+    var label = "버전 흐름. " + ROWS.map(function (r) {
+      return r.n + " 깔린 판 " + r.inst[r.inst.length - 1][0] + ", 최신 " + r.rel[r.rel.length - 1][0] + ", " + lag(r).t;
+    }).join(". ") + ". 왼쪽 오른쪽 화살표로 줄마다 본다.";
+    var svg = V.svgRoot(host, W, H, label);
+    [["10-01", "10-01"], ["10-15", "10-15"], ["11-01", "11-01"], ["11-15", "11-15"]].forEach(function (t) {
+      V.el("line", { x1: X(day(t[0])), x2: X(day(t[0])), y1: m.t, y2: H - m.b, "class": "vz-grid" }, svg);
+      V.text(svg, X(day(t[0])), H - 5, t[1], "vz-ax");
+    });
+    V.el("line", { x1: X(SPAN), x2: X(SPAN), y1: m.t, y2: H - m.b, "class": "vtl-now" }, svg);
+    V.text(svg, X(SPAN), H - 5, "오늘", "vz-ax now");
+    var groups = [];
+    ROWS.forEach(function (r, i) {
+      var g = V.el("g", { "class": "vz-row" }, svg);
+      groups.push(g);
+      var y0 = m.t + rowH * i, ty = y0 + 21;
+      V.el("rect", { x: 0, y: y0 + 1, width: W, height: rowH - 2, rx: 4, "class": "vz-band" }, g);
+      V.text(g, 0, ty + 4, r.n, "vz-lbl", "start");
+      V.el("line", { x1: m.l, x2: X(SPAN), y1: ty, y2: ty, "class": "vtl-track" }, g);
+      r.inst.forEach(function (it, k) {
+        var x0 = X(day(it[1])), x1 = k < r.inst.length - 1 ? X(day(r.inst[k + 1][1])) - 2 : X(SPAN);
+        var cur = k === r.inst.length - 1;
+        V.el("rect", { x: x0, y: ty + 3, width: Math.max(2, x1 - x0), height: 6, rx: 1, "class": cur ? "vz-bar " + r.st : "vtl-old" }, g);
+      });
+      r.rel.forEach(function (rl) {
+        V.el("circle", { cx: X(day(rl[1])), cy: ty, r: 4, "class": "vtl-rel" }, g);
+        V.text(g, X(day(rl[1])), ty - 8, rl[0], "vz-ax");
+      });
+      V.text(g, X(SPAN) + 8, ty + 6, lag(r).t, "vz-val", "start");
+    });
+    V.interact(svg, {
+      n: ROWS.length, start: 0,
+      hit: function (i) { return { x: 0, y: m.t + rowH * i, w: W, h: rowH }; },
+      show: function (i) {
+        groups.forEach(function (g, k) { g.classList.toggle("on", k === i); });
+        var r = ROWS[i], cur = r.inst[r.inst.length - 1], last = r.rel[r.rel.length - 1];
+        var rows = [{ v: cur[0], n: "깔린 판 · " + ko(cur[1]) + "부터", key: r.st }, { v: last[0], n: "최신 · " + ko(last[1]) + "에 나옴" }];
+        if (lag(r).d) rows.push({ v: lag(r).t, n: "새 판이 나온 뒤", sub: true });
+        var b = svg.getBoundingClientRect();
+        return { head: r.n, rows: rows, x: b.left + X(SPAN), y: b.top + m.t + rowH * i + 21 };
+      },
+      clear: function () { groups.forEach(function (g) { g.classList.remove("on"); }); }
+    });
+    var tr = [];
+    ROWS.forEach(function (r) {
+      r.rel.forEach(function (rl) {
+        var inst = r.inst.filter(function (x) { return x[0] === rl[0]; })[0];
+        tr.push([r.n, rl[0], ko(rl[1]), inst ? ko(inst[1]) : "안 깔림"]);
+      });
+    });
+    V.table(document.getElementById("verTbl"), "버전 흐름", ["구성", "판", "나온 날", "깐 날"], tr);
+  }
+  document.addEventListener("hx:ready", draw);
+  V.onResize(draw);
+})();
+</script>
+</body>
+</html>

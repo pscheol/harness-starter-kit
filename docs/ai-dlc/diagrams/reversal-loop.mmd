@@ -1,0 +1,16 @@
+%%{init: {"theme": "base", "fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "themeVariables": {"fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "fontSize": "16px", "primaryColor": "#ffffff", "primaryBorderColor": "#14213d", "primaryTextColor": "#14213d", "lineColor": "#46536b", "clusterBkg": "#f5f7fa", "clusterBorder": "#aeb9c7", "edgeLabelBackground": "#f5f7fa", "actorBkg": "#ffffff", "actorBorder": "#14213d", "actorTextColor": "#14213d", "actorLineColor": "#aeb9c7", "signalColor": "#46536b", "signalTextColor": "#14213d", "noteBkgColor": "#ffffff", "noteBorderColor": "#aeb9c7", "noteTextColor": "#14213d", "sequenceNumberColor": "#ffffff"}, "sequence": {"mirrorActors": false, "messageFontSize": 15, "actorFontSize": 16, "noteFontSize": 14, "boxMargin": 8}}}%%
+sequenceDiagram
+  autonumber
+  participant AI
+  participant R as 저장소
+  actor H as 사람
+  AI->>R: 계획 파일을 쓴다 (단계마다 체크박스)
+  AI->>R: 질문 파일을 쓴다 (선택지 + 권장안)
+  AI->>H: 검토를 요청하고 멈춘다
+  rect rgb(251, 230, 233)
+    H->>R: 답을 채우고 계획을 고친다
+    H->>AI: 승인한다
+  end
+  AI->>R: 한 단계씩 실행하고 끝난 항목을 체크한다
+  AI->>R: 승인 원문을 감사 기록에 남긴다
+  Note over AI,H: 다음 작업 조각에서 1로 돌아간다

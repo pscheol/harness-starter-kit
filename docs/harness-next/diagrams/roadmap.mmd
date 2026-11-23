@@ -1,0 +1,31 @@
+%%{init: {"theme": "base", "fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "themeVariables": {"fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "fontSize": "16px", "primaryColor": "#ffffff", "primaryBorderColor": "#14213d", "primaryTextColor": "#14213d", "lineColor": "#46536b", "clusterBkg": "#f5f7fa", "clusterBorder": "#aeb9c7", "edgeLabelBackground": "#f5f7fa"}, "flowchart": {"curve": "basis", "padding": 18, "nodeSpacing": 36, "rankSpacing": 56}}}%%
+graph LR
+  D0{"결정<br/>D3 배포 · D4 base<br/>D7 역할"}
+  P17["P17 CLI 엔진<br/>v2.0.0-alpha"]
+  P18["P18 배치 전환<br/>worktree 안전 훅<br/>v2.0.0"]
+  P19["P19 worktree 운영<br/>v2.1"]
+  P20["P20 대시보드 · 스킬 목록<br/>v2.2"]
+  P21["P21 킷 설계 단계<br/>기획물 · 하네스별 역할<br/>v2.3"]
+  P22["P22 선택 모듈<br/>AI-DLC · Entire<br/>v2.4"]
+  P23["P23 검증 확장<br/>리뷰 · 보안 · 품질<br/>v2.5"]
+  P24["P24 반영 · 운영 기록<br/>현장 역수입<br/>v2.6"]
+  HD["hdr 이전"]
+  KN["knots 이전"]
+  D0 --> P17 --> P18
+  P18 --> P21
+  P21 --> P22
+  P21 --> P24
+  P22 --> KN
+  P24 --> KN
+  P18 --> P19
+  P18 --> P20
+  P18 --> P23
+  P18 --> HD
+  classDef gate fill:#fbe6e9,stroke:#c8102e,stroke-width:2px,color:#c8102e
+  classDef core fill:#e7eafb,stroke:#3046c5,stroke-width:2px,color:#14213d
+  classDef feature fill:#fbf1dc,stroke:#c98a12,stroke-width:2px,color:#14213d
+  classDef move fill:#ddf2eb,stroke:#0b7a5e,stroke-width:2px,color:#14213d
+  class D0 gate
+  class P17,P18 core
+  class P19,P20,P21,P22,P23,P24 feature
+  class HD,KN move

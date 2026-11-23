@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S03 이슈 상세·문서 · harness-kit 관리 페이지</title>
+<link rel="stylesheet" href="assets/app.css">
+<style>
+  .issue { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }
+  .ihead { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 24px; align-items: center; margin-bottom: 6px; }
+  .ihead .facts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; font-size: var(--fs-s); color: var(--ink-soft); }
+  .links { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 4px 0 12px; font-size: var(--fs-s); }
+  .links span, .links a { display: inline-flex; align-items: center; gap: 6px; }
+  .links .muted { color: var(--ink-faint); }
+
+  .docbar { display: flex; align-items: center; gap: 10px; padding: 10px 0; }
+  .docbar .path { font-size: var(--fs-xs); }
+  .docbar .right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  .front { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
+  .front .tag { font-family: var(--font-code); font-weight: 500; }
+  .doc { padding: 18px 26px 24px; }
+  .note-edit { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; font-size: var(--fs-xs); color: var(--build-ink); font-weight: 600; }
+
+  .editor { display: grid; grid-template-rows: auto 1fr; min-height: 520px; }
+  .editor textarea { min-height: 520px; border-radius: 0 0 var(--r-panel) var(--r-panel); border: 0; border-top: 1px solid var(--rule); font-family: var(--font-code); font-size: 13px; line-height: 1.7; padding: 16px 20px; resize: none; }
+  .editor .etop { display: flex; align-items: center; gap: 10px; padding: 8px 14px; font-size: var(--fs-xs); color: var(--ink-faint); }
+  .editor .etop .dirty { color: var(--build-ink); font-weight: 700; }
+
+  .ap h2, .ap h3 { font-size: var(--fs-l); font-weight: 700; }
+  .ap .who { display: grid; gap: 4px; margin: 10px 0 12px; font-size: var(--fs-s); }
+  .ap .who .row { display: flex; align-items: center; gap: 8px; }
+  .ap .who .me { padding-left: 22px; color: var(--ink-soft); }
+  .ap .who .me .i { color: var(--ops); }
+  .ap .ident { margin-top: 10px; }
+  .ro-note { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 8px; margin: 2px 0 10px; padding: 10px 12px; border-radius: var(--r-ctl); background: var(--build-wash); font-size: var(--fs-s); color: var(--ink); }
+  .ro-note .i { color: var(--build-ink); margin-top: 2px; }
+  .ro-note b { font-weight: 700; }
+  .checks { list-style: none; display: grid; gap: 4px; margin: 0 0 12px; font-size: var(--fs-s); }
+  .checks li { display: flex; align-items: center; gap: 8px; }
+  .checks .i { color: var(--ops); }
+  .checks .no .i { color: var(--gate); }
+  .ap .foot { margin-top: 10px; font-size: var(--fs-xs); color: var(--ink-faint); }
+  .ap .btns { display: flex; gap: 8px; margin-top: 10px; }
+  .ap .btns .approve { flex: 1; }
+
+  .hist { list-style: none; display: grid; padding: 0 16px 12px; }
+  .hist li { display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 10px; padding: 7px 0; border-top: 1px solid var(--rule-soft); font-size: var(--fs-s); }
+  .hist li:first-child { border-top: 0; }
+  .hist .dia { margin-top: 6px; width: 8px; height: 8px; }
+  .hist q { color: var(--ink-soft); quotes: "“" "”"; }
+  .hist .m { font-size: var(--fs-xs); color: var(--ink-faint); }
+
+  .find { list-style: none; padding: 0 16px 14px; display: grid; gap: 8px; }
+  .find li { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 6px; font-size: var(--fs-s); }
+  .find .h { display: flex; align-items: center; gap: 8px; }
+  .find .act { display: flex; gap: 6px; margin-top: 4px; }
+</style>
+</head>
+<body data-state="default">
+<a class="skip-link" href="#main">본문으로 건너뛰기</a>
+<div class="app">
+  <aside class="rail" data-nav="docs"></aside>
+  <div class="work">
+    <header class="topbar">
+      <div>
+        <nav class="crumb" aria-label="위치"><a href="S02-progress.html">진행</a><svg class="i s"><use href="#i-chev"/></svg><a href="S02-progress.html">INT-3 업로드 정리</a><svg class="i s"><use href="#i-chev"/></svg><span>U-2</span></nav>
+        <h1><span class="key" style="font-size:18px">HDRV3D-12</span> 업로드 임시 파일 정리</h1>
+      </div>
+      <div class="top-meta">
+        <label class="search"><svg class="i"><use href="#i-search"/></svg><span class="sr-only">이슈 키나 문서 찾기</span><input type="text" placeholder="이슈 키 · 문서 찾기"><kbd>/</kbd></label>
+      </div>
+    </header>
+
+    <main id="main" class="content">
+      <div class="ihead">
+        <div class="facts" data-co="1">
+          <span class="tag gate"><span class="dia" style="width:7px;height:7px"></span>요구사항 승인 대기</span>
+          <span class="tag">area: upload</span>
+          <span class="tag design">INT-3 · U-2</span>
+          <span>맡은 세션 <span class="harness"><b class="cc">C</b><span class="mono">design-desk</span></span> · 설계</span>
+        </div>
+        <span data-rail="intent:ok plans:skip requirements:wait design:now" data-labels data-step="60" data-co="2" data-co-pos="tr"></span>
+      </div>
+      <div class="links" data-co="3">
+        <span><svg class="i s"><use href="#i-branch"/></svg><span class="path">feat/HDRV3D-12-upload-cleanup</span><span class="muted">메인 폴더</span></span>
+        <span class="muted"><svg class="i s"><use href="#i-mr"/></svg>MR 아직 없음</span>
+        <a href="#"><svg class="i s"><use href="#i-ext"/></svg>Jira HDRV3D-12 · 요구사항 승인 대기</a>
+        <span class="muted"><svg class="i s"><use href="#i-commit"/></svg>체크포인트 없음 · flow.record = none</span>
+      </div>
+
+      <div class="issue">
+        <section class="panel" aria-label="이슈 문서">
+          <div class="tabs" role="tablist" aria-label="문서" style="padding:0 10px" data-co="4" id="docTabs">
+            <button role="tab" id="t-req" aria-controls="p-req" aria-selected="true" data-ap="req">requirements <span class="tag gate">in-review</span></button>
+            <button role="tab" id="t-des" aria-controls="p-des" aria-selected="false" tabindex="-1" data-ap="des">design <span class="tag">draft</span></button>
+            <button role="tab" id="t-tsk" aria-controls="p-tsk" aria-selected="false" tabindex="-1" data-ap="none">tasks</button>
+            <button role="tab" id="t-rev" aria-controls="p-rev" aria-selected="false" tabindex="-1" data-ap="none">review</button>
+            <button role="tab" id="t-apv" aria-controls="p-apv" aria-selected="false" tabindex="-1" data-ap="none">approvals <span class="muted">3</span></button>
+          </div>
+
+          <div id="p-req" role="tabpanel" aria-labelledby="t-req">
+            <div class="docbar" style="padding:10px 16px 0" data-co="5">
+              <svg class="i s muted"><use href="#i-doc"/></svg>
+              <span class="path">.agents/docs/issues/HDRV3D-12-upload-cleanup/requirements.md</span>
+              <div class="right">
+                <span class="xs muted" data-state-show="default readonly">10:38 이 페이지에서 저장 · sha 7a02c1d</span>
+                <button class="btn sm" type="button" id="editBtn" data-state-show="default readonly" data-write><svg class="i"><use href="#i-pencil"/></svg>편집</button>
+                <span class="xs" data-state-show="edit" style="color:var(--build-ink);font-weight:700;white-space:nowrap">저장 안 한 변경 1곳</span>
+                <button class="btn sm ghost" type="button" id="cancelBtn" data-state-show="edit">취소</button>
+                <button class="btn sm primary" type="button" id="saveBtn" data-state-show="edit" title="파일만 저장한다 · 세션에는 보내지 않는다"><svg class="i"><use href="#i-save"/></svg>저장 <kbd style="background:transparent;color:#cfd6e4;border-color:#4a5878">⌘S</kbd></button>
+                <a class="btn sm" href="S05-dispatch.html" id="saveSendBtn" data-state-show="edit" title="저장한 뒤 받을 세션을 고르는 시트를 연다"><svg class="i"><use href="#i-send"/></svg>저장하고 세션에 요청</a>
+              </div>
+            </div>
+
+            <div style="padding:10px 16px 0" data-state-show="default" data-co="6">
+              <div class="banner ok" role="status">
+                <svg class="i"><use href="#i-ok"/></svg>
+                <div><b>저장했다.</b> R2.3 한 곳이 바뀌어 상태가 approved → in-review로 돌아갔다. 메인 폴더의 <span class="path">feat/HDRV3D-12-upload-cleanup</span>에 썼고, 커밋은 <span class="mono">design-desk</span> 세션이 한다. 세션에는 아직 아무것도 보내지 않았다.</div>
+                <div class="act"><a class="btn sm go" href="S05-dispatch.html"><svg class="i"><use href="#i-send"/></svg>세션에 요청</a></div>
+              </div>
+            </div>
+
+            <div style="padding:10px 16px 0" data-state-show="error">
+              <div class="banner err" role="alert">
+                <svg class="i"><use href="#i-alert"/></svg>
+                <div><b>저장하지 못했다. 다른 곳에서 먼저 저장했다(409).</b> 내가 연 뒤 다른 곳에서 requirements.md를 바꿨다. 내 변경은 아직 화면에 있다.</div>
+                <div class="act"><button class="btn sm" type="button">현재 내용과 비교</button><button class="btn sm ghost" type="button">내 변경 버리기</button></div>
+              </div>
+            </div>
+            <article class="doc md" data-state-show="default error readonly" data-co="7">
+              <div class="front" aria-label="문서 머리">
+                <span class="tag gate">status: in-review</span><span class="tag">area: upload</span><span class="tag">intent: INT-3</span><span class="tag">unit: U-2</span><span class="tag">jira: HDRV3D-12</span>
+              </div>
+              <h2 class="h1">업로드 임시 파일 정리</h2>
+              <h2>목표</h2>
+              <p>업로드가 끝나거나 실패한 뒤 <code>tmp/uploads/</code>에 남는 조각 파일을 정한 기간 안에 지운다. 지금은 평균 41GB가 쌓이고 운영자가 매주 손으로 지운다(운영 기록 2026-11-04).</p>
+              <h2>범위 밖</h2>
+              <ul><li>원본 저장소(S3)의 수명 주기 정책</li><li>이어 올리기(resumable upload)</li></ul>
+              <h2>요구사항</h2>
+              <h3>R1 완료된 업로드</h3>
+              <div class="req"><b>R1.1</b><span>업로드가 완료되면 그 업로드의 조각 파일을 10분 안에 지운다.</span></div>
+              <div class="req"><b>R1.2</b><span>지운 파일 수와 크기를 <code>upload_cleanup</code> 지표로 남긴다.</span></div>
+              <h3>R2 실패하거나 멈춘 업로드</h3>
+              <div class="req"><b>R2.1</b><span>업로드가 실패 상태가 되면 조각 파일을 1시간 안에 지운다.</span></div>
+              <div class="req"><b>R2.2</b><span>진행 중인 업로드의 파일은 지우지 않는다.</span></div>
+              <div class="req"><b>R2.3</b><span>마지막 쓰기에서 <mark>3일</mark>이 지난 멈춘 업로드는 실패로 바꾸고 조각 파일을 지운다.<span class="note-edit"><svg class="i s"><use href="#i-pencil"/></svg>7일 → 3일 · 10:38 저장</span></span></div>
+              <h2>수용 기준</h2>
+              <div class="req"><b>SC-1</b><span class="ears"><em>WHEN</em> 업로드가 완료 상태가 되면 <em>THE SYSTEM SHALL</em> 10분 안에 조각 파일을 지운다.</span></div>
+              <div class="req"><b>SC-2</b><span class="ears"><em>WHEN</em> 마지막 쓰기 뒤 72시간이 지나면 <em>THE SYSTEM SHALL</em> 업로드를 실패로 바꾸고 조각 파일을 지운다.</span></div>
+            </article>
+
+            <div class="editor" data-state-show="edit">
+              <div class="etop"><span>Markdown 원본 · 문서 머리(frontmatter)의 status는 저장할 때 킷이 정한다</span><span style="margin-left:auto">이 파일은 점유 없음 · design.md는 설계 세션이 점유 중</span></div>
+              <label class="sr-only" for="src">requirements.md 원본</label>
+              <textarea id="src" spellcheck="false">---
+status: approved
+area: upload
+intent: INT-3
+unit: U-2
+jira: HDRV3D-12
+---
+# 업로드 임시 파일 정리
+
+## 목표
+업로드가 끝나거나 실패한 뒤 `tmp/uploads/`에 남는 조각 파일을 정한 기간 안에 지운다.
+지금은 평균 41GB가 쌓이고 운영자가 매주 손으로 지운다(운영 기록 2026-11-04).
+
+## 범위 밖
+- 원본 저장소(S3)의 수명 주기 정책
+- 이어 올리기(resumable upload)
+
+## 요구사항
+### R1 완료된 업로드
+- R1.1 업로드가 완료되면 그 업로드의 조각 파일을 10분 안에 지운다.
+- R1.2 지운 파일 수와 크기를 `upload_cleanup` 지표로 남긴다.
+
+### R2 실패하거나 멈춘 업로드
+- R2.1 업로드가 실패 상태가 되면 조각 파일을 1시간 안에 지운다.
+- R2.2 진행 중인 업로드의 파일은 지우지 않는다.
+- R2.3 마지막 쓰기에서 3일이 지난 멈춘 업로드는 실패로 바꾸고 조각 파일을 지운다.</textarea>
+            </div>
+          </div>
+
+          <div id="p-des" role="tabpanel" aria-labelledby="t-des" hidden>
+            <div class="docbar" style="padding:10px 16px 0">
+              <svg class="i s muted"><use href="#i-doc"/></svg><span class="path">.agents/docs/issues/HDRV3D-12-upload-cleanup/design.md</span>
+              <div class="right"><span class="xs" style="color:var(--build-ink);font-weight:600"><svg class="i s"><use href="#i-lock"/></svg> <span class="mono">design-desk</span>가 점유 중</span><button class="btn sm" type="button" title="저장하면 409 lease_held. 그래도 저장해도 세션에는 아무것도 보내지 않는다. 알리려면 저장 뒤 '세션에 요청'을 고른다" data-write><svg class="i"><use href="#i-pencil"/></svg>그래도 편집</button></div>
+            </div>
+            <article class="doc md">
+              <div class="front"><span class="tag">status: draft</span><span class="tag">requirements: in-review</span></div>
+              <h2 class="h1">설계: 업로드 임시 파일 정리</h2>
+              <h2>3.2 정리 스케줄러</h2>
+              <p><code>UploadCleanupScheduler</code>가 5분마다 돈다. 완료 업로드는 이벤트로, 멈춘 업로드는 스캔으로 찾는다. 보관 기간은 <mark>7일</mark>(R2.3).</p>
+              <p class="muted">requirements R2.3이 3일로 바뀌었다. 사람이 세션에 요청을 보내면 설계 세션이 이 절을 다시 맞춘다.</p>
+            </article>
+          </div>
+
+          <div id="p-tsk" role="tabpanel" aria-labelledby="t-tsk" hidden>
+            <div class="empty"><h3>tasks.md가 아직 없다</h3><p>design이 승인되면 <span class="mono">/hx-tasks</span>가 Bolt 단위로 만든다. 그다음 tasks 계획 승인(dev)이 있다.</p></div>
+          </div>
+          <div id="p-rev" role="tabpanel" aria-labelledby="t-rev" hidden>
+            <div class="empty"><h3>review.md가 아직 없다</h3><p>MR이 열리면 리뷰 세션(<span class="mono">review-codex</span>)이 원격 브랜치 diff를 읽고 발견을 남긴다. 지금은 문서 점검 결과만 오른쪽에 있다.</p></div>
+          </div>
+          <div id="p-apv" role="tabpanel" aria-labelledby="t-apv" hidden>
+            <article class="doc md"><h2 class="h1">approvals.md</h2><p class="muted">덧붙이기만 한다. 오른쪽 승인 기록과 같은 내용이다.</p></article>
+          </div>
+        </section>
+
+        <div class="stack-y">
+          <section class="panel ap lift" aria-labelledby="ap-title" data-co="8">
+            <div class="panel-body" style="padding-top:14px" data-ap-for="req">
+              <h2 id="ap-title" class="flex"><span class="dia"></span>requirements 승인</h2>
+              <p class="small soft" style="margin-top:4px">R2.3을 고쳐 다시 승인이 필요하다. 승인하면 status가 approved가 되고 design 단계가 열린다.</p>
+              <div class="who">
+                <div class="row"><svg class="i s muted"><use href="#i-users"/></svg><span>approvers · <b class="mono">po</b> 그룹 <span class="muted">· harness-kit.json</span></span></div>
+                <div class="row me"><svg class="i s"><use href="#i-ok"/></svg><span>이 체크아웃의 git 사용자가 po에 있다</span></div>
+              </div>
+              <ul class="checks" aria-label="승인 전 확인">
+                <li><svg class="i s"><use href="#i-ok"/></svg>미해결 질문 0 · [NEEDS CLARIFICATION] 0</li>
+                <li><svg class="i s"><use href="#i-ok"/></svg>수용 기준 SC 2개 · R마다 연결됨</li>
+                <li><svg class="i s"><use href="#i-ok"/></svg>열린 CRITICAL·HIGH 0</li>
+              </ul>
+              <div data-state-show="default edit error">
+                <div class="field">
+                  <label for="apv-msg">승인 문구</label>
+                  <textarea id="apv-msg" rows="2">R2.3 보관 기간 3일로 반영해. 승인한다.</textarea>
+                </div>
+                <div class="field" style="margin-top:10px">
+                  <label for="apv-pin">승인 PIN <span class="muted" style="font-weight:500">· dashboard를 연 터미널에만 나온 값, 이 탭에서 한 번</span></label>
+                  <input type="text" id="apv-pin" value="K7Q2-9MXR" autocomplete="off" spellcheck="false" style="font-family:var(--font-code);letter-spacing:.08em">
+                </div>
+                <p class="ident"><svg class="i s"><use href="#i-commit"/></svg><span>git user.email <b>jiyoon.kim@acme.dev</b>로 approvals.md에 기록</span></p>
+                <div class="btns">
+                  <button class="btn approve" type="button" data-toast="approvals.md에 기록했다 · jiyoon.kim@acme.dev · 10:46 · in-review → approved · 세션에는 보내지 않았다"><svg class="i"><use href="#i-check"/></svg>승인하고 기록</button>
+                  <button class="btn" type="button">수정 요청</button>
+                </div>
+              </div>
+              <div data-state-show="readonly">
+                <p class="ro-note"><svg class="i s"><use href="#i-eye"/></svg><span><b>읽기 전용</b> · 에이전트 세션에서 연 관리 페이지라 PIN이 없고 승인을 받지 않는다. 사람이 터미널에서 연 관리 페이지에서 승인한다.</span></p>
+                <button class="btn approve" type="button" disabled style="width:100%">승인할 수 없음 · 읽기 전용</button>
+              </div>
+              <p class="foot">승인하면 approvals.md에 git user.email · 시각 · 문구 · 문서 sha256을 덧붙이고 status를 approved로 바꾼다. 승인 · 수정 요청은 세션에 아무것도 보내지 않는다. 알리려면 따로 <a href="S05-dispatch.html">세션에 요청</a>을 고른다. 세션 요청은 승인이 아니다.</p>
+            </div>
+            <div class="panel-body" style="padding-top:14px" data-ap-for="des" hidden>
+              <h2 class="flex"><span class="dia"></span>design 승인</h2>
+              <ul class="checks" style="margin-top:10px">
+                <li class="no"><svg class="i s"><use href="#i-fail"/></svg>앞 게이트 requirements가 아직 in-review다</li>
+                <li class="no"><svg class="i s"><use href="#i-fail"/></svg>design approvers는 dev 그룹이다. 이 체크아웃의 git 사용자(jiyoon.kim@acme.dev)는 없다</li>
+              </ul>
+              <button class="btn approve" type="button" disabled style="width:100%">승인할 수 없음</button>
+              <p class="foot">approvers는 harness-kit.json에서 정한다. 비워 두면 이 리포의 git 사용자 누구나 승인한다. 화면에서는 바꾸지 않는다.</p>
+            </div>
+            <div class="panel-body" style="padding-top:14px" data-ap-for="none" hidden>
+              <h2>이 문서에는 승인할 것이 없다</h2>
+              <p class="small soft" style="margin-top:6px">승인은 requirements · design · tasks 계획 문서에서 한다.</p>
+            </div>
+          </section>
+
+          <section class="panel" aria-labelledby="h-title" data-co="9">
+            <div class="panel-head"><h3 id="h-title">승인 기록</h3><div class="aside">approvals.md</div></div>
+            <ol class="hist">
+              <li><span class="dia design"></span><div>requirements 승인 · 김지윤 <span class="m">11-21 11:05</span> <span class="tag build">stale · 승인 뒤 바뀜</span><br><q>v1 범위 확인. 진행해.</q></div></li>
+              <li><span class="dia design"></span><div>Unit 분해 승인 · 김지윤 <span class="m">11-20 15:12</span><br><q>INT-3을 U 3개로 나눈 것 승인.</q></div></li>
+              <li><span class="dia hollow"></span><div class="muted">기획물 게이트 없음 · Unit이 작아 건너뜀 <span class="m">flow.gates</span></div></li>
+            </ol>
+          </section>
+
+          <section class="panel" aria-labelledby="f-title" data-co="10">
+            <div class="panel-head"><h3 id="f-title">리뷰 · 점검 발견</h3><div class="aside">/hx-analyze 10:40</div></div>
+            <ul class="find">
+              <li>
+                <div class="h"><span class="tag build">MEDIUM</span><b>문서끼리 다르다</b></div>
+                <span class="small soft">requirements R2.3은 3일, design §3.2는 7일이다.</span>
+                <span class="path">design.md:48 · requirements.md:27</span>
+                <div class="act"><button class="btn sm" type="button" data-write>수정 필요</button><button class="btn sm ghost" type="button" data-write>위험 수용…</button></div>
+              </li>
+            </ul>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script src="assets/app.js"></script>
+<script>
+document.addEventListener("hx:ready", function () {
+  var tabs = document.getElementById("docTabs");
+  tabs.addEventListener("tabchange", function (e) {
+    var k = e.detail.getAttribute("data-ap");
+    document.querySelectorAll("[data-ap-for]").forEach(function (p) { p.hidden = p.getAttribute("data-ap-for") !== k; });
+  });
+  var q = HX.params();
+  if (q.tab === "design" && tabs._select) tabs._select(document.getElementById("t-des"));
+  document.getElementById("editBtn").addEventListener("click", function () { HX.setState("edit"); document.getElementById("src").focus(); });
+  document.getElementById("cancelBtn").addEventListener("click", function () { HX.setState("default"); });
+  document.getElementById("saveBtn").addEventListener("click", function () { HX.setState("default"); HX.toast("requirements.md 저장 · R2.3 · 메인 폴더에 씀 · 세션에는 보내지 않았다"); });
+  document.addEventListener("keydown", function (e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === "s" && document.body.getAttribute("data-state") === "edit") { e.preventDefault(); document.getElementById("saveBtn").click(); }
+  });
+});
+</script>
+</body>
+</html>

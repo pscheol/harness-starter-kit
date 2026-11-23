@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>하네스 다음 단계 — harness-starter-kit v2 방향과 계획</title>
+  <meta name="description" content="harness-starter-kit v1.0.8을 v2로 옮기는 진단, 방향, 계획, 활용법. 킷만으로 도는 설계→구현→검증→반영→운영 흐름, AI-DLC·Entire 선택 모듈, 하네스별 역할, worktree 운영, 대시보드, 스킬 목록, npx 설치.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../ai-dlc/assets/aidlc.css">
+  <link rel="stylesheet" href="assets/next.css">
+  <script src="../ai-dlc/assets/aidlc.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+  <header class="site-head">
+    <div class="phase-band" aria-hidden="true"><span></span><span></span><span></span></div>
+    <nav class="site-nav" aria-label="문서 목록">
+      <a class="home" href="index.html" aria-current="page">하네스 다음 단계</a>
+      <ol>
+        <li><a href="01-diagnosis.html"><span class="num">01</span>진단</a></li>
+        <li><a href="02-direction.html"><span class="num">02</span>방향</a></li>
+        <li><a href="03-plan.html"><span class="num">03</span>계획</a></li>
+        <li><a href="04-usage.html"><span class="num">04</span>활용</a></li>
+        <li><a href="05-principles.html"><span class="num">05</span>원칙·확장</a></li>
+      </ol>
+    </nav>
+  </header>
+
+  <main id="main" class="page">
+    <nav class="page-toc" aria-label="이 장의 절">
+      <p class="toc-title">이 장에서</p>
+      <ol>
+        <li><a href="#summary">한 장 요약</a></li>
+        <li><a href="#flow">흐름과 역할</a></li>
+        <li><a href="#parts">v2를 이루는 것</a></li>
+        <li><a href="#decide">결정 상태</a></li>
+        <li><a href="#read">읽는 순서</a></li>
+        <li><a href="#sources">출처</a></li>
+      </ol>
+    </nav>
+
+    <article class="prose">
+      <h1 class="page-title">킷만으로 끝까지, 켜면 AI-DLC와 Entire까지</h1>
+      <p class="lede">harness-starter-kit v2는 요구사항 하나를 설계 → 구현 → 검증 → 반영 → 운영까지 킷만으로 끌고 간다. AI-DLC와 Entire는 기본 꺼짐인 선택 모듈로, 켜면 설계 단계와 대화 기록을 맡는다. 하네스마다 역할을 나누고, 진행 상황·문서·이 컴퓨터의 스킬은 대시보드 한 곳에서 본다. 이 문서 묶음은 그 진단과 방향, 단계 계획, 쓰는 법을 적는다.</p>
+      <p class="status-line"><span><b>상태</b> 제안. 아직 구현하지 않았다</span><span><b>기준일</b> 2026-11-23</span><span><b>대상 버전</b> v1.0.8 → v2.6</span></p>
+
+      <h2 id="summary">한 장 요약</h2>
+      <dl class="terms">
+        <dt>흐름<small>바깥과 안</small></dt>
+        <dd>요구사항 → 설계(킷 <code>/hx-intent</code> 또는 AI-DLC, 기획물) → 구현(Unit마다 SDD) → 검증(자체 리뷰·보안·품질) → 승인·병합 → 반영(문서) → 운영 기록 → 다음 요구사항.</dd>
+        <dt>역할<small>하네스마다</small></dt>
+        <dd>설계·구현 Claude Code, 리뷰 Codex, 반영·운영 기록 Kiro, 진행 판정은 사람이 대시보드에서. 팀이 바꿀 수 있는 기본값이다.</dd>
+        <dt>외부 도구<small>선택 모듈</small></dt>
+        <dd>AI-DLC·Entire는 기본 꺼짐이다. 켜면 각자의 설치기로 원본 그대로 깔고 그때그때 올린다. 원본 파일은 고치지 않고 우리 개선은 킷 층에 둔다. 꺼도 빠지는 단계가 없고, 릴리스마다 두 구성(킷만 / 모두 켬)을 시험한다. 리뷰 에이전트는 자체로 만든다.</dd>
+        <dt>동시 작업<small>worktree</small></dt>
+        <dd>같은 리포에서 동시에 쓰는 세션이 둘 이상일 때 둘째부터 리포 옆 <code>&lt;리포&gt;.worktrees/</code>에 만든다. 리포당 3개까지, 끝나면 바로 지운다. 문서만 쓰는 세션은 문서 폴더만 받는다.</dd>
+        <dt>검증<small>바꾼 기능만</small></dt>
+        <dd>작업마다 바꾼 기능만(changed), MR 전에 영향 모듈까지(affected) 검증한다. 전체 검증은 CI에서만 돌고 에이전트 세션에서는 막는다. 지금 1~2시간 걸리는 원인이 에이전트의 전체 검증이다.</dd>
+        <dt>SDD<small>이슈 단위</small></dt>
+        <dd>이슈 하나 = <code>issues/&lt;키&gt;-&lt;이름&gt;/</code> 폴더 하나 = 브랜치·worktree·MR 하나. 키는 Jira 키 그대로, Jira가 없으면 킷이 같은 모양(<code>KNOTS-17</code>)으로 만든다.</dd>
+        <dt>관리 페이지<small>한 화면</small></dt>
+        <dd><code>npx harness-kit dashboard</code>. 처리할 일, 진행, 문서, 검증, 작업 공간, 운영, 스킬, 하네스 상태를 보고, 문서를 고쳐 저장하고 승인하고, 켜 둔 Claude 세션에 작업을 요청한다.</dd>
+        <dt>원칙·확장<small>05장</small></dt>
+        <dd>AI-DLC 원칙 다섯 가지를 킷이 지킨다(도구를 켜든 끄든). 회사 팩·프로젝트·개인 층으로 각자 고쳐 쓴다. Jira도 같은 단위와 승인 게이트에 맞춘다.</dd>
+        <dt>스킬 목록<small>내 장비</small></dt>
+        <dd>이 컴퓨터의 스킬(Claude 사용자 221 · <code>~/.agents</code> 156 · Kiro 143 · 플러그인)을 하네스·단계별로 보여 주고, 킷 명령이 깔린 스킬을 찾아 쓴다.</dd>
+        <dt>기반<small>설치와 배치</small></dt>
+        <dd><code>npx</code> CLI 하나가 설치·업데이트·점검·제거를 맡는다. 손으로 쓰던 하네스 포인터 78개를 복사·생성으로 바꾸고(링크·포인터 없음), 다른 도구의 파일과 훅은 덮지 않는다.</dd>
+        <dt>순서<small>P17 → P24</small></dt>
+        <dd>CLI 엔진 → 배치 전환(v2.0) → worktree · 대시보드 · 킷 설계 단계 · 검증 확장 → 선택 모듈(AI-DLC·Entire) · 반영·운영·역수입(v2.6).</dd>
+      </dl>
+
+      <h2 id="flow">흐름과 역할</h2>
+      <figure class="diagram bleed">
+        <a href="diagrams/lifecycle.svg"><img src="diagrams/lifecycle.svg" width="1992" height="284" alt="요구사항 접수에서 시작해 1 설계(킷 /hx-intent 또는 AI-DLC로 요구사항을 정리하고 문서·화면기획·디자인기획·백로그를 만든다), 범위·Unit 승인, 2 구현(Claude Code가 worktree에서 Unit마다 SDD로 만든다, 켰을 때 Entire가 커밋마다 대화를 기록한다), 3 검증(verify.sh, Codex 리뷰, 보안·품질 스캔, 실패나 지적이면 구현으로 돌아간다), MR 승인·병합, 4 반영(문서·승인 기록), 5 운영 기록(지표·장애)을 거쳐 다음 요구사항으로 돌아가는 흐름" loading="lazy" decoding="async"></a>
+        <figcaption>v2의 전체 흐름. 파랑은 설계, 앰버는 구현·검증, 청록은 반영·운영, 빨간 마름모는 사람이 승인하는 자리다. <a href="diagrams/lifecycle.mmd" download>편집 원본(.mmd)</a></figcaption>
+      </figure>
+
+      <h2 id="parts">v2를 이루는 것</h2>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col">구성</th><th scope="col">무엇</th><th scope="col">단계</th><th scope="col">자세히</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">지금 고칠 것 <span class="tag change">바꿈</span></th><td>검증을 바꾼 기능만으로, 이슈 단위 SDD 폴더(v1.1, v2 엔진과 무관)</td><td>v1.1</td><td><a href="03-plan.html#now">03장</a></td></tr>
+            <tr><th scope="row">설치 엔진 <span class="tag change">바꿈</span></th><td><code>npx</code> CLI: init · add · update · outdated · doctor · repair · uninstall</td><td>P17</td><td><a href="02-direction.html#engine">02장</a></td></tr>
+            <tr><th scope="row">하네스 배치 <span class="tag change">바꿈</span></th><td>포인터 대신 그대로 읽기·복사·생성·병합, worktree를 따라가는 훅</td><td>P18</td><td><a href="02-direction.html#engine">02장</a></td></tr>
+            <tr><th scope="row">worktree 운영 <span class="tag new">새로</span></th><td>리포 옆 자리, <code>wt</code> 명령, IDE 설정, 용량 상한</td><td>P19</td><td><a href="02-direction.html#worktree">02장</a></td></tr>
+            <tr><th scope="row">대시보드 · 스킬 목록 <span class="tag new">새로</span></th><td>로컬 웹페이지, 스킬 스캐너와 스킬 지도</td><td>P20</td><td><a href="02-direction.html#dashboard">02장</a></td></tr>
+            <tr><th scope="row">킷 설계 단계 · 기획물 <span class="tag new">새로</span></th><td><code>/hx-intent</code>(Intent·질문·스토리·Unit 분해), 요구사항 문서 · 화면기획 · 디자인기획 · 백로그, 하네스별 역할</td><td>P21</td><td><a href="02-direction.html#modes">02장</a></td></tr>
+            <tr><th scope="row">선택 모듈 <span class="tag new">새로</span></th><td>AI-DLC(설계 단계 대신) · Entire(대화 기록)를 켜고 끄기, 버전 추적</td><td>P22</td><td><a href="02-direction.html#aidlc-entire">02장</a></td></tr>
+            <tr><th scope="row">검증 확장 <span class="tag new">새로</span></th><td>자체 리뷰 에이전트, 오픈소스 정적 분석(언어 무관)과 품질 게이트, 승인 기록</td><td>P23</td><td><a href="02-direction.html#verify">02장</a></td></tr>
+            <tr><th scope="row">반영 · 운영 · 역수입 <span class="tag new">새로</span></th><td>병합 뒤 문서 반영, 운영 기록 → 다음 요구사항, 다층 리포</td><td>P24</td><td><a href="03-plan.html#p24">03장</a></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="decide">결정 상태</h2>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col">번호</th><th scope="col">정할 것</th><th scope="col">상태</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row"><span class="tag new">D1</span></th><td>로드맵 불변식(외부 이름 금지)</td><td>정함: 선택 모듈과 연동 문서에서만 허용</td></tr>
+            <tr><th scope="row"><span class="tag new">D2</span></th><td>AI-DLC와의 관계</td><td>정함: 선택 모듈로 공존. 기본은 킷 설계 단계, 켜면 AI-DLC</td></tr>
+            <tr><th scope="row"><span class="tag new">D5</span></th><td>동시 작업 방식</td><td>정함: 둘째 쓰는 세션부터 리포 옆 worktree</td></tr>
+            <tr><th scope="row"><span class="tag new">D9</span></th><td>이슈 키</td><td>정함: Jira 키 그대로, 없으면 킷이 <code>&lt;프로젝트키&gt;-&lt;번호&gt;</code>로 만든다</td></tr>
+            <tr><th scope="row"><span class="tag new">D10</span></th><td>전체 검증 위치</td><td>정함: CI만. 에이전트 세션은 changed·affected</td></tr>
+            <tr><th scope="row"><span class="tag decide">D3</span></th><td>배포 경로</td><td>추천: GitHub 직접(<code>npx github:</code>)으로 시작 → npm</td></tr>
+            <tr><th scope="row"><span class="tag decide">D4</span></th><td>base 브랜치 기본값</td><td>추천: 설정값, 기본 <code>develop</code></td></tr>
+            <tr><th scope="row"><span class="tag decide">D6</span></th><td>Entire 기록 push</td><td>추천: 비공개 원격이면 같은 원격, 공개면 올리지 않음</td></tr>
+            <tr><th scope="row"><span class="tag decide">D7</span></th><td>역할 배정 기본값</td><td>추천: 설계·구현 Claude, 리뷰 Codex, 반영 Kiro</td></tr>
+            <tr><th scope="row"><span class="tag new">D8</span></th><td>정적 분석 도구</td><td>정함: 오픈소스 조합(Semgrep/Opengrep · gitleaks · OSV · jscpd · lizard + 스택별), SonarQube 쓰지 않음</td></tr>
+          </tbody>
+        </table>
+        <p class="caption">초록은 정한 것, 빨강은 정할 것. 각 선택지의 비용은 <a href="02-direction.html#decisions">02장 결정 목록</a>에 있다.</p>
+      </div>
+
+      <h2 id="read">읽는 순서</h2>
+      <ol class="steps">
+        <li><strong><a href="01-diagnosis.html">01 진단</a></strong>지금 킷이 하는 일, 바깥에서 바뀐 것(표준 · 설치기 4종 · AI-DLC · Entire · 채널톡 · 브랜치), knots·hdr에서 본 것.</li>
+        <li><strong><a href="02-direction.html">02 방향</a></strong>흐름, 킷만 · 모듈을 켰을 때, 하네스별 역할, AI-DLC·Entire 선택 모듈, 기획물, 검증, worktree, 대시보드, 스킬 목록, 설치 엔진, 결정 목록.</li>
+        <li><strong><a href="03-plan.html">03 계획</a></strong>P17~P24의 산출물·완료 기준·착수 전 확인, 기존 프로젝트 이전, 위험, 릴리스 규칙.</li>
+        <li><strong><a href="04-usage.html">04 활용</a></strong>요구사항 하나를 운영까지, 세션 배치, 대시보드·내 스킬 쓰는 법, 팀 도입 순서. 지금 되는 것과 v2 뒤에 되는 것을 나눴다.</li>
+        <li><strong><a href="05-principles.html">05 원칙·확장</a></strong>AI-DLC 원칙 대응, 채널톡 사례에서 가져올 것과 버릴 것, 사람 역할, 폴더와 주인, 이슈 키, Jira 대응, 하네스를 고쳐 쓰는 네 층.</li>
+      </ol>
+      <p>방향만 보려면 <a href="02-direction.html">02</a>, 일정과 작업은 <a href="03-plan.html">03</a>, 팀에 소개할 때는 <a href="04-usage.html">04</a>부터 읽는다. AI-DLC 용어는 <a href="../ai-dlc/index.html">AI-DLC 핸드북</a>에 있다.</p>
+
+      <h2 id="sources">출처</h2>
+      <p>외부 자료는 2026-11-23에 확인했다. 현장 관찰은 두 저장소를 읽기만 해서 얻었다.</p>
+      <h3>하네스와 IDE</h3>
+      <ul>
+        <li><a href="https://code.claude.com/docs/en/skills">Claude Code — Skills</a> · <a href="https://code.claude.com/docs/en/worktrees">Claude Code — Worktrees</a> · <a href="https://developers.openai.com/codex/app/worktrees">Codex — Worktrees</a></li>
+        <li><a href="https://code.visualstudio.com/docs/sourcecontrol/branches-worktrees">VS Code — Git branches and worktrees</a> · <a href="https://www.jetbrains.com/idea/whatsnew/2026-1/">IntelliJ IDEA 2026.1</a> · <a href="https://support.jetbrains.com/hc/en-us/articles/40160071208210-Git-Worktrees-do-not-work-in-my-project">JetBrains — Git Worktrees do not work in my project</a></li>
+        <li><a href="https://git-scm.com/docs/git-worktree">git-worktree</a> · <a href="https://blog.gitbutler.com/parallel-claude-code">GitButler — Parallel Claude Code</a> · <a href="https://github.com/gitbutlerapp/gitbutler/issues/10720">GitButler Submodule support 이슈</a></li>
+        <li><a href="https://codex.danielvaughan.com/2026/05/05/agent-skills-open-standard-portable-skills-codex-cli-cross-agent/">Agent Skills 표준 정리</a> — 하네스별 <code>.agents/skills/</code> 지원은 제3자 정리다</li>
+      </ul>
+      <h3>설치기 · 검증 도구</h3>
+      <ul>
+        <li><a href="https://github.com/vercel-labs/skills">vercel-labs/skills</a> · <a href="https://github.com/awslabs/aidlc-workflows">awslabs/aidlc-workflows</a></li>
+        <li><a href="https://github.com/semgrep/semgrep">Semgrep</a> · <a href="https://github.com/opengrep/opengrep">Opengrep</a> · <a href="https://github.com/gitleaks/gitleaks">gitleaks</a> · <a href="https://github.com/google/osv-scanner">OSV-Scanner</a> · <a href="https://github.com/kucherenko/jscpd">jscpd</a> · <a href="https://github.com/terryyin/lizard">lizard</a></li>
+        <li><a href="https://support.atlassian.com/jira-software-cloud/docs/use-the-agentic-engineering-template-to-integrate-coding-agents-in-your-workflow/">Jira Agentic engineering 템플릿</a> · <a href="https://code.claude.com/docs/en/cross-session-messaging.md">Claude Code 세션 메시지</a> · <a href="https://code.claude.com/docs/en/channels.md">channels</a> · <a href="https://code.claude.com/docs/en/deep-links.md">deep links</a></li>
+      </ul>
+      <h3>기록 도구 · 사례</h3>
+      <ul>
+        <li><a href="https://github.com/entireio/cli">entireio/cli</a> · <a href="https://docs.entire.com/guides/checkpoints/checkpoint-storage">Entire 체크포인트 저장 방식</a></li>
+        <li><a href="https://tech.channel.io/kr/articles/d87a6773">채널톡, 「백엔드 개발자 한 명이 팀처럼 일하는 법」</a> · <a href="https://services.google.com/fh/files/misc/2025_state_of_ai_assisted_software_development.pdf">DORA 2025</a></li>
+      </ul>
+      <h3>이 저장소</h3>
+      <ul>
+        <li><a href="../ai-dlc/index.html">AI-DLC 핸드북</a> · <a href="../AI-DLC_학습가이드.html">AI-DLC 학습가이드</a> · <a href="../Entire_AI-DLC_함께쓰기.html">Entire와 AI-DLC 함께 쓰기</a></li>
+        <li><a href="../roadmap.md">roadmap.md</a> (Phase 16까지) · <a href="../analysis/README.md">analysis/</a></li>
+      </ul>
+
+      <nav class="pager" aria-label="다음 장">
+        <a class="next" href="01-diagnosis.html"><small>시작</small><span>01 진단</span></a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-foot">
+    <p>harness-starter-kit 문서 · 2026-11-23 기준 · 제안 단계이며 아직 구현되지 않았다.</p>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,35 @@
+%%{init: {"theme": "base", "fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "themeVariables": {"fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "fontSize": "15px", "actorBkg": "#ffffff", "actorBorder": "#14213d", "actorTextColor": "#14213d", "actorLineColor": "#aeb9c7", "signalColor": "#46536b", "signalTextColor": "#14213d", "noteBkgColor": "#fbe6e9", "noteBorderColor": "#c8102e", "noteTextColor": "#14213d", "labelBoxBkgColor": "#f5f7fa", "labelBoxBorderColor": "#aeb9c7", "labelTextColor": "#14213d", "loopTextColor": "#14213d"}}}%%
+sequenceDiagram
+  autonumber
+  actor H as 사람(브라우저)
+  participant SV as 관리 페이지 서버
+  participant CO as 이슈 브랜치 체크아웃
+  participant REG as state/sessions · dispatch-queue
+  participant S as 대상 세션
+  rect rgba(231, 234, 251, 0.55)
+    H->>SV: PUT /docs (Bearer 토큰 · baseSha256)
+    SV->>SV: 허용 경로 · 심볼릭 링크 · 1 MiB 검사
+    SV->>CO: 그 이슈 브랜치가 체크아웃된 폴더 찾기
+    alt 없음 · sha 다름 · 점유 중
+      SV-->>H: 409 (현재 내용 · wt new 안내)
+    else 저장
+      SV->>CO: 임시 파일 → rename (approved였으면 in-review)
+      SV-->>H: 200 변경 요약(제목 · ID · 줄 수)
+    end
+    Note over H,CO: 저장만으로는 세션에 아무것도 보내지 않는다
+  end
+  rect rgba(221, 242, 235, 0.6)
+    H->>SV: "저장하고 세션에 요청" · "세션에 요청": POST /dispatch(세션 · 종류 · 경로)
+    SV->>REG: 세션 생존 판정(pid · 소켓 200ms)
+    alt 소켓 연결됨
+      SV->>S: 한 줄 글(경로 · 변경 요약 · "승인이 아니다")
+      SV-->>H: 202 sent
+    else 연결 실패
+      SV-->>H: 409 deep link 또는 대기함 고르기
+      opt 사람이 대기함을 고름
+        SV->>REG: dispatch-queue/ULID.json
+        S->>REG: 세션 시작 · 프롬프트 훅이 rename으로 가져감
+        Note over REG,S: 대기 요청 N건(UNTRUSTED)<br/>+ 첫 요청 한 줄·경로(200바이트 이하)<br/>+ 나머지: dispatch list. 세션 시작 상태 512바이트 안
+      end
+    end
+  end

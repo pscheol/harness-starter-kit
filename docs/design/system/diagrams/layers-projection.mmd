@@ -1,0 +1,44 @@
+%%{init: {"theme": "base", "fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "themeVariables": {"fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "fontSize": "16px", "primaryColor": "#ffffff", "primaryBorderColor": "#14213d", "primaryTextColor": "#14213d", "lineColor": "#46536b", "clusterBkg": "#f5f7fa", "clusterBorder": "#aeb9c7", "edgeLabelBackground": "#f5f7fa"}, "flowchart": {"curve": "basis", "padding": 16, "nodeSpacing": 26, "rankSpacing": 62}}}%%
+graph LR
+  KITL["킷 층 · owner kit<br/>common → domains → stacks<br/>→ arch → optional"]
+  PACK["회사 팩 · owner pack:이름<br/>packs 배열 순서"]
+  PROJ["프로젝트 · owner user<br/>.agents 안 팀 파일"]
+  LOCAL["개인 · 개인 lock<br/>.agents/local (커밋 안 함)"]
+  FLOOR["하한(킷 코드 상수)<br/>게이트 4 · floor 훅 3<br/>보호 경로 deny"]
+  AG[".agents 원본<br/>층 해석 결과 · copy"]
+  NATIVE["native · 그대로 읽기<br/>Codex · Cursor: AGENTS.md<br/>Codex: .agents/skills"]
+  MIRROR["mirror · 실제 파일 복사<br/>.claude/skills · .claude/rules · .kiro/skills"]
+  RENDER["render · 원본에서 생성<br/>.kiro/steering(fileMatch) · .cursor/rules/*.mdc(globs)<br/>.cursor/commands · 역할 파일"]
+  MERGE["merge · harness- 키만<br/>CLAUDE.md 블록 · .claude/settings.json<br/>.codex/hooks.json · config.toml"]
+  SYNC["동기화 훅 · 보호 훅 · fast 검사<br/>stale · drifted · symlink-found"]
+  LOCK["harness-kit.lock<br/>op · owner · sha256"]
+  DOC["doctor --check<br/>check_layout.py · fast 검증"]
+  KITL -- "같은 경로면 팩이 이긴다" --> PACK
+  PACK -- "프로젝트가 이긴다" --> PROJ
+  PROJ -- "해석 결과" --> AG
+  LOCAL -. "더하기만" .-> AG
+  FLOOR -. "어느 층도 못 낮춘다" .-> AG
+  AG --> NATIVE
+  AG --> MIRROR
+  AG --> RENDER
+  AG --> MERGE
+  AG -- "copy 항목" --> LOCK
+  MIRROR --> LOCK
+  RENDER --> LOCK
+  MERGE --> LOCK
+  LOCK -- "어긋나면 실패" --> DOC
+  SYNC -. "복사본 · 생성 파일을 원본과 맞춘다" .-> LOCK
+  classDef gate fill:#fbe6e9,stroke:#c8102e,stroke-width:2px,color:#c8102e
+  classDef design fill:#e7eafb,stroke:#3046c5,stroke-width:2px,color:#14213d
+  classDef build fill:#fbf1dc,stroke:#c98a12,stroke-width:2px,color:#14213d
+  classDef ops fill:#ddf2eb,stroke:#0b7a5e,stroke-width:2px,color:#14213d
+  classDef plain fill:#ffffff,stroke:#14213d,stroke-width:2px,color:#14213d
+  classDef store fill:#f5f7fa,stroke:#6b778c,stroke-width:1.5px,color:#46536b
+  class KITL,PACK build
+  class PROJ,AG design
+  class LOCAL plain
+  class FLOOR,DOC gate
+  class NATIVE ops
+  class MIRROR,RENDER,MERGE build
+  class SYNC gate
+  class LOCK store

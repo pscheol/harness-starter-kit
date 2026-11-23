@@ -1,0 +1,239 @@
+{
+  "schema_version": 1,
+  "diagram_type": "sequence",
+  "meta": {
+    "title": "v2 승인 게이트 한 번의 순서",
+    "quality_profile": "showcase",
+    "column_fit": "spread",
+    "viewBox": [
+      1060,
+      660
+    ],
+    "views": [
+      {
+        "id": "stop",
+        "label": "질문하고 멈춘다",
+        "focus": [
+          "ai",
+          "engine",
+          "human"
+        ],
+        "note": "승인 질문을 낸 AI는 그 턴을 즉시 끝낸다."
+      },
+      {
+        "id": "presence",
+        "label": "사람 입력 기록",
+        "focus": [
+          "human",
+          "hook",
+          "audit"
+        ],
+        "note": "답이 들어오는 순간 훅이 HUMAN_TURN을 남긴다."
+      },
+      {
+        "id": "pass",
+        "label": "게이트 통과",
+        "focus": [
+          "ai",
+          "engine",
+          "audit"
+        ],
+        "note": "엔진은 사람 입력 기록을 확인한 뒤에만 다음 스테이지를 연다."
+      }
+    ]
+  },
+  "participants": [
+    {
+      "id": "human",
+      "type": "external",
+      "label": "사람",
+      "sublabel": "PO · 개발자"
+    },
+    {
+      "id": "hook",
+      "type": "security",
+      "label": "record-human-turn",
+      "sublabel": "UserPromptSubmit 훅"
+    },
+    {
+      "id": "ai",
+      "type": "backend",
+      "label": "AI",
+      "sublabel": "aidlc 스킬"
+    },
+    {
+      "id": "engine",
+      "type": "backend",
+      "label": "aidlc 엔진",
+      "sublabel": "라우팅 · 게이트"
+    },
+    {
+      "id": "audit",
+      "type": "database",
+      "label": "audit/",
+      "sublabel": "감사 기록"
+    }
+  ],
+  "segments": [
+    {
+      "from": 150,
+      "to": 266,
+      "label": "질문하고 멈춘다"
+    },
+    {
+      "from": 276,
+      "to": 376,
+      "label": "사람의 답"
+    },
+    {
+      "from": 386,
+      "to": 596,
+      "label": "게이트 통과"
+    }
+  ],
+  "messages": [
+    {
+      "from": "ai",
+      "to": "engine",
+      "y": 180,
+      "label": "결과 보고: 승인 대기",
+      "variant": "emphasis"
+    },
+    {
+      "from": "engine",
+      "to": "audit",
+      "y": 214,
+      "label": "게이트 진입 기록",
+      "variant": "dashed"
+    },
+    {
+      "from": "ai",
+      "to": "human",
+      "y": 248,
+      "label": "완료 요약 + Approve / Request Changes",
+      "variant": "emphasis",
+      "note": "질문을 낸 뒤 그 턴을 끝낸다"
+    },
+    {
+      "from": "human",
+      "to": "hook",
+      "y": 292,
+      "label": "\"approved\" 입력",
+      "variant": "emphasis"
+    },
+    {
+      "from": "hook",
+      "to": "audit",
+      "y": 326,
+      "label": "HUMAN_TURN 기록",
+      "variant": "security"
+    },
+    {
+      "from": "hook",
+      "to": "ai",
+      "y": 360,
+      "label": "프롬프트 전달",
+      "variant": "default"
+    },
+    {
+      "from": "ai",
+      "to": "engine",
+      "y": 404,
+      "label": "승인 보고",
+      "variant": "emphasis"
+    },
+    {
+      "from": "engine",
+      "to": "audit",
+      "y": 438,
+      "label": "HUMAN_TURN 확인",
+      "variant": "security"
+    },
+    {
+      "from": "audit",
+      "to": "engine",
+      "y": 472,
+      "label": "사람 입력 있음",
+      "variant": "return"
+    },
+    {
+      "from": "engine",
+      "to": "audit",
+      "y": 506,
+      "label": "GATE_APPROVED 기록",
+      "variant": "dashed"
+    },
+    {
+      "from": "engine",
+      "to": "ai",
+      "y": 540,
+      "label": "다음 스테이지 계산",
+      "variant": "return"
+    },
+    {
+      "from": "ai",
+      "to": "human",
+      "y": 574,
+      "label": "진행 1/19 · 다음 스테이지 안내",
+      "variant": "return"
+    }
+  ],
+  "activations": [
+    {
+      "participant": "ai",
+      "from": 174,
+      "to": 256,
+      "type": "backend"
+    },
+    {
+      "participant": "engine",
+      "from": 174,
+      "to": 222,
+      "type": "backend"
+    },
+    {
+      "participant": "hook",
+      "from": 286,
+      "to": 368,
+      "type": "security"
+    },
+    {
+      "participant": "ai",
+      "from": 354,
+      "to": 582,
+      "type": "backend"
+    },
+    {
+      "participant": "engine",
+      "from": 398,
+      "to": 548,
+      "type": "backend"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "rose",
+      "title": "멈춤 규칙",
+      "items": [
+        "승인 질문을 내면 그 턴을 끝낸다",
+        "답이 없으면 다음 스테이지로 가지 않는다"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "사람 존재 확인",
+      "items": [
+        "승인에는 훅이 남긴 HUMAN_TURN이 필요하다",
+        "무인 실행에서도 게이트는 계속 기다린다"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "수정 요청",
+      "items": [
+        "Request Changes면 같은 스테이지를 다시 만든다",
+        "세 번째 수정부터 Accept as-is가 생긴다"
+      ]
+    }
+  ]
+}

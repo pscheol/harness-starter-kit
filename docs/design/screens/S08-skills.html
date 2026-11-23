@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S08 스킬 · harness-kit 관리 페이지</title>
+<link rel="stylesheet" href="assets/app.css">
+<style>
+  .sk-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
+  .src { width: 100%; border-collapse: collapse; font-size: var(--fs-s); }
+  .src td { padding: 7px 16px; border-top: 1px solid var(--rule-soft); }
+  .src td.r { text-align: right; font-weight: 700; }
+  .src .bar { width: 120px; }
+  .src .bar .bar-track { height: 6px; }
+  .src .bar .bar-fill { background: var(--ink-soft); }
+  .filters { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 0 16px 12px; }
+  .filters .seg button .n { font-variant-numeric: tabular-nums; }
+  .skt td { vertical-align: top; }
+  .skt .nm { font-family: var(--font-code); font-size: var(--fs-s); font-weight: 700; white-space: nowrap; }
+  .skt .d { color: var(--ink-soft); max-width: 46ch; }
+  .skt .hs { display: flex; gap: 3px; }
+  .skt .hs b { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 4px; font-size: 10px; font-weight: 800; color: #fff; }
+  .skt .est { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-xs); color: var(--build-ink); font-weight: 700; }
+  .skt .mapped { font-size: var(--fs-xs); color: var(--ops-ink); font-weight: 700; }
+  .rec { padding: 0 16px 14px; display: grid; gap: 12px; }
+  .rec h3 { display: flex; align-items: center; gap: 8px; font-size: var(--fs-s); }
+  .rec h3 .mono { color: var(--design-ink); }
+  .rec ul { list-style: none; display: grid; gap: 4px; margin-top: 4px; }
+  .rec li { display: flex; align-items: center; gap: 8px; font-size: var(--fs-s); }
+  .rec li .i { width: 14px; height: 14px; color: var(--ops); }
+  .rec li.miss { color: var(--ink-faint); }
+  .rec li.miss .i { color: var(--ink-faint); }
+  .rec .cmd { padding: 10px 0; border-top: 1px solid var(--rule-soft); }
+
+  /* 5 단계 × 하네스: 칸마다 막대(한 색 · 같은 눈금) + 수. 0이면 막대 없이 0. 표가 곧 표로 보기다 */
+  .mx { width: 100%; border-collapse: collapse; font-size: var(--fs-xs); }
+  .mx th { padding: 6px 8px; font-weight: 600; color: var(--ink-faint); text-align: left; border-bottom: 1px solid var(--rule); white-space: nowrap; }
+  .mx th .harness b { width: 15px; height: 15px; font-size: 10px; }
+  .mx td { padding: 5px 8px; border-bottom: 1px solid var(--rule-soft); }
+  .mx tr:last-child td { border-bottom: 0; }
+  .mx td.r, .mx th.r { text-align: right; }
+  .mx .st-b { display: inline-flex; align-items: center; padding: 0; border: 0; background: transparent; font: inherit; cursor: pointer; }
+  .mx .st-b[aria-pressed="true"] .tag { box-shadow: 0 0 0 1.5px currentColor; }
+  .mxc { display: flex; align-items: center; gap: 6px; min-width: 0; outline: none; border-radius: var(--r-chip); }
+  .mxc:focus-visible { outline: 2px solid var(--design); outline-offset: 2px; }
+  .mxc i { display: block; height: 8px; min-width: 2px; border-radius: 0 4px 4px 0; background: var(--ink-soft); }
+  .mxc b { font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .mxc.zero b { font-weight: 500; color: var(--ink-faint); }
+  .mxc.zero i { display: none; }
+  .mxc.vz-on i { background: var(--ink); }
+  .mx-note { padding: 8px 16px 12px; font-size: var(--fs-xs); color: var(--ink-faint); text-wrap: pretty; }
+  .mx-note b { color: var(--ink-soft); }
+</style>
+</head>
+<body data-state="default">
+<a class="skip-link" href="#main">본문으로 건너뛰기</a>
+<div class="app">
+  <aside class="rail" data-nav="skills"></aside>
+  <div class="work">
+    <header class="topbar">
+      <div>
+        <h1>스킬</h1>
+        <p class="sub">이 컴퓨터의 스킬 · 읽기만 한다 · 장비 정보라 커밋하지 않고 내보내기에서 뺀다</p>
+      </div>
+      <div class="top-meta">
+        <span class="xs muted">10:50 수집</span>
+        <button class="btn sm" type="button" data-toast="스킬 폴더 9곳을 다시 읽었다 · 1,034개"><svg class="i"><use href="#i-refresh"/></svg>다시 수집</button>
+      </div>
+    </header>
+
+    <main id="main" class="content">
+      <div class="sk-grid">
+        <div class="stack-y">
+          <section class="panel" aria-labelledby="src-title" data-co="1">
+            <div class="panel-head"><h2 id="src-title">어디에 몇 개</h2><div class="aside">이름 겹침 37 · 플러그인은 켜 둔 것의 최신 버전만</div></div>
+            <table class="src">
+              <caption class="sr-only">위치별 스킬 수</caption>
+              <tbody>
+                <tr><td class="path">~/.claude/skills</td><td class="xs muted">사용자 · Claude Code</td><td class="bar"><div class="bar-track"><div class="bar-fill" style="width:45%"></div></div></td><td class="r">221</td></tr>
+                <tr><td><span class="path">~/.claude/plugins</span> <span class="xs muted">SKILL.md 1,278개 중 버전 중복 뺌</span></td><td class="xs muted">플러그인 · Claude Code</td><td class="bar"><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div></td><td class="r">486</td></tr>
+                <tr><td class="path">~/.agents/skills</td><td class="xs muted">사용자 · Codex · Cursor</td><td class="bar"><div class="bar-track"><div class="bar-fill" style="width:32%"></div></div></td><td class="r">156</td></tr>
+                <tr><td class="path">~/.kiro/skills</td><td class="xs muted">사용자 · Kiro</td><td class="bar"><div class="bar-track"><div class="bar-fill" style="width:29%"></div></div></td><td class="r">143</td></tr>
+                <tr><td class="path">~/.codex/skills</td><td class="xs muted">사용자 · Codex</td><td class="bar"><div class="bar-track"><div class="bar-fill" style="width:2.5%"></div></div></td><td class="r">12</td></tr>
+                <tr><td><span class="path">.agents/skills</span> <span class="xs muted">이 리포</span></td><td class="xs muted">프로젝트 · 하네스 네 곳에 링크</td><td class="bar"><div class="bar-track"><div class="bar-fill" style="width:3.3%"></div></div></td><td class="r">16</td></tr>
+              </tbody>
+            </table>
+          </section>
+
+          <section class="panel" aria-labelledby="list-title">
+            <div class="panel-head"><h2 id="list-title">스킬 목록</h2><div class="aside" id="shown"></div></div>
+            <div class="filters">
+              <div class="seg" data-single role="group" aria-label="단계" id="stageSeg" data-co="2">
+                <button type="button" aria-pressed="false" data-st="">전체</button>
+                <button type="button" aria-pressed="true" data-st="설계">설계 <span class="n">5</span></button>
+                <button type="button" aria-pressed="false" data-st="구현">구현 <span class="n">4</span></button>
+                <button type="button" aria-pressed="false" data-st="검증">검증 <span class="n">4</span></button>
+                <button type="button" aria-pressed="false" data-st="반영">반영 <span class="n">3</span></button>
+                <button type="button" aria-pressed="false" data-st="운영">운영 <span class="n">2</span></button>
+              </div>
+              <select aria-label="하네스" style="width:150px" id="hsel"><option value="">하네스 모두</option><option value="cc">Claude Code</option><option value="cx">Codex</option><option value="kr">Kiro</option></select>
+              <button class="btn sm" type="button" id="estOnly" aria-pressed="false">추정만</button>
+            </div>
+            <table class="tbl skt" data-co="3">
+              <thead><tr><th>이름</th><th>설명</th><th>하네스</th><th>출처</th><th>단계</th></tr></thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </section>
+        </div>
+
+        <div class="stack-y">
+        <aside class="panel" aria-labelledby="rec-title" data-co="4">
+          <div class="panel-head"><h2 id="rec-title">이 단계에서 쓸 내 스킬</h2></div>
+          <div class="rec" id="rec"></div>
+          <p class="panel-foot">킷 명령은 <span class="path">.agents/skill-map.json</span>에서 설치된 스킬을 찾아 쓰고, 없으면 킷 기본 템플릿을 쓴다. 지도는 팀이 MR로 고친다. 터미널: <span class="mono">npx harness-kit skills --stage 설계</span></p>
+        </aside>
+
+        <section class="panel" aria-labelledby="mx-title" data-co="5">
+          <div class="panel-head"><h2 id="mx-title">단계 × 하네스</h2><div class="aside">단계가 붙은 스킬 <span id="mxN"></span></div></div>
+          <table class="mx" id="mx">
+            <caption class="sr-only">단계별 · 하네스별로 쓸 수 있는 스킬 수</caption>
+          </table>
+          <p class="mx-note" id="mxNote"></p>
+        </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+<script>
+(function () {
+  var H = { cc: ["C", "#b4532a", "Claude Code"], cx: ["X", "#222b3a", "Codex"], kr: ["K", "#6b3fd4", "Kiro"], cu: ["U", "#3a3f4a", "Cursor"] };
+  var S = [
+    ["hx-intent", "요구사항을 Intent · 질문 · 스토리 · Unit으로 정리한다", ["cc", "cx", "kr"], "프로젝트", "설계", "map"],
+    ["service-planning-agent", "서비스 기획서 · IA · 화면 정의서 · 스토리보드를 쓴다", ["cc"], "사용자", "설계", "map"],
+    ["impeccable", "대시보드 · 앱 화면의 디자인 방향과 다듬기", ["cc", "cx"], "사용자", "설계", "map", 2],
+    ["pm-execution:create-prd", "PRD 초안과 범위 · 지표", ["cc"], "플러그인", "설계", "map"],
+    ["ui-ux-pro-max", "UI 스타일 · 색 · 글꼴 조합 추천", ["cc"], "사용자", "설계", "est"],
+    ["hx-implement", "tasks의 Bolt를 하나씩 구현하고 changed 검증한다", ["cc", "cx", "kr"], "프로젝트", "구현", "map"],
+    ["superpowers:test-driven-development", "테스트를 먼저 쓰고 구현한다", ["cc"], "플러그인", "구현", "map"],
+    ["mattpocock-skills:tdd", "작은 단계로 시험 먼저 쓰고 구현", ["cc"], "플러그인", "구현", "map"],
+    ["feature-dev:feature-dev", "기존 코드를 파악한 뒤 기능을 구현", ["cc"], "플러그인", "구현", "est"],
+    ["hx-review", "MR diff를 SDD 문서 · 규칙 기준으로 리뷰한다", ["cx", "cc"], "프로젝트", "검증", "map"],
+    ["security-review", "바뀐 코드의 보안 취약점을 본다", ["cc"], "사용자", "검증", "map"],
+    ["code-review:code-review", "PR 단위 코드 리뷰", ["cc"], "플러그인", "검증", "map"],
+    ["gstack-review", "병합 전 diff 점검", ["cc"], "사용자", "검증", "est"],
+    ["hx-docs", "병합 뒤 기능 문서와 운영 기록을 갱신한다", ["kr", "cc"], "프로젝트", "반영", "map"],
+    ["claude-md-management:revise-claude-md", "세션에서 배운 것을 CLAUDE.md에 반영", ["cc"], "플러그인", "반영", "map"],
+    ["gstack-document-release", "릴리스 뒤 문서 정리", ["cc"], "사용자", "반영", "est"],
+    ["gstack-canary", "배포 뒤 오류 · 성능 감시", ["cc"], "사용자", "운영", "map"],
+    ["gstack-retro", "주간 회고와 지표 정리", ["cc"], "사용자", "운영", "est"]
+  ];
+  var REC = {
+    "설계": [["/hx-intent", [["pm-execution:create-prd", 1], ["pm-execution:user-stories", 1]]], ["/hx-screen-plan", [["service-planning-agent", 1], ["ui-ux-pro-max", 1, "추정"]]], ["/hx-design-plan", [["impeccable", 1], ["design-taste-frontend", 1, "추정"]]], ["/hx-backlog", [["없음 · 킷 기본 템플릿", 0]]]],
+    "구현": [["/hx-implement", [["superpowers:test-driven-development", 1], ["mattpocock-skills:tdd", 1], ["feature-dev:feature-dev", 1, "추정"]]]],
+    "검증": [["/hx-review", [["security-review", 1], ["code-review:code-review", 1]]], ["/hx-scan", [["없음 · 킷 스캐너 묶음", 0]]]],
+    "반영": [["/hx-docs", [["gstack-document-release", 1], ["claude-md-management:revise-claude-md", 1, "추정"]]]],
+    "운영": [["운영 기록", [["gstack-canary", 1], ["gstack-retro", 1, "추정"]]]]
+  };
+  var CLS = { "설계": "design", "구현": "build", "검증": "build", "반영": "ops", "운영": "ops" };
+  var stage = "설계", hs = "", est = false;
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function render() {
+    var list = S.filter(function (r) { return (!stage || r[4] === stage) && (!hs || r[2].indexOf(hs) >= 0) && (!est || r[5] === "est"); });
+    document.getElementById("rows").innerHTML = list.map(function (r) {
+      var h = r[2].map(function (k) { return '<b style="background:' + H[k][1] + '" title="' + H[k][2] + '">' + H[k][0] + "</b>"; }).join("");
+      var st = '<span class="tag ' + CLS[r[4]] + '">' + r[4] + "</span> " + (r[5] === "est" ? '<span class="est" title="설명의 낱말로 추정했다">추정</span>' : '<span class="mapped">지도</span>');
+      return "<tr><td><span class=\"nm\">" + esc(r[0]) + "</span>" + (r[6] ? '<br><span class="tag line">이름 겹침 ' + r[6] + "</span>" : "") + '</td><td class="d">' + esc(r[1]) + '</td><td><span class="hs">' + h + '</span></td><td class="xs soft">' + r[3] + "</td><td class=\"nowrap\">" + st + "</td></tr>";
+    }).join("") || '<tr><td colspan="5"><div class="empty"><h3>이 조건에 맞는 스킬이 없다</h3><p>다른 단계를 고르거나 하네스 거르기를 푼다. 킷 명령은 기본 템플릿을 쓴다.</p></div></td></tr>';
+    document.getElementById("shown").textContent = list.length + "개 표시 · 전체 1,034";
+    var rec = REC[stage] || [];
+    document.getElementById("rec").innerHTML = (stage ? "" : '<p class="small soft">단계를 고르면 그 단계의 킷 명령과 쓸 스킬을 보여 준다.</p>') + rec.map(function (c) {
+      return '<div class="cmd"><h3><span class="mono">' + c[0] + '</span></h3><ul>' + c[1].map(function (s) {
+        return "<li" + (s[1] ? "" : ' class="miss"') + '><svg class="i"><use href="#i-' + (s[1] ? "ok" : "help") + '"/></svg><span class="mono">' + esc(s[0]) + "</span>" + (s[2] ? '<span class="tag build">' + s[2] + "</span>" : "") + "</li>";
+      }).join("") + "</ul></div>";
+    }).join("");
+  }
+  /* 5 단계 × 하네스: S(단계가 붙은 스킬)에서 센다. 한 스킬이 여러 하네스에서 되면 칸마다 센다 */
+  var STAGES = ["설계", "구현", "검증", "반영", "운영"], HS = ["cc", "cx", "kr"];
+  function matrix() {
+    var cnt = {}, names = {}, max = 0;
+    STAGES.forEach(function (st) { HS.forEach(function (h) { cnt[st + h] = 0; names[st + h] = []; }); });
+    S.forEach(function (r) { r[2].forEach(function (h) { if (cnt[r[4] + h] !== undefined) { cnt[r[4] + h]++; names[r[4] + h].push(r[0]); } }); });
+    Object.keys(cnt).forEach(function (k) { if (cnt[k] > max) max = cnt[k]; });
+    var t = document.getElementById("mx");
+    var cap = t.querySelector("caption");
+    t.textContent = ""; t.appendChild(cap);
+    var head = "<thead><tr><th scope=\"col\">단계</th>" + HS.map(function (h) {
+      return '<th scope="col"><span class="harness"><b class="' + h + '">' + H[h][0] + "</b>" + H[h][2] + "</span></th>";
+    }).join("") + '<th scope="col" class="r">스킬</th></tr></thead><tbody>';
+    var body = STAGES.map(function (st) {
+      var n = S.filter(function (r) { return r[4] === st; }).length;
+      return '<tr><th scope="row"><button type="button" class="st-b" data-st="' + st + '" aria-pressed="' + (stage === st) + '" title="' + st + ' 단계로 거르기"><span class="tag ' + CLS[st] + '">' + st + "</span></button></th>" +
+        HS.map(function (h) {
+          var v = cnt[st + h];
+          return '<td><span class="mxc' + (v ? "" : " zero") + '" tabindex="0" data-k="' + st + h + '" aria-label="' + st + " · " + H[h][2] + " " + v + '개"><i style="width:' + (v ? Math.round(v / max * 44) : 0) + 'px"></i><b>' + v + "</b></span></td>";
+        }).join("") + '<td class="r"><b>' + n + "</b></td></tr>";
+    }).join("");
+    t.insertAdjacentHTML("beforeend", head + body + "</tbody>");
+    document.getElementById("mxN").textContent = S.length + " · 전체 1,034";
+    var gaps = [];
+    STAGES.forEach(function (st) { HS.forEach(function (h) { if (!cnt[st + h]) gaps.push(st + "·" + H[h][2]); }); });
+    var note = document.getElementById("mxNote");
+    note.textContent = "";
+    var b = document.createElement("b"); b.textContent = "빈 칸 " + gaps.length + "곳"; note.appendChild(b);
+    note.appendChild(document.createTextNode(" · Kiro는 검증 · 운영, Codex는 반영 · 운영에 쓸 스킬이 없다. 그 단계는 킷 기본 템플릿을 쓴다. 단계를 누르면 아래 표를 거른다."));
+    t.querySelectorAll(".mxc").forEach(function (c) {
+      var k = c.getAttribute("data-k");
+      window.HXViz.bind(c, function () {
+        var st = k.slice(0, 2), h = k.slice(2);
+        var rows = [{ v: cnt[k] + "개", n: st + " · " + H[h][2] }];
+        names[k].forEach(function (nm, i) { rows.push({ v: "", n: nm, sub: i === 0 }); });
+        return [st + " 단계 · " + H[h][2], rows];
+      });
+    });
+    t.querySelectorAll(".st-b").forEach(function (b2) {
+      b2.addEventListener("click", function () {
+        var target = document.querySelector('#stageSeg button[data-st="' + b2.getAttribute("data-st") + '"]');
+        if (target) target.click();
+      });
+    });
+  }
+
+  document.addEventListener("hx:ready", function () {
+    render();
+    matrix();
+    document.getElementById("stageSeg").addEventListener("segchange", function (e) { stage = e.detail.getAttribute("data-st"); render(); matrix(); });
+    document.getElementById("hsel").addEventListener("change", function (e) { hs = e.target.value; render(); });
+    var b = document.getElementById("estOnly");
+    b.addEventListener("click", function () { est = !est; b.setAttribute("aria-pressed", String(est)); render(); });
+  });
+})();
+</script>
+</body>
+</html>

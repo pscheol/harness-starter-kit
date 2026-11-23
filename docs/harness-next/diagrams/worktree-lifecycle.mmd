@@ -1,0 +1,27 @@
+%%{init: {"theme": "base", "fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "themeVariables": {"fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "fontSize": "16px", "primaryColor": "#ffffff", "primaryBorderColor": "#14213d", "primaryTextColor": "#14213d", "lineColor": "#46536b", "clusterBkg": "#f5f7fa", "clusterBorder": "#aeb9c7", "edgeLabelBackground": "#f5f7fa"}, "flowchart": {"curve": "basis", "padding": 18, "nodeSpacing": 36, "rankSpacing": 56}}}%%
+graph TB
+  subgraph G1["1 시작"]
+    direction LR
+    A{"동시에 쓰는 세션이 둘째<br/>구현은 design 승인 뒤"} --> B["wt new 이슈키<br/>리포 옆 .worktrees/ 에 생성"]
+  end
+  subgraph G2["2 작업: worktree 안"]
+    direction LR
+    C["세션 작업<br/>세션 하나 = worktree 하나"] --> V["verify.sh<br/>changed → full"]
+    V -- "실패" --> C
+    V -- "통과" --> E["커밋 · push<br/>체크포인트 기록(선택)"]
+    E --> F{"MR 리뷰<br/>사용자 검수"}
+    F -- "수정 요청" --> C
+  end
+  subgraph G3["3 끝"]
+    direction LR
+    M["병합 → base"] --> H["wt done<br/>clean · push 확인 후 삭제"]
+    H -. "세션이 못 지운 것" .-> X["wt gc<br/>목록 출력 · --apply 로 정리"]
+  end
+  G1 --> G2
+  G2 -- "승인" --> G3
+  classDef gate fill:#fbe6e9,stroke:#c8102e,stroke-width:2px,color:#c8102e
+  classDef plain fill:#ffffff,stroke:#14213d,stroke-width:2px,color:#14213d
+  classDef native fill:#ddf2eb,stroke:#0b7a5e,stroke-width:2px,color:#14213d
+  class A,F gate
+  class C,V,E,M plain
+  class B,H,X native

@@ -1,6 +1,6 @@
 # 문서 기준 — {{PROJECT_NAME}}
 
-이 하네스의 사람용·에이전트용 문서가 지켜야 할 형식이다. 근거는 OpenAI harness engineering · AGENTS.md 표준 · Claude Code 메모리 문서 · GitHub spec-kit · Kiro · matklad ARCHITECTURE.md 다.
+이 하네스의 사람용·에이전트용 문서가 지켜야 할 형식이다. 근거는 OpenAI harness engineering · AGENTS.md 표준 · Claude Code 메모리 문서 · Kiro · matklad ARCHITECTURE.md 다.
 하네스 검사기(`scripts/check_harness.py`)가 이 기준 가운데 기계로 볼 수 있는 것을 검사한다(§8). 하네스 전체 구조는 [하네스 설명서](harness-engineering.md), SDD 는 [SDD 설명서](sdd-pattern.md).
 
 ## 1. 원칙

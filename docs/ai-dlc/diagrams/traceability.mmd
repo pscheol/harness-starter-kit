@@ -1,0 +1,23 @@
+%%{init: {"theme": "base", "fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "themeVariables": {"fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "fontSize": "16px", "primaryColor": "#ffffff", "primaryBorderColor": "#14213d", "primaryTextColor": "#14213d", "lineColor": "#46536b", "clusterBkg": "#f5f7fa", "clusterBorder": "#aeb9c7", "edgeLabelBackground": "#f5f7fa", "actorBkg": "#ffffff", "actorBorder": "#14213d", "actorTextColor": "#14213d", "actorLineColor": "#aeb9c7", "signalColor": "#46536b", "signalTextColor": "#14213d", "noteBkgColor": "#ffffff", "noteBorderColor": "#aeb9c7", "noteTextColor": "#14213d", "sequenceNumberColor": "#ffffff"}, "flowchart": {"curve": "basis", "padding": 18, "nodeSpacing": 36, "rankSpacing": 46}}}%%
+graph LR
+  subgraph W["왜 · 무엇을"]
+    direction TB
+    A["INT-1<br/>회의실 예약 셀프서비스"] --> B["SC-2<br/>이중 예약 0건"] --> C["US-1<br/>빈 회의실을 골라 예약"] --> D["R1.3<br/>겹치면 409와 겹친 시간"]
+  end
+  subgraph H["어떻게 · 확인"]
+    direction TB
+    E["U-2<br/>예약 Unit"] --> F["ADR-002<br/>DB 배타 제약"] --> G["T014<br/>동시성 통합 테스트"] --> X["concurrent_requests_<br/>only_one_succeeds"]
+  end
+  D --> E
+
+  classDef inception fill:#e7eafb,stroke:#3046c5,stroke-width:2px,color:#14213d
+  classDef construction fill:#fbf1dc,stroke:#c98a12,stroke-width:2px,color:#14213d
+  classDef operations fill:#ddf2eb,stroke:#0b7a5e,stroke-width:2px,color:#14213d
+  classDef gate fill:#fbe6e9,stroke:#c8102e,stroke-width:2px,color:#c8102e
+  classDef plain fill:#ffffff,stroke:#14213d,stroke-width:2px,color:#14213d
+  classDef external fill:#ffffff,stroke:#6b778c,stroke-width:1.5px,stroke-dasharray:5 4,color:#46536b
+  classDef store fill:#f5f7fa,stroke:#6b778c,stroke-width:1.5px,color:#46536b
+  class A plain
+  class B,C,D inception
+  class E,F construction
+  class G,X operations

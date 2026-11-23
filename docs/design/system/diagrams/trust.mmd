@@ -1,0 +1,46 @@
+%%{init: {"theme": "base", "fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "themeVariables": {"fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "fontSize": "16px", "primaryColor": "#ffffff", "primaryBorderColor": "#14213d", "primaryTextColor": "#14213d", "lineColor": "#46536b", "clusterBkg": "#f5f7fa", "clusterBorder": "#aeb9c7", "edgeLabelBackground": "#f5f7fa"}, "flowchart": {"curve": "basis", "padding": 16, "nodeSpacing": 34, "rankSpacing": 56}}}%%
+graph LR
+  subgraph HUM["사람만"]
+    HT["사람 터미널<br/>TTY · PIN 출력"]
+    BR["브라우저<br/>토큰 #t → localStorage"]
+  end
+  subgraph AGT["에이전트 세션: 신뢰하지 않음"]
+    AS["Claude · Codex · Kiro 세션"]
+    HOOK["PreToolUse 훅 · permissions.deny"]
+  end
+  subgraph LOC["이 컴퓨터 127.0.0.1"]
+    SV["관리 페이지 서버<br/>Host · Origin · Bearer · PIN"]
+  end
+  subgraph EXT["외부 사람 기록"]
+    JIRA["Jira 사람 전이<br/>changelog 기록 ID"]
+    AID["AI-DLC 사람 입력 확인 훅<br/>승인자 기록이 있을 때"]
+  end
+  subgraph REPO["리포"]
+    APV["approvals.md<br/>덧붙이기만"]
+    GH["git 훅<br/>pre-commit · pre-push"]
+  end
+  CI["CI<br/>base판 verify.sh"]
+  HT -. "PIN" .-> BR
+  BR -- "토큰 + PIN" --> SV
+  HT -- "approve: TTY · 에이전트 판정 거짓" --> APV
+  SV -- "approvers 확인 · 덧붙임" --> APV
+  JIRA -- "sync jira --approvals" --> APV
+  AID -- "sync aidlc · source aidlc" --> APV
+  AS -- "도구 호출" --> HOOK
+  HOOK -- "쓰기 · approve · --full 차단" --x APV
+  HOOK -- "토큰 파일 · 승인 API 차단" --x SV
+  AS -. "안에서 띄우면 읽기 전용" .-> SV
+  APV -- "기존 줄 변경 거부" --> GH
+  GH -- "push · MR" --> CI
+  classDef gate fill:#fbe6e9,stroke:#c8102e,stroke-width:2px,color:#c8102e
+  classDef design fill:#e7eafb,stroke:#3046c5,stroke-width:2px,color:#14213d
+  classDef build fill:#fbf1dc,stroke:#c98a12,stroke-width:2px,color:#14213d
+  classDef ops fill:#ddf2eb,stroke:#0b7a5e,stroke-width:2px,color:#14213d
+  classDef plain fill:#ffffff,stroke:#14213d,stroke-width:2px,color:#14213d
+  classDef store fill:#f5f7fa,stroke:#6b778c,stroke-width:1.5px,color:#46536b
+  class HT,BR gate
+  class AS plain
+  class HOOK,GH build
+  class SV,CI ops
+  class APV design
+  class JIRA,AID store
