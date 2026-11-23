@@ -3,7 +3,7 @@ key: HK-2
 area: verify
 type: feat
 title: 에이전트 세션의 전체 검증(full)을 훅으로 막는다
-state: active
+state: completed
 created: 2026-11-23
 ---
 
@@ -15,7 +15,7 @@ created: 2026-11-23
 | T2 | `block_full_verify.py` · `block-full-verify.sh` | R2.1 · R2.3 · R2.4 · R2.7 | done |
 | T3 | `verify-entry.sh` 보조 점검 | R2.6 | done |
 | T4 | 하네스 네 곳 등록 | R2.5 | done |
-| T5 | 생성 · 설치본 시험 통과(GREEN), 전체 시험 | — | todo |
+| T5 | 생성 · 설치본 시험 통과(GREEN), 전체 시험 | — | done |
 
 ## 검증 기록
 
@@ -25,3 +25,4 @@ created: 2026-11-23
   - 안내 문구 검사, `--entry-check` 5가지 환경 조합.
   - 설치본 `CLAUDECODE=1 bash scripts/verify.sh --full` → exit 3(본문을 돌지 않음).
   - 하네스 네 곳 등록 확인.
+- T5 시험 전체: 커밋 `fb7e818`을 깨끗한 worktree(`/tmp/hk-verify-c3`)에서 돌려 19개 OK(255초). 설치본 안 하네스 스크립트 시험(`test_harness_scripts_suite_passes_in_install`)에 HK-2 시험 11개가 들어 있다.
