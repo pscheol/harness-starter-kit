@@ -63,6 +63,8 @@ class SddCase(unittest.TestCase):
         gitconfig.write_text(
             "[user]\n\tname = sdd test\n\temail = sdd@example.com\n"
             "[init]\n\tdefaultBranch = develop\n[protocol \"file\"]\n\tallow = always\n"
+            # git 2.54 는 fetch · push 뒤 maintenance 를 따로 띄운다. 그 프로세스가 임시 폴더 정리와 겹치면 정리가 실패한다.
+            "[maintenance]\n\tauto = false\n[gc]\n\tauto = 0\n"
         )
         inherited = {key: value for key, value in os.environ.items() if not key.startswith("GIT_")}
         self.env = {
