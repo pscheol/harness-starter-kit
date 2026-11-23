@@ -68,8 +68,8 @@
 
 | 스택군 | core | claude | codex | cursor | kiro | 전부 고를 때 |
 |---|---|---|---|---|---|---|
-| `jvm` · `python` · `go` | 198 | 19 | 8 | 11 | 53 | **289** |
-| `web` · `electron` (`frontend` 도메인 +4 core/+4 kiro) | 202 | 19 | 8 | 11 | 57 | **297** |
+| `jvm` · `python` · `go` | 220 | 20 | 8 | 12 | 55 | **315** |
+| `web` · `electron` (`frontend` 도메인 +4 core/+4 kiro) | 224 | 20 | 8 | 12 | 59 | **323** |
 
 - 설치 수 = core + 고른 에이전트의 합. 예(백엔드): claude 만 = 217, claude+kiro = 270, `all` = 289.
 - 설치 끝에 `tools/docs/feature_docs.py build`가 한 번 돌아 `docs/features/*.html`이 생긴다. 이 생성물은 lock 에 오르지 않는다.
@@ -127,9 +127,9 @@
 
 ## 공통 vs 스택별 (무엇이 어디에 있나)
 
-| 영역 | `templates/common/` (271개) | `templates/domains/frontend/` (8개 · web·electron 만) | `templates/stacks/<stack>/` (변형 무관 14개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
+| 영역 | `templates/common/` (296개) | `templates/domains/frontend/` (8개 · web·electron 만) | `templates/stacks/<stack>/` (변형 무관 14개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
 |---|---|---|---|---|
-| 진입점 | `README.md` | — | `AGENTS.md` · `CLAUDE.md` · `.gitignore` · `.github/workflows/verify.yml` | `root/ARCHITECTURE.md` |
+| 진입점 | `README.md` | — | `AGENTS.md` · `CLAUDE.md` · `.gitignore` · `.github/actions/harness-setup/action.yml` | `root/ARCHITECTURE.md` |
 | 규칙 | `agent-harness.md` · `sdd-workflow.md` · `product.md` · `writing-style.md` · `design-principles.md` · `reuse-before-new.md` · `verification-ladder.md` · `pr-review-policy.md` · `git-workflow.md` · `platform-invariants.md` · **`code-maintenance.md`** · **`session-collaboration.md`** | `design-system.md` · `accessibility.md` · `ui-state.md` · `frontend-performance.md` | `code-comments.md` · `api-standards.md` · `security.md` · `reliability.md` · `quality-score.md` · `guardrails.md` | `agents-rules/structure.md` · `agents-rules/tech.md` |
 | Kiro 포인터 | agent-harness · sdd-workflow · guardrails · security · api-standards · quality-score · reliability · product · writing-style · **design-principles** · reuse-before-new · verification-ladder · pr-review-policy | design-system · accessibility · ui-state · frontend-performance | `tech.md` · `code-comments.md` | `kiro-steering/structure.md` |
 | 스크립트 | `verify-entry.sh`(진입) · `verify-changed.py`(changed 계획) · `check_harness.py` · `new-feature.sh`·`sdd-layout.py`(이슈 SDD) · `check-sdd-prerequisites.sh` · `check-exec-plan-status.sh` · `check-spec-freshness.sh` · `board.sh` · `session-coordination.py` · `check-maintenance.py` · `hooks/` · `git-hooks/` · `guards/` · `harness/`(파이썬 모듈) | — | `verify.sh` (스택 검증 게이트 — 진입 블록이 changed·fast·full 을 가르고 하네스 검사·문서 검사를 부른다) | — |
@@ -173,7 +173,7 @@
 | `AGENTS.md` | 에이전트 진입 목차(map) | ✅ | 인간(1회) |
 | `CLAUDE.md` | AGENTS.md로 위임하는 얇은 리다이렉트 + 스택 한 줄 | ✅ | 인간(1회) |
 | `ARCHITECTURE.md` | **변형별** 아키텍처 원본(레이아웃·의존 방향·기계적 강제 수단·선택 기준·승격 신호·전환 절차·Anti-pattern) | ✅ 변형별 | 인간(1회+갱신) |
-| `.github/workflows/verify.yml` | CI 트리거(얇음) — `scripts/verify.sh` 한 곳만 호출(런타임 셋업만 스택별) | ✅ | 인간 |
+| `.github/workflows/harness-verify.yml` · `.gitlab-ci.yml` · `ci/` | CI 템플릿(GitHub Actions · GitLab CI · GoCD) — 검증 단계는 `scripts/verify.sh` 한 곳만 부른다. 스택별 런타임 셋업은 `.github/actions/harness-setup/action.yml` | ✅ | 인간 |
 | `README.md` | 사람이 읽는 리포 안내 — 하네스·SDLC 단계·검증 명령·기능 문서 위치 | — | 인간(1회+갱신) |
 | `.gitignore` | 프로젝트 위생(스택별 빌드 결과물·캐시) | ✅ | 인간 |
 | `.agents/rules/agent-harness.md` | **하네스 규약 원본**(기준 문서·완료 게이트·강제 레이어·1곳+N트리거) | — | 인간 |
