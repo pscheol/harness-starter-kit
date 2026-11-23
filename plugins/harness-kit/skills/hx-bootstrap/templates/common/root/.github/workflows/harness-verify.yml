@@ -23,6 +23,7 @@ concurrency:
 permissions:
   contents: read
   security-events: write
+  pull-requests: write   # affected 끝에서 verify.sh 가 MR 요약 코멘트 scan 구간 하나를 고친다(설계 09 §3.7 "보고")
 
 jobs:
   verify:
@@ -43,6 +44,7 @@ jobs:
         if: github.event_name == 'pull_request'
         env:
           HX_BASE_REF: origin/${{ github.base_ref }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p .agents/state
           git show "$HX_BASE_REF:scripts/verify.sh" > .agents/state/verify-base.sh || true

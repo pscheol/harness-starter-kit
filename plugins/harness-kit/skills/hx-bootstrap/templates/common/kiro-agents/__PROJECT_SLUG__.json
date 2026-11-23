@@ -47,6 +47,16 @@
         "matcher": "shell",
         "command": "bash -c 'r=\"$PWD\"; while [ \"$r\" != / ] && [ ! -f \"$r/.agents/harness.json\" ]; do r=\"$(dirname \"$r\")\"; done; h=\"$r/scripts/hooks/$1\"; [ -f \"$h\" ] || exit 0; exec bash \"$h\"' _ block-full-verify.sh",
         "timeout_ms": 15000
+      },
+      {
+        "matcher": "write",
+        "command": "bash -c 'r=\"$PWD\"; while [ \"$r\" != / ] && [ ! -f \"$r/.agents/harness.json\" ]; do r=\"$(dirname \"$r\")\"; done; h=\"$r/scripts/hooks/$1\"; [ -f \"$h\" ] || exit 0; exec bash \"$h\"' _ protect-approvals.sh",
+        "timeout_ms": 15000
+      },
+      {
+        "matcher": "shell",
+        "command": "bash -c 'r=\"$PWD\"; while [ \"$r\" != / ] && [ ! -f \"$r/.agents/harness.json\" ]; do r=\"$(dirname \"$r\")\"; done; h=\"$r/scripts/hooks/$1\"; [ -f \"$h\" ] || exit 0; exec bash \"$h\"' _ protect-approvals.sh",
+        "timeout_ms": 15000
       }
     ],
     "stop": [

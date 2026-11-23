@@ -9,7 +9,6 @@ import os
 import re
 import select
 import shlex
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -17,9 +16,9 @@ import time
 from pathlib import Path
 
 from review_fixture import without_agent_markers
-from sdd_fixture import SddCase, frontmatter_text
+from sdd_fixture import SddCase
 
-FOLDER = "DEMO-1-upload"
+FOLDER = "DEMO-1-upload-cleanup"
 ULIDS = ("01JDQ4ZK6B7Y0M9W2S3T4V5X6Y", "01JDS1A2B3C4D5E6F7G8H9JKMN", "01JDT0PQRSTVWXYZ0123456789", "01JDV9ZYXWVTSRQPNMKJHGFEDC")
 FAKE_GATE = "#!/usr/bin/env bash\necho fake gate\nexit 0\n"
 
@@ -126,8 +125,9 @@ class ApproveCommandTest(ApprovalCase):
         self.assertFalse(self.approvals.exists())
 
     def test_parent_process_named_claude_is_refused(self):
-        child = f"import subprocess, sys; sys.exit(subprocess.call([sys.executable, {str(self.scripts / 'harness/approve.py')!r}, 'DEMO-1', 'requirements', '--phrase', 'x']))"
-        command = f"exec -a claude {shlex.quote(sys.executable)} -c {shlex.quote(child)}"
+        # argv[0] 이 claude 인 bash 가 approve.py 를 자식으로 띄운다(뒤 명령이 있어 bash 가 exec 로 바꾸지 않는다).
+        inner = f"{shlex.quote(sys.executable)} {shlex.quote(str(self.scripts / 'harness/approve.py'))} DEMO-1 requirements --phrase x; exit $?"
+        command = f"exec -a claude bash -c {shlex.quote(inner)}"
         code, output = run_in_terminal(["bash", "-c", command], "DEMO-1", self.env, str(self.root))
         self.assertEqual(code, 3, output)
         self.assertIn("에이전트 세션", output)
@@ -313,12 +313,12 @@ class FastCheckTest(ApprovalCase):
         self.assert_fails(self.check(), "done")
 
     def test_legacy_and_already_completed_tasks_pass(self):
-        legacy = self.write_new_issue("DEMO-2-old", tasks="active")
+        legacy = self.write_new_issue("DEMO-2-old-tasks", design="approved", tasks="active")
         text = (legacy / "tasks.md").read_text().replace("state: active", "state: completed\nlegacy: .agents/docs/demo-specs/tasks/completed/2.md")
         (legacy / "tasks.md").write_text(text)
         self.assert_ok(self.check())
         self.git("checkout", "-q", "develop")
-        done = self.write_new_issue("DEMO-3-done", tasks="completed")
+        done = self.write_new_issue("DEMO-3-done-tasks", design="approved", tasks="completed")
         self.commit("done before HK-23")
         self.git("update-ref", "refs/remotes/origin/develop", "HEAD")
         self.git("checkout", "-q", "-b", "feat/DEMO-3-more")

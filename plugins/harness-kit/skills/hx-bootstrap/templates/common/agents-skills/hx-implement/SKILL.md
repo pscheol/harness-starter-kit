@@ -11,7 +11,8 @@ SDD 워크플로 원본 `.agents/rules/sdd-workflow.md` 의 `/hx-implement` 절�
 핵심:
 1. TASKS 출력으로 해석한 문서를 Phase 순서로 실행한다. `[P]`는 독립 파일만 병렬, 같은 파일은 순차다. 신규 기능·버그는 TDD, 동작 보존 리팩터링은 보존 테스트로 시작한다.
 2. 완료 작업 `- [X]` 체크. 변경마다 `scripts/verify.sh --files <변경 파일> --tests <관련 테스트>`로 검증한다.
-3. **완료 게이트(사용자 승인 필수)**: DoD·verify 충족 → `tasks.md` 머리의 `state`를 `check`로 바꾸고 근거 기록·사용자 검증 요청 → 승인 후에만 `state: completed`. 파일은 옮기지 않는다. 임의 completed 전환 금지.
+3. **완료 게이트(사용자 승인 필수)**: DoD·verify 충족 → `tasks.md` 머리의 `state`를 `check`로 바꾸고 근거 기록·사용자 검증 요청 → 사람이 `python3 scripts/harness/approve.py <키> done` 으로 남긴 `done` 승인 기록이 있을 때만 `state: completed`(없으면 훅 · fast 가 막는다). 채팅에서 한 말은 승인이 아니다(`.agents/rules/approval-vocabulary.md`). 파일은 옮기지 않는다.
+4. **리뷰 처리**: `/hx-review` 보고서(메인 폴더 `.agents/reports/review/<키>.md` 또는 MR 요약 코멘트)의 지적마다 이슈 폴더 `review.md` 표 `| ID | 심각도 | 지문 | 처리 | 커밋 | 사유 |` 에 `수용`(고친 커밋) 또는 `거절 제안`(사유)을 쓰고 커밋한다. 열린 CRITICAL·HIGH 는 `python3 scripts/harness/review_state.py <이슈 폴더>` 로 본다. 고친 뒤 다시 돈 리뷰가 그 지문을 보고하지 않거나, 사람이 `review/F-n · risk-accepted` 를 남겨야 닫힌다.
 
 입력(범위, 선택): 이 명령 뒤에 이어서 적은 내용
 

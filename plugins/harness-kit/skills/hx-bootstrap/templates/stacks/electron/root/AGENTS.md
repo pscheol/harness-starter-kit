@@ -78,7 +78,7 @@ Claude Code · Codex · Kiro가 함께 작업한다. 규칙은 `.agents/rules/`,
 - 복잡 작업은 exec-plan에 계획을 남기고, 변경은 `bash scripts/verify.sh`(포맷·lint·타입·경계 가드·테스트·빌드)로 검증한다.
 - 검증 레벨: Stop hook은 `fast`(구조 점검 + 포맷, 수 초)로 돈다. MR 전에는 `bash scripts/verify.sh --affected`, lint·typecheck·가드·test·build까지 도는 `full`은 CI가 돈다 — **hook 통과는 full 통과가 아니다**(`.agents/rules/agent-harness.md` 참조).
 - **IPC 채널을 추가하면** 채널 목록·계약 문서·preload 화이트리스트·main 핸들러 스키마를 같은 변경에 함께 넣는다.
-- **exec-plan 완료 게이트**: DoD/검증 충족 시 tasks.md를 `state: check`로 바꾸고 사용자 검증 후에만 `completed`로 바꾼다(임의 변경 금지).
+- **exec-plan 완료 게이트**: DoD/검증 충족 시 tasks.md를 `state: check`로 바꾸고 `done` 승인 뒤에만 `completed`로 바꾼다(임의 변경 금지).
 - 기술 부채는 `.agents/docs/tech-debt-tracker.md`에 등록한다.
 
 ## 규칙 변경 절차 (드리프트 방지)

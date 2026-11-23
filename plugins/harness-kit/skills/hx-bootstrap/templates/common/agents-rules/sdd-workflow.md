@@ -78,7 +78,7 @@ SDD 이슈는 아래 여덟 단계를 지난다. 단계마다 산출물이 있�
 3. `SC-001`부터 측정 가능한 성공 기준을 적는다. 구현 기술을 성공 기준으로 쓰지 않는다.
 4. 미확정 질문은 최대 3개다. 범위·보안/프라이버시·UX·기술 순으로 해결한다.
 5. 정책 표(`| ID | 규칙 | 강제 위치 |`, ID `P-#`)와 화면 표(화면 ID·경로·상태·목업)를 쓴다. 갱신할 기능 문서 ID 를 머리 표에 적는다.
-6. 모호성·측정성·독립 검증·누락을 보완하고 `status: in-review`로 둔다. 승인 뒤 `approved`로 바꾼다.
+6. 모호성·측정성·독립 검증·누락을 보완하고 `status: in-review`로 둔다. `approved`는 사람이 `python3 scripts/harness/approve.py <키> requirements` 로 승인하면 그 명령이 바꾼다(채팅의 말은 승인이 아니다, `approval-vocabulary.md`).
 
 ## /hx-clarify — 모호성
 
@@ -102,7 +102,7 @@ SDD 이슈는 아래 여덟 단계를 지난다. 단계마다 산출물이 있�
    외부 연동과 sequence/flow를 기록한다. OpenAPI 원본 소유 단위를 명시한다.
 5. 테스트 전략은 변경 단위·관련 통합/계약·필요 E2E·사람 확인을 구분한다. affected 결과와 CI full 링크를 적는다.
 6. 요구 추적·마이그레이션·quickstart·대안 비용을 적는다. 미확정 고영향 항목은 clarify로 되돌린다.
-7. Constitution Check 뒤 `status: in-review`, 사용자 승인 뒤 `approved`로 둔다.
+7. Constitution Check 뒤 `status: in-review`로 둔다. `approved`는 사람이 `approve.py <키> design` 으로 승인하면 바뀐다.
 
 ## /hx-tasks — 작업
 
@@ -140,7 +140,7 @@ Polish 에 문서 반영(`/hx-docs`) 작업과 기능 문서 검사 명령을 �
 ## 완료 상태
 
 tasks 상태는 `tasks.md` 머리의 `state` 값이다: `active` → `check` → `completed`. 파일을 옮기지 않는다.
-DoD 뒤 `check`로 두고 사용자 검수를 받는다. 명시 승인 뒤에만 `completed`로 바꾼다.
+DoD 뒤 `check`로 두고 사용자 검수를 받는다. 사람이 남긴 `done` 승인 기록(`approve.py <키> done`) 뒤에만 `completed`로 바꾼다.
 기능 문서 생성기가 있는 리포는 S7 검사가 통과한 뒤에 `check` 로 바꾼다.
 대체 계획은 `superseded`로 두고 후속 이슈와 이유를 적는다.
 `bash scripts/board.sh --check`와 상태 검사는 읽기 전용이다. 보드 갱신은 `bash scripts/board.sh`, 한 영역은 `--area <영역>`.

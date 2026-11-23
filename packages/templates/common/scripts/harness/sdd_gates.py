@@ -1,0 +1,241 @@
+#!/usr/bin/env python3
+"""이슈 게이트 조건(설계 09 §3.8 표의 requirements · design · tasks · mr · done). 판정 원본이고 approve.py · 훅 · fast 가 부른다.
+
+    python3 scripts/harness/sdd_gates.py check <이슈키> [--json]     게이트마다 통과 · 안 된 이유
+
+codebase · intent · plans · deploy 게이트와 위험 프로필(승인자 2명)은 이 판에 없다. 머리에 `legacy` 가 있는 문서(옮긴 옛 이슈)는
+기록 없이 머리 값으로 통과한다. 승인 sha 는 approvals.approval_sha(머리 status · state 줄을 뺀 sha256)다.
+"""
+
+import argparse
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+sys.dont_write_bytecode = True
+if __package__ in (None, ""):
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from harness import approvals  # noqa: E402
+from harness.sdd_frontmatter import parse as parse_frontmatter  # noqa: E402
+from harness.sdd_keys import split_folder  # noqa: E402
+
+ISSUE_GATES = ("requirements", "design", "tasks", "mr", "done")
+DOC_FILES = {"requirements": "requirements.md", "design": "design.md", "tasks": "tasks.md"}
+CLARIFY = "[NEEDS CLARIFICATION"
+VERIFY_RECORD = ".agents/state/verify-last.json"
+GATE_RESULT = ".agents/reports/quality-gate-last.json"
+
+
+def read_json(path):
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def git(root, *arguments):
+    try:
+        result = subprocess.run(["git", "-C", str(root), *arguments], capture_output=True, text=True, timeout=20, check=False)
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    return result.stdout if result.returncode == 0 else None
+
+
+def harness_root(start):
+    """README §10: 위로 올라가며 .agents/harness-kit.json · .agents/harness.json 이 있는 가장 가까운 폴더."""
+    current = Path(start).resolve()
+    for folder in (current, *current.parents):
+        if (folder / ".agents/harness-kit.json").is_file() or (folder / ".agents/harness.json").is_file():
+            return folder
+    return None
+
+
+class Issue:
+    """이슈 폴더 하나와 그 승인 기록 · 설정."""
+
+    def __init__(self, root, folder):
+        self.root = Path(root)
+        self.folder = Path(folder)
+        self.key = (split_folder(self.folder.name) or (self.folder.name,))[0]
+        self.meta = read_json(self.root / ".agents/harness-kit.json")
+        self.policy = approvals.policy_of(self.meta)
+        self.entries = approvals.read_entries(self.folder / "approvals.md")
+        self.memo = {}
+
+    @property
+    def base(self):
+        git_section = self.meta.get("git") if isinstance(self.meta.get("git"), dict) else {}
+        return str(git_section.get("base") or "develop")
+
+    def doc(self, gate):
+        """(경로, 머리, 바이트). 없으면 머리 None."""
+        path = self.folder / DOC_FILES[gate]
+        try:
+            data = path.read_bytes()
+        except OSError:
+            return path, None, None
+        try:
+            fields = parse_frontmatter(data.decode("utf-8")) or {}
+        except ValueError:
+            fields = {}
+        return path, fields, data
+
+
+def doc_reasons(issue, gate, own):
+    """문서 게이트의 안 된 이유. own=False 면 그 게이트 자체의 기록 · 머리는 보지 않는다(앞 조건만)."""
+    _, fields, data = issue.doc(gate)
+    if fields is None:
+        return [f"{DOC_FILES[gate]} 가 없다"]
+    reasons = []
+    if CLARIFY in data.decode("utf-8", "replace"):
+        reasons.append(f"{DOC_FILES[gate]} 에 {CLARIFY} 가 남았다")
+    if not own:
+        return reasons
+    if fields.get("legacy"):
+        if gate != "tasks" and fields.get("status") != "approved":
+            reasons.append(f"{DOC_FILES[gate]} 머리 status 가 approved 가 아니다")
+        return reasons
+    if gate != "tasks" and fields.get("status") != "approved":
+        reasons.append(f"{DOC_FILES[gate]} 머리 status 가 approved 가 아니다({fields.get('status') or '없음'})")
+    sha = approvals.approval_sha(data)
+    state = approvals.approval_state(issue.entries, gate, sha, issue.policy)
+    if gate == "tasks" and state == "stale":
+        state = "valid"
+    if state != "valid":
+        reasons.append(f"{gate} 승인 기록이 {STATE_WORDS[state]}")
+    return reasons
+
+
+STATE_WORDS = {"none": "없다", "stale": "지금 내용과 다르다(stale)", "invalid": "승인자 목록 밖이다(invalid)"}
+
+
+def passed(issue, gate):
+    if gate not in issue.memo:
+        issue.memo[gate] = not (preconditions(issue, gate) + own_reasons(issue, gate))
+    return issue.memo[gate]
+
+
+def previous_gate(gate):
+    order = ISSUE_GATES[: ISSUE_GATES.index(gate)]
+    return order[-1] if order else None
+
+
+def head_sha(root):
+    value = git(root, "rev-parse", "HEAD")
+    return value.strip() if value else None
+
+
+def verify_reasons(issue):
+    record = read_json(issue.root / VERIFY_RECORD)
+    head = head_sha(issue.root)
+    record_head = record.get("head") if isinstance(record.get("head"), dict) else {}
+    if record.get("level") != "affected" or record.get("status") != "passed" or not head or record_head.get("sha") != head or record_head.get("dirty"):
+        return ["같은 HEAD · 깨끗한 트리의 affected 검증 통과 기록이 없다 — bash scripts/verify.sh --affected"]
+    gate = read_json(issue.root / GATE_RESULT)
+    if gate.get("head") and head.startswith(str(gate["head"])) and gate.get("status") == "failed":
+        return ["품질 게이트가 failed 다(.agents/reports/quality-gate-last.json)"]
+    return []
+
+
+def review_reasons(issue):
+    from harness import review_state
+
+    state = review_state.issue_state(issue.root, issue.folder)
+    if state is None:
+        return []
+    open_counts = state["open"]
+    blocking = [f"{severity} {open_counts[severity]}" for severity in ("CRITICAL", "HIGH") if open_counts.get(severity)]
+    return [f"열린 리뷰 지적 {' · '.join(blocking)}(review_state.py)"] if blocking else []
+
+
+def merged_reasons(issue):
+    prefix = (git(issue.root, "rev-parse", "--show-prefix") or "").strip()
+    relative = issue.folder.resolve().relative_to(issue.root.resolve()).as_posix()
+    for ref in (f"origin/{issue.base}", issue.base):
+        text = git(issue.root, "show", f"{ref}:{prefix}{relative}/approvals.md")
+        if text is None:
+            continue
+        entries = approvals.parse(text)["entries"]
+        if approvals.approval_state(entries, "mr", None, issue.policy) == "valid":
+            return []
+        return [f"{ref} 에 이 이슈의 mr 승인이 없다(병합 전)"]
+    return [f"base({issue.base}) 에 이 이슈가 병합되지 않았다"]
+
+
+def preconditions(issue, gate):
+    """그 게이트를 승인하기 전에 맞아야 하는 조건(자기 기록 제외)."""
+    reasons = []
+    before = previous_gate(gate)
+    if gate == "done":
+        state = approvals.approval_state(issue.entries, "mr", None, issue.policy)
+        if state != "valid":
+            reasons.append(f"mr 승인 기록이 {STATE_WORDS[state]}")
+        return reasons + merged_reasons(issue)
+    if before and not passed(issue, before):
+        first = (preconditions(issue, before) + own_reasons(issue, before))[:1]
+        reasons.append(f"{before} 게이트를 통과하지 않았다" + (f": {first[0]}" if first else ""))
+    if gate in DOC_FILES:
+        reasons += doc_reasons(issue, gate, own=False)
+    if gate == "mr":
+        reasons += verify_reasons(issue) + review_reasons(issue)
+    return reasons
+
+
+def own_reasons(issue, gate):
+    if gate in DOC_FILES:
+        return [reason for reason in doc_reasons(issue, gate, own=True) if CLARIFY not in reason]
+    state = approvals.approval_state(issue.entries, gate, None, issue.policy)
+    return [] if state == "valid" else [f"{gate} 승인 기록이 {STATE_WORDS[state]}"]
+
+
+def evaluate(issue, gate):
+    reasons = preconditions(issue, gate) + own_reasons(issue, gate)
+    sha = None
+    if gate in DOC_FILES:
+        data = issue.doc(gate)[2]
+        sha = approvals.approval_sha(data) if data is not None else None
+    state = approvals.approval_state(issue.entries, gate, sha if gate != "tasks" else None, issue.policy)
+    return {"gate": gate, "passed": not reasons, "reasons": reasons, "approval": state}
+
+
+def done_approved(root, folder):
+    """`done · approved` 기록이 유효한가(VQ-R13)."""
+    issue = Issue(root, folder)
+    return approvals.approval_state(issue.entries, "done", None, issue.policy) == "valid"
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description="이슈 게이트 조건")
+    commands = parser.add_subparsers(dest="command", required=True)
+    check = commands.add_parser("check")
+    check.add_argument("key")
+    check.add_argument("--json", action="store_true")
+    check.add_argument("--root")
+    options = parser.parse_args(argv)
+    from harness.sdd_issues import find_issue
+
+    root = harness_root(options.root or Path.cwd())
+    if root is None:
+        print("✖ 하네스 루트(.agents/harness-kit.json)를 찾지 못했다", file=sys.stderr)
+        return 2
+    try:
+        folder = find_issue(root, options.key)
+    except ValueError as error:
+        print(f"✖ {error}", file=sys.stderr)
+        return 2
+    issue = Issue(root, folder)
+    results = [evaluate(issue, gate) for gate in ISSUE_GATES]
+    if options.json:
+        print(json.dumps({"key": options.key, "folder": folder.relative_to(root).as_posix(), "gates": results}, ensure_ascii=False, indent=2))
+    else:
+        for result in results:
+            mark = "✔" if result["passed"] else "·"
+            print(f"{mark} {result['gate']}" + ("" if result["passed"] else f" — {'; '.join(result['reasons'][:3])}"))
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -18,5 +18,5 @@ Kotlin/Java + Spring Boot(JVM). 아키텍처 변형은 설치 시 선택하며 �
 - 추측 금지: 확인 후 단정, 미확인은 명시 (`.agents/rules/guardrails.md`).
 - 보안/권한 경계, API 표준, 구조·스택 규약은 `.agents/rules/*`, 아키텍처 원본은 `ARCHITECTURE.md` 참조.
 - 복잡한 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 계획을 남기고, 변경은 `bash scripts/verify.sh`로 검증한다. Stop hook은 `fast`(구조 점검만)로 돈다. MR 전에는 `--affected`, `full`은 CI가 돈다.
-- exec-plan(tasks.md)은 완료 조건을 채워도 임의로 `completed`로 바꾸지 않는다. `state: check`로 두고 **사용자 검증 후** `completed`로 바꾼다.
+- exec-plan(tasks.md)은 완료 조건을 채워도 임의로 `completed`로 바꾸지 않는다. `state: check`로 두고 **`done` 승인 뒤** `completed`로 바꾼다.
 - 규칙이 바뀌면 `.agents/rules/` 원본을 먼저 고치고 `AGENTS.md`와 이 파일, Kiro 포인터를 동기화한다.

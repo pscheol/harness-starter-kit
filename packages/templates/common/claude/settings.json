@@ -2,7 +2,12 @@
   "permissions": {
     "defaultMode": "acceptEdits",
     "deny": [
-      "Edit(//**/{{PROTECTED_PATH}}/**)"
+      "Edit(//**/{{PROTECTED_PATH}}/**)",
+      "Edit(//**/approvals.md)",
+      "Edit(//**/.agents/quality-baseline.json)",
+      "Edit(//**/.agents/state/dashboard.token)",
+      "Edit(//**/.agents/state/approvals-log.jsonl)",
+      "Read(//**/.agents/state/dashboard.token)"
     ]
   },
   "hooks": {
@@ -32,6 +37,15 @@
           {
             "type": "command",
             "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/block-full-verify.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/protect-approvals.sh"
           }
         ]
       }

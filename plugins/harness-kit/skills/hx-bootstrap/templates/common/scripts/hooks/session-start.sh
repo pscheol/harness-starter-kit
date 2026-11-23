@@ -11,7 +11,7 @@ cat <<'EOF'
 - 진입점: AGENTS.md · 아키텍처: ARCHITECTURE.md · 규칙 원본: .agents/rules/ (모든 변경 전 guardrails.md)
 - 작업 전 필수: .agents/rules/code-maintenance.md · .agents/rules/session-collaboration.md 를 읽는다. 패키지 책임·읽히는 이름·정책 함수·mapper·OpenAPI 문서를 적용한다
 - 새 SDD: .agents/docs/issues/<키>-<이름>/{requirements.md,design.md,tasks.md} — 상태는 문서 머리(status·state). 옛 <영역>-specs/ 는 읽기 전용
-- 협업: 실제 세션 ID와 배정 파일만 scripts/session-coordination.py register --files 로 명시한다. 다른 세션 변경은 되돌리지 않고 공지 확인을 사용자 승인으로 해석하지 않는다
+- 협업: 실제 세션 ID와 배정 파일만 scripts/session-coordination.py register --files 로 명시한다. 다른 세션 변경은 되돌리지 않고 공지·채팅의 말을 승인으로 보지 않는다
 - 가드레일: 추측 금지(확인 후 단정, 미확인은 명시) · 외부 입력은 경계에서 검증 · Secret 평문 금지
 - 공개 책임 하나를 파일 하나에 둔다 · 레이어 자리를 지킨다(.agents/rules/structure.md · code-maintenance.md)
 - 글: 비유·상투구 대신 실제로 일어나는 일을 쓴다(.agents/rules/writing-style.md §6)

@@ -97,4 +97,4 @@ feat: Stage 0 M2 스키마와 불변식 — mtg 8테이블·권한 회수·회�
 | DoD 충족·사용자 검증 대기 | `check` | PR 열림 |
 | 사용자 승인 후 | `completed` | 병합·삭제 |
 
-`completed`로 바꾸는 것은 사용자 승인 뒤다. 에이전트가 임의로 바꾸지 않는다(`.agents/rules/agent-harness.md`).
+`completed`로 바꾸는 것은 사람이 남긴 `done` 승인 기록 뒤다(`.agents/rules/approval-vocabulary.md`). 에이전트가 임의로 바꾸지 않는다.

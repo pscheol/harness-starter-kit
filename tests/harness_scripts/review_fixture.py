@@ -7,7 +7,6 @@ import json
 import os
 import subprocess
 import sys
-from pathlib import Path
 
 from quality_fixture import QualityFixture
 from verify_fixture import IDENTITY
@@ -123,7 +122,8 @@ class ReviewFixture(QualityFixture):
 
     def setUp(self):
         super().setUp()
-        self.env = without_agent_markers(self.env)
+        # 커밋 뒤 따로 뜨는 git maintenance(2.54)가 시험 폴더 정리와 겹치지 않게 끈다.
+        self.env = {**without_agent_markers(self.env), "GIT_CONFIG_COUNT": "1", "GIT_CONFIG_KEY_0": "maintenance.auto", "GIT_CONFIG_VALUE_0": "false"}
         self.state = self.base / "forge-state.json"
         self.state.write_text(json.dumps({"prs": {}, "mrs": {}, "comments": []}))
         for name in ("gh", "glab"):

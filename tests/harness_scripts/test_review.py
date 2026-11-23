@@ -5,8 +5,6 @@
 
 import json
 import re
-import subprocess
-import sys
 
 from review_fixture import MARKER, ReviewFixture, environment_without, finding
 from verify_fixture import GATE_BODY
@@ -180,12 +178,12 @@ class ReviewStateTest(ReviewFixture):
         report = self.report_path().read_text()
         self.fp = dict(re.findall(r"## (F-\d+) · \w+ · [\w-]+\n(?:- .*\n)*?- 지문: ([0-9a-f]{64})", report))
 
-    def state(self, *arguments, cwd=None):
+    def review_state(self, *arguments, cwd=None):
         return self.script("review_state.py", *arguments, cwd=cwd)
 
     def test_open_counts_follow_review_md_and_risk_acceptance(self):
         folder = self.root / self.folder
-        first = self.state(str(folder), "--json")
+        first = self.review_state(str(folder), "--json")
         self.assertEqual(first.returncode, 1, first.stdout + first.stderr)
         self.assertEqual(json.loads(first.stdout)["open"], {"CRITICAL": 0, "HIGH": 2, "MEDIUM": 1, "LOW": 0})
         self.write(f"{self.folder}/review.md", (
@@ -194,23 +192,23 @@ class ReviewStateTest(ReviewFixture):
             f"| F-3 | HIGH | {self.fp['F-3'][:12]} | 수용 | abc1234 | 권한 검사 추가 |\n"
             f"| F-1 | HIGH | {self.fp['F-1'][:12]} | 거절 제안 | — | 레거시 |\n"
         ))
-        second = json.loads(self.state(str(folder), "--json").stdout)
+        second = json.loads(self.review_state(str(folder), "--json").stdout)
         self.assertEqual(second["open"], {"CRITICAL": 0, "HIGH": 2, "MEDIUM": 0, "LOW": 0})
         self.write(f"{self.folder}/approvals.md", "# 승인 기록 — DEMO-1\n\n" + risk_accepted("F-1", self.fp["F-1"]))
-        third = self.state(str(folder), "--json")
+        third = self.review_state(str(folder), "--json")
         self.assertEqual(third.returncode, 1)
         states = {item["id"]: item["state"] for item in json.loads(third.stdout)["findings"]}
         self.assertEqual(states, {"F-1": "risk-accepted", "F-2": "rejected", "F-3": "open"})
         self.write(f"{self.folder}/approvals.md", "# 승인 기록 — DEMO-1\n\n" + risk_accepted("F-1", self.fp["F-1"]) + "\n"
                    + risk_accepted("F-3", self.fp["F-3"], entry_id="01JDS1A2B3C4D5E6F7G8H9JKMN"))
-        fourth = self.state(str(folder), "--json")
+        fourth = self.review_state(str(folder), "--json")
         self.assertEqual(fourth.returncode, 0, fourth.stdout)
         self.assertEqual(json.loads(fourth.stdout)["open"]["HIGH"], 0)
 
     def test_report_is_found_from_a_worktree_of_the_issue_branch(self):
         worktree = self.base / "wt"
         self.git_ok("worktree", "add", "-q", str(worktree), self.branch)
-        run = self.state(str(worktree / self.folder), "--json", cwd=worktree)
+        run = self.review_state(str(worktree / self.folder), "--json", cwd=worktree)
         self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
         self.assertEqual(json.loads(run.stdout)["open"]["HIGH"], 2)
 
@@ -230,7 +228,8 @@ class FullVerifyBlocksOpenFindingsTest(ReviewFixture):
         self.gate_config()
         self.commit("gate")
         self.git("push", "-q", "origin", "develop")
-        self.push_branch({"src/upload/cleanup.py": "def cleanup(path):\n    if exists(path):\n        delete(path)\n    log(path)\n    return True\n"})
+        self.push_branch({"src/upload/cleanup.py": "def cleanup(path):\n    if exists(path):\n        delete(path)\n    log(path)\n    return True\n",
+                          "docs/upload.md": "# 업로드 정리\n"})
         self.published([finding("HIGH", "RV-EDGE", line=2)])
         report = self.report_path().read_text()
         self.fingerprint = re.search(r"- 지문: ([0-9a-f]{64})", report).group(1)
@@ -245,10 +244,10 @@ class FullVerifyBlocksOpenFindingsTest(ReviewFixture):
 
     def test_affected_on_the_issue_branch_fails_with_open_findings(self):
         self.git("checkout", "-q", self.branch)
-        affected = self.run_cli("--level", "affected", "--files", "src/upload/cleanup.py", "--summary")
+        affected = self.run_cli("--level", "affected", "--files", "docs/upload.md", "--summary")
         self.assertEqual(affected.returncode, 1, affected.stdout + affected.stderr)
         self.assertIn("review.openMax.HIGH", affected.stdout)
-        changed = self.run_cli("--files", "src/upload/cleanup.py", "--summary")
+        changed = self.run_cli("--files", "docs/upload.md", "--summary")
         self.assertEqual(changed.returncode, 0, changed.stdout + changed.stderr)
 
 
@@ -260,7 +259,7 @@ class CiScanSectionTest(ReviewFixture):
         self.gate(PASSING_BODY)
         self.commit("gate")
         self.git("push", "-q", "origin", "develop")
-        self.push_branch({"src/upload/cleanup.py": "def cleanup(path):\n    return True\n"})
+        self.push_branch({"docs/upload.md": "# 업로드 정리\n"})
         self.git("checkout", "-q", self.branch)
         event = self.base / "event.json"
         event.write_text(json.dumps({"pull_request": {"number": 12}}))
@@ -268,7 +267,7 @@ class CiScanSectionTest(ReviewFixture):
                    "GITHUB_HEAD_REF": self.branch, "GITHUB_BASE_REF": "develop", "HX_BASE_REF": "origin/develop"}
 
     def affected(self, extra):
-        return self.run_cli("--level", "affected", "--files", "src/upload/cleanup.py", "--summary", env={**self.env, **extra})
+        return self.run_cli("--level", "affected", "--files", "docs/upload.md", "--summary", env={**self.env, **extra})
 
     def test_affected_in_ci_writes_the_scan_section_once(self):
         first = self.affected(self.ci)
@@ -292,7 +291,7 @@ class CiScanSectionTest(ReviewFixture):
     def test_local_affected_does_not_touch_the_forge(self):
         run = self.affected({})
         self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
-        self.assertEqual(self.forge()["calls"], [])
+        self.assertEqual(self.forge().get("calls", []), [])
 
 
 if __name__ == "__main__":
