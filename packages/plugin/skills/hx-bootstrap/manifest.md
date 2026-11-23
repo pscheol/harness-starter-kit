@@ -68,8 +68,8 @@
 
 | 스택군 | core | claude | codex | cursor | kiro | 전부 고를 때 |
 |---|---|---|---|---|---|---|
-| `jvm` · `python` · `go` | 204 | 0 | 2 | 0 | 6 | **212** |
-| `web` · `electron` (`frontend` 도메인 +4 core) | 208 | 0 | 2 | 0 | 6 | **216** |
+| `jvm` · `python` · `go` | 206 | 0 | 2 | 0 | 6 | **214** |
+| `web` · `electron` (`frontend` 도메인 +4 core) | 210 | 0 | 2 | 0 | 6 | **218** |
 
 하네스 폴더 파일은 설치가 `.agents/` 원본에서 만든다(배치 — mirror · render · merge, 모듈 없음 기준):
 
@@ -132,7 +132,7 @@
 
 ## 공통 vs 스택별 (무엇이 어디에 있나)
 
-| 영역 | `templates/common/` (198개) | `templates/domains/frontend/` (8개 · web·electron 만) | `templates/stacks/<stack>/` (변형 무관 14개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
+| 영역 | `templates/common/` (200개) | `templates/domains/frontend/` (8개 · web·electron 만) | `templates/stacks/<stack>/` (변형 무관 14개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
 |---|---|---|---|---|
 | 진입점 | `README.md` | — | `AGENTS.md` · `.gitignore` · `.github/workflows/verify.yml` | `root/ARCHITECTURE.md` |
 | 규칙 | `agent-harness.md` · `sdd-workflow.md` · `product.md` · `writing-style.md` · `design-principles.md` · `reuse-before-new.md` · `verification-ladder.md` · `pr-review-policy.md` · `git-workflow.md` · `platform-invariants.md` · **`code-maintenance.md`** · **`session-collaboration.md`** | `design-system.md` · `accessibility.md` · `ui-state.md` · `frontend-performance.md` | `code-comments.md` · `api-standards.md` · `security.md` · `reliability.md` · `quality-score.md` · `guardrails.md` | `agents-rules/structure.md` · `agents-rules/tech.md` |
@@ -145,7 +145,7 @@
 > 규칙 7종이 스택별인 이유: 주석 표준·보안 위험·신뢰성 패턴·DoD가 언어마다 실제로 다르기 때문이다(주석 규약, 동시성 함정, 커버리지 도구 등).
 > 반대로 **레이어 책임은 변형 무관 원칙으로 중립화**해 `guardrails.md`에 두고, 구체 경로·계약은 `structure.md`·`ARCHITECTURE.md`(변형별)로 위임한다.
 > `frontend` 도메인 규칙 4종이 스택이 아니라 도메인에 있는 이유: web 과 electron 이 **같은 규약을 쓴다**. 스택에 두면 두 벌이 되고 곧 어긋난다.
-> 템플릿 합계 = 198 + 10 + 4 = **212개**(백엔드 3스택) · 198 + 4 + 10 + 4 = **216개**(web·electron). 하네스 폴더 파일은 배치가 더한다(위 「에이전트 선택」 표).
+> 템플릿 합계 = 200 + 10 + 4 = **214개**(백엔드 3스택) · 200 + 4 + 10 + 4 = **218개**(web·electron). 하네스 폴더 파일은 배치가 더한다(위 「에이전트 선택」 표).
 > 선택 모듈(`jira-workflow` 5 · `platform-guards` 3 · `multi-harness` 9)은 여기에 더해진다.
 > 여기에 상태 파일 2개(`harness-kit.json`·`harness-kit.lock`)가 더해진다.
 >
@@ -221,7 +221,7 @@
 | `scripts/git-hooks/{pre-commit,pre-push,global-hook.sh}` + `scripts/install-git-hooks.sh` | git hook — 커밋·push 때 changed 검증. 전역 `core.hooksPath` 가 있어도 리포 hook 을 부르게 건다 | — | 인간 |
 | `scripts/guards/{_template,no-secrets-in-env-example}.sh` | 가드 골격과 `.env.example` 비밀 값 검사 | — | 인간 |
 | `.agents/roles/{planner,explorer,worker,reviewer,docs-researcher}.md` | 역할 원본(머리 `mode` · `tools` · `class`). `.claude/agents/`·`.codex/agents/`·`.kiro/agents/` 는 이 원본에서 만든 생성물이다(위임 역할만 모델 · effort, `.agents/model-policy.json`) | — | 인간 |
-| `scripts/harness/{projection,projection_render,projection_merge,check_layout}.py` · `projection.json` | 배치 — 원본에서 하네스 폴더 복사본 · 생성물 · 병합을 만든다(`sync`), lock 기준 배치 검사(fast) | — | 도구 |
+| `scripts/harness/{projection,projection_wants,projection_engine,projection_render,projection_merge,check_layout}.py` · `projection.json` | 배치 — 원본에서 하네스 폴더 복사본 · 생성물 · 병합을 만든다(`sync`), lock 기준 배치 검사(fast) | — | 도구 |
 | `.agents/verify-checks.json` | changed 계획기의 경로별 추가 검사(기본: 문서·생성기·소스 경로 → `feature_docs.py check`). `"covers": true` 규칙은 생성물·외부 라이브러리·fixture 경로를 관련 시험 대신 책임진다(사이트 자산 → `check --assets`) | — | 인간 |
 | `tools/docs/` | 기능 문서 생성기(`feature_docs.py` · `docskit/` · 시험 · `README.md`). 명령 `build`·`check`·`stats`·`brief`·`refresh openapi|schema|vendor` | — | 인간 |
 | `docs/features/_src/{docs.config.json,catalog.json,stages/*.md,features/*.md}` | 기능 문서 원고 — 단위·원본 경로 설정, 영역·기능·배정 규칙, 단계 원고, 기능 원고 | 설정만 ✅ | 인간/에이전트(`/hx-docs`) |

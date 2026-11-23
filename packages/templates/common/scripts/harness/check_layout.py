@@ -22,15 +22,14 @@ from pathlib import Path  # noqa: E402
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from projection import (  # noqa: E402
+from projection_engine import read_lock  # noqa: E402
+from projection_wants import (  # noqa: E402
     HARNESSES,
-    LOCK_REL,
     ProjectionError,
     build_wants,
     full_merge_want,
     load_sources,
     load_spec,
-    read_lock,
     read_meta,
     read_text,
     sha256,

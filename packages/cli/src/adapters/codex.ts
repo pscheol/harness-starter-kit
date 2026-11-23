@@ -7,7 +7,7 @@ import { renderWant, stem } from "./wants";
 export const codex: HarnessAdapter = {
   id: "codex",
   label: "Codex",
-  checkedVersion: "0.1",
+  checkedVersion: "미확인 — 릴리스 점검표(03 §5 #4, HK-22)에서 적는다",
   plan(ctx: ProjectionContext): Want[] {
     const d = ctx.sources.deferred;
     const live = ctx.roles.filter(({ role }) => !d.has(role.source)).map(({ role }) => ({ name: stem(role.source), description: role.description }));

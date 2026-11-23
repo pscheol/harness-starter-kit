@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 3fcfd4279642204a2bbd08df19e5fed0925e32b4290b9ac9c9f2329262883201 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 452ae755b03628d5b36003d8ea448d3f510456a120adeb967eb4ef2cadb41677 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -1496,7 +1496,7 @@ function withSkillFiles(deferred) {
 var claude = {
   id: "claude",
   label: "Claude Code",
-  checkedVersion: "2.1",
+  checkedVersion: "미확인 — 릴리스 점검표(03 §5 #4, HK-22)에서 적는다",
   plan(ctx) {
     const d = ctx.sources.deferred;
     return [
@@ -1513,7 +1513,7 @@ var claude = {
 var codex = {
   id: "codex",
   label: "Codex",
-  checkedVersion: "0.1",
+  checkedVersion: "미확인 — 릴리스 점검표(03 §5 #4, HK-22)에서 적는다",
   plan(ctx) {
     const d = ctx.sources.deferred;
     const live = ctx.roles.filter(({ role }) => !d.has(role.source)).map(({ role }) => ({ name: stem(role.source), description: role.description }));
@@ -1529,7 +1529,7 @@ var codex = {
 var cursor = {
   id: "cursor",
   label: "Cursor",
-  checkedVersion: "1.7",
+  checkedVersion: "미확인 — 릴리스 점검표(03 §5 #4, HK-22)에서 적는다",
   plan(ctx) {
     const d = ctx.sources.deferred;
     const ds = withSkillFiles(d);
@@ -1544,7 +1544,7 @@ var cursor = {
 var kiro = {
   id: "kiro",
   label: "Kiro",
-  checkedVersion: "0.9",
+  checkedVersion: "미확인 — 릴리스 점검표(03 §5 #4, HK-22)에서 적는다",
   plan(ctx) {
     const d = ctx.sources.deferred;
     const ds = withSkillFiles(d);

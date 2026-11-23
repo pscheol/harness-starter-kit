@@ -72,7 +72,7 @@ Python(FastAPI/ASGI), Go(표준 Go 레이아웃), Web(TypeScript + React), Elect
 skills/hx-bootstrap/          ← 스킬 루트 (= SKILL_DIR)
 ├── README.md · SKILL.md · setup.sh · manifest.md
 └── templates/
-    ├── common/           ★ 스택 무관 골격 (모든 스택 공통 설치 · 198개)
+    ├── common/           ★ 스택 무관 골격 (모든 스택 공통 설치 · 200개)
     │   ├── agents-rules/  agent-harness · sdd-workflow · product · writing-style · design-principles · reuse-before-new · verification-ladder · pr-review-policy · git-workflow · platform-invariants · code-maintenance · session-collaboration
     │   ├── agents-docs/   SDD 기록 (README · specs-index · _spec-templates/{requirements,design,checklists,tasks} · decisions · guides · tech-debt-tracker · generated · references) — issues/<키>-<이름>/ 는 new-feature.sh 가 만든다
     │   ├── agents-root/   roles/(planner·explorer·worker·reviewer·docs-researcher, 머리 mode·tools·class) · model-policy.json · verify-checks.json

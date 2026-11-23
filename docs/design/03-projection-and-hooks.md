@@ -426,7 +426,7 @@ expires: 2026-12-31          # date + 30일
 | 배치 검사 | `verify.sh --fast` · changed · affected(`harness-layout`) | `stale` · `drifted` · `symlink-found`를 오류로 낸다(3.9) |
 | 되돌리기 | 사람이 | `npx harness-kit repair`, Node가 없으면 `python3 scripts/harness/projection.py sync` |
 
-- `projection.py`(HK-13, `projection_render.py` · `projection_merge.py`)는 Python 표준 라이브러리만 쓴다. `mirror`는 그대로 복사하고, `render`(Cursor `.mdc` · Kiro steering · 역할)는 frontmatter만 바꾸는 규칙이라 TS 어댑터와 같은 결과를 내도록 둘을 같은 fixture로 시험한다(02 §3.15와 같은 방식).
+- `projection.py`(HK-13, `projection_wants.py` · `projection_engine.py` · `projection_render.py` · `projection_merge.py`)는 Python 표준 라이브러리만 쓴다. `mirror`는 그대로 복사하고, `render`(Cursor `.mdc` · Kiro steering · 역할)는 frontmatter만 바꾸는 규칙이라 TS 어댑터와 같은 결과를 내도록 둘을 같은 fixture로 시험한다(02 §3.15와 같은 방식).
 - 사람이 편집기로 원본을 고치면 훅이 돌지 않는다. 그때는 커밋 전 fast 검증이 `stale`로 알려 주고, 출력에 고칠 명령을 적는다.
 - `.gitattributes`에 생성 경로(`.claude/skills/hx-*/**` · `.claude/rules/**` · `.claude/agents/**` · `.cursor/commands/hx-*` · `.cursor/rules/**` · `.kiro/skills/hx-*/**` · `.kiro/steering/**`)를 `linguist-generated=true`로 적어 MR diff에서 접히게 한다. 킷 몫 줄만 `merge`로 넣는다.
 - 복사본이 생겨도 세션 토큰은 늘지 않는다. 하네스는 원본이 아니라 복사본 하나만 읽는다.

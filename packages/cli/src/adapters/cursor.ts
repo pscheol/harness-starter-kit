@@ -6,7 +6,7 @@ import { renderWant, skillData, stem, withSkillFiles } from "./wants";
 export const cursor: HarnessAdapter = {
   id: "cursor",
   label: "Cursor",
-  checkedVersion: "1.7",
+  checkedVersion: "미확인 — 릴리스 점검표(03 §5 #4, HK-22)에서 적는다",
   plan(ctx: ProjectionContext): Want[] {
     const d = ctx.sources.deferred;
     const ds = withSkillFiles(d);

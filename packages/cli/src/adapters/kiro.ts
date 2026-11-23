@@ -6,7 +6,7 @@ import { mirrorDir, renderWant, skillData, stem, withSkillFiles } from "./wants"
 export const kiro: HarnessAdapter = {
   id: "kiro",
   label: "Kiro",
-  checkedVersion: "0.9",
+  checkedVersion: "미확인 — 릴리스 점검표(03 §5 #4, HK-22)에서 적는다",
   plan(ctx: ProjectionContext): Want[] {
     const d = ctx.sources.deferred;
     const ds = withSkillFiles(d);
