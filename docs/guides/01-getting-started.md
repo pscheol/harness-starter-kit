@@ -140,10 +140,10 @@ bash "$SKILL_DIR/setup.sh" --list-modules
 | 모듈 | 파일 | 켤 때 |
 |---|---|---|
 | `jira-workflow` | 10 | Jira 등 이슈 트래커를 에이전트가 직접 전이시킬 때 |
-| `platform-guards` | 4 | 프로젝트 고유 불변식을 grep 가드로 승격시킬 때 |
+| `multi-harness` | 9 | 여러 리포 · 단위 하네스에 공통 파일을 배포하고 게이트를 엮을 때 |
 
-기본은 `none` 이다. `--modules=jira-workflow,platform-guards` 처럼 명시해야 깔린다.
-모든 프로젝트가 이슈 트래커를 자동화하지도, 고유 불변식을 갖지도 않는다.
+기본은 `none` 이다. `--modules=jira-workflow` 처럼 명시해야 깔린다.
+모든 프로젝트가 이슈 트래커를 자동화하지는 않는다. 고유 불변식 가드(`scripts/run-guards.sh` · `scripts/guards/`)는 공통 층이라 늘 깔린다.
 
 ### 실제 설치
 

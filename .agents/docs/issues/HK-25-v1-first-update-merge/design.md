@@ -36,7 +36,7 @@ update에서 lock이 표시 줄 없는 v1이고, copy 항목(`owner: kit`)이 `s
 | 4 | `.json` | `keys` | 키 병합(§2.4). 해석할 수 없으면 #5 | `kit`, sha(D) |
 | 5 | 그 밖(코드 · 설정) | — | 지금처럼 `<경로>.new` | `-` · `null` |
 
-- #1 · #2 · #3 · #4는 쓰기 전에 C를 `.agents/state/merge-backup/<UTC 시각 YYYYMMDDTHHMMSSZ>/<경로>`에 복사한다. 한 번의 update는 시각 폴더 하나를 쓴다.
+- #1 · #2 · #3 · #4는 쓰기 전에 C를 `.agents/state/merge-backup/<UTC 시각 YYYYMMDDTHHMMSSZ>/<경로>.orig`에 복사한다. 한 번의 update는 시각 폴더 하나를 쓴다. `.orig`를 붙이는 이유: 설치본 `check_harness.py`(v1.0.8 판 포함)가 `.agents/**/*.md`의 링크 · 코드 울타리를 검사한다. `.md` 이름으로 두면 옮긴 자리에서 상대 링크가 끊겨 fast 검증이 실패한다. `.agents/state/`는 킷 `.gitignore`에 있어 커밋되지 않는다.
 - 확장자는 소문자로 비교한다. 새 lock은 늘 표시 줄이 있으므로(HK-12 §7.3) 병합은 첫 update에 한 번만 일어난다.
 - 기준 해시를 sha(D)로 두는 이유: 병합본은 "킷 판 + 사람 줄"이다. 다음 update에서 킷이 그 파일을 바꾸면 수정본으로 보고 `.new`를 낸다. sha(병합본)으로 두면 다음 update가 사람 줄을 지운다.
 
@@ -134,6 +134,7 @@ TS ↔ Python 동일성: `packages/cli/test/fixtures/v1-merge/<사례>/`(C · D 
 | D3 | R1 대상 "구별 불가 파일" · 문서는 줄 병합 | `CLAUDE.md`(배치 merge)는 HK-13대로 새 파일로 바꾸고 원본을 백업한다(§2.5) | 배치가 통째 바꾸면 사람 파일이 백업 없이 사라진다. 줄 병합하면 옛 킷 안내가 세션마다 실린다 |
 | D4 | 02 §4 "update가 수정본을 3방향 텍스트 병합"을 하지 않는다 | 표시 줄 없는 v1 lock의 첫 update에서만 줄 · 키 병합 | 사용자 결정(R1). 병합본은 표지로 감싸고 원본을 백업한다 |
 | D5 | HK-11 U1 · HK-12 `--accept-all` | 가리지 못한 파일도 `--accept-all`이면 `.bak` | 사람이 새 판을 골랐다 |
+| D6 | R1 "원본은 `.agents/state/merge-backup/<시각>/`" | 그 폴더 안에 `<경로>.orig` | §2.2 — `.md` 원본이 `check_harness.py` 링크 검사에 걸린다 |
 
 ## 6. 확인 필요
 

@@ -111,7 +111,7 @@ harness-starter-kit/
 |---|---|---|---|
 | `init` | `--stack` `--arch` `--domain` `--lang kotlin\|java` `--agents <목록\|all>` `--modules <목록\|all\|none>` `--name` `--slug` `--package-ns` `--protected-path` `--token KEY=VALUE`(반복) `--issue-source kit\|jira` `--issue-prefix` `--base` `--adopt` `--force` `--install-tools` `--no-register` | 질문(TTY) 또는 플래그로 선택값을 받고 3.7 작업 목록을 적용한다. 플래그가 없는 토큰은 setup.sh와 같은 이름의 환경변수(`PROJECT_NAME` 등)를 읽는다. `--adopt`는 이미 있는 파일을 모두 `user`로 기록하고 없는 것만 깐다. 고른 모듈의 외부 도구(AI-DLC · Entire)가 없으면 사람 터미널에서 설치할지 묻고, `--install-tools`면 묻지 않고 그 도구의 공식 설치기를 부른다(10 MD-R3). 끝나면 등록부에 이 리포를 더한다(`--no-register`면 빼고, 06 §3.17). 설치 끝에 `python3 tools/docs/feature_docs.py build`를 한 번 돌린다(setup.sh와 같다) | 0 2 3 5 |
 | `plan` | `init`과 같음 | 작업 목록만 출력한다. 쓰지 않는다 | 0 2 |
-| `add <이름>…` | `--dry-run` | 하네스(`claude` `codex` `cursor` `kiro`)나 모듈(`jira-workflow` `notion` `platform-guards` `multi-harness`, P22부터 `aidlc` `entire`)을 켜고 그 몫만 깐다. 메타의 `agents`·`modules`에 더한다 | 0 2 3 4 |
+| `add <이름>…` | `--dry-run` | 하네스(`claude` `codex` `cursor` `kiro`)나 모듈(`jira-workflow` `notion` `multi-harness`, P22부터 `aidlc` `entire`)을 켜고 그 몫만 깐다. 없앤 모듈 `platform-guards`는 "공통 층에 포함됨"을 알리고 exit 0(HK-25). 메타의 `agents`·`modules`에 더한다 | 0 2 3 4 |
 | `remove <이름>…` | `--dry-run` | 그 하네스·모듈의 킷 소유 파일 중 고치지 않은 것만 지우고 병합 키를 뺀다. 메타에서 뺀다 | 0 2 3 4 |
 | `update` | `--dry-run` `--accept-all` `--prune` `--forget <경로>`(반복) `--to <버전\|소스>` `--packs` `--tools` `--allow-unverified` | 3.10. `--tools`는 켠 모듈의 외부 도구를 사람이 고른 것만 그 도구의 업데이트 명령으로 올린다(10 MD-R15). `--prune`은 킷에서 빠진 미수정 파일을 지운다. `--forget`은 그 경로를 `user`·`none`으로 바꿔 다음부터 받지 않는다 | 0 2 3 4 |
 | `outdated` | `--check` | 설치 버전 · CLI 버전 · 소스의 최신 태그(`git ls-remote --tags`), 팩 버전, 외부 도구 버전(P22) | 0 1 3 |
@@ -158,7 +158,7 @@ setup.sh·lib의 `harness_remap`·`harness_agent_of`·`harness_is_executable`·`
   "tokens": ["PROJECT_NAME", "PROJECT_SLUG", "PACKAGE_NS", "SERVICE_NAME", "PRIMARY_LANGUAGE",
              "BUILD_TOOL", "TEST_CMD", "DOMAIN_EXAMPLE", "PROTECTED_PATH"],
   "harnesses": ["claude", "codex", "cursor", "kiro"],
-  "modules": ["jira-workflow", "platform-guards", "multi-harness"],
+  "modules": ["jira-workflow", "multi-harness"],
   "domains": ["backend", "frontend"],
   "stacks": {
     "jvm":      { "domain": "backend",  "defaultArch": "hexagonal",
@@ -206,7 +206,7 @@ resolve(meta, templates, packs, repo, lock):
     if lock[dest].owner 가 external:*: skip-external
 ```
 
-v1 동작과 다른 점: setup.sh는 `--force` 없이 처음 설치할 때 이미 있는 파일을 건너뛰므로, 같은 경로가 두 레이어에 있으면 앞 레이어가 이긴다. 지금 그런 경로가 `platform-guards` 모듈을 켤 때 4개 있다(`scripts/run-guards.sh` · `scripts/guards/_template.sh` · `.agents/rules/platform-invariants.md` · `.kiro/steering/platform-invariants.md`). 이 중 3개는 내용이 다르다. setup.sh 첫 설치는 common 판을 깔고, update.sh는 다음 실행에서 모듈 판으로 바꾼다. 머리 주석("뒤 레이어가 앞을 덮는다")과 결과가 다르다. P17은 setup.sh도 뒤 레이어 우선으로 고친 뒤 동일성 시험을 돌린다(같은 경로는 마지막 레이어 하나만 쓰고 lock에 한 줄만 남긴다).
+v1 동작과 다른 점: setup.sh는 `--force` 없이 처음 설치할 때 이미 있는 파일을 건너뛰므로, 같은 경로가 두 레이어에 있으면 앞 레이어가 이긴다. v1.0.8에는 그런 경로가 `platform-guards` 모듈을 켤 때 4개 있었다(`scripts/run-guards.sh` · `scripts/guards/_template.sh` · `.agents/rules/platform-invariants.md` · `.kiro/steering/platform-invariants.md`). 이 중 3개는 내용이 달랐다(HK-10이 common 판으로 맞추고, HK-25가 모듈을 없앴다 — 이제 킷 템플릿에 겹치는 경로가 없다). setup.sh 첫 설치는 common 판을 깔고, update.sh는 다음 실행에서 모듈 판으로 바꾼다. 머리 주석("뒤 레이어가 앞을 덮는다")과 결과가 다르다. P17은 setup.sh도 뒤 레이어 우선으로 고친 뒤 동일성 시험을 돌린다(같은 경로는 마지막 레이어 하나만 쓰고 lock에 한 줄만 남긴다).
 
 ### 3.6 토큰 치환
 
@@ -396,12 +396,12 @@ hx-bootstrap SKILL.md 절차
 |---|---|---|---|---|
 | 1 | jvm · hexagonal | claude | none | 기본값 |
 | 2 | jvm · layered-multimodule, `--lang=kotlin` | all | jira-workflow | 언어 토큰, 모듈 세그먼트 |
-| 3 | jvm · hexagonal-standalone | claude, codex | platform-guards | 겹치는 경로 4개(3.5) |
+| 3 | jvm · hexagonal-standalone | claude, codex | platform-guards(없앤 이름) | 두 쪽이 같이 안내하고 넘긴다(HK-25). 겹침은 #25(사본 모듈)가 본다 |
 | 4 | python · hexagonal | codex | none | Claude 없는 설치 |
 | 5 | python · django | claude, kiro | multi-harness | Kiro 세그먼트 5종, `__PROJECT_SLUG__` 경로 토큰 |
 | 6 | go · feature | cursor | none | Cursor만 |
 | 7 | web · nextjs-app(도메인 frontend) | all | none | 도메인 레이어 |
-| 8 | web · feature-sliced | claude | platform-guards, jira-workflow | `PROJECT_NAME` 값 `R&D\|Lab`(`&`·`\|` 치환) |
+| 8 | web · feature-sliced | claude | jira-workflow(+ 없앤 이름 platform-guards) | `PROJECT_NAME` 값 `R&D\|Lab`(`&`·`\|` 치환) |
 | 9 | electron · monorepo | kiro | none | 도메인 + Kiro만 |
 | 10 | jvm · modulith, 대상에 `AGENTS.md`·`.claude/settings.json`이 미리 있음 | all | none | 있는 파일 건너뛰기(setup.sh 기본) = CLI `--adopt` |
 
@@ -425,7 +425,7 @@ hx-bootstrap SKILL.md 절차
 | 플러그인 폴더를 생성하되 커밋하지 않는다 | 마켓플레이스가 git에서 플러그인 폴더를 받아 가므로 커밋돼 있어야 한다. 대신 생성물 = 원본 시험으로 묶는다 |
 | layout.json 없이 TypeScript에 매핑을 쓴다 | setup.sh와 CLI가 매핑을 따로 가져 어긋나도 모른다. 데이터 한 벌 + 동일성 시험으로 묶는다 |
 | lock v2를 TSV에 열 추가 | `keys`·`target`·`from` 같은 선택 필드가 op마다 달라 열 의미가 흔들린다 |
-| update가 수정본을 3방향 텍스트 병합 | 병합 결과가 틀려도 조용히 커밋된다. `.new`를 사람이 본다 |
+| update가 수정본을 3방향 텍스트 병합 | 병합 결과가 틀려도 조용히 커밋된다. `.new`를 사람이 본다. 예외: 표시 줄 없는 v1 lock의 첫 update는 구별 불가 문서 · JSON만 표지로 감싸 합치고 원본을 `.agents/state/merge-backup/`에 둔다(HK-25) |
 | 킷에서 빠진 파일을 update가 바로 지운다 | 사람이 계속 쓰는 파일일 수 있다. `--prune`으로 명시한다 |
 
 ## 5. 완료 기준
