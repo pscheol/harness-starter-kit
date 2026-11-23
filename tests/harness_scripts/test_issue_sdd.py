@@ -1,9 +1,8 @@
-"""이슈별 SDD와 기존 stage 폴더가 같은 승인·상태 규칙을 따른다."""
+"""이슈 단위 SDD(`.agents/docs/issues/<키>-<이름>/`)의 생성 · 승인 게이트 · 보드 · 상태 검사, 옛 두 구조 읽기."""
 
 import fcntl
 import hashlib
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -12,196 +11,306 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-SHARED = Path(__file__).resolve().parents[2]
-# 배포된 단위에서는 SHARED 가 단위 폴더 전체다. 의존성·빌드 산출물을 복사하지 않고(domain-app 은 node_modules 만 수 GB 다),
-# 실제 명세 폴더(`*-specs`)도 빼서 테스트가 만든 demo 명세만 센다 — 단위의 미해결 마커·보드가 결과에 섞이지 않는다.
-COPY_IGNORE = (
-    ".git",
-    "node_modules",
-    ".next",
-    ".next-*",
-    "build",
-    "dist",
-    "out",
-    ".gradle",
-    ".kotlin",
-    ".venv",
-    ".venv-*",
-    "__pycache__",
-    "*.pyc",
-    ".pytest_cache",
-    ".mypy_cache",
-    ".ruff_cache",
-    ".dart_tool",
-    "Pods",
-    "*-specs",
-)
+from sdd_fixture import SHARED, SddCase, frontmatter_text
+
 sys.path.insert(0, str(SHARED / "scripts"))
 from harness import sdd_board, sdd_layout
 
 sys.path.pop(0)
 
 
-class IssueSddTest(unittest.TestCase):
-    def setUp(self):
-        temporary = tempfile.TemporaryDirectory(prefix="issue sdd ")
-        self.addCleanup(temporary.cleanup)
-        self.root = Path(temporary.name) / "unit"
-        shutil.copytree(SHARED, self.root, ignore=shutil.ignore_patterns(*COPY_IGNORE))
-        self.docs = self.root / ".agents/docs"
-        self.docs.mkdir(exist_ok=True)
-        (self.docs / "specs-index.md").write_text("# 색인\n\n사람이 작성한 본문\n")
-        self.scripts = self.root / "scripts"
+class IssueSddTest(SddCase):
+    # ── 새 구조 생성 ──────────────────────────────────────────────────────────
+    def test_next_scaffold_creates_only_requirements_with_frontmatter(self):
+        self.assert_ok(self.scaffold("--next", "sample-flow", "--area", "demo"))
+        issue = self.issue("DEMO-1-sample-flow")
+        requirement = issue / "requirements.md"
+        self.assertTrue(requirement.is_file())
+        self.assertFalse((issue / "design.md").exists())
+        self.assertFalse((issue / "tasks.md").exists())
+        self.assertFalse((self.docs / "demo-specs").exists())
+        text = requirement.read_text()
+        self.assertTrue(text.startswith("---\n"))
+        for field, value in (("key", "DEMO-1"), ("area", "demo"), ("type", "feat"), ("title", "sample-flow"), ("status", "draft")):
+            self.assertEqual(value, self.field(requirement, field), field)
+        self.assertRegex(self.field(requirement, "created"), r"^\d{4}-\d{2}-\d{2}$")
+        self.assertNotRegex(text, r"(?m)^\|\s*상태\s*\|")
+        self.assertIn("# Requirements — DEMO-1-sample-flow", text)
+        board = self.index.read_text()
+        self.assertIn("사람이 작성한 본문", board)
+        self.assertIn("### demo (새 1 · 옛 0)", board)
+        self.assertIn("| DEMO-1 | sample-flow | feat | draft | — | — | 요구 |", board)
 
-    def run_script(self, script, *arguments):
-        interpreter = sys.executable if script.endswith(".py") else "bash"
-        return subprocess.run(
-            [interpreter, str(self.scripts / script), *arguments],
-            cwd=self.root.parent,
-            text=True,
-            capture_output=True,
-            timeout=20,
-        )
-
-    def scaffold(self, *arguments):
-        return self.run_script("new-feature.sh", "demo", *arguments)
-
-    def assert_ok(self, result):
-        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
-
-    def assert_fails(self, result, expected):
-        self.assertNotEqual(0, result.returncode, result.stdout + result.stderr)
-        self.assertIn(expected, result.stdout + result.stderr)
-
-    def issue(self, key="1-feat-sample"):
-        return self.docs / "demo-specs/issues" / key
-
-    def approve(self, path):
-        path.write_text("# 승인 문서\n\n| 상태 | approved |\n")
-
-    def write_issue(self, state="active", key="1-feat-sample", checked=True):
-        issue = self.issue(key)
-        (issue / "tasks").mkdir(parents=True, exist_ok=True)
-        self.approve(issue / "requirements.md")
-        self.approve(issue / "design.md")
-        task = issue / "tasks" / f"{state}.md"
-        task.write_text(f"# Tasks\n\n| 상태 | {state} |\n\n- [{'X' if checked else ' '}] T001 예시\n")
-        return task
-
-    def test_default_scaffold_creates_only_issue_requirements(self):
-        self.assert_ok(self.scaffold("sample"))
-        self.assertTrue((self.issue() / "requirements.md").is_file())
-        self.assertFalse((self.issue() / "design.md").exists())
-        self.assertFalse((self.issue() / "tasks/active.md").exists())
-        self.assertFalse((self.docs / "demo-specs/requirements/1-feat-sample.md").exists())
-        self.assertIn("1-feat-sample", (self.docs / "demo-specs/index.md").read_text())
-        self.assertIn("사람이 작성한 본문", (self.docs / "specs-index.md").read_text())
-
-    def test_issue_stages_require_exact_approval(self):
-        self.assert_ok(self.scaffold("sample"))
-        requirement = self.issue() / "requirements.md"
-        requirement.write_text("| 상태 | approved later |\n")
-        self.assert_fails(self.scaffold("sample", "--stage=design"), "approved")
-        self.approve(requirement)
-        self.assert_ok(self.scaffold("sample", "--stage=design"))
-        self.assert_fails(self.scaffold("sample", "--stage=tasks"), "approved")
-        self.approve(self.issue() / "design.md")
-        self.assert_ok(self.scaffold("sample", "--stage=tasks"))
-        task = self.issue() / "tasks/active.md"
-        self.assertIn("../requirements.md", task.read_text())
-        self.assertIn("../design.md", task.read_text())
-        self.assertNotIn("`check/`", task.read_text())
-        self.assertNotIn("`completed/`", task.read_text())
-        prerequisite = self.run_script("check-sdd-prerequisites.sh", "demo", "sample", "--stage", "implement")
+    def test_explicit_key_stages_follow_frontmatter_approval(self):
+        self.assert_ok(self.scaffold("DEMO-12", "upload-cleanup", "--area", "upload", "--type", "fix"))
+        issue = self.issue("DEMO-12-upload-cleanup")
+        requirement = issue / "requirements.md"
+        self.set_field(requirement, "status", "in-review")
+        self.assert_exit(self.scaffold("DEMO-12", "--stage=design"), 1, "approved")
+        self.assertFalse((issue / "design.md").exists())
+        self.set_field(requirement, "status", "approved")
+        self.assert_ok(self.scaffold("DEMO-12", "--stage=design"))
+        design = issue / "design.md"
+        for field, value in (("key", "DEMO-12"), ("area", "upload"), ("type", "fix"), ("status", "draft")):
+            self.assertEqual(value, self.field(design, field), field)
+        self.assert_exit(self.scaffold("DEMO-12-upload-cleanup", "--stage", "tasks"), 1, "approved")
+        self.set_field(design, "status", "approved")
+        self.assert_ok(self.scaffold("DEMO-12", "--stage=tasks"))
+        task = issue / "tasks.md"
+        self.assertEqual("active", self.field(task, "state"))
+        self.assertIsNone(self.field(task, "status"))
+        body = task.read_text()
+        self.assertIn("requirements.md", body)
+        self.assertIn("design.md", body)
+        self.assertNotIn("tasks/active", body)
+        self.assertFalse((issue / "tasks").exists())
+        prerequisite = self.run_script("check-sdd-prerequisites.sh", "DEMO-12", "--stage", "implement")
         self.assert_ok(prerequisite)
-        self.assertIn("BASE=.agents/docs/demo-specs/issues/1-feat-sample\n", prerequisite.stdout)
+        self.assertIn("BASE=.agents/docs/issues/DEMO-12-upload-cleanup\n", prerequisite.stdout)
+        self.assertIn("TASKS=.agents/docs/issues/DEMO-12-upload-cleanup/tasks.md\n", prerequisite.stdout)
         self.assert_ok(self.run_script("board.sh", "--check"))
 
-    def test_legacy_opt_out_and_continuation_preserve_layout(self):
-        self.assert_ok(self.scaffold("legacy", "--legacy"))
-        requirement = self.docs / "demo-specs/requirements/1-feat-legacy.md"
-        self.assertTrue(requirement.is_file())
-        self.approve(requirement)
-        self.assert_ok(self.scaffold("legacy", "--stage=design"))
-        design = self.docs / "demo-specs/design/1-feat-legacy.md"
-        self.approve(design)
-        self.assert_ok(self.scaffold("legacy", "--stage=tasks"))
-        self.assertTrue((self.docs / "demo-specs/tasks/active/1-feat-legacy.md").is_file())
-        self.assertFalse((self.docs / "demo-specs/issues/1-feat-legacy").exists())
-        prerequisite = self.run_script("check-sdd-prerequisites.sh", "demo", "legacy", "--stage", "implement")
-        self.assert_ok(prerequisite)
-        self.assertIn("BASE=.agents/docs/demo-specs\n", prerequisite.stdout)
-        self.assert_ok(self.scaffold("modern"))
-        self.assertTrue((self.issue("2-feat-modern") / "requirements.md").exists())
+    def test_stage_needs_an_existing_issue_folder(self):
+        self.assert_exit(self.scaffold("DEMO-5", "--stage=design"), 1, "DEMO-5")
+        self.write_new_issue("DEMO-5-first-thing")
+        self.write_new_issue("DEMO-5-second-thing")
+        self.assert_exit(self.scaffold("DEMO-5", "--stage=design"), 1, "DEMO-5")
 
-    def test_number_allocator_includes_superseded_and_both_layouts(self):
-        self.write_issue("superseded", "8-feat-old")
-        legacy = self.docs / "demo-specs/tasks/superseded/12-fix-earlier.md"
-        legacy.parent.mkdir(parents=True)
-        legacy.write_text("| 상태 | superseded |\n")
-        self.assert_ok(self.scaffold("sample"))
-        self.assertTrue((self.issue("13-feat-sample") / "requirements.md").exists())
-        self.assert_fails(self.scaffold("conflict", "--number=8"), "number")
+    def test_existing_documents_are_not_overwritten(self):
+        issue = self.write_new_issue("DEMO-3-sample-flow", design="approved", tasks="completed")
+        before = {name: (issue / name).read_bytes() for name in ("requirements.md", "design.md", "tasks.md")}
+        for arguments in (("DEMO-3", "sample-flow", "--area", "demo"), ("DEMO-3", "--stage=design"), ("DEMO-3", "--stage=tasks")):
+            with self.subTest(arguments=arguments):
+                self.assert_exit(self.scaffold(*arguments), 0, "이미 있습니다")
+        self.assertEqual(before, {name: (issue / name).read_bytes() for name in before})
 
-    def test_same_name_is_rejected_without_creating_another_issue(self):
-        self.assert_ok(self.scaffold("sample"))
-        self.assert_fails(self.scaffold("sample"), "already")
-        self.assertEqual(1, len(list((self.docs / "demo-specs/issues").iterdir())))
+    def test_next_with_same_name_does_not_create_another_issue(self):
+        self.assert_ok(self.scaffold("--next", "sample-flow", "--area", "demo"))
+        self.assert_exit(self.scaffold("--next", "sample-flow", "--area", "demo"), 0, "DEMO-1-sample-flow")
+        self.assertEqual(["DEMO-1-sample-flow"], sorted(path.name for path in (self.docs / "issues").iterdir()))
 
-    def test_ambiguous_short_name_requires_full_key(self):
-        self.write_issue(key="1-feat-sample")
-        self.write_issue(key="2-fix-sample")
-        self.assert_fails(self.scaffold("sample", "--stage=design"), "ambiguous")
-        self.assert_ok(self.scaffold("1-feat-sample", "--stage=design"))
+    def test_dry_run_writes_nothing(self):
+        before = self.tree_snapshot()
+        result = self.scaffold("--next", "sample-flow", "--area", "demo", "--dry-run")
+        self.assert_ok(result)
+        self.assertIn("DEMO-1-sample-flow", result.stdout)
+        self.assertEqual(before, self.tree_snapshot())
 
-    def test_explicit_stage_does_not_overwrite_existing_document(self):
-        self.write_issue()
-        design = self.issue() / "design.md"
-        before = design.read_bytes()
-        self.assert_ok(self.scaffold("1-feat-sample", "--stage=design"))
-        self.assertEqual(before, design.read_bytes())
-
-    def test_tasks_are_not_recreated_after_review_completion_or_supersession(self):
-        for state in ("check", "completed", "superseded"):
-            with self.subTest(state=state):
-                key = f"1-feat-{state}"
-                self.write_issue(state, key)
-                self.assert_fails(self.scaffold(key, "--stage=tasks"), f"already in {state}")
-
-    def test_all_option_does_not_bypass_stage_approval(self):
-        self.assert_fails(self.scaffold("sample", "--all"), "승인")
+    def test_all_and_legacy_options_are_refused(self):
+        self.assert_exit(self.scaffold("--next", "sample-flow", "--area", "demo", "--all"), 2, "승인")
+        self.assert_exit(self.scaffold("demo", "sample-flow", "--legacy"), 2, "--legacy")
+        self.assertFalse((self.docs / "issues").exists())
         self.assertFalse((self.docs / "demo-specs").exists())
 
-    def test_path_traversal_and_invalid_number_are_rejected(self):
-        self.assert_fails(self.run_script("new-feature.sh", "../escape", "sample"), "slug")
-        self.assert_fails(self.scaffold("../escape"), "이름")
-        self.assert_fails(self.scaffold("sample", "--number=-1"), "number")
+    def test_path_traversal_and_invalid_values_are_rejected(self):
+        self.assert_exit(self.scaffold("../escape", "sample-flow", "--area", "demo"), 2, "slug")
+        self.assert_exit(self.scaffold("--next", "../escape", "--area", "demo"), 2, "이름")
+        self.assert_exit(self.scaffold("--next", "sample-flow", "--area", "../escape"), 2, "영역")
+        self.assert_exit(self.scaffold("--next", "sample-flow", "--area", "demo", "--number=3"), 2, "--number")
+        self.assert_exit(self.scaffold("--next", "sample-flow", "--area", "demo", "--intent", "3"), 2, "intent")
+        self.assert_exit(self.scaffold("--next", "sample-flow", "--area", "demo", "--unit", "U-0"), 2, "unit")
         self.assert_fails(self.run_script("check-sdd-prerequisites.sh", "../escape", "sample"), "slug")
         self.assert_fails(self.run_script("board.sh", "../escape"), "slug")
+        self.assert_fails(self.run_script("board.sh", "--area", "../escape"), "영역")
 
-    def test_scaffold_and_board_refuse_symlink_targets(self):
-        outside = self.root.parent / "outside"
+    def test_intent_and_unit_fields_are_written_and_inherited(self):
+        self.assert_ok(self.scaffold("--next", "sample-flow", "--area", "demo", "--intent", "INT-3", "--unit", "U-2"))
+        requirement = self.issue("DEMO-1-sample-flow") / "requirements.md"
+        self.assertEqual("INT-3", self.field(requirement, "intent"))
+        self.assertEqual("U-2", self.field(requirement, "unit"))
+        self.set_field(requirement, "status", "approved")
+        self.assert_ok(self.scaffold("DEMO-1", "--stage=design"))
+        self.assertEqual("INT-3", self.field(self.issue("DEMO-1-sample-flow") / "design.md", "intent"))
+
+    def test_symlinked_issue_paths_are_rejected(self):
+        outside = self.base / "outside"
         outside.mkdir()
-        (self.docs / "demo-specs").symlink_to(outside, target_is_directory=True)
-        self.assert_fails(self.scaffold("sample"), "symlink")
-        self.assert_fails(self.run_script("board.sh", "demo"), "symlink")
+        (self.docs / "issues").symlink_to(outside, target_is_directory=True)
+        self.assert_fails(self.scaffold("--next", "sample-flow", "--area", "demo"), "symlink")
         self.assertEqual([], list(outside.iterdir()))
+        (self.docs / "issues").unlink()
+        issue = self.write_new_issue("DEMO-1-sample-flow")
+        target = self.base / "outside.md"
+        target.write_text((issue / "requirements.md").read_text())
+        (issue / "requirements.md").unlink()
+        (issue / "requirements.md").symlink_to(target)
+        self.assert_fails(self.scaffold("DEMO-1", "--stage=design"), "symlink")
+        self.assert_fails(self.run_script("board.sh"), "symlink")
+        self.assert_fails(self.run_script("check_harness.py", "--plans-only"), "symlink")
 
-    def test_board_keeps_index_body_and_is_read_only_when_checking(self):
-        self.assert_ok(self.scaffold("sample"))
-        index = self.docs / "demo-specs/index.md"
-        index.write_text(index.read_text() + "\n사용자 기록\n")
-        before = index.read_bytes()
-        self.approve(self.issue() / "requirements.md")
-        (self.issue() / "design.md").write_text("| 상태 | draft |\n")
-        self.assert_fails(self.run_script("board.sh", "--check"), "보드")
-        self.assertEqual(before, index.read_bytes())
+    # ── 보드 ──────────────────────────────────────────────────────────────────
+    def test_board_groups_by_area_and_prints_one_area(self):
+        self.write_new_issue("DEMO-1-first-thing", area="app")
+        self.write_new_issue("DEMO-2-second-thing", area="api", type_="fix")
+        self.write_new_issue("DEMO-10-tenth-thing", area="app", design="in-review")
+        self.write_new_issue("DEMO-3-third-thing", area="app", design="approved", tasks="check")
         self.assert_ok(self.run_script("board.sh"))
-        self.assertIn("사용자 기록", index.read_text())
+        board = self.index.read_text()
+        self.assertLess(board.index("### api (새 1 · 옛 0)"), board.index("### app (새 3 · 옛 0)"))
+        app = board[board.index("### app") :]
+        self.assertLess(app.index("| DEMO-1 |"), app.index("| DEMO-3 |"))
+        self.assertLess(app.index("| DEMO-3 |"), app.index("| DEMO-10 |"))
+        self.assertIn("| DEMO-10 | tenth-thing | feat | approved | in-review | — | 설계 |", board)
+        self.assertIn("| DEMO-3 | third-thing | feat | approved | approved | check | 검증 |", board)
+        self.assertIn("| DEMO-2 | second-thing | fix | approved | — | — | 요구 |", board)
+        area = self.run_script("board.sh", "--area", "app")
+        self.assert_ok(area)
+        self.assertIn("### app (새 3 · 옛 0)", area.stdout)
+        self.assertNotIn("DEMO-2", area.stdout)
+        self.assertEqual(board, self.index.read_text())
+        self.assert_exit(self.run_script("board.sh", "--area", "nothing"), 1, "nothing")
+
+    def test_board_check_is_read_only_and_detects_drift(self):
+        self.assert_ok(self.scaffold("--next", "sample-flow", "--area", "demo"))
+        self.set_field(self.issue("DEMO-1-sample-flow") / "requirements.md", "status", "approved")
+        before = self.index.read_bytes()
+        self.assert_fails(self.run_script("board.sh", "--check"), "보드")
+        self.assertEqual(before, self.index.read_bytes())
+        self.assert_ok(self.run_script("board.sh"))
+        self.assertIn("사람이 작성한 본문", self.index.read_text())
+        self.assertIn("| DEMO-1 | sample-flow | feat | approved |", self.index.read_text())
         self.assert_ok(self.run_script("board.sh", "--check"))
 
-    def test_plan_checker_reads_issue_state_and_task_ids(self):
-        task = self.write_issue("check", checked=False)
+    def test_invalid_frontmatter_stops_board_generation(self):
+        issue = self.write_new_issue("DEMO-1-sample-flow")
+        self.assert_ok(self.run_script("board.sh"))
+        before = self.index.read_bytes()
+        for broken in ("---\nkey: DEMO-1\nnot a field\n---\n", "---\nkey: DEMO-1\n  nested: x\n---\n", "# 머리 없음\n"):
+            with self.subTest(broken=broken):
+                (issue / "requirements.md").write_text(broken)
+                self.assert_fails(self.run_script("board.sh"), "invalid")
+                self.assertEqual(before, self.index.read_bytes())
+                self.assert_fails(self.run_script("check_harness.py", "--plans-only"), "requirements.md")
+
+    def test_board_check_waits_for_writer_and_does_not_create_workspace_state(self):
+        self.assert_ok(self.scaffold("--next", "sample-flow", "--area", "demo"))
+        key = hashlib.sha256(str(self.root.resolve()).encode()).hexdigest()[:24]
+        lock_path = Path(tempfile.gettempdir()) / f"harness-sdd.{os.getuid()}.{key}.lock"
+        before = self.tree_snapshot()
+        with lock_path.open("a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            process = subprocess.Popen(
+                ["bash", str(self.scripts / "board.sh"), "--check"],
+                cwd=self.base,
+                env=self.env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            time.sleep(0.15)
+            observed = process.poll()
+            fcntl.flock(lock, fcntl.LOCK_UN)
+            output, errors = process.communicate(timeout=20)
+        self.assertIsNone(observed, "board --check must wait until a concurrent writer finishes")
+        self.assertEqual(0, process.returncode, output + errors)
+        self.assertEqual(before, self.tree_snapshot())
+
+    def test_concurrent_next_scaffolds_allocate_distinct_keys(self):
+        processes = [
+            subprocess.Popen(
+                ["bash", str(self.scripts / "new-feature.sh"), "--next", f"sample-{index}", "--area", "demo"],
+                cwd=self.base,
+                env=self.env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            for index in range(6)
+        ]
+        for process in processes:
+            output, errors = process.communicate(timeout=30)
+            self.assertEqual(0, process.returncode, output + errors)
+        folders = list((self.docs / "issues").iterdir())
+        self.assertEqual({f"DEMO-{number}" for number in range(1, 7)}, {"-".join(folder.name.split("-")[:2]) for folder in folders})
+        self.assert_ok(self.run_script("board.sh", "--check"))
+
+    # ── 상태 검사 ─────────────────────────────────────────────────────────────
+    def test_plan_checker_reads_task_state_from_frontmatter(self):
+        issue = self.write_new_issue("DEMO-1-sample-flow", design="approved", tasks="check", checked=False)
+        self.assert_fails(self.run_script("check_harness.py", "--plans-only"), "unchecked task")
+        (issue / "tasks.md").write_text(frontmatter_text(key="DEMO-1", area="demo", type="feat", state="active") + "- [X] T001 일\n- [X] T001 중복\n")
+        self.assert_fails(self.run_script("check_harness.py", "--plans-only"), "duplicate task ID")
+        (issue / "tasks.md").write_text(frontmatter_text(key="DEMO-1", area="demo", type="feat", state="done") + "- [X] T001 일\n")
+        self.assert_fails(self.run_script("check_harness.py", "--plans-only"), "state")
+        (issue / "tasks.md").write_text(frontmatter_text(key="DEMO-1", area="demo", type="feat", state="completed") + "- [X] T001 일\n")
+        self.assert_ok(self.run_script("check_harness.py", "--plans-only"))
+        self.assert_fails(self.run_script("check-exec-plan-status.sh"), "보드")
+        self.assert_ok(self.run_script("board.sh"))
+        self.assert_ok(self.run_script("check-exec-plan-status.sh"))
+
+    def test_plan_checker_rejects_inconsistent_issue_documents(self):
+        issue = self.write_new_issue("DEMO-1-sample-flow", design="approved", tasks="active")
+        cases = (
+            ("design.md", "key", "DEMO-2", "key"),
+            ("design.md", "area", "other", "area"),
+            ("requirements.md", "type", "story", "type"),
+            ("requirements.md", "status", "approved-ish", "status"),
+        )
+        for name, field, value, expected in cases:
+            with self.subTest(field=field):
+                original = (issue / name).read_text()
+                self.set_field(issue / name, field, value)
+                self.assert_fails(self.run_script("check_harness.py", "--plans-only"), expected)
+                (issue / name).write_text(original)
+        (issue / "design.md").unlink()
+        self.assert_fails(self.run_script("check_harness.py", "--plans-only"), "missing design")
+        self.write_new_issue("DEMO-1-other-thing")
+        self.assert_fails(self.run_script("check_harness.py", "--plans-only"), "duplicate key")
+        (self.issue("DEMO-1-other-thing") / "requirements.md").unlink()
+        self.issue("DEMO-1-other-thing").rmdir()
+        self.issue("DEMO-7-Bad_Name").mkdir()
+        self.assert_fails(self.run_script("check_harness.py", "--plans-only"), "DEMO-7-Bad_Name")
+
+    def test_freshness_reads_new_issues_without_writing(self):
+        issue = self.write_new_issue("DEMO-1-sample-flow", req="draft", design=None)
+        requirement = issue / "requirements.md"
+        requirement.write_text(requirement.read_text() + "[NEEDS CLARIFICATION: 질문]\n")
+        task = self.write_new_issue("DEMO-2-other-thing", design="approved", tasks="active") / "tasks.md"
+        old = time.time() - 30 * 86400
+        os.utime(requirement, (old, old))
+        os.utime(task, (old, old))
+        before = self.tree_snapshot()
+        result = self.run_script("check-spec-freshness.sh", "--days", "14")
+        self.assert_ok(result)
+        self.assertIn("정체 스펙=1", result.stdout)
+        self.assertIn("미해결 마커=1", result.stdout)
+        self.assertIn("정체 tasks=1", result.stdout)
+        self.assertEqual(before, self.tree_snapshot())
+
+    # ── 옛 두 구조 읽기 ────────────────────────────────────────────────────────
+    def test_legacy_layouts_are_read_by_prerequisites_and_board(self):
+        self.write_legacy_issue("demo", "1-feat-sample", state="active")
+        self.write_legacy_stage("demo", "2-fix-older", state="completed")
+        self.write_new_issue("DEMO-4-new-thing", area="demo")
+        issue = self.run_script("check-sdd-prerequisites.sh", "demo", "sample", "--stage", "implement")
+        self.assert_ok(issue)
+        self.assertIn("BASE=.agents/docs/demo-specs/issues/1-feat-sample\n", issue.stdout)
+        stage = self.run_script("check-sdd-prerequisites.sh", "demo", "2-fix-older", "--stage=tasks")
+        self.assert_ok(stage)
+        self.assertIn("BASE=.agents/docs/demo-specs\n", stage.stdout)
+        self.assert_ok(self.run_script("board.sh"))
+        board = self.index.read_text()
+        self.assertIn("### demo (새 1 · 옛 2)", board)
+        demo = board[board.index("### demo") :]
+        self.assertLess(demo.index("| DEMO-4 |"), demo.index("| 1 (옛) | sample | feat | approved | approved | active | 구현 |"))
+        self.assertIn("| 2 (옛) | older | fix | approved | approved | completed | 완료 |", board)
+        self.assert_ok(self.run_script("board.sh", "--check"))
+
+    def test_legacy_stage_documents_are_not_created_anymore(self):
+        self.write_legacy_issue("demo", "1-feat-sample", design=None)
+        before = self.tree_snapshot()
+        self.assert_exit(self.scaffold("demo", "1-feat-sample", "--stage=design"), 2, "읽기 전용")
+        self.assertEqual(before, self.tree_snapshot())
+
+    def test_ambiguous_short_legacy_name_requires_full_key(self):
+        self.write_legacy_issue("demo", "1-feat-sample", state="active")
+        self.write_legacy_issue("demo", "2-fix-sample", state="active")
+        self.assert_fails(self.run_script("check-sdd-prerequisites.sh", "demo", "sample"), "ambiguous")
+        self.assert_ok(self.run_script("check-sdd-prerequisites.sh", "demo", "1-feat-sample", "--stage", "implement"))
+
+    def test_plan_checker_reads_legacy_issue_state_and_task_ids(self):
+        issue = self.write_legacy_issue("demo", "1-feat-sample", state="check", checked=False)
+        task = issue / "tasks/check.md"
         self.assert_fails(self.run_script("check_harness.py", "--plans-only"), "unchecked task")
         task.write_text("| 상태 | active |\n- [X] T001 일\n- [X] T001 중복\n")
         result = self.run_script("check_harness.py", "--plans-only")
@@ -210,17 +319,17 @@ class IssueSddTest(unittest.TestCase):
         task.write_text("| 상태 | check |\n- [X] T001 일\n")
         self.assert_ok(self.run_script("check_harness.py", "--plans-only"))
 
-    def test_plan_checker_rejects_same_key_in_both_layouts(self):
-        self.write_issue()
+    def test_plan_checker_rejects_same_key_in_both_legacy_layouts(self):
+        self.write_legacy_issue("demo", "1-feat-sample", state="active")
         legacy = self.docs / "demo-specs/tasks/check/1-feat-sample.md"
         legacy.parent.mkdir(parents=True)
         legacy.write_text("| 상태 | check |\n- [X] T001 일\n")
         self.assert_fails(self.run_script("check_harness.py", "--plans-only"), "duplicate")
 
-    def test_root_fallback_checker_supports_issue_layout(self):
-        task = self.write_issue()
+    def test_root_fallback_checker_supports_legacy_issue_layout(self):
+        issue = self.write_legacy_issue("demo", "1-feat-sample", state="active")
         (self.scripts / "check_harness.py").unlink()
-        task.write_text("| 상태 | completed |\n- [X] T001 일\n")
+        (issue / "tasks/active.md").write_text("| 상태 | completed |\n- [X] T001 일\n")
         self.assert_fails(self.run_script("check-exec-plan-status.sh"), "state mismatch")
 
     def write_legacy_task(self, key, state, body):
@@ -248,17 +357,13 @@ class IssueSddTest(unittest.TestCase):
 
     def test_root_issue_keeps_strict_prerequisite_and_completion_checks(self):
         (self.scripts / "check_harness.py").unlink()
-        task = self.write_issue("completed", checked=False)
-        (self.issue() / "requirements.md").unlink()
-        (self.issue() / "design.md").unlink()
+        issue = self.write_legacy_issue("demo", "1-feat-sample", state="completed", checked=False)
+        (issue / "requirements.md").unlink()
+        (issue / "design.md").unlink()
         result = self.run_script("check-exec-plan-status.sh")
         self.assert_fails(result, "missing requirements")
         self.assertIn("missing design", result.stderr)
         self.assertIn("unchecked task", result.stderr)
-        self.approve(self.issue() / "requirements.md")
-        self.approve(self.issue() / "design.md")
-        task.write_text("| 상태 | completed — 설명 |\n- [X] T001 완료\n")
-        self.assert_fails(self.run_script("check-exec-plan-status.sh"), "state mismatch")
 
     def test_unit_legacy_keeps_strict_prerequisite_filename_and_completion_checks(self):
         self.write_legacy_task("old-plan", "completed", "| 상태 | completed |\n- [ ] 이전 체크\n")
@@ -284,13 +389,13 @@ class IssueSddTest(unittest.TestCase):
         (self.scripts / "check_harness.py").unlink()
         self.assert_ok(self.run_script("check-exec-plan-status.sh"))
 
-    def test_issue_freshness_is_read_only(self):
-        task = self.write_issue(checked=False)
-        requirement = self.issue() / "requirements.md"
+    def test_legacy_freshness_is_read_only(self):
+        issue = self.write_legacy_issue("demo", "1-feat-sample", req="draft", state="active", checked=False)
+        requirement = issue / "requirements.md"
         requirement.write_text("| 상태 | draft |\n[NEEDS CLARIFICATION: 질문]\n")
         old = time.time() - 30 * 86400
         os.utime(requirement, (old, old))
-        os.utime(task, (old, old))
+        os.utime(issue / "tasks/active.md", (old, old))
         before = requirement.read_bytes()
         result = self.run_script("check-spec-freshness.sh", "--days", "14")
         self.assert_ok(result)
@@ -299,69 +404,50 @@ class IssueSddTest(unittest.TestCase):
         self.assertIn("정체 tasks=1", result.stdout)
         self.assertEqual(before, requirement.read_bytes())
 
-    def test_concurrent_scaffolds_allocate_distinct_numbers_and_consistent_boards(self):
-        processes = [
-            subprocess.Popen(
-                ["bash", str(self.scripts / "new-feature.sh"), "demo", f"sample-{index}"],
-                cwd=self.root.parent,
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            for index in range(6)
-        ]
-        for process in processes:
-            output, errors = process.communicate(timeout=20)
-            self.assertEqual(0, process.returncode, output + errors)
-        folders = list((self.docs / "demo-specs/issues").iterdir())
-        self.assertEqual(6, len(folders))
-        self.assertEqual(set(range(1, 7)), {int(folder.name.split("-", 1)[0]) for folder in folders})
-        self.assert_ok(self.run_script("board.sh", "--check"))
-
-    def test_board_check_waits_for_writer_and_does_not_create_workspace_state(self):
-        self.assert_ok(self.scaffold("sample"))
-        key = hashlib.sha256(str(self.root.resolve()).encode()).hexdigest()[:24]
-        lock_path = Path(tempfile.gettempdir()) / f"harness-sdd.{os.getuid()}.{key}.lock"
-        before = {path.relative_to(self.root): path.read_bytes() for path in self.root.rglob("*") if path.is_file()}
-        with lock_path.open("a") as lock:
-            fcntl.flock(lock, fcntl.LOCK_EX)
-            process = subprocess.Popen(
-                ["bash", str(self.scripts / "board.sh"), "--check"],
-                cwd=self.root.parent,
-                text=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            time.sleep(0.15)
-            observed = process.poll()
-            fcntl.flock(lock, fcntl.LOCK_UN)
-            output, errors = process.communicate(timeout=20)
-        self.assertIsNone(observed, "board --check must wait until a concurrent writer finishes")
-        self.assertEqual(0, process.returncode, output + errors)
-        after = {path.relative_to(self.root): path.read_bytes() for path in self.root.rglob("*") if path.is_file()}
-        self.assertEqual(before, after)
-
-    def test_symlinked_issue_document_and_board_index_are_rejected(self):
-        self.write_issue()
-        outside = self.root.parent / "outside.md"
+    def test_symlinked_legacy_document_and_board_index_are_rejected(self):
+        issue = self.write_legacy_issue("demo", "1-feat-sample")
+        outside = self.base / "outside.md"
         outside.write_text("| 상태 | approved |\n")
-        requirement = self.issue() / "requirements.md"
+        requirement = issue / "requirements.md"
         requirement.unlink()
         requirement.symlink_to(outside)
-        self.assert_fails(self.scaffold("1-feat-sample", "--stage=design"), "symlink")
+        self.assert_fails(self.run_script("check-sdd-prerequisites.sh", "demo", "1-feat-sample", "--stage", "tasks"), "symlink")
         self.assert_fails(self.run_script("check_harness.py", "--plans-only"), "symlink")
         self.assert_fails(self.run_script("board.sh"), "symlink")
         requirement.unlink()
-        self.approve(requirement)
+        requirement.write_text("| 상태 | approved |\n")
         index = self.docs / "demo-specs/index.md"
         index.symlink_to(outside)
         self.assert_fails(self.run_script("board.sh"), "symlink")
         self.assertEqual("| 상태 | approved |\n", outside.read_text())
 
-    def test_board_preserves_concurrent_index_content_and_mode_changes(self):
-        self.assert_ok(self.scaffold("sample"))
-        (self.issue() / "design.md").write_text("| 상태 | draft |\n")
+    def test_legacy_spec_symlink_is_rejected(self):
+        outside = self.base / "outside"
+        outside.mkdir()
+        (self.docs / "demo-specs").symlink_to(outside, target_is_directory=True)
+        self.assert_fails(self.run_script("board.sh", "demo"), "symlink")
+        self.assertEqual([], list(outside.iterdir()))
+
+    def legacy_index(self):
+        self.write_legacy_issue("demo", "1-feat-sample", design=None)
         index = self.docs / "demo-specs/index.md"
+        index.write_text("# 제품 색인\n\n<!-- BOARD:BEGIN -->\n<!-- BOARD:END -->\n")
+        self.assert_ok(self.run_script("board.sh"))
+        (self.docs / "demo-specs/issues/1-feat-sample/design.md").write_text("| 상태 | draft |\n")
+        return index
+
+    def test_legacy_index_board_keeps_body(self):
+        index = self.legacy_index()
+        index.write_text(index.read_text() + "\n사용자 기록\n")
+        before = index.read_bytes()
+        self.assert_fails(self.run_script("board.sh", "--check"), "보드")
+        self.assertEqual(before, index.read_bytes())
+        self.assert_ok(self.run_script("board.sh"))
+        self.assertIn("사용자 기록", index.read_text())
+        self.assertIn("🎨 설계 (1)", index.read_text())
+
+    def test_board_preserves_concurrent_index_content_and_mode_changes(self):
+        index = self.legacy_index()
         original_write = sdd_board.atomic_write
         for change in ("body", "mode"):
             with self.subTest(change=change):
@@ -391,11 +477,10 @@ class IssueSddTest(unittest.TestCase):
         self.assertIn("Claude가 새로 작성한 기록", index.read_text())
 
     def test_board_atomic_replace_anchors_directory_during_symlink_race(self):
-        self.assert_ok(self.scaffold("sample"))
-        (self.issue() / "design.md").write_text("| 상태 | draft |\n")
+        self.legacy_index()
         spec = self.docs / "demo-specs"
         moved = self.docs / "saved-demo-specs"
-        outside = self.root.parent / "unrelated"
+        outside = self.base / "unrelated"
         outside.mkdir()
         external_index = outside / "index.md"
         external_index.write_text("다른 디렉터리의 문서\n")
@@ -404,7 +489,7 @@ class IssueSddTest(unittest.TestCase):
         def replace_after_directory_swap(source, destination, **arguments):
             self.assertIn("src_dir_fd", arguments)
             self.assertIn("dst_dir_fd", arguments)
-            if destination == "index.md":
+            if destination == "index.md" and not spec.is_symlink():
                 spec.rename(moved)
                 spec.symlink_to(outside, target_is_directory=True)
             return original_replace(source, destination, **arguments)

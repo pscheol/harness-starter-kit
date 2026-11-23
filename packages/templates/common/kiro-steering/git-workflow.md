@@ -8,9 +8,8 @@ inclusion: always
 요약:
 
 - 작업 단위는 SDD 기능 하나다. 브랜치 하나 = requirements·design·tasks 한 벌 = PR 하나.
-- 브랜치는 `<종류>/<이름>`. SDD 파일명의 종류를 그대로 쓴다 — 기능은 `feat/`, 버그는 `fix/`.
-  우선순위 번호는 브랜치에 넣지 않는다. 예: `feat/stage0-m2-schema-invariants`.
-- 단위 SDD로 딴 브랜치는 이름 앞에 단위 id를 붙인다. 예: `fix/app-web-editor-focus`.
+- 브랜치는 `<종류>/<이슈키>-<이름>` — 이슈 폴더 `.agents/docs/issues/<이슈키>-<이름>/` 와 같다. 예: `feat/KNOTS-17-desktop-parity`.
+  이 형식으로 push 할 때 커밋에 그 키의 이슈 폴더가 없으면 pre-push 가 막는다. `exp/` 는 보지 않는다.
 - 도메인 리포는 메인 리포의 submodule 이다. 도메인 리포에서 커밋·push 한 뒤 메인 리포에서 포인터를 올려 커밋한다.
 - 버그도 세 문서를 만든다. `fix`는 문서를 건너뛰는 통로가 아니다.
 - 기능 브랜치는 `develop`에서 따고 `develop`으로 되돌린다. `main`은 릴리스만 받는다.

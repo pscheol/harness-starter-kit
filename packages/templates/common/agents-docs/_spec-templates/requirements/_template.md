@@ -1,21 +1,28 @@
+---
+key: {{ISSUE_KEY}}
+area: {{AREA}}
+type: {{TYPE}}
+title: {{TITLE}}
+status: draft
+created: {{CREATED}}
+---
 <!-- HARNESS STARTER KIT ({{PROJECT_NAME}}): {{FEATURE_NAME}}·{{EPIC_ID}}·{{SERVICE_NAME}}·{{DOMAIN_EXAMPLE}} 치환 후 사용 -->
 
 # Requirements — {{FEATURE_NAME}}
 
 | 항목 | 값 |
 |---|---|
-| 상태 | draft \| in-review \| approved |
 | SDD 단계 | requirements |
 | 출처 | {{EPIC_ID}} / PRD §, 백로그 Story ID |
 | 우선순위 | P0 \| P1 \| P2 |
 | 담당 모듈 | {{SERVICE_NAME}} <!-- 바운디드 컨텍스트를 적는다(예: project \| auth \| storage). 모듈 표기는 스택 규약(`.agents/rules/structure.md`)을 따른다. --> |
-| 연계 | ../design/{{FEATURE_NAME}}.md, ../tasks/active/{{FEATURE_NAME}}.md |
+| 연계 | design.md · tasks.md (같은 폴더) |
 | 기능 문서 | (갱신할 기능 ID — 예: F-NOTE-02. 새 기능이면 "신규: <영역>") |
 
 > 작성 가이드: requirements는 "무엇을/왜"만 다룬다. "어떻게"(기술 선택·구조)는 design에서.
 > 각 수용 기준은 테스트 가능해야 하며 EARS 형식을 따른다.
 > 문체는 `.agents/rules/writing-style.md` — 측정 불가한 형용사·공허한 문장을 쓰지 않는다.
-> 사용자 승인 전에는 `draft` 또는 `in-review`, 승인 후에는 상태를 `approved`로 바꾼다. `approved`만 design 생성 게이트를 통과한다.
+> 상태는 문서 머리의 `status` 하나다. 사용자 승인 전에는 `draft` 또는 `in-review`, 승인 후 `approved`로 바꾼다. `approved`만 design 생성 게이트를 통과한다.
 
 > [NEEDS CLARIFICATION] 규약 (필수): 미확정 항목은 추측·창작 금지. 대신 해당 위치에
 > `[NEEDS CLARIFICATION: 구체 질문]` 마커를 남긴다. **최대 3개**, 우선순위 `scope > 보안/프라이버시 > UX > 기술`.

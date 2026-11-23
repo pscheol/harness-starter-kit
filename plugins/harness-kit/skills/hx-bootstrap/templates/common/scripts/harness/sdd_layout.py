@@ -1,4 +1,4 @@
-"""SDD 경로·상태를 해석한다. 기존 stage 경로는 이동하지 않는다."""
+"""옛 SDD 구조(`<영역>-specs/` 의 이슈 폴더 · 단계 폴더)의 경로 · 상태와 공용 파일 쓰기. 옛 구조는 읽기만 한다(R7.7)."""
 
 import fcntl
 import hashlib
@@ -177,7 +177,7 @@ def strict_task_errors(root, spec, key, layout, state, task):
     return errors
 
 
-def plan_errors(root, strict_legacy=True):
+def legacy_plan_errors(root, strict_legacy=True):
     errors = []
     try:
         for spec in spec_roots(root):

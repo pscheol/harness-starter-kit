@@ -143,12 +143,60 @@ class InstallTest(unittest.TestCase):
 
     def test_new_feature_scaffolds_issue_folder_with_sdlc_sections(self):
         root = self.installed("jvm")
-        result = subprocess.run(["bash", "scripts/new-feature.sh", "notes", "folder-bookmark"], cwd=root, capture_output=True, text=True, timeout=60)
+        command = ["bash", "scripts/new-feature.sh", "--next", "folder-bookmark", "--area", "notes"]
+        result = subprocess.run(command, cwd=root, capture_output=True, text=True, timeout=60)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        requirements = next((root / ".agents/docs/notes-specs/issues").glob("*-feat-folder-bookmark/requirements.md"))
+        requirements = root / ".agents/docs/issues/ACMENOTES-1-folder-bookmark/requirements.md"
         text = requirements.read_text()
+        self.assertTrue(text.startswith("---\nkey: ACMENOTES-1\narea: notes\ntype: feat\n"), text[:200])
         self.assertIn("### 정책 (S2 기획 · 필수)", text)
         self.assertIn("| 기능 문서 |", text)
+        self.assertNotRegex(text, r"(?m)^\|\s*상태\s*\|")
+        self.assertIn("### notes (새 1 · 옛 0)", (root / ".agents/docs/specs-index.md").read_text())
+
+    def test_fresh_install_board_is_current(self):
+        root = self.installed("python")
+        result = subprocess.run(["bash", "scripts/board.sh", "--check"], cwd=root, capture_output=True, text=True, timeout=60)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_meta_gets_v11_defaults_and_update_keeps_user_values(self):
+        root = self.installed("python")
+        meta_path = root / ".agents/harness-kit.json"
+        meta = json.loads(meta_path.read_text())
+        self.assertEqual({"source": "kit", "prefix": "ACMENOTES"}, meta["issueKey"])
+        self.assertEqual("develop", meta["git"]["base"])
+        self.assertIs(True, meta["verify"]["fullOnlyInCI"])
+        self.assertIn('"agents": ["claude", "codex", "cursor", "kiro"]', meta_path.read_text())
+        meta["issueKey"] = {"source": "jira", "prefix": "KNOTS"}
+        meta["git"] = {"base": "main", "worktreeRoot": "../{repo}.worktrees"}
+        meta["verify"] = {"fullOnlyInCI": False}
+        meta["team"] = {"owner": "platform", "labels": ["a", "b"]}
+        meta["tokens"]["CUSTOM_TOKEN"] = "keep"
+        meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n")
+        result = subprocess.run(["bash", str(UPDATE), str(root)], capture_output=True, text=True, timeout=300)
+        self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
+        after = json.loads(meta_path.read_text())
+        self.assertEqual({"source": "jira", "prefix": "KNOTS"}, after["issueKey"])
+        self.assertEqual({"base": "main", "worktreeRoot": "../{repo}.worktrees"}, after["git"])
+        self.assertEqual({"fullOnlyInCI": False}, after["verify"])
+        self.assertEqual({"owner": "platform", "labels": ["a", "b"]}, after["team"])
+        self.assertEqual("keep", after["tokens"]["CUSTOM_TOKEN"])
+        self.assertEqual("acme-notes", after["tokens"]["PROJECT_SLUG"])
+        self.assertEqual(meta["installedAt"], after["installedAt"])
+        self.assertEqual(sorted(meta["agents"]), sorted(after["agents"]))
+        # update.sh · add-agent.sh 는 배열을 줄 단위 sed 로 읽는다(harness_meta_list).
+        self.assertRegex(meta_path.read_text(), r'"agents": \[[^\]\n]*\]')
+        self.assertRegex(meta_path.read_text(), r'"modules": \[[^\]\n]*\]')
+
+    def test_session_start_fixed_context_stays_within_budget(self):
+        # 토큰 예산(설계 README 원칙 10): 세션 시작 고정 안내는 v1.0.8 의 1,517바이트보다 길어지지 않는다.
+        source = (KIT / "packages/templates/common/scripts/hooks/session-start.sh").read_text(encoding="utf-8")
+        fixed = re.search(r"^cat <<'EOF'\n(.*?)^EOF$", source, re.S | re.M)
+        self.assertIsNotNone(fixed)
+        self.assertLessEqual(len(fixed[1].encode("utf-8")), 1517)
+        self.assertIn(".agents/docs/issues/", fixed[1])
+        self.assertIn("--affected", fixed[1])
+        self.assertNotIn("--full", fixed[1])
 
     def test_feature_docs_build_and_check_on_fresh_install(self):
         # 외부 스크립트(assets/vendor)는 받기 전이라 경고만 난다. 받은 뒤에는 잠금 파일의 sha256 으로 대조한다.
@@ -170,7 +218,8 @@ class InstallTest(unittest.TestCase):
         # 생성기는 SDD 이슈도 읽는다. changed 문서 규칙이 이슈 문서를 덮지 않으면 check 가 알린다.
         root = self.installed("python")
         git_init(root)
-        scaffold = subprocess.run(["bash", "scripts/new-feature.sh", "notes", "folder-bookmark"], cwd=root, capture_output=True, text=True, timeout=60)
+        command = ["bash", "scripts/new-feature.sh", "--next", "folder-bookmark", "--area", "notes"]
+        scaffold = subprocess.run(command, cwd=root, capture_output=True, text=True, timeout=60)
         self.assertEqual(scaffold.returncode, 0, scaffold.stdout + scaffold.stderr)
         for command in ("build", "check"):
             result = subprocess.run([sys.executable, "tools/docs/feature_docs.py", command], cwd=root, capture_output=True, text=True, timeout=120)

@@ -46,7 +46,7 @@
 
 ## 4. 기록 — 남기지 않으면 하지 않은 것이다
 
-Inventory 결과는 그 변경의 design 문서(`.agents/docs/<slug>-specs/design/<feature>.md`) 결정 절에
+Inventory 결과는 그 변경의 design 문서(`.agents/docs/issues/<키>-<이름>/design.md`) 결정 절에
 남긴다. design 문서가 없는 작은 변경이면 커밋 본문에 한 줄로 남긴다.
 
 ```text

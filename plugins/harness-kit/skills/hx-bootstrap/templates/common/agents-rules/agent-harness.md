@@ -66,11 +66,11 @@
 
 | 단계 | 위치 |
 |---|---|
-| requirements | `.agents/docs/<slug>-specs/issues/<key>/requirements.md` |
-| design | `.agents/docs/<slug>-specs/issues/<key>/design.md` |
-| tasks | `.agents/docs/<slug>-specs/issues/<key>/tasks/active.md` → `check.md` → `completed.md` |
+| requirements | `.agents/docs/issues/<키>-<이름>/requirements.md` |
+| design | `.agents/docs/issues/<키>-<이름>/design.md` |
+| tasks | `.agents/docs/issues/<키>-<이름>/tasks.md`(`state`: active → check → completed) |
 
-- 새 이슈는 `bash scripts/new-feature.sh <slug> <이름>` 으로 만들고, 다음 단계는 승인 뒤 `--stage=design`·`--stage=tasks`.
+- 새 이슈는 `bash scripts/new-feature.sh <키|--next> <이름> --area <영역>` 으로 만들고, 다음 단계는 승인 뒤 `bash scripts/new-feature.sh <키> --stage=design`·`--stage=tasks`.
 - `generated/`(에이전트가 만드는 문서, 손편집 금지)와 `references/`(압축 참고자료)는 보조 레이어다.
 - 기술 부채는 발견하는 대로 `.agents/docs/tech-debt-tracker.md`에 등록한다.
 
@@ -83,10 +83,10 @@
 
 ## exec-plan 완료 게이트 (사용자 검증 필수)
 
-상태 전이: `active/` → `check/` → `completed/`.
+상태 전이: `tasks.md` 머리의 `state` — `active` → `check` → `completed`(파일은 옮기지 않는다).
 
-- 복잡한 작업은 착수 전에 `.agents/docs/<slug>-specs/issues/<key>/tasks/active.md`에 계획을 남기고 진행한다.
-- DoD와 verify를 충족했다고 해서 바로 `completed/`로 옮기지 않는다. 상태를 `check`로 바꿔 `tasks/check.md`로 옮기고,
+- 복잡한 작업은 착수 전에 `.agents/docs/issues/<키>-<이름>/tasks.md`에 계획을 남기고 진행한다.
+- DoD와 verify를 충족했다고 해서 바로 `completed`로 바꾸지 않는다. `state`를 `check`로 바꾸고,
   무엇을 어떻게 확인했는지 요약해 사용자에게 검증을 요청한다.
 - 사용자가 명시적으로 승인한 뒤에만 `completed`로 바꾸고 `tasks/completed.md`로 옮긴다.
 - 위치와 상태가 어긋나지 않는지는 `scripts/check-exec-plan-status.sh`가 검사한다.

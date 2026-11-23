@@ -1,19 +1,26 @@
+---
+key: {{ISSUE_KEY}}
+area: {{AREA}}
+type: {{TYPE}}
+title: {{TITLE}}
+status: draft
+created: {{CREATED}}
+---
 <!-- HARNESS STARTER KIT ({{PROJECT_NAME}}): {{FEATURE_NAME}}·{{SERVICE_NAME}}·{{PACKAGE_NS}} 치환 후 사용 -->
 
 # Design — {{FEATURE_NAME}}
 
 | 항목 | 값 |
 |---|---|
-| 상태 | draft \| in-review \| approved |
 | SDD 단계 | design |
 | 담당 모듈 | {{SERVICE_NAME}} <!-- 바운디드 컨텍스트를 적는다(예: order \| auth \| catalog). 모듈 표기는 스택 규약(`.agents/rules/structure.md`)을 따른다. --> |
-| 연계 | ../requirements/{{FEATURE_NAME}}.md (req), ../tasks/active/{{FEATURE_NAME}}.md (tasks) |
+| 연계 | requirements.md (req) · tasks.md (tasks) — 같은 폴더 |
 
 > 가이드: design은 requirements를 "어떻게" 구현할지 확정한다. 구현자가 추측 없이
 > 코딩할 수 있을 만큼 인터페이스·데이터·오류·테스트를 구체화한다.
 > 선택한 방식과 **버린 대안의 이유**를 함께 적는다. 문체는 `.agents/rules/writing-style.md`.
 > **선행 조건**: requirements에 미해결 `[NEEDS CLARIFICATION]`이 남아 있으면 설계를 시작하지 말고 `/hx-clarify`로 되돌린다.
-> 사용자 승인 전에는 `draft` 또는 `in-review`, 승인 후에는 상태를 `approved`로 바꾼다. `approved`만 tasks 생성 게이트를 통과한다.
+> 상태는 문서 머리의 `status` 하나다. 사용자 승인 전에는 `draft` 또는 `in-review`, 승인 후 `approved`로 바꾼다. `approved`만 tasks 생성 게이트를 통과한다.
 
 ## 1. Overview
 
@@ -271,7 +278,7 @@ stateDiagram-v2
 
 ## 변경 범위 검증 계획
 
-| 변경 파일/패키지 | 관련 테스트 selector | 근거/보존 동작 | 통합·계약 확대 | full 선택/이유 |
+| 변경 파일/패키지 | 관련 테스트 selector | 근거/보존 동작 | 통합·계약 확대 | affected 결과 · CI full 링크 |
 |---|---|---|---|---|
 
 조건 정책은 Given/When/Then과 경계·진리표, mapper는 필드·NULL·enum·단위, 데이터 접근은 RLS·동시성·멱등성을 검증한다.

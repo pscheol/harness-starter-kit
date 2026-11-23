@@ -4,7 +4,7 @@
 
 | 항목 | 값 |
 |---|---|
-| 대상 스펙 | `../requirements/{{FEATURE_NAME}}.md` (필요 시 `../design/{{FEATURE_NAME}}.md`) |
+| 대상 스펙 | `../requirements.md` (필요 시 `../design.md`) |
 | 도메인 초점 | <예: requirements-quality \| security \| ux \| api \| data \| a11y> |
 | 상태 | draft \| in-review \| approved |
 | 생성 | `/hx-checklist <도메인>` (원본: `.agents/rules/sdd-workflow.md` /checklist 절) |

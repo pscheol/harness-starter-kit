@@ -185,11 +185,17 @@ harness_meta_get() {
   sed -n "s|.*\"${key}\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*|\1|p" "$file" | head -1
 }
 
-# 평면 JSON 의 한 줄짜리 문자열 배열을 공백 구분 목록으로 읽는다.
+# 최상위 문자열 배열을 공백 구분 목록으로 읽는다.
 # 값이 없거나 키 자체가 없으면 빈 문자열이다(구버전 메타에는 modules 가 없다).
+# python3 가 있으면 JSON 으로 읽는다(사람이 배열을 여러 줄로 고쳐도 읽힌다). 없으면 한 줄 배열만 sed 로 읽는다.
 harness_meta_list() {
   local file="$1" key="$2"
   [ -f "$file" ] || return 1
+  if command -v python3 >/dev/null 2>&1 && python3 - "$file" "$key" <<'PY' 2>/dev/null; then return 0; fi
+import json, sys
+value = json.load(open(sys.argv[1], encoding="utf-8")).get(sys.argv[2], [])
+print(" ".join(str(item) for item in value) if isinstance(value, list) else "")
+PY
   sed -n "s|.*\"${key}\"[[:space:]]*:[[:space:]]*\[\([^]]*\)\].*|\1|p" "$file" \
     | head -1 | tr -d '" ' | tr ',' ' '
 }
@@ -215,17 +221,86 @@ harness_json_list() {
   echo "${list#, }"
 }
 
-# 메타를 통째로 다시 쓴다. installedAt 은 기존 값이 있으면 보존한다(최초 설치 시각이므로).
+# 메타를 쓴다. 킷이 관리하는 키(kitVersion · domain · stack · arch · agents · modules · installedAt · updatedAt · tokens)만
+# 바꾸고, 사람이 더한 키는 값과 순서를 그대로 둔다(R7.11). installedAt 은 기존 값이 있으면 보존한다(최초 설치 시각이므로).
+# v1.1 기본값 issueKey · git.base · verify.fullOnlyInCI 는 없을 때만 더한다. 배열은 한 줄로 쓴다(harness_meta_list 의 sed 경로).
+# python3 가 없으면 예전처럼 통째로 쓰고 경고한다(사람이 더한 키는 사라진다).
 harness_write_meta() {
   local target="$1" version="$2" domain="$3" stack="$4" arch="$5" agents="$6" modules="${7:-}"
   local file="$target/$HARNESS_META_REL" installed today list mlist
   today="$(date +%F)"
   installed="$(harness_meta_get "$file" installedAt 2>/dev/null || true)"
   [ -z "$installed" ] && installed="$today"
+  mkdir -p "$(dirname "$file")"
+  if command -v python3 >/dev/null 2>&1; then
+    # 치환값은 export 되지 않은 셸 변수일 수 있다. 이름마다 HX_TOKEN_<이름> 으로 넘긴다.
+    local k; local -a token_env=()
+    for k in $HARNESS_TOKENS; do token_env+=("HX_TOKEN_$k=${!k:-}"); done
+    env "${token_env[@]}" HX_VERSION="$version" HX_DOMAIN="$domain" HX_STACK="$stack" HX_ARCH="$arch" \
+      HX_AGENTS="$agents" HX_MODULES="$modules" HX_INSTALLED="$installed" HX_TODAY="$today" \
+      HX_TOKEN_NAMES="$HARNESS_TOKENS" python3 - "$file" <<'PY'
+import json, os, re, shutil, sys
+
+path = sys.argv[1]
+env = os.environ
+current = {}
+if os.path.exists(path):
+    try:
+        with open(path, encoding="utf-8") as handle:
+            current = json.load(handle)
+        if not isinstance(current, dict):
+            raise ValueError("top level is not an object")
+    except ValueError as error:
+        shutil.copyfile(path, path + ".bak")
+        print(f"  ⚠ {path} 를 JSON 으로 읽지 못했다({error}) — {path}.bak 로 남기고 새로 쓴다", file=sys.stderr)
+        current = {}
+tokens = dict(current.get("tokens") or {}) if isinstance(current.get("tokens"), dict) else {}
+tokens.update({name: env.get("HX_TOKEN_" + name, "") for name in env["HX_TOKEN_NAMES"].split()})
+managed = {
+    "kitVersion": env["HX_VERSION"],
+    "domain": env["HX_DOMAIN"],
+    "stack": env["HX_STACK"],
+    "arch": env["HX_ARCH"],
+    "agents": env["HX_AGENTS"].split(),
+    "modules": env["HX_MODULES"].split(),
+    "installedAt": env["HX_INSTALLED"],
+    "updatedAt": env["HX_TODAY"],
+    "tokens": tokens,
+}
+slug = re.sub(r"^[0-9]+", "", re.sub(r"[^A-Z0-9]", "", (tokens.get("PROJECT_SLUG") or "").upper()))[:10]
+defaults = {
+    "issueKey": {"source": "kit", "prefix": slug if len(slug) >= 2 else "ISSUE"},
+    "git": {"base": "develop"},
+    "verify": {"fullOnlyInCI": True},
+}
+meta = {**managed, **{key: value for key, value in current.items() if key not in managed}}
+for key, value in defaults.items():
+    if not isinstance(meta.get(key), dict):
+        meta[key] = value
+    else:
+        meta[key] = {**value, **meta[key]}
+
+
+def dump(value, indent):
+    pad = "  " * (indent + 1)
+    if isinstance(value, dict) and value:
+        body = ",\n".join(f"{pad}{json.dumps(key, ensure_ascii=False)}: {dump(item, indent + 1)}" for key, item in value.items())
+        return "{\n" + body + "\n" + "  " * indent + "}"
+    if isinstance(value, list):
+        return "[" + ", ".join(json.dumps(item, ensure_ascii=False) for item in value) + "]"
+    return json.dumps(value, ensure_ascii=False)
+
+
+temporary = path + ".tmp"
+with open(temporary, "w", encoding="utf-8") as handle:
+    handle.write(dump(meta, 0) + "\n")
+os.replace(temporary, path)
+PY
+    return $?
+  fi
+  echo "  ⚠ python3 가 없어 $HARNESS_META_REL 를 통째로 다시 쓴다 — 사람이 더한 키(issueKey · git · verify 등)는 사라진다" >&2
   list="$(harness_json_list "$agents")"
   mlist="$(harness_json_list "$modules")"
-
-  mkdir -p "$(dirname "$file")"
   cat > "$file" <<JSON
 {
   "kitVersion": "$version",

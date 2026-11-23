@@ -1,22 +1,22 @@
 # 실행 계획 — 이슈의 tasks
 
-새 이슈는 `issues/<key>/tasks/active.md`, 기존 형식은 `tasks/active/<key>.md`다.
-단계 승인을 받은 뒤 해당 형식의 실제 경로에 만든다. 기존 문서를 자동 이동하지 않는다.
+tasks 는 이슈 폴더의 `tasks.md` 한 파일이다(`.agents/docs/issues/<키>-<이름>/tasks.md`).
+design 승인 뒤 `bash scripts/new-feature.sh <키> --stage=tasks` 로 만든다. 옛 구조(`<영역>-specs/tasks/<상태>/`)는 읽기만 한다.
 
 ## 작업 기준
 
 - `T### [P] [US#]`에 실제 소유 파일·패키지·수용 기준과 검증 명령을 적는다.
 - 새 기능·버그는 실패 테스트를 먼저, 리팩토링은 보존 테스트를 먼저 실행한다.
 - BDD 시나리오의 입력·행동·결과와 경계·권한·실패를 확인한다.
-- 변경 대상 테스트부터 실행한다. full은 별도로 명시하고 실행/생략 근거를 적는다.
+- 변경 대상 테스트부터 실행한다. MR 전에는 `bash scripts/verify.sh --affected`, 전체 검증(full)은 CI가 돈다.
 - 다른 세션의 소유 파일을 수정하거나 전체 포맷/생성 명령으로 덮지 않는다.
 - 잔여 작업은 끝에 새 Phase와 연속 번호로 추가한다. 지난 이력을 다시 쓰지 않는다.
 
 ## 완료 검수
 
-새 형식은 `active.md` → `check.md` → `completed.md`, 기존 형식은 상태 디렉터리 이동이다.
-위치와 상태 필드를 함께 바꾼다. DoD 충족 뒤 check로 두고 검증 결과를 사용자에게 제시한다.
-사용자가 명시 승인한 뒤에만 completed로 옮긴다. 대체 계획은 superseded와 사유를 남긴다.
+상태는 문서 머리의 `state` 값이다: `active` → `check` → `completed`, 대체되면 `superseded`. 파일은 옮기지 않는다.
+DoD 충족 뒤 `check`로 두고 검증 결과를 사용자에게 제시한다.
+사용자가 명시 승인한 뒤에만 `completed`로 바꾼다. 대체 계획은 `superseded`와 사유를 남긴다.
 상태 검사는 사용자 승인 여부 자체를 입증하지 못한다.
 
 `bash scripts/board.sh --check`는 읽기 전용이다. 보드 갱신은 `bash scripts/board.sh`로 명시한다.

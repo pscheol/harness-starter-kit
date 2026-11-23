@@ -5,25 +5,22 @@ SDD 문서 없이 브랜치를 따지 않는다 — 문서가 없으면 무엇�
 
 SDD 워크플로 원본은 `.agents/rules/sdd-workflow.md`, 이 파일은 그 결과물을 어떻게 리포에 싣는지를 정한다.
 
-## 브랜치 이름 — `<종류>/<SDD 키>`
+## 브랜치 이름 — `<종류>/<이슈키>-<이름>`
 
-SDD 파일명이 `<우선순위>-<종류>-<이름>.md`이므로 브랜치는 같은 종류·같은 이름을 쓴다.
-우선순위 번호는 브랜치에 넣지 않는다 — 번호는 스펙 폴더 안 정렬용이고 브랜치에서는 의미가 없다.
-
-```text
-SDD    .agents/docs/<slug>-specs/tasks/active/3-feat-stage0-m2-schema-invariants.md
-브랜치  feat/stage0-m2-schema-invariants
-
-SDD    .agents/docs/<slug>-specs/tasks/active/7-fix-cursor-decode-error.md
-브랜치  fix/cursor-decode-error
-```
-
-**다층 하네스(선택 모듈 `multi-harness`)에서 단위 SDD로 브랜치를 따면 이름 앞에 단위 id를 붙인다.** 단위 id는 `.agents/harness.json`의 `unit` 값이다.
+브랜치는 이슈 폴더 `.agents/docs/issues/<이슈키>-<이름>/` 와 같은 키 · 이름을 쓴다. 키가 리포 전체에서 하나이므로 단위 id 를 앞에 붙이지 않는다.
 
 ```text
-SDD    services/web/.agents/docs/web-specs/issues/2-fix-editor-focus/tasks/active.md
-브랜치  fix/web-editor-focus
+SDD    .agents/docs/issues/KNOTS-17-desktop-parity/tasks.md
+브랜치  feat/KNOTS-17-desktop-parity
+
+SDD    .agents/docs/issues/KNOTS-21-cursor-decode-error/
+브랜치  fix/KNOTS-21-cursor-decode-error
 ```
+
+- 형식: `^(feat|fix|refactor|perf|chore|docs)/([A-Z][A-Z0-9]{1,9}-[0-9]+)-[a-z0-9-]+$`.
+- pre-push: 이 형식의 브랜치를 올릴 때 그 커밋에 `.agents/docs/issues/<이슈키>-*` 가 없으면 막는다. 형식이 아니면 경고만 낸다.
+- `exp/` 브랜치(병합하지 않는 실험)는 검사하지 않는다.
+- 다층 하네스(선택 모듈 `multi-harness`): SDD 폴더는 메인 리포에 있고, 도메인 리포 브랜치도 같은 이름을 쓴다. 도메인 리포의 pre-push 는 메인 리포 작업 트리에서 폴더를 찾는다.
 
 ## 여러 리포로 나눈 경우 — 두 단계 커밋
 
@@ -35,9 +32,9 @@ SDD    services/web/.agents/docs/web-specs/issues/2-fix-editor-focus/tasks/activ
 
 | 종류 | 언제 | 예 |
 |---|---|---|
-| `feat` | 새 기능·마일스톤 | `feat/stage0-m2-schema-invariants` |
-| `fix` | 버그 수정 | `fix/cursor-decode-error` |
-| `refactor` | 동작 그대로 구조 변경 | `refactor/order-port-split` |
+| `feat` | 새 기능·마일스톤 | `feat/KNOTS-17-desktop-parity` |
+| `fix` | 버그 수정 | `fix/KNOTS-21-cursor-decode-error` |
+| `refactor` | 동작 그대로 구조 변경 | `refactor/KNOTS-30-order-port-split` |
 | `perf` | 성능 개선 | `perf/transcript-query` |
 | `chore` | 빌드·설정·의존성 | `chore/gradle-9-upgrade` |
 | `docs` | 문서만 | `docs/erd-index-table` |
@@ -92,12 +89,12 @@ feat: Stage 0 M2 스키마와 불변식 — mtg 8테이블·권한 회수·회�
 
 ## exec-plan 상태와 브랜치
 
-`tasks` 파일 위치가 곧 진행 상태다(`active` → `check` → `completed`).
+`tasks.md` 머리의 `state` 가 곧 진행 상태다(`active` → `check` → `completed`).
 
-| 시점 | tasks 위치 | 브랜치 |
+| 시점 | tasks `state` | 브랜치 |
 |---|---|---|
-| 구현 중 | `tasks/active/` | 기능 브랜치 살아 있음 |
-| DoD 충족·사용자 검증 대기 | `tasks/check/` | PR 열림 |
-| 사용자 승인 후 | `tasks/completed/` | 병합·삭제 |
+| 구현 중 | `active` | 기능 브랜치 살아 있음 |
+| DoD 충족·사용자 검증 대기 | `check` | PR 열림 |
+| 사용자 승인 후 | `completed` | 병합·삭제 |
 
-`completed/`로 옮기는 것은 사용자 승인 뒤다. 에이전트가 임의로 옮기지 않는다(`.agents/rules/agent-harness.md`).
+`completed`로 바꾸는 것은 사용자 승인 뒤다. 에이전트가 임의로 바꾸지 않는다(`.agents/rules/agent-harness.md`).

@@ -22,7 +22,7 @@
 
 ## 절차
 
-1. `AGENTS.md`·`.agents/rules/guardrails.md`·[코드 유지보수](../rules/code-maintenance.md)·[세션 협업](../rules/session-collaboration.md)와 [SDD 워크플로](../rules/sdd-workflow.md)의 `/hx-tasks` 절을 읽는다. 새 작업은 `.agents/docs/<slug>-specs/issues/<N-type-name>/`의 `requirements.md`·`design.md`·`tasks/active.md`를 기준으로 하고 진행 중 기존 stage별 명세는 이동하지 않는다.
+1. `AGENTS.md`·`.agents/rules/guardrails.md`·[코드 유지보수](../rules/code-maintenance.md)·[세션 협업](../rules/session-collaboration.md)와 [SDD 워크플로](../rules/sdd-workflow.md)의 `/hx-tasks` 절을 읽는다. 새 작업은 `.agents/docs/issues/<키>-<이름>/`의 `requirements.md`·`design.md`·`tasks.md`를 기준으로 하고 옛 `<영역>-specs/` 명세는 읽기만 한다.
 2. 요구 ID(`R#.#`)·스토리(`US#`)·설계 절을 목록으로 만든다.
 3. 요구마다 바뀔 파일을 검색해 실제로 연다. 존재를 확인하지 못한 경로에는 "(미확인)"을 붙인다.
 4. 작업을 나눈다. 작업 하나는 기능별 패키지·레이어 책임에 맞는 소유 파일 묶음 하나와 검증 하나다. 소유권 등록표와 실제 dirty 파일을 확인해 다른 Claude·Kiro·Codex 세션의 작업과 겹치지 않게 한다. 같은 파일을 두 작업이 쓰면 순서를 정하고 `[P]`를 붙이지 않는다.

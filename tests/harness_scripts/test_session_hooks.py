@@ -84,7 +84,7 @@ class SessionHooksTest(unittest.TestCase):
     def test_session_start_loads_quality_collaboration_and_issue_workflow(self):
         result = self.run_hook("session-start.sh")
         self.assertEqual(0, result.returncode, result.stderr)
-        for expected in ("code-maintenance.md", "session-collaboration.md", "--full", "issues/", "공동 작업 공지"):
+        for expected in ("code-maintenance.md", "session-collaboration.md", "--affected", "issues/", "공동 작업 공지"):
             self.assertIn(expected, result.stdout)
         self.assertFalse(result.stdout.lstrip().startswith(("[", "{")))
 
@@ -92,9 +92,11 @@ class SessionHooksTest(unittest.TestCase):
         shutil.copy2(ROOT / "scripts/new-feature.sh", self.root / "scripts/new-feature.sh")
         shutil.copy2(ROOT / "scripts/sdd-layout.py", self.root / "scripts/sdd-layout.py")
         shutil.copytree(ROOT / ".agents/docs/_spec-templates", self.root / ".agents/docs/_spec-templates")
+        issue = self.root / ".agents/docs/issues/TEST-1-sample-flow"
         for stage in ("requirements", "design", "tasks"):
+            first = ["--next", "sample-flow", "--area", "demo"] if stage == "requirements" else ["TEST-1", "--stage=" + stage]
             result = subprocess.run(
-                ["bash", str(self.root / "scripts/new-feature.sh"), "demo", "sample", "--stage=" + stage],
+                ["bash", str(self.root / "scripts/new-feature.sh"), *first],
                 cwd=self.root,
                 env=self.env,
                 capture_output=True,
@@ -103,11 +105,12 @@ class SessionHooksTest(unittest.TestCase):
             )
             self.assertEqual(0, result.returncode, result.stdout + result.stderr)
             if stage != "tasks":
-                (self.root / ".agents/docs/demo-specs/issues/1-feat-sample" / (stage + ".md")).write_text("| 상태 | approved |\n")
+                document = issue / (stage + ".md")
+                document.write_text(re.sub(r"(?m)^status:.*$", "status: approved", document.read_text(), count=1))
         context = self.run_hook("session-start.sh").stdout
         matched = re.search(r"새 SDD: ([^ ]+)/\{([^}]+)\}", context)
         self.assertIsNotNone(matched, "SessionStart에 실제 이슈 명세 경로 안내가 없다")
-        directory = matched[1].replace("<slug>", "demo").replace("<N-type-name>", "1-feat-sample")
+        directory = matched[1].replace("<키>-<이름>", "TEST-1-sample-flow")
         for filename in matched[2].split(","):
             self.assertTrue((self.root / directory / filename).is_file(), directory + "/" + filename)
 
