@@ -263,4 +263,6 @@ def related_tests(source, project):
         return jvm_tests(source, project)
     if source.suffix == ".dart":
         return dart_tests(source, project)
+    if source.suffix == ".go":
+        return set(source.parent.glob("*_test.go")) if source.parent.is_dir() else set()
     return set()

@@ -4,12 +4,15 @@
 # 검증 스크립트 (단일 강제 지점).
 # hook / CI / pre-commit 이 모두 이 스크립트 하나만 호출한다. 로직 복제 금지.
 #
-# 검증 레벨 (HARNESS_VERIFY_LEVEL — 지정하지 않으면 changed: 아래 진입 블록이 verify-changed.py 로 넘긴다):
+# 검증 레벨 (인자 > HARNESS_VERIFY_LEVEL > 기본 changed — 아래 진입 블록 scripts/verify-entry.sh 가 가른다):
+#   changed  — 기본. 바뀐 파일과 연결된 테스트만(scripts/verify-changed.py). Stop hook·git hook 이 쓴다.
+#   affected — 바뀐 파일이 속한 모듈과 그 모듈을 쓰는 모듈의 검사. `--affected`. MR 전에 쓴다.
 #   fast — 구조 점검 + 포맷 + **프로세스 경계 가드**(단계 1~3)까지. 보통 수 초.
-#          `--fast` 로 명시할 때 돈다. Stop hook·git hook 은 changed(바뀐 파일에 필요한 검사만)로 돈다.
+#          `--fast` 로 명시할 때 돈다.
 #          경계 가드를 fast 에 넣은 것은 의도적이다 — grep 이라 빠르고, 이 스택에서
 #          가장 비싼 실수(프로세스 경계 해제)를 턴마다 잡아야 하기 때문이다.
-#   full — 전체 단계. `--full` 로 명시하거나 CI(HARNESS_VERIFY_LEVEL=full)가 쓴다.
+#   full — 전체 단계. CI(HARNESS_VERIFY_LEVEL=full)가 돈다. 사람은 터미널에서 직접 돌릴 수 있다.
+#          에이전트 세션의 full 은 훅이 막는다 — 에이전트는 MR 전에 --affected 를 쓴다.
 #
 # Electron 게이트:
 #   1) exec-plan 위치↔상태 일관성 (스택 무관, 항상)          — fast
@@ -28,7 +31,7 @@ set -uo pipefail
 
 # BEGIN HARNESS VERIFICATION ENTRY
 # 레벨을 지정하지 않으면(기본 changed) 바뀐 파일에 필요한 검증만 고른다 — scripts/verify-changed.py.
-# --fast · --full · HARNESS_VERIFY_LEVEL=fast|full 이면 아래 본문이 돈다.
+# --affected 는 바뀐 모듈의 검사를 고른다. --fast · --full · HARNESS_VERIFY_LEVEL=fast|full 이면 아래 본문이 돈다.
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/verify-entry.sh"
 # END HARNESS VERIFICATION ENTRY
 cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 2
@@ -126,7 +129,7 @@ fi
 # 이후 단계는 타입 검사·번들링을 동반한다. 캐시가 비면 수 분이 걸린다.
 if [ "$LEVEL" = "fast" ]; then
   if [ "$fail" -ne 0 ]; then echo "검증 실패(fast)"; exit 1; fi
-  echo "검증 통과(fast — lint·타입·테스트·빌드는 --full·CI 에서 실행)"
+  echo "검증 통과(fast — lint·타입·테스트·빌드는 MR 전 --affected, 전체는 CI 에서 돈다)"
   exit 0
 fi
 

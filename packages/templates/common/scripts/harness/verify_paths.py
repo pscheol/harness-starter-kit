@@ -37,6 +37,7 @@ CODE_EXTENSIONS = {
     ".java",
     ".dart",
     ".sh",
+    ".go",
 }
 
 

@@ -60,7 +60,7 @@ class ConcurrentSyncTest(unittest.TestCase):
     def test_baseline_allows_source_update_from_unchanged_targets(self):
         self.assertEqual(self.run_sync().returncode, 0)
         snapshot = self.baseline()
-        self.write(self.shared / '.agents/rules/writing-style.md', '# 개선 — {{PROJECT_NAME}}\n')
+        self.write(self.shared / '.agents/rules/writing-style.md', '# 개선 — ' + '{{' + 'UNIT_TITLE}}' + '\n')
         result = self.run_sync('--baseline', str(snapshot))
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.target().read_text(), '# 개선 — Web\n')

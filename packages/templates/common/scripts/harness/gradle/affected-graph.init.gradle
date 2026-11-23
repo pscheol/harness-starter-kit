@@ -1,0 +1,28 @@
+// HARNESS STARTER KIT — affected 계획의 Gradle 프로젝트 그래프(설계 01 §3.1).
+// settings 를 정적으로 읽지 못할 때만(includeBuild · 리터럴이 아닌 include · 함수로 만든 projectDir)
+// scripts/harness/verify_modules.py 가 한 번 부르고 결과를 .agents/state/gradle-graph-<해시>.json 에 캐시한다:
+//   ./gradlew -q --no-configuration-cache --init-script scripts/harness/gradle/affected-graph.init.gradle harnessProjectGraph
+// 출력: 한 줄 "HARNESS_GRAPH [{"path": ":a", "projectDir": "/abs/a", "projectDeps": [":b"]}, …]". 빌드를 바꾸지 않는다.
+
+import groovy.json.JsonOutput
+import org.gradle.api.artifacts.ProjectDependency
+
+gradle.rootProject { root ->
+    root.tasks.register("harnessProjectGraph") {
+        group = "help"
+        description = "Prints the project dependency graph for the harness affected plan as one JSON line."
+        doLast {
+            def rows = root.allprojects.collect { project ->
+                def uses = new TreeSet<String>()
+                project.configurations.each { configuration ->
+                    configuration.dependencies.withType(ProjectDependency).each { dependency ->
+                        // Gradle 8.11 부터 getPath(), 그 전은 getDependencyProject().path
+                        uses << (dependency.metaClass.respondsTo(dependency, "getPath") ? dependency.path : dependency.dependencyProject.path)
+                    }
+                }
+                [path: project.path, projectDir: project.projectDir.absolutePath, projectDeps: uses.toList()]
+            }
+            println("HARNESS_GRAPH " + JsonOutput.toJson(rows))
+        }
+    }
+}
