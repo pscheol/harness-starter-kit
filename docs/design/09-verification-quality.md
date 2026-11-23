@@ -494,6 +494,7 @@ python3 scripts/harness/approve.py <이슈키|Intent키|deploy:<배포 기록 �
 |---|---|
 | 도구별 SARIF 플래그와 최소 버전(Checkstyle·SpotBugs·detekt·ktlint·ESLint 포매터·golangci-lint v1/v2·govulncheck·Bandit) | 각 도구 최신 문서와 `--help`로 확인해 `analyzers.json` 기본값과 `minVersion`에 적는다 |
 | GitLab이 SARIF를 MR 보안 위젯에 받는지(자체 SAST 형식만 받는지) | GitLab 문서 확인. 안 되면 산출물 + 요약 코멘트만 쓴다 |
+| Bitbucket(Cloud · Data Center) 지원 여부(후보) | 지금은 GitLab · GitHub만 다룬다. 쓰는 팀이 생기면 PR 정보 · 코멘트 · 승인 시각을 REST로 읽는 어댑터를 `glab` · `gh` 자리에 더한다(공식 CLI가 없다). AWS AI-DLC 데모가 Bitbucket을 MCP로 연결한다 |
 | CI 작업이 MR 코멘트를 쓸 권한(GitLab `CI_JOB_TOKEN` 범위, 프로젝트 토큰 필요 여부) | 현장 GitLab에서 시험 MR로 확인 |
 | report 단계를 `verify.sh`의 어느 인자로 부를지(계약 §7 인자에 없다) | 01·02와 정해 계약 §7에 더하거나, affected·full 끝에서 자동으로 돌게 한다 |
 | Codex·Kiro PreToolUse 훅이 파일 쓰기 도구 입력(경로·새 내용)을 주는지 | 각 하네스에서 훅 입력을 기록해 본다. 안 되면 git 훅·CI 검사만으로 막는다고 문서에 적는다 |

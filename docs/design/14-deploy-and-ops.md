@@ -140,7 +140,7 @@ created: 2026-12-01
 ## 3. 확인 신호
 | 신호 | 명령 · 링크 | 기준 |
 |---|---|---|
-| 스모크 | deploy.json `smoke` | exit 0 |
+| 스모크 | deploy.json `smoke` — 검증 환경 주소에 실제 HTTP 요청을 보내 주요 경로의 응답 코드 · 본문 일부를 확인하는 명령(예: `curl -fsS <주소>/health`, 주요 API 2~3개). 살아 있는 서비스에 요청을 보내 확인하는 방식은 AWS AI-DLC 데모의 QA 단계와 같다 | exit 0 |
 | 헬스 | deploy.json `health` | 3회 연속 200 |
 | 지표 | 결제 실패율(대시보드 링크) | ≤ 0.5%(INT-7 SC-1) |
 

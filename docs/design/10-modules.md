@@ -317,7 +317,7 @@ Unit과의 연결: Intent `units.json`의 Unit `repo` 값이 배포 단위 `id`�
 
 | 단계 | 하는 일 |
 |---|---|
-| 가져오기 | 제목·본문·첨부·속성을 읽어 `intents/<INT>-<이름>/intake.md`와 `attachments/`에 쓴다(08 §3.11과 같은 형식·제한·비밀값 검사) |
+| 가져오기 | 제목·본문·첨부·속성을 읽어 `intents/<INT>-<이름>/intake.md`와 `attachments/`에 쓴다(08 §3.11과 같은 형식·제한·비밀값 검사 · 신뢰하지 않는 입력 표시와 제어 문자 제거) |
 | 출처 기록 | `intake.md` 머리에 `source: { type, ref, url, importedAt, version }`를 남긴다. 다시 가져오면 바뀐 부분을 diff로 보여 주고 사람이 반영 여부를 고른다 |
 | 원본 기준 | 가져온 뒤의 원본은 리포다. 외부 문서가 바뀌어도 자동으로 덮지 않는다 |
 | 되쓰기(선택) | `writeBack: true`면 Intent 키·현재 게이트 상태·SDD 링크를 외부 문서의 속성에 쓴다. 기본은 꺼짐 |
