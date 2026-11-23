@@ -39,7 +39,7 @@ created: 2026-11-23
 - 세션 시작 고정 안내(heredoc): 1,517바이트 → 1,422바이트(템플릿 원본 기준, `test_session_start_fixed_context_stays_within_budget`가 ≤ 1,517을 본다).
 - HK-7 문구 시험(`/tmp/hk7-test_template_wording.py`, 커밋하지 않음): 이 이슈 담당 파일의 지시 문장 4건(design · tasks 템플릿 칸 2, tasks 템플릿 문장 1, session-start 1)이 0건. `test_spec_templates_use_affected_column` 통과. 남은 건은 다른 담당(verify 스크립트 · `stacks/*/scripts/verify.sh`)이다.
 - `node scripts/gen-plugins.mjs --check`: 생성물 일치(파일 486개). `bash scripts/sync-commands.sh --check`: 스킬 포인터 일치.
-- 전체 시험 `python3 -m unittest discover -s tests -p "test_*.py"`: 1차 `Ran 22 tests in 317.963s OK`(브랜치 시험 추가 전).
+- 전체 시험 `python3 -m unittest discover -s tests -p "test_*.py"`: 1차 `Ran 22 tests in 317.963s OK`(브랜치 시험 추가 전). 2차(최종, 커밋 0773abd) `Ran 22 tests in 295.472s OK` — 설치본 `scripts/tests` 316개 포함.
 
 ## 바꾼 기존 시험과 이유
 
