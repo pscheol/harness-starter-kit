@@ -1,0 +1,11 @@
+{
+  "schema": "harness-kit.quality-gate/v1",
+  "newIssues": { "CRITICAL": 0, "HIGH": null, "MEDIUM": null, "LOW": null },
+  "duplication": { "newCodeMaxPercent": 3.0, "minChangedLines": 50 },
+  "complexity": { "functionMaxCcn": 15, "mode": "new-or-worsened" },
+  "coverage": { "newCodeMinPercent": null },
+  "dependencies": { "blockAtSeverity": "CRITICAL" },
+  "review": { "openMax": { "CRITICAL": 0, "HIGH": 0 } },
+  "enforceAt": ["affected", "full"],
+  "warnAt": ["changed"]
+}

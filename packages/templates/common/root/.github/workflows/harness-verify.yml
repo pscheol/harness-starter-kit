@@ -1,0 +1,89 @@
+# HARNESS STARTER KIT ({{PROJECT_NAME}}) — GitHub Actions 검증 트리거(설계 09 §3.7).
+#
+# 검증 단계는 scripts/verify.sh 만 부른다. 판정 로직은 이 파일에 두지 않는다.
+#   fast      모든 push · PR
+#   affected  PR. base 브랜치의 검증 코드 · 설정으로 판정한다(PR 이 바꾼 검증 코드 · 기준은 병합 뒤부터 적용된다)
+#   full      야간 schedule · 수동 실행. 기준선 갱신은 사람이 base 브랜치에서 python3 scripts/harness/quality.py baseline --update
+# 실행 환경(언어 런타임 · 의존성 · 분석기 설치)은 ./.github/actions/harness-setup 이 준비한다. 킷은 분석기를 설치하지 않는다.
+# 이 파일 · .github/actions/ · scripts/verify.sh · scripts/harness/ · .agents/*.json 은 CODEOWNERS 로 승인자를 건다.
+name: harness-verify
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: harness-verify-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 실행 환경 준비
+        uses: ./.github/actions/harness-setup
+
+      - name: fast
+        run: bash scripts/verify.sh --fast
+
+      - name: affected (base 판 판정)
+        if: github.event_name == 'pull_request'
+        env:
+          HX_BASE_REF: origin/${{ github.base_ref }}
+        run: |
+          mkdir -p .agents/state
+          git show "$HX_BASE_REF:scripts/verify.sh" > .agents/state/verify-base.sh || true
+          git show "$HX_BASE_REF:scripts/verify-entry.sh" > .agents/state/verify-entry.sh || true
+          if [ -s .agents/state/verify-base.sh ] && grep -q -- --from-base .agents/state/verify-entry.sh; then bash .agents/state/verify-base.sh --from-base "$HX_BASE_REF" --affected; else bash scripts/verify.sh --affected --bootstrap; fi
+
+      - name: full
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: bash scripts/verify.sh --full
+
+      # 배포 단계(선택) 자리: scripts/harness/deploy.py 만 부른다(설계 14 §3.5). 이 템플릿에는 아직 없다.
+
+      - name: SARIF 업로드
+        if: always() && hashFiles('.agents/reports/sarif/latest/*.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: .agents/reports/sarif/latest
+
+      - name: 보고서 보관
+        if: always() && hashFiles('.agents/reports/**') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: harness-reports
+          path: .agents/reports/
+          retention-days: 14
+
+  # PR 이 검증 코드 · 설정을 바꿨을 때만 head 판으로 한 번 더 돈다. 정보용이라 실패해도 PR 을 막지 않는다.
+  affected-head:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: 실행 환경 준비
+        uses: ./.github/actions/harness-setup
+
+      - name: affected (head 판, 정보용)
+        env:
+          HX_BASE_REF: origin/${{ github.base_ref }}
+        run: git diff --quiet "$HX_BASE_REF...HEAD" -- scripts/verify.sh scripts/verify-entry.sh scripts/verify-changed.py scripts/harness .agents/verify-checks.json .agents/quality-gate.json .agents/analyzers.json .agents/deploy.json .agents/quality-baseline.json || bash scripts/verify.sh --affected

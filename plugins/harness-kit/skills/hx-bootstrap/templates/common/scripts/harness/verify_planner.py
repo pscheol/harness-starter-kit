@@ -19,6 +19,7 @@ from harness.verify_mapping import (
 )
 from harness.verify_modules import CONTRACT, ModuleError, module_test
 from harness.verify_paths import CODE_EXTENSIONS, is_test, owner_for, project_for, uv_workspace_root
+from harness.verify_sources import config_path, tools_dir
 
 
 def lock_for(project):
@@ -52,7 +53,7 @@ def load_path_checks(root):
     `covers: true` 면 그 경로의 코드 파일(생성물·리포에 둔 외부 라이브러리)은 관련 시험을 따로 찾지 않고 이 검사가 책임진다.
     형식이 틀리면 계획을 만들지 않고 실패한다(조용히 건너뛰지 않는다).
     """
-    path = root / CHECKS_FILE
+    path = config_path(root, Path(CHECKS_FILE).name)  # MR 이면 base 판(설계 09 §3.7)
     if not path.is_file():
         return []
     try:
@@ -524,7 +525,7 @@ def verification_plan(root, relative_files, explicit_tests, units, scope_files=N
                 "static",
                 [
                     sys.executable,
-                    str(root / "scripts/harness/verify_static.py"),
+                    str(tools_dir(root) / "harness/verify_static.py"),
                     "--root",
                     str(root),
                     *documents,
@@ -563,7 +564,7 @@ def verification_plan(root, relative_files, explicit_tests, units, scope_files=N
         skipped.append(f"{group['unit']['id']}: whole-suite run, coverage, E2E and dependency installation not selected")
     commands.extend(module_tests.values())
     commands.extend(path_checks(root, scope_files, units))
-    diagnostic = root / "scripts/check-maintenance.py"
+    diagnostic = tools_dir(root) / "check-maintenance.py"
     covered = covered | covered_by_checks(root, scope_files)
     code = [relative for relative in scope_files if (root / relative).suffix in CODE_EXTENSIONS and (root / relative).is_file() and relative not in covered]
     if code and diagnostic.is_file():

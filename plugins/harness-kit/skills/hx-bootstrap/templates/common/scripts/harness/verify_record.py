@@ -182,6 +182,9 @@ def record_result(root, result, level, started, exit_code, session=None):
         "unverified": result.get("unverified", []),
         "recommendations": result.get("recommendations", []),
     })
+    if result.get("analysis"):
+        analysis = result["analysis"]
+        record["analysis"] = {key: analysis[key] for key in ("status", "gate", "runId", "newIssues", "incomplete", "reason") if key in analysis}
     if result.get("error"):
         record["error"] = result["error"]
     if result.get("incomplete"):

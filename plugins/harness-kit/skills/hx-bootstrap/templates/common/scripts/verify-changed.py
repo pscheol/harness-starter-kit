@@ -8,6 +8,7 @@
 import argparse
 import json
 import math
+import os
 import sys
 import time
 from pathlib import Path
@@ -18,8 +19,10 @@ from harness.verify_affected import affected_plan
 from harness.verify_changes import changed_files, expand_gitlink_files, resolve_base, session_files
 from harness.verify_paths import safe_file, units_for
 from harness.verify_planner import verification_plan
+from harness.quality_run import analyze
 from harness.verify_record import record_result, write_record
 from harness.verify_runner import execute_plan
+from harness.verify_sources import BASE_ENV, harness_root
 from harness.verify_summary import summary_text
 
 DEFAULT_TIMEOUT = {"changed": 300, "affected": 900}
@@ -80,6 +83,8 @@ def parse_options():
         help="동일 단위 검증 잠금 대기 제한(초)",
     )
     options = parser.parse_args()
+    if options.base is None and not uses_explicit_change_scope(options) and os.environ.get(BASE_ENV):
+        options.base = os.environ[BASE_ENV]  # MR 파이프라인의 base 판 판정(verify-entry.sh --from-base)
     options.timeout = DEFAULT_TIMEOUT[options.level] if options.timeout is None else options.timeout
     options.budget = DEFAULT_BUDGET[options.level] if options.budget is None else options.budget
     return options
@@ -118,9 +123,31 @@ def build_plan(root, options):
     return verification_plan(root, files, tests, units_for(root))
 
 
+ANALYSIS_KEYS = ("status", "gate", "mode", "runId", "newIssues", "incomplete", "analyzers", "lines", "reason")
+
+
+def with_analysis(root, options, result, exit_code):
+    """정적 분석 · 품질 게이트를 붙인다(설계 09 §3.4). Stop 훅이 부른 changed 는 돌지 않는다(토큰 · 턴 시간)."""
+    if result.get("status") == "noop" or "error" in result:
+        return result, exit_code
+    if os.environ.get("HARNESS_VERIFY_TRIGGER") == "stop-hook":
+        return {**result, "analysis": {"status": "skipped", "reason": "stop-hook"}}, exit_code
+    base = result.get("base")
+    reference = base["mergeBase"] if isinstance(base, dict) else (options.base or "HEAD")
+    analysis = analyze(root, options.level, result.get("files", []), reference=reference)
+    if analysis.get("reason") == "no-registry":
+        return result, exit_code
+    merged = {**result, "analysis": {key: analysis[key] for key in ANALYSIS_KEYS if key in analysis}}
+    if analysis["exitCode"] == 1:
+        return {**merged, "status": "failed"}, 1
+    if analysis["exitCode"] == 2 and exit_code == 0:
+        return {**merged, "status": "incomplete"}, 2
+    return merged, exit_code
+
+
 def main():
     options = parse_options()
-    root = Path(__file__).resolve().parents[1]
+    root = harness_root(Path(__file__).resolve().parents[1])
     started = time.time()
     try:
         validate(root, options)
@@ -129,6 +156,7 @@ def main():
             print(json.dumps(plan, ensure_ascii=False, indent=2))
             return 0
         result, exit_code = execute_plan(plan, options.timeout, options.lock_timeout, options.budget)
+        result, exit_code = with_analysis(root, options, result, exit_code)
         print(summary_text(result) if options.summary else json.dumps(result, ensure_ascii=False, indent=2))
     except (ValueError, OSError) as error:
         result, exit_code = {"status": "incomplete", "level": options.level, "error": str(error), "test_commands": 0}, 2

@@ -95,6 +95,7 @@ def summary_text(result):
     if "error" in result:
         return f"검증 {result.get('status', 'incomplete')}({result.get('level', '-')}) — 오류: {result['error']}. 이번 호출은 통과가 아니다."
     lines = [headline(result)]
+    lines.extend((result.get("analysis") or {}).get("lines", []))  # 정적 분석 요약(15줄 이하, 설계 09 §3.4)
     incomplete, unverified = result.get("incomplete", []), result.get("unverified", [])
     if incomplete or unverified:
         lines.extend(incomplete_lines(incomplete, unverified))
