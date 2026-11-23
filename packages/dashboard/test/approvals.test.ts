@@ -75,9 +75,11 @@ describe("POST /approvals", () => {
     expect([noPin.status, noPin.json.error.code]).toEqual([403, "pin_required"]);
     const clarify = await call(srv, "POST", "/api/v1/approvals", { body: { ...base, pin: srv.pin } });
     expect([clarify.status, clarify.json.error.code]).toEqual([422, "needs_clarification"]);
-    const changed = await call(srv, "POST", "/api/v1/approvals", { body: { ...base, docSha256: "1".repeat(64), pin: srv.pin } });
-    expect([changed.status, changed.json.error.code]).toEqual([409, "doc_changed"]);
     expect(fs.existsSync(path.join(repo.root, DIR, "approvals.md"))).toBe(false);
+    writeIssue(repo.root, "DEMO-2", "upload-cleanup", { requirements: "in-review" });
+    const changed = await call(srv, "POST", "/api/v1/approvals", { body: { ...base, target: { issue: "DEMO-2" }, docSha256: "1".repeat(64), pin: srv.pin } });
+    expect([changed.status, changed.json.error.code]).toEqual([409, "doc_changed"]);
+    expect(fs.existsSync(path.join(repo.root, ".agents/docs/issues/DEMO-2-upload-cleanup/approvals.md"))).toBe(false);
   });
 
   it("PIN 을 5번 틀리면 서버가 끝날 때까지 pin_locked", async () => {

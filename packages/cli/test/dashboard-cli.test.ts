@@ -156,7 +156,7 @@ describe("쓰기 명령", () => {
     expect(p.code, p.stdout + p.stderr).toBe(0);
     expect(readFile(repo.root, `${INT}/units.json`)).toBe(units);
     expect(JSON.parse(readFile(repo.root, `${INT}/units.proposed.json`)).changes).toEqual([{ op: "add-dep", unit: "U-3", dependsOn: "U-1", reason: "실패 코드" }]);
-    const cyc = await cli(["units", "propose", "INT-7", "--add-dep", "U-1:U-3", "--json"], repo);
+    const cyc = await cli(["units", "propose", "INT-7", "--add-dep", "U-2:U-3", "--json"], repo);
     expect([cyc.code, cyc.json.error.code]).toEqual([1, "cycle"]);
     expect((await cli(["units", "discard", "INT-7"], repo)).code).toBe(0);
     expect(fs.existsSync(path.join(repo.root, INT, "units.proposed.json"))).toBe(false);

@@ -97,6 +97,10 @@ class ProtectApprovalsTest(unittest.TestCase):
             "python3 scripts/harness/approve.py DEMO-1 done --phrase ok",
             "npx harness-kit approve DEMO-1 --gate done",
             "npx harness-kit review decide DEMO-1 F-1 --risk-accepted",
+            # HK-17(06 §3.15): 질문 답 명령 · 답 · 리뷰 판단 API 도 사람만 한다
+            "npx harness-kit answer INT-1 Q-1 --choice A",
+            "curl -s -X POST http://127.0.0.1:4310/api/v1/questions/INT-1/Q-1/answer -d '{}'",
+            "curl -s -X POST http://127.0.0.1:4310/api/v1/reviews/DEMO-1/F-1/decision -d '{}'",
         )
         for command in commands:
             for name in ("Bash", "shell", "execute_bash"):
@@ -112,6 +116,10 @@ class ProtectApprovalsTest(unittest.TestCase):
             f"cat {ISSUE}/approvals.md > /tmp/copy.md 2>&1",
             "python3 scripts/harness/sdd_gates.py check DEMO-1",
             "python3 scripts/harness/review_state.py .agents/docs/issues/DEMO-1-upload",
+            # HK-17: 질문 목록 · 리뷰 보기 · 상태 읽기는 에이전트도 한다
+            "npx harness-kit answer INT-1 --list",
+            "npx harness-kit review show DEMO-1",
+            "npx harness-kit status --issues --json",
         ):
             with self.subTest(command=command):
                 self.assert_allowed(tool("Bash", command=command))

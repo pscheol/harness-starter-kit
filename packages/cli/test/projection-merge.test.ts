@@ -74,14 +74,19 @@ describe("settings.json(§5.2, 03 §3.5 · §5 #6)", () => {
     const j = JSON.parse(r.text);
     expect(Object.keys(j)).toEqual(["permissions", "hooks"]);
     expect(j.permissions).toEqual({ deny });
-    expect(Object.keys(j.hooks)).toEqual(["SessionStart", "PreToolUse", "Stop"]);
+    expect(Object.keys(j.hooks)).toEqual(["SessionStart", "UserPromptSubmit", "PreToolUse", "Stop", "SessionEnd"]);
     expect(r.keys).toEqual([
       ...deny.map((rule) => `permissions.deny:${rule}`),
       "hooks.SessionStart:harness-session-start",
+      // HK-17: 세션 등록 훅(06 §3.9) — 시작 · 프롬프트 제출 · 턴 끝 · 종료
+      "hooks.SessionStart:harness-session-register",
+      "hooks.UserPromptSubmit:harness-session-prompt",
       "hooks.PreToolUse:harness-protect-sources",
       "hooks.PreToolUse:harness-block-full-verify",
       "hooks.PreToolUse:harness-protect-approvals",
       "hooks.Stop:harness-verify-gate",
+      "hooks.Stop:harness-session-idle",
+      "hooks.SessionEnd:harness-session-end",
     ]);
     expect(r.text).toBe(`${JSON.stringify(j, null, 2)}\n`);
     expect(r.created).toBe(true);

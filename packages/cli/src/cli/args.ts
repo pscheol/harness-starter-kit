@@ -53,10 +53,53 @@ export const COMMAND_OPTIONS: Record<string, OptSpec> = {
   add: {},
   remove: {},
   outdated: { check: { type: "boolean" }, source: { type: "string" } },
+  // 관리 페이지 서버 · 화면 없이 쓰기(HK-17, 설계 06 §3.15)
+  dashboard: {
+    port: { type: "string" },
+    open: { type: "boolean" },
+    "read-only": { type: "boolean" },
+    export: { type: "string" },
+    all: { type: "boolean" },
+    root: { type: "string" },
+    workspace: { type: "string" },
+  },
+  status: {
+    session: { type: "boolean" },
+    intents: { type: "boolean" },
+    intent: { type: "string" },
+    issues: { type: "boolean" },
+    issue: { type: "string" },
+    area: { type: "string" },
+    stage: { type: "string" },
+    doc: { type: "string" },
+    verify: { type: "boolean" },
+    worktrees: { type: "boolean" },
+    harness: { type: "boolean" },
+    flow: { type: "string" },
+    all: { type: "boolean" },
+    ops: { type: "boolean" },
+  },
+  projects: {},
+  approve: { gate: { type: "string" }, phrase: { type: "string" }, "changes-requested": { type: "boolean" }, "rule-candidate": { type: "boolean" } },
+  answer: { list: { type: "boolean" }, choice: { type: "string" }, text: { type: "string" } },
+  review: { fix: { type: "boolean" }, "accept-risk": { type: "boolean" }, reason: { type: "string" } },
+  sessions: { machine: { type: "boolean" } },
+  dispatch: { to: { type: "string" }, kind: { type: "string" }, path: { type: "string", multiple: true }, text: { type: "string" }, via: { type: "string" } },
+  units: {
+    "add-dep": { type: "string", multiple: true },
+    "remove-dep": { type: "string", multiple: true },
+    split: { type: "string", multiple: true },
+    merge: { type: "string", multiple: true },
+    order: { type: "string" },
+    reason: { type: "string" },
+  },
+  flow: { add: { type: "string" }, after: { type: "string" }, remove: { type: "string" } },
+  quality: { findings: { type: "boolean" }, issue: { type: "string" }, severity: { type: "string" }, new: { type: "boolean" } },
+  history: { q: { type: "string" } },
 };
 
-/** 위치 인자(이름)를 받는 명령. 나머지는 위치 인자를 거부한다(대상 폴더는 --cwd). */
-const POSITIONAL = new Set(["add", "remove"]);
+/** 위치 인자(이름 · 하위 명령 · 키)를 받는 명령. 나머지는 위치 인자를 거부한다(대상 폴더는 --cwd). */
+const POSITIONAL = new Set(["add", "remove", "projects", "approve", "answer", "review", "dispatch", "units", "flow"]);
 
 export type Values = Record<string, string | boolean | string[] | undefined>;
 

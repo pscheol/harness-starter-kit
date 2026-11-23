@@ -128,6 +128,6 @@ describe("응답 시간(완료 기준 12)", () => {
     times.sort((a, b) => a - b);
     const p95 = times[94] as number;
     expect(p95).toBeLessThanOrEqual(500);
-    fs.writeFileSync(path.join(repo.base, "p95.txt"), String(p95));
+    console.info(`GET /overview p95 ${p95.toFixed(1)}ms (100회, 이슈 20 · worktree 3)`);
   });
 });

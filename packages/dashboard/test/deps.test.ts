@@ -51,7 +51,7 @@ describe("DB-R26 모델 SDK · 모델 API 없음", () => {
     const seen: string[] = [];
     const orig = net.Socket.prototype.connect;
     (net.Socket.prototype as any).connect = function (this: net.Socket, ...args: any[]) {
-      const o = args[0];
+      const o = Array.isArray(args[0]) ? args[0][0] : args[0];
       seen.push(typeof o === "object" && o !== null ? String(o.path ?? `${o.host ?? "localhost"}:${o.port}`) : String(o));
       return (orig as any).apply(this, args);
     };

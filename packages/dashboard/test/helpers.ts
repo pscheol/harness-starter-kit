@@ -113,6 +113,7 @@ export function makeRepo(opts: RepoOptions = {}, name = "demo", parent?: string)
     filter: (src) => !src.includes("__pycache__") && !src.endsWith(".pyc"),
   });
   writeFile(root, ".agents/harness-kit.json", `${JSON.stringify(meta(opts, name), null, 2)}\n`);
+  writeFile(root, ".agents/harness.json", `${JSON.stringify({ unit: name, title: name, stack: "python", agents: ["claude", "codex"], shared: [] }, null, 2)}\n`);
   writeFile(root, ".gitignore", ".agents/state/\n.agents/reports/\n.agents/local/\n");
   writeFile(root, "README.md", "# demo\n");
   git(root, "init", "-q", "-b", "develop");

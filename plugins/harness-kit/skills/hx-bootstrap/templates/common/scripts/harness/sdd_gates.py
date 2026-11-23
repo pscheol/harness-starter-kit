@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """이슈 게이트 조건(설계 09 §3.8 표의 requirements · design · tasks · mr · done). 판정 원본이고 approve.py · 훅 · fast 가 부른다.
 
-    python3 scripts/harness/sdd_gates.py check <이슈키> [--json]     게이트마다 통과 · 안 된 이유
+    python3 scripts/harness/sdd_gates.py check <이슈키> [--json]     게이트마다 통과 · 안 된 이유 · 앞 조건
+    python3 scripts/harness/sdd_gates.py check --all                 이슈 폴더 전부(JSON, 관리 페이지)
 
 codebase · intent · plans · deploy 게이트와 위험 프로필(승인자 2명)은 이 판에 없다. 머리에 `legacy` 가 있는 문서(옮긴 옛 이슈)는
 기록 없이 머리 값으로 통과한다. 승인 sha 는 approvals.approval_sha(머리 status · state 줄을 뺀 sha256)다.
@@ -192,13 +193,31 @@ def own_reasons(issue, gate):
 
 
 def evaluate(issue, gate):
-    reasons = preconditions(issue, gate) + own_reasons(issue, gate)
+    before = preconditions(issue, gate)
+    reasons = before + own_reasons(issue, gate)
     sha = None
     if gate in DOC_FILES:
         data = issue.doc(gate)[2]
         sha = approvals.approval_sha(data) if data is not None else None
     state = approvals.approval_state(issue.entries, gate, sha if gate != "tasks" else None, issue.policy)
-    return {"gate": gate, "passed": not reasons, "reasons": reasons, "approval": state}
+    return {"gate": gate, "passed": not reasons, "reasons": reasons, "preconditions": before, "approval": state}
+
+
+def all_results(root):
+    """이슈 폴더 전부의 게이트 판정(관리 페이지 · `check --all`). 폴더를 읽지 못하면 그 이슈의 error 다."""
+    from harness.sdd_issues import issue_folders
+
+    out = []
+    for folder in issue_folders(Path(root)):
+        parts = split_folder(folder.name)
+        if not parts:
+            continue
+        try:
+            issue = Issue(root, folder)
+            out.append({"key": parts[0], "folder": folder.relative_to(root).as_posix(), "gates": [evaluate(issue, gate) for gate in ISSUE_GATES]})
+        except (OSError, ValueError) as error:
+            out.append({"key": parts[0], "folder": folder.relative_to(root).as_posix(), "gates": [], "error": str(error)})
+    return out
 
 
 def done_approved(root, folder):
@@ -211,7 +230,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="이슈 게이트 조건")
     commands = parser.add_subparsers(dest="command", required=True)
     check = commands.add_parser("check")
-    check.add_argument("key")
+    check.add_argument("key", nargs="?")
+    check.add_argument("--all", action="store_true", help="이슈 폴더 전부(--json 과 같이)")
     check.add_argument("--json", action="store_true")
     check.add_argument("--root")
     options = parser.parse_args(argv)
@@ -220,6 +240,12 @@ def main(argv=None):
     root = harness_root(options.root or Path.cwd())
     if root is None:
         print("✖ 하네스 루트(.agents/harness-kit.json)를 찾지 못했다", file=sys.stderr)
+        return 2
+    if options.all:
+        print(json.dumps({"issues": all_results(root)}, ensure_ascii=False, indent=2))
+        return 0
+    if not options.key:
+        print("✖ check <이슈키> 또는 check --all", file=sys.stderr)
         return 2
     try:
         folder = find_issue(root, options.key)

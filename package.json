@@ -6,6 +6,7 @@
   "scripts": {
     "build": "pnpm -C packages/cli build",
     "test:cli": "pnpm -C packages/cli test",
+    "test:dashboard": "pnpm -C packages/dashboard test",
     "gen": "pnpm build && node scripts/gen-plugins.mjs",
     "gen:check": "node scripts/gen-plugins.mjs --check",
     "test": "python3 -m unittest discover -s tests -p \"test_*.py\""

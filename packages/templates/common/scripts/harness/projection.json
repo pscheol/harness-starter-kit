@@ -29,6 +29,24 @@
         }
       },
       {
+        "id": "harness-session-register",
+        "event": "SessionStart",
+        "script": "scripts/hooks/session-register.sh",
+        "hook": {
+          "type": "command",
+          "command": "HX_HARNESS=claude bash \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/session-register.sh"
+        }
+      },
+      {
+        "id": "harness-session-prompt",
+        "event": "UserPromptSubmit",
+        "script": "scripts/hooks/session-register.sh",
+        "hook": {
+          "type": "command",
+          "command": "HX_HARNESS=claude bash \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/session-register.sh"
+        }
+      },
+      {
         "id": "harness-protect-sources",
         "event": "PreToolUse",
         "matcher": "Write|Edit|MultiEdit|NotebookEdit",
@@ -66,6 +84,24 @@
           "type": "command",
           "timeout": 180,
           "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/verify-gate.sh"
+        }
+      },
+      {
+        "id": "harness-session-idle",
+        "event": "Stop",
+        "script": "scripts/hooks/session-register.sh",
+        "hook": {
+          "type": "command",
+          "command": "HX_HARNESS=claude bash \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/session-register.sh"
+        }
+      },
+      {
+        "id": "harness-session-end",
+        "event": "SessionEnd",
+        "script": "scripts/hooks/session-register.sh",
+        "hook": {
+          "type": "command",
+          "command": "HX_HARNESS=claude bash \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/session-register.sh"
         }
       }
     ]

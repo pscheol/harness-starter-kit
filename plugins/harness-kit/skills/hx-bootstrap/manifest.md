@@ -68,8 +68,8 @@
 
 | 스택군 | core | claude | codex | cursor | kiro | 전부 고를 때 |
 |---|---|---|---|---|---|---|
-| `jvm` · `python` · `go` | 241 | 0 | 2 | 0 | 7 | **250** |
-| `web` · `electron` (`frontend` 도메인 +4 core) | 245 | 0 | 2 | 0 | 7 | **254** |
+| `jvm` · `python` · `go` | 245 | 0 | 2 | 0 | 7 | **254** |
+| `web` · `electron` (`frontend` 도메인 +4 core) | 249 | 0 | 2 | 0 | 7 | **258** |
 
 하네스 폴더 파일은 설치가 `.agents/` 원본에서 만든다(배치 — mirror · render · merge, 모듈 없음 기준):
 
@@ -132,7 +132,7 @@
 
 ## 공통 vs 스택별 (무엇이 어디에 있나)
 
-| 영역 | `templates/common/` (235개) | `templates/domains/frontend/` (8개 · web·electron 만) | `templates/stacks/<stack>/` (변형 무관 14개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
+| 영역 | `templates/common/` (239개) | `templates/domains/frontend/` (8개 · web·electron 만) | `templates/stacks/<stack>/` (변형 무관 14개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
 |---|---|---|---|---|
 | 진입점 | `README.md` | — | `AGENTS.md` · `.gitignore` · `.github/actions/harness-setup/action.yml` | `root/ARCHITECTURE.md` |
 | 규칙 | `agent-harness.md` · `sdd-workflow.md` · `product.md` · `writing-style.md` · `design-principles.md` · `reuse-before-new.md` · `verification-ladder.md` · `pr-review-policy.md` · `git-workflow.md` · `platform-invariants.md` · **`code-maintenance.md`** · **`session-collaboration.md`** · **`approval-vocabulary.md`** | `design-system.md` · `accessibility.md` · `ui-state.md` · `frontend-performance.md` | `code-comments.md` · `api-standards.md` · `security.md` · `reliability.md` · `quality-score.md` · `guardrails.md` | `agents-rules/structure.md` · `agents-rules/tech.md` |
@@ -220,6 +220,8 @@
 | `scripts/hooks/{session-start.sh,session-context.py,protect-sources.sh,verify-gate.sh}` | 에이전트 공용 hook 본문 — 세션 컨텍스트 주입 · 보호 경로 쓰기 차단 · 턴 끝 changed 검증 | — | 인간 |
 | `scripts/hooks/{protect-approvals.sh,protect_approvals.py}` | 승인 기록 · 기준선 · 관리 페이지 토큰 쓰기, 승인 명령 실행, done 승인 없는 `completed`, `status: approved` 변경을 에이전트 도구에서 막는다 | — | 인간 |
 | `scripts/harness/{approve.py,approvals.py,approvals_guard.py,sdd_gates.py}` | 사람 터미널 승인(에이전트 세션 · TTY 아님 거부) · `approvals.md` 파서 · 덧붙이기 전용과 done 승인 검사(pre-commit · fast) · 이슈 게이트 조건 | — | 인간 |
+| `scripts/hooks/{session-register.sh,session-register.py,dispatch-inbox.py}` | 세션 등록(메인 폴더 `.agents/state/sessions/<id>.json`, 출력 0바이트) · 관리 페이지 대기함 소비(자기 세션 요청이 있을 때만 세 줄 · 512바이트 이하) | — | 인간 |
+| `scripts/harness/dashboard_snapshot.py` | 관리 페이지 읽기 묶음(보드 · 게이트 · 리뷰 판정을 한 번에, 쓰기 없음) | — | 인간 |
 | `scripts/harness/{review.py,review_report.py,review_state.py,mr_comment.py}` | `/hx-review` 의 결정적 부분(입력 모으기 · 지문 · ID · 보고서) · 열린 리뷰 지적 · MR 요약 코멘트 하나(gh · glab) | — | 인간/에이전트 |
 | `scripts/git-hooks/{pre-commit,pre-push,global-hook.sh}` + `scripts/install-git-hooks.sh` | git hook — 커밋·push 때 changed 검증. 전역 `core.hooksPath` 가 있어도 리포 hook 을 부르게 건다 | — | 인간 |
 | `scripts/guards/{_template,no-secrets-in-env-example}.sh` | 가드 골격과 `.env.example` 비밀 값 검사 | — | 인간 |

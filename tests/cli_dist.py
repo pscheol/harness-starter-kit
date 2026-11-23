@@ -23,12 +23,23 @@ DIRS = ("scripts", "src")
 BANNER_RE = re.compile(r"^// harness-kit \S+ · src-sha256 ([0-9a-f]{64})", re.M)
 
 
+DASHBOARD_FILES = ("package.json",)
+DASHBOARD_DIRS = ("scripts", "src", "static")
+
+
 def source_files(cli_dir: Path = CLI_DIR) -> list[str]:
+    """packages/cli 와 같은 번들에 묶이는 packages/dashboard(HK-17)의 소스. 경로는 packages/cli 기준(../dashboard/…)."""
     files = [f for f in ROOT_FILES if (cli_dir / f).is_file()]
     for d in DIRS:
         base = cli_dir / d
         if base.is_dir():
             files += [p.relative_to(cli_dir).as_posix() for p in base.rglob("*") if p.is_file() and not p.is_symlink() and p.name != ".DS_Store"]
+    dash = cli_dir.parent / "dashboard"
+    files += [f"../dashboard/{f}" for f in DASHBOARD_FILES if (dash / f).is_file()]
+    for d in DASHBOARD_DIRS:
+        base = dash / d
+        if base.is_dir():
+            files += ["../dashboard/" + p.relative_to(dash).as_posix() for p in base.rglob("*") if p.is_file() and not p.is_symlink() and p.name != ".DS_Store"]
     return sorted(files)
 
 

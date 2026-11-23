@@ -4,7 +4,7 @@
 # 판정은 protect_approvals.py 한 곳에 있다. 입력에 관련 낱말이 없으면 Python 을 띄우지 않고 출력 없이 끝낸다.
 set -uo pipefail
 payload="$(cat 2>/dev/null || true)"
-if ! grep -Eq 'approvals|quality-baseline|dashboard\.token|tasks\.md|requirements\.md|design\.md|approve|api/v1' <<<"$payload"; then
+if ! grep -Eq 'approvals|quality-baseline|dashboard\.token|tasks\.md|requirements\.md|design\.md|approve|answer|api/v1' <<<"$payload"; then
   exit 0
 fi
 exec python3 "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/protect_approvals.py" <<<"$payload"

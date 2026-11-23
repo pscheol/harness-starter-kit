@@ -4,12 +4,13 @@
 """
 
 import argparse
+import json
 import os
 import sys
 import time
 from pathlib import Path
 
-from harness.sdd_board import render_area, update_boards
+from harness.sdd_board import board_json, render_area, update_boards
 from harness.sdd_frontmatter import TYPES
 from harness.sdd_issues import (
     documents,
@@ -267,7 +268,11 @@ def board(root, arguments):
     parser.add_argument("--all", action="store_true")
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--area", help="그 영역 표만 stdout 에 낸다(쓰지 않는다)")
+    parser.add_argument("--json", action="store_true", help="보드 상태를 JSON 으로 낸다(쓰지 않는다, 관리 페이지와 같은 계산)")
     args = parser.parse_args(arguments)
+    if args.json:
+        print(json.dumps(board_json(root), ensure_ascii=False, indent=2))
+        return 0
     if args.area is not None:
         sys.stdout.write(render_area(root, args.area))
         return 0
