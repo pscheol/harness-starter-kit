@@ -3,7 +3,7 @@ key: HK-1
 area: repo
 type: refactor
 title: 킷 저장소를 모노레포로 옮기고 플러그인 폴더를 생성물로 바꾼다
-state: active
+state: completed
 created: 2026-11-23
 ---
 
@@ -21,7 +21,7 @@ created: 2026-11-23
 | T6 | `package.json`(private) · `pnpm-workspace.yaml` · `.gitattributes` | R5.1 | 파일 | done |
 | T7 | 루트 README · 설계 02 §3.1 경로 안내 | R5.2 | 문서 | done |
 | T8 | 이동 뒤 시험 전체 + 스택 5개 설치 diff 0 | R3.1 · R4.2 · 성공 기준 | 로그 | done |
-| T9 | 커밋 2 | — | `git log` | todo |
+| T9 | 커밋 2 | — | `git log` | done |
 
 ## 검증 기록
 
@@ -35,4 +35,6 @@ created: 2026-11-23
   - 시험 쪽 결함도 2건 고쳤다. 실행 권한 시험이 원래 644인 `setup.sh`를 골랐고, 복사 제외 목록의 `docs`가 템플릿의 `docs/`까지 뺐다.
 - T4 결과: 생성물 480개. 이동 전 트리(`1c89e9e`)와 비교한 차이는 개발 도구 `tools/sync-commands.sh` 하나이고, 실행 비트 불일치는 0이다(R3.1).
 - T5: `bash scripts/sync-commands.sh --check` → 일치.
-- T8: 생성물 `setup.sh`로 같은 6벌을 설치해 `/tmp/hk1-before/`와 `diff -r` → 6벌 모두 0줄. 시험 전체 결과는 아래에 적는다.
+- T8: 생성물 `setup.sh`로 같은 6벌을 설치해 `/tmp/hk1-before/`와 `diff -r` → 6벌 모두 0줄.
+- T8 시험 전체: 커밋 `9a1b770`을 깨끗한 worktree(`/tmp/hk-verify-c2`)에서 돌려 19개 OK(250초). 작업 트리에서 먼저 돌린 두 번은 시험 도중 다른 작업이 `plugins/`를 다시 만들거나 `packages/`를 바꿔서 실패했다. 그래서 생성 스크립트를 "옆 폴더에 만든 뒤 바꿔 끼우기"로 고쳤고, 개발 순환은 `--out` 임시 폴더를 쓰게 했다.
+- T9: 커밋 `802ae40`(이동) · `9a1b770`(생성).
