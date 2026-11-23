@@ -370,7 +370,7 @@ export interface ProjectionContext { view: RepoView; sources: Sources; spec: Pro
 
 ## 9. Python 모듈 · v1 스크립트(setup.sh ↔ CLI 동일성)
 
-- `scripts/harness/projection.py`(CLI · 판정 · 적용) · `projection_render.py`(§4 · §3.3) · `projection_merge.py`(§5). 표준 라이브러리만, Python 3.11. 첫 줄에서 `sys.dont_write_bytecode = True`(킷 템플릿 폴더에 `__pycache__`를 남기지 않는다).
+- `scripts/harness/projection.py`(명령) · `projection_wants.py`(원본 읽기 · 원하는 결과, §2 · §4) · `projection_engine.py`(판정 · 쓰기 · lock, §6 · §7) · `projection_render.py`(§4 · §3.3) · `projection_merge.py`(§5). 파일 하나가 800줄을 넘지 않게 나눈다. 표준 라이브러리만, Python 3.11. 첫 줄에서 `sys.dont_write_bytecode = True`(킷 템플릿 폴더에 `__pycache__`를 남기지 않는다).
 - 명령:
   - `projection.py apply --root R --mode setup|update --lock L [--prev-lock P] [--agents a,b] [--token K=V] [--force] [--accept-all] [--dry-run]` — v1 스크립트용. 판정(§6.2 · §6.3)대로 쓰고 L에 v1 줄(§7.2)을 덧붙인다. 출력은 판정 줄(사람용, same 제외)과 개수 한 줄. conflict · keep-modified가 있으면 exit 4가 아니라 0(update.sh는 늘 0, 개수로 알린다).
   - `projection.py plan --root R [--agents …] [--json]` — 원하는 작업과 내용 해시(쓰지 않음). TS ↔ Python 동일성 시험이 쓴다.
@@ -461,6 +461,8 @@ v1.0.8(e181b6f) 설치본 실측(토큰 `Acme Notes` · `acme-notes` · `com.acm
 | D12 | 03 §3.12 원본을 고치면 복사본을 다시 만든다 | 원본이 `.new` 대기 중이면 배치를 미룬다(§6.3) | v1.0.8 업그레이드에서 `paths` 없는 옛 규칙이 하네스 폴더에 늘 실리는 일을 막는다(토큰 예산) |
 | D13 | 02 §3.9 v1 lock은 copy 줄만 | setup.sh · update.sh lock에 배치 줄(라벨 `mirror` · `render` · `merge` · `merge+`)을 적는다 | bash 경로도 3방향 비교를 해야 한다. 옛 판 CLI는 이 라벨을 모르는 레이어로 읽는다(사전 출시라 받아들인다) |
 | D14 | 03 §3.9 v1 lock이면 한 줄 · exit 0 | 그대로. setup.sh 설치본은 fast에서 배치 내용 검사를 하지 않는다 | v1 lock에 `from` · `fromSha256` · `keys`가 없다. `check_harness.py`가 배치가 있는지는 본다 |
+| D15 | §13.1 시험 파일 11개 | 7개로 묶는다: repair · uninstall · doctor → `projection-ops.test.ts`, doctor ↔ check_layout → `projection-parity.test.ts`, 크기 · 금지 키 → `projection-render.test.ts`, 어댑터 4개 → `adapters.test.ts` | 같은 fixture 도우미(`projection-helpers.ts`)를 나눠 쓴다. 보는 항목은 표 그대로다 |
+| D16 | §6.2 · §6.3 원본은 `.agents/` 아래 파일 | 사람 파일(lock `owner: user`)도 원본으로 배치한다. update.sh는 사람 파일 자리에 킷 새 판을 `.new`로 두므로(HK-11 §7 U1) 그 원본 배치를 미루고, CLI는 `.new` 없이 바로 배치한다 | `.agents/rules`에 사람이 둔 규칙도 하네스가 읽어야 한다. 두 경로의 차이는 U1 한 곳에서만 생긴다(`test_cli_update_parity` #05가 묶는다) |
 
 ## 15. 확인 필요
 
