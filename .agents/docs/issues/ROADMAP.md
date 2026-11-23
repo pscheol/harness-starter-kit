@@ -4,6 +4,8 @@
 
 ## 사용자가 정한 것 (2026-11-23 밤)
 
+- GitHub 비공개 시험 저장소 `harness-kit-e2e-sandbox`를 만들어 원격 시험에 쓰고 남겨 둔다.
+
 - 결정 D3 · D4 · D6 · D7은 추천안으로 정했다(설계 README §11).
 - 실측 검증: knots-platform · hdr-vision-3d를 `/tmp`에 복사해 돌린다. 원본은 읽기만 한다.
 - AI-DLC · Entire는 이 컴퓨터에 실제로 설치해 시험해도 된다. 시험 폴더에 프로젝트를 처음부터 만들어 전체 흐름을 검증한다. 원격이 필요한 시험은 비공개 시험 저장소로 해도 된다.
@@ -28,10 +30,11 @@
 | HK-12 | P17 | CLI add · remove · outdated · 스킬 전환 + 설치 전 파일 보존 · 스택 문구 · README 표 · later-wins update 동일성 | 02 §3.3 · §3.14 | HK-11 | 끝 |
 | HK-13 | P18 | 배치 엔진: 하네스 어댑터 · mirror · render · merge · 규칙 paths 자동 로드 · 역할 파일 · CLAUDE.md 블록 · check_layout | 03 · 12 | HK-12 | 진행 |
 | HK-24 | P18 | 훅: hooks.json 생성 · dispatch · hook_root(worktree) · 동기화 · 보호 훅 · 업그레이드 공지 · 세션 시작 예산 | 03 §3.4 · §3.10~§3.12 | HK-13 | 대기 |
+| HK-25 | P17 보강 | v1 첫 업데이트 병합(문서 줄 병합 · JSON 키 병합 · 코드 .new) · platform-guards 모듈 삭제 | 사용자 결정 | HK-13 | 대기 |
 | HK-14 | P18 | 확장 층(회사 팩 · 개인 층 · 게이트 하한) | 04 | HK-13 | 대기 |
 | HK-15 | P19 | worktree 운영 | 05 | HK-13 | 대기 |
-| HK-16 | P23 | 정적 분석 · SARIF · 새 문제만 막는 게이트 · CI 템플릿 · 지표 | 09 §3.2~§3.7 · §3.9 | HK-8 | 진행 |
-| HK-23 | P23 | 자체 리뷰 에이전트(/hx-review) · 승인 규칙 강제(approve.py · approvals.md 덧붙이기 전용 · done 승인) | 09 §3.1 · §3.8 | HK-16 | 대기 |
+| HK-16 | P23 | 정적 분석 · SARIF · 새 문제만 막는 게이트 · CI 템플릿 · 지표 | 09 §3.2~§3.7 · §3.9 | HK-8 | 끝 |
+| HK-23 | P23 | 자체 리뷰 에이전트(/hx-review) · 승인 규칙 강제(approve.py · approvals.md 덧붙이기 전용 · done 승인) | 09 §3.1 · §3.8 | HK-16 | 진행 |
 | HK-17 | P20 | 관리 페이지 서버(REST · 읽기 · 쓰기 규칙 · 승인 · 질문 · 세션 · 작업 요청 · 내보내기) | 06 §3.1~§3.15 | HK-13 | 대기 |
 | HK-18 | P20 | 관리 페이지 화면 · 흐름 보기(React Flow) · 전체 프로젝트 · 기록 · 사용량 · 스킬 목록 | 06 §3.16~§3.19 · 07 · screens | HK-17 | 대기 |
 | HK-19 | P21 | 킷 설계 단계: 접수(intake) · /hx-intent · Unit 목록 · 질문 · 기획물 · 역할 | 08 · 12 | HK-17 | 대기 |
@@ -42,13 +45,13 @@
 ## 진행 방식
 
 - 슬롯 A: HK-11(끝) → HK-16 → HK-23 → HK-17 → HK-18 → HK-19 → HK-21
-- 슬롯 B: HK-9/10(끝) → HK-12 → HK-13 → HK-24 → HK-14 → HK-15 → HK-20 → HK-22
+- 슬롯 B: HK-9/10(끝) → HK-12(끝) → HK-13 → HK-25 → HK-24 → HK-14 → HK-15 → HK-20 → HK-22
 - HK-12는 HK-9 · HK-10과 같은 파일(플러그인 문서 · setup.sh · CLI 겹침)을 건드려서 HK-9/10을 합친 뒤에 띄운다. 합친 뒤 HK-11 update 동일성 시험이 HK-9의 update.sh 보드 재생성 · HK-10 겹침 순서를 따라가는지 HK-12에서 맞춘다.
 - 합칠 때마다 깨끗한 worktree에서 시험 전체(`pnpm -C packages/cli test` · `node scripts/gen-plugins.mjs --check` · `python3 -m unittest discover -s tests -p "test_*.py"`)를 돌린다.
 
 ## 사람에게 물을 것(아침에)
 
-- platform-guards 모듈: HK-10 뒤로 공통 층과 같은 파일만 남아 따로 더하는 파일이 없다. 모듈을 남길지 뺄지.
+- (정함) platform-guards 모듈은 없앤다 → HK-25.
 - 승인 대기 설계 문서: HK-9 ~ HK-12 design.md는 에이전트가 approved로 두었다. 사람 확인이 필요하다.
-- v1.0.8 lock으로 처음 update하면, 킷이 바꾼 미수정 파일도 설치 전 파일과 구별할 수 없어 `.new`로 둔다(HK-12 R12.6). 이대로 둘지.
+- (정함) v1.0.8 첫 update의 구별 불가 파일은 문서는 줄 병합, JSON은 키 병합, 코드는 .new → HK-25.
 - `outdated`의 기본 원격(배포 원격이 정해지면 `package.json` repository 등).
