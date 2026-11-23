@@ -235,11 +235,11 @@
           <tbody>
             <tr><th scope="row">D1</th><td>외부 방법론 이름은 선택 모듈과 그 연동 문서 안에서만 쓴다</td><td class="yes">정함</td><td>공통 규칙 · 템플릿 본문</td></tr>
             <tr><th scope="row">D2</th><td>AI-DLC와 선택 모듈로 공존. 기본 설계는 <code>/hx-intent</code>, Unit 목록 형식이 같다</td><td class="yes">정함</td><td><code>flow.design</code>, <code>units.json</code></td></tr>
-            <tr><th scope="row">D3</th><td>배포 경로. 추천: GitHub 직접으로 시작, v2.2까지 명령이 그대로면 npm</td><td class="no">P17 전</td><td><a href="#install-paths">8.1</a></td></tr>
-            <tr><th scope="row">D4</th><td>base 브랜치 기본값. 추천: 설정값, 기본 <code>develop</code></td><td class="no">P17 전</td><td><code>git.base</code>, affected 기준</td></tr>
+            <tr><th scope="row">D3</th><td>배포 경로. 추천: GitHub 직접으로 시작, v2.2까지 명령이 그대로면 npm</td><td class="yes">정함(2026-11-23)</td><td><a href="#install-paths">8.1</a></td></tr>
+            <tr><th scope="row">D4</th><td>base 브랜치 기본값. 추천: 설정값, 기본 <code>develop</code></td><td class="yes">정함(2026-11-23)</td><td><code>git.base</code>, affected 기준</td></tr>
             <tr><th scope="row">D5</th><td>둘째 세션부터 worktree, 리포 옆, 리포당 3개, 끝나면 지움</td><td class="yes">정함</td><td><a href="../05-worktree.md">05</a></td></tr>
-            <tr><th scope="row">D6</th><td>Entire 기록 push. 추천: 사내 비공개면 같은 원격, 공개면 올리지 않음</td><td class="no">P22 전</td><td><a href="../10-modules.md">10</a> §3.3</td></tr>
-            <tr><th scope="row">D7</th><td>역할 기본값. 추천: 설계 · 구현 Claude Code, 리뷰 Codex, 문서 Kiro, 진행 판정 사람</td><td class="no">P17 전</td><td><code>roles</code>, 역할 파일</td></tr>
+            <tr><th scope="row">D6</th><td>Entire 기록 push. 추천: 사내 비공개면 같은 원격, 공개면 올리지 않음</td><td class="yes">정함(2026-11-23)</td><td><a href="../10-modules.md">10</a> §3.3</td></tr>
+            <tr><th scope="row">D7</th><td>역할 기본값. 추천: 설계 · 구현 Claude Code, 리뷰 Codex, 문서 Kiro, 진행 판정 사람</td><td class="yes">정함(2026-11-23)</td><td><code>roles</code>, 역할 파일</td></tr>
             <tr><th scope="row">D8</th><td>오픈소스 분석기 조합, SonarQube 쓰지 않음, 결과는 SARIF</td><td class="yes">정함</td><td><a href="../09-verification-quality.md">09</a></td></tr>
             <tr><th scope="row">D9</th><td>이슈 키: Jira 키 그대로, 없으면 <code>&lt;프로젝트키&gt;-&lt;번호&gt;</code></td><td class="yes">정함</td><td>폴더 · 브랜치 · worktree · MR 이름</td></tr>
             <tr><th scope="row">D10</th><td>전체 검증은 CI만. 에이전트 세션의 <code>--full</code>은 훅이 막는다</td><td class="yes">정함</td><td>floor 훅, CI 템플릿</td></tr>

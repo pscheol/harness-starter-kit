@@ -1,0 +1,44 @@
+# v2 구현 이슈 지도
+
+브랜치 `feature/v2-harness-next`(원격에 올리지 않는다). 이슈마다 `HK-<n>-<이름>/` 폴더에 requirements → design · tasks → 시험(RED) → 구현(GREEN) → 검증 기록을 남긴다. 서브에이전트는 동시에 2개까지. 설계 원본: [docs/design](../../../docs/design/README.md).
+
+## 사용자가 정한 것 (2026-11-23 밤)
+
+- 결정 D3 · D4 · D6 · D7은 추천안으로 정했다(설계 README §11).
+- 실측 검증: knots-platform · hdr-vision-3d를 `/tmp`에 복사해 돌린다. 원본은 읽기만 한다.
+- AI-DLC · Entire는 이 컴퓨터에 실제로 설치해 시험해도 된다. 시험 폴더에 프로젝트를 처음부터 만들어 전체 흐름을 검증한다. 원격이 필요한 시험은 비공개 시험 저장소로 해도 된다.
+- 작업 브랜치는 push하지 않는다.
+- 문서에 ECC · spec-kit을 참고 · 활용했다는 내용을 쓰지 않는다.
+
+## 이슈
+
+| 키 | 단계 | 내용 | 설계 | 선행 | 상태 |
+|---|---|---|---|---|---|
+| HK-1 | v1.0.9 | 킷 저장소 모노레포 | 02 §3.1 | — | 끝 |
+| HK-2 | v1.1 | 에이전트 세션 full 차단 | 01 R2 | HK-1 | 끝 |
+| HK-3 | v1.1 | 이슈 단위 SDD | 01 R7 | HK-1 | 끝 |
+| HK-4 | v1.1 | 실행 기록 · 테스트 없음 처리 | 01 R3 · R5 | HK-1 | 끝 |
+| HK-5 | v1.1 | affected 레벨 | 01 R1 | HK-1 | 끝 |
+| HK-6 | v1.1 | 다층 리포 상위 게이트 | 01 R4 | HK-1 | 끝 |
+| HK-7 | v1.1 | full 지시 문구 | 01 R6 | HK-1 | 끝 |
+| HK-8 | P17 | CLI init · plan · doctor · list | 02 | HK-1 | 끝 |
+| HK-9 | v1.1 | SDD 새 경로 따라잡기 | 01 §3.7 | HK-3 | 진행 |
+| HK-10 | v1.1 | setup.sh 층 겹침 · 치환 특수 문자 | 02 §3.5 · §3.6 | HK-8 | 진행 |
+| HK-11 | P17 | CLI update · repair · uninstall | 02 §3.10 · §3.12 · §3.13 | HK-8 | 진행 |
+| HK-12 | P17 | CLI add · remove · outdated · 스킬 전환 | 02 §3.3 · §3.14 | HK-11 | 대기 |
+| HK-13 | P18 | 하네스 어댑터 · 복사본 배치(mirror · render · merge) · hooks.json · 동기화 · 보호 훅 · 훅 루트(worktree) · 업그레이드 공지 · check_layout | 03 · 12(역할 파일의 모델) | HK-12 | 대기 |
+| HK-14 | P18 | 확장 층(회사 팩 · 개인 층 · 게이트 하한) | 04 | HK-13 | 대기 |
+| HK-15 | P19 | worktree 운영 | 05 | HK-13 | 대기 |
+| HK-16 | P23 | 검증 확장: 오픈소스 정적 분석 · SARIF · 새 문제만 막는 게이트 · 자체 리뷰 에이전트 · CI 템플릿 · 승인 규칙 | 09 | HK-12 | 대기 |
+| HK-17 | P20 | 관리 페이지 서버(REST · 읽기 · 쓰기 규칙 · 승인 · 질문 · 세션 · 작업 요청 · 내보내기) | 06 §3.1~§3.15 | HK-13 | 대기 |
+| HK-18 | P20 | 관리 페이지 화면 · 흐름 보기(React Flow) · 전체 프로젝트 · 기록 · 사용량 · 스킬 목록 | 06 §3.16~§3.19 · 07 · screens | HK-17 | 대기 |
+| HK-19 | P21 | 킷 설계 단계: 접수(intake) · /hx-intent · Unit 목록 · 질문 · 기획물 · 역할 | 08 · 12 | HK-17 | 대기 |
+| HK-20 | P22 | 선택 모듈: module.json · aidlc · entire(실제 설치 시험) · jira-workflow 개편 · notion · 모듈 토큰 측정 | 10 | HK-12 · HK-19 | 대기 |
+| HK-21 | P24 | 배포 · 운영 기록 · 전달 지표 · 규칙 후보 | 14 | HK-16 · HK-19 | 대기 |
+| HK-22 | 전 단계 | v1 → v2 이전 도구 · 릴리스 스크립트 · 두 구성 e2e(킷만 / 모두 켬) · knots · hdr 복사본 실측 | 11 · 13 | 전부 | 대기 |
+
+## 진행 방식
+
+- 슬롯 A(CLI 줄기): HK-11 → HK-12 → HK-13 → HK-14 → HK-15 → HK-20 → HK-22
+- 슬롯 B(나머지): HK-9/10 → HK-16 → HK-17 → HK-18 → HK-19 → HK-21
+- 합칠 때마다 깨끗한 worktree에서 시험 전체(`pnpm -C packages/cli test` · `node scripts/gen-plugins.mjs --check` · `python3 -m unittest discover -s tests -p "test_*.py"`)를 돌린다.
