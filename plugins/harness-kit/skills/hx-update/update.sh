@@ -229,6 +229,24 @@ if [ "$DRY_RUN" != 1 ]; then
   [ -f "$TARGET/.agents/harness.json" ] || harness_write_manifest "$TARGET" "$STACK" "$AGENTS_SEL"
 fi
 
+# 보드 형식이 바뀐 킷으로 올렸으면 보드를 한 번 다시 만든다. 그러지 않으면 업데이트 직후 fast 검증이
+# 보드 차이로 실패한다. 보드 코드가 conflict 면(사람이 고친 판) 실행하지 않는다.
+rebuild_board() {
+  local c
+  [ "$DRY_RUN" != 1 ] && [ -f "$TARGET/scripts/board.sh" ] || return 0
+  command -v python3 >/dev/null 2>&1 || return 0
+  for c in $conflicts; do
+    case "$c" in scripts/board.sh|scripts/sdd-layout.py|scripts/harness/*) return 0 ;; esac
+  done
+  (cd "$TARGET" && bash scripts/board.sh --check >/dev/null 2>&1) && return 0
+  if (cd "$TARGET" && bash scripts/board.sh >/dev/null 2>&1); then
+    echo "  ✎ SDD 보드를 새 형식으로 다시 만들었다: .agents/docs/specs-index.md"
+  else
+    echo "  ⚠ SDD 보드를 다시 만들지 못했다 — 'bash scripts/board.sh' 의 오류를 고친 뒤 다시 실행한다" >&2
+  fi
+}
+rebuild_board
+
 echo ""
 echo "✔ new=$n_new  update=$n_update  same=$n_same  conflict=$n_conflict  orphan=$n_orphan $([ $DRY_RUN = 1 ] && echo '(dry-run — 실제 변경 없음)')"
 

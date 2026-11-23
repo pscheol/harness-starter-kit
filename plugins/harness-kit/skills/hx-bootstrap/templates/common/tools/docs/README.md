@@ -58,7 +58,7 @@ docs/features/
 | 화면 | `"app-web": {"routes": ["/notes/**"]}` |
 | 비JVM 시험 | `"<단위>": {"paths": ["src/features/note/**"]}` — 단위 폴더 기준 |
 | 명시 | `"operations": ["app-server GET /api/v1/x"]` · `"tables": ["note.nte_x"]` · `"caches": ["app-server:x"]` |
-| SDD 이슈 | `"sdd": [".:note-specs/3-*"]` — `<하네스 경로>:<slug>-specs/<키>` |
+| SDD 이슈 | `"sdd": [".:issues/notes/*", ".:issues/*/ACME-3-*"]` — `<하네스 경로>:issues/<영역>/<키>-<이름>`. 옛 구조(읽기 전용)는 `<하네스 경로>:<slug>-specs/<키>` |
 
 가장 구체적인 패턴이 이긴다. 같은 구체성으로 두 기능에 맞으면 검사가 "중복 배정"으로 실패한다.
 

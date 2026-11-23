@@ -275,7 +275,7 @@ REFACTOR 중복 제거·의도 드러내기
 2. 파일 역할에 맞춰 코드를 넣는다: 타입은 `model.go`, 규칙은 `service.go`, 쿼리는 `store.go`, 경로는 `handler.go`.
 3. **TDD 사이클**: `model`(불변식) → `service`(fake store) → `store`(실제 DB) → `handler`(`httptest`, 응답은 envelope) → `main`(조립·smoke).
 4. **검증**: `bash scripts/verify.sh` 통과 + `api/`의 OpenAPI 스펙 동기화(공개 API라면).
-5. **계획 추적**: 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록.
+5. **계획 추적**: 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록.
 
 ---
 

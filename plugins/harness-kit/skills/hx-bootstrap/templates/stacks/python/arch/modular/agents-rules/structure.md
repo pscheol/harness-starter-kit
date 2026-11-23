@@ -104,7 +104,7 @@ class OwnerLookup(Protocol):
    4. `main`: 라우터 등록·smoke 테스트.
 4. **다른 모듈이 필요하면** 위 (a)/(b)/(c) 중 하나를 고르고 이유를 `.agents/docs/decisions/`에 한 줄 남긴다.
 5. **검증**: `bash scripts/verify.sh`(ruff·mypy·lint-imports·pytest) 통과 + OpenAPI/문서 동기화(`.agents/docs/openapi`).
-6. **계획 추적**: 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
+6. **계획 추적**: 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
 
 ## 아키텍처 구조 테스트 (계약 린터의 보완)
 

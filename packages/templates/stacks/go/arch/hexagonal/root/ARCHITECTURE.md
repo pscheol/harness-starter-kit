@@ -301,7 +301,7 @@ REFACTOR 중복 제거·의도 드러내기
 2. **(신규 컨텍스트)** `internal/<ctx>/{domain,app,primary/http,infra}` 생성 → `.golangci.yml`의 depguard 규칙 확인(패턴이 새 경로를 덮는지).
 3. **TDD 사이클**: `domain`(엔티티/VO) → `app`(유스케이스 + fake 포트) → `infra`(실제 DB로 포트 구현) → `primary/http`(`httptest`, 응답은 envelope) → `cmd`(조립·smoke).
 4. **검증**: `bash scripts/verify.sh` 통과 + `api/`의 OpenAPI 스펙 동기화.
-5. **계획 추적**: 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록.
+5. **계획 추적**: 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록.
 
 ---
 

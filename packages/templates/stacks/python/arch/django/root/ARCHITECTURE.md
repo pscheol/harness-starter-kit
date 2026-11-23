@@ -321,7 +321,7 @@ REFACTOR 중복 제거·의도 드러내기
 3. **TDD 사이클**: `services`/`selectors`(DB 테스트) → `serializers` → `views`(`APIClient`) → 마이그레이션 생성·검토.
 4. **다른 앱이 필요하면** §5의 (a)/(b)/(c) 중 하나를 고르고 이유를 `.agents/docs/decisions/`에 한 줄 남긴다.
 5. **검증**: `bash scripts/verify.sh` 통과(마이그레이션 드리프트 체크 포함) + OpenAPI 스냅샷/문서 동기화(`.agents/docs/openapi`).
-6. **계획 추적**: 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록.
+6. **계획 추적**: 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록.
 
 ---
 

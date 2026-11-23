@@ -50,8 +50,10 @@ yarn-error.log*
 pnpm-debug.log*
 *.tmp
 *.harness.tmp
-# 하네스 실행 상태(검증 기록 verify-last.json 등) — 커밋하지 않는다
+# 하네스 실행 상태(검증 기록 verify-last.json 등) · 개인 설정 · 리포트 — 커밋하지 않는다
 .agents/state/
+.agents/local/
+.agents/reports/
 # harness-update 산출물(병합용 임시본) — 상태 파일 harness-kit.json·lock 은 커밋한다
 *.new
 *.bak

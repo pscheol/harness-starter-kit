@@ -100,7 +100,7 @@ Django 기본형("뷰가 ORM을 직접 호출")은 규칙이 뷰·시그널·매
    4. 마이그레이션 생성·검토(되돌릴 수 있는지 확인).
 4. **다른 앱이 필요하면** 위 (a)/(b)/(c) 중 하나를 고르고 이유를 `.agents/docs/decisions/`에 한 줄 남긴다.
 5. **검증**: `bash scripts/verify.sh`(ruff·mypy·lint-imports·마이그레이션 드리프트·pytest) 통과 + OpenAPI/문서 동기화(`.agents/docs/openapi`).
-6. **계획 추적**: 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
+6. **계획 추적**: 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
 
 ## 아키텍처 구조 테스트 (계약 린터의 보완)
 

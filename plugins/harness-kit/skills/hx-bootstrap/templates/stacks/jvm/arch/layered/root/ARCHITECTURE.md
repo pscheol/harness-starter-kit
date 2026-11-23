@@ -283,7 +283,7 @@ REFACTOR 중복 제거·의도 드러내기
 2. **파일 세트 생성**: `entity/<X>.kt` → `repository/<X>Repository.kt` → `service/<X>Service.kt` → `controller/dto/` → `controller/<X>Controller.kt`. 레이어 패키지를 새로 만들면 §3.2 구조 테스트에 등록한다.
 3. **TDD 사이클**: `service`(fake 리포지토리) → `repository`(`@DataJpaTest`) → `controller`(`@WebMvcTest`, 응답은 envelope) → 통합 smoke.
 4. **검증**: `./gradlew check` 통과 + OpenAPI/문서 동기화(`.agents/docs/openapi`).
-5. **계획 추적**: 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록.
+5. **계획 추적**: 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록.
 
 ---
 

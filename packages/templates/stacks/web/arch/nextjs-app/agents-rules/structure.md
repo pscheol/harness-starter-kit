@@ -92,7 +92,7 @@
 4. 상호작용이 필요한 부분만 `src/features/<f>/`의 클라이언트 컴포넌트로 분리한다.
 5. 공용으로 올릴 UI가 있으면 먼저 Inventory([`reuse-before-new.md`](./reuse-before-new.md)).
 6. **검증**: `bash scripts/verify.sh` 통과 + 화면 명세 갱신 + 키보드·대비 확인.
-7. 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
+7. 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
 
 ## 승격·경계 오류 신호
 

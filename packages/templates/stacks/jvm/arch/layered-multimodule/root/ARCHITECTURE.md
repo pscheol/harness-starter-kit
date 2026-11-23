@@ -205,7 +205,7 @@ REFACTOR 중복 제거·의도 드러내기
 3. TDD 사이클(§8).
 4. 레이어 모듈을 새로 만들었다면 `settings.gradle.kts` 등록 + §3.1 의존표대로 빌드 스크립트 + **구조 테스트에 등록**.
 5. `bash scripts/verify.sh` 통과 + `.agents/docs/openapi` 동기화.
-6. 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록한다.
+6. 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록한다.
 
 ---
 

@@ -134,7 +134,7 @@ class LLMClient(Protocol):
    5. `api`: `httpx.AsyncClient(ASGITransport)`로 라우터·스트리밍 테스트. **응답은 공통 envelope**.
 4. **품질 확인**: `python evaluation/run_eval.py`로 기준선 대비 점수 확인 → 회귀 없으면 기준선 갱신 여부 판단.
 5. **검증**: `bash scripts/verify.sh`(ruff·mypy·lint-imports·pytest) 통과 + OpenAPI/문서 동기화(`.agents/docs/openapi`).
-6. **계획 추적**: 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
+6. **계획 추적**: 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
 
 ## 아키텍처 구조 테스트 (계약 린터의 보완)
 

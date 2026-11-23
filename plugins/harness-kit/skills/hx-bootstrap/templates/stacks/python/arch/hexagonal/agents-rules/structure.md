@@ -108,7 +108,7 @@ class {{DOMAIN_EXAMPLE}}Repository(Protocol):
    4. `primary`: `httpx.AsyncClient(ASGITransport)` 테스트 → 라우터·스키마·매퍼 구현. **응답은 공통 envelope**.
    5. `bootstrap`: 라우터 등록·의존 조립·smoke 테스트.
 4. **검증**: `bash scripts/verify.sh`(ruff·mypy·lint-imports·pytest) 통과 + OpenAPI/문서 동기화(`.agents/docs/openapi`).
-5. **계획 추적**: 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
+5. **계획 추적**: 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
 
 ## 아키텍처 구조 테스트 (계약 린터의 보완)
 

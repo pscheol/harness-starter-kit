@@ -58,7 +58,7 @@
    3. 이벤트 흐름: Scenario API로 발행→수신→결과 검증.
    4. 웹/영속: `@WebMvcTest`·`@DataJpaTest`(+ Testcontainers 선택).
 5. **검증**: `scripts/verify.sh`(= `./gradlew check`, 모듈 검증 포함) + OpenAPI/문서 동기화(`.agents/docs/openapi`).
-6. **계획 추적**: 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
+6. **계획 추적**: 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
 
 ## 모듈 검증 테스트 (이 변형의 강제 장치)
 

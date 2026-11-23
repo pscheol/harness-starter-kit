@@ -85,7 +85,7 @@
 #   PROJECT_NAME PROJECT_SLUG PACKAGE_NS SERVICE_NAME
 #   PRIMARY_LANGUAGE BUILD_TOOL TEST_CMD DOMAIN_EXAMPLE PROTECTED_PATH
 #   (PRODUCT_SLUG·EPIC_ID·FEATURE_NAME 은 스펙 작성 시점에 정해지는 토큰이라 여기서 치환하지 않는다.
-#    제품 폴더 <slug>-specs/ 는 설치가 아니라 scripts/new-feature.sh 가 만든다 —
+#    이슈 폴더 .agents/docs/issues/<키>-<이름>/ 는 설치가 아니라 scripts/new-feature.sh 가 만든다 —
 #    설치되는 것은 복사 원본 한 벌인 .agents/docs/_spec-templates/ 뿐이다)
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
@@ -650,11 +650,11 @@ if [ -n "$MODULES_SEL" ]; then
   done
 fi
 echo "  · product.md · ARCHITECTURE.md · structure.md 의 {{플레이스홀더}} 채우기"
-echo "    SDD 는 제품 폴더도 단계 문서도 미리 만들지 않는다. 단계에 들어갈 때 하나씩 생긴다:"
-echo "      scripts/new-feature.sh <product-slug> <feature>                  (또는 /hx-specify)"
-echo "      scripts/new-feature.sh <product-slug> <feature> --stage=design   (또는 /hx-plan)"
-echo "      scripts/new-feature.sh <product-slug> <feature> --stage=tasks    (또는 /hx-tasks)"
-echo "      → 첫 실행이 .agents/docs/<slug>-specs/ 골격 + specs-index.md 등록까지 함께 한다"
+echo "    SDD 는 이슈 폴더도 단계 문서도 미리 만들지 않는다. 단계에 들어갈 때 하나씩 생긴다:"
+echo "      scripts/new-feature.sh <키|--next> <이름> --area <영역>   (또는 /hx-specify)"
+echo "      scripts/new-feature.sh <키> --stage=design               (또는 /hx-plan)"
+echo "      scripts/new-feature.sh <키> --stage=tasks                (또는 /hx-tasks)"
+echo "      → .agents/docs/issues/<키>-<이름>/ 에 문서를 만들고 specs-index.md 영역 표를 갱신한다"
 echo "      빈 design·tasks 를 미리 깔면 보드가 곧장 구현으로 뛰고 단계 게이트가 무력해진다."
 echo "    템플릿 원본은 .agents/docs/_spec-templates/ 한 곳이다(제품 폴더에 복사되지 않는다)."
 echo "  · 검증 레벨: 에이전트 Stop hook 은 fast(구조 점검 + 가벼운 정적 검사, 수 초)만 돈다."

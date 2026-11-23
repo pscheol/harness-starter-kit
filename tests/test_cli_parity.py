@@ -244,8 +244,11 @@ class CliParityTest(unittest.TestCase):
                 for target in (o.cli, o.sh):
                     r = doctor(self.cli, target)
                     self.assertEqual(r.returncode, 0, r.stdout[-2000:] + r.stderr[-2000:])
-                    summary = json.loads(r.stdout)["summary"]
+                    report = json.loads(r.stdout)
+                    summary = report["summary"]
                     self.assertEqual((summary["errors"], summary["missing"]), (0, 0), target)
+                    # 설치되는 .gitignore 가 .agents/state · local · reports 를 넣는다(HK-9 R9.4).
+                    self.assertEqual([f for f in report["findings"] if f["kind"] == "gitignore"], [], target)
 
 
 @unittest.skipUnless(shutil.which("node"), "Node 18 이상이 필요하다")

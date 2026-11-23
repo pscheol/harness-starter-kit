@@ -1,6 +1,6 @@
 ---
 name: hx-bootstrap
-description: 단일 프로젝트에 하네스 엔지니어링 기본 골격을 스캐폴딩한다. 스택은 jvm(Kotlin/Java+Spring) · python(FastAPI/ASGI) · go(표준 Go 레이아웃) · web(TypeScript+React) · electron(TypeScript 데스크톱) 중에서 고르고, 아키텍처 변형(ARCH)은 jvm 8종(hexagonal·hexagonal-nested·hexagonal-standalone·layered·layered-multimodule·modulith·feature·multimodule) · python 5종(hexagonal·layered·modular·django·ai-service) · go 4종(hexagonal·layered·feature·flat) · web 3종(nextjs-app·react-spa·feature-sliced) · electron 3종(main-renderer·feature·monorepo) 중에서 고른다. web·electron 은 frontend 도메인 규칙(디자인 시스템·접근성·UI 상태·성능)을 공유한다. 선택 모듈(--modules)로 jira-workflow(이슈 트래커 연동) · platform-guards(프로젝트 고유 불변식 가드) · multi-harness(여러 리포·단위 하네스)를 얹을 수 있다. 진입점=목차(AGENTS.md/CLAUDE.md), 공통 규칙 원본(.agents/rules — Claude Code·Codex·Cursor·Kiro 공유), Kiro 얇은 포인터(.kiro/steering), SDLC 단계형 SDD 기록 시스템(.agents/docs — 템플릿 원본 _spec-templates + 이슈 단위 <slug>-specs/issues/<key>/{requirements,design,tasks} + decisions), 단일 검증 게이트(scripts/verify.sh, 기본 changed)와 얇은 트리거(hook), 세션 협업 도구, 기능 문서 생성기(tools/docs — Scalar API 명세·Mermaid 그림)를 한 번에 깐다. "하네스 초기 설정", "AGENTS.md 만들기", "에이전트 규칙 세팅", "harness bootstrap/scaffold", "steering 초기화", "exec-plan/SDD 구조 만들기" 요청 시 사용.
+description: 단일 프로젝트에 하네스 엔지니어링 기본 골격을 스캐폴딩한다. 스택은 jvm(Kotlin/Java+Spring) · python(FastAPI/ASGI) · go(표준 Go 레이아웃) · web(TypeScript+React) · electron(TypeScript 데스크톱) 중에서 고르고, 아키텍처 변형(ARCH)은 jvm 8종(hexagonal·hexagonal-nested·hexagonal-standalone·layered·layered-multimodule·modulith·feature·multimodule) · python 5종(hexagonal·layered·modular·django·ai-service) · go 4종(hexagonal·layered·feature·flat) · web 3종(nextjs-app·react-spa·feature-sliced) · electron 3종(main-renderer·feature·monorepo) 중에서 고른다. web·electron 은 frontend 도메인 규칙(디자인 시스템·접근성·UI 상태·성능)을 공유한다. 선택 모듈(--modules)로 jira-workflow(이슈 트래커 연동) · platform-guards(프로젝트 고유 불변식 가드) · multi-harness(여러 리포·단위 하네스)를 얹을 수 있다. 진입점=목차(AGENTS.md/CLAUDE.md), 공통 규칙 원본(.agents/rules — Claude Code·Codex·Cursor·Kiro 공유), Kiro 얇은 포인터(.kiro/steering), SDLC 단계형 SDD 기록 시스템(.agents/docs — 템플릿 원본 _spec-templates + 이슈 단위 issues/<키>-<이름>/{requirements,design,tasks} + decisions), 단일 검증 게이트(scripts/verify.sh, 기본 changed)와 얇은 트리거(hook), 세션 협업 도구, 기능 문서 생성기(tools/docs — Scalar API 명세·Mermaid 그림)를 한 번에 깐다. "하네스 초기 설정", "AGENTS.md 만들기", "에이전트 규칙 세팅", "harness bootstrap/scaffold", "steering 초기화", "exec-plan/SDD 구조 만들기" 요청 시 사용.
 ---
 
 # hx-bootstrap — 하네스 엔지니어링 초기 설정 스킬
@@ -88,8 +88,8 @@ description: 단일 프로젝트에 하네스 엔지니어링 기본 골격을 �
 | 축 | 만들어지는 것 |
 |---|---|
 | ① 규칙·헌법·가드레일 | `AGENTS.md`(목차), `CLAUDE.md`(리다이렉트), **`.agents/rules/*`(공통 원본 + 스택별 규약)**, `.kiro/steering/*`(얇은 포인터) |
-| ② 아키텍처 제약·스캐폴딩 | `ARCHITECTURE.md`(스택별 의존 방향·기계적 강제 수단), `.agents/docs/_spec-templates/`(SDD 단계 템플릿 원본 — 제품 폴더는 `new-feature.sh` 가 첫 기능에서 생성), 제품 단위 SDD |
-| ③ 검증·피드백 루프 | `scripts/verify.sh`(스택별 단일 게이트) + `check-exec-plan-status.sh` + `.claude`/`.codex` hook(얇은 트리거), 완료 게이트(active→check→completed) |
+| ② 아키텍처 제약·스캐폴딩 | `ARCHITECTURE.md`(스택별 의존 방향·기계적 강제 수단), `.agents/docs/_spec-templates/`(SDD 단계 템플릿 원본 — 이슈 폴더 `issues/<키>-<이름>/` 는 `new-feature.sh` 가 첫 이슈에서 생성), 이슈 단위 SDD |
+| ③ 검증·피드백 루프 | `scripts/verify.sh`(스택별 단일 게이트) + `check-exec-plan-status.sh` + `.claude`/`.codex` hook(얇은 트리거), 완료 게이트(tasks `state` active→check→completed) |
 | ④ 부채·문서 관리 | `tech-debt-tracker.md`, `generated/`·`references/` 규약 |
 
 ## 사용 절차
@@ -130,9 +130,9 @@ description: 단일 프로젝트에 하네스 엔지니어링 기본 골격을 �
    - `electron`: 위와 같고, 추가로 프로세스 경계(`contextIsolation: true`·`nodeIntegration: false`·`sandbox: true`)를 먼저 세우고 **IPC 채널 목록을 한 파일에 모아** preload 에서 화이트리스트로만 노출한다. `electron-builder` 의 `appId` 는 `PACKAGE_NS` 다. 진입 스킬: `hx-electron-setup`.
    - 선택 모듈을 켰다면: `jira-workflow` → `.agents/issue-tracker.yml` 의 `statusIds`·`transitionIds`·`lock` 을 실제 값으로 채운다(`TBD` 인 채로 자동화를 켜면 엉뚱한 상태로 옮긴다). `platform-guards` → `scripts/guards/` 에 가드를 쓴다. `verify.sh` 는 `run-guards.sh` 가 있으면 자동으로 부른다(배선 작업 없음).
 6. **채우기** — `.agents/rules/product.md`·`ARCHITECTURE.md`·`.agents/rules/structure.md` 의 `{{플레이스홀더}}`.
-   `.agents/docs/specs-index.md` 제품 등록표는 비어 있는 채로 시작한다 — 제품 폴더는 설치가 아니라
-   `scripts/new-feature.sh <slug> <feature>`(또는 `/hx-specify`)가 첫 기능에서 만든다. 임의로 제품 폴더를 만들지 않는다.
-   단계 문서도 마찬가지다 — requirements 만 먼저 생기고 design·tasks 는 `--stage=design`·`--stage=tasks`
+   `.agents/docs/specs-index.md` 보드와 영역 등록표는 비어 있는 채로 시작한다 — 이슈 폴더는 설치가 아니라
+   `scripts/new-feature.sh <키|--next> <이름> --area <영역>`(또는 `/hx-specify`)가 첫 이슈에서 만든다. 임의로 이슈 폴더를 만들지 않는다.
+   단계 문서도 마찬가지다 — requirements 만 먼저 생기고 design·tasks 는 `new-feature.sh <키> --stage=design`·`--stage=tasks`
    (즉 `/hx-plan`·`/hx-tasks`)가 그때 만든다. 미리 만들어 두면 보드와 단계 게이트가 함께 무력해진다.
 7. **검증** — `grep -rn '{{' . | grep -vE '_spec-templates/|\{\{\.\.\.\}\}|PRODUCT_SLUG'` 로 미치환 토큰 확인 후 `bash scripts/verify.sh` 통과를 확인하고 사용자에게 보고.
    `.agents/docs/_spec-templates/` 의 `{{PRODUCT_SLUG}}`·`{{FEATURE_NAME}}`·`{{EPIC_ID}}` 는 **의도적으로 남기는 토큰**이다(채우지 않는다).
@@ -143,7 +143,7 @@ description: 단일 프로젝트에 하네스 엔지니어링 기본 골격을 �
 - **규칙은 공통** — kiro에 규칙 본문을 넣지 않는다. 3개 에이전트가 `.agents/rules/` 를 공유한다.
 - **문서=부탁, 코드=강제** — 강제는 `scripts/verify.sh` 1곳, hook/CI/pre-commit 은 트리거만.
 - 레이어는 기계가 막는다 — 스택마다 수단이 다르다(모듈 그래프 / import-linter / depguard). 새 바운디드 컨텍스트를 추가하면 **강제 설정에도 등록**해야 한다(등록 누락 = 강제 누락).
-- **완료 게이트는 사람** — exec-plan은 `check/`까지 에이전트, `completed/`는 사용자 승인 후에만.
+- **완료 게이트는 사람** — tasks.md 의 `state: check`까지 에이전트, `completed`는 사용자 승인 후에만.
 
 ## 설치 후 유지보수
 

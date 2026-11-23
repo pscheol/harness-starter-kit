@@ -97,7 +97,7 @@
    4. `handler`: `httptest`로 라우팅·상태코드 테스트 → 핸들러·DTO 구현. **응답은 공통 envelope**.
    5. `main`: 조립·smoke 테스트.
 4. **검증**: `bash scripts/verify.sh`(fmt·vet·lint·race 테스트·커버리지) 통과 + `api/` OpenAPI 스펙 동기화(공개 API라면).
-5. **계획 추적**: 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
+5. **계획 추적**: 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
 
 ## 아키텍처 구조 테스트 (승격 신호를 게이트로)
 

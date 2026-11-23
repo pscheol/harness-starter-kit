@@ -17,6 +17,6 @@ Go 백엔드 · 표준 Go 레이아웃(cmd/internal/pkg). `internal/` 내부 구
 - 보안/권한 경계, API 표준, 구조·스택 규약은 `.agents/rules/*`, 아키텍처 원본은 `ARCHITECTURE.md` 참조.
 - 레이어 의존은 `internal/` 가시성·import 사이클(컴파일러) + depguard(린터)가 강제한다. 인터페이스는 소비자(app)가 선언한다.
 - 에러는 값으로 전파(`%w` 래핑·`errors.Is/As` 판별), `ctx`는 모든 I/O에 전파, 고루틴에는 소유자와 종료 조건을 둔다.
-- 복잡한 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 계획을 남기고, 변경은 `bash scripts/verify.sh`로 검증한다.
-- exec-plan은 완료 조건을 채워도 임의로 `completed/`로 옮기지 않는다. `check/`로 옮기고(상태 `check`) **사용자 검증 후** `completed/`로 이동한다.
+- 복잡한 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 계획을 남기고, 변경은 `bash scripts/verify.sh`로 검증한다.
+- exec-plan(tasks.md)은 완료 조건을 채워도 임의로 `completed`로 바꾸지 않는다. `state: check`로 두고 **사용자 검증 후** `completed`로 바꾼다.
 - 규칙이 바뀌면 `.agents/rules/` 원본을 먼저 고치고 `AGENTS.md`와 이 파일, Kiro 포인터를 동기화한다.
