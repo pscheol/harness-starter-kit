@@ -40,7 +40,7 @@ function versionFindings(meta: MetaV2 | null, lock: LockV2 | null): Finding[] {
         path: META_REL,
         hint: newer
           ? `설치된 킷(${installed})이 이 CLI(${VERSION})보다 새것이다. 새 CLI 로 다시 실행한다`
-          : `설치 ${installed} · CLI ${VERSION}. 킷을 올리려면 harness-kit update(다음 조각)`,
+          : `설치 ${installed} · CLI ${VERSION}. 킷을 올리려면 harness-kit update`,
         detail: { installed, cli: VERSION },
       });
     }
@@ -75,7 +75,7 @@ function copyFindings(target: string, lock: LockV2): { ok: number; findings: Fin
     const state = fileState(path.join(target, ...e.path.split("/")), e.sha256);
     if (state === "ok") ok += 1;
     else if (state === "missing") {
-      findings.push({ kind: "missing", severity: "error", path: e.path, owner: e.owner, hint: "킷 파일이 없다. 다시 받으려면 harness-kit repair(다음 조각)" });
+      findings.push({ kind: "missing", severity: "error", path: e.path, owner: e.owner, hint: "킷 파일이 없다. harness-kit repair 로 되살린다" });
     } else if (state === "drifted") {
       findings.push({ kind: "drifted", severity: "info", path: e.path, owner: e.owner, hint: "사람이 고친 파일이다. update 때 .new 로 받는다" });
     } else {

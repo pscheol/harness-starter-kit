@@ -67,7 +67,7 @@ export function assertSafeRelPath(p: string): void {
 }
 
 /** setup.sh harness_write_manifest 와 같은 바이트. 값은 JSON 으로 이스케이프한다(design §10 D14). */
-export function manifestContent(sel: Selection, tokens: Record<string, string>): Buffer {
+export function manifestContent(sel: Pick<Selection, "stack" | "agents">, tokens: Record<string, string>): Buffer {
   const s = (v: string): string => JSON.stringify(v);
   const agents = sel.agents.map(s).join(", ");
   return Buffer.from(
@@ -76,9 +76,10 @@ export function manifestContent(sel: Selection, tokens: Record<string, string>):
   );
 }
 
-type Existing = { kind: "none" } | { kind: "file"; bytes: Buffer; executable: boolean } | { kind: "other"; what: string };
+export type Existing = { kind: "none" } | { kind: "file"; bytes: Buffer; executable: boolean } | { kind: "other"; what: string };
 
-function existing(full: string): Existing {
+/** 설치 경로의 지금 상태. 링크 · 폴더 · 특수 파일은 "other" 다(따라가지 않는다). */
+export function existing(full: string): Existing {
   const st = lstatOrNull(full);
   if (!st) return { kind: "none" };
   if (st.isSymbolicLink()) return { kind: "other", what: "링크다" };
@@ -100,7 +101,7 @@ function decide(cur: Existing, content: Buffer, executable: boolean, mode: PlanM
  * 설치 경로의 상위 폴더를 위에서부터 본다(같은 폴더는 한 번만).
  * 링크가 끊어졌거나 리포 밖을 가리키면 exit 3. 폴더가 아닌 것이 있으면 "blocked"(그 아래는 쓰지 않는다).
  */
-class AncestorCheck {
+export class AncestorCheck {
   private readonly cache = new Map<string, "ok" | "missing" | "blocked">();
 
   constructor(
@@ -138,7 +139,7 @@ class AncestorCheck {
   }
 }
 
-const BLOCKED = "상위 경로가 폴더가 아니다";
+export const BLOCKED = "상위 경로가 폴더가 아니다";
 
 function manifestPlan(target: string, ancestors: AncestorCheck | null, content: Buffer, adopt: boolean): GeneratedFile {
   if (ancestors?.state(MANIFEST_PATH) === "blocked") return { path: MANIFEST_PATH, action: "skip-user", content };

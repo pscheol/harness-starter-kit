@@ -37,10 +37,13 @@ describe("진입점", () => {
     expect((await run(["doctor", "--stack", "jvm"])).code).toBe(2);
   });
 
+  it.each(["update", "repair", "uninstall"])("%s 는 예약 명령이 아니다(설치 안 된 폴더면 exit 3, HK-11)", async (cmd) => {
+    const r = await run([cmd, "--yes", "--cwd", tmpDir()]);
+    expect(r.code).toBe(3);
+    expect(r.stderr).toContain("init");
+  });
+
   it.each([
-    ["update", "P17"],
-    ["repair", "P17"],
-    ["uninstall", "P17"],
     ["add", "P17"],
     ["remove", "P17"],
     ["outdated", "P17"],

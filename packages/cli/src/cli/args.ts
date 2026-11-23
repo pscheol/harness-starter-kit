@@ -40,6 +40,16 @@ export const COMMAND_OPTIONS: Record<string, OptSpec> = {
   plan: INIT,
   doctor: { check: { type: "boolean" }, only: { type: "string" } },
   list: { files: { type: "boolean" } },
+  update: {
+    "accept-all": { type: "boolean" },
+    prune: { type: "boolean" },
+    forget: { type: "string", multiple: true },
+    to: { type: "string" },
+    packs: { type: "boolean" },
+    tools: { type: "boolean" },
+  },
+  repair: { only: { type: "string" } },
+  uninstall: { "keep-state": { type: "boolean" }, "keep-packs": { type: "boolean" } },
 };
 
 export type Values = Record<string, string | boolean | string[] | undefined>;

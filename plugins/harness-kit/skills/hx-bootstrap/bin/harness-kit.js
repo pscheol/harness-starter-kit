@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 944e2a4a75a4a8074697204ed88b27d394a5540c53cf98c4b78315f4060f5e5d · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 1be7cc4050d94a5887421c8c55c56a677b61168d92f5cb3104035b1b7b95387c · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -95,7 +95,17 @@ var COMMAND_OPTIONS = {
   init: INIT,
   plan: INIT,
   doctor: { check: { type: "boolean" }, only: { type: "string" } },
-  list: { files: { type: "boolean" } }
+  list: { files: { type: "boolean" } },
+  update: {
+    "accept-all": { type: "boolean" },
+    prune: { type: "boolean" },
+    forget: { type: "string", multiple: true },
+    to: { type: "string" },
+    packs: { type: "boolean" },
+    tools: { type: "boolean" }
+  },
+  repair: { only: { type: "string" } },
+  uninstall: { "keep-state": { type: "boolean" }, "keep-packs": { type: "boolean" } }
 };
 function parseCommandArgs(command, argv) {
   const options = { ...COMMON, ...COMMAND_OPTIONS[command] ?? {} };
@@ -152,10 +162,10 @@ function walkFiles(dir) {
   const out = [];
   const walk = (d, prefix) => {
     for (const name of import_node_fs.default.readdirSync(d)) {
-      const full2 = import_node_path2.default.join(d, name);
+      const full7 = import_node_path2.default.join(d, name);
       const rel = prefix ? `${prefix}/${name}` : name;
-      const st = import_node_fs.default.lstatSync(full2);
-      if (st.isDirectory()) walk(full2, rel);
+      const st = import_node_fs.default.lstatSync(full7);
+      if (st.isDirectory()) walk(full7, rel);
       else if (st.isFile()) out.push(rel);
     }
   };
@@ -354,6 +364,8 @@ var KEY_ORDER = [
 ];
 var DEFAULT_GATES = ["codebase", "intent", "plans", "requirements", "design", "tasks", "mr", "done", "deploy"];
 var DEFAULT_BASE = "develop";
+var GIT_DEFAULTS = { base: DEFAULT_BASE, worktreeRoot: "../{repo}.worktrees", maxPerRepo: 3, ide: "code" };
+var DEFAULT_FLOW = { design: "kit", record: "none", gates: DEFAULT_GATES };
 function buildMeta(args) {
   const { selection: sel, tokens } = args;
   const slug = tokens.PROJECT_SLUG ?? "";
@@ -366,13 +378,31 @@ function buildMeta(args) {
     domain: sel.domain,
     agents: [...sel.agents],
     modules: [...sel.modules],
-    flow: { design: "kit", record: "none", gates: [...DEFAULT_GATES] },
+    flow: { ...DEFAULT_FLOW, gates: [...DEFAULT_GATES] },
     issueKey: { source: args.issue.source ?? "kit", prefix: args.issue.prefix ?? slug.toUpperCase() },
-    git: { base: args.base ?? DEFAULT_BASE, worktreeRoot: "../{repo}.worktrees", maxPerRepo: 3, ide: "code" },
+    git: { ...GIT_DEFAULTS, base: args.base ?? DEFAULT_BASE },
     packs: [],
     verify: { fullOnlyInCI: true },
     tokens: { ...tokens },
     installedAt: args.today,
+    updatedAt: args.today
+  };
+}
+function mergeMetaForUpdate(meta, args) {
+  const { selection: sel } = args;
+  return {
+    ...meta,
+    schema: META_SCHEMA,
+    kit: { version: args.version },
+    stack: sel.stack,
+    arch: sel.arch,
+    domain: sel.domain,
+    agents: [...sel.agents],
+    modules: [...sel.modules],
+    flow: isObj(meta.flow) ? meta.flow : { ...DEFAULT_FLOW, gates: [...DEFAULT_GATES] },
+    git: { ...GIT_DEFAULTS, ...meta.git },
+    tokens: { ...meta.tokens, ...args.tokens },
+    installedAt: meta.installedAt || args.today,
     updatedAt: args.today
   };
 }
@@ -743,13 +773,13 @@ function manifestContent(sel, tokens) {
     "utf8"
   );
 }
-function existing(full2) {
-  const st = lstatOrNull(full2);
+function existing(full7) {
+  const st = lstatOrNull(full7);
   if (!st) return { kind: "none" };
   if (st.isSymbolicLink()) return { kind: "other", what: "링크다" };
   if (st.isDirectory()) return { kind: "other", what: "같은 이름의 폴더가 있다" };
   if (!st.isFile()) return { kind: "other", what: "일반 파일이 아니다" };
-  return { kind: "file", bytes: import_node_fs7.default.readFileSync(full2), executable: (st.mode & 64) !== 0 };
+  return { kind: "file", bytes: import_node_fs7.default.readFileSync(full7), executable: (st.mode & 64) !== 0 };
 }
 function decide(cur, content, executable, mode) {
   if (cur.kind === "none") return { action: "create" };
@@ -829,9 +859,9 @@ function buildPlan(args) {
     return op;
   });
   const generated = [manifestPlan(target, ancestors, manifestContent(selection, tokens), mode.adopt)];
-  const counts = { create: 0, replace: 0, same: 0, "skip-user": 0, excludedByHarness: res.excludedByHarness, overlapped: res.overlaps.length };
-  for (const o of ops) counts[o.action] += 1;
-  return { target, ops, overlaps: res.overlaps, excludedByHarness: res.excludedByHarness, generated, counts };
+  const counts2 = { create: 0, replace: 0, same: 0, "skip-user": 0, excludedByHarness: res.excludedByHarness, overlapped: res.overlaps.length };
+  for (const o of ops) counts2[o.action] += 1;
+  return { target, ops, overlaps: res.overlaps, excludedByHarness: res.excludedByHarness, generated, counts: counts2 };
 }
 
 // src/core/version.ts
@@ -892,7 +922,7 @@ function versionFindings(meta, lock) {
         kind: "version-mismatch",
         severity: newer ? "error" : "warn",
         path: META_REL,
-        hint: newer ? `설치된 킷(${installed})이 이 CLI(${VERSION})보다 새것이다. 새 CLI 로 다시 실행한다` : `설치 ${installed} · CLI ${VERSION}. 킷을 올리려면 harness-kit update(다음 조각)`,
+        hint: newer ? `설치된 킷(${installed})이 이 CLI(${VERSION})보다 새것이다. 새 CLI 로 다시 실행한다` : `설치 ${installed} · CLI ${VERSION}. 킷을 올리려면 harness-kit update`,
         detail: { installed, cli: VERSION }
       });
     }
@@ -903,11 +933,11 @@ function versionFindings(meta, lock) {
   }
   return out;
 }
-function fileState(full2, sha) {
-  const st = lstatOrNull(full2);
+function fileState(full7, sha) {
+  const st = lstatOrNull(full7);
   if (!st || !st.isFile()) return "missing";
   try {
-    return sha && sha256File(full2) === sha ? "ok" : "drifted";
+    return sha && sha256File(full7) === sha ? "ok" : "drifted";
   } catch (err) {
     return { unreadable: err.code ?? String(err) };
   }
@@ -925,7 +955,7 @@ function copyFindings(target, lock) {
     const state = fileState(import_node_path6.default.join(target, ...e.path.split("/")), e.sha256);
     if (state === "ok") ok += 1;
     else if (state === "missing") {
-      findings.push({ kind: "missing", severity: "error", path: e.path, owner: e.owner, hint: "킷 파일이 없다. 다시 받으려면 harness-kit repair(다음 조각)" });
+      findings.push({ kind: "missing", severity: "error", path: e.path, owner: e.owner, hint: "킷 파일이 없다. harness-kit repair 로 되살린다" });
     } else if (state === "drifted") {
       findings.push({ kind: "drifted", severity: "info", path: e.path, owner: e.owner, hint: "사람이 고친 파일이다. update 때 .new 로 받는다" });
     } else {
@@ -1094,32 +1124,32 @@ function applyPlan(args) {
   const { plan, metaText, lockText: lockText2, env } = args;
   const target = plan.target;
   let written = 0;
-  let current = "";
+  let current3 = "";
   try {
-    current = target;
+    current3 = target;
     import_node_fs9.default.mkdirSync(target, { recursive: true });
     for (const op of plan.ops) {
       if (op.action !== "create" && op.action !== "replace") continue;
-      current = op.path;
+      current3 = op.path;
       writeFileAtomic(full(target, op.path), op.content, op.executable);
       written += 1;
     }
     for (const g of plan.generated) {
       if (g.action !== "create" && g.action !== "replace") continue;
-      current = g.path;
+      current3 = g.path;
       writeFileAtomic(full(target, g.path), g.content, false);
     }
   } catch (err) {
-    throw fsError(err, `쓰기 실패 ${current}`);
+    throw fsError(err, `쓰기 실패 ${current3}`);
   }
   const featureDocs = featureDocsAllowed(plan) ? buildFeatureDocs(target, env) : { status: "skipped", reason: "tools/docs/ 에 킷 판이 아닌 파일이 있다" };
   try {
-    current = LOCK_REL;
+    current3 = LOCK_REL;
     writeFileAtomic(full(target, LOCK_REL), Buffer.from(lockText2, "utf8"), false);
-    current = META_REL;
+    current3 = META_REL;
     writeFileAtomic(full(target, META_REL), Buffer.from(metaText, "utf8"), false);
   } catch (err) {
-    throw fsError(err, `쓰기 실패 ${current}`);
+    throw fsError(err, `쓰기 실패 ${current3}`);
   }
   return { written, featureDocs };
 }
@@ -1303,7 +1333,7 @@ function assertInstallable(target) {
     throw new CliError(EXIT.STATE, `대상이 폴더가 아니다: ${target}`);
   }
   if (import_node_fs12.default.existsSync(import_node_path10.default.join(target, META_REL))) {
-    throw new CliError(EXIT.STATE, `이미 설치된 리포다: ${import_node_path10.default.join(target, META_REL)}`, "킷 갱신은 harness-kit update, 하네스 · 모듈 추가는 harness-kit add 다(다음 조각). 지금 상태는 harness-kit doctor");
+    throw new CliError(EXIT.STATE, `이미 설치된 리포다: ${import_node_path10.default.join(target, META_REL)}`, "킷 갱신은 harness-kit update, 하네스 · 모듈 추가는 harness-kit add(다음 조각)다. 지금 상태는 harness-kit doctor");
   }
 }
 function selectionInput(ctx) {
@@ -1422,14 +1452,314 @@ function runList(ctx) {
   return { code: EXIT.OK, data, lines };
 }
 
+// src/commands/repair.ts
+var import_node_fs14 = __toESM(require("node:fs"));
+var import_node_path14 = __toESM(require("node:path"));
+
+// src/core/installed.ts
+var import_node_path12 = __toESM(require("node:path"));
+var NOT_INSTALLED_HINT = "설치는 harness-kit init";
+function loadInstalled(target, command) {
+  const m = readMeta(import_node_path12.default.join(target, META_REL));
+  if (m.status === "missing") throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, NOT_INSTALLED_HINT);
+  if (m.status === "invalid") throw new CliError(EXIT.STATE, `메타를 해석하지 못했다: ${m.error}`, "harness-kit doctor 로 상태를 본다");
+  const l = readLock(import_node_path12.default.join(target, LOCK_REL));
+  if (l.status === "missing") {
+    throw new CliError(EXIT.STATE, `lock 이 없다(${LOCK_REL})`, `lock 없이 ${command} 하면 사람 파일과 킷 파일을 가리지 못한다. harness-kit doctor 로 상태를 본다`);
+  }
+  if (l.status === "invalid") throw new CliError(EXIT.STATE, `lock 을 해석하지 못했다: ${l.error}`, "harness-kit doctor 로 상태를 본다");
+  assertLockUsable(l.lock.entries);
+  return { meta: m.meta, metaFormat: m.schema, lock: l.lock, lockFormat: l.format };
+}
+function assertLockUsable(entries) {
+  const unsafe = entries.filter((e) => !isSafeRelPath(e.path)).map((e) => e.path);
+  if (unsafe.length) throw new CliError(EXIT.STATE, `lock 에 리포 밖이나 .git 을 가리키는 항목이 있다: ${unsafe.join(" ")}`, "lock 을 고치거나 harness-kit doctor 로 본다");
+  for (const e of entries) entryKind(e);
+}
+function entryKind(e) {
+  switch (e.op) {
+    case "copy":
+    case "none":
+      return e.op;
+    default:
+      throw new CliError(EXIT.STATE, `lock 항목 ${e.path} 의 op '${e.op}' 는 이 판(${VERSION})에서 지원하지 않는다`, "mirror · render · merge 는 P18 판 CLI 로 실행한다");
+  }
+}
+function ownerKind(owner) {
+  if (owner === "kit" || owner === "user") return owner;
+  if (owner.startsWith("external:")) return "external";
+  if (owner.startsWith("pack:")) return "pack";
+  return "unknown";
+}
+function selectionFromMeta(layout, templatesDir, meta) {
+  if (!listStacks(templatesDir).includes(meta.stack)) {
+    throw new CliError(EXIT.STATE, `이 킷에 없는 스택이다: '${meta.stack}'`, "메타의 stack 을 고치거나 그 스택이 있는 킷 판을 쓴다");
+  }
+  if (!listArchs(templatesDir, meta.stack).includes(meta.arch)) {
+    throw new CliError(EXIT.STATE, `이 킷에 없는 변형이다: '${meta.arch}' (스택 ${meta.stack})`, "메타의 arch 를 고치거나 그 변형이 있는 킷 판을 쓴다");
+  }
+  const modules = meta.modules.filter((m) => isDir(import_node_path12.default.join(templatesDir, "optional", m)));
+  const selection = {
+    stack: meta.stack,
+    arch: meta.arch,
+    domain: meta.domain || (stackSpecOf(layout, meta.stack).domain ?? ""),
+    lang: null,
+    agents: [...meta.agents],
+    agentsOrigin: "meta",
+    modules
+  };
+  return { selection, droppedModules: meta.modules.filter((m) => !modules.includes(m)) };
+}
+function tokensFromMeta(layout, sel, meta, env, target) {
+  const fixed = /* @__PURE__ */ new Map();
+  for (const k of layout.tokens) {
+    const fromEnv = env[k];
+    if (fromEnv) fixed.set(k, fromEnv);
+    else if (Object.hasOwn(meta.tokens, k)) fixed.set(k, meta.tokens[k]);
+  }
+  const flags = Object.fromEntries([...fixed].filter(([, v]) => v !== ""));
+  const defaults = resolveTokens(layout, sel, { flags, env: {}, targetBasename: import_node_path12.default.basename(target) });
+  return Object.fromEntries(layout.tokens.map((k) => [k, fixed.get(k) ?? defaults[k] ?? ""]));
+}
+
+// src/core/update-plan.ts
+var import_node_fs13 = __toESM(require("node:fs"));
+var import_node_path13 = __toESM(require("node:path"));
+var UPDATE_ACTIONS = [
+  "new",
+  "restore",
+  "update",
+  "same",
+  "conflict",
+  "replace",
+  "orphan",
+  "delete",
+  "skip-user",
+  "skip-external",
+  "skip-pack",
+  "forget"
+];
+function full2(target, rel) {
+  return import_node_path13.default.join(target, ...rel.split("/"));
+}
+function current(ctx, rel) {
+  if (ctx.ancestors.state(rel) === "blocked") return { kind: "other", what: BLOCKED };
+  const cur = existing(full2(ctx.target, rel));
+  if (cur.kind === "file") return { kind: "file", sha: sha256(cur.bytes) };
+  return cur;
+}
+var kitEntry = (p, w) => ({ path: p, op: "copy", owner: "kit", sha256: w.sha256, layer: w.layer });
+var userEntry = (p, layer) => ({ path: p, op: "copy", owner: "user", sha256: null, layer });
+function withD(p, w, action, extra = {}) {
+  return { path: p, op: "copy", owner: "kit", layer: w.layer, action, executable: w.executable, content: w.content, sha256: w.sha256, ...extra };
+}
+function skipByOwner(e) {
+  switch (ownerKind(e.owner)) {
+    case "user":
+      return { action: "skip-user" };
+    case "external":
+      return { action: "skip-external" };
+    case "pack":
+      return { action: "skip-pack", reason: "팩 갱신은 P18" };
+    case "unknown":
+      return { action: "skip-user", reason: `모르는 주인 '${e.owner}'` };
+    case "kit":
+      return entryKind(e) === "none" ? { action: "skip-user", reason: "op none(기록만)" } : null;
+  }
+}
+function orphan(ctx, p, e, cur) {
+  const base = { path: p, op: e.op, owner: e.owner, layer: e.layer ?? null };
+  if (cur.kind === "none") {
+    if (ctx.prune) return { op: { ...base, action: "delete", reason: "파일이 이미 없다(lock 항목만 뺀다)" }, entry: null };
+    return { op: { ...base, action: "orphan", reason: "파일이 이미 없다", modified: false }, entry: e };
+  }
+  if (cur.kind === "other") return { op: { ...base, action: "orphan", reason: cur.what, modified: true }, entry: e };
+  const modified = !(e.sha256 && cur.sha === e.sha256);
+  if (ctx.prune && !modified) return { op: { ...base, action: "delete", removeFile: true }, entry: null };
+  return { op: { ...base, action: "orphan", modified }, entry: e };
+}
+function untracked(p, w, cur) {
+  if (cur.kind === "none") return { op: withD(p, w, "new"), entry: kitEntry(p, w) };
+  if (cur.kind === "file" && cur.sha === w.sha256) return { op: withD(p, w, "same"), entry: kitEntry(p, w) };
+  return { op: { path: p, op: "copy", owner: "user", layer: w.layer, action: "skip-user", reason: "사람이 둔 파일이다" }, entry: userEntry(p, w.layer) };
+}
+function sideState(ctx, rel) {
+  return existing(full2(ctx.target, rel)).kind;
+}
+function modifiedFile(ctx, p, e, w) {
+  const keepB = { path: p, op: "copy", owner: "kit", sha256: e.sha256 ?? null, layer: w.layer };
+  if (ctx.acceptAll) {
+    const bak = `${p}.bak`;
+    if (sideState(ctx, bak) !== "other") return { op: withD(p, w, "replace", { backup: bak }), entry: kitEntry(p, w) };
+    return { op: withD(p, w, "conflict", { reason: `${bak} 자리에 파일이 아닌 것이 있다` }), entry: keepB };
+  }
+  const neu = `${p}.new`;
+  const side = sideState(ctx, neu);
+  if (side === "other") return { op: withD(p, w, "conflict", { reason: `${neu} 자리에 파일이 아닌 것이 있다` }), entry: keepB };
+  return { op: withD(p, w, "conflict", { newFile: neu, ...side === "file" ? { newRefreshed: true } : {} }), entry: keepB };
+}
+function judge(ctx, forget, p, e, w) {
+  if (forget.has(p)) {
+    return { op: { path: p, op: "none", owner: "user", layer: w?.layer ?? e?.layer ?? null, action: "forget" }, entry: { path: p, op: "none", owner: "user" } };
+  }
+  const skip = e ? skipByOwner(e) : null;
+  if (e && skip) return { op: { path: p, op: e.op, owner: e.owner, layer: e.layer ?? w?.layer ?? null, ...skip }, entry: e };
+  const cur = current(ctx, p);
+  if (!w) return orphan(ctx, p, e, cur);
+  if (cur.kind === "other") {
+    return { op: { path: p, op: "copy", owner: e?.owner ?? "user", layer: w.layer, action: "skip-user", reason: cur.what }, entry: e ?? userEntry(p, w.layer) };
+  }
+  if (!e) return untracked(p, w, cur);
+  if (cur.kind === "none") return { op: withD(p, w, "restore"), entry: kitEntry(p, w) };
+  if (cur.sha === w.sha256) return { op: withD(p, w, "same"), entry: kitEntry(p, w) };
+  if (e.sha256 && cur.sha === e.sha256) return { op: withD(p, w, "update"), entry: kitEntry(p, w) };
+  return modifiedFile(ctx, p, e, w);
+}
+function wanted(input) {
+  const { layout, templatesDir, selection, tokens } = input;
+  const res = resolveCandidates(layout, templatesDir, selection, tokens);
+  const want = /* @__PURE__ */ new Map();
+  for (const c of res.winners) {
+    assertSafeRelPath(c.dest);
+    const content = substitute(readTemplate(templatesDir, c.src), tokens, layout.tokens);
+    want.set(c.dest, { layer: c.layer, content, sha256: sha256(content), executable: isExecutable(layout, c.dest) });
+  }
+  return { want, overlaps: res.overlaps, excludedByHarness: res.excludedByHarness };
+}
+function forgetSet(raw, locked, want) {
+  const out = /* @__PURE__ */ new Set();
+  for (const r of raw) {
+    const p = r.replace(/^\.\/+/, "");
+    if (!isSafeRelPath(p)) throw usageError(`--forget 경로가 리포 안 상대 경로가 아니다: '${r}'`);
+    if (!locked.has(p) && !want.has(p)) throw usageError(`--forget: lock 에도 킷에도 없는 경로다: '${r}'`, "harness-kit list --files 로 경로를 본다");
+    out.add(p);
+  }
+  return out;
+}
+function buildUpdatePlan(input) {
+  const { want, overlaps, excludedByHarness } = wanted(input);
+  const locked = new Map(input.lock.entries.map((e) => [e.path, e]));
+  const forget = forgetSet(input.forget, locked, want);
+  const ctx = { target: input.target, ancestors: new AncestorCheck(input.target, import_node_fs13.default.realpathSync(input.target)), acceptAll: input.acceptAll, prune: input.prune };
+  const counts2 = Object.fromEntries(UPDATE_ACTIONS.map((a) => [a, 0]));
+  const ops = [];
+  const entries = [];
+  for (const p of [.../* @__PURE__ */ new Set([...want.keys(), ...locked.keys()])].sort(byteCompare)) {
+    const j = judge(ctx, forget, p, locked.get(p), want.get(p));
+    ops.push(j.op);
+    counts2[j.op.action] += 1;
+    if (j.entry) entries.push(j.entry);
+  }
+  return { ops, entries, counts: counts2, overlaps, excludedByHarness };
+}
+
+// src/commands/repair.ts
+var REPAIR_KINDS = ["missing", "drifted", "stale", "merge"];
+function full3(target, rel) {
+  return import_node_path14.default.join(target, ...rel.split("/"));
+}
+function parseOnly2(raw) {
+  if (raw === void 0) return [...REPAIR_KINDS];
+  const only = raw.split(/[\s,]+/).filter(Boolean);
+  const unknown = only.filter((k) => !REPAIR_KINDS.includes(k));
+  if (unknown.length || only.length === 0) throw usageError(`모르는 repair 종류: ${unknown.join(" ") || "(빈 값)"}`, `사용 가능: ${REPAIR_KINDS.join(" ")}`);
+  return only;
+}
+function survey(target, inst) {
+  const ancestors = new AncestorCheck(target, import_node_fs14.default.realpathSync(target));
+  const out = { ok: 0, drifted: 0, skipped: 0, missing: [] };
+  for (const e of inst.lock.entries) {
+    if (ownerKind(e.owner) !== "kit" || entryKind(e) !== "copy") {
+      out.skipped += 1;
+      continue;
+    }
+    if (ancestors.state(e.path) === "blocked") {
+      out.drifted += 1;
+      continue;
+    }
+    const cur = existing(full3(target, e.path));
+    if (cur.kind === "none") out.missing.push(e);
+    else if (cur.kind === "file" && e.sha256 && sha256(cur.bytes) === e.sha256) out.ok += 1;
+    else out.drifted += 1;
+  }
+  return out;
+}
+function wantFor(ctx, target, inst) {
+  const { io: io2 } = ctx;
+  const loc = locateTemplates({ flag: str(ctx.values, "templates"), env: io2.env, cliFile: io2.cliFile, cwd: io2.cwd, version: VERSION });
+  const layout = loadLayout(loc.dir);
+  const { selection } = selectionFromMeta(layout, loc.dir, inst.meta);
+  const tokens = tokensFromMeta(layout, selection, inst.meta, io2.env, target);
+  return { want: wanted({ layout, templatesDir: loc.dir, selection, tokens }).want, templates: loc.dir };
+}
+function judgeMissing(e, lockVersion, want) {
+  const base = { path: e.path, layer: e.layer ?? null };
+  if (lockVersion !== VERSION || !want) {
+    const reason = lockVersion ? `lock 의 킷 판 ${lockVersion} ≠ CLI ${VERSION}` : "lock 에 킷 판이 없다(v1)";
+    return { ...base, action: "needs-update", reason };
+  }
+  const w = want.get(e.path);
+  if (!w) return { ...base, action: "unrestorable", reason: "이 킷에 없는 경로다" };
+  if (e.sha256 && w.sha256 !== e.sha256) return { ...base, action: "needs-update", reason: "킷 내용이 lock 기록과 다르다" };
+  return { ...base, action: "restore", want: w };
+}
+function applyRepair(target, inst, ops) {
+  const restored = new Map(ops.filter((o) => o.action === "restore").map((o) => [o.path, o.want]));
+  let current3 = "";
+  try {
+    for (const [rel, w] of restored) {
+      current3 = rel;
+      writeFileAtomic(full3(target, rel), w.content, w.executable);
+    }
+    const entries = inst.lock.entries.map((e) => {
+      const w = restored.get(e.path);
+      return w ? { ...e, sha256: w.sha256, layer: w.layer } : e;
+    });
+    current3 = LOCK_REL;
+    writeFileAtomic(full3(target, LOCK_REL), Buffer.from(serializeLock({ ...inst.lock, entries }), "utf8"), false);
+  } catch (err) {
+    throw fsError(err, `쓰기 실패 ${current3}`);
+  }
+}
+var HINTS = {
+  "needs-update": "harness-kit update 로 킷 판을 맞춘다(되살리는 일도 update 가 한다)",
+  unrestorable: "킷에서 빠진 경로다. lock 에서 빼려면 harness-kit update --prune, 받지 않으려면 --forget <경로>"
+};
+function runRepair(ctx) {
+  const target = targetOf(ctx);
+  const only = parseOnly2(str(ctx.values, "only"));
+  const inst = loadInstalled(target, "repair");
+  const lockVersion = inst.lock.kit.version;
+  const s = survey(target, inst);
+  const doMissing = only.includes("missing") && s.missing.length > 0;
+  const source = doMissing && lockVersion === VERSION ? wantFor(ctx, target, inst) : null;
+  const ops = doMissing ? s.missing.map((e) => judgeMissing(e, lockVersion, source?.want ?? null)) : [];
+  const dryRun = bool(ctx.values, "dry-run");
+  const count = (a) => ops.filter((o) => o.action === a).length;
+  if (!dryRun && count("restore") > 0) applyRepair(target, inst, ops);
+  const counts2 = { ok: s.ok, drifted: s.drifted, missing: s.missing.length, restore: count("restore"), "needs-update": count("needs-update"), unrestorable: count("unrestorable"), skipped: s.skipped };
+  const hints = ["needs-update", "unrestorable"].filter((a) => counts2[a] > 0).map((a) => HINTS[a]);
+  const code = hints.length ? EXIT.HUMAN : EXIT.OK;
+  const opsJson = ops.map((o) => ({ path: o.path, layer: o.layer, action: o.action, ...o.reason ? { reason: o.reason } : {} }));
+  const data = { command: "repair", target, dryRun, kit: { lock: lockVersion, cli: VERSION }, only, counts: counts2, ops: opsJson, hints };
+  if (source) data.templates = source.templates;
+  const lines = [
+    `harness-kit repair — ${target}`,
+    `  킷: lock ${lockVersion ?? "?(v1)"} · CLI ${VERSION}`,
+    ...ops.map((o) => `  ${o.action.padEnd(13)} ${o.path}${o.reason ? `  ${o.reason}` : ""}`),
+    `  copy 항목: ok ${counts2.ok} · drifted ${counts2.drifted}(사람이 고친 파일 — 그대로 둔다) · missing ${counts2.missing}`,
+    `  되살림 ${counts2.restore} · update 필요 ${counts2["needs-update"]} · 킷에 없음 ${counts2.unrestorable}`,
+    ...hints.map((h) => `  다음: ${h}`),
+    ...dryRun ? ["  (dry-run — 쓰지 않았다)"] : []
+  ];
+  return { code, data, lines };
+}
+
 // src/commands/reserved.ts
 var RESERVED = {
   add: "P17(다음 조각)",
   remove: "P17(다음 조각)",
-  update: "P17(다음 조각)",
   outdated: "P17(다음 조각)",
-  repair: "P17(다음 조각)",
-  uninstall: "P17(다음 조각)",
   pack: "P18(확장 층, 설계 04)",
   dashboard: "P20(관리 페이지, 설계 06)",
   skills: "P20(스킬 목록, 설계 07)",
@@ -1453,10 +1783,361 @@ var RESERVED = {
   sync: "P24(설계 10)"
 };
 
+// src/commands/uninstall.ts
+var import_node_child_process2 = require("node:child_process");
+var import_node_fs16 = __toESM(require("node:fs"));
+var import_node_path16 = __toESM(require("node:path"));
+
+// src/core/remove.ts
+var import_node_fs15 = __toESM(require("node:fs"));
+var import_node_path15 = __toESM(require("node:path"));
+function full4(target, rel) {
+  return import_node_path15.default.join(target, ...rel.split("/"));
+}
+function removeFile(target, rel) {
+  import_node_fs15.default.rmSync(full4(target, rel), { force: true });
+}
+function ancestorDirs(rels) {
+  const dirs = /* @__PURE__ */ new Set();
+  for (const rel of rels) {
+    const parts = rel.split("/");
+    for (let i = parts.length - 1; i > 0; i -= 1) dirs.add(parts.slice(0, i).join("/"));
+  }
+  return [...dirs].sort((a, b) => b.split("/").length - a.split("/").length || byteCompare(a, b));
+}
+function removeEmptyDirs(target, rels) {
+  let removed = 0;
+  for (const dir of ancestorDirs(rels)) {
+    const p = full4(target, dir);
+    try {
+      if (!import_node_fs15.default.lstatSync(p).isDirectory()) continue;
+      import_node_fs15.default.rmdirSync(p);
+      removed += 1;
+    } catch (err) {
+      const code = err.code;
+      if (code !== "ENOENT" && code !== "ENOTEMPTY" && code !== "EEXIST" && code !== "ENOTDIR") throw err;
+    }
+  }
+  return removed;
+}
+
+// src/commands/uninstall.ts
+var ACTIONS = ["delete", "keep-modified", "absent", "keep-user", "keep-external", "keep-pack"];
+var COUNT_ONLY = /* @__PURE__ */ new Set(["absent", "keep-user", "keep-external", "keep-pack"]);
+var HOOKS_PATH = "scripts/git-hooks";
+function full5(target, rel) {
+  return import_node_path16.default.join(target, ...rel.split("/"));
+}
+function current2(p, rel) {
+  if (p.ancestors.state(rel) === "blocked") return { kind: "other", what: BLOCKED };
+  const cur = existing(full5(p.target, rel));
+  return cur.kind === "file" ? { kind: "file", sha: sha256(cur.bytes), bytes: cur.bytes } : cur;
+}
+function keepAction(e, keepPacks) {
+  const owner = ownerKind(e.owner);
+  if (owner === "external") return "keep-external";
+  if (owner === "user" || owner === "unknown" || entryKind(e) === "none") return "keep-user";
+  if (owner === "pack" && keepPacks) return "keep-pack";
+  return null;
+}
+function planEntry(p, e) {
+  const keep = keepAction(e, p.keepPacks);
+  if (keep) {
+    p.ops.push({ path: e.path, owner: e.owner, action: keep });
+    return;
+  }
+  const cur = current2(p, e.path);
+  if (cur.kind === "none") p.ops.push({ path: e.path, owner: e.owner, action: "absent" });
+  else if (cur.kind === "file" && e.sha256 && cur.sha === e.sha256) p.ops.push({ path: e.path, owner: e.owner, action: "delete" });
+  else {
+    const reason = cur.kind === "other" ? cur.what : e.sha256 ? "사람이 고친 파일이다" : "lock 에 기준 해시가 없다(고친 파일로 본다)";
+    p.ops.push({ path: e.path, owner: e.owner, action: "keep-modified", reason });
+  }
+  if (cur.kind !== "other" && current2(p, `${e.path}.new`).kind === "file") {
+    p.ops.push({ path: `${e.path}.new`, owner: e.owner, action: "delete", reason: "update 가 둔 .new" });
+  }
+}
+function planManifest(p, inst) {
+  const cur = current2(p, MANIFEST_PATH);
+  if (cur.kind === "none") return;
+  const want = manifestContent({ stack: inst.meta.stack, agents: inst.meta.agents }, inst.meta.tokens);
+  if (cur.kind === "file" && cur.bytes.equals(want)) p.ops.push({ path: MANIFEST_PATH, owner: "kit", action: "delete", reason: "생성물" });
+  else p.ops.push({ path: MANIFEST_PATH, owner: "kit", action: "keep-modified", reason: "킷 판과 다르다" });
+}
+function buildUninstall(target, inst, keepPacks, keepState) {
+  const p = { target, ancestors: new AncestorCheck(target, import_node_fs16.default.realpathSync(target)), keepPacks, ops: [] };
+  for (const e of inst.lock.entries) planEntry(p, e);
+  planManifest(p, inst);
+  if (!keepState) for (const rel of [LOCK_REL, META_REL]) p.ops.push({ path: rel, owner: "kit", action: "delete", reason: "상태 파일" });
+  return p.ops;
+}
+function gitEnv(env) {
+  const out = { ...env, PATH: env.PATH ?? process.env.PATH, HOME: env.HOME ?? process.env.HOME };
+  for (const k of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_CONFIG"]) delete out[k];
+  return out;
+}
+function unhookGit(target, env, dryRun) {
+  const git = (...args) => (0, import_node_child_process2.spawnSync)("git", ["-C", target, ...args], { env: gitEnv(env), encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 3e4 });
+  const top = git("rev-parse", "--show-toplevel");
+  if (top.error) return { status: top.error.code === "ENOENT" ? "no-git" : "failed" };
+  if (top.status !== 0) return { status: "none" };
+  let topReal;
+  try {
+    topReal = import_node_fs16.default.realpathSync(top.stdout.trim());
+  } catch {
+    return { status: "none" };
+  }
+  if (topReal !== import_node_fs16.default.realpathSync(target)) return { status: "none" };
+  const get = git("config", "--local", "--get", "core.hooksPath");
+  if (get.status !== 0) return { status: "none" };
+  const value = get.stdout.trim();
+  if (value !== HOOKS_PATH) return { status: "kept", value };
+  if (!dryRun && git("config", "--local", "--unset", "core.hooksPath").status !== 0) return { status: "failed", value };
+  return { status: "unset", value };
+}
+function applyUninstall(target, inst, ops, unhook) {
+  const state = /* @__PURE__ */ new Set([LOCK_REL, META_REL]);
+  let current3 = "";
+  try {
+    for (const o of ops) {
+      if (o.action !== "delete" || state.has(o.path)) continue;
+      current3 = o.path;
+      removeFile(target, o.path);
+    }
+    current3 = "git hook 연결";
+    unhook();
+    for (const rel of [LOCK_REL, META_REL]) {
+      if (!ops.some((o) => o.path === rel && o.action === "delete")) continue;
+      current3 = rel;
+      removeFile(target, rel);
+    }
+    current3 = "빈 폴더";
+    removeEmptyDirs(target, [...inst.lock.entries.map((e) => e.path), MANIFEST_PATH, LOCK_REL, META_REL]);
+  } catch (err) {
+    throw fsError(err, `지우기 실패 ${current3}`);
+  }
+}
+function counts(ops) {
+  const c = Object.fromEntries(ACTIONS.map((a) => [a, 0]));
+  for (const o of ops) c[o.action] += 1;
+  return c;
+}
+var opLine2 = (o) => `  ${o.action.padEnd(13)} ${o.path}${o.reason ? `  ${o.reason}` : ""}`;
+async function confirm(ctx, ops) {
+  const { io: io2 } = ctx;
+  const p = createPrompter(io2.stdin, io2.stderr);
+  try {
+    const del = ops.filter((o) => o.action === "delete");
+    const keep = ops.filter((o) => o.action === "keep-modified");
+    io2.stderr(`지울 파일 ${del.length}개${ctx.quiet ? "" : ":"}
+`);
+    if (!ctx.quiet) for (const o of del) io2.stderr(`${opLine2(o)}
+`);
+    if (keep.length) io2.stderr(`남길 파일(사람이 고침) ${keep.length}개:
+${keep.map((o) => `${opLine2(o)}
+`).join("")}`);
+    if (!await p.confirm("지울까?")) throw new CliError(EXIT.ABORT, "중단했다(아무것도 지우지 않았다)");
+  } finally {
+    p.close();
+  }
+}
+async function runUninstall(ctx) {
+  const { io: io2 } = ctx;
+  const target = targetOf(ctx);
+  const inst = loadInstalled(target, "uninstall");
+  const dryRun = bool(ctx.values, "dry-run");
+  const keepState = bool(ctx.values, "keep-state");
+  const ops = buildUninstall(target, inst, bool(ctx.values, "keep-packs"), keepState);
+  const interactive = io2.isTTY && !ctx.json && io2.stdin !== void 0;
+  if (!dryRun && !bool(ctx.values, "yes")) {
+    if (!interactive) throw usageError("uninstall 은 지울 목록을 확인받고 지운다. TTY 가 아니거나 --json 이면 --yes 를 준다", "목록은 harness-kit uninstall --dry-run 으로 먼저 본다");
+    await confirm(ctx, ops);
+  }
+  let gitHooks = { status: "none" };
+  if (dryRun) gitHooks = unhookGit(target, io2.env, true);
+  else applyUninstall(target, inst, ops, () => {
+    gitHooks = unhookGit(target, io2.env, false);
+  });
+  const c = counts(ops);
+  const listed = ops.filter((o) => !COUNT_ONLY.has(o.action) && (o.action === "keep-modified" || dryRun && !ctx.quiet));
+  const keep = ops.filter((o) => o.action === "keep-modified").map((o) => o.path);
+  const data = {
+    command: "uninstall",
+    target,
+    dryRun,
+    counts: c,
+    ops: listed.map((o) => ({ path: o.path, owner: o.owner, action: o.action, ...o.reason ? { reason: o.reason } : {} })),
+    keep,
+    gitHooks,
+    keepState
+  };
+  const lines = [
+    `harness-kit uninstall — ${target}`,
+    ...listed.map(opLine2),
+    `  지움 ${c.delete} · 남김(사람이 고침) ${c["keep-modified"]} · 이미 없음 ${c.absent} · 사람 · 외부 · 팩 파일 ${c["keep-user"] + c["keep-external"] + c["keep-pack"]}`,
+    `  git hook 연결(core.hooksPath): ${gitHooks.status}${gitHooks.value ? ` (${gitHooks.value})` : ""}`,
+    ...keepState ? [`  상태 파일은 둔다: ${META_REL} · ${LOCK_REL}`] : [],
+    ...keep.length ? ["  고친 파일은 남겼다. 필요 없으면 직접 지운다"] : [],
+    ...dryRun ? ["  (dry-run — 지우지 않았다)"] : []
+  ];
+  return { code: keep.length ? EXIT.HUMAN : EXIT.OK, data, lines };
+}
+
+// src/commands/update.ts
+var import_node_fs17 = __toESM(require("node:fs"));
+var import_node_path17 = __toESM(require("node:path"));
+var V1_LOCK_BACKUP = ".agents/state/harness-kit.lock.v1.bak";
+var LATER_FLAGS = {
+  packs: "--packs(팩 갱신)는 P18(확장 층, 설계 04)에서 제공한다",
+  tools: "--tools(외부 도구 갱신)는 P22(외부 도구 모듈, 설계 10)에서 제공한다"
+};
+function full6(target, rel) {
+  return import_node_path17.default.join(target, ...rel.split("/"));
+}
+function shellQuote(s) {
+  return /^[A-Za-z0-9_./@%+=:,-]+$/.test(s) ? s : `'${s.replace(/'/g, "'\\''")}'`;
+}
+function checkFlags(ctx) {
+  for (const [flag, message] of Object.entries(LATER_FLAGS)) if (bool(ctx.values, flag)) throw usageError(message);
+  const to = str(ctx.values, "to");
+  if (to === void 0 || to === VERSION) return to;
+  if (/[:#/]/.test(to)) throw usageError(`--to 에 소스는 아직 받지 않는다: '${to}'`, "다른 템플릿 폴더는 --templates <폴더> 로 준다");
+  throw usageError(`이 CLI 는 ${VERSION} 판만 깐다: --to ${to}`, `그 판은 npx harness-kit@${to} update 로 올린다`);
+}
+function checkVersion(installed, to) {
+  const cmp = compareSemver(installed, VERSION);
+  if (cmp !== null && cmp > 0 && to !== VERSION) {
+    throw new CliError(EXIT.STATE, `설치된 킷(${installed})이 이 CLI(${VERSION})보다 새것이다`, `새 CLI 로 다시 실행한다. 내리려면 harness-kit update --to ${VERSION}`);
+  }
+}
+var NEEDS_DATA = /* @__PURE__ */ new Set(["new", "restore", "update", "replace", "conflict"]);
+function opJson2(o) {
+  const j = { path: o.path, op: o.op, owner: o.owner, layer: o.layer, action: o.action };
+  if (NEEDS_DATA.has(o.action)) j.executable = o.executable;
+  if (o.reason !== void 0) j.reason = o.reason;
+  if (o.newFile !== void 0) j.new = o.newFile;
+  if (o.newRefreshed) j.newRefreshed = true;
+  if (o.backup !== void 0) j.backup = o.backup;
+  if (o.modified !== void 0) j.modified = o.modified;
+  return j;
+}
+function opLine3(o) {
+  let extra = "";
+  if (o.action === "conflict") extra = o.newFile ? `  → ${o.newFile}${o.newRefreshed ? " (갱신)" : ""}` : "";
+  else if (o.action === "replace") extra = `  (수정본 → ${o.backup})`;
+  else if (o.action === "orphan" && o.modified) extra = "  (고친 파일)";
+  return `  ${o.action.padEnd(13)} ${o.path}${extra}${o.reason ? `  ${o.reason}` : ""}`;
+}
+function countsLine2(c) {
+  const skipped = c["skip-user"] + c["skip-external"] + c["skip-pack"];
+  return `  파일: 새로 ${c.new} · 되살림 ${c.restore} · 교체 ${c.update} · 같음 ${c.same} · 충돌 ${c.conflict} · 덮음(.bak) ${c.replace} · 킷에서 빠짐 ${c.orphan} · 지움 ${c.delete} · 건너뜀 ${skipped} · 받지 않기로 함 ${c.forget}`;
+}
+function selectionLine2(sel) {
+  return `  선택: ${sel.stack} · ${sel.arch} · ${sel.domain || "도메인 없음"} · 하네스 ${sel.agents.join(",")} · 모듈 ${sel.modules.join(",") || "none"}`;
+}
+function applyUpdate(target, plan, w) {
+  let current3 = "";
+  try {
+    const deleted = [];
+    for (const o of plan.ops) {
+      current3 = o.path;
+      if (o.action === "new" || o.action === "restore" || o.action === "update") writeFileAtomic(full6(target, o.path), o.content, o.executable === true);
+      else if (o.action === "replace") {
+        import_node_fs17.default.renameSync(full6(target, o.path), full6(target, o.backup));
+        writeFileAtomic(full6(target, o.path), o.content, o.executable === true);
+      } else if (o.action === "conflict" && o.newFile) writeFileAtomic(full6(target, o.newFile), o.content, false);
+      else if (o.action === "delete" && o.removeFile) {
+        removeFile(target, o.path);
+        deleted.push(o.path);
+      }
+    }
+    removeEmptyDirs(target, deleted);
+    const state = [
+      [MANIFEST_PATH, w.manifest],
+      [V1_LOCK_BACKUP, w.v1Backup],
+      [LOCK_REL, Buffer.from(w.lockText, "utf8")],
+      [META_REL, Buffer.from(w.metaText, "utf8")]
+    ];
+    for (const [rel, data] of state) {
+      current3 = rel;
+      if (data) writeFileAtomic(full6(target, rel), data, false);
+    }
+  } catch (err) {
+    throw fsError(err, `쓰기 실패 ${current3}`);
+  }
+}
+function conflictList(plan) {
+  return plan.ops.filter((o) => o.action === "conflict").map((o) => ({ path: o.path, new: o.newFile ?? null, diff: o.newFile ? `diff -u ${shellQuote(o.path)} ${shellQuote(o.newFile)}` : null }));
+}
+function humanLines(ctx, head, plan, shown, conflicts, dryRun) {
+  const lines = [...head, ...shown.map(opLine3), countsLine2(plan.counts)];
+  if (conflicts.length) {
+    lines.push("  충돌 — 고친 파일이라 덮지 않았다. 새 판은 .new 에 있다(리포 폴더에서):");
+    for (const c of conflicts) if (c.diff) lines.push(`    ${String(c.diff)}`);
+    lines.push("  병합했으면 .new 를 지운다. 새 판을 그대로 쓰려면 mv 로 덮는다. 전부 새 판으로: harness-kit update --accept-all");
+  }
+  if (plan.ops.some((o) => o.action === "orphan") && !bool(ctx.values, "prune")) lines.push("  킷에서 빠진 미수정 파일을 지우려면: harness-kit update --prune");
+  lines.push(dryRun ? "  (dry-run — 쓰지 않았다)" : "  다음: harness-kit doctor");
+  return lines;
+}
+function writtenState(ctx, target, inst, plan, sel, tokens, source) {
+  const lockText2 = serializeLock({ schema: "harness-kit.lock/v2", kit: { version: VERSION, source }, packs: inst.lock.packs, entries: plan.entries });
+  const meta = mergeMetaForUpdate(inst.meta, { version: VERSION, selection: sel, tokens, today: today(ctx.io) });
+  const manifest = lstatOrNull(full6(target, MANIFEST_PATH)) ? null : manifestContent(sel, tokens);
+  const v1Backup = inst.lockFormat === "v1" ? import_node_fs17.default.readFileSync(full6(target, LOCK_REL)) : null;
+  return { lockText: lockText2, metaText: serializeMeta(meta), manifest, v1Backup };
+}
+function runUpdate(ctx) {
+  const { io: io2 } = ctx;
+  const to = checkFlags(ctx);
+  const target = targetOf(ctx);
+  const inst = loadInstalled(target, "update");
+  checkVersion(inst.meta.kit.version, to);
+  const loc = locateTemplates({ flag: str(ctx.values, "templates"), env: io2.env, cliFile: io2.cliFile, cwd: io2.cwd, version: VERSION });
+  const layout = loadLayout(loc.dir);
+  const { selection, droppedModules } = selectionFromMeta(layout, loc.dir, inst.meta);
+  const tokens = tokensFromMeta(layout, selection, inst.meta, io2.env, target);
+  const prune = bool(ctx.values, "prune");
+  const plan = buildUpdatePlan({ layout, templatesDir: loc.dir, target, selection, tokens, lock: inst.lock, acceptAll: bool(ctx.values, "accept-all"), prune, forget: list(ctx.values, "forget") });
+  const dryRun = bool(ctx.values, "dry-run");
+  const w = writtenState(ctx, target, inst, plan, selection, tokens, loc.source);
+  if (!dryRun) applyUpdate(target, plan, w);
+  const keptModified = prune && plan.ops.some((o) => o.action === "orphan" && o.modified);
+  const code = plan.counts.conflict > 0 || keptModified ? EXIT.HUMAN : EXIT.OK;
+  const shown = plan.ops.filter((o) => o.action !== "same" && (!ctx.quiet || o.action === "conflict"));
+  const conflicts = conflictList(plan);
+  const counts2 = { ...plan.counts, excludedByHarness: plan.excludedByHarness, overlapped: plan.overlaps.length };
+  const data = {
+    command: "update",
+    target,
+    templates: loc.dir,
+    dryRun,
+    kit: { from: inst.meta.kit.version, to: VERSION },
+    formats: { meta: inst.metaFormat, lock: inst.lockFormat },
+    selection: { stack: selection.stack, arch: selection.arch, domain: selection.domain, agents: selection.agents, modules: selection.modules },
+    droppedModules,
+    counts: counts2,
+    ops: shown.map(opJson2),
+    conflicts,
+    generated: w.manifest ? [{ path: MANIFEST_PATH, action: "create" }] : [],
+    state: [META_REL, LOCK_REL, ...w.v1Backup ? [V1_LOCK_BACKUP] : []]
+  };
+  const head = [
+    `harness-kit update — ${target}`,
+    `  킷: ${inst.meta.kit.version} → ${VERSION} · 메타 ${inst.metaFormat} · lock ${inst.lockFormat}`,
+    selectionLine2(selection),
+    ...droppedModules.length ? [`  ⚠ 킷에 없는 모듈을 뺀다: ${droppedModules.join(", ")}`] : []
+  ];
+  return { code, data, lines: humanLines(ctx, head, plan, shown, conflicts, dryRun) };
+}
+
 // src/main.ts
 var COMMANDS = {
   init: runInit,
   plan: runInit,
+  update: runUpdate,
+  repair: runRepair,
+  uninstall: runUninstall,
   doctor: runDoctor,
   list: runList
 };
@@ -1465,22 +2146,30 @@ var USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 킷
 사용법: harness-kit <명령> [플래그]
 
 명령:
-  init      킷을 리포에 설치한다(질문 또는 플래그)
-  plan      설치할 작업 목록만 출력한다(쓰지 않는다)
-  doctor    설치 상태를 점검한다(읽기만). --check 면 오류가 있을 때 exit 1
-  list      설치 요약. --files 면 lock 항목
+  init       킷을 리포에 설치한다(질문 또는 플래그)
+  plan       설치할 작업 목록만 출력한다(쓰지 않는다)
+  update     킷을 새 판으로 올린다. 사람이 고친 파일은 <경로>.new 로 받는다
+  repair     지워진 킷 파일을 같은 판으로 되살린다. 고친 파일은 그대로 둔다
+  uninstall  킷 소유이면서 고치지 않은 파일을 지운다
+  doctor     설치 상태를 점검한다(읽기만). --check 면 오류가 있을 때 exit 1
+  list       설치 요약. --files 면 lock 항목
 
 공통 플래그: --cwd <폴더> --dry-run --yes --json --templates <폴더> --quiet --no-color --help
 init · plan: --stack --arch --domain --lang --agents <목록|all> --modules <목록|all|none>
              --name --slug --package-ns --protected-path --token KEY=VALUE --issue-source kit|jira
              --issue-prefix --base --adopt --force
-종료 코드: 0 성공 · 1 검사 문제 · 2 사용법 · 3 리포 상태 · 5 실행 환경 · 130 중단
+update: --accept-all --prune --forget <경로>(반복) --to <CLI 버전>
+repair: --only missing,drifted,stale,merge · uninstall: --keep-state --keep-packs
+종료 코드: 0 성공 · 1 검사 문제 · 2 사용법 · 3 리포 상태 · 4 사람 판단 필요 · 5 실행 환경 · 130 중단
 `;
 var COMMAND_HELP = {
   init: "harness-kit init [--stack S] [--arch A] [--agents claude,codex|all] [--modules m1,m2|all|none] [--yes] [--dry-run] [--json]\n",
   plan: "harness-kit plan [init 과 같은 플래그] — 작업 목록만 출력한다\n",
   doctor: "harness-kit doctor [--check] [--only 종류,…] [--json] — 종류: meta-invalid lock-invalid lock-v1 version-mismatch missing drifted gitignore entry-size\n",
-  list: "harness-kit list [--files] [--json]\n"
+  list: "harness-kit list [--files] [--json]\n",
+  update: "harness-kit update [--dry-run] [--accept-all] [--prune] [--forget 경로]… [--to 버전] [--templates 폴더] [--json] — conflict 가 있으면 exit 4\n",
+  repair: "harness-kit repair [--dry-run] [--only missing,drifted,stale,merge] [--json] — 되살리지 못한 missing 이 있으면 exit 4\n",
+  uninstall: "harness-kit uninstall [--dry-run] [--yes] [--keep-state] [--keep-packs] [--json] — 고친 파일을 남기면 exit 4. TTY 가 아니면 --yes\n"
 };
 function emitError(io2, command, err, json) {
   if (json) {
@@ -1499,7 +2188,7 @@ function commandOf(argv, first, command) {
   if (argv.length === 0) throw usageError("명령이 없다", USAGE.trimEnd());
   if (command === "") throw usageError(`명령이 먼저 온다: ${first}`, "harness-kit --help");
   if (Object.hasOwn(RESERVED, command)) {
-    throw usageError(`'${command}' 는 아직 없다 — ${RESERVED[command]}에서 제공한다`, "지금 있는 명령: init · plan · doctor · list");
+    throw usageError(`'${command}' 는 아직 없다 — ${RESERVED[command]}에서 제공한다`, "지금 있는 명령: init · plan · update · repair · uninstall · doctor · list");
   }
   if (!Object.hasOwn(COMMANDS, command)) throw usageError(`모르는 명령: ${command}`, "harness-kit --help");
   return COMMANDS[command];

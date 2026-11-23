@@ -4,7 +4,10 @@ import type { CommandResult, Ctx, Io } from "./cli/context";
 import { runDoctor } from "./commands/doctor";
 import { runInit } from "./commands/init";
 import { runList } from "./commands/list";
+import { runRepair } from "./commands/repair";
 import { RESERVED } from "./commands/reserved";
+import { runUninstall } from "./commands/uninstall";
+import { runUpdate } from "./commands/update";
 import { CliError, EXIT, usageError } from "./core/errors";
 import { formatJson } from "./core/json";
 import { MIN_NODE_TEXT, nodeTooOld, VERSION } from "./core/version";
@@ -14,6 +17,9 @@ export type { Io } from "./cli/context";
 const COMMANDS: Record<string, (ctx: Ctx) => CommandResult | Promise<CommandResult>> = {
   init: runInit,
   plan: runInit,
+  update: runUpdate,
+  repair: runRepair,
+  uninstall: runUninstall,
   doctor: runDoctor,
   list: runList,
 };
@@ -23,16 +29,21 @@ const USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 �
 사용법: harness-kit <명령> [플래그]
 
 명령:
-  init      킷을 리포에 설치한다(질문 또는 플래그)
-  plan      설치할 작업 목록만 출력한다(쓰지 않는다)
-  doctor    설치 상태를 점검한다(읽기만). --check 면 오류가 있을 때 exit 1
-  list      설치 요약. --files 면 lock 항목
+  init       킷을 리포에 설치한다(질문 또는 플래그)
+  plan       설치할 작업 목록만 출력한다(쓰지 않는다)
+  update     킷을 새 판으로 올린다. 사람이 고친 파일은 <경로>.new 로 받는다
+  repair     지워진 킷 파일을 같은 판으로 되살린다. 고친 파일은 그대로 둔다
+  uninstall  킷 소유이면서 고치지 않은 파일을 지운다
+  doctor     설치 상태를 점검한다(읽기만). --check 면 오류가 있을 때 exit 1
+  list       설치 요약. --files 면 lock 항목
 
 공통 플래그: --cwd <폴더> --dry-run --yes --json --templates <폴더> --quiet --no-color --help
 init · plan: --stack --arch --domain --lang --agents <목록|all> --modules <목록|all|none>
              --name --slug --package-ns --protected-path --token KEY=VALUE --issue-source kit|jira
              --issue-prefix --base --adopt --force
-종료 코드: 0 성공 · 1 검사 문제 · 2 사용법 · 3 리포 상태 · 5 실행 환경 · 130 중단
+update: --accept-all --prune --forget <경로>(반복) --to <CLI 버전>
+repair: --only missing,drifted,stale,merge · uninstall: --keep-state --keep-packs
+종료 코드: 0 성공 · 1 검사 문제 · 2 사용법 · 3 리포 상태 · 4 사람 판단 필요 · 5 실행 환경 · 130 중단
 `;
 
 const COMMAND_HELP: Record<string, string> = {
@@ -40,6 +51,9 @@ const COMMAND_HELP: Record<string, string> = {
   plan: "harness-kit plan [init 과 같은 플래그] — 작업 목록만 출력한다\n",
   doctor: "harness-kit doctor [--check] [--only 종류,…] [--json] — 종류: meta-invalid lock-invalid lock-v1 version-mismatch missing drifted gitignore entry-size\n",
   list: "harness-kit list [--files] [--json]\n",
+  update: "harness-kit update [--dry-run] [--accept-all] [--prune] [--forget 경로]… [--to 버전] [--templates 폴더] [--json] — conflict 가 있으면 exit 4\n",
+  repair: "harness-kit repair [--dry-run] [--only missing,drifted,stale,merge] [--json] — 되살리지 못한 missing 이 있으면 exit 4\n",
+  uninstall: "harness-kit uninstall [--dry-run] [--yes] [--keep-state] [--keep-packs] [--json] — 고친 파일을 남기면 exit 4. TTY 가 아니면 --yes\n",
 };
 
 function emitError(io: Io, command: string, err: CliError, json: boolean): number {
@@ -59,7 +73,7 @@ function commandOf(argv: string[], first: string, command: string): (ctx: Ctx) =
   if (argv.length === 0) throw usageError("명령이 없다", USAGE.trimEnd());
   if (command === "") throw usageError(`명령이 먼저 온다: ${first}`, "harness-kit --help");
   if (Object.hasOwn(RESERVED, command)) {
-    throw usageError(`'${command}' 는 아직 없다 — ${RESERVED[command]}에서 제공한다`, "지금 있는 명령: init · plan · doctor · list");
+    throw usageError(`'${command}' 는 아직 없다 — ${RESERVED[command]}에서 제공한다`, "지금 있는 명령: init · plan · update · repair · uninstall · doctor · list");
   }
   if (!Object.hasOwn(COMMANDS, command)) throw usageError(`모르는 명령: ${command}`, "harness-kit --help");
   return COMMANDS[command] as (ctx: Ctx) => CommandResult | Promise<CommandResult>;

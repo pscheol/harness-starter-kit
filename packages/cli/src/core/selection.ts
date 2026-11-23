@@ -21,7 +21,8 @@ export interface Selection {
   domain: string;
   lang: string | null;
   agents: string[];
-  agentsOrigin: "flag" | "detected" | "default";
+  /** meta = 설치된 메타에서 읽었다(update · repair) */
+  agentsOrigin: "flag" | "detected" | "default" | "meta";
   modules: string[];
 }
 
