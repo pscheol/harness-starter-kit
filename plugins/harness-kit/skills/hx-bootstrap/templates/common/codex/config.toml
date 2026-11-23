@@ -1,0 +1,35 @@
+# 리포 정책만 둔다. 사용자 전역 MCP·자격증명·절대경로 설정은 복사하지 않는다.
+# 상위 하네스 안에서는 git 리포 루트의 .codex/config.toml 도 읽히고, 같은 키는 이 파일이 이긴다.
+# config_file 의 상대경로는 이 .codex/ 폴더 기준이다.
+# 샌드박스·승인 정책은 사용자 설정을 따른다. 역할별 sandbox_mode 만 agents/*.toml 이 정한다.
+
+[features]
+multi_agent = true
+
+[agents]
+max_threads = 6
+
+[shell_environment_policy]
+inherit = "core"
+ignore_default_excludes = false
+exclude = ["*_KEY", "*_SECRET", "*_TOKEN", "*_PASSWORD", "*PASSWD*", "AWS_*", "*_DSN"]
+
+[agents.explorer]
+description = "코드·설정에서 정의·호출 경로·영향 범위를 근거 줄과 함께 찾아야 할 때 쓴다. 읽기 전용이다."
+config_file = "agents/explorer.toml"
+
+[agents.reviewer]
+description = "변경을 마친 뒤 커밋 전에 정확성·보안·회귀·누락 테스트·문서 사실을 심각도별로 검토할 때 쓴다. 테스트는 돌리고 파일은 고치지 않는다."
+config_file = "agents/reviewer.toml"
+
+[agents.docs-researcher]
+description = "라이브러리·프레임워크·도구의 동작을 이 하네스가 쓰는 버전의 공식 문서로 확인할 때 쓴다. 근거 URL 과 버전을 붙이고 파일은 고치지 않는다."
+config_file = "agents/docs-researcher.toml"
+
+[agents.planner]
+description = "파일 셋 이상이나 여러 worker 에 걸친 작업을 범위·의존·파일 소유권·단계·위험으로 나눠 SDD tasks 초안을 만들 때 쓴다. 읽기 전용이다."
+config_file = "agents/planner.toml"
+
+[agents.worker]
+description = "고칠 파일과 기대 동작이 정해진 작업을 배정 파일 안에서 테스트 먼저(RED → GREEN) 구현할 때 쓴다."
+config_file = "agents/worker.toml"

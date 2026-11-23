@@ -61,7 +61,8 @@ harness-starter-kit/
 │   │   ├── layout.json               템플릿 경로 → 설치 경로(3.4)
 │   │   ├── common/ · domains/ · stacks/ · arch/ · optional/
 │   │   └── …                         리포 스크립트(verify.sh · harness/*.py · hooks/*)도 여기
-│   └── legacy-setup/                 setup.sh · lib/ · update.sh · add-agent.sh. Node 없는 환경용, v2.0 동안만
+│   ├── legacy-setup/<스킬>/          setup.sh · lib/ · update.sh · add-agent.sh. Node 없는 환경용, v2.0 동안만
+│   └── plugin/                       얇은 플러그인의 원본: 매니페스트 · commands/ · skills/hx-*/SKILL.md
 ├── plugins/harness-kit/              생성물. 손으로 고치지 않는다(아래)
 │   ├── .claude-plugin/ · .codex-plugin/
 │   ├── commands/ · skills/hx-*/      얇은 스킬: 대화로 값을 받고 CLI를 부른다(3.14)
@@ -71,12 +72,12 @@ harness-starter-kit/
 │       └── setup.sh · lib/ …         packages/legacy-setup 사본
 ├── .claude-plugin/marketplace.json · .agents/plugins/marketplace.json   지금 자리 그대로(./plugins/harness-kit)
 ├── install-kiro.sh                   생성된 플러그인 스킬 폴더를 복사한다
-├── scripts/release.sh · scripts/gen-plugins.mjs
+├── scripts/release.sh · gen-plugins.mjs · sync-commands.sh   킷 개발 도구(플러그인에 넣지 않는다)
 ├── tests/                            e2e · test_cli_parity.py(3.15) · test_generated.py(생성물 = 원본)
 └── docs/
 ```
 
-- 원본은 `packages/`다. `plugins/harness-kit/`은 `scripts/gen-plugins.mjs`가 만들고 커밋한다. Claude · Codex 마켓플레이스가 git에서 플러그인 폴더만 받아 가기 때문이다. `tests/test_generated.py`가 생성물과 원본(빌드 결과 포함)이 바이트 단위로 같은지 보고, fast 검증 · CI에서 돈다. 플러그인 폴더를 손으로 고치면 이 시험이 실패한다.
+- 원본은 `packages/`다. `plugins/harness-kit/`은 `scripts/gen-plugins.mjs`가 `packages/plugin` → `packages/legacy-setup/<스킬>` → `packages/templates`(→ `skills/hx-bootstrap/templates/`) 순서로 겹쳐 만들고 커밋한다. 같은 경로가 두 층에 있으면 거부한다(HK-1). Claude · Codex 마켓플레이스가 git에서 플러그인 폴더만 받아 가기 때문이다. `tests/test_generated.py`가 생성물과 원본(빌드 결과 포함)이 바이트 단위로 같은지 보고, fast 검증 · CI에서 돈다. 플러그인 폴더를 손으로 고치면 이 시험이 실패한다.
 - 마켓플레이스 경로(`./plugins/harness-kit`)와 플러그인 스킬 이름(`hx-*`)은 그대로다. 사용자는 구조 이동을 알아챌 필요가 없다.
 - 템플릿 자리 찾기: `HARNESS_KIT_TEMPLATES` → `<cli 폴더>/../templates`(플러그인 `bin/` 옆) → `<cli 폴더>/../../templates`(npm 패키지 안). 둘 다 없으면 exit 5. npm 패키지 `files`: `dist/`, `templates/`(빌드 때 `packages/templates`를 패키지 안으로 복사한다).
 - 워크스페이스 도구는 pnpm workspaces만 쓴다. 패키지가 다섯이라 Turborepo · Nx는 두지 않는다. 개발 의존: `typescript`, `esbuild`, `vitest`, `jsonc-parser`(번들에 넣는다, P18의 `.vscode/settings.json` 주석 보존 병합용), flow-view의 `react` · `@xyflow/react`.

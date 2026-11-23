@@ -1,0 +1,86 @@
+# HARNESS STARTER KIT ({{PROJECT_NAME}}) — 프로젝트 위생(Electron). 스택에 맞게 가감하라.
+
+# OS
+.DS_Store
+.AppleDouble
+Thumbs.db
+
+# IDE / editor
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# 의존성
+node_modules/
+.pnp
+.pnp.*
+
+# 빌드 산출물
+/dist/
+/dist-electron/
+/out/
+/build/
+.vite/
+*.tsbuildinfo
+
+# 패키징 산출물 — 서명된 설치 파일은 릴리스로 올린다(리포에 넣지 않는다)
+/release/
+/packages/*/dist/
+*.dmg
+*.pkg
+*.app/
+*.exe
+*.msi
+*.deb
+*.rpm
+*.AppImage
+*.snap
+*.blockmap
+/electron-builder-output/
+
+# 네이티브 모듈 빌드 산출물
+/prebuilds/
+*.node
+/build/Release/
+
+# 테스트·커버리지 산출물
+/coverage/
+/playwright-report/
+/test-results/
+.nyc_output/
+
+# 도구 캐시
+.eslintcache
+.turbo/
+.cache/
+# electron-builder 캐시(사용자 홈에도 생긴다)
+.electron-builder-cache/
+
+# Logs & temp
+*.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.tmp
+*.harness.tmp
+# harness-update 산출물(병합용 임시본) — 상태 파일 harness-kit.json·lock 은 커밋한다
+*.new
+*.bak
+
+# 로컬 앱 데이터(개발 중 생성) — 사용자 데이터가 들어간다
+/userData/
+/.local-app-data/
+
+# Env / secrets — 원문 커밋 금지
+# 코드 서명 인증서·비밀번호·자동 업데이트 토큰을 리포에 두지 않는다
+.env
+.env.*
+!.env.example
+*.local
+*.p12
+*.pfx
+*.mobileprovision
+/certs/
+
+# 락파일은 반드시 커밋한다(재현 가능한 설치) — 무시하지 말 것

@@ -1,0 +1,17 @@
+{
+  "name": "explorer",
+  "description": "코드·설정에서 정의·호출 경로·영향 범위를 근거 줄과 함께 찾아야 할 때 쓴다. 읽기 전용이다.",
+  "prompt": "AGENTS.md와 .agents/roles/explorer.md를 읽고 역할 지침을 따른다.",
+  "tools": [
+    "read"
+  ],
+  "allowedTools": [
+    "read"
+  ],
+  "resources": [
+    "file://AGENTS.md",
+    "file://.agents/roles/explorer.md",
+    "file://.agents/rules/guardrails.md",
+    "skill://.agents/skills/**/SKILL.md"
+  ]
+}

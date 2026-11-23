@@ -2,18 +2,20 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # 킷 개발용 — 스킬 원본에서 에이전트별 포인터를 만든다. 대상 리포에 설치되지 않는다.
 #
-# 원본: templates/common/agents-skills/hx-*/SKILL.md (설치 위치 .agents/skills — core)
+# 원본: packages/templates/common/agents-skills/hx-*/SKILL.md (설치 위치 .agents/skills — core)
 # 만드는 것(원본 description 을 그대로 쓰는 한 줄 포인터):
-#   templates/common/claude/commands/hx-*.md
-#   templates/common/cursor/commands/hx-*.md
-#   templates/common/kiro-skills/hx-*/SKILL.md
-#   templates/common/kiro-steering/hx-*.md
+#   packages/templates/common/claude/commands/hx-*.md
+#   packages/templates/common/cursor/commands/hx-*.md
+#   packages/templates/common/kiro-skills/hx-*/SKILL.md
+#   packages/templates/common/kiro-steering/hx-*.md
 #
-#   bash tools/sync-commands.sh          # 쓴다
-#   bash tools/sync-commands.sh --check  # 쓰지 않고 다르면 1
+# 고친 뒤 node scripts/gen-plugins.mjs 로 plugins/harness-kit/ 을 다시 만든다.
+#
+#   bash scripts/sync-commands.sh          # 쓴다
+#   bash scripts/sync-commands.sh --check  # 쓰지 않고 다르면 1
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
-cd "$(dirname "${BASH_SOURCE[0]}")/../templates/common"
+cd "$(dirname "${BASH_SOURCE[0]}")/../packages/templates/common"
 
 CHECK=0
 [ "${1:-}" = --check ] && CHECK=1

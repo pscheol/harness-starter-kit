@@ -1,0 +1,18 @@
+{
+  "name": "reviewer",
+  "description": "변경을 마친 뒤 커밋 전에 정확성·보안·회귀·누락 테스트·문서 사실을 심각도별로 검토할 때 쓴다. 테스트는 돌리고 파일은 고치지 않는다.",
+  "prompt": "AGENTS.md와 .agents/roles/reviewer.md를 읽고 역할 지침을 따른다.",
+  "tools": [
+    "read",
+    "shell"
+  ],
+  "allowedTools": [
+    "read"
+  ],
+  "resources": [
+    "file://AGENTS.md",
+    "file://.agents/roles/reviewer.md",
+    "file://.agents/rules/guardrails.md",
+    "skill://.agents/skills/**/SKILL.md"
+  ]
+}

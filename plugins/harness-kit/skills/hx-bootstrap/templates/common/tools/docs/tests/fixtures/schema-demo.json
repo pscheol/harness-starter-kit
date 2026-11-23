@@ -1,0 +1,95 @@
+{
+ "database": "demo",
+ "sources": [],
+ "schemas": [
+  {
+   "name": "note",
+   "comment": null
+  }
+ ],
+ "tables": [
+  {
+   "schema": "note",
+   "name": "nte_note",
+   "kind": "table",
+   "comment": "노트",
+   "rls": true,
+   "rls_forced": false,
+   "partition_key": null,
+   "partitions": 0,
+   "columns": [
+    {
+     "name": "note_no",
+     "type": "bigint",
+     "nullable": false,
+     "default": null,
+     "identity": true,
+     "generated": false,
+     "comment": "내부 번호"
+    },
+    {
+     "name": "title",
+     "type": "text",
+     "nullable": true,
+     "default": null,
+     "identity": false,
+     "generated": false,
+     "comment": "제목"
+    }
+   ],
+   "indexes": [
+    {
+     "name": "pk_nte_note",
+     "definition": "CREATE UNIQUE INDEX pk_nte_note ON note.nte_note USING btree (note_no)",
+     "unique": true,
+     "primary": true,
+     "columns": [
+      "note_no"
+     ],
+     "predicate": null
+    }
+   ],
+   "constraints": [],
+   "foreign_keys": [],
+   "policies": [
+    {
+     "name": "rls_nte_note_workspace",
+     "command": "*",
+     "permissive": true,
+     "roles": [
+      "public"
+     ],
+     "using": "(workspace_no = current_setting('app.workspace_no')::bigint)",
+     "check": null
+    }
+   ],
+   "triggers": []
+  },
+  {
+   "schema": "note",
+   "name": "nte_audit",
+   "kind": "table",
+   "comment": "감사",
+   "rls": false,
+   "rls_forced": false,
+   "partition_key": null,
+   "partitions": 0,
+   "columns": [
+    {
+     "name": "action",
+     "type": "text",
+     "nullable": false,
+     "default": null,
+     "identity": false,
+     "generated": false,
+     "comment": null
+    }
+   ],
+   "indexes": [],
+   "constraints": [],
+   "foreign_keys": [],
+   "policies": [],
+   "triggers": []
+  }
+ ]
+}

@@ -1,0 +1,65 @@
+# HARNESS STARTER KIT ({{PROJECT_NAME}}) — 프로젝트 위생(웹 프론트엔드). 스택에 맞게 가감하라.
+
+# OS
+.DS_Store
+.AppleDouble
+Thumbs.db
+
+# IDE / editor
+.idea/
+*.iml
+.vscode/
+*.swp
+
+# 의존성
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/releases
+!.yarn/versions
+
+# 빌드 산출물
+/dist/
+/build/
+/out/
+.next/
+.nuxt/
+.svelte-kit/
+.vite/
+*.tsbuildinfo
+
+# 테스트·커버리지 산출물
+/coverage/
+/playwright-report/
+/test-results/
+/blob-report/
+.nyc_output/
+
+# 도구 캐시
+.eslintcache
+.stylelintcache
+.turbo/
+.cache/
+
+# Logs & temp
+*.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.tmp
+*.harness.tmp
+# harness-update 산출물(병합용 임시본) — 상태 파일 harness-kit.json·lock 은 커밋한다
+*.new
+*.bak
+
+# Env / secrets — 원문 커밋 금지
+# 공개 접두사(NEXT_PUBLIC_·VITE_ 등) 변수는 브라우저 번들에 그대로 실린다. 비밀을 넣지 않는다.
+.env
+.env.*
+!.env.example
+*.local
+
+# 락파일은 반드시 커밋한다(재현 가능한 설치) — 무시하지 말 것
+# pnpm-lock.yaml · package-lock.json · yarn.lock 중 프로젝트가 쓰는 하나

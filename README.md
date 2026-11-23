@@ -17,12 +17,16 @@ Claude Code, Codex, Kiro, Cursor 네 하네스에서 같은 규칙과 같은 슬
 ## 구조
 
 ```
-harness-starter-kit/                        ← 마켓플레이스 루트
+harness-starter-kit/                        ← 마켓플레이스 루트 · pnpm 워크스페이스
 ├── .claude-plugin/marketplace.json         Claude Code 마켓플레이스 매니페스트
 ├── .agents/plugins/marketplace.json        Codex 마켓플레이스 매니페스트
 ├── install-kiro.sh                         Kiro 설치기 (마켓플레이스가 없는 하네스용)
+├── packages/                               ← 원본은 여기만 고친다
+│   ├── templates/                          common/ + domains/<domain>/ + stacks/<stack>/ + arch/<변형>/ + optional/<module>/
+│   ├── legacy-setup/<스킬>/                setup.sh · lib/harness-lib.sh · update.sh · add-agent.sh
+│   └── plugin/                             플러그인 매니페스트 · commands/ · skills/hx-*/SKILL.md
 ├── plugins/
-│   └── harness-kit/                        ← 플러그인 루트
+│   └── harness-kit/                        ← 생성물(손으로 고치지 않는다). node scripts/gen-plugins.mjs 가 만든다
 │       ├── .claude-plugin/plugin.json      Claude Code 플러그인 매니페스트
 │       ├── .codex-plugin/plugin.json       Codex 플러그인 매니페스트
 │       ├── commands/                       /harness-kit:{bootstrap,agent-add,update}
@@ -33,8 +37,7 @@ harness-starter-kit/                        ← 마켓플레이스 루트
 │           │   ├── manifest.md             무엇이 어디에 설치되나
 │           │   ├── README.md
 │           │   ├── lib/harness-lib.sh      경로 매핑 · 치환 · lock 공용 함수
-│           │   ├── tools/sync-commands.sh  킷 개발용 — 커맨드 파생 트리 재생성
-│           │   └── templates/              common/ + domains/<domain>/ + stacks/<stack>/ + arch/<변형>/ + optional/<module>/
+│           │   └── templates/              packages/templates 사본
 │           ├── hx-jvm-setup/          ← JVM 전용 진입 (아키텍처 8종 선택)
 │           ├── hx-jvm-hexagonal/      ←   헥사고날 3변형 레시피
 │           ├── hx-jvm-layered/        ←   단일 모듈 레이어드 레시피
@@ -44,6 +47,8 @@ harness-starter-kit/                        ← 마켓플레이스 루트
 │           ├── hx-jira-setup/         ← 이슈 트래커 연동 설정 (선택 모듈을 켠 리포만)
 │           ├── hx-agent-add/          에이전트 배선 추가
 │           └── hx-update/             킷 새 버전 반영
+├── scripts/                                킷 개발 도구: gen-plugins.mjs · sync-commands.sh
+├── tests/                                  설치 시험 · 생성물 시험(test_generated.py)
 └── docs/
     ├── README.md                           문서 지도 (여기서 시작)
     ├── guides/                             사용 가이드 — 시작·아키텍처 선택·JVM 레시피
@@ -535,6 +540,14 @@ FastAPI 경로, Next.js 화면과 그 화면이 부르는 API, 시험 파일 수
 
 ## 개발
 
+원본은 `packages/`다. `plugins/harness-kit/`은 마켓플레이스가 git에서 받아 가는 생성물이라 커밋하지만 손으로 고치지 않는다.
+원본을 고친 뒤에는 생성물을 다시 만든다(Node 18 이상).
+
+```bash
+node scripts/gen-plugins.mjs           # packages/ → plugins/harness-kit/
+node scripts/gen-plugins.mjs --check   # 다르면 1 (tests/test_generated.py 가 같은 검사를 한다)
+```
+
 매니페스트를 고친 뒤에는 마켓플레이스 스냅샷을 갱신해야 반영된다.
 
 ```bash
@@ -546,10 +559,12 @@ codex plugin marketplace upgrade                 # Codex
 포인터를 직접 고치면 하네스 사이에 설명이 어긋난다.
 
 ```bash
-# 1) templates/common/agents-skills/hx-*/SKILL.md 를 고친다 (원본 — 설치 위치 .agents/skills, Codex 가 직접 읽는다)
+# 1) packages/templates/common/agents-skills/hx-*/SKILL.md 를 고친다 (원본 — 설치 위치 .agents/skills, Codex 가 직접 읽는다)
 # 2) Claude · Cursor · Kiro(IDE·CLI) 포인터를 다시 만든다
-bash plugins/harness-kit/skills/hx-bootstrap/tools/sync-commands.sh
-bash plugins/harness-kit/skills/hx-bootstrap/tools/sync-commands.sh --check   # 어긋나면 1
+bash scripts/sync-commands.sh
+bash scripts/sync-commands.sh --check   # 어긋나면 1
+# 3) 생성물을 다시 만든다
+node scripts/gen-plugins.mjs
 ```
 
 킷 시험은 빈 임시 폴더에 스택마다 설치해 보고, 설치본 안에서 하네스 검사기 · 기능 문서 build/check ·

@@ -19,7 +19,7 @@ from pathlib import Path
 
 KIT = Path(__file__).resolve().parents[1]
 SETUP = KIT / "plugins/harness-kit/skills/hx-bootstrap/setup.sh"
-SYNC_COMMANDS = KIT / "plugins/harness-kit/skills/hx-bootstrap/tools/sync-commands.sh"
+SYNC_COMMANDS = KIT / "scripts/sync-commands.sh"
 UPDATE = KIT / "plugins/harness-kit/skills/hx-update/update.sh"
 HARNESS_TESTS = KIT / "tests/harness_scripts"
 STACKS = ("jvm", "python", "go", "web", "electron")
