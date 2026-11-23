@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -138,4 +139,64 @@ export async function run(argv: string[], opts: RunOptions = {}): Promise<RunRes
 
 export function json(r: RunResult): Record<string, any> {
   return JSON.parse(r.stdout) as Record<string, any>;
+}
+
+export const LOCK_FILE = ".agents/harness-kit.lock";
+export const META_FILE = ".agents/harness-kit.json";
+export const FIXTURE_ENV = { PROJECT_NAME: "Acme", PROJECT_SLUG: "acme" };
+
+export function sha256Hex(data: string | Buffer): string {
+  return crypto.createHash("sha256").update(data).digest("hex");
+}
+
+export function readJsonFile(file: string): Record<string, any> {
+  return JSON.parse(fs.readFileSync(file, "utf8")) as Record<string, any>;
+}
+
+export function writeJsonFile(file: string, value: unknown): void {
+  fs.writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+export function lockEntries(target: string): Record<string, any>[] {
+  return readJsonFile(path.join(target, LOCK_FILE)).entries as Record<string, any>[];
+}
+
+export function lockEntry(target: string, rel: string): Record<string, any> | undefined {
+  return lockEntries(target).find((e) => e.path === rel);
+}
+
+/** lock 항목을 바꾸거나(객체 — 없으면 더한다) 지운다(null). */
+export function patchLock(target: string, patches: Record<string, Record<string, unknown> | null>): void {
+  const file = path.join(target, LOCK_FILE);
+  const lock = readJsonFile(file);
+  const kept = (lock.entries as Record<string, any>[]).filter((e) => patches[e.path] !== null);
+  lock.entries = kept.map((e) => (patches[e.path] ? { ...e, ...patches[e.path] } : e));
+  for (const [p, v] of Object.entries(patches)) {
+    if (v && !kept.some((e) => e.path === p)) lock.entries.push({ path: p, ...v });
+  }
+  writeJsonFile(file, lock);
+}
+
+export function readText(target: string, rel: string): string {
+  return fs.readFileSync(path.join(target, ...rel.split("/")), "utf8");
+}
+
+export function exists(target: string, rel: string): boolean {
+  return fs.existsSync(path.join(target, ...rel.split("/")));
+}
+
+export function modeOf(target: string, rel: string): number {
+  return fs.statSync(path.join(target, ...rel.split("/"))).mode & 0o777;
+}
+
+/** BASIC_FILES(또는 files)로 init 한 리포(하네스 claude). cli(명령, 인자)는 같은 리포에 명령을 부른다. */
+export async function installedFixture(opts: { files?: Record<string, string>; modules?: string; pre?: Record<string, string> } = {}) {
+  const templates = fixtureTemplates(opts.files ?? BASIC_FILES);
+  const target = path.join(tmpDir(), "acme");
+  if (opts.pre) writeTree(target, opts.pre);
+  const extra = opts.modules ? ["--modules", opts.modules] : [];
+  const r = await run(["init", "--yes", "--templates", templates, "--cwd", target, "--agents", "claude", ...extra], { env: FIXTURE_ENV });
+  if (r.code !== 0) throw new Error(`init 실패: ${r.stdout}${r.stderr}`);
+  const cli = (command: string, args: string[] = [], o: RunOptions = {}): Promise<RunResult> => run([command, "--cwd", target, ...args], o);
+  return { target, templates, cli };
 }

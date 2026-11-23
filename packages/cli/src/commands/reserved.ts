@@ -2,10 +2,7 @@
 export const RESERVED: Record<string, string> = {
   add: "P17(다음 조각)",
   remove: "P17(다음 조각)",
-  update: "P17(다음 조각)",
   outdated: "P17(다음 조각)",
-  repair: "P17(다음 조각)",
-  uninstall: "P17(다음 조각)",
   pack: "P18(확장 층, 설계 04)",
   dashboard: "P20(관리 페이지, 설계 06)",
   skills: "P20(스킬 목록, 설계 07)",

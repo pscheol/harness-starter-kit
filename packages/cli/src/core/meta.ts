@@ -15,6 +15,8 @@ const KEY_ORDER = [
 
 export const DEFAULT_GATES = ["codebase", "intent", "plans", "requirements", "design", "tasks", "mr", "done", "deploy"];
 export const DEFAULT_BASE = "develop";
+export const GIT_DEFAULTS = { base: DEFAULT_BASE, worktreeRoot: "../{repo}.worktrees", maxPerRepo: 3, ide: "code" };
+export const DEFAULT_FLOW = { design: "kit", record: "none", gates: DEFAULT_GATES };
 
 export interface MetaV2 {
   schema: string;
@@ -54,13 +56,39 @@ export function buildMeta(args: {
     domain: sel.domain,
     agents: [...sel.agents],
     modules: [...sel.modules],
-    flow: { design: "kit", record: "none", gates: [...DEFAULT_GATES] },
+    flow: { ...DEFAULT_FLOW, gates: [...DEFAULT_GATES] },
     issueKey: { source: args.issue.source ?? "kit", prefix: args.issue.prefix ?? slug.toUpperCase() },
-    git: { base: args.base ?? DEFAULT_BASE, worktreeRoot: "../{repo}.worktrees", maxPerRepo: 3, ide: "code" },
+    git: { ...GIT_DEFAULTS, base: args.base ?? DEFAULT_BASE },
     packs: [],
     verify: { fullOnlyInCI: true },
     tokens: { ...tokens },
     installedAt: args.today,
+    updatedAt: args.today,
+  };
+}
+
+/**
+ * update 가 쓰는 메타(HK-11 design §3.3 5단계). 읽은 메타(v1 은 이미 v2 로 바꾼 것)에서
+ * 킷이 관리하는 키만 바꾸고, 빠진 v2 기본값을 채우고, 그 밖의 키는 값과 순서를 둔다.
+ */
+export function mergeMetaForUpdate(
+  meta: MetaV2,
+  args: { version: string; selection: Pick<Selection, "stack" | "arch" | "domain" | "agents" | "modules">; tokens: Record<string, string>; today: string },
+): MetaV2 {
+  const { selection: sel } = args;
+  return {
+    ...meta,
+    schema: META_SCHEMA,
+    kit: { version: args.version },
+    stack: sel.stack,
+    arch: sel.arch,
+    domain: sel.domain,
+    agents: [...sel.agents],
+    modules: [...sel.modules],
+    flow: isObj(meta.flow) ? meta.flow : { ...DEFAULT_FLOW, gates: [...DEFAULT_GATES] },
+    git: { ...GIT_DEFAULTS, ...meta.git },
+    tokens: { ...meta.tokens, ...args.tokens },
+    installedAt: meta.installedAt || args.today,
     updatedAt: args.today,
   };
 }
