@@ -33,16 +33,18 @@ SELECTION_VARS = ("STACK", "ARCH", "DOMAIN", "JVM_LANG", "HARNESS_AGENTS", "HARN
 DEFAULT_TOKENS = {"PROJECT_NAME": "Acme Notes", "PROJECT_SLUG": "acme-notes", "PACKAGE_NS": "com.acme.notes", "SERVICE_NAME": "notes-api"}
 # sed 가 다르게 읽는 문자(& · | · \)가 든 치환값(HK-10 R10.2).
 SPECIAL_TOKENS = {**DEFAULT_TOKENS, "PROJECT_NAME": "A&B | C\\D", "SERVICE_NAME": "notes&api|v2\\x"}
-# platform-guards 모듈이 common 과 같은 경로에 까는 파일(설치 경로 → 모듈 템플릿 경로).
+# 겹침 시험: 킷 템플릿에는 common 과 겹치는 모듈 경로가 없다(platform-guards 를 HK-25 에서 없앴다).
+# 사본의 jira-workflow 모듈에 common 파일 + 표시 줄을 같은 설치 경로로 둔다(설치 경로 → 모듈 템플릿 경로 · common 원본).
 # (.kiro/steering/platform-invariants.md 는 HK-13 뒤 템플릿이 아니라 배치가 이긴 판의 원본에서 만든다.)
-GUARD_OVERLAPS = {
-    ".agents/rules/platform-invariants.md": "optional/platform-guards/agents-rules/platform-invariants.md",
-    "scripts/run-guards.sh": "optional/platform-guards/scripts/run-guards.sh",
-    "scripts/guards/_template.sh": "optional/platform-guards/scripts/guards/_template.sh",
+OVERLAP_MODULE = "jira-workflow"
+OVERLAPS = {
+    ".agents/rules/platform-invariants.md": ("optional/jira-workflow/agents-rules/platform-invariants.md", "common/agents-rules/platform-invariants.md"),
+    "scripts/run-guards.sh": ("optional/jira-workflow/scripts/run-guards.sh", "common/scripts/run-guards.sh"),
 }
 LATER_MARK = {"md": "\n<!-- 뒤 레이어 판(HK-10) -->\n", "sh": "\n# 뒤 레이어 판(HK-10)\n"}
-# 겹침 경로마다 모듈 판에만 표시 줄을 붙인 템플릿 사본 — 뒤 레이어가 이기면 두 설치 모두 표시 줄이 있다(HK-10 R10.1).
-LATER_PATCH = {src: LATER_MARK[src.rsplit(".", 1)[1]] for src in GUARD_OVERLAPS.values()}
+# 겹침 경로마다 모듈 판(= common 판 + 표시 줄)을 둔 템플릿 사본 — 뒤 레이어가 이기면 두 설치 모두 표시 줄이 있다(HK-10 R10.1).
+LATER_PATCH = {src: (TEMPLATES / common).read_text(encoding="utf-8") + LATER_MARK[src.rsplit(".", 1)[1]] for src, common in OVERLAPS.values()}
+RETIRED_NOTE = "platform-guards 모듈은 공통 층에 포함됨"
 
 
 @dataclass(frozen=True)
@@ -57,7 +59,7 @@ class Case:
     tokens: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_TOKENS))
     folder: str = "acme-notes"
     pre: dict[str, str] = field(default_factory=dict)
-    # 템플릿 사본에 덧붙일 줄(템플릿 상대 경로 → 내용). 있으면 플러그인 사본으로 두 설치를 한다.
+    # 템플릿 사본에 덧붙일 줄(템플릿 상대 경로 → 내용, 없는 파일은 만든다). 있으면 플러그인 사본으로 두 설치를 한다.
     patch: dict[str, str] = field(default_factory=dict)
 
 
@@ -86,7 +88,7 @@ CASES = (
     Case("22-python-ai-service", "python", "ai-service"),
     Case("23-go-layered", "go", "layered"),
     Case("24-electron-feature", "electron", "feature"),
-    Case("25-python-layered-guards-later-wins", "python", "layered", modules="platform-guards", patch=LATER_PATCH),
+    Case("25-python-layered-module-later-wins", "python", "layered", modules=OVERLAP_MODULE, patch=LATER_PATCH),
     Case("26-go-special-tokens", "go", "hexagonal", agents="claude", tokens=SPECIAL_TOKENS),
 )
 
@@ -216,6 +218,7 @@ def kit_for(root: Path, c: Case) -> tuple[Path, Path]:
     shutil.copytree(KIT / "plugins/harness-kit", kit, symlinks=True)
     templates = kit / "skills/hx-bootstrap/templates"
     for rel, extra in c.patch.items():
+        (templates / rel).parent.mkdir(parents=True, exist_ok=True)
         with (templates / rel).open("a", encoding="utf-8") as handle:
             handle.write(extra)
     return kit / "skills/hx-bootstrap/setup.sh", templates
@@ -316,18 +319,25 @@ class CliParityTest(unittest.TestCase):
 
     def test_overlap_later_layer_wins(self):
         """같은 설치 경로가 common 과 모듈에 있으면 두 설치 모두 모듈(뒤 레이어) 판을 쓰고 lock 에 한 줄만 남긴다(HK-10 R10.1)."""
-        patched = self.outcome("25-python-layered-guards-later-wins")
-        for rel, src in GUARD_OVERLAPS.items():
+        patched = self.outcome("25-python-layered-module-later-wins")
+        sh_layers, cl_layers = lock_layers(patched.sh / STATE[0]), lock_layers(patched.cli / STATE[0])
+        for rel, (src, _common) in OVERLAPS.items():
             for target in (patched.sh, patched.cli):
                 with self.subTest(path=rel, target=target.parent.name):
-                    self.assertTrue((target / rel).read_text(encoding="utf-8").endswith(LATER_PATCH[src]))
-        for name in ("07-jvm-standalone-guards", "10-web-fsd-two-modules", "13-python-modular-all-modules", "25-python-layered-guards-later-wins"):
+                    self.assertTrue((target / rel).read_text(encoding="utf-8").endswith(LATER_MARK[src.rsplit(".", 1)[1]]))
+            with self.subTest(path=rel, lock=True):
+                self.assertEqual(sh_layers[rel], [f"mod/{OVERLAP_MODULE}"])
+                self.assertEqual(cl_layers[rel], [f"optional/{OVERLAP_MODULE}"])
+
+    def test_retired_module_is_ignored_with_notice(self):
+        """없앤 모듈 platform-guards: setup.sh · CLI init 모두 한 줄 알리고 넘긴다. 메타에 적지 않는다(HK-25 R2)."""
+        for name, modules in (("07-jvm-standalone-guards", []), ("10-web-fsd-two-modules", ["jira-workflow"])):
             o = self.outcome(name)
-            sh_layers, cl_layers = lock_layers(o.sh / STATE[0]), lock_layers(o.cli / STATE[0])
-            for rel in (r for r in GUARD_OVERLAPS if (o.sh / r).is_file()):
-                with self.subTest(case=name, path=rel):
-                    self.assertEqual(sh_layers[rel], ["mod/platform-guards"])
-                    self.assertEqual(cl_layers[rel], ["optional/platform-guards"])
+            with self.subTest(case=name):
+                self.assertEqual(o.sh_run.stdout.count(RETIRED_NOTE), 1, o.sh_run.stdout[-1500:])
+                self.assertEqual(o.cli_run.stdout.count(RETIRED_NOTE), 1, o.cli_run.stdout[-1500:])
+                for target in (o.sh, o.cli):
+                    self.assertEqual(json.loads((target / STATE[1]).read_text(encoding="utf-8"))["modules"], modules)
 
     def test_special_tokens_are_literal(self):
         """& · | · \\ 가 든 치환값이 두 설치에 글자 그대로 들어간다(HK-10 R10.2)."""

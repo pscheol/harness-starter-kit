@@ -58,6 +58,15 @@ def other_layer_tails(templates: Path) -> set[str]:
     return tails
 
 
+# HK-25: 머리 줄(HARNESS STARTER KIT) 없는 문서 · 있는 문서. 다른 레이어에 같은 경로가 없다.
+PLAIN_DOC = ("common/agents-docs/guides/doc-standards.md", ".agents/docs/guides/doc-standards.md")
+HEADER_DOC = ("common/agents-docs/tech-debt-tracker.md", ".agents/docs/tech-debt-tracker.md")
+PLAIN_LAST = "새 판 마지막 줄(HK-25)"
+MERGE_BEGIN = "<!-- harness-kit: 설치 전 내용(병합) -->"
+MERGE_END = "<!-- /harness-kit -->"
+BACKUPS = ".agents/state/merge-backup"
+
+
 @dataclass(frozen=True)
 class Picks:
     """새 킷이 바꾸는 템플릿(템플릿 상대 경로, 설치 경로)."""
@@ -67,6 +76,8 @@ class Picks:
     script: tuple[str, str]    # 킷이 바꾸는 실행 파일
     removed: tuple[str, str]   # 킷에서 빼는 규칙
     deleted: tuple[str, str]   # 사람이 지우는 규칙(킷은 그대로)
+    plain_doc: tuple[str, str] = PLAIN_DOC    # 킷이 마지막 줄을 바꾸는 머리 줄 없는 문서(HK-25 줄 병합)
+    header_doc: tuple[str, str] = HEADER_DOC  # 킷이 줄을 더하는 머리 줄 있는 문서(HK-25 킷 판)
 
 
 def pick(templates: Path) -> Picks:
@@ -92,9 +103,9 @@ def make_old_kit(root: Path) -> Path:
     return kit
 
 
-# platform-guards: 이기는 판(모듈) · 지는 판(common)을 새 킷이 바꾼다(HK-12 R12.9 — HK-10 뒤 레이어 우선).
-GUARD_WINNER = ("optional/platform-guards/scripts/run-guards.sh", "scripts/run-guards.sh")
-GUARD_LOSER = ("common/agents-rules/platform-invariants.md", ".agents/rules/platform-invariants.md")
+# platform-guards 모듈이 common 과 같은 경로에 깔던 파일(HK-25 R2 — 모듈을 없앴다. 옛 설치의 lock 레이어만 남는다).
+GUARD_PATHS = (".agents/rules/platform-invariants.md", "scripts/run-guards.sh", "scripts/guards/_template.sh")
+RETIRED_NOTE = "platform-guards 모듈은 공통 층에 포함됨"
 PRE_AGENTS = "# 손으로 쓴 AGENTS — 설치 전부터 있었다\n"
 LOCK_MARK = "# pre-existing: -"
 
@@ -103,9 +114,14 @@ def make_new_kit(root: Path, old: Path, picks: Picks) -> Path:
     kit = root / "new"
     shutil.copytree(old, kit, symlinks=True)
     tpl = kit / "skills/hx-bootstrap/templates"
-    for rel in (picks.changed[0], picks.script[0], GUARD_WINNER[0], GUARD_LOSER[0]):
+    for rel in (picks.changed[0], picks.script[0], picks.header_doc[0]):
         with (tpl / rel).open("a", encoding="utf-8") as f:
             f.write("\n<!-- HK-11 새 판 줄 -->\n" if rel.endswith(".md") else "\n# HK-11 새 판 줄\n")
+    doc = tpl / picks.plain_doc[0]
+    lines = doc.read_text(encoding="utf-8").split("\n")
+    last = max(i for i, line in enumerate(lines) if any(ch.isalnum() for ch in line))
+    lines[last] = PLAIN_LAST
+    doc.write_text("\n".join(lines), encoding="utf-8")
     (tpl / NEW_RULE[0]).write_text("새 규칙 {{PROJECT_NAME}}\n", encoding="utf-8")
     (tpl / NEW_TOOL[0]).write_text("#!/usr/bin/env bash\necho {{PROJECT_SLUG}}\n", encoding="utf-8")
     for rel in (picks.removed[0], ONLY[0], GONE_EDITED[0]):
@@ -182,6 +198,85 @@ def nothing(target: Path, picks: Picks) -> None:
     return None
 
 
+def guards_meta(target: Path, picks: Picks) -> None:
+    """platform-guards 모듈을 켰던 옛 설치: 메타 modules 에 이름이 있고, 겹치던 3경로의 lock 레이어가 모듈이다."""
+    meta = json.loads((target / META).read_text(encoding="utf-8"))
+    meta["modules"] = ["platform-guards"]
+    (target / META).write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    out = []
+    for line in (target / LOCK).read_text(encoding="utf-8").splitlines():
+        cols = line.split("\t")
+        if len(cols) == 4 and cols[3] in GUARD_PATHS:
+            cols[1] = "mod/platform-guards"
+        out.append("\t".join(cols))
+    (target / LOCK).write_text("\n".join(out) + "\n", encoding="utf-8")
+
+
+# HK-25 #11: 설치 전부터 있던 사람 파일(문서 · JSON · 스크립트 · CLAUDE.md). v1.0.8 lock 은 그 파일 해시를 적었다.
+PRE_FILES = {
+    "README.md": "# 우리 서비스\n\n사람이 쓴 소개 문단이다.\n",
+    ".agents/verify-checks.json": '{"checks": [], "teamOnly": true}\n',
+    "CLAUDE.md": "# 우리 팀 CLAUDE\n사람이 쓴 안내\n",
+}
+
+
+def pre_mixed(target: Path) -> None:
+    target.mkdir(parents=True, exist_ok=True)
+    for rel, body in PRE_FILES.items():
+        (target / rel).parent.mkdir(parents=True, exist_ok=True)
+        (target / rel).write_text(body, encoding="utf-8")
+
+
+def legacy_lock_all(target: Path, picks: Picks) -> None:
+    """표시 줄을 지우고 미리 있던 파일(PRE_FILES · 킷이 바꿀 스크립트)의 해시를 그 파일 해시로 적는다(v1.0.8 setup.sh)."""
+    (target / picks.script[1]).write_text("#!/usr/bin/env bash\necho 사람이 둔 스크립트\n", encoding="utf-8")
+    # v1.0.8 setup.sh 는 미리 있던 CLAUDE.md 를 건너뛰었다(지금 판은 블록을 덧붙인다) — 사람 판으로 되돌린다.
+    (target / "CLAUDE.md").write_text(PRE_FILES["CLAUDE.md"], encoding="utf-8")
+    pre = {*PRE_FILES, picks.script[1]}
+    out = []
+    for line in (target / LOCK).read_text(encoding="utf-8").splitlines():
+        if line == LOCK_MARK:
+            continue
+        cols = line.split("\t")
+        if len(cols) == 4 and cols[3] in pre and cols[1] not in ("mirror", "render", "merge", "merge+"):
+            cols[0] = hashlib.sha256((target / cols[3]).read_bytes()).hexdigest()
+        out.append("\t".join(cols))
+    if not any(line.endswith("\tCLAUDE.md") and "\tmerge" not in line for line in out):
+        out = [line for line in out if not line.endswith("\tCLAUDE.md")]
+        out.append(hashlib.sha256((target / "CLAUDE.md").read_bytes()).hexdigest() + "\tpython\tclaude\tCLAUDE.md")
+    (target / LOCK).write_text("\n".join(out) + "\n", encoding="utf-8")
+
+
+def split_blocks(text: str) -> tuple[list[str], list[str]]:
+    """병합본 → (표지 밖 줄, 표지 안 줄)."""
+    outside: list[str] = []
+    inside: list[str] = []
+    inner = False
+    for line in text.split("\n"):
+        if line == MERGE_BEGIN:
+            inner = True
+        elif line == MERGE_END:
+            inner = False
+        else:
+            (inside if inner else outside).append(line)
+    return outside, inside
+
+
+def significant(line: str) -> bool:
+    return any(("A" <= ch <= "Z") or ("a" <= ch <= "z") or ("0" <= ch <= "9") or ord(ch) >= 0x80 for ch in line)
+
+
+def backups(target: Path) -> dict[str, bytes]:
+    """merge-backup/<시각>/ 아래 파일(시각 폴더는 하나)."""
+    root = target / BACKUPS
+    stamps = sorted(p.name for p in root.iterdir()) if root.is_dir() else []
+    assert len(stamps) <= 1, stamps
+    if not stamps:
+        return {}
+    base = root / stamps[0]
+    return {p.relative_to(base).as_posix().removesuffix(".orig"): p.read_bytes() for p in base.rglob("*") if p.is_file() and p.name.endswith(".orig")}
+
+
 @dataclass(frozen=True)
 class Case:
     name: str
@@ -204,10 +299,11 @@ CASES = (
     Case("04-orphans-prune", "go", "hexagonal", "codex", edit_gone, cli_flags=("--prune",)),
     Case("05-user-owned", "web", "nextjs-app", "claude", user_owned),
     Case("06-accept-all", "jvm", "layered", "claude", two_edits, cli_flags=("--accept-all",), sh_flags=("--accept-all",)),
-    Case("07-guards-later-wins", "python", "layered", "claude,kiro", nothing, modules="platform-guards"),
+    Case("07-retired-guards-module", "python", "layered", "claude,kiro", guards_meta),
     Case("08-board-rebuild", "go", "hexagonal", "codex", stale_board),
     Case("09-pre-existing-legacy-lock", "jvm", "hexagonal", "claude", legacy_lock, prep=pre_agents),
     Case("10-pre-existing-marked-lock", "jvm", "hexagonal", "claude", nothing, prep=pre_agents),
+    Case("11-legacy-lock-merge", "python", "layered", "claude,kiro", legacy_lock_all, prep=pre_mixed),
 )
 
 
@@ -415,19 +511,25 @@ class CliUpdateParityTest(unittest.TestCase):
         self.assertEqual(baks, sorted(f"{p}.bak" for p in (self.picks.changed[1], self.picks.kept[1])))
         self.assertEqual(j["counts"]["replace"], 2)
 
-    def test_07_platform_guards_later_layer_wins(self):
-        o, j = self.ran("07-guards-later-wins")
+    def test_07_retired_platform_guards_leaves_meta(self):
+        """platform-guards 를 켰던 옛 설치: 두 update 모두 메타에서 이름을 빼고 한 줄 알린다. 파일은 공통 층 판 그대로(HK-25 R2)."""
+        o, j = self.ran("07-retired-guards-module")
         self.assertEqual(o.cli_run.returncode, 0)
         self.assert_same_tree(o)
         self.assert_lock_means_same(o)
-        self.assertTrue((o.cli / GUARD_WINNER[1]).read_text(encoding="utf-8").endswith("# HK-11 새 판 줄\n"))
-        self.assertFalse((o.cli / GUARD_LOSER[1]).read_text(encoding="utf-8").endswith("<!-- HK-11 새 판 줄 -->\n"))
-        actions = {op["path"]: op["action"] for op in j["ops"]}
-        self.assertEqual(actions.get(GUARD_WINNER[1]), "update")
-        self.assertNotIn(GUARD_LOSER[1], actions)
+        self.assert_meta_means_same(o)
+        for target in (o.sh, o.cli):
+            self.assertEqual(json.loads((target / META).read_text(encoding="utf-8"))["modules"], [], target)
+            for rel in GUARD_PATHS:
+                self.assertTrue((target / rel).is_file(), rel)
+        self.assertEqual(o.sh_run.stdout.count(RETIRED_NOTE), 1, o.sh_run.stdout[-2000:])
+        self.assertEqual(j["retiredModules"], ["platform-guards"])
+        self.assertEqual(j["droppedModules"], [])
         lock = {e["path"]: e for e in json.loads((o.cli / LOCK).read_text(encoding="utf-8"))["entries"]}
-        for rel in (GUARD_WINNER[1], GUARD_LOSER[1]):
-            self.assertEqual(lock[rel]["layer"], "optional/platform-guards", rel)
+        sh_layers = {line.split("\t")[3]: line.split("\t")[1] for line in (o.sh / LOCK).read_text(encoding="utf-8").splitlines() if line.count("\t") == 3}
+        for rel in GUARD_PATHS:
+            self.assertEqual(lock[rel]["layer"], "common", rel)
+            self.assertEqual(sh_layers[rel], "common", rel)
         self.assertEqual(sorted(p for p in snapshot(o.cli)[0] if p.endswith(".new")), [])
 
     def test_08_board_rebuilt_like_update_sh(self):
@@ -440,19 +542,29 @@ class CliUpdateParityTest(unittest.TestCase):
         self.assertEqual(j["board"], {"status": "rebuilt"})
         self.assertIn("| 1 (옛) | sample | feat |", (o.cli / ".agents/docs/specs-index.md").read_text(encoding="utf-8"))
 
-    def test_09_pre_existing_file_with_legacy_lock_gets_new(self):
+    def test_09_pre_existing_file_with_legacy_lock_is_merged(self):
+        """v1.0.8 lock: 미리 있던 사람 AGENTS.md 는 킷 판 + 사람 줄 묶음, 킷이 바꾼 규칙은 새 판, 스크립트는 .new(HK-25 R1)."""
         o, j = self.ran("09-pre-existing-legacy-lock")
         self.assertEqual(o.cli_run.returncode, 4)
         self.assert_same_tree(o)
         self.assert_lock_means_same(o)
         for target in (o.sh, o.cli):
-            self.assertEqual((target / "AGENTS.md").read_text(encoding="utf-8"), PRE_AGENTS, target)
-            self.assertTrue((target / "AGENTS.md.new").is_file(), target)
-            self.assertTrue((target / f"{self.picks.changed[1]}.new").is_file(), target)
+            text = (target / "AGENTS.md").read_text(encoding="utf-8")
+            outside, inside = split_blocks(text)
+            self.assertIn("HARNESS STARTER KIT", outside[0], target)
+            self.assertEqual(inside, [PRE_AGENTS.rstrip("\n")], target)
+            self.assertFalse((target / "AGENTS.md.new").exists(), target)
+            self.assertFalse((target / f"{self.picks.changed[1]}.new").exists(), target)
+            self.assertTrue((target / f"{self.picks.script[1]}.new").is_file(), target)
+            self.assertEqual(backups(target)["AGENTS.md"], PRE_AGENTS.encode("utf-8"), target)
         sh_lock = lock_hashes(o.sh / LOCK)
-        self.assertEqual((sh_lock["AGENTS.md"], sh_lock[self.picks.changed[1]]), ("-", "-"))
+        self.assertRegex(sh_lock["AGENTS.md"], r"^[0-9a-f]{64}$")
+        self.assertEqual(sh_lock[self.picks.script[1]], "-")
         self.assertTrue((o.sh / LOCK).read_text(encoding="utf-8").splitlines()[1] == LOCK_MARK)
-        self.assertIn("AGENTS.md", [c["path"] for c in j["conflicts"]])
+        kinds = {m["path"]: m["kind"] for m in j["merged"]}
+        self.assertEqual((kinds["AGENTS.md"], kinds[self.picks.changed[1]]), ("lines", "kit"))
+        self.assertEqual([c["path"] for c in j["conflicts"]], [self.picks.script[1]])
+        self.assertEqual(o.sh_run.stdout.count("v1 lock 첫 업데이트"), 1)
 
     def test_10_pre_existing_file_with_marked_lock(self):
         o, j = self.ran("10-pre-existing-marked-lock")
@@ -465,6 +577,50 @@ class CliUpdateParityTest(unittest.TestCase):
             self.assertTrue((target / "AGENTS.md.new").is_file(), target)
             self.assertFalse((target / f"{self.picks.changed[1]}.new").exists(), target)
         self.assertEqual([c["path"] for c in j["conflicts"]], ["AGENTS.md"])
+
+
+    def test_11_legacy_lock_merges_by_file_kind(self):
+        """v1.0.8 lock 첫 update: 문서 lines · JSON keys · 스크립트 .new · 머리 줄 문서 kit · CLAUDE.md 백업(HK-25 R1 · R3)."""
+        o, j = self.ran("11-legacy-lock-merge")
+        self.assertEqual(o.cli_run.returncode, 4)
+        self.assert_same_tree(o)
+        self.assert_lock_means_same(o)
+        kit_tpl = self.new / "skills/hx-bootstrap/templates"
+        for target in (o.sh, o.cli):
+            with self.subTest(target=target.parent.name):
+                readme_out, readme_in = split_blocks((target / "README.md").read_text(encoding="utf-8"))
+                self.assertIn("사람이 쓴 소개 문단이다.", readme_in)
+                doc_out, doc_in = split_blocks((target / self.picks.plain_doc[1]).read_text(encoding="utf-8"))
+                self.assertIn(PLAIN_LAST, doc_out)
+                self.assertEqual(len([line for line in doc_in if significant(line)]), 1, doc_in)
+                for outside, inside in ((readme_out, readme_in), (doc_out, doc_in)):
+                    self.assertEqual([line for line in inside if significant(line) and line in outside], [], "두 판에 같은 줄이 두 번")
+                checks = json.loads((target / ".agents/verify-checks.json").read_text(encoding="utf-8"))
+                self.assertIs(checks["teamOnly"], True)
+                self.assertGreater(len(checks["checks"]), 0)
+                header = (target / self.picks.header_doc[1]).read_text(encoding="utf-8")
+                self.assertTrue(header.endswith("<!-- HK-11 새 판 줄 -->\n"), "머리 줄 문서는 새 판")
+                self.assertNotIn(MERGE_BEGIN, header)
+                self.assertTrue((target / f"{self.picks.script[1]}.new").is_file())
+                self.assertTrue((target / "CLAUDE.md").read_text(encoding="utf-8").startswith("@AGENTS.md\n"))
+                saved = backups(target)
+                self.assertEqual(saved["CLAUDE.md"], PRE_FILES["CLAUDE.md"].encode("utf-8"))
+                self.assertEqual(saved["README.md"], PRE_FILES["README.md"].encode("utf-8"))
+                self.assertEqual(saved[".agents/verify-checks.json"], PRE_FILES[".agents/verify-checks.json"].encode("utf-8"))
+                self.assertNotIn(self.picks.script[1], saved)
+        kinds = {m["path"]: m["kind"] for m in j["merged"]}
+        for rel, kind in (("README.md", "lines"), (".agents/verify-checks.json", "keys"), ("CLAUDE.md", "kit"),
+                          (self.picks.header_doc[1], "kit"), (self.picks.plain_doc[1], "lines"), (self.picks.changed[1], "kit")):
+            self.assertEqual(kinds.get(rel), kind, rel)
+        self.assertEqual(o.sh_run.stdout.count("v1 lock 첫 업데이트"), 1, o.sh_run.stdout[-3000:])
+        # 두 번째 update: lock 이 표시 줄 있는 v1 · v2 라 병합하지 않는다.
+        env = base_env({})
+        sh2 = subprocess.run(["bash", str(self.new / "skills/hx-update/update.sh"), str(o.sh)], env=env, capture_output=True, text=True, timeout=300)
+        cl2 = subprocess.run(["node", str(self.cli), "update", "--json", "--templates", str(kit_tpl), "--cwd", str(o.cli)],
+                             env=env, capture_output=True, text=True, timeout=300)
+        self.assertEqual(sh2.returncode, 0, sh2.stderr[-2000:])
+        self.assertNotIn("v1 lock 첫 업데이트", sh2.stdout)
+        self.assertEqual(json.loads(cl2.stdout)["merged"], [])
 
 
 if __name__ == "__main__":

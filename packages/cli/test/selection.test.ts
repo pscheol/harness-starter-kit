@@ -66,9 +66,17 @@ describe("선택값", () => {
   });
 
   it("모듈 목록: all · none · 적은 순서", () => {
-    expect(sel({ modules: "all" }).modules).toEqual(["jira-workflow", "platform-guards", "multi-harness"]);
+    expect(sel({ modules: "all" }).modules).toEqual(["jira-workflow", "multi-harness"]);
     expect(sel({ modules: "none" }).modules).toEqual([]);
-    expect(sel({ modules: "platform-guards,jira-workflow" }).modules).toEqual(["platform-guards", "jira-workflow"]);
+    expect(sel({ modules: "multi-harness,jira-workflow" }).modules).toEqual(["multi-harness", "jira-workflow"]);
+  });
+
+  it("없앤 모듈 platform-guards 는 오류가 아니라 retiredModules 로 받고 뺀다(HK-25 R2)", () => {
+    const s = sel({ modules: "platform-guards,jira-workflow" });
+    expect(s.modules).toEqual(["jira-workflow"]);
+    expect(s.retiredModules).toEqual(["platform-guards"]);
+    expect(sel({ modules: "platform-guards" }).modules).toEqual([]);
+    expect(sel({ modules: "jira-workflow" }).retiredModules).toBeUndefined();
   });
 
   it("lang 은 jvm 에서만 받는다", () => {

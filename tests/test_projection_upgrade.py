@@ -53,14 +53,17 @@ class ProjectionUpgradeTest(unittest.TestCase):
         cls.cl = cls.tmp / "cli" / "acme-notes"
         for target in (cls.sh, cls.cl):
             shutil.copytree(base, target, symlinks=True)
-        # 1차 update: 표시 줄 없는 v1.0.8 lock 이라 킷이 바꾼 파일은 모두 .new(HK-12 R12.6). 원본이 .new 대기인 배치는 미룬다(design §6.3).
+        # 1차 update: 표시 줄 없는 v1.0.8 lock — 배치 원본(.agents/rules · skills · roles)과 킷 머리 줄 문서는 새 판, 그 밖 문서 · JSON 은 병합,
+        # 코드는 .new(HK-25 R1). 배치 원본에 .new 가 없으니 배치를 미루지 않는다.
         cls.first = cls.update_both()
         cls.first_trees = (snapshot(cls.sh), snapshot(cls.cl))
         cls.first_context = cls.measure(cls.cl)
-        # 사람이 .new 를 모두 받아들인다(mv) — 그다음 update 가 포인터를 복사본 · 생성물로 바꾼다.
+        # 사람이 킷 파일의 .new 를 받아들인다(mv). 고친 포인터의 .new 는 받지 않는다 — 첫 update 가 배치를 미루지 않아
+        # 고친 포인터도 첫 update 에서 .new 를 받는다(HK-25). 다음 update 도 그 포인터를 덮지 않아야 한다.
         for target in (cls.sh, cls.cl):
             for p in sorted(target.rglob("*.new")):
-                os.replace(p, p.with_suffix(""))
+                if p.relative_to(target).as_posix() != f"{EDITED_STEERING}.new":
+                    os.replace(p, p.with_suffix(""))
         cls.sh_run, cls.cli_run = cls.update_both()
 
     @classmethod
@@ -94,14 +97,20 @@ class ProjectionUpgradeTest(unittest.TestCase):
             self.assertEqual(sorted(r for r in sh_files if sh_files[r] != cl_files[r]), [])
             self.assertEqual(sorted(sh_dirs ^ cl_dirs), [])
 
-    def test_first_update_defers_projection_and_keeps_budget(self):
-        """원본이 .new 대기면 옛 포인터를 두고 paths 없는 옛 규칙을 배치하지 않는다 — 상시 양이 늘지 않는다."""
+    def test_first_update_projects_at_once_and_keeps_budget(self):
+        """배치 원본은 첫 update 에서 새 판이 되어 배치를 미루지 않는다. 상시 양은 v1.0.8 보다 늘지 않는다(HK-25 R1 · HK-13 §15)."""
         before = self.measure(self.base)
         for h, size in self.first_context.items():
             with self.subTest(harness=h):
                 self.assertLessEqual(size, before[h])
         j = json.loads(self.first[1].stdout)
-        self.assertIn("defer", {o["action"] for o in j["projection"]["ops"]})
+        self.assertNotIn("defer", {o["action"] for o in j["projection"]["ops"]})
+        sh_files, cl_files = self.first_trees[0][0], self.first_trees[1][0]
+        for files in (sh_files, cl_files):
+            pending = [p for p in files if p.endswith(".new") and p.startswith((".agents/rules/", ".agents/skills/", ".agents/roles/"))]
+            self.assertEqual(pending, [])
+        kinds = {m["path"]: m["kind"] for m in j["merged"]}
+        self.assertEqual((kinds.get("AGENTS.md"), kinds.get("CLAUDE.md")), ("kit", "kit"))
 
     def test_untouched_pointers_become_copies(self):
         for target in (self.sh, self.cl):
@@ -126,7 +135,9 @@ class ProjectionUpgradeTest(unittest.TestCase):
         conflicts = [c["path"] for c in j["conflicts"]]
         self.assertTrue((self.cl / f"{EDITED_STEERING}.new").is_file())
         self.assertIn(EDITED_STEERING, conflicts)
-        self.assertIn(EDITED_COMMAND, [o["path"] for o in j["projection"]["ops"] if o["action"] == "keep-modified"])
+        # 고친 v1 커맨드 포인터는 첫 update 에서 남기고 lock 을 owner user 로 바꾼다(배치를 미루지 않는다 — HK-25).
+        first = json.loads(self.first[1].stdout)
+        self.assertIn(EDITED_COMMAND, [o["path"] for o in first["projection"]["ops"] if o["action"] == "keep-modified"])
 
     def test_session_context_does_not_grow_after_upgrade(self):
         before = self.measure(self.base)

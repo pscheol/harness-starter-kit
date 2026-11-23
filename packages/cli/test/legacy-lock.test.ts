@@ -46,26 +46,24 @@ describe("v1 lock 표시 줄", () => {
 });
 
 describe("update — 표시 줄 없는 v1 lock", () => {
-  it("sha(C) = B ≠ sha(D) 는 덮지 않고 .new, 새 lock 기준 해시는 null, exit 4", async () => {
+  it("sha(C) = B ≠ sha(D) 는 덮지 않는다 — 문서는 킷 판 + 사람 줄, .agents/rules 는 새 판, 원본은 merge-backup(HK-25 R1)", async () => {
     const { target, cli } = await v1Install(false);
     const r = await cli("update", ["--json", "--templates", newKit()]);
-    expect(r.code, r.stdout).toBe(4);
+    expect(r.code, r.stdout).toBe(0);
     const j = json(r);
-    expect(readText(target, "AGENTS.md")).toBe(MINE);
-    expect(readText(target, "AGENTS.md.new")).toBe("# Acme\n");
-    expect(readText(target, `${A}.new`)).toContain("v2");
-    expect(readText(target, A)).not.toContain("v2");
+    expect(readText(target, "AGENTS.md")).toBe(`# Acme\n<!-- harness-kit: 설치 전 내용(병합) -->\n${MINE}<!-- /harness-kit -->\n`);
+    expect(exists(target, "AGENTS.md.new") || exists(target, `${A}.new`)).toBe(false);
+    expect(readText(target, A)).toContain("v2");
     const ops = new Map((j.ops as { path: string; action: string; reason?: string }[]).map((o) => [o.path, o]));
-    expect(ops.get("AGENTS.md")).toMatchObject({ action: "conflict", reason: expect.stringContaining("v1 lock") });
-    expect(ops.get(A)).toMatchObject({ action: "conflict" });
-    expect(lockEntry(target, "AGENTS.md")).toMatchObject({ owner: "kit", sha256: null });
-    expect(lockEntry(target, A)).toMatchObject({ owner: "kit", sha256: null });
+    expect(ops.get("AGENTS.md")).toMatchObject({ action: "merge", reason: expect.stringContaining("v1 lock") });
+    expect(ops.get(A)).toMatchObject({ action: "update", merge: "kit" });
+    expect(lockEntry(target, "AGENTS.md")).toMatchObject({ owner: "kit", sha256: sha256Hex("# Acme\n") });
+    expect(lockEntry(target, A)).toMatchObject({ owner: "kit", sha256: sha256Hex(readText(target, A)) });
     expect(lockEntry(target, ".agents/rules/tech.md")?.sha256).toBe(sha256Hex("jvm Gradle\n"));
-    fs.renameSync(path.join(target, `${A}.new`), path.join(target, A));
     const again = json(await cli("update", ["--json", "--templates", newKit()]));
     expect(again.ops.find((o: { path: string }) => o.path === A)).toBeUndefined();
     expect(again.ops.find((o: { path: string }) => o.path === "AGENTS.md")).toMatchObject({ action: "conflict" });
-    expect(readText(target, "AGENTS.md")).toBe(MINE);
+    expect(readText(target, "AGENTS.md")).toContain(MINE);
   });
 
   it("표시 줄이 있으면 킷 파일은 그대로 update 하고, '-' 인 미리 있던 파일만 .new", async () => {

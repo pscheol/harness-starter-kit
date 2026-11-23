@@ -61,11 +61,16 @@ export function realLayout(): Record<string, unknown> {
   return JSON.parse(fs.readFileSync(path.join(REAL_TEMPLATES, "layout.json"), "utf8")) as Record<string, unknown>;
 }
 
-/** 작은 템플릿 폴더. layout.json 은 실제 파일에 patch 를 덮어 만든다. */
+/** 시험 전용 모듈: common 과 같은 설치 경로(scripts/guards/_template.sh)를 하나 둔다(HK-10 뒤 레이어 우선 시험). */
+export const OVERLAP_MODULE = "zz-overlap";
+
+/** 작은 템플릿 폴더. layout.json 은 실제 파일(+ 시험 모듈 OVERLAP_MODULE)에 patch 를 덮어 만든다. */
 export function fixtureTemplates(files: Record<string, string | Buffer>, patch: Record<string, unknown> = {}): string {
   const dir = tmpDir("hk-tpl-");
   writeTree(dir, files);
-  fs.writeFileSync(path.join(dir, "layout.json"), JSON.stringify({ ...realLayout(), ...patch }, null, 2));
+  const real = realLayout();
+  const layout = { ...real, modules: [...(real.modules as string[]), OVERLAP_MODULE], ...patch };
+  fs.writeFileSync(path.join(dir, "layout.json"), JSON.stringify(layout, null, 2));
   return dir;
 }
 
@@ -88,8 +93,8 @@ export const BASIC_FILES: Record<string, string> = {
   "stacks/web/agents-rules/tech.md": "web\n",
   "stacks/web/arch/nextjs-app/agents-rules/structure.md": "next\n",
   "domains/frontend/agents-rules/frontend.md": "fe\n",
-  "optional/platform-guards/ABOUT": "가드 모듈\n",
-  "optional/platform-guards/scripts/guards/_template.sh": "module\n",
+  "optional/zz-overlap/ABOUT": "겹침 시험 모듈\n",
+  "optional/zz-overlap/scripts/guards/_template.sh": "module\n",
   "optional/jira-workflow/agents-rules/jira.md": "jira\n",
   "optional/multi-harness/tools/harness/units.json": "{}\n",
 };

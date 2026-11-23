@@ -65,10 +65,10 @@ describe("add — 하네스 · 모듈", () => {
 
   it("이름은 쉼표 · 공백으로 여럿 받고 적은 순서를 지킨다", async () => {
     const { target, templates, cli } = await installedFixture();
-    const r = await cli("add", ["kiro,cursor", "platform-guards", "--json", "--templates", templates], { env: FIXTURE_ENV });
+    const r = await cli("add", ["kiro,cursor", "zz-overlap", "--json", "--templates", templates], { env: FIXTURE_ENV });
     expect(r.code, r.stdout).toBe(0);
-    expect(json(r).names).toMatchObject({ harnesses: ["kiro", "cursor"], modules: ["platform-guards"] });
-    expect(readJsonFile(path.join(target, META_FILE))).toMatchObject({ agents: ["claude", "kiro", "cursor"], modules: ["platform-guards"] });
+    expect(json(r).names).toMatchObject({ harnesses: ["kiro", "cursor"], modules: ["zz-overlap"] });
+    expect(readJsonFile(path.join(target, META_FILE))).toMatchObject({ agents: ["claude", "kiro", "cursor"], modules: ["zz-overlap"] });
     expect(exists(target, ".kiro/agents/acme.json")).toBe(true);
     expect(exists(target, ".cursor/commands/hx.md")).toBe(true);
   });
@@ -76,11 +76,11 @@ describe("add — 하네스 · 모듈", () => {
   it("겹치는 경로는 파일을 두고 lock 레이어만 새 이기는 판으로 바꾼다 — 내용은 다음 update 가 맞춘다", async () => {
     const { target, templates, cli } = await installedFixture();
     const guard = "scripts/guards/_template.sh";
-    const r = await cli("add", ["platform-guards", "--json", "--templates", templates], { env: FIXTURE_ENV });
+    const r = await cli("add", ["zz-overlap", "--json", "--templates", templates], { env: FIXTURE_ENV });
     expect(r.code, r.stdout).toBe(0);
-    expect(opOf(json(r), guard)).toMatchObject({ action: "relayer", layer: "optional/platform-guards" });
+    expect(opOf(json(r), guard)).toMatchObject({ action: "relayer", layer: "optional/zz-overlap" });
     expect(readText(target, guard)).toBe("common\n");
-    expect(lockEntry(target, guard)).toMatchObject({ owner: "kit", sha256: sha256Hex("common\n"), layer: "optional/platform-guards" });
+    expect(lockEntry(target, guard)).toMatchObject({ owner: "kit", sha256: sha256Hex("common\n"), layer: "optional/zz-overlap" });
     const u = await run(["update", "--json", "--cwd", target, "--templates", templates], { env: FIXTURE_ENV });
     expect(u.code, u.stdout).toBe(0);
     expect(readText(target, guard)).toBe("module\n");
@@ -189,5 +189,39 @@ describe("add — 하네스 · 모듈", () => {
     const { cli } = await installedFixture({ files });
     const r = await cli("add", ["multi-harness", "--templates", fixtureTemplates(files)]);
     expect(r.code).toBe(5);
+  });
+});
+
+describe("add — 없앤 모듈 platform-guards(HK-25 R2)", () => {
+  it("platform-guards 만 주면 '공통 층에 포함됨' 한 줄과 exit 0, 아무것도 쓰지 않는다", async () => {
+    const { target, templates, cli } = await installedFixture();
+    const before = readTree(target);
+    const r = await cli("add", ["platform-guards", "--json", "--templates", templates], { env: FIXTURE_ENV });
+    expect(r.code, r.stdout + r.stderr).toBe(0);
+    expect(r.stderr).toBe("");
+    expect(json(r)).toMatchObject({ command: "add", names: { harnesses: [], modules: [], retired: ["platform-guards"] } });
+    expect(readTree(target)).toEqual(before);
+    const human = await cli("add", ["platform-guards", "--templates", templates], { env: FIXTURE_ENV });
+    expect(human.code).toBe(0);
+    expect(human.stdout).toContain("platform-guards 모듈은 공통 층에 포함됨");
+  });
+
+  it("다른 이름과 같이 주면 안내하고 나머지만 켠다(메타에 없앤 이름을 적지 않는다)", async () => {
+    const { target, templates, cli } = await installedFixture();
+    const r = await cli("add", ["cursor", "platform-guards", "--json", "--templates", templates], { env: FIXTURE_ENV });
+    expect(r.code, r.stdout).toBe(0);
+    expect(json(r).names).toMatchObject({ harnesses: ["cursor"], modules: [], retired: ["platform-guards"] });
+    expect(readJsonFile(path.join(target, META_FILE))).toMatchObject({ agents: ["claude", "cursor"], modules: [] });
+  });
+
+  it("메타에 없앤 모듈이 있으면 add 가 메타에서 빼고 한 줄 알린다", async () => {
+    const { target, templates, cli } = await installedFixture();
+    const meta = readJsonFile(path.join(target, META_FILE));
+    writeJsonFile(path.join(target, META_FILE), { ...meta, modules: ["platform-guards"] });
+    const r = await cli("add", ["codex", "--json", "--templates", templates], { env: FIXTURE_ENV });
+    expect(r.code, r.stdout).toBe(0);
+    expect(json(r).retiredModules).toEqual(["platform-guards"]);
+    expect(json(r).droppedModules).toEqual([]);
+    expect(readJsonFile(path.join(target, META_FILE)).modules).toEqual([]);
   });
 });

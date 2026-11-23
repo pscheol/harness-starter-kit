@@ -99,7 +99,7 @@ describe("진입점", () => {
 describe("init · plan", () => {
   it("init 이 파일 · 메타 v2 · lock v2 · 매니페스트를 쓴다(R2.4)", async () => {
     const { target, init } = setup();
-    const r = await init("--modules", "platform-guards");
+    const r = await init("--modules", "zz-overlap");
     expect(r.code, r.stderr).toBe(0);
     expect(fs.readFileSync(path.join(target, "AGENTS.md"), "utf8")).toBe("# Acme\n");
     expect(fs.statSync(path.join(target, "scripts/run.sh")).mode & 0o111).not.toBe(0);
@@ -110,7 +110,7 @@ describe("init · plan", () => {
       kit: { version: VERSION },
       stack: "jvm",
       agents: ["claude"],
-      modules: ["platform-guards"],
+      modules: ["zz-overlap"],
       issueKey: { source: "kit", prefix: "ACME" },
       git: { base: "develop" },
       verify: { fullOnlyInCI: true },
@@ -126,7 +126,7 @@ describe("init · plan", () => {
     expect(new Set(paths).size).toBe(paths.length);
     expect(paths).not.toContain(".agents/harness.json");
     // 겹치는 경로는 뒤 레이어(모듈)가 이긴다(HK-10 R10.1).
-    expect(lock.entries.find((e: { path: string }) => e.path === "scripts/guards/_template.sh")).toMatchObject({ layer: "optional/platform-guards", owner: "kit" });
+    expect(lock.entries.find((e: { path: string }) => e.path === "scripts/guards/_template.sh")).toMatchObject({ layer: "optional/zz-overlap", owner: "kit" });
     expect(fs.existsSync(path.join(target, ".agents/harness.json"))).toBe(true);
     expect(r.stdout).toContain("생성");
   });
@@ -267,5 +267,23 @@ describe("list", () => {
     expect(f.files.total).toBe(f.files.entries.length);
     expect(f.files.byOwner.kit).toBe(f.files.total);
     expect(f.files.byOp.copy).toBe(f.files.total);
+  });
+});
+
+describe("init · plan — 없앤 모듈 platform-guards(HK-25 R2)", () => {
+  it("--modules platform-guards 는 '공통 층에 포함됨' 한 줄과 exit 0, 메타 modules 에 적지 않는다", async () => {
+    const { target, init } = setup();
+    const r = await init("--modules", "platform-guards,jira-workflow");
+    expect(r.code, r.stderr).toBe(0);
+    expect(r.stdout).toContain("platform-guards 모듈은 공통 층에 포함됨");
+    const meta = JSON.parse(fs.readFileSync(path.join(target, ".agents/harness-kit.json"), "utf8"));
+    expect(meta.modules).toEqual(["jira-workflow"]);
+    const plan = json(await run(["plan", "--json", "--templates", fixtureTemplates(BASIC_FILES), "--cwd", tmpDir(), "--agents", "claude", "--modules", "platform-guards"], { env: ENV }));
+    expect(plan.selection.modules).toEqual([]);
+    expect(plan.retiredModules).toEqual(["platform-guards"]);
+  });
+
+  it("도움말의 모듈 목록에 platform-guards 가 없다", async () => {
+    expect((await run(["--help"])).stdout).not.toContain("platform-guards");
   });
 });

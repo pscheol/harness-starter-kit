@@ -1,0 +1,29 @@
+{
+  "schema": "harness-kit.verify-checks/v2",
+  "checks": {
+    "lint": {
+      "cmd": "new lint",
+      "paths": [
+        "a",
+        "b"
+      ]
+    },
+    "test": {
+      "cmd": "pytest"
+    },
+    "mine": {
+      "cmd": "make mine"
+    }
+  },
+  "list": [
+    3
+  ],
+  "added": null,
+  "flag": true,
+  "teamNote": "사람 \"따옴표\" \\ 탭\t끝\u0001",
+  "ratio": 1.50,
+  "big": 1E+5,
+  "id": 12345678901234567890,
+  "empty": {},
+  "none": []
+}
