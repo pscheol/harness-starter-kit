@@ -10,9 +10,13 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import cli_dist  # noqa: E402
 
 KIT = Path(__file__).resolve().parents[1]
 GEN = KIT / "scripts/gen-plugins.mjs"
@@ -93,6 +97,48 @@ class GeneratedPluginTest(unittest.TestCase):
             self.assertEqual(r.returncode, 2, f"{out}: {r.stdout}{r.stderr}")
         self.assertTrue((kit / "packages/templates/common").is_dir())
         self.assertTrue((keep / "note.txt").is_file())
+
+    def test_cli_bundle_copy_is_built_from_current_sources(self):
+        """플러그인의 CLI 사본: 실행 비트 · 머리줄 해시 = 지금 소스 해시 · dist 가 있으면 바이트 같음(HK-8 R9.1)."""
+        copy = PLUGIN / cli_dist.CLI_BIN_REL
+        self.assertTrue(copy.is_file(), "plugins/harness-kit/skills/hx-bootstrap/bin/harness-kit.js 가 없다")
+        self.assertTrue(os.access(copy, os.X_OK))
+        self.assertEqual(cli_dist.banner_hash(copy), cli_dist.src_hash())
+        if cli_dist.banner_hash(cli_dist.DIST) == cli_dist.src_hash():
+            self.assertEqual(copy.read_bytes(), cli_dist.DIST.read_bytes())
+        self.assertTrue((PLUGIN / "skills/hx-bootstrap/templates/layout.json").is_file())
+
+    def test_check_detects_cli_source_change(self):
+        """CLI 소스를 고치고 다시 빌드하지 않으면 --check 가 실패한다(dist 있음 → 2, 없음 → 1)."""
+        kit = self.kit_copy()
+        main_ts = kit / "packages/cli/src/main.ts"
+        main_ts.write_text(main_ts.read_text(encoding="utf-8") + "\n// 고친 줄\n", encoding="utf-8")
+        dist = kit / "packages/cli/dist/cli.js"
+        if dist.exists():
+            r = node("--check", cwd=kit)
+            self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+            self.assertIn("오래된 빌드", r.stdout + r.stderr)
+            dist.unlink()
+        r = node("--check", cwd=kit)
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("- " + cli_dist.CLI_BIN_REL, r.stdout)
+        w = node(cwd=kit)
+        self.assertEqual(w.returncode, 2, w.stdout + w.stderr)
+        self.assertIn("pnpm build", w.stdout + w.stderr)
+        self.assertTrue((kit / "plugins/harness-kit" / cli_dist.CLI_BIN_REL).is_file(), "실패한 생성이 기존 생성물을 지웠다")
+
+    def test_works_without_dist_when_copy_is_current(self):
+        """dist 가 없어도(새로 받은 저장소) 커밋된 사본이 지금 소스에서 만든 것이면 생성 · 비교가 돈다."""
+        kit = self.kit_copy()
+        dist = kit / "packages/cli/dist/cli.js"
+        if dist.exists():
+            dist.unlink()
+        r = node("--check", cwd=kit)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        out = Path(tempfile.mkdtemp(prefix="hk-gen-nodist-"))
+        self.addCleanup(shutil.rmtree, out, True)
+        self.assertEqual(node("--out", str(out), cwd=kit).returncode, 0)
+        self.assertEqual(tree(out), tree(PLUGIN))
 
     def test_plugin_matches_layers(self):
         """생성물의 세 층이 원본 세 곳에서 왔다(R1.1 · R3.1)."""
