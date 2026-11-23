@@ -7,7 +7,7 @@ import { CliError, EXIT, usageError } from "./errors";
 import { isDir } from "./fsx";
 import type { Layout } from "./layout";
 import { resolveCandidates } from "./resolve";
-import type { Selection } from "./selection";
+import { isRetiredModule, type Selection } from "./selection";
 
 /** 나중 단계 모듈. 이번 판에서는 이름만 알아보고 exit 2 와 제공 단계를 낸다. */
 export const LATER_MODULES: Record<string, string> = {
@@ -19,6 +19,8 @@ export const LATER_MODULES: Record<string, string> = {
 export interface Names {
   harnesses: string[];
   modules: string[];
+  /** 없앤 모듈(HK-25 R2) — 안내만 한다 */
+  retired: string[];
 }
 
 /** 위치 인자(공백 · 쉼표 목록) → 하네스 · 모듈. 적은 순서를 지키고 중복은 뺀다. */
@@ -29,10 +31,14 @@ export function parseNames(layout: Layout, raw: string[], command: string): Name
   const later = words.find((w) => Object.hasOwn(LATER_MODULES, w));
   if (later) throw usageError(`'${later}' 모듈은 아직 없다 — ${LATER_MODULES[later]}에서 제공한다`, choices);
   if (words.some((w) => w === "all" || w === "none")) throw usageError(`${command}: all · none 은 받지 않는다(하네스인지 모듈인지 갈리지 않는다)`, choices);
-  const unknown = words.filter((w) => !layout.harnesses.includes(w) && !layout.modules.includes(w));
+  const unknown = words.filter((w) => !layout.harnesses.includes(w) && !layout.modules.includes(w) && !isRetiredModule(w));
   if (unknown.length) throw usageError(`${command}: 모르는 이름 ${unknown.join(" ")}`, choices);
   const uniq = words.filter((w, i) => words.indexOf(w) === i);
-  return { harnesses: uniq.filter((w) => layout.harnesses.includes(w)), modules: uniq.filter((w) => layout.modules.includes(w)) };
+  return {
+    harnesses: uniq.filter((w) => layout.harnesses.includes(w)),
+    modules: uniq.filter((w) => layout.modules.includes(w)),
+    retired: uniq.filter((w) => isRetiredModule(w) && !layout.modules.includes(w)),
+  };
 }
 
 /** 모듈 템플릿 폴더가 있는지(없으면 exit 5 — init 과 같다). */
@@ -65,7 +71,7 @@ export function winnerLayers(layout: Layout, templatesDir: string, sel: Selectio
  */
 export function shareOf(layout: Layout, templatesDir: string, after: Selection, names: Names, tokens: Record<string, string>, afterLayers: Map<string, string>): Set<string> {
   const share = new Set<string>();
-  const each: Names[] = [...names.harnesses.map((h) => ({ harnesses: [h], modules: [] })), ...names.modules.map((m) => ({ harnesses: [], modules: [m] }))];
+  const each: Names[] = [...names.harnesses.map((h) => ({ harnesses: [h], modules: [], retired: [] })), ...names.modules.map((m) => ({ harnesses: [], modules: [m], retired: [] }))];
   for (const one of each) {
     const without = winnerLayers(layout, templatesDir, withoutNames(after, one), tokens);
     for (const p of afterLayers.keys()) if (!without.has(p)) share.add(p);

@@ -57,9 +57,9 @@ describe("remove — 하네스 · 모듈", () => {
 
   it("모듈을 빼면 겹치던 경로는 앞 레이어(common) 판으로 돌아간다. 고친 파일이면 .new 와 exit 4", async () => {
     const guard = "scripts/guards/_template.sh";
-    const a = await installed("claude", "platform-guards,jira-workflow");
+    const a = await installed("claude", "zz-overlap,jira-workflow");
     expect(readText(a.target, guard)).toBe("module\n");
-    const r = await a.cli(["platform-guards", "--json"]);
+    const r = await a.cli(["zz-overlap", "--json"]);
     expect(r.code, r.stdout).toBe(0);
     expect(opOf(json(r), guard)).toMatchObject({ action: "update", layer: "common" });
     expect(readText(a.target, guard)).toBe("common\n");
@@ -67,9 +67,9 @@ describe("remove — 하네스 · 모듈", () => {
     expect(readJsonFile(path.join(a.target, META_FILE)).modules).toEqual(["jira-workflow"]);
     expect(filesOf(a.target)).toEqual(filesOf(await freshInit(a.templates, "claude", "jira-workflow")));
 
-    const b = await installed("claude", "platform-guards");
+    const b = await installed("claude", "zz-overlap");
     fs.appendFileSync(path.join(b.target, guard), "사람 줄\n");
-    const rb = await b.cli(["platform-guards", "--json"]);
+    const rb = await b.cli(["zz-overlap", "--json"]);
     expect(rb.code, rb.stdout).toBe(4);
     expect(readText(b.target, guard)).toBe("module\n사람 줄\n");
     expect(readText(b.target, `${guard}.new`)).toBe("common\n");
@@ -114,5 +114,17 @@ describe("remove — 하네스 · 모듈", () => {
     const r = await cli([name]);
     expect(r.code).toBe(2);
     if (name !== "bogus") expect(r.stderr).toContain("P22");
+  });
+});
+
+describe("remove — 없앤 모듈 platform-guards(HK-25 R2)", () => {
+  it("platform-guards 는 '공통 층에 포함됨' 과 exit 0, 공통 층 파일을 지우지 않는다", async () => {
+    const { target, cli } = await installed("claude");
+    const before = readTree(target);
+    const r = await cli(["platform-guards", "--json"]);
+    expect(r.code, r.stdout + r.stderr).toBe(0);
+    expect(json(r)).toMatchObject({ command: "remove", names: { harnesses: [], modules: [], retired: ["platform-guards"] } });
+    expect(readTree(target)).toEqual(before);
+    expect((await cli(["platform-guards"])).stdout).toContain("platform-guards 모듈은 공통 층에 포함됨");
   });
 });

@@ -7,7 +7,7 @@ description: 이미 하네스가 깔린 리포에 에이전트(하네스 플랫�
 
 부트스트랩은 **그 리포에서 실제로 쓰는 에이전트만** 깐다. 나중에 다른 에이전트로도
 같은 리포를 만지게 되면 이 스킬로 그 배선만 덧붙인다. 선택 모듈(`jira-workflow` ·
-`platform-guards` · `multi-harness`)도 같은 방법으로 켠다. 안 쓰게 된 것은 뺀다.
+`multi-harness`)도 같은 방법으로 켠다. 안 쓰게 된 것은 뺀다.
 
 ## 왜 나눠 두었나
 
@@ -61,7 +61,7 @@ bash "$SKILL_DIR/../hx-bootstrap/kit.sh" remove cursor --cwd <대상> --dry-run 
 
 | 인자 | 의미 | 없을 때 |
 |---|---|---|
-| 이름…(위치 인자) | 하네스 `claude` · `codex` · `cursor` · `kiro`, 모듈 `jira-workflow` · `platform-guards` · `multi-harness`(공백 · 쉼표) | **필수** — 없으면 exit 2 |
+| 이름…(위치 인자) | 하네스 `claude` · `codex` · `cursor` · `kiro`, 모듈 `jira-workflow` · `multi-harness`(공백 · 쉼표) | **필수** — 없으면 exit 2 |
 | `--cwd <경로>` | 대상 프로젝트 경로 | 현재 작업 디렉터리 |
 | `--dry-run` | 쓰지 않고 계획만 | 실제 설치 |
 

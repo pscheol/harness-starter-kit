@@ -18,7 +18,8 @@ KIT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NODE="${HARNESS_KIT_NODE:-node}"
 CLI="$KIT_DIR/bin/harness-kit.js"
 HARNESSES=" claude codex cursor kiro "
-MODULES=" jira-workflow platform-guards multi-harness "
+MODULES=" jira-workflow multi-harness "
+RETIRED=" platform-guards "   # 없앤 모듈(HK-25, 공통 층에 포함됨) — add-agent.sh 에 넘겨 같은 안내를 낸다
 TOKENS=" PROJECT_NAME PROJECT_SLUG PACKAGE_NS SERVICE_NAME PRIMARY_LANGUAGE BUILD_TOOL TEST_CMD DOMAIN_EXAMPLE PROTECTED_PATH "
 
 # Node 18.3 이상인가(util.parseArgs 가 18.3 부터 있다 — CLI 의 engines 와 같다).
@@ -87,7 +88,7 @@ while [ $# -gt 0 ]; do
     add:)
       for name in $(echo "$val" | tr ',' ' '); do
         case "$HARNESSES" in *" $name "*) AGENTS="${AGENTS:+$AGENTS,}$name"; continue ;; esac
-        case "$MODULES" in *" $name "*) MODS="${MODS:+$MODS,}$name"; continue ;; esac
+        case "$MODULES$RETIRED" in *" $name "*) MODS="${MODS:+$MODS,}$name"; continue ;; esac
         case "$name" in aidlc | entire | notion) die "'$name' 모듈은 아직 없다 — P22 에서 제공한다" ;; esac
         die "add: 모르는 이름 $name"
       done ;;

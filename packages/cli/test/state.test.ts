@@ -153,7 +153,7 @@ describe("lock", () => {
     expect(v1LabelToLayer("backend")).toBe("domains/backend");
     expect(v1LabelToLayer("jvm")).toBe("stacks/jvm");
     expect(v1LabelToLayer("jvm/hexagonal")).toBe("stacks/jvm/arch/hexagonal");
-    expect(v1LabelToLayer("mod/platform-guards")).toBe("optional/platform-guards");
+    expect(v1LabelToLayer("mod/zz-overlap")).toBe("optional/zz-overlap");
   });
 
   it("v1 읽기: 주석 · 빈 줄 · '-' 해시 · 겹치는 경로(뒤 layer, 앞 sha)", () => {
@@ -165,7 +165,7 @@ describe("lock", () => {
       "",
       "# 주석",
       `-\tjvm/hexagonal\tcore\tARCHITECTURE.md`,
-      `${c}\tmod/platform-guards\tcore\tscripts/guards/_template.sh`,
+      `${c}\tmod/zz-overlap\tcore\tscripts/guards/_template.sh`,
       `${c}\tjvm\tclaude\tCLAUDE.md`,
       "",
     ].join("\n");
@@ -175,7 +175,7 @@ describe("lock", () => {
     expect(v.entries).toEqual([
       { path: "ARCHITECTURE.md", op: "copy", owner: "kit", sha256: null, layer: "stacks/jvm/arch/hexagonal" },
       { path: "CLAUDE.md", op: "copy", owner: "kit", sha256: c, layer: "stacks/jvm" },
-      { path: "scripts/guards/_template.sh", op: "copy", owner: "kit", sha256: a, layer: "optional/platform-guards" },
+      { path: "scripts/guards/_template.sh", op: "copy", owner: "kit", sha256: a, layer: "optional/zz-overlap" },
     ]);
   });
 

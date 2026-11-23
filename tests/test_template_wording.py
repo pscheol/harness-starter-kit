@@ -121,6 +121,10 @@ def legacy_lines() -> list[str]:
     return hits
 
 
+# 선택 모듈(layout.json modules). platform-guards 는 HK-25 에서 없앴다 — 파일이 공통 층과 같다.
+MODULES = ("jira-workflow", "multi-harness")
+
+
 def install_counts() -> dict[str, Counter]:
     """layout.json 세그먼트로 레이어마다 하네스별 파일 수를 센다(`ignore` 제외)."""
     layout = json.loads((TEMPLATES / "layout.json").read_text(encoding="utf-8"))
@@ -147,8 +151,28 @@ def install_counts() -> dict[str, Counter]:
         "common": count("common"),
         "backend": count("common") + stack,
         "frontend": count("common") + count("domains/frontend") + stack,
-        **{m: count(f"optional/{m}") for m in ("jira-workflow", "platform-guards", "multi-harness")},
+        **{m: count(f"optional/{m}") for m in MODULES},
     }
+
+
+class RetiredModuleTest(unittest.TestCase):
+    """platform-guards 모듈을 없앴다(HK-25 R2). 모듈 목록 · 템플릿 · 설치 문서에 이름이 남지 않는다."""
+
+    def test_layout_and_templates_have_no_platform_guards(self):
+        layout = json.loads((TEMPLATES / "layout.json").read_text(encoding="utf-8"))
+        self.assertEqual(tuple(layout["modules"]), MODULES)
+        self.assertFalse((TEMPLATES / "optional/platform-guards").exists())
+
+    def test_docs_do_not_list_platform_guards(self):
+        roots = [KIT / "packages/plugin", TEMPLATES, KIT / "README.md", KIT / "docs/guides", KIT / "docs/design/02-cli-engine.md"]
+        hits = []
+        for root in roots:
+            for path in [root] if root.is_file() else sorted(root.rglob("*")):
+                if path.is_file() and path.suffix in (".md", ".sh", ".json"):
+                    for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                        if "platform-guards" in line and "공통 층" not in line and "없앴" not in line and "없앤" not in line:
+                            hits.append(f"{path.relative_to(KIT)}:{number}: {line.strip()[:120]}")
+        self.assertEqual(hits, [], "\n".join(hits))
 
 
 class LegacySddFormTest(unittest.TestCase):
@@ -166,7 +190,7 @@ class LegacySddFormTest(unittest.TestCase):
             want = " | ".join(str(c[k]) for k in cols) + f" | **{sum(c.values())}** |"
             with self.subTest(group=group):
                 self.assertTrue(row.endswith(want), f"manifest 행 {row!r} 이 지금 수 {want!r} 와 다르다")
-        for module in ("jira-workflow", "platform-guards", "multi-harness"):
+        for module in MODULES:
             c = counts[module]
             parts = " · ".join(f"{k} {c[k]}" for k in cols if c[k])
             with self.subTest(module=module):

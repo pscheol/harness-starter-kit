@@ -470,5 +470,5 @@ v1.0.8(e181b6f) 설치본 실측(토큰 `Acme Notes` · `acme-notes` · `com.acm
 - Cursor `.mdc` `globs` 쉼표 목록과 빈 `description`의 동작.
 - Claude Code에서 `.claude/rules/*.md`의 `paths`가 Read한 파일에도 적용되는지(03 §5 #10 수동 점검).
 - 사람 세션이 `.agents/` 원본을 고친 뒤 동기화 훅(HK-24) 전까지는 `repair`로 맞춘다. fast 검증이 `stale`로 알린다.
-- 표시 줄 없는 v1.0.8 lock의 첫 update: 킷이 `paths`를 붙인 규칙(jvm 설치본 20개)이 모두 `.new`가 된다(HK-12 모호성). 그동안 그 규칙의 배치는 미뤄져 옛 포인터가 남는다(§6.3). `.agents/rules|skills|roles`를 모호성에서 빼서 바로 바꿀지 사람이 정한다.
+- 표시 줄 없는 v1.0.8 lock의 첫 update: 킷이 `paths`를 붙인 규칙(jvm 설치본 20개)이 모두 `.new`가 된다(HK-12 모호성). 그동안 그 규칙의 배치는 미뤄져 옛 포인터가 남는다(§6.3). `.agents/rules|skills|roles`를 모호성에서 빼서 바로 바꿀지 사람이 정한다. → HK-25 design §2.2 #1에서 정했다: 그 폴더 파일은 킷 판으로 바로 바꾸고 원본을 `.agents/state/merge-backup/`에 둔다(배치를 미루지 않는다).
 - CLI 기본 `issueKey.prefix`(슬러그 대문자, 예 `ACME-NOTES`)를 설치본 `check_harness.py`가 형식 오류로 막는다(setup.sh는 `[A-Z0-9]`만 남긴다). HK-8 시험이 지금 값을 묶고 있어 이번에 고치지 않았다.

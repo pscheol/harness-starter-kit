@@ -115,7 +115,7 @@ else
   echo "  (typecheck 스크립트도 tsc 도 없음 — 건너뜀)"
 fi
 
-# ── 5) 플랫폼 가드 (선택 모듈 platform-guards 를 깔면 생긴다) ────────────────
+# ── 5) 플랫폼 가드 (공통 층 scripts/run-guards.sh) ────────────────
 # 배선 작업 없이 파일 존재만으로 잡힌다. 없으면 조용히 건너뛴다.
 if [ -f scripts/run-guards.sh ]; then
   echo "▶ 플랫폼 가드"

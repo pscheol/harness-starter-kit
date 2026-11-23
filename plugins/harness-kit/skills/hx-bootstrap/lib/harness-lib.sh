@@ -16,7 +16,9 @@ shopt -u patsub_replacement 2>/dev/null || true
 HARNESS_META_REL=".agents/harness-kit.json"
 HARNESS_LOCK_REL=".agents/harness-kit.lock"
 HARNESS_ALL_AGENTS="claude codex cursor kiro"
-HARNESS_ALL_MODULES="jira-workflow platform-guards multi-harness"
+HARNESS_ALL_MODULES="jira-workflow multi-harness"
+# 없앤 모듈(HK-25): 파일이 공통 층과 같아져 따로 켤 것이 없다. 받으면 한 줄 알리고 넘긴다(오류가 아니다).
+HARNESS_RETIRED_MODULES="platform-guards"
 # 도메인 이름의 유효 집합. templates/domains/ 디렉터리 유무와는 별개다 —
 # backend 는 이름은 유효하지만 공유 규칙이 없어 디렉터리가 존재하지 않는다.
 HARNESS_ALL_DOMAINS="backend frontend"
@@ -122,13 +124,34 @@ harness_agent_selected() {
 
 # ── 선택 모듈 ───────────────────────────────────────────────────────────────
 #
-# 모듈은 "어떤 팀은 쓰고 어떤 팀은 안 쓰는" 규약 묶음이다(이슈 트래커 연동·플랫폼 가드).
+# 모듈은 "어떤 팀은 쓰고 어떤 팀은 안 쓰는" 규약 묶음이다(이슈 트래커 연동·여러 리포 하네스).
 # 안 쓰는 규칙 파일은 컨텍스트만 먹고, 지켜지지 않는 규칙은 나머지 규칙의 신뢰도를 깎는다.
 # 그래서 기본은 '설치 안 함'이고 명시할 때만 깔린다.
+harness_module_retired() {
+  case " $HARNESS_RETIRED_MODULES " in *" $1 "*) return 0 ;; *) return 1 ;; esac
+}
+
+# 없앤 모듈 안내 한 줄. 두 번째 인자가 meta 면 메타에서 뺀다는 문구(update · add-agent).
+harness_retired_note() {
+  if [ "${2:-}" = meta ]; then
+    echo "· $1 모듈은 공통 층에 포함됨 — 메타에서 뺀다(파일은 그대로)"
+  else
+    echo "· $1 모듈은 공통 층에 포함됨 — 따로 켜고 끌 것이 없다"
+  fi
+}
+
+# "<고른 모듈>|<모르는 이름>|<없앤 이름>". 없앤 이름은 all · none 과 상관없이 먼저 가려낸다(CLI 와 같다).
 harness_normalize_modules() {
-  local raw m out="" bad=""
+  local raw m out="" bad="" retired="" rest=""
   raw="$(echo "$1" | tr ',' ' ')"
   for m in $raw; do
+    if harness_module_retired "$m"; then
+      case " $retired " in *" $m "*) ;; *) retired="$retired $m" ;; esac
+    else
+      rest="$rest $m"
+    fi
+  done
+  for m in $rest; do
     if [ "$m" = all ]; then out="$HARNESS_ALL_MODULES"; bad=""; break; fi
     if [ "$m" = none ]; then out=""; bad=""; break; fi
     case " $HARNESS_ALL_MODULES " in
@@ -136,7 +159,7 @@ harness_normalize_modules() {
       *)        bad="$bad $m" ;;
     esac
   done
-  echo "${out# }|${bad# }"
+  echo "${out# }|${bad# }|${retired# }"
 }
 
 # ── 레이어 · 설치 후보(뒤 레이어가 이긴다) ─────────────────────────────────

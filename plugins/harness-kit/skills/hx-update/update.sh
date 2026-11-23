@@ -23,6 +23,10 @@
 #   update    리포 파일 = 설치 당시 그대로       → 새 버전으로 교체한다
 #   conflict  리포 파일이 수정됐다               → .new 로 저장하고 원본은 둔다
 #   orphan    lock 에는 있는데 킷에서 사라졌다    → 보고만 한다(지우지 않는다)
+#
+# 표시 줄 없는 v1 lock(v1.0.8 이하)의 첫 실행: 설치 전 사람 파일과 킷 파일을 가리지 못한 파일은
+# 종류대로 새 판 · 줄 병합 · 키 병합(merge)을 하고 원본을 .agents/state/merge-backup/<시각>/ 에 둔다.
+# 코드 · 그 밖은 .new 다(HK-25 R1, 같은 폴더의 v1_merge.py).
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -80,6 +84,12 @@ done
 # 도메인 공유 규칙이 없는 스택(backend)은 디렉터리 자체가 없다 — 정상이므로 건너뛴다.
 [ -n "$DOMAIN_DIR" ] && [ ! -d "$DOMAIN_DIR" ] && DOMAIN_DIR=""
 for m in $MODULES_SEL; do
+  # 없앤 모듈(HK-25 R2): 파일은 공통 층 판과 같아 그대로 두고 메타에서만 뺀다.
+  if harness_module_retired "$m"; then
+    harness_retired_note "$m" meta
+    MODULES_SEL="$(echo " $MODULES_SEL " | sed "s| $m | |g" | tr -s ' ' | sed 's|^ ||;s| $||')"
+    continue
+  fi
   [ -d "$TEMPLATES/optional/$m" ] || {
     echo "⚠ 메타에 있는 모듈의 템플릿이 킷에서 사라졌다: $m (이번 실행에서 건너뛴다)" >&2
     MODULES_SEL="$(echo " $MODULES_SEL " | sed "s| $m | |g" | tr -s ' ' | sed 's|^ ||;s| $||')"
@@ -97,9 +107,17 @@ echo "  모드      : $([ $DRY_RUN = 1 ] && echo dry-run || echo write)$([ $ACCE
 echo ""
 
 # 표시 줄 없는 lock(v1.0.8 이하)은 설치 전부터 있던 파일을 그 파일 해시로 적었다. 그 lock 에서는
-# "지금 해시 = lock 해시"가 킷이 쓴 판인지 사람 파일인지 가리지 못하므로 덮지 않고 .new 를 쓴다(HK-12 R12.6).
+# "지금 해시 = lock 해시"가 킷이 쓴 판인지 사람 파일인지 가리지 못하므로 덮지 않는다(HK-12 R12.6) — 종류대로 합치고(HK-25) 못 하면 .new.
 LOCK_MARKED=0
 harness_lock_marked "$LOCK" && LOCK_MARKED=1
+# 그 lock 의 첫 실행은 가리지 못한 파일을 종류대로 합친다(HK-25 R1). 원본은 이번 실행의 시각 폴더 하나에 둔다.
+MERGE_BACKUP=".agents/state/merge-backup/$(date -u +%Y%m%dT%H%M%SZ)"
+MERGE_PY="$SCRIPT_DIR/v1_merge.py"
+HAVE_PY=0
+command -v python3 >/dev/null 2>&1 && [ -f "$MERGE_PY" ] && HAVE_PY=1
+if [ "$LOCK_MARKED" != 1 ] && [ "$HAVE_PY" != 1 ] && [ -f "$LOCK" ]; then
+  echo "⚠ python3 가 없어 v1 lock 병합을 건너뛴다 — 가리지 못한 파일은 .new 로 받는다" >&2
+fi
 
 NEW_LOCK="$(mktemp)"
 SEEN="$(mktemp)"
@@ -109,8 +127,9 @@ harness_lock_init "$NEW_LOCK"
 cleanup() { rm -rf "$NEW_LOCK" "$SEEN" "$RENDER" "$PLAN_DIR"; }
 trap cleanup EXIT
 
-n_new=0; n_same=0; n_update=0; n_conflict=0; n_orphan=0
+n_new=0; n_same=0; n_update=0; n_conflict=0; n_orphan=0; n_merge=0; n_kit=0
 conflicts=""
+v1_merged=""
 
 # 한 파일을 판정하고 그대로 처리한다.
 #
@@ -157,6 +176,7 @@ process_file() {
   if [ -n "$lock_sha" ] && [ "$lock_sha" = "$cur_sha" ] && [ "$LOCK_MARKED" != 1 ]; then
     unsure="   (v1 lock — 미리 있던 파일인지 가릴 수 없다)"
     lock_sha=""
+    if [ "$ACCEPT_ALL" != 1 ] && v1_merge "$dest_rel" "$dest" "$tmp"; then return 0; fi
   fi
   if [ -n "$lock_sha" ] && [ "$lock_sha" = "$cur_sha" ]; then
     echo "  update    $dest_rel"
@@ -192,6 +212,39 @@ process_file() {
   harness_lock_append "$NEW_LOCK" "${lock_sha:--}" "$layer" "$owner" "$dest_rel"
 }
 
+# 표시 줄 없는 v1 lock 에서 가리지 못한 파일(sha(C) = B ≠ sha(D))을 v1_merge.py 의 판정대로 처리한다(HK-25 R1).
+#   kit    배치 원본 폴더 · 킷 머리 줄 문서 → 새 판
+#   lines  그 밖 문서(.md · .txt) → 킷 판 + 사람 줄 묶음
+#   keys   .json → 키 병합
+# 원본은 MERGE_BACKUP 에 둔다. 새 lock 해시는 새 판(sha(D))이다. 못 하면 1(→ .new).
+# process_file 의 지역 변수(new_sha · layer · owner)를 쓴다.
+v1_merge() {
+  local rel="$1" dest="$2" tmp="$3" out kind
+  [ "$HAVE_PY" = 1 ] || return 1
+  out="$RENDER/.hk-v1-merge/$rel"
+  mkdir -p "$(dirname "$out")"
+  kind="$(python3 -B "$MERGE_PY" "$rel" "$dest" "$tmp" "$out")" || return 1
+  case "$kind" in kit | lines | keys) ;; *) return 1 ;; esac
+  if [ "$DRY_RUN" != 1 ]; then
+    mkdir -p "$(dirname "$TARGET/$MERGE_BACKUP/$rel")"
+    cp "$dest" "$TARGET/$MERGE_BACKUP/$rel.orig"
+    cp "$out" "$dest"
+    harness_is_executable "$rel" && chmod +x "$dest"
+  fi
+  if [ "$kind" = kit ]; then
+    echo "  update    $rel   (v1 lock — 원본은 merge-backup)"
+    n_update=$((n_update+1))
+    n_kit=$((n_kit+1))
+  else
+    echo "  merge     $rel   (v1 lock — 설치 전 내용을 합쳤다)"
+    n_merge=$((n_merge+1))
+    v1_merged="$v1_merged  $kind  $rel
+"
+  fi
+  harness_lock_append "$NEW_LOCK" "$new_sha" "$layer" "$owner" "$rel"
+  return 0
+}
+
 # 설치와 같은 순서·같은 라벨로 돈다(setup.sh 와 같은 harness_layer_roots). 같은 설치 경로가 두 레이어에 있으면
 # 뒤 레이어 판 하나만 판정한다 — setup.sh 첫 설치가 깐 판과 같아야 다음 실행에서 conflict 가 생기지 않는다(HK-10 R10.1).
 harness_candidates "$AGENTS_SEL" < <(harness_layer_roots "$TEMPLATES" "$DOMAIN_DIR" "$DOMAIN" "$STACK" "$ARCH" "$MODULES_SEL") > "$PLAN_DIR/candidates"
@@ -216,6 +269,22 @@ fi
 
 # 하네스 배치(HK-13): copy 판정 뒤의 원본으로 복사본 · 생성물 · 병합을 다시 만들고 새 lock 에 배치 줄을 덧붙인다.
 # 사람이 고친 생성물은 덮지 않고 .new 를 쓴다. v1 포인터는 복사본 · 생성물로 바뀐다.
+# v1 CLAUDE.md(배치 merge): 표시 줄 없는 lock 에서 sha(C) = B 이고 킷 블록이 없으면 배치가 새 파일로 바꾼다.
+# 설치 전 사람 파일일 수 있으니 그 전에 원본을 둔다(HK-25 design §2.5).
+claude_backup=0
+if [ "$LOCK_MARKED" != 1 ] && harness_agent_selected claude "$AGENTS_SEL" && [ -f "$TEMPLATES/common/scripts/harness/projection.json" ] \
+  && [ -f "$TARGET/CLAUDE.md" ] && [ ! -L "$TARGET/CLAUDE.md" ]; then
+  claude_sha="$(awk -F'\t' '$1 !~ /^#/ && $4 == "CLAUDE.md" && $2 !~ /^(mirror|render|merge\+?)$/ { print $1; exit }' "$LOCK")"
+  if [ -n "$claude_sha" ] && [ "$claude_sha" = "$(harness_sha256 "$TARGET/CLAUDE.md")" ] && ! grep -q '^<!-- harness-kit:begin claude' "$TARGET/CLAUDE.md"; then
+    claude_backup=1
+    n_kit=$((n_kit+1))
+    if [ "$DRY_RUN" != 1 ]; then
+      mkdir -p "$TARGET/$MERGE_BACKUP"
+      cp "$TARGET/CLAUDE.md" "$TARGET/$MERGE_BACKUP/CLAUDE.md.orig"
+    fi
+  fi
+fi
+
 project_flags=()
 [ "$ACCEPT_ALL" = 1 ] && project_flags+=(--accept-all)
 [ "$DRY_RUN" = 1 ] && project_flags+=(--dry-run)
@@ -246,7 +315,20 @@ rebuild_board() {
 rebuild_board
 
 echo ""
-echo "✔ new=$n_new  update=$n_update  same=$n_same  conflict=$n_conflict  orphan=$n_orphan $([ $DRY_RUN = 1 ] && echo '(dry-run — 실제 변경 없음)')"
+echo "✔ new=$n_new  update=$n_update  same=$n_same  conflict=$n_conflict  orphan=$n_orphan$([ "$n_merge" -gt 0 ] && echo "  merge=$n_merge") $([ $DRY_RUN = 1 ] && echo '(dry-run — 실제 변경 없음)')"
+
+# v1 lock 첫 업데이트 목록(한 번). 킷 판으로 바꾼 파일은 위 줄에 있다 — 여기에는 사람이 볼 병합본만 낸다.
+if [ "$n_merge" -gt 0 ] || [ "$n_kit" -gt 0 ]; then
+  echo ""
+  echo "v1 lock 첫 업데이트 — 병합 $n_merge · 킷 판 $n_kit(원본: $MERGE_BACKUP/)"
+  printf '%s' "$v1_merged"
+  if [ "$claude_backup" = 1 ]; then
+    echo "  kit    CLAUDE.md   (배치가 새 파일로 바꿨다 — 사람이 쓴 내용이면 원본에서 블록 밖으로 옮긴다)"
+  fi
+  if [ "$n_merge" -gt 0 ]; then
+    echo "  병합본의 '<!-- harness-kit: 설치 전 내용(병합) -->' 묶음을 보고 필요 없으면 지운다"
+  fi
+fi
 
 if [ "$n_conflict" -gt 0 ]; then
   echo ""

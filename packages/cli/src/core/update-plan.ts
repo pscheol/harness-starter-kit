@@ -19,7 +19,7 @@ import { substitute } from "./tokens";
 const PROJECTION_OPS = new Set(["mirror", "render", "merge"]);
 
 export const UPDATE_ACTIONS = [
-  "new", "restore", "update", "same", "conflict", "replace", "orphan", "delete", "skip-user", "skip-external", "skip-pack", "forget",
+  "new", "restore", "update", "same", "conflict", "replace", "orphan", "delete", "skip-user", "skip-external", "skip-pack", "forget", "merge",
 ] as const;
 export type UpdateAction = (typeof UPDATE_ACTIONS)[number];
 
@@ -43,6 +43,9 @@ export interface UpdateOp {
   modified?: boolean;
   /** delete: 지울 파일이 있다 */
   removeFile?: boolean;
+  /** v1 lock 첫 update(HK-25): 갈래(kit · lines · keys)와 원본을 둘 자리. content 는 결과(kit 이면 D) */
+  merge?: "kit" | "lines" | "keys";
+  mergeBackup?: string;
 }
 
 export interface UpdatePlan {

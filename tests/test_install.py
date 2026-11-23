@@ -326,8 +326,8 @@ class InstallTest(unittest.TestCase):
         self.assertTrue((root / "AGENTS.md.new").is_file())
         self.assertRegex(update.stdout, r"update=0 +same=\d+ +conflict=1")
 
-    def test_update_with_legacy_lock_writes_new_instead_of_replacing(self):
-        # v1.0.8 lock(표시 줄 없음)은 미리 있던 파일을 그 파일 해시로 적었다. 가릴 수 없으니 .new 를 쓴다(HK-12 R12.6).
+    def test_update_with_legacy_lock_merges_instead_of_replacing(self):
+        # v1.0.8 lock(표시 줄 없음)은 미리 있던 파일을 그 파일 해시로 적었다. 가릴 수 없으니 문서는 킷 판 + 사람 줄로 합친다(HK-25 R1).
         root = self.tmp / "legacy"
         root.mkdir()
         (root / "AGENTS.md").write_text("# 손으로 쓴 AGENTS\n")
@@ -339,27 +339,35 @@ class InstallTest(unittest.TestCase):
         lock.write_text("\n".join(mine + line[line.index("\t"):] if line.endswith("\tAGENTS.md") else line for line in lines) + "\n")
         update = subprocess.run(["bash", str(UPDATE), str(root)], capture_output=True, text=True, timeout=300)
         self.assertEqual(update.returncode, 0, update.stdout[-3000:] + update.stderr[-3000:])
-        self.assertEqual((root / "AGENTS.md").read_text(), "# 손으로 쓴 AGENTS\n")
-        self.assertTrue((root / "AGENTS.md.new").is_file())
-        self.assertIn("v1 lock", update.stdout)
+        merged = (root / "AGENTS.md").read_text()
+        self.assertIn("HARNESS STARTER KIT", merged.splitlines()[0])
+        self.assertIn("<!-- harness-kit: 설치 전 내용(병합) -->\n# 손으로 쓴 AGENTS\n<!-- /harness-kit -->", merged)
+        self.assertFalse((root / "AGENTS.md.new").exists())
+        self.assertIn("v1 lock 첫 업데이트", update.stdout)
+        saved = list((root / ".agents/state/merge-backup").glob("*/AGENTS.md.orig"))
+        self.assertEqual([p.read_text() for p in saved], ["# 손으로 쓴 AGENTS\n"])
         after = lock.read_text().splitlines()
         self.assertEqual(after[1], "# pre-existing: -")
-        self.assertIn("-\tgo\tcore\tAGENTS.md", after)
+        kit_sha = next(line.split("\t")[0] for line in after if line.endswith("\tAGENTS.md"))
+        self.assertRegex(kit_sha, r"^[0-9a-f]{64}$")
 
     def test_overlap_later_layer_wins_on_install_and_update(self):
-        # common 과 platform-guards 모듈이 같은 경로를 깐다. 첫 설치 · update 모두 뒤 레이어(모듈) 판이다(HK-10 R10.1).
+        # common 과 모듈이 같은 경로를 깔면 첫 설치 · update 모두 뒤 레이어(모듈) 판이다(HK-10 R10.1).
+        # 킷 템플릿에는 그런 경로가 없어(HK-25 R2) 사본의 jira-workflow 모듈에 common 판 + 표시 줄을 둔다.
         kit = self.tmp / "kit"
         shutil.copytree(KIT / "plugins/harness-kit", kit, symlinks=True)
         mark = "\n# 뒤 레이어 판(HK-10)\n"
-        with (kit / "skills/hx-bootstrap/templates/optional/platform-guards/scripts/run-guards.sh").open("a", encoding="utf-8") as handle:
-            handle.write(mark)
+        tpl = kit / "skills/hx-bootstrap/templates"
+        module_copy = tpl / "optional/jira-workflow/scripts/run-guards.sh"
+        module_copy.parent.mkdir(parents=True, exist_ok=True)
+        module_copy.write_text((tpl / "common/scripts/run-guards.sh").read_text(encoding="utf-8") + mark, encoding="utf-8")
         root = self.tmp / "python"
-        result = install(root, "python", agents="claude", modules="platform-guards", setup=kit / "skills/hx-bootstrap/setup.sh")
+        result = install(root, "python", agents="claude", modules="jira-workflow", setup=kit / "skills/hx-bootstrap/setup.sh")
         self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
         guard = root / "scripts/run-guards.sh"
         self.assertTrue(guard.read_text().endswith(mark), "첫 설치가 앞 레이어(common) 판을 깔았다")
         lock_lines = [line for line in (root / ".agents/harness-kit.lock").read_text().splitlines() if line.endswith("\tscripts/run-guards.sh")]
-        self.assertEqual([line.split("\t")[1] for line in lock_lines], ["mod/platform-guards"])
+        self.assertEqual([line.split("\t")[1] for line in lock_lines], ["mod/jira-workflow"])
         for run in (1, 2):
             update = subprocess.run(["bash", str(kit / "skills/hx-update/update.sh"), str(root)], capture_output=True, text=True, timeout=300)
             self.assertEqual(update.returncode, 0, update.stdout[-3000:] + update.stderr[-3000:])

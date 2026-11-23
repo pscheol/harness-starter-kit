@@ -24,6 +24,20 @@ export interface Selection {
   /** meta = 설치된 메타에서 읽었다(update · repair) */
   agentsOrigin: "flag" | "detected" | "default" | "meta";
   modules: string[];
+  /** 받았지만 없앤 모듈(HK-25 R2). 없으면 키가 없다 */
+  retiredModules?: string[];
+}
+
+/** 없앤 모듈(HK-25 R2): 파일이 공통 층과 같아져 따로 켤 것이 없다. 받으면 한 줄 알리고 넘긴다. */
+export const RETIRED_MODULES: readonly string[] = ["platform-guards"];
+
+export function isRetiredModule(name: string): boolean {
+  return RETIRED_MODULES.includes(name);
+}
+
+/** 없앤 모듈 안내 한 줄. meta 면 메타에서 뺀다는 문구(update · add · remove). setup.sh harness_retired_note 와 같은 문장이다. */
+export function retiredNote(name: string, from: "flag" | "meta"): string {
+  return from === "meta" ? `  · ${name} 모듈은 공통 층에 포함됨 — 메타에서 뺀다(파일은 그대로)` : `  · ${name} 모듈은 공통 층에 포함됨 — 따로 켜고 끌 것이 없다`;
 }
 
 function subdirs(dir: string): string[] {
@@ -108,11 +122,14 @@ export function resolveSelection(
     }
   }
 
-  const modules = input.modules === undefined ? [] : parseList(input.modules, layout.modules, "모듈", true);
+  const words = (input.modules ?? "").split(/[\s,]+/).filter(Boolean);
+  const retired = words.filter((w, i) => isRetiredModule(w) && words.indexOf(w) === i);
+  const rest = words.filter((w) => !isRetiredModule(w)).join(",");
+  const modules = input.modules === undefined || (rest === "" && retired.length) ? [] : parseList(rest, layout.modules, "모듈", true);
   for (const m of modules) {
     if (!isDir(path.join(templatesDir, "optional", m))) {
       throw new CliError(EXIT.ENV, `모듈 템플릿이 없다: ${path.join(templatesDir, "optional", m)}`);
     }
   }
-  return { stack, arch, domain, lang, agents, agentsOrigin, modules };
+  return { stack, arch, domain, lang, agents, agentsOrigin, modules, ...(retired.length ? { retiredModules: retired } : {}) };
 }

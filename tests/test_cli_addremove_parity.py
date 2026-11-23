@@ -214,15 +214,20 @@ class CliAddRemoveParityTest(unittest.TestCase):
         self.assertEqual((o.cli / mine).read_text(encoding="utf-8"), "사람이 먼저 둔 커맨드\n")
         self.assertEqual([op["action"] for op in all_ops(j) if op["path"] == mine], ["skip-user"])
 
-    def test_a3_add_overlapping_module_only_relayers(self):
+    def test_a3_add_retired_module_is_notice_only(self):
+        """없앤 모듈 platform-guards: add-agent.sh · CLI add 모두 한 줄 알리고 claude 만 켠다(HK-25 R2)."""
         o, j = self.ran("A3-web-add-guards-claude")
         self.assert_same_tree(o)
         self.assert_lock_means_same(o)
         self.assert_meta_means_same(o)
+        note = "platform-guards 모듈은 공통 층에 포함됨"
+        self.assertEqual((o.sh_run.stdout + o.sh_run.stderr).count(note), 1, o.sh_run.stdout[-1500:])
+        self.assertEqual(j["names"]["retired"], ["platform-guards"])
         lock = {e["path"]: e for e in json.loads((o.cli / LOCK).read_text(encoding="utf-8"))["entries"]}
         for rel in ("scripts/run-guards.sh", "scripts/guards/_template.sh", ".agents/rules/platform-invariants.md"):
-            self.assertEqual(lock[rel]["layer"], "optional/platform-guards", rel)
-        self.assertEqual(json.loads((o.cli / META).read_text(encoding="utf-8"))["modules"], ["platform-guards"])
+            self.assertEqual(lock[rel]["layer"], "common", rel)
+        for target in (o.sh, o.cli):
+            self.assertEqual(json.loads((target / META).read_text(encoding="utf-8"))["modules"], [])
 
     def test_a4_add_kiro_brings_module_kiro_files(self):
         o, j = self.ran("A4-go-add-kiro-multi")
@@ -237,6 +242,7 @@ class CliAddRemoveParityTest(unittest.TestCase):
         self.assert_same_tree(o)
         self.assert_lock_means_same(o)
         self.assert_meta_means_same(o)
+        self.assertEqual(j["names"]["retired"], ["platform-guards"])
         self.assertGreater(len([op for op in all_ops(j) if op["action"] == "delete"]), 5)
         self.assertFalse((o.cli / ".codex").exists())
         self.doctor_ok(o.cli)

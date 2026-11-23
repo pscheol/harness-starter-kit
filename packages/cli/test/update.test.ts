@@ -293,6 +293,23 @@ describe("update — 판정", () => {
     expect(actionOf(j, ".agents/rules/jira.md")).toBe("orphan");
     expect(readJsonFile(path.join(target, META_FILE)).modules).toEqual([]);
   });
+
+  it("메타의 없앤 모듈 platform-guards 는 '공통 층에 포함됨' 한 줄과 함께 메타에서 뺀다 — 파일은 그대로(HK-25 R2)", async () => {
+    const { target, cli } = await installedFixture({ modules: "jira-workflow" });
+    const meta = readJsonFile(path.join(target, META_FILE));
+    writeJsonFile(path.join(target, META_FILE), { ...meta, modules: ["platform-guards", "jira-workflow"] });
+    const r = await cli("update", ["--json", "--templates", newKit()]);
+    expect(r.code, r.stdout).toBe(0);
+    const j = json(r);
+    expect(j.retiredModules).toEqual(["platform-guards"]);
+    expect(j.droppedModules).toEqual([]);
+    expect(j.selection.modules).toEqual(["jira-workflow"]);
+    expect(readJsonFile(path.join(target, META_FILE)).modules).toEqual(["jira-workflow"]);
+    expect(readText(target, "scripts/guards/_template.sh")).toBe("common\n");
+    writeJsonFile(path.join(target, META_FILE), { ...readJsonFile(path.join(target, META_FILE)), modules: ["platform-guards"] });
+    const human = await cli("update", ["--templates", newKit()]);
+    expect(human.stdout.split("\n").filter((l) => l.includes("platform-guards 모듈은 공통 층에 포함됨")).length).toBe(1);
+  });
 });
 
 describe("update — 상태 · 버전 · 플래그", () => {

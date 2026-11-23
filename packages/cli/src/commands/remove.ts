@@ -13,7 +13,7 @@ import { skipByOwner, wanted, type Want } from "../core/update-plan";
 import { judgeUpdate } from "../projection/engine";
 import { needsHuman, prepare } from "../projection/flow";
 import { loadSpecOrNull } from "../projection/spec";
-import { ancestorsOf, applyChange, changeOverlay, currentOf, dryRunOf, kitOf, loadForChange, manifestChange, report, type ChangeOp, type ChangeResult, type Cur, type Loaded } from "./change";
+import { ancestorsOf, applyChange, changeOverlay, currentOf, dryRunOf, kitOf, loadForChange, manifestChange, report, retiredNotes, retiredOnly, type ChangeOp, type ChangeResult, type Cur, type Loaded } from "./change";
 
 function keepAction(e: LockEntry): ChangeOp["action"] | null {
   const owner = ownerKind(e.owner);
@@ -91,16 +91,18 @@ function planRemove(l: Loaded, after: Selection): ChangeResult {
 export function runRemove(ctx: Ctx): CommandResult {
   const kit = kitOf(ctx);
   const asked = parseNames(kit.layout, ctx.positionals, "remove");
+  const only = retiredOnly(ctx, "remove", asked);
+  if (only) return { ...only, data: { ...only.data, names: { ...asked, notOn: [] } } };
   const l = loadForChange(ctx, "remove", kit);
   const notOn = [...asked.harnesses.filter((h) => !l.before.agents.includes(h)), ...asked.modules.filter((m) => !l.before.modules.includes(m))];
-  const names: Names = { harnesses: asked.harnesses.filter((h) => !notOn.includes(h)), modules: asked.modules.filter((m) => !notOn.includes(m)) };
+  const names: Names = { harnesses: asked.harnesses.filter((h) => !notOn.includes(h)), modules: asked.modules.filter((m) => !notOn.includes(m)), retired: asked.retired };
   const after = withoutNames(l.before, names);
   if (after.agents.length === 0) throw usageError("하네스를 모두 뺄 수 없다 — 하나는 남는다", "킷을 통째로 지우려면 harness-kit uninstall");
   const dryRun = dryRunOf(ctx);
   const nothing = names.harnesses.length + names.modules.length === 0;
   const result: ChangeResult = nothing ? { ops: [], entries: l.inst.lock.entries, manifest: null } : planRemove(l, after);
   const featureDocs = dryRun || nothing ? null : applyChange(ctx, l, after, result);
-  const notes = notOn.length ? [`  · 켜져 있지 않다 — 건너뛴다: ${notOn.join(", ")}`] : [];
+  const notes = [...retiredNotes(asked), ...(notOn.length ? [`  · 켜져 있지 않다 — 건너뛴다: ${notOn.join(", ")}`] : [])];
   const keep = [...result.ops.filter((o) => o.action === "keep-modified").map((o) => o.path), ...(result.projection?.ops ?? []).filter((o) => o.action === "keep-modified").map((o) => o.path)];
   const { data, lines } = report(ctx, l, { command: "remove", names: { ...names, notOn }, after, result, dryRun, featureDocs, notes, extra: { keep } });
   if (keep.length) lines.splice(lines.length - 1, 0, "  고친 파일은 남겼다(lock 은 owner user). 필요 없으면 직접 지운다");

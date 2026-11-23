@@ -9,7 +9,7 @@ import { stackSpecOf, type Layout } from "./layout";
 import { LOCK_REL, readLock, type LockEntry, type LockV2 } from "./lock";
 import { META_REL, readMeta, type MetaV2 } from "./meta";
 import { isSafeRelPath } from "./plan";
-import { listArchs, listStacks, type Selection } from "./selection";
+import { isRetiredModule, listArchs, listStacks, type Selection } from "./selection";
 import { resolveTokens } from "./tokens";
 import { VERSION } from "./version";
 
@@ -73,6 +73,8 @@ export function ownerKind(owner: string): OwnerKind {
 export interface MetaSelection {
   selection: Selection;
   droppedModules: string[];
+  /** 메타에 남은 없앤 모듈(HK-25 R2). 메타를 쓰는 명령이 빼고 한 줄 알린다 */
+  retiredModules: string[];
 }
 
 /** 메타의 스택 · 변형 · 도메인 · 하네스 · 모듈(design §2.2). 킷에 없는 스택 · 변형은 exit 3, 없는 모듈은 뺀다. */
@@ -83,7 +85,8 @@ export function selectionFromMeta(layout: Layout, templatesDir: string, meta: Me
   if (!listArchs(templatesDir, meta.stack).includes(meta.arch)) {
     throw new CliError(EXIT.STATE, `이 킷에 없는 변형이다: '${meta.arch}' (스택 ${meta.stack})`, "메타의 arch 를 고치거나 그 변형이 있는 킷 판을 쓴다");
   }
-  const modules = meta.modules.filter((m) => isDir(path.join(templatesDir, "optional", m)));
+  const retiredModules = meta.modules.filter((m) => isRetiredModule(m) && !layout.modules.includes(m));
+  const modules = meta.modules.filter((m) => !retiredModules.includes(m) && isDir(path.join(templatesDir, "optional", m)));
   const selection: Selection = {
     stack: meta.stack,
     arch: meta.arch,
@@ -93,7 +96,7 @@ export function selectionFromMeta(layout: Layout, templatesDir: string, meta: Me
     agentsOrigin: "meta",
     modules,
   };
-  return { selection, droppedModules: meta.modules.filter((m) => !modules.includes(m)) };
+  return { selection, droppedModules: meta.modules.filter((m) => !modules.includes(m) && !retiredModules.includes(m)), retiredModules };
 }
 
 /**

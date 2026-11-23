@@ -43,7 +43,7 @@ function code(fn: () => unknown): number {
 describe("작업 목록", () => {
   it("빈 대상: 고른 하네스만, 무시 파일 제외, 경로 사전순", () => {
     const tpl = fixtureTemplates(BASIC_FILES);
-    const plan = makePlan(tpl, { agents: "claude", modules: "platform-guards" }, tmpDir());
+    const plan = makePlan(tpl, { agents: "claude", modules: "zz-overlap" }, tmpDir());
     const paths = plan.ops.map((o) => o.path);
     expect(paths).toEqual([...paths].sort());
     expect(paths).toContain("CLAUDE.md");
@@ -59,19 +59,19 @@ describe("작업 목록", () => {
 
   it("같은 설치 경로가 두 레이어에 있으면 뒤 레이어가 이긴다(실제 layout.json, overlap last)", () => {
     const tpl = fixtureTemplates(BASIC_FILES);
-    const plan = makePlan(tpl, { agents: "claude", modules: "platform-guards" }, tmpDir());
+    const plan = makePlan(tpl, { agents: "claude", modules: "zz-overlap" }, tmpDir());
     const guard = op(plan, "scripts/guards/_template.sh");
     expect(guard.content.toString()).toBe("module\n");
-    expect(guard.layer).toBe("optional/platform-guards");
+    expect(guard.layer).toBe("optional/zz-overlap");
     expect(plan.overlaps).toEqual([
-      { path: "scripts/guards/_template.sh", layers: ["common", "optional/platform-guards"], winner: "optional/platform-guards" },
+      { path: "scripts/guards/_template.sh", layers: ["common", "optional/zz-overlap"], winner: "optional/zz-overlap" },
     ]);
     expect(plan.ops.filter((o) => o.path === "scripts/guards/_template.sh")).toHaveLength(1);
   });
 
   it("overlap first 로 바꾸면 앞 레이어가 이긴다", () => {
     const tpl = fixtureTemplates(BASIC_FILES, { overlap: "first" });
-    const guard = op(makePlan(tpl, { agents: "claude", modules: "platform-guards" }, tmpDir()), "scripts/guards/_template.sh");
+    const guard = op(makePlan(tpl, { agents: "claude", modules: "zz-overlap" }, tmpDir()), "scripts/guards/_template.sh");
     expect(guard.content.toString()).toBe("common\n");
     expect(guard.layer).toBe("common");
   });

@@ -1,6 +1,6 @@
 ---
 description: 대상 리포에 하네스 골격(AGENTS.md · .agents/rules 원본 · SDD 기록 시스템 · 단일 검증 게이트)을 스캐폴딩한다. 스택·아키텍처 변형을 판단해 setup.sh 를 실행한다.
-argument-hint: [경로] [--stack=jvm|python|go|web|electron] [--arch=<변형>] [--lang=kotlin|java] [--agents=<claude,codex,cursor,kiro|all>] [--modules=<jira-workflow,platform-guards|all>] [--dry-run]
+argument-hint: [경로] [--stack=jvm|python|go|web|electron] [--arch=<변형>] [--lang=kotlin|java] [--agents=<claude,codex,cursor,kiro|all>] [--modules=<jira-workflow,multi-harness|all>] [--dry-run]
 ---
 
 <!-- HARNESS STARTER KIT · 얇은 트리거. 원본: skills/hx-bootstrap/SKILL.md -->
@@ -21,7 +21,7 @@ argument-hint: [경로] [--stack=jvm|python|go|web|electron] [--arch=<변형>] [
 | `--arch=` | 스택별 변형(jvm 8 · python 5 · go 4 · web 3 · electron 3) | 기존 레이아웃에서 추론. 새 리포이거나 애매하면 선택 기준을 제시하고 고르게 한다. 기본값은 스택마다 다르다(백엔드 `hexagonal` · web `nextjs-app` · electron `main-renderer`) |
 | `--lang=` | (jvm 전용) `kotlin` · `java` — 빌드 DSL·구조 테스트 도구 안내가 갈린다 | 생략하면 `Kotlin/Java` 로 남는다. jvm 이면 물어보는 편이 낫다 |
 | `--agents=` | 설치할 에이전트(`claude`·`codex`·`cursor`·`kiro`, `all` 은 전체) | `--list-agents` 로 감지한 뒤 **사용자에게 확인받는다**. 전부 깔지 않는다 |
-| `--modules=` | 선택 모듈(`jira-workflow`·`platform-guards`, `all`·`none`) | **기본 `none`**. 목록은 `--list-modules`. 필요를 확인하고 켠다 |
+| `--modules=` | 선택 모듈(`jira-workflow`·`multi-harness`, `all`·`none`) | **기본 `none`**. 목록은 `--list-modules`. 필요를 확인하고 켠다 |
 | `--domain=` | 도메인 레이어(`frontend`) | 스택에서 자동 결정(web·electron→frontend, 나머지는 없음). 건드릴 일이 거의 없다 |
 | `--dry-run` | 설치 없이 목록만 | 미지정 시 실제 설치 |
 

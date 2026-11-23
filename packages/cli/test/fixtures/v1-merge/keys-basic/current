@@ -1,0 +1,13 @@
+{
+  "schema": "old",
+  "checks": {
+    "lint": {"cmd": "old lint", "paths": ["a"]},
+    "mine": {"cmd": "make mine"}
+  },
+  "list": [1, 2],
+  "teamNote": "사람 \"따옴표\" \\ 탭\t끝\u0001",
+  "ratio": 1.50,
+  "big": 1E+5,
+  "id": 12345678901234567890,
+  "empty": {}, "none": []
+}

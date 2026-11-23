@@ -58,7 +58,7 @@ if [ "$LEVEL" = "fast" ] && [ "${HARNESS_VERIFY_FAST_GRADLE:-0}" != "1" ]; then
   exit 0
 fi
 
-# ── 2) 플랫폼 가드 (선택 모듈 platform-guards 를 깔면 생긴다) ────────────────
+# ── 2) 플랫폼 가드 (공통 층 scripts/run-guards.sh) ────────────────
 # 배선 작업 없이 파일 존재만으로 잡힌다. 없으면 조용히 건너뛴다.
 # Gradle 보다 앞에 둔다 — 대부분 grep 수준이라 즉시 끝나고, 느린 빌드 전에 실패를 알린다.
 if [ -f scripts/run-guards.sh ]; then

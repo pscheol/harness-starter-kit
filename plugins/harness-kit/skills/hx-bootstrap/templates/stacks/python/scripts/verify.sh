@@ -122,7 +122,7 @@ run mypy $MYPY_TARGETS || { echo "✖ 타입 검사 실패"; fail=1; }
 echo "▶ lint-imports (레이어 계약)"
 run lint-imports || { echo "✖ 아키텍처 레이어 계약 위반"; fail=1; }
 
-# ── 6) 플랫폼 가드 (선택 모듈 platform-guards 를 깔면 생긴다) ────────────────
+# ── 6) 플랫폼 가드 (공통 층 scripts/run-guards.sh) ────────────────
 # 배선 작업 없이 파일 존재만으로 잡힌다. 없으면 조용히 건너뛴다.
 if [ -f scripts/run-guards.sh ]; then
   echo "▶ 플랫폼 가드"
