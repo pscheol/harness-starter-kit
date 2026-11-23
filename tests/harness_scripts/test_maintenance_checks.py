@@ -248,11 +248,12 @@ class MaintenanceChecksTest(unittest.TestCase):
 class MaintenanceWorkflowTest(unittest.TestCase):
     def test_three_clients_reference_one_canonical_skill(self):
         canonical = ".agents/skills/hx-maintain/SKILL.md"
-        for relative in (".claude/commands/hx-maintain.md", ".kiro/skills/hx-maintain/SKILL.md"):
+        skill = SHARED / canonical
+        for relative in (".claude/skills/hx-maintain/SKILL.md", ".kiro/skills/hx-maintain/SKILL.md"):
             path = SHARED / relative
             self.assertTrue(path.is_file(), relative)
-            self.assertIn(canonical, path.read_text())
-        skill = SHARED / canonical
+            self.assertEqual(skill.read_bytes(), path.read_bytes())
+        self.assertIn(canonical, (SHARED / ".kiro/steering/hx-maintain.md").read_text())
         self.assertTrue(skill.is_file(), canonical)
         self.assertIn("code-maintenance.md", skill.read_text())
 

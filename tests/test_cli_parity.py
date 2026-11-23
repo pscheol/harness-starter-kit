@@ -166,6 +166,23 @@ def lock_hashes(path: Path) -> dict[str, str | None]:
     return out
 
 
+def lock_owners(path: Path) -> dict[str, tuple[str, str]]:
+    """lock 의 경로 → (op, 사람 파일이면 'user' 아니면 'kit'). v1 은 해시 '-' 인 copy · mirror · render 를 사람 몫으로 본다(merge 는 해시가 없다)."""
+    text = path.read_text(encoding="utf-8")
+    out: dict[str, tuple[str, str]] = {}
+    if text.startswith("# harness-kit lock v1"):
+        for line in text.splitlines():
+            if not line or line.startswith("#"):
+                continue
+            sha, layer, _agent, rel = line.split("\t")
+            op = layer.rstrip("+") if layer.rstrip("+") in ("mirror", "render", "merge") else "copy"
+            out.setdefault(rel, (op, "user" if sha == "-" and op != "merge" else "kit"))
+        return out
+    for e in json.loads(text)["entries"]:
+        out[e["path"]] = (e["op"], "user" if e["owner"] == "user" else "kit")
+    return out
+
+
 def lock_layers(path: Path) -> dict[str, list[str]]:
     """lock 의 경로 → 레이어 줄 목록(v1 은 같은 경로가 여러 줄일 수 있다)."""
     text = path.read_text(encoding="utf-8")
@@ -280,8 +297,12 @@ class CliParityTest(unittest.TestCase):
                 for rel, sha in cl_lock.items():
                     if sha is not None:
                         self.assertEqual(sha, sh_lock[rel], rel)
-                user = sorted(r for r, sha in cl_lock.items() if sha is None)
-                self.assertEqual(user, sorted(o.case.pre), "사람 파일(owner user)")
+                owners = lock_owners(o.cli / STATE[0])
+                self.assertEqual(owners, lock_owners(o.sh / STATE[0]), "lock 경로별 op · 주인")
+                user = sorted(r for r, (_op, owner) in owners.items() if owner == "user")
+                # 미리 있던 .claude/settings.json 은 병합 대상이라 킷 키만 더한다(HK-13). 나머지 미리 있던 파일은 사람 몫이다.
+                pre_user = sorted(r for r in o.case.pre if owners.get(r, ("copy", ""))[0] != "merge")
+                self.assertEqual(user, pre_user, "사람 파일(owner user)")
                 # 설치 전부터 있던 파일은 setup.sh 도 '-' 로 적어 update 가 덮지 않는다. 표시 줄이 그 약속이다(HK-12 R12.6).
                 self.assertEqual({r: sh_lock[r] for r in o.case.pre}, {r: "-" for r in o.case.pre})
                 self.assertEqual((o.sh / STATE[0]).read_text(encoding="utf-8").splitlines()[1], "# pre-existing: -")
@@ -324,6 +345,30 @@ class CliParityTest(unittest.TestCase):
         """setup.sh 의 awk 치환은 파일 하나를 \\001 로 나눈 레코드로 읽고, CLI 는 NUL 이 든 파일을 치환하지 않는다."""
         found = sorted(p.relative_to(TEMPLATES).as_posix() for p in TEMPLATES.rglob("*") if p.is_file() and (b"\0" in p.read_bytes() or b"\x01" in p.read_bytes()))
         self.assertEqual(found, [])
+
+    def test_projection_copies_instead_of_pointers(self):
+        """하네스 폴더는 원본의 복사본 · 생성물이다. 링크 · v1 포인터 0개, 미리 있던 settings.json 은 사람 키를 둔 채 병합된다(HK-13 R1 · R4)."""
+        for o in self.outcomes:
+            with self.subTest(case=o.case.name):
+                if o.sh_run.returncode or o.cli_run.returncode:
+                    self.fail("설치 실패(test_same_files_bytes_and_modes 참고)")
+                files, _ = snapshot(o.sh)
+                self.assertEqual([r for r, f in files.items() if f[0] == "link"], [])
+                self.assertEqual([r for r in files if r.startswith(".claude/commands/")], [])
+                agents = {"all": {"claude", "codex", "cursor", "kiro"}}.get(o.case.agents, set(o.case.agents.split(",")))
+                for skill in sorted(p.name for p in (o.sh / ".agents/skills").iterdir()):
+                    src = (o.sh / ".agents/skills" / skill / "SKILL.md").read_bytes()
+                    if "claude" in agents:
+                        self.assertEqual((o.sh / ".claude/skills" / skill / "SKILL.md").read_bytes(), src, skill)
+                    if "kiro" in agents:
+                        self.assertEqual((o.sh / ".kiro/skills" / skill / "SKILL.md").read_bytes(), src, skill)
+                    if "cursor" in agents:
+                        self.assertIn(src.split(b"\n---\n", 1)[1], (o.sh / ".cursor/commands" / f"{skill}.md").read_bytes())
+                if "claude" in agents:
+                    self.assertTrue((o.sh / "CLAUDE.md").read_text(encoding="utf-8").startswith("@AGENTS.md\n") or o.case.pre.get("CLAUDE.md"))
+        settings = json.loads((self.outcome("12-jvm-modulith-existing").sh / ".claude/settings.json").read_text(encoding="utf-8"))
+        self.assertTrue(settings["mine"])
+        self.assertIn("Stop", settings["hooks"])
 
     def test_doctor_passes_on_both_installs(self):
         for o in self.outcomes:

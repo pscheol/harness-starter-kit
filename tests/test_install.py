@@ -20,7 +20,6 @@ from pathlib import Path
 
 KIT = Path(__file__).resolve().parents[1]
 SETUP = KIT / "plugins/harness-kit/skills/hx-bootstrap/setup.sh"
-SYNC_COMMANDS = KIT / "scripts/sync-commands.sh"
 UPDATE = KIT / "plugins/harness-kit/skills/hx-update/update.sh"
 HARNESS_TESTS = KIT / "tests/harness_scripts"
 STACKS = ("jvm", "python", "go", "web", "electron")
@@ -100,7 +99,11 @@ class InstallTest(unittest.TestCase):
                     "tools/docs/schema-snapshot.sh",
                     "docs/features/_src/docs.config.json",
                     "docs/features/_src/catalog.json",
-                    ".claude/commands/hx-docs.md",
+                    ".claude/skills/hx-docs/SKILL.md",
+                    ".claude/rules/code-maintenance.md",
+                    ".kiro/steering/code-maintenance.md",
+                    ".cursor/rules/code-maintenance.mdc",
+                    ".gitattributes",
                     ".codex/config.toml",
                     ".kiro/hooks/harness-verify-gate.json",
                     ".kiro/agents/acme-notes.json",
@@ -252,9 +255,19 @@ class InstallTest(unittest.TestCase):
         settings = json.loads((root / ".claude/settings.json").read_text())
         self.assertIn("Edit(//**/third_party/specs/**)", settings["permissions"]["deny"])
 
-    def test_command_pointers_match_skill_sources(self):
-        result = subprocess.run(["bash", str(SYNC_COMMANDS), "--check"], capture_output=True, text=True, timeout=60)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+    def test_skill_and_rule_copies_match_sources(self):
+        # 손으로 맞추던 포인터(sync-commands.sh)는 없다. 설치가 원본에서 복사본 · 생성물을 만든다(HK-13 R1).
+        self.assertFalse((KIT / "scripts/sync-commands.sh").exists())
+        root = self.installed("go")
+        for skill in sorted((root / ".agents/skills").iterdir()):
+            for f in sorted(p for p in skill.rglob("*") if p.is_file()):
+                rel = f.relative_to(root / ".agents/skills").as_posix()
+                for harness in (".claude", ".kiro"):
+                    self.assertEqual((root / harness / "skills" / rel).read_bytes(), f.read_bytes(), f"{harness} {rel}")
+        for rule in sorted((root / ".agents/rules").glob("*.md")):
+            self.assertEqual((root / ".claude/rules" / rule.name).read_bytes(), rule.read_bytes(), rule.name)
+            self.assertIn(f"원본 .agents/rules/{rule.name}", (root / ".kiro/steering" / rule.name).read_text())
+        self.assertFalse((root / ".claude/commands").exists())
 
     def test_update_keeps_user_edits_as_new(self):
         root = self.installed("web")
