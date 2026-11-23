@@ -134,7 +134,7 @@ harness-kit outdated [--check] [--source <git 원격|경로>] [--json] [--cwd �
 
 - 설치 버전: 메타 `kit.version`(없음 · 깨짐 exit 3, v1 메타는 메모리에서 v2). CLI 버전: 번들 버전.
 - 소스(처음 맞는 것): `--source` > 환경변수 `HARNESS_KIT_SOURCE` > lock `kit.source`가 `github:<owner>/<repo>[#…]`이면 `https://github.com/<owner>/<repo>.git` · `git+<url>`이면 `<url>` · `file:<폴더>`이면 그 폴더의 git 최상위 > 없음.
-- 최신 태그: `git ls-remote --tags --refs <소스>`(시간 제한 15초, `GIT_TERMINAL_PROMPT=0`). `refs/tags/v?<semver>`만 보고 semver로 가장 큰 것. `-`로 시작하는 소스는 exit 2.
+- 최신 태그: `git ls-remote --tags --refs <소스>`(시간 제한 15초, `GIT_TERMINAL_PROMPT=0`). `refs/tags/v?<semver>`만 본다. 사전 출시 태그(`-alpha.0` 등)는 설치 판이나 CLI 판이 사전 출시일 때만 센다(그 줄을 고른 사람). `stable`은 사전 출시가 아닌 것 중 가장 큰 것. `-`로 시작하는 소스는 exit 2.
 - 소스가 없거나 git이 없거나 `ls-remote`가 실패하면 최신 칸은 "확인 못 함"(`latest.status: unknown`, `reason`)이고 exit 0.
 - `newest` = CLI 버전과 최신 태그 중 큰 것. `newest > 설치 버전`이면 "새 판이 있다"와 올리는 명령(`harness-kit update` 또는 `npx harness-kit@<최신> update`)을 낸다. `--check`면 그때 exit 1.
 - 팩(P18) · 외부 도구(P22) 칸은 이번에 없다.
@@ -229,7 +229,7 @@ CLI `update`가 쓰기를 마친 뒤(`--dry-run`이 아닐 때) update.sh `rebui
 | # | 스택 · 변형 · 하네스 · 모듈 | 사람 수정 · 준비 | 기대 |
 |---|---|---|---|
 | 7 | python · layered · claude,kiro · platform-guards | 새 킷이 모듈 `run-guards.sh`(이기는 판)와 common `platform-invariants.md`(지는 판)를 바꾼다 | 두 결과가 같다. `run-guards.sh`만 update, `.new` 0, lock 레이어 `optional/platform-guards` |
-| 8 | go · hexagonal · codex | 옛 구조 이슈 + 옛 형식 보드(HK-9 시험과 같다) | 두 결과가 같다(보드 다시 만듦). CLI JSON `board.status = rebuilt` |
+| 8 | go · hexagonal · codex | 옛 구조 이슈 + 옛 형식 보드(HK-9 시험과 같다) | 두 결과가 같다(보드 다시 만듦). 옛 보드는 킷 파일 `specs-index.md`를 고친 것이라 두 쪽 모두 그 `.new`를 받는다 — CLI exit 4, JSON `board.status = rebuilt` |
 | 9 | jvm · hexagonal · claude | `AGENTS.md`를 미리 두고 설치, lock 표시 줄을 지운다(v1.0.8 lock) | 두 결과가 같다. `AGENTS.md`는 사람 판, `AGENTS.md.new`와 킷이 바꾼 규칙의 `.new`. CLI exit 4. 새 lock 해시 `-` · `null` |
 | 10 | 9와 같음, 표시 줄 둠(이 판 setup.sh) | — | 두 결과가 같다. `AGENTS.md.new`(해시 `-`), 킷이 바꾼 규칙은 update |
 
@@ -299,6 +299,10 @@ setup.sh로 일부 하네스 · 모듈만 깔고 두 벌로 복사한다. 한 �
 | D6 | 02 §3.14 스킬이 CLI를 직접 부른다 | 스킬은 `kit.sh`를 부르고 `kit.sh`가 CLI · v1 스크립트를 고른다 | 갈래를 문서가 아니라 코드에 두고 시험한다 |
 | D7 | 02 §3.9 v1 읽기 규칙 1~4 | 둘째 줄 `# pre-existing: -`가 없으면 `sha(C) = B ≠ sha(D)`를 가리지 못한 것으로 본다(§7) | R12.6. 옛 lock은 미리 있던 파일을 그 파일 해시로 적었다 |
 | D8 | 02 §3.2 `outdated` 코드 0 1 3 | 소스가 `-`로 시작하면 exit 2 | 인자로 읽히는 값을 git에 넘기지 않는다 |
+| D9 | 02 §3.13 uninstall은 lock만 본다 | 표시 줄 없는 v1 lock이면 메타 선택값으로 D를 만들어 `sha(C) = B ≠ sha(D)`를 남긴다(템플릿을 못 찾으면 `sha(C) = B`를 모두 남긴다) | R12.6 — 옛 lock에서 미리 있던 사람 파일을 지우지 않는다 |
+| D10 | 02 §3.3 remove: 남는 경로는 언급 없음 | 이기는 판이 바뀐 남는 경로는 update 판정(same · update · conflict)으로 맞춘다. add는 파일을 두고 레이어만 바꾼다 | remove는 v1 스크립트가 없어 새 설치와 같은 트리가 기준이다. add는 add-agent.sh(있는 파일을 건너뛴다)와 같아야 한다 |
+
+고친 설계 문서(사실과 달라진 줄만): `docs/design/02-cli-engine.md` R7.1 "18 미만" → "18.3 미만", §3.14 절차 2 · 3의 "v18 이상 · 18 미만" → "18.3 이상(갈래는 `kit.sh`) · 18.3 미만".
 
 ## 14. 확인 필요
 
