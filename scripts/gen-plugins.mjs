@@ -9,13 +9,20 @@
 //   packages/plugin/**                → <out>/**
 //   packages/legacy-setup/<스킬>/**    → <out>/skills/<스킬>/**
 //   packages/templates/**             → <out>/skills/hx-bootstrap/templates/**
+//   packages/cli/dist/cli.js          → <out>/skills/hx-bootstrap/bin/harness-kit.js (755, HK-8)
 //
-// 종료 코드: 0 성공 · 1 --check 차이 있음 · 2 사용 오류(겹침 · 위험한 출력 폴더 · 링크)
+// CLI 번들은 여기서 빌드하지 않는다(이 스크립트는 node_modules 없이 돈다). 소스를 고쳤으면 먼저 `pnpm build`.
+// 번들 머리줄의 src-sha256 이 지금 packages/cli 소스 해시와 같은 것만 원본으로 쓴다.
+//   dist 가 있으면 dist(해시가 다르면 exit 2 — 오래된 빌드).
+//   dist 가 없으면 커밋된 사본(해시가 같을 때). 다르면 쓰기는 exit 2, --check 는 차이(exit 1).
+//
+// 종료 코드: 0 성공 · 1 --check 차이 있음 · 2 사용 오류(겹침 · 위험한 출력 폴더 · 링크 · CLI 번들 없음/오래됨)
 // Node 표준 모듈만 쓴다.
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { bannerHash, srcHash } from "../packages/cli/scripts/src-hash.mjs";
 
 /** 심볼릭 링크를 푼 절대 경로. 아직 없는 경로는 있는 조상까지 풀고 나머지를 붙인다(macOS /var → /private/var). */
 function realResolve(p) {
@@ -34,6 +41,7 @@ const ROOT = realResolve(path.join(path.dirname(fileURLToPath(import.meta.url)),
 const DEFAULT_OUT = path.join(ROOT, "plugins", "harness-kit");
 const SKIP_NAMES = new Set([".DS_Store", "__pycache__", "node_modules"]);
 const MARKER = path.join(".claude-plugin", "plugin.json");
+export const CLI_BIN_REL = "skills/hx-bootstrap/bin/harness-kit.js";
 
 class UsageError extends Error {}
 
@@ -68,8 +76,30 @@ function walk(dir, base = dir, acc = []) {
   return acc;
 }
 
+/**
+ * CLI 번들의 원본 파일(HK-8 design §2.3).
+ * 1. dist 가 있으면 머리줄 해시가 지금 소스 해시와 같아야 한다. 다르면 UsageError(오래된 빌드).
+ * 2. dist 가 없으면 committedDir 의 사본을 쓴다 — 그 사본의 머리줄 해시가 지금 소스 해시와 같을 때만.
+ * 3. 그것도 아니면 쓰기는 UsageError, --check 는 null(차이로 보고된다).
+ */
+export function cliBundleSource(root, { check = false, committedDir = path.join(root, "plugins", "harness-kit") } = {}) {
+  const cliDir = path.join(root, "packages", "cli");
+  const dist = path.join(cliDir, "dist", "cli.js");
+  const want = srcHash(cliDir);
+  if (fs.existsSync(dist)) {
+    if (bannerHash(dist) === want) return dist;
+    throw new UsageError("packages/cli/dist/cli.js 가 지금 소스에서 만든 번들이 아니다(오래된 빌드). pnpm build 뒤 다시 실행한다");
+  }
+  const committed = path.join(committedDir, ...CLI_BIN_REL.split("/"));
+  if (bannerHash(committed) === want) return committed;
+  const msg = `CLI 번들이 없다: packages/cli/dist/cli.js 가 없고 ${CLI_BIN_REL} 의 src-sha256 이 지금 소스와 다르다. pnpm install && pnpm build 뒤 다시 실행한다`;
+  if (!check) throw new UsageError(msg);
+  console.log(msg);
+  return null;
+}
+
 /** 생성물 경로 → 원본 파일 경로. 겹치면 UsageError. */
-export function buildPlan(root = ROOT) {
+export function buildPlan(root = ROOT, cliOptions = {}) {
   const plan = new Map();
   const add = (rel, src) => {
     if (plan.has(rel)) {
@@ -87,6 +117,8 @@ export function buildPlan(root = ROOT) {
   }
   const tplDir = path.join(root, "packages", "templates");
   for (const rel of walk(tplDir)) add(`skills/hx-bootstrap/templates/${rel}`, path.join(tplDir, rel));
+  const bundle = cliBundleSource(root, cliOptions);
+  if (bundle) add(CLI_BIN_REL, bundle);
   return new Map([...plan.entries()].sort(([a], [b]) => byText(a, b)));
 }
 
@@ -126,7 +158,7 @@ function generate(out, plan) {
       const dest = path.join(staging, ...rel.split("/"));
       fs.mkdirSync(path.dirname(dest), { recursive: true });
       fs.copyFileSync(src, dest);
-      fs.chmodSync(dest, modeOf(src));
+      fs.chmodSync(dest, rel === CLI_BIN_REL ? 0o755 : modeOf(src));
     }
     fs.chmodSync(staging, 0o755);
     const old = `${staging}.old`;
@@ -165,7 +197,7 @@ export function diff(expectedDir, actualDir) {
 
 function main() {
   const opts = parseArgs(process.argv.slice(2));
-  const plan = buildPlan();
+  const plan = buildPlan(ROOT, { check: opts.check, committedDir: opts.check ? (opts.out ?? DEFAULT_OUT) : DEFAULT_OUT });
   if (opts.check) {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "hk-gen-check-"));
     try {
