@@ -97,6 +97,9 @@ esac
 - pnpm `modules` 필드의 의존 닫힘은 킷이 package.json으로 계산한 표시용 값이다. 실행 범위는 pnpm 필터가 정한다.
 - uv · Python 단일 프로젝트는 `ruff format --check`도 돈다(changed와 같은 검사).
 - changed 계획의 `level`은 지금 값(L0 · L1)을 그대로 둔다. affected만 `level: "affected"`이고, 두 레벨 모두 `scope`에 L0 · L1을 둔다. 지금 시험 · 소비자가 `level: L0`을 본다.
+- `--plan`도 그래프를 읽는 명령(`go list`, 캐시가 없을 때 Gradle 초기화 스크립트)은 돌린다. 검증 명령(빌드 · 린트 · 시험)은 돌리지 않는다.
+- 킷 스택 밖 하위 단위의 파일은 Markdown(`.md` 등 문서)만 정적 검사로 보내고, 나머지는 모두 그 단위 게이트로 보낸다(설정 파일도 그 단위의 동작을 바꾼다).
+- 모듈 안의 문서가 아닌 파일(`application.yml`, `*.sql`, 모듈 `package.json` · `pyproject.toml`)도 그 모듈을 고른다. 설계 01 표는 코드 파일만 적었다.
 
 ## 확인 필요
 

@@ -101,6 +101,10 @@ fi
 - `--plan`은 아무것도 실행하지 않으므로 기록하지 않는다.
 - `unverified` 항목은 `incomplete` 목록에 겹쳐 넣지 않는다. 요약의 "미완료 N개"는 둘을 합친 수다.
 - `trigger`의 `pre-commit` · `pre-push`는 git 훅이 `HARNESS_VERIFY_TRIGGER`를 넘길 때만 남는다. git 훅은 이 이슈 범위 밖이라 지금은 `cli`로 남는다.
+- 작업 트리에도 없고 git도 모르는 경로(오타)는 모듈 시험으로 넓히지 않고 `incomplete`("file not found and unknown to git")로 남긴다.
+- 빌드 계약 파일(`settings.gradle.kts` 등)을 changed로 부르면 `unverified`(`build-contract`)와 `--affected` 안내를 낸다. 계약 파일의 모듈 시험은 빌드 루트 전체라 changed 범위가 아니다.
+- `.go`를 changed의 코드 확장자에 더했다(설계 01 §3.3 표의 Go 모듈 시험을 쓰려면 필요하다).
+- 요약에 `↷ <id> 건너뜀`과 시간 상한으로 돌지 않은 명령 줄을 더하고, 전체를 40줄에서 자른다.
 
 ## 확인 필요
 

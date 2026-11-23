@@ -69,6 +69,9 @@ python3 tools/harness/gates.py --json [--changed …]  # [{"id","path","rootVeri
 - 루트 changed는 지금처럼 루트가 바뀐 파일의 검사를 직접 고른다. 도메인 게이트를 부르지 않으므로 R4.1의 "바뀐 도메인만"을 만족한다. 도메인 게이트 위임은 affected에서 한다. changed까지 위임하면 Stop 훅(`--session`) · git 훅(`--files`) 출력 형식이 바뀐다.
 - 루트 fast · full 루프는 사용자 리포의 루트 `verify.sh` 본문에 있다(킷 템플릿에 없다). 킷은 `gates.py`의 출력 형식을 바꾸지 않고, `HARNESS_VERIFY_PARENT`는 진입 블록이 export한다.
 - `rootVerify: fast`(루트에서 full 대신 fast) 상한은 full에만 적용한다. affected는 상한이 1,200초인 별도 레벨이라 그대로 부른다.
+- 설계 01에 없는 `gates.py --json`을 더했다. `verify-changed.py`가 바뀐 도메인 · 건너뛴 도메인 · 이유를 호출 한 번으로 읽는다.
+- 도메인 저장소에 `origin/<base>`가 없으면 규칙 3을 판정할 수 없다. 건너뛰면 검증하지 않은 변경이 통과하므로 바뀐 것으로 본다(`unmerged-unknown`).
+- 규칙 1(포인터)은 `--ignore-submodules=dirty`로 본다. 도메인 작업 트리 변경은 규칙 2가 따로 센다.
 
 ## 확인 필요
 
