@@ -22,11 +22,12 @@
 | HK-6 | v1.1 | 다층 리포 상위 게이트 | 01 R4 | HK-1 | 끝 |
 | HK-7 | v1.1 | full 지시 문구 | 01 R6 | HK-1 | 끝 |
 | HK-8 | P17 | CLI init · plan · doctor · list | 02 | HK-1 | 끝 |
-| HK-9 | v1.1 | SDD 새 경로 따라잡기 | 01 §3.7 | HK-3 | 진행 |
-| HK-10 | v1.1 | setup.sh 층 겹침 · 치환 특수 문자 | 02 §3.5 · §3.6 | HK-8 | 진행 |
+| HK-9 | v1.1 | SDD 새 경로 따라잡기 | 01 §3.7 | HK-3 | 끝 |
+| HK-10 | v1.1 | setup.sh 층 겹침 · 치환 특수 문자 | 02 §3.5 · §3.6 | HK-8 | 끝 |
 | HK-11 | P17 | CLI update · repair · uninstall | 02 §3.10 · §3.12 · §3.13 | HK-8 | 끝 |
-| HK-12 | P17 | CLI add · remove · outdated · 스킬 전환 | 02 §3.3 · §3.14 | HK-11 | 대기 |
-| HK-13 | P18 | 하네스 어댑터 · 복사본 배치(mirror · render · merge) · hooks.json · 동기화 · 보호 훅 · 훅 루트(worktree) · 업그레이드 공지 · check_layout | 03 · 12(역할 파일의 모델) | HK-12 | 대기 |
+| HK-12 | P17 | CLI add · remove · outdated · 스킬 전환 + 설치 전 파일 보존 · 스택 문구 · README 표 · later-wins update 동일성 | 02 §3.3 · §3.14 | HK-11 | 진행 |
+| HK-13 | P18 | 배치 엔진: 하네스 어댑터 · mirror · render · merge · 규칙 paths 자동 로드 · 역할 파일 · CLAUDE.md 블록 · check_layout | 03 · 12 | HK-12 | 대기 |
+| HK-24 | P18 | 훅: hooks.json 생성 · dispatch · hook_root(worktree) · 동기화 · 보호 훅 · 업그레이드 공지 · 세션 시작 예산 | 03 §3.4 · §3.10~§3.12 | HK-13 | 대기 |
 | HK-14 | P18 | 확장 층(회사 팩 · 개인 층 · 게이트 하한) | 04 | HK-13 | 대기 |
 | HK-15 | P19 | worktree 운영 | 05 | HK-13 | 대기 |
 | HK-16 | P23 | 정적 분석 · SARIF · 새 문제만 막는 게이트 · CI 템플릿 · 지표 | 09 §3.2~§3.7 · §3.9 | HK-8 | 진행 |
@@ -41,6 +42,11 @@
 ## 진행 방식
 
 - 슬롯 A: HK-11(끝) → HK-16 → HK-23 → HK-17 → HK-18 → HK-19 → HK-21
-- 슬롯 B: HK-9/10 → HK-12 → HK-13 → HK-14 → HK-15 → HK-20 → HK-22
+- 슬롯 B: HK-9/10(끝) → HK-12 → HK-13 → HK-24 → HK-14 → HK-15 → HK-20 → HK-22
 - HK-12는 HK-9 · HK-10과 같은 파일(플러그인 문서 · setup.sh · CLI 겹침)을 건드려서 HK-9/10을 합친 뒤에 띄운다. 합친 뒤 HK-11 update 동일성 시험이 HK-9의 update.sh 보드 재생성 · HK-10 겹침 순서를 따라가는지 HK-12에서 맞춘다.
 - 합칠 때마다 깨끗한 worktree에서 시험 전체(`pnpm -C packages/cli test` · `node scripts/gen-plugins.mjs --check` · `python3 -m unittest discover -s tests -p "test_*.py"`)를 돌린다.
+
+## 사람에게 물을 것(아침에)
+
+- platform-guards 모듈: HK-10 뒤로 공통 층과 같은 파일만 남아 따로 더하는 파일이 없다. 모듈을 남길지 뺄지.
+- 승인 대기 설계 문서: HK-9 · HK-10 · HK-11 design.md는 에이전트가 approved로 두었다. 사람 확인이 필요하다.
