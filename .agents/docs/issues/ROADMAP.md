@@ -34,8 +34,8 @@
 | HK-14 | P18 | 확장 층(회사 팩 · 개인 층 · 게이트 하한) | 04 | HK-13 | 대기 |
 | HK-15 | P19 | worktree 운영 | 05 | HK-13 | 대기 |
 | HK-16 | P23 | 정적 분석 · SARIF · 새 문제만 막는 게이트 · CI 템플릿 · 지표 | 09 §3.2~§3.7 · §3.9 | HK-8 | 끝 |
-| HK-23 | P23 | 자체 리뷰 에이전트(/hx-review) · 승인 규칙 강제(approve.py · approvals.md 덧붙이기 전용 · done 승인) | 09 §3.1 · §3.8 | HK-16 | 진행 |
-| HK-17 | P20 | 관리 페이지 서버(REST · 읽기 · 쓰기 규칙 · 승인 · 질문 · 세션 · 작업 요청 · 내보내기) | 06 §3.1~§3.15 | HK-13 | 대기 |
+| HK-23 | P23 | 자체 리뷰 에이전트(/hx-review) · 승인 규칙 강제(approve.py · approvals.md 덧붙이기 전용 · done 승인) | 09 §3.1 · §3.8 | HK-16 | 끝 |
+| HK-17 | P20 | 관리 페이지 서버(REST · 읽기 · 쓰기 규칙 · 승인 · 질문 · 세션 · 작업 요청 · 내보내기) | 06 §3.1~§3.15 | HK-13 | 진행 |
 | HK-18 | P20 | 관리 페이지 화면 · 흐름 보기(React Flow) · 전체 프로젝트 · 기록 · 사용량 · 스킬 목록 | 06 §3.16~§3.19 · 07 · screens | HK-17 | 대기 |
 | HK-19 | P21 | 킷 설계 단계: 접수(intake) · /hx-intent · Unit 목록 · 질문 · 기획물 · 역할 | 08 · 12 | HK-17 | 대기 |
 | HK-20 | P22 | 선택 모듈: module.json · aidlc · entire(실제 설치 시험) · jira-workflow 개편 · notion · 모듈 토큰 측정 | 10 | HK-12 · HK-19 | 대기 |
@@ -44,7 +44,7 @@
 
 ## 진행 방식
 
-- 슬롯 A: HK-11(끝) → HK-16 → HK-23 → HK-17 → HK-18 → HK-19 → HK-21
+- 슬롯 A: HK-11(끝) → HK-16(끝) → HK-23(끝) → HK-17 → HK-18 → HK-19 → HK-21
 - 슬롯 B: HK-9/10(끝) → HK-12(끝) → HK-13(끝) → HK-25 → HK-24 → HK-14 → HK-15 → HK-20 → HK-22
 - HK-12는 HK-9 · HK-10과 같은 파일(플러그인 문서 · setup.sh · CLI 겹침)을 건드려서 HK-9/10을 합친 뒤에 띄운다. 합친 뒤 HK-11 update 동일성 시험이 HK-9의 update.sh 보드 재생성 · HK-10 겹침 순서를 따라가는지 HK-12에서 맞춘다.
 - 합칠 때마다 깨끗한 worktree에서 시험 전체(`pnpm -C packages/cli test` · `node scripts/gen-plugins.mjs --check` · `python3 -m unittest discover -s tests -p "test_*.py"`)를 돌린다.
@@ -57,3 +57,5 @@
 - `outdated`의 기본 원격(배포 원격이 정해지면 `package.json` repository 등).
 - (HK-13) 처음 v1.0.8 lock을 올릴 때 `.agents/rules|skills|roles`도 구별 불가로 보아 배치를 미룬다 → HK-25에서 사용자 편한 쪽으로 정한다.
 - (HK-13) 확인 필요: Kiro `fileMatchPattern` 배열, Cursor `globs` 쉼표 목록, Claude `paths`가 Read로 연 파일에도 걸리는지(수동).
+- (HK-23) GitHub 비공개 시험 저장소 `harness-kit-e2e-sandbox` PR #1로 MR 요약 코멘트가 하나만 남는 것을 확인했다(남겨 둠). GitLab은 가짜 glab으로만 시험.
+- (HK-23) 승인 sha는 status/state 줄을 빼고 계산한다. tasks 게이트는 오래된(stale) done 기록도 받는다. 관리 페이지도 같게 할지.
