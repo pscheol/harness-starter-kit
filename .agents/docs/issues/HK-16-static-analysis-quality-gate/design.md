@@ -193,6 +193,10 @@ verify-entry.sh(base 판) --from-base <ref>:
 | §3.9 커버리지 | `coverage: null`, 커버리지 분석기는 등록하지 않는다 | HK-16 요구사항(VQ-R19 목록)에서 뺐다 |
 | README §8 Stop 훅 = fast | 지금 훅(changed)은 정적 분석을 건너뛴다(§9) | 토큰 · 턴 시간 |
 | 스택 `.github/workflows/verify.yml` | 지우고 셋업을 `harness-setup` 액션으로 옮긴다 | PR 마다 full 이 돌아 base 판 affected 와 겹친다 |
+| §3.6 게이트 하한은 `newIssues.CRITICAL` · `review.openMax.CRITICAL` | `enforceAt` 에 `affected` · `full` 이 있어야 한다는 검사를 더한다 | "엄하게만 바꾼다"를 형식 검사로 강제한다. `enforceAt: []` 은 하한 둘을 지켜도 게이트를 끈다 |
+| §3.7 bootstrap 조건은 "base 에 없으면" | `--bootstrap` 은 `HX_BASE_REF` 가 풀리고 base 에 검증 코드가 없을 때만 돈다(아니면 exit 2) | fetch 실패로 `git show` 가 비면 head 판이 자기 MR 을 판정한다 |
+| §3.5 정규화 | 도구 지문 · 위치가 같은 결과는 하나로 센다. 메시지의 임시 복사 폴더 · 리포 절대 경로를 뺀다 | osv-scanner 2.7.1 은 같은 취약점을 두 번 낸다. gitleaks 메시지에 `{targetsDir}` 절대 경로가 남는다(실측) |
+| §3.5 기준선 갱신 거부 = 에이전트 세션 판정 | 판정에서 `CI` 표지를 뺀다 | `CI=true` 를 붙인 에이전트 세션이 CI 로 보인다 |
 
 ## 12. 확인 필요
 

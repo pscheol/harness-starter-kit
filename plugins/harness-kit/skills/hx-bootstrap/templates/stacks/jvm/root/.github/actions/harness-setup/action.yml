@@ -1,0 +1,24 @@
+# HARNESS STARTER KIT ({{PROJECT_NAME}}) — CI 실행 환경 준비(JVM). .github/workflows/harness-verify.yml 이 부른다.
+#
+# 검증은 하지 않는다(검증은 scripts/verify.sh 한 곳). 런타임 · 의존성 · 분석기 설치만 둔다.
+# 분석기(.agents/analyzers.json)는 킷이 설치하지 않는다. required 분석기(gitleaks · semgrep · osv-scanner)가 없으면 CI 검증이 실패한다.
+# 설치 예(팀이 버전을 고정해 아래 steps 에 더한다):
+#   - shell: bash
+#     run: pipx install semgrep==<판>
+#   - shell: bash
+#     run: go install github.com/google/osv-scanner/v2/cmd/osv-scanner@<판>
+#   gitleaks 는 릴리스 바이너리를 받아 PATH 에 둔다.
+name: harness-setup
+description: 하네스 검증 실행 환경(JVM)
+runs:
+  using: composite
+  steps:
+    # JDK — .agents/rules/tech.md 기준(예시 21).
+    - uses: actions/setup-java@v4
+      with:
+        distribution: temurin
+        java-version: "21"
+    - uses: gradle/actions/setup-gradle@v4
+    - name: Gradle 인자
+      shell: bash
+      run: echo "GRADLE_ARGS=--console=plain --no-daemon" >> "$GITHUB_ENV"

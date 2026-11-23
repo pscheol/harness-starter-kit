@@ -1,0 +1,76 @@
+# HARNESS STARTER KIT ({{PROJECT_NAME}}) — GitLab CI 검증 단계(설계 09 §3.7). 킷이 깐 파일이다(주인 kit).
+#
+# 리포의 .gitlab-ci.yml 이 include 한다. 검증 단계는 scripts/verify.sh 만 부른다.
+#   harness:fast           모든 파이프라인
+#   harness:affected       MR. base 브랜치의 검증 코드 · 설정으로 판정한다(MR 이 바꾼 판은 병합 뒤부터 적용된다)
+#   harness:affected-head  MR 이 검증 코드 · 설정을 바꿨을 때 head 판으로 한 번 더(정보용, 실패해도 MR 을 막지 않는다)
+#   harness:full           schedule. 기준선 갱신은 사람이 base 브랜치에서 python3 scripts/harness/quality.py baseline --update
+# 실행 환경(이미지 · 런타임 · 분석기 설치)은 .harness-kit-setup 을 리포 .gitlab-ci.yml 에서 덮어 넣는다. 킷은 분석기를 설치하지 않는다.
+# 배포 단계(선택) 자리: scripts/harness/deploy.py 만 부른다(설계 14 §3.5). 이 템플릿에는 아직 없다.
+
+stages:
+  - fast
+  - affected
+  - full
+
+.harness-kit-setup:
+  variables:
+    GIT_DEPTH: "0"
+
+harness:fast:
+  extends: .harness-kit-setup
+  stage: fast
+  script:
+    - bash scripts/verify.sh --fast
+
+harness:affected:
+  extends: .harness-kit-setup
+  stage: affected
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+  variables:
+    HX_BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+  script:
+    - git fetch --quiet origin "+refs/heads/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME:refs/remotes/origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME"
+    - mkdir -p .agents/state
+    - git show "$HX_BASE_REF:scripts/verify.sh" > .agents/state/verify-base.sh || true
+    - git show "$HX_BASE_REF:scripts/verify-entry.sh" > .agents/state/verify-entry.sh || true
+    - if [ -s .agents/state/verify-base.sh ] && [ -s .agents/state/verify-entry.sh ]; then bash .agents/state/verify-base.sh --from-base "$HX_BASE_REF" --affected; else bash scripts/verify.sh --affected --bootstrap; fi
+  artifacts:
+    when: always
+    paths:
+      - .agents/reports/
+    expire_in: 14 days
+
+harness:affected-head:
+  extends: .harness-kit-setup
+  stage: affected
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+      changes:
+        - scripts/verify.sh
+        - scripts/verify-entry.sh
+        - scripts/verify-changed.py
+        - scripts/harness/**/*
+        - .agents/verify-checks.json
+        - .agents/quality-gate.json
+        - .agents/analyzers.json
+        - .agents/deploy.json
+        - .agents/quality-baseline.json
+  allow_failure: true
+  script:
+    - bash scripts/verify.sh --affected
+
+harness:full:
+  extends: .harness-kit-setup
+  stage: full
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+  script:
+    - bash scripts/verify.sh --full
+  artifacts:
+    when: always
+    paths:
+      - .agents/reports/
+    expire_in: 30 days
