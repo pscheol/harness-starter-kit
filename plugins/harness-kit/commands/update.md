@@ -25,7 +25,7 @@ argument-hint: [경로] [--dry-run] [--accept-all]
 1. **스킬 위치 확인** — 이 커맨드가 속한 플러그인의 `skills/hx-update/` 절대경로를 `SKILL_DIR` 로 잡는다.
    플러그인이 방금 갱신됐다면 그 새 버전 경로여야 한다.
 2. **`--dry-run` 선실행** — 건너뛰지 않는다.
-3. **요약 보고** — 버전(`from → to`), `new`/`update` 건수, `conflict` 는 **파일 이름을 전부** 나열한다.
+3. **요약 보고** — `--json` 의 버전(`kit.from → to`), `counts`, exit 4 면 `conflicts`(`.new` 경로 · `diff -u` 줄)를 **전부** 그대로 보인다.
 4. **승인 후 실행** — `--dry-run` 없이 재실행.
 5. **충돌 처리** — `.new` 와 원본을 diff 해 차이를 설명하고 병합안을 제안한다.
    사용자 확인 없이 `.new` 를 원본에 덮지 않는다.
@@ -33,11 +33,13 @@ argument-hint: [경로] [--dry-run] [--accept-all]
 
 ```bash
 SKILL_DIR="<플러그인 내 skills/hx-update 절대경로>"
-bash "$SKILL_DIR/update.sh" [--dry-run] [--accept-all] <대상_프로젝트_경로>
+bash "$SKILL_DIR/../hx-bootstrap/kit.sh" update --cwd <대상_프로젝트_경로> [--dry-run] [--accept-all] --json
 ```
+
+`kit.sh` 는 Node 18.3 이상이면 `bin/harness-kit.js`(CLI)를, 없거나 낮으면 같은 플래그로 `update.sh` 를 부른다(v2.0 동안만).
 
 ## 주의
 
 - `ARCHITECTURE.md`·`product.md`·`structure.md` 가 `conflict` 로 나오는 것은 정상이다 — 사용자가 채우는 파일이다.
 - 업데이트는 에이전트 구성을 바꾸지 않는다. 새 에이전트를 붙이려면 `/agent-add`.
-- 상태 파일이 없으면(구버전 킷 설치) `exit 1` 이다. 안내대로 `setup.sh` 를 한 번 돌려 상태를 만든 뒤 재실행한다.
+- 상태 파일이 없으면(구버전 킷 설치) 멈춘다(CLI exit 3 · `update.sh` exit 1). `/bootstrap` 으로 상태를 만든 뒤 재실행한다.

@@ -94,33 +94,40 @@ description: 단일 프로젝트에 하네스 엔지니어링 기본 골격을 �
 
 ## 사용 절차
 
-1. **킷 위치 확인** — 이 스킬이 로드된 폴더에 `templates/`·`setup.sh`·`manifest.md` 가 있다. 그 절대경로를 `SKILL_DIR` 로 잡는다. 대상 프로젝트의 `pwd` 기준으로 유추하지 않는다 — 플러그인으로 설치된 스킬은 보통 대상 리포 바깥(`~/.claude/plugins/…` · `~/.codex/plugins/…`)에 있다.
+1. **킷 위치 확인** — 이 스킬이 로드된 폴더에 `kit.sh`·`bin/harness-kit.js`·`templates/`·`setup.sh`·`manifest.md` 가 있다. 그 절대경로를 `SKILL_DIR` 로 잡는다. 대상 프로젝트의 `pwd` 기준으로 유추하지 않는다 — 플러그인으로 설치된 스킬은 보통 대상 리포 바깥(`~/.claude/plugins/…` · `~/.codex/plugins/…`)에 있다.
 2. **스택 결정** — 대상 리포를 보고 판단한다(`build.gradle.kts`/`pom.xml`→`jvm`, `pyproject.toml`→`python`, `go.mod`→`go`, `package.json` + `electron` 의존→`electron`, `package.json`만→`web`). 애매하면 사용자에게 묻는다.
    도메인은 스택에서 자동으로 정해진다(`web`·`electron`→`frontend`, 나머지는 도메인 레이어 없음). `--domain=` 으로 덮을 일은 거의 없다.
 2-1. **아키텍처 변형 결정** — 기존 코드가 있으면 그 레이아웃을 따른다(`manage.py`→`django`, `internal/<f>/handler.go`→`feature`, `services/`+`repositories/`→`layered`, `prompts/`·`evaluation/`→`ai-service`, `<ctx>/{domain,application,primary,infra}`→`hexagonal`, `<slug>-<ctx>-domain` 평면 모듈→`hexagonal-standalone`, `api`/`service`/`domain` 모듈 분리→`layered-multimodule`, 그 규격이 아닌 Gradle 멀티모듈→`multimodule`). 새 리포이거나 애매하면 위 변형 표의 "언제 고르나"를 사용자에게 제시하고 고르게 한다. 임의로 정하지 않는다.
 2-2. **에이전트 결정** — 그 리포에서 실제로 쓸 에이전트만 고른다. 감지 결과를 먼저 보여준다:
    ```bash
-   bash "$SKILL_DIR/setup.sh" --stack=<스택> --arch=<변형> --list-agents <대상_프로젝트_경로>
+   bash "$SKILL_DIR/kit.sh" plan --cwd <대상_프로젝트_경로> --stack <스택> --arch <변형> --quiet --json
    ```
-   `.claude/`·`.codex/`·`.cursor/`·`.kiro/` 존재와 실행 환경변수로 후보를 잡는다. **감지 결과를
-   그대로 쓰지 말고 사용자에게 확인받는다** — 리포에 흔적이 없어도 팀이 쓰는 에이전트가 있을 수 있다.
-   감지가 0건이면 `claude` 로 떨어지므로 이때는 반드시 묻는다.
+   `selection.agents` · `agentsOrigin`(detected · default)이 감지 결과다. `.claude/`·`.codex/`·`.cursor/`·`.kiro/` 존재와
+   실행 환경변수로 후보를 잡는다. **감지 결과를 그대로 쓰지 말고 사용자에게 확인받는다** — 리포에 흔적이 없어도
+   팀이 쓰는 에이전트가 있을 수 있다. 감지가 0건이면 `claude` 로 떨어지므로 이때는 반드시 묻는다.
 3. **치환값 결정** — 사용자에게 물어 확정(모르면 합리적 기본 제안):
    - `PROJECT_NAME`(표시명), `PROJECT_SLUG`(리포 슬러그)
    - `PACKAGE_NS` — 스택마다 의미가 다르다: jvm=패키지 네임스페이스(`com.example.app`), python=최상위 패키지명(`myapp` → `src/myapp/`), go=모듈 경로(`github.com/org/my-app`)
    - `PROTECTED_PATH`(수정 금지 참고 경로, 기본 `docs/references`), `DOMAIN_EXAMPLE`(예시 도메인)
-4. **스캐폴딩 실행**:
+4. **스캐폴딩 실행** — 계획을 보이고 승인받은 뒤 같은 플래그로 설치한다:
    ```bash
    SKILL_DIR="<이 스킬이 로드된 폴더의 절대경로>"
-   STACK=python ARCH=modular PROJECT_NAME="MyApp" PROJECT_SLUG="my-app" PACKAGE_NS="myapp" \
-     bash "$SKILL_DIR/setup.sh" --agents=claude,kiro <대상_프로젝트_경로>
+   bash "$SKILL_DIR/kit.sh" plan --cwd <대상_프로젝트_경로> --stack python --arch modular --agents claude,kiro \
+     --name "MyApp" --slug my-app --package-ns myapp --yes --json
+   bash "$SKILL_DIR/kit.sh" init --cwd <대상_프로젝트_경로> --stack python --arch modular --agents claude,kiro \
+     --name "MyApp" --slug my-app --package-ns myapp --yes --json
    ```
-   - `--stack=<jvm|python|go|web|electron>` · `--arch=<변형>` 플래그로도 지정할 수 있다(기본 스택 `jvm`, 기본 변형은 스택마다 다르다).
-   - `--agents=<claude,codex,cursor,kiro|all>` 생략 시 감지 결과를 쓴다(환경변수 `HARNESS_AGENTS` 도 가능).
-   - `--modules=<jira-workflow,platform-guards|all|none>` **기본은 none**. 목록은 `--list-modules`.
-   - `--domain=<frontend>` 는 스택 기본값을 덮을 때만. 보통 건드리지 않는다.
+   - `kit.sh` 는 Node 18.3 이상이면 `bin/harness-kit.js`(CLI)를 그대로 부르고, Node 가 없거나 낮으면 같은 플래그를
+     `setup.sh` 로 옮겨 부른다(v2.0 동안만, 출력 첫 줄에 안내 — `setup.sh` 는 JSON 을 내지 않는다).
+   - `--json` 의 `counts`(create · skip-user · 하네스 제외)와 `ops`(skip-user — 이미 있던 사람 파일)를 사람에게 보인다.
+     exit 2 사용법 · exit 3 이미 설치됨(`hx-update` · `hx-agent-add` 로) · exit 4 사람 판단(`.new` 목록을 그대로 보인다) · exit 5 실행 환경.
+   - `--stack <jvm|python|go|web|electron>` · `--arch <변형>`(기본 스택 `jvm`, 기본 변형은 스택마다 다르다).
+   - `--agents <claude,codex,cursor,kiro|all>` 생략 시 감지 결과를 쓴다.
+   - `--modules <jira-workflow,platform-guards,multi-harness|all|none>` **기본은 none**.
+   - `--domain <frontend>` 는 스택 기본값을 덮을 때만. `--lang kotlin|java` 는 jvm 전용.
+   - 치환값: `--name` `--slug` `--package-ns` `--protected-path` `--token KEY=VALUE`(없으면 같은 이름 환경변수 → 기본값).
    - 스택에 없는 변형이나 모르는 에이전트·모듈 이름을 주면 사용 가능한 목록을 출력하고 `exit 2`로 중단한다.
-   - 기본 덮어쓰지 않음(skip). 전체 재생성 `--force`, 미리보기 `--dry-run`.
+   - 기본 덮어쓰지 않음(이미 있는 파일은 사람 파일로 적는다). 전체 재생성 `--force` 는 사용자가 요구할 때만.
 5. **스택·변형 설정 마무리** — setup.sh가 출력하는 "다음 단계"를 따른다:
    - `jvm`: `verify.sh`의 `GRADLE_DIR`, `tech.md`의 기준 버전. `layered`·`layered-multimodule`·`feature`·`multimodule`은 ArchUnit, `modulith`는 Spring Modulith, 헥사고날 3종은 Konsist(Java면 ArchUnit) 의존성과 구조/모듈 검증 테스트를 함께 넣어야 강제가 작동한다. 멀티모듈 변형(헥사고날 3종·`layered-multimodule`·`multimodule`)은 `settings.gradle` 모듈 등록 + Spring Boot 플러그인을 실행 모듈에만 적용(나머지는 `bootJar`가 안 생긴다)까지 해야 한다. `hexagonal-standalone`은 추가로 `projectDir` 재지정·`build-logic` 컨벤션 플러그인·구조 테스트의 `others` 컨텍스트 목록 등록이, `layered-multimodule`은 엔티티 노출 범위(`api()` vs `implementation()`) 결정이, `multimodule`은 분할 축·네이밍 결정과 구조 테스트 자리표시자 채우기가 첫 작업이다(안 채우면 아무것도 검사하지 않는다).
    - `jvm` 전용 진입 스킬이 따로 있다 — `hx-jvm-setup`(아키텍처 선택 안내 + `--lang` 확정) 과 아키텍처별 자식 스킬 `hx-jvm-hexagonal`·`hx-jvm-layered`·`hx-jvm-layered-multimodule`. 설치 로직은 이 `setup.sh` 한 곳을 그대로 쓴다.
@@ -152,9 +159,10 @@ description: 단일 프로젝트에 하네스 엔지니어링 기본 골격을 �
 | JVM 리포에 아키텍처를 골라 세팅한다 | `hx-jvm-setup`(+ 자식 `hx-jvm-hexagonal`·`hx-jvm-layered`·`hx-jvm-layered-multimodule`) | 이 `setup.sh` 를 `--stack=jvm` 으로 호출 |
 | 웹 프론트엔드 리포를 세팅한다 | `hx-web-setup` | 이 `setup.sh` 를 `--stack=web` 으로 호출 |
 | Electron 데스크톱 리포를 세팅한다 | `hx-electron-setup` | 이 `setup.sh` 를 `--stack=electron` 으로 호출 |
-| 이슈 트래커 연동을 실제로 동작하게 만든다 | `hx-jira-setup` | 모듈이 없으면 이 `setup.sh --modules=jira-workflow` 를 먼저 호출 |
-| 다른 에이전트도 쓰게 됐다(예: Cursor 추가) | `hx-agent-add` | `../hx-agent-add/add-agent.sh --agents=cursor` |
-| 킷이 올라갔다 — 규칙·커맨드 변경분 반영 | `hx-update` | `../hx-update/update.sh --dry-run` |
+| 이슈 트래커 연동을 실제로 동작하게 만든다 | `hx-jira-setup` | 모듈이 없으면 `kit.sh add jira-workflow` 를 먼저 호출 |
+| 다른 에이전트 · 모듈을 켜거나 끈다(예: Cursor 추가) | `hx-agent-add` | `kit.sh add cursor` · `kit.sh remove cursor`(Node 없으면 `add-agent.sh`) |
+| 킷이 올라갔다 — 규칙·커맨드 변경분 반영 | `hx-update` | `kit.sh update --dry-run`(Node 없으면 `update.sh`) |
+| 킷 새 판이 나왔는지 본다 | — | `kit.sh outdated`(CLI 에만 있다) |
 
 업데이트는 `.agents/harness-kit.lock` 의 설치 시점 해시로 **사용자가 고친 파일**을 가려낸다.
 고친 파일은 덮지 않고 새 버전을 `.new` 로 옆에 둔다. 그래서 이 두 상태 파일은 커밋해야 한다.
