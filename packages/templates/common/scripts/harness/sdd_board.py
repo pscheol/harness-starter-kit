@@ -1,7 +1,13 @@
-"""두 SDD 구조를 읽고 BOARD 마커 사이만 갱신한다."""
+"""SDD 보드. `specs-index.md` 에 영역별 표(새 이슈 + 옛 이슈 `(옛)`)를, 옛 `<영역>-specs/index.md` 에 옛 형식 보드를 쓴다.
+
+BOARD 마커 사이만 바꾼다. frontmatter 가 틀린 문서가 있으면 아무것도 쓰지 않고 ValueError 다(설계 01 §3.7.5).
+"""
 
 import re
 
+from harness.sdd_frontmatter import TASK_STATES
+from harness.sdd_issues import documents, issue_folders, label
+from harness.sdd_keys import check_area, split_folder
 from harness.sdd_layout import (
     STATES,
     atomic_write,
@@ -12,6 +18,7 @@ from harness.sdd_layout import (
     safe_path,
     spec_roots,
     stage_path,
+    status_of,
     validate_token,
 )
 
@@ -23,9 +30,12 @@ LABELS = {
     "completed": "✅ 완료",
     "superseded": "⛔ 폐기",
 }
+WORDS = {"requirements": "요구", "design": "설계", "active": "구현", "check": "검증", "completed": "완료", "superseded": "폐기"}
 BOARD_STATES = tuple(LABELS)
+TABLE_HEAD = ["| 키 | 이름 | 종류 | req | design | tasks | 상태 |", "|---|---|---|---|---|---|---|"]
 
 
+# ── 옛 구조 ────────────────────────────────────────────────────────────────
 def feature_state(root, spec, key, layout):
     for state in reversed(STATES):
         if safe_path(root, stage_path(spec, key, layout, "tasks", state)).is_file():
@@ -33,13 +43,20 @@ def feature_state(root, spec, key, layout):
     return "design" if safe_path(root, stage_path(spec, key, layout, "design")).is_file() else "requirements"
 
 
-def grouped_features(root, spec):
-    groups = {state: [] for state in BOARD_STATES}
-    seen = set()
+def legacy_features(root, spec):
+    """옛 구조 (키, 구조) 목록. 두 구조에 같은 키가 있으면 ValueError."""
+    seen, features = set(), []
     for key, layout in feature_locations(root, spec):
         if key in seen:
             raise ValueError(f"duplicate issue across layouts: {spec}/{key}")
         seen.add(key)
+        features.append((key, layout))
+    return features
+
+
+def grouped_features(root, spec):
+    groups = {state: [] for state in BOARD_STATES}
+    for key, layout in legacy_features(root, spec):
         groups[feature_state(root, spec, key, layout)].append(key)
     return groups
 
@@ -70,13 +87,13 @@ def wrap(lines):
 
 
 def render_board(root, spec):
+    """옛 `<영역>-specs/index.md` 보드. 옛 이슈가 없으면(모두 옮겼으면) 옮긴 곳 한 줄이다."""
     slug = spec.name.removesuffix("-specs")
-    groups = grouped_features(root, spec)
-    lines = [f"### 보드 — `{slug}`", "", header(groups), ""]
     locations = feature_locations(root, spec)
     if not locations:
-        lines.append(f"> 아직 기능이 없습니다. `scripts/new-feature.sh {slug} <feature>` 로 시작하십시오.")
-        return wrap(lines)
+        return wrap([f"> 이슈는 `.agents/docs/issues/`(area: {slug})로 옮겼다. 보드는 `.agents/docs/specs-index.md` 에 있다."])
+    groups = grouped_features(root, spec)
+    lines = [f"### 보드 — `{slug}`", "", header(groups), ""]
     lines.extend(["| 순번 | 종류 | 이름 | req | 체크리스트 | design | 상태 |", "|---|---|---|---|---|---|---|"])
     for key, layout in locations:
         number, kind, name = key_parts(key)
@@ -99,33 +116,93 @@ def render_board(root, spec):
     return wrap(lines)
 
 
-def render_global(root, specs):
-    groups = {state: [] for state in BOARD_STATES}
+def legacy_rows(root, spec):
     rows = []
-    for spec in specs:
-        slug = spec.name.removesuffix("-specs")
-        local = grouped_features(root, spec)
-        counts = [len(local[state]) for state in BOARD_STATES]
-        for state in BOARD_STATES:
-            groups[state].extend(f"{slug}/{key}" for key in local[state])
-        rows.append(f"| [`{slug}`]({slug}-specs/index.md) | " + " | ".join(map(str, [*counts, sum(counts)])) + " |")
-    lines = ["## 전체 보드 (전 제품)", "", header(groups), ""]
-    if not specs:
-        lines.append("> 아직 제품이 없습니다. `scripts/new-feature.sh <slug> <feature>` 로 시작하십시오.")
-    else:
-        lines.extend(
-            [
-                "| 제품 | 📋 요구 | 🎨 설계 | 🔨 구현 | 👀 검증 | ✅ 완료 | ⛔ 폐기 | 합계 |",
-                "|---|---|---|---|---|---|---|---|",
-                *rows,
-                "",
-                "> 항목 표기는 `<제품>/<순번>-<feature>` 입니다. 제품별 상세는 각 `index.md` 보드를 보십시오.",
-                "> 상태는 **파일 위치**에서 계산합니다 — 표를 고치지 마시고 `bash scripts/board.sh` 를 실행하십시오.",
-            ]
-        )
+    for key, layout in legacy_features(root, spec):
+        number, kind, name = key_parts(key)
+        statuses = []
+        for stage in ("requirements", "design"):
+            path = safe_path(root, stage_path(spec, key, layout, stage))
+            statuses.append((status_of(path) or "—") if path.is_file() else "—")
+        state = feature_state(root, spec, key, layout)
+        tasks = state if state in TASK_STATES else "—"
+        rows.append((state, f"| {number} (옛) | {name} | {kind} | {statuses[0]} | {statuses[1]} | {tasks} | {WORDS[state]} |"))
+    return rows
+
+
+# ── 새 구조 ────────────────────────────────────────────────────────────────
+def issue_row(root, folder):
+    """(영역, 상태, 표 행). 문서가 하나도 없는 폴더는 None."""
+    parts = split_folder(folder.name)
+    if not parts:
+        raise ValueError(f"invalid issue folder: {label(root, folder)}")
+    docs = documents(root, folder)
+    present = [fields for fields in (docs["requirements"], docs["design"], docs["tasks"]) if fields is not None]
+    if not present:
+        return None
+    area, kind = present[0].get("area"), present[0].get("type", "—")
+    if not area:
+        raise ValueError(f"invalid frontmatter: {label(root, folder)}: area 가 없다")
+    tasks = docs["tasks"].get("state", "") if docs["tasks"] is not None else None
+    if tasks is not None and tasks not in TASK_STATES:
+        raise ValueError(f"invalid frontmatter: {label(root, folder / 'tasks.md')}: state {tasks!r}")
+    state = tasks or ("design" if docs["design"] is not None else "requirements")
+    cells = [(docs[stage] or {}).get("status", "—") if docs[stage] is not None else "—" for stage in ("requirements", "design")]
+    row = f"| {parts[0]} | {parts[1]} | {kind} | {cells[0]} | {cells[1]} | {tasks or '—'} | {WORDS[state]} |"
+    return area, state, row
+
+
+def area_tables(root, specs=None):
+    """영역 → {"new": [(상태, 행)], "old": [(상태, 행)]}. 보드와 migrate 개수 비교가 같이 쓴다."""
+    areas = {}
+    for folder in issue_folders(root):
+        entry = issue_row(root, folder)
+        if entry:
+            areas.setdefault(entry[0], {"new": [], "old": []})["new"].append(entry[1:])
+    for spec in spec_roots(root) if specs is None else specs:
+        rows = legacy_rows(root, spec)
+        if rows:
+            areas.setdefault(spec.name.removesuffix("-specs"), {"new": [], "old": []})["old"].extend(rows)
+    return dict(sorted(areas.items()))
+
+
+def area_counts(root):
+    """영역 → 상태별 개수(새 + 옛)."""
+    return {
+        area: {state: sum(1 for entry in tables["new"] + tables["old"] if entry[0] == state) for state in BOARD_STATES}
+        for area, tables in area_tables(root).items()
+    }
+
+
+def area_section(area, tables):
+    return [f"### {area} (새 {len(tables['new'])} · 옛 {len(tables['old'])})", "", *TABLE_HEAD, *(row for _, row in tables["new"] + tables["old"])]
+
+
+def render_index(root, specs):
+    areas = area_tables(root, specs)
+    totals = dict.fromkeys(BOARD_STATES, 0)
+    for tables in areas.values():
+        for state, _ in tables["new"] + tables["old"]:
+            totals[state] += 1
+    lines = ["## 이슈 보드", "", "전체 — " + " · ".join(f"{WORDS[state]} {totals[state]}" for state in BOARD_STATES), ""]
+    if not areas:
+        lines.append("> 아직 이슈가 없다. `scripts/new-feature.sh --next <이름> --area <영역>` 으로 시작한다.")
+        return wrap(lines)
+    for area, tables in areas.items():
+        lines.extend([*area_section(area, tables), ""])
+    lines.append("> 상태는 문서 머리(frontmatter)의 `status` · `state` 에서 계산한다. 표를 고치지 말고 `bash scripts/board.sh` 를 실행한다.")
     return wrap(lines)
 
 
+def render_area(root, area):
+    check_area(area)
+    areas = area_tables(root)
+    if area not in areas:
+        raise ValueError(f"없는 영역: {area} (있는 영역: {', '.join(areas) or '없음'})")
+    return "\n".join(area_section(area, areas[area])) + "\n"
+
+
+# ── 쓰기 ──────────────────────────────────────────────────────────────────
 def replaced_body(before, board):
     begin = before.count("<!-- BOARD:BEGIN")
     end = before.count("<!-- BOARD:END -->")
@@ -150,7 +227,7 @@ def update_boards(root, target=None, check=False):
             plans.append((index, render_board(root, spec)))
     index = safe_path(root, root / ".agents/docs/specs-index.md")
     if index.is_file():
-        plans.append((index, render_global(root, specs)))
+        plans.append((index, render_index(root, specs)))
     changed = []
     for index, board in plans:
         expected = file_snapshot(root, index)

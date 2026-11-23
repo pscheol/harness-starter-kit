@@ -1,16 +1,23 @@
+---
+key: {{ISSUE_KEY}}
+area: {{AREA}}
+type: {{TYPE}}
+title: {{TITLE}}
+state: active
+created: {{CREATED}}
+---
 <!-- HARNESS STARTER KIT ({{PROJECT_NAME}}): {{FEATURE_NAME}} 치환 후 사용 -->
 
 # Tasks — {{FEATURE_NAME}}
 
 | 항목 | 값 |
 |---|---|
-| 상태 | active \| check \| completed |
 | SDD 단계 | tasks |
-| 연계 | ../../requirements/{{FEATURE_NAME}}.md (req), ../../design/{{FEATURE_NAME}}.md (design) |
+| 연계 | requirements.md (req) · design.md (design) — 같은 폴더 |
 
 > 가이드: 각 작업은 코딩 에이전트가 바로 실행 가능한 단위로 쪼갠다.
 > 작업마다 (a) 건드리는 파일/모듈, (b) 충족 요구사항 ID, (c) 검증 방법을 명시한다.
-> 검증은 `scripts/verify.sh --files <paths> --tests <tests>`로 변경 범위부터 실행한다. full은 `--full`로 명시한다.
+> 검증은 `scripts/verify.sh --files <paths> --tests <tests>`로 변경 범위부터 실행한다. MR 전에는 `bash scripts/verify.sh --affected`, 전체 검증(full)은 CI가 돈다.
 > **선행 조건**: requirements와 design의 상태가 `approved`이고 사용자가 이 tasks 계획을 승인해야 구현을 시작한다.
 
 ## 작업 포맷 *(필수)*
@@ -126,11 +133,11 @@ T008 [P] [US2] 모델 B (파일 b.kt)   # 다른 파일·무의존 → 병렬 �
 
 ## 완료 처리 (사용자 검증 게이트)
 
-1. DoD·`scripts/verify.sh`·S7 문서 검사를 충족하면 상태를 `check`로 바꾸고 파일을 옮긴다 — 새 형식은 `tasks/active.md` → `tasks/check.md`, 기존 형식은 `tasks/active/<key>.md` → `tasks/check/<key>.md`.
+1. DoD·`scripts/verify.sh`·S7 문서 검사를 충족하면 문서 머리의 `state`를 `check`로 바꾼다. 파일은 옮기지 않는다.
 2. `결과` 섹션에 검증 근거(빌드/테스트/린트 결과)를 적고 **사용자에게 검증·확인을 요청**한다.
-3. **사용자 승인(confirm) 후에만** 상태를 `completed`로 바꾸고 `tasks/completed.md`(기존 형식은 `tasks/completed/<key>.md`)로 옮긴 뒤 결과/PR 링크를 남긴다.
+3. **사용자 승인(confirm) 후에만** `state`를 `completed`로 바꾸고 결과/PR 링크를 남긴다.
 
-> 에이전트는 사용자 승인 없이 `completed`로 바꾸거나 completed 위치로 옮기지 않는다.
+> 에이전트는 사용자 승인 없이 `state`를 `completed`로 바꾸지 않는다.
 > (에이전트 자동완료를 금지하고 harness의 사용자 승인 게이트를 적용한다.)
 
 ## 결과 / PR
@@ -147,7 +154,7 @@ T008 [P] [US2] 모델 B (파일 b.kt)   # 다른 파일·무의존 → 병렬 �
 
 ## 세션 소유권과 검증 범위
 
-| 실제 세션 ID | 소유 파일/패키지 | 변경 테스트 | 계약/문서 영향 | full 선택/이유 |
+| 실제 세션 ID | 소유 파일/패키지 | 변경 테스트 | 계약/문서 영향 | affected 결과 · CI full 링크 |
 |---|---|---|---|---|
 
-새 이슈의 상태는 tasks/active.md → check.md → 사용자 검수 → completed.md다. legacy는 상태 디렉터리를 이동한다.
+상태는 `state: active` → `check` → 사용자 검수 → `completed`(대체되면 `superseded`)다. 옛 구조(`<영역>-specs/`)는 읽기만 한다.

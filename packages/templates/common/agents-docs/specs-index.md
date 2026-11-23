@@ -1,49 +1,44 @@
 <!-- HARNESS STARTER KIT ({{PROJECT_NAME}}) -->
 
-# 전 제품 스펙 색인 (SDD 최상위 진입점)
+# 스펙 색인 (SDD 최상위 진입점)
 
-이 프로젝트의 SDD는 제품(바운디드 컨텍스트) 단위 묶음으로 관리한다.
-각 묶음은 `<slug>-specs/` 폴더이고, 이슈 하나가 `issues/<key>/` 폴더 하나다(`requirements.md` → `design.md` → `tasks/active.md`). 단계는 `.agents/rules/sdd-workflow.md` 「SDLC 단계」를 따른다.
+이 프로젝트의 SDD는 이슈 하나 = 폴더 하나다: `.agents/docs/issues/<키>-<이름>/`(`requirements.md` → `design.md` → `tasks.md`).
+이슈는 문서 머리의 `area`(영역)로 묶는다. 단계는 `.agents/rules/sdd-workflow.md` 「SDLC 단계」를 따른다.
 
 <!-- BOARD:BEGIN — scripts/board.sh 가 생성합니다. 손으로 고치지 마십시오. -->
 
-## 전체 보드 (전 제품)
+## 이슈 보드
 
-| 📋 요구 (0) | 🎨 설계 (0) | 🔨 구현 (0) | 👀 검증 (0) | ✅ 완료 (0) | ⛔ 폐기 (0) |
-|---|---|---|---|---|---|
-| — | — | — | — | — | — |
+전체 — 요구 0 · 설계 0 · 구현 0 · 검증 0 · 완료 0 · 폐기 0
 
-> 아직 제품이 없습니다. `scripts/new-feature.sh <slug> <feature>` 로 시작하십시오.
+> 아직 이슈가 없다. `scripts/new-feature.sh --next <이름> --area <영역>` 으로 시작한다.
 
 <!-- BOARD:END -->
 
-## 제품 등록표
+## 영역 등록표
 
-| 제품 | 폴더 | 요약 | 상태 |
+| 영역 | 요약 | 소유 | 상태 |
 |---|---|---|---|
-| _(아직 없음 — 첫 기능을 스캐폴딩하면 추가한다)_ | — | — | — |
+| _(아직 없음 — 첫 이슈를 만들면 추가한다)_ | — | — | — |
 
-> 상태: ☐ 미착수 / ◐ 진행 / ☑ 안정. 각 제품의 기능별 상세는 해당 폴더의 `index.md` 등록표 참고.
-> 위 **전체 보드**는 파일 위치에서 자동 계산되고, 이 등록표는 사람이 적는 제품 카탈로그다(요약·소유·안정도).
-> 둘은 역할이 다르다 — 보드는 지금의 진행 현황, 등록표는 제품이 무엇인지에 대한 설명이다.
+> 상태: ☐ 미착수 / ◐ 진행 / ☑ 안정. 위 **이슈 보드**는 문서 머리에서 자동 계산되고, 이 등록표는 사람이 적는 영역 카탈로그다(요약·소유·안정도).
+> 영역별 표만 보려면 `bash scripts/board.sh --area <영역>`.
 
-## 새 제품·기능 추가
+## 새 이슈 추가
 
 ```bash
-scripts/new-feature.sh <slug> <feature>                  # requirements — 제품 폴더가 없으면 골격까지 만든다
-scripts/new-feature.sh <slug> <feature> --stage=design   # 요구사항 승인 후
-scripts/new-feature.sh <slug> <feature> --stage=tasks    # 설계 승인 후
+scripts/new-feature.sh --next <이름> --area <영역>     # requirements — 키는 issueKey.prefix-<다음 번호>
+scripts/new-feature.sh KNOTS-17 <이름> --area <영역>   # Jira 키를 그대로 쓸 때(issueKey.source=jira)
+scripts/new-feature.sh <키> --stage=design             # requirements 승인(status: approved) 후
+scripts/new-feature.sh <키> --stage=tasks              # design 승인 후
 ```
 
-- 제품 폴더는 설치 시 미리 만들지 않는다. 첫 기능을 스캐폴딩할 때 생긴다
-  (빈 껍데기 폴더가 쌓이지 않게 하려는 것이다).
-- 같은 이유로 **단계 문서도 미리 만들지 않는다**. 단계에 들어갈 때 그 단계 것만 만든다 —
-  빈 design·tasks 가 깔려 있으면 위 보드가 곧장 🔨 구현으로 뛰고 단계 게이트도 항상 통과한다.
-  설계가 이미 확정된 소규모 작업만 `--all` 로 3종을 함께 만든다.
-- `<slug>`는 도메인/주요 능력 단위(예: `auth`, `billing`, `order`). 프로젝트명과 같을 필요는 없다.
-- 단일 제품이면 하나로 시작하고, 경계가 커지면 분할한다(YAGNI).
-- 새 제품이 생기면 위 등록표에 행을 추가한다 — 이 표가 전 제품 진입점이다.
-- 단계 템플릿 원본은 `_spec-templates/` 한 곳이다. 제품 폴더에는 템플릿을 복사하지 않는다.
+- 키 · 이름 규칙: 키 `^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5}$`, 이름은 영문 소문자 · 숫자 2~5단어(`upload-cleanup`). 종류는 이름이 아니라 `--type` 으로 준다.
+- 단계 문서는 미리 만들지 않는다. 단계에 들어갈 때 그 단계 것만 만든다 —
+  빈 design·tasks 가 깔려 있으면 보드가 곧장 구현으로 뛰고 단계 게이트도 항상 통과한다.
+- 상태의 원본은 문서 머리(`status` · tasks 는 `state`)다. 파일을 옮기지 않고 값을 바꾼다.
+- 옛 구조(`<영역>-specs/`)는 읽기만 한다. 보드에 `(옛)`으로 붙는다. 옮기기: `python3 scripts/sdd-layout.py migrate --dry-run`.
+- 단계 템플릿 원본은 `_spec-templates/` 한 곳이다. 이슈 폴더에는 템플릿을 복사하지 않는다.
 
 ## 원본 링크
 

@@ -234,6 +234,8 @@ class IssueSddTest(SddCase):
         self.assert_fails(self.run_script("check_harness.py", "--plans-only"), "state")
         (issue / "tasks.md").write_text(frontmatter_text(key="DEMO-1", area="demo", type="feat", state="completed") + "- [X] T001 일\n")
         self.assert_ok(self.run_script("check_harness.py", "--plans-only"))
+        self.assert_fails(self.run_script("check-exec-plan-status.sh"), "보드")
+        self.assert_ok(self.run_script("board.sh"))
         self.assert_ok(self.run_script("check-exec-plan-status.sh"))
 
     def test_plan_checker_rejects_inconsistent_issue_documents(self):

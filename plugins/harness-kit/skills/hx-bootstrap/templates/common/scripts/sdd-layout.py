@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""현재 하네스의 이슈별 SDD 명령 진입점. 외부 리포 파일에 의존하지 않는다."""
+"""이슈 SDD 명령 진입점: scaffold · prerequisites · board · plans · freshness · migrate · rekey · branch-check.
+
+외부 리포 파일에 의존하지 않는다. 종료 코드는 harness/sdd_commands.py 머리 주석.
+"""
 
 import sys
 from pathlib import Path
