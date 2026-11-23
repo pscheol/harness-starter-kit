@@ -21,6 +21,8 @@ PATHS = {"terminal", "dashboard", "jira", "aidlc"}
 
 
 def load_parser():
+    # 템플릿 폴더에 __pycache__ 를 남기면 manifest 파일 수 시험이 흔들린다.
+    sys.dont_write_bytecode = True
     sys.path.insert(0, str(SCRIPTS))
     try:
         return importlib.import_module("harness.approvals")

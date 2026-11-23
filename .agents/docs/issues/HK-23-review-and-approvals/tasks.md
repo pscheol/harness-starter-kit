@@ -71,6 +71,20 @@ created: 2026-11-23
 
 - 첫 실행(커밋 `714eccd`)은 중간에 멈췄다. 새 스크립트를 `uvx ruff check` 로 살필 때 생긴 `.ruff_cache/`(추적 안 됨)가 템플릿 `scripts/` 에 남아 설치본에 복사됐고, `test_cli_parity` 가 그 파일 3개를 바이트 차이로 잡았다. 캐시 두 곳(템플릿 · 생성물)을 지운 뒤 생성물 파일 수는 544개로 돌아왔다(커밋에는 들어가지 않았다).
 - 캐시를 지우고 같은 커밋(`714eccd`, 트리 변경 없음)에서 다시 돈 `python3 -m unittest discover -s tests -p "test_*.py"`: `Ran 89 tests in 1110.721s` · `OK`. 설치본 하네스 시험(`test_harness_scripts_suite_passes_in_install`)에 HK-23 새 시험 48개가 들어 있다.
+- 뒤에 찾은 것: 킷 fixture 시험이 템플릿 `scripts/harness/` 에서 `harness.approvals` 를 읽어 `__pycache__/*.pyc` 를 남겼고, manifest 파일 수(`714eccd` · `1a413f6`)에 그 파일 하나가 들어갔다. 전체 시험은 fixture 시험이 먼저 돌아 맞았지만 깨끗한 checkout 에서 문구 시험만 돌리면 1이 어긋난다. fixture 시험에 `sys.dont_write_bytecode = True` 를 넣고 수를 고쳤다(backend 329 · frontend 337 · common 310). 두 시험을 두 순서로 돌려 모두 통과한다.
+
+### HK-13(`40f76d6`) 위로 합치기
+
+HK-13 이 합쳐진 뒤 받은 안내(스킬 · 규칙 · 역할의 하네스 복사본은 배치 엔진이 만든다)에 따라 커밋 `1a413f6` 에서 `hx-review` 포인터 넷과 `approval-vocabulary` Kiro 포인터를 지우고, 규칙에 `paths` 머리를 넣었다. HK-13 이 지운 파일(스택 CLAUDE.md 다섯 · Kiro 규칙 포인터 둘)의 문구 변경은 되돌렸다. 이 커밋만으로는 설치본 `check_harness.py` 의 포인터 검사가 hx-review · approval-vocabulary 에서 실패한다(옛 포인터 방식). `40f76d6` 위에서는 배치 엔진이 복사본을 만든다.
+
+`git merge-tree 40f76d6 HEAD` 의 남은 충돌은 둘이다(생성물 사본 제외). 브랜치를 합치지 않고 그 트리를 시험 폴더에 꺼내 아래처럼 풀어 확인했다.
+
+1. `packages/templates/common/claude/settings.json`(HK-13 이 지움 · 여기서 고침): 지우고, 같은 내용을 `scripts/harness/projection.json` 의 `claudeSettings.deny` 다섯 줄과 `hooks` 의 `harness-protect-approvals`(PreToolUse · `Write|Edit|MultiEdit|NotebookEdit|Bash`), `kiroWriteHooks.preToolUse` 의 `protect-approvals.sh` 로 옮긴다.
+2. `packages/plugin/skills/hx-bootstrap/manifest.md`: `40f76d6` 판에서 파일 수(backend 241 · 0 · 2 · 0 · 7 = 250, frontend 245 · 0 · 2 · 0 · 7 = 254, common 235), 스킬 13종, 훅 · 스크립트 줄을 고친다.
+3. HK-13 CLI 시험 `packages/cli/test/projection-merge.test.ts` 의 settings 기대값에 deny 다섯 줄과 `hooks.PreToolUse:harness-protect-approvals` 를 더한다.
+4. `pnpm build` · `node scripts/gen-plugins.mjs` 로 생성물을 다시 만든다.
+
+시험 폴더 결과: `pnpm -C packages/cli test` 268개 통과(3번 전에는 settings 시험 3개 실패), `gen-plugins --check` 일치(411개), 킷 문구 · fixture · 정적 분석 템플릿 시험 24개 통과, 전체 시험은 아래.
 
 ## 설계와 다른 점(구현 중)
 
