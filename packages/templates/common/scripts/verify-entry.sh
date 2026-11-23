@@ -52,6 +52,10 @@ if [ "$HARNESS_VERIFY_LEVEL" = full ]; then
   fi
 fi
 
+# 본문이 부르는 하위 게이트(도메인 · 단위)는 이 실행이 허락된 뒤에 돈다. 하위의 HK-2 보조 점검이
+# 그 full 을 막지 않도록 상위 표지를 넘긴다(설계 01 R4.5). 이미 상위가 준 값은 그대로 둔다.
+export HARNESS_VERIFY_PARENT="${HARNESS_VERIFY_PARENT:-$HARNESS_VERIFY_LEVEL}"
+
 # fast · full 본문의 stdout 을 기록기로 흘린다(설계 01 §3.5). 본문은 고치지 않는다.
 # 바깥 호출은 같은 스크립트를 다시 띄워 기록기 파이프에 물리고, 다시 뜬 본문은 끝날 때 exit code 한 줄을 낸다.
 # 표지를 부모 PID 로 두므로 본문이 부르는 하위 게이트는 각자 자기 기록을 쓴다.

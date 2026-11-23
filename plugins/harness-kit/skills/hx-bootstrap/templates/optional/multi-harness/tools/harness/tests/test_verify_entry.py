@@ -38,7 +38,9 @@ class VerificationEntryTest(unittest.TestCase):
         return subprocess.run(["bash", str(self.gate), *arguments], env=environment, capture_output=True, text=True)
 
     def add_entry(self):
-        shutil.copy2(TOOL / "shared/scripts/verify-entry.sh", self.root / "scripts/verify-entry.sh")
+        # 공통 원본(tools/harness/shared)이 없는 리포 — 킷 설치본 — 는 리포의 scripts/verify-entry.sh 를 쓴다.
+        source = next(path for path in (TOOL / "shared/scripts/verify-entry.sh", TOOL.parents[1] / "scripts/verify-entry.sh") if path.is_file())
+        shutil.copy2(source, self.root / "scripts/verify-entry.sh")
         (self.root / "scripts/verify-changed.py").write_text('import sys\nprint("selected", *sys.argv[1:])\n')
 
     def test_default_runs_selected_only(self):

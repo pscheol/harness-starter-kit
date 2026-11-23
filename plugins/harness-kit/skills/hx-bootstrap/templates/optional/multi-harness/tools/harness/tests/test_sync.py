@@ -9,6 +9,9 @@ import tempfile
 import unittest
 
 SYNC = Path(__file__).resolve().parents[1] / 'sync.py'
+# sync.py 는 단위 토큰(UNIT_ID · UNIT_TITLE …)만 채운다. 설치(hx-bootstrap)가 시험 파일의 토큰을 건드리지 않도록 이어 붙여 만든다.
+UNIT_TITLE = '{{' + 'UNIT_TITLE}}'
+UNIT_ID = '{{' + 'UNIT_ID}}'
 
 
 class SyncTest(unittest.TestCase):
@@ -18,10 +21,10 @@ class SyncTest(unittest.TestCase):
         self.repo = Path(directory.name)
         self.tool = self.repo / 'tools/harness'
         self.shared = self.tool / 'shared'
-        self.write(self.shared / '.agents/rules/writing-style.md', '# 문체 — {{PROJECT_NAME}}\n')
+        self.write(self.shared / '.agents/rules/writing-style.md', f'# 문체 — {UNIT_TITLE}\n')
         self.write(self.shared / '.agents/docs/_spec-templates/requirements/_template.md', '# {{FEATURE_NAME}}\n')
-        self.write(self.shared / '.kiro/agents/__UNIT_ID__.json', '{"name": "{{PROJECT_SLUG}}"}\n')
-        self.write(self.shared / 'scripts/hooks/verify-gate.sh', '#!/usr/bin/env bash\necho {{PROJECT_SLUG}}\n', executable=True)
+        self.write(self.shared / '.kiro/agents/__UNIT_ID__.json', '{"name": "' + UNIT_ID + '"}\n')
+        self.write(self.shared / 'scripts/hooks/verify-gate.sh', f'#!/usr/bin/env bash\necho {UNIT_ID}\n', executable=True)
         self.write(self.shared / '__pycache__/ignored.pyc', 'x')
         self.registry({
             'units': [

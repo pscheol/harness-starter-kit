@@ -3,8 +3,11 @@
 모듈을 정하지 못한 파일은 changed 판정(관련 테스트 → 모듈 테스트 → unverified)으로 보낸다. full 로 올리지 않는다.
 """
 
+import json
 import os
 import shutil
+import subprocess
+import sys
 
 from harness.verify_modules import (
     DOC_SUFFIXES,
@@ -30,6 +33,8 @@ from harness.verify_paths import CODE_EXTENSIONS, is_test, owner_for
 from harness.verify_planner import command, covered_by_checks, verification_plan
 
 SCRIPTS = ("lint", "typecheck", "test")
+GATES = "tools/harness/gates.py"
+REGISTRY = "tools/harness/units.json"
 
 
 def gradle_commands(build, selection, unit, harness_root):
@@ -180,6 +185,63 @@ class Selection:
             self.leftover.append(relative)  # json · toml 은 changed 의 정적 검사로도 읽는다
 
 
+def domain_rows(root, base, relative_files):
+    """multi-harness 루트(gates.py · units.json)면 도메인 행에 그 아래 바뀐 파일을 붙여 돌려준다. 아니면 None.
+
+    Git 변경이면 gates.py --changed 의 네 규칙(설계 01 §3.4)으로, --files · --session 이면 파일이 든 도메인으로 고른다.
+    """
+    if not (root / GATES).is_file() or not (root / REGISTRY).is_file():
+        return None
+    arguments = [sys.executable, str(root / GATES), "--repo", str(root), "--json"]
+    if base is not None:
+        arguments += ["--changed", "--base", base["ref"]]
+    try:
+        result = subprocess.run(arguments, capture_output=True, text=True, timeout=120, check=False)
+    except (OSError, subprocess.TimeoutExpired) as error:
+        raise ValueError(f"{GATES} failed: {error}") from error
+    if result.returncode:
+        raise ValueError((result.stderr.strip().splitlines() or [f"{GATES} failed"])[-1].lstrip("✖ "))
+    rows = json.loads(result.stdout)
+    for row in rows:
+        row["files"] = [relative for relative in relative_files if relative == row["path"] or relative.startswith(row["path"] + "/")]
+        if base is None:
+            row["changed"] = bool(row["files"])
+    return rows
+
+
+def domain_gate(root, row, units, explicit):
+    """바뀐 도메인의 게이트 — 같은 레벨(affected)로, 하위 단위의 HK-2 보조 점검을 통과하도록 PARENT 를 준다."""
+    unit = next((unit for unit in units if unit["id"] == row["id"]), {"id": row["id"], "root": root / row["path"]})
+    arguments = ["bash", "scripts/verify.sh", "--affected", "--summary"]
+    if explicit:
+        arguments += ["--files", *(relative[len(row["path"]) + 1:] for relative in row["files"])]
+    return command(
+        unit,
+        root / row["path"],
+        "gate",
+        arguments,
+        env={"HARNESS_VERIFY_LEVEL": "affected", "HARNESS_VERIFY_PARENT": "affected"},
+        label=f"하네스 {row['id']} (affected)",
+    )
+
+
+def delegate_domains(root, relative_files, units, base):
+    """(도메인 게이트 명령, 건너뛴 도메인, 도메인에 넘긴 파일, 미완료)."""
+    rows = domain_rows(root, base, relative_files)
+    if rows is None:
+        return [], [], set(), []
+    gates, skipped, delegated, missing = [], [], set(), []
+    for row in rows:
+        delegated.update(row["files"])
+        if not row["changed"]:
+            skipped.append({"id": row["id"], "reason": "no-change"})
+        elif not (root / row["path"] / "scripts/verify.sh").is_file():
+            missing.append(f"{row['id']}: {row['path']}/scripts/verify.sh missing; the domain gate could not run")
+        else:
+            gates.append(domain_gate(root, row, units, explicit=base is None))
+    return gates, skipped, delegated, missing
+
+
 def merge_commands(plan_commands, extra):
     """정적 검사를 앞에 두고(가장 싸다), 모듈 · 게이트 명령, 그다음 changed 판정 명령 순서."""
     static = [item for item in plan_commands if item["kind"] == "static"]
@@ -187,12 +249,15 @@ def merge_commands(plan_commands, extra):
 
 
 def affected_plan(root, relative_files, explicit_tests, units, base=None):
-    covered = covered_by_checks(root, relative_files)
+    gates, skipped_units, delegated, incomplete = delegate_domains(root, relative_files, units, base)
+    remaining = [relative for relative in relative_files if relative not in delegated]
+    covered = covered_by_checks(root, remaining)
     selection = Selection(root, units)
-    for relative in relative_files:
+    for relative in remaining:
         if relative not in covered:
             selection.add(relative)
-    extra, modules, incomplete = [], [], list(selection.incomplete)
+    extra, modules = list(gates), []
+    incomplete.extend(selection.incomplete)
     for build, chosen in sorted(selection.builds.items(), key=lambda entry: str(entry[0].root)):
         try:
             commands, missing, selected = module_commands(build, chosen, chosen["unit"], root)
@@ -214,7 +279,7 @@ def affected_plan(root, relative_files, explicit_tests, units, base=None):
         selection.widened.append({"reason": "no-module-graph", "unit": unit["id"]})
     tests = [path.relative_to(root).as_posix() for path in explicit_tests]
     leftover = selection.leftover + [test for test in tests if test not in selection.leftover]
-    plan = verification_plan(root, leftover, explicit_tests if leftover else [], units, scope_files=relative_files)
+    plan = verification_plan(root, leftover, explicit_tests if leftover else [], units, scope_files=remaining)
     contract_files = {item["file"] for item in selection.widened if item.get("reason") == "build-contract"}
     plan["commands"] = merge_commands(plan["commands"], extra)
     plan["recommendations"] = [item for item in plan["recommendations"] if item.split(": ", 1)[0] not in contract_files]
@@ -228,6 +293,6 @@ def affected_plan(root, relative_files, explicit_tests, units, base=None):
         "files": relative_files,
         "base": base,
         "modules": modules,
-        "skippedUnits": [],
+        "skippedUnits": skipped_units,
     })
     return plan
