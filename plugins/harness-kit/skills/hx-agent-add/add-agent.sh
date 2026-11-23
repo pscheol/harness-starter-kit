@@ -10,7 +10,7 @@
 #
 # 옵션:
 #   --agents=<목록>   추가할 에이전트 (claude,codex,cursor,kiro · all)
-#   --modules=<목록>  추가할 선택 모듈 (jira-workflow,platform-guards,multi-harness · all)
+#   --modules=<목록>  추가할 선택 모듈 (jira-workflow,multi-harness · all). 없앤 모듈(platform-guards)은 안내만 한다
 #                     둘 중 하나는 있어야 한다
 #   --dry-run         실제로 쓰지 않고 계획만 출력
 #   --force           이미 있는 파일도 덮어쓴다 (기본: skip)
@@ -70,17 +70,23 @@ if [ -n "$ADD" ]; then
   [ -n "$ADD_OK" ] || { echo "✖ --agents= 값이 비어 있다" >&2; exit 2; }
 fi
 ADD_MOD_OK=""
+MOD_RETIRED=""
 if [ -n "$ADD_MODULES" ]; then
   MOD_NORM="$(harness_normalize_modules "$ADD_MODULES")"
   ADD_MOD_OK="${MOD_NORM%%|*}"
-  MOD_BAD="${MOD_NORM#*|}"
+  MOD_REST="${MOD_NORM#*|}"
+  MOD_BAD="${MOD_REST%%|*}"
+  MOD_RETIRED="${MOD_REST#*|}"
   if [ -n "$MOD_BAD" ]; then
     echo "✖ 알 수 없는 모듈: $MOD_BAD" >&2
     echo "  사용 가능: $HARNESS_ALL_MODULES   (전체는 all)" >&2
     exit 2
   fi
-  [ -n "$ADD_MOD_OK" ] || { echo "✖ --modules= 값이 비어 있다" >&2; exit 2; }
+  for m in $MOD_RETIRED; do harness_retired_note "$m"; done
+  [ -n "$ADD_MOD_OK" ] || [ -n "$MOD_RETIRED" ] || { echo "✖ --modules= 값이 비어 있다" >&2; exit 2; }
 fi
+# 없앤 모듈만 받았으면 할 일이 없다(HK-25 R2).
+[ -z "$ADD_OK" ] && [ -z "$ADD_MOD_OK" ] && exit 0
 
 CURRENT="$(harness_meta_agents "$META")"
 STACK="$(harness_meta_get "$META" stack)"
@@ -88,7 +94,10 @@ ARCH="$(harness_meta_get "$META" arch)"
 # 도메인·모듈도 그대로 되돌려줘야 한다. 안 넘기면 setup.sh 가 lock 을 다시 쓰면서
 # 도메인 규칙과 모듈 파일이 목록에서 사라지고, 다음 업데이트가 그것들을 orphan 으로 본다.
 DOMAIN="$(harness_meta_get "$META" domain || true)"
-MODULES="$(harness_meta_modules "$META" || true)"
+MODULES=""
+for m in $(harness_meta_modules "$META" || true); do
+  if harness_module_retired "$m"; then harness_retired_note "$m" meta; else MODULES="${MODULES:+$MODULES }$m"; fi
+done
 harness_load_tokens "$META"
 export PROJECT_NAME PROJECT_SLUG PACKAGE_NS SERVICE_NAME \
        PRIMARY_LANGUAGE BUILD_TOOL TEST_CMD DOMAIN_EXAMPLE PROTECTED_PATH

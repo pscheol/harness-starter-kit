@@ -12,6 +12,8 @@ import { writeFileAtomic } from "../core/fsx";
 import { sha256 } from "../core/hash";
 import { loadInstalled, ownerKind, selectionFromMeta, tokensFromMeta, type Installed } from "../core/installed";
 import { loadLayout, type Layout } from "../core/layout";
+import { retiredNote } from "../core/selection";
+import type { Names } from "../core/selection-change";
 import { LOCK_REL, serializeLock, type LockEntry } from "../core/lock";
 import { mergeMetaForUpdate, META_REL, serializeMeta } from "../core/meta";
 import { AncestorCheck, BLOCKED, existing, MANIFEST_PATH, manifestContent } from "../core/plan";
@@ -57,6 +59,7 @@ export interface Loaded {
   before: Selection;
   tokens: Record<string, string>;
   droppedModules: string[];
+  retiredModules: string[];
 }
 
 /** 템플릿 자리와 layout. 이름 검사(exit 2)를 설치 상태 검사(exit 3)보다 먼저 하려고 따로 둔다. */
@@ -75,8 +78,8 @@ export function loadForChange(ctx: Ctx, command: string, kit: { loc: TemplatesLo
     throw new CliError(EXIT.STATE, `설치된 킷(${inst.meta.kit.version})이 이 CLI(${VERSION})보다 새것이다`, "새 CLI 로 다시 실행한다");
   }
   const { loc, layout } = kit;
-  const { selection, droppedModules } = selectionFromMeta(layout, loc.dir, inst.meta);
-  return { target, inst, layout, loc, before: selection, tokens: tokensFromMeta(layout, selection, inst.meta, io.env, target), droppedModules };
+  const { selection, droppedModules, retiredModules } = selectionFromMeta(layout, loc.dir, inst.meta);
+  return { target, inst, layout, loc, before: selection, tokens: tokensFromMeta(layout, selection, inst.meta, io.env, target), droppedModules, retiredModules };
 }
 
 export type Cur = { kind: "none" } | { kind: "file"; sha: string } | { kind: "other"; what: string };
@@ -245,6 +248,7 @@ export function report(ctx: Ctx, l: Loaded, rep: Report): { data: Record<string,
     names: rep.names,
     selection: { before: selJson(l.before), after: selJson(rep.after) },
     droppedModules: l.droppedModules,
+    retiredModules: l.retiredModules,
     formats: { meta: l.inst.metaFormat, lock: l.inst.lockFormat },
     counts: countsOf(rep.result.ops),
     ops: shown.map(opJson),
@@ -261,6 +265,7 @@ export function report(ctx: Ctx, l: Loaded, rep: Report): { data: Record<string,
     `harness-kit ${rep.command} — ${l.target}`,
     `  하네스 ${l.before.agents.join(",")} → ${rep.after.agents.join(",")} · 모듈 ${l.before.modules.join(",") || "none"} → ${rep.after.modules.join(",") || "none"}`,
     ...rep.notes,
+    ...l.retiredModules.map((m) => retiredNote(m, "meta")),
     ...(l.droppedModules.length ? [`  ⚠ 킷에 없는 모듈을 메타에서 뺀다: ${l.droppedModules.join(", ")}`] : []),
     ...shown.map(opLine),
     `  파일: ${counts || "바꿀 것 없음"}`,
@@ -276,3 +281,16 @@ export function report(ctx: Ctx, l: Loaded, rep: Report): { data: Record<string,
 }
 
 export const dryRunOf = (ctx: Ctx): boolean => bool(ctx.values, "dry-run");
+
+/** 없앤 모듈 이름만 받은 add · remove(HK-25 R2): 설치 상태를 읽지도 쓰지도 않고 안내만 한다. 다른 이름이 있으면 null. */
+export function retiredOnly(ctx: Ctx, command: string, names: Names): { code: number; data: Record<string, unknown>; lines: string[] } | null {
+  if (names.harnesses.length + names.modules.length > 0) return null;
+  const target = targetOf(ctx);
+  return {
+    code: EXIT.OK,
+    data: { command, target, dryRun: dryRunOf(ctx), names },
+    lines: [`harness-kit ${command} — ${target}`, ...names.retired.map((m) => retiredNote(m, "flag"))],
+  };
+}
+
+export const retiredNotes = (names: Names): string[] => names.retired.map((m) => retiredNote(m, "flag"));

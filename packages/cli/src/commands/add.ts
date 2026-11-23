@@ -9,7 +9,7 @@ import { skipByOwner, wanted, type Want } from "../core/update-plan";
 import { judgeInstall } from "../projection/engine";
 import { needsHuman, prepare } from "../projection/flow";
 import { loadSpecOrNull } from "../projection/spec";
-import { ancestorsOf, applyChange, changeOverlay, currentOf, dryRunOf, kitOf, isKitCopy, loadForChange, manifestChange, report, type ChangeOp, type ChangeResult, type Cur, type Loaded } from "./change";
+import { ancestorsOf, applyChange, changeOverlay, currentOf, dryRunOf, kitOf, isKitCopy, loadForChange, manifestChange, report, retiredNotes, retiredOnly, type ChangeOp, type ChangeResult, type Cur, type Loaded } from "./change";
 
 const kitEntry = (p: string, w: Want): LockEntry => ({ path: p, op: "copy", owner: "kit", sha256: w.sha256, layer: w.layer });
 const userEntry = (p: string, layer: string): LockEntry => ({ path: p, op: "copy", owner: "user", sha256: null, layer });
@@ -67,13 +67,15 @@ function planAdd(l: Loaded, names: Names): { after: ReturnType<typeof withNames>
 export function runAdd(ctx: Ctx): CommandResult {
   const kit = kitOf(ctx);
   const names = parseNames(kit.layout, ctx.positionals, "add");
+  const only = retiredOnly(ctx, "add", names);
+  if (only) return { ...only, data: { ...only.data, names: { ...names, already: [] } } };
   assertModuleDirs(kit.loc.dir, names.modules);
   const l = loadForChange(ctx, "add", kit);
   const already = [...names.harnesses.filter((h) => l.before.agents.includes(h)), ...names.modules.filter((m) => l.before.modules.includes(m))];
   const { after, result } = planAdd(l, names);
   const dryRun = dryRunOf(ctx);
   const featureDocs = dryRun ? null : applyChange(ctx, l, after, result);
-  const notes = already.length ? [`  · 이미 켜져 있다 — 그 몫에서 빠진 파일만 채운다: ${already.join(", ")}`] : [];
+  const notes = [...retiredNotes(names), ...(already.length ? [`  · 이미 켜져 있다 — 그 몫에서 빠진 파일만 채운다: ${already.join(", ")}`] : [])];
   const { data, lines } = report(ctx, l, { command: "add", names: { ...names, already }, after, result, dryRun, featureDocs, notes });
   const conflict = result.ops.some((o) => o.action === "conflict") || result.manifest?.action === "conflict" || needsHuman(result.projection ?? null, result.projectionFindings ?? []);
   return { code: conflict ? EXIT.HUMAN : EXIT.OK, data, lines };

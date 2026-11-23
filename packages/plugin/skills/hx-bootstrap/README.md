@@ -63,7 +63,7 @@ Python(FastAPI/ASGI), Go(표준 Go 레이아웃), Web(TypeScript + React), Elect
 | `electron` | `monorepo` | `apps/{desktop,web}` + `packages/{core,ui}` 워크스페이스 | 위 + 의존 방향 단방향(`apps → packages`) |
 
 각 변형의 `ARCHITECTURE.md`에는 언제 쓰나/언제 아닌가 · 승격 신호 · 다른 변형으로 전환하는 절차가 함께 들어 있다.
-`django`는 마이그레이션 드리프트 체크, `ai-service`는 eval 스모크, `platform-guards` 모듈은 `scripts/run-guards.sh` 가
+`django`는 마이그레이션 드리프트 체크, `ai-service`는 eval 스모크가 붙고, 공통 층의 `scripts/run-guards.sh` 는
 `verify.sh`의 **조건부 단계**로 자동 붙는다(파일 존재 감지 기반 — 스크립트는 스택당 하나).
 
 ## 구성
@@ -94,7 +94,6 @@ skills/hx-bootstrap/          ← 스킬 루트 (= SKILL_DIR)
     │   └── electron/(동일 구성) + arch/{main-renderer,feature,monorepo}/   ← verify.sh 에 프로세스 경계 가드
     └── optional/         ★ --modules= 로 켤 때만 (기본 none)
         ├── jira-workflow/    issue-tracker.yml · 규칙 2 · 스킬 /hx-issue + /hx-ticket(하네스 사본은 배치가 만든다)
-        ├── platform-guards/  run-guards.sh · guards/_template.sh · 규칙 1
         └── multi-harness/    tools/harness/{sync,sync_safety,gates,install_verification_entry}.py + 시험 5 — 여러 리포·단위 하네스
 ```
 
@@ -155,7 +154,7 @@ go=`github.com/org/my-app`(모듈 경로) · web=`@`(임포트 별칭 루트 →
 
 `ARCH` 기본값은 스택마다 다르다(백엔드 `hexagonal` · web `nextjs-app` · electron `main-renderer`). 스택에 없는 변형을 주면 사용 가능한 목록을 출력하고 `exit 2`로 중단한다.
 
-선택 모듈은 기본으로 깔리지 않는다. `bash "$SKILL_DIR/setup.sh" --list-modules` 로 목록을 보고 `--modules=jira-workflow,platform-guards` 처럼 명시한다.
+선택 모듈은 기본으로 깔리지 않는다. `bash "$SKILL_DIR/setup.sh" --list-modules` 로 목록을 보고 `--modules=jira-workflow,multi-harness` 처럼 명시한다.
 
 기본은 덮어쓰지 않음(기존 파일 skip). 재생성은 `--force`, 미리보기는 `--dry-run`.
 

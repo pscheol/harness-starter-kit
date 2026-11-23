@@ -24,7 +24,7 @@
 #   --domain=<backend|frontend>
 #                            도메인 레이어를 직접 지정한다. 생략하면 스택에서 유도한다
 #                            (jvm·python·go→backend · web·electron→frontend)
-#   --modules=<목록>         선택 모듈 (jira-workflow,platform-guards · all · none)
+#   --modules=<목록>         선택 모듈 (jira-workflow,multi-harness · all · none)
 #                            기본 none. 안 쓰는 규칙은 컨텍스트만 먹고 나머지 규칙의
 #                            신뢰도를 깎으므로 실제로 쓸 것만 고른다
 #                            (환경변수 HARNESS_MODULES 로도 지정 가능)
@@ -137,7 +137,7 @@ if [ "$LIST_MODULES" = 1 ]; then
     printf "  %-16s %3s files   %s\n" "$m" "$n" "$(head -1 "$d/ABOUT" 2>/dev/null || echo '')"
   done
   echo ""
-  echo "  사용:  --modules=jira-workflow,platform-guards   (전체는 all, 명시적 없음은 none)"
+  echo "  사용:  --modules=jira-workflow,multi-harness   (전체는 all, 명시적 없음은 none)"
   exit 0
 fi
 
@@ -182,7 +182,9 @@ MODULES_SEL=""
 if [ -n "$MODULES_ARG" ]; then
   MODULES_NORM="$(harness_normalize_modules "$MODULES_ARG")"
   MODULES_SEL="${MODULES_NORM%%|*}"
-  MODULES_REJECTED="${MODULES_NORM#*|}"
+  MODULES_REST="${MODULES_NORM#*|}"
+  MODULES_REJECTED="${MODULES_REST%%|*}"
+  for m in ${MODULES_REST#*|}; do harness_retired_note "$m"; done
   if [ -n "$MODULES_REJECTED" ]; then
     echo "✖ 알 수 없는 모듈: $MODULES_REJECTED" >&2
     echo "  사용 가능: $HARNESS_ALL_MODULES   (전체는 all, 명시적 없음은 none)" >&2
@@ -625,11 +627,6 @@ if [ -n "$MODULES_SEL" ]; then
         echo "      킷은 트래커 호출 수단을 주지 않는다 — MCP/CLI/REST 중 무엇으로 닿을지 access 에 적는다"
         echo "      이 설정을 순서대로 안내하는 킷 스킬이 있다: hx-jira-setup"
         echo "      커맨드는 둘이다 — /hx-issue(트래커 단품) · /hx-ticket(티켓→SDD→구현→리뷰 전 여정)"
-        ;;
-      platform-guards)
-        echo "    - scripts/guards/ 에 가드를 쓰고 scripts/run-guards.sh 가 잡는지 확인한다"
-        echo "      verify.sh 는 run-guards.sh 가 있으면 자동으로 부른다(배선 작업 없음)"
-        echo "      새 가드는 GUARD_ENFORCE=0(경고)으로 시작해 위반 0건이 된 뒤 강제로 올린다"
         ;;
     esac
   done

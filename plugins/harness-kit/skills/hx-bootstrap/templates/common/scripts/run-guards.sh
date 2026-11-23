@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# HARNESS STARTER KIT · {{PROJECT_NAME}} — 선택 모듈: platform-guards
+# HARNESS STARTER KIT · {{PROJECT_NAME}} — 공통 층: 플랫폼 불변식 가드
 #
 # 플랫폼 불변식 가드 실행기.
 #

@@ -11,7 +11,7 @@ import { loadLayout, stackSpecOf, type Layout } from "../core/layout";
 import { LOCK_REL, serializeLock, type LockEntry } from "../core/lock";
 import { buildMeta, META_REL, serializeMeta } from "../core/meta";
 import { buildPlan, MANIFEST_PATH, type Plan, type PlannedOp } from "../core/plan";
-import { listArchs, listStacks, resolveSelection, type Selection, type SelectionInput } from "../core/selection";
+import { listArchs, listStacks, resolveSelection, retiredNote, type Selection, type SelectionInput } from "../core/selection";
 import { locateTemplates } from "../core/templates";
 import { resolveTokens } from "../core/tokens";
 import { VERSION } from "../core/version";
@@ -172,7 +172,8 @@ export async function runInit(ctx: Ctx): Promise<CommandResult> {
     const human = needsHuman(plan.projection, plan.projectionFindings);
     const conflicts = projectionConflicts(plan.projection);
     if (conflicts.length) data.conflicts = conflicts;
-    const lines = [`harness-kit ${command} — ${target}`, selectionLine(selection)];
+    const lines = [`harness-kit ${command} — ${target}`, selectionLine(selection), ...(selection.retiredModules ?? []).map((m) => retiredNote(m, "flag"))];
+    if (selection.retiredModules) data.retiredModules = selection.retiredModules;
     const projectionShown = projectionLines(plan.projection, plan.projectionFindings, ctx.quiet, command === "plan" && !ctx.quiet, new Set(["create"]));
     if (command === "plan") {
       lines.push(...shown.map(opLine), countsLine(plan), ...projectionShown, STATE_LINE, "  (plan — 쓰지 않았다)");

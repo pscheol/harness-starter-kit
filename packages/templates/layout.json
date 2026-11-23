@@ -48,7 +48,7 @@
     "kiro": { "dirs": [".kiro"], "env": ["KIRO_IDE", "KIRO_HOME"] }
   },
   "defaultHarnesses": ["claude"],
-  "modules": ["jira-workflow", "platform-guards", "multi-harness"],
+  "modules": ["jira-workflow", "multi-harness"],
   "domains": ["backend", "frontend"],
   "defaultStack": "jvm",
   "stacks": {

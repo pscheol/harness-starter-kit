@@ -61,7 +61,7 @@ web·electron 은 `frontend` 도메인을 공유한다. 스택 규칙보다 먼�
    | 모듈 | 켤 때 |
    |---|---|
    | `jira-workflow` | Jira 등 이슈 트래커를 에이전트가 직접 전이시킬 때 |
-   | `platform-guards` | 프로젝트 고유 불변식을 grep 가드로 승격시킬 때 |
+   | `multi-harness` | 여러 리포 · 단위 하네스에 공통 파일을 배포하고 게이트를 엮을 때 |
 5. **에이전트 결정** — 감지 결과를 보여주고 확인받는다. 전부 깔지 않는다.
    ```bash
    bash "$BOOTSTRAP_DIR/setup.sh" --stack=web --arch=<변형> --list-agents <대상_경로>

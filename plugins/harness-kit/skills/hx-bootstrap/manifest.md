@@ -91,14 +91,12 @@
 | 모듈 | 파일 | 무엇을 넣나 |
 |---|---|---|
 | `jira-workflow` | 5 (core 5) | `.agents/issue-tracker.yml`(접근 수단·상태·전이 ID·락 설정, 전부 `TBD`) + `issue-tracker-workflow.md`·`issue-agent-lock.md` 규칙 + 슬래시 커맨드 **2종 × 4하네스** — `/hx-issue`(트래커 단품) · `/hx-ticket`(티켓→SDD→구현→리뷰 전 여정) |
-| `platform-guards` | 3 (core 3) | `scripts/run-guards.sh` 실행기 + `scripts/guards/_template.sh` + `platform-invariants.md` 규칙 |
 | `multi-harness` | 9 (core 9) | `tools/harness/sync.py`(공통 파일 원본 `tools/harness/shared/` → 등록표 `tools/harness/units.json`의 하네스로 배포, 지문 충돌 거부) · `sync_safety.py`(배포 잠금) · `gates.py`(메인 게이트가 하위 게이트를 부른다) · `install_verification_entry.py` + 시험 5개 |
 
 - `jira-workflow` 핵심: **한 세션 = 한 활성 티켓** · pull gate · **표시 이름이 아니라 ID 로 전이** · 에이전트는 In Review 까지.
   **킷은 트래커 호출 수단을 제공하지 않는다** — MCP·CLI·REST 중 무엇으로 닿을지는 `access` 절에 프로젝트가 적는다.
   `access.method` 나 ID 가 `TBD` 면 커맨드는 **읽기만** 한다. 설정 절차는 킷 스킬 `hx-jira-setup`.
-- `platform-guards` 핵심: 불변식을 **문서 → 경고 가드(`# harness-guard-enforce: 0`) → 강제 가드(`: 1`)** 3단으로 승격시킨다.
-  `verify.sh` 는 `scripts/run-guards.sh` 존재만 보고 자동으로 부른다 — 배선 작업이 없다.
+- 고유 불변식 가드는 모듈이 아니라 공통 층이다(`scripts/run-guards.sh` · `scripts/guards/_template.sh` · `platform-invariants.md`). 불변식을 **문서 → 경고 가드(`# harness-guard-enforce: 0`) → 강제 가드(`: 1`)** 3단으로 승격시키고, `verify.sh` 가 자동으로 부른다.
 - 모듈 폴더의 `ABOUT` 첫 줄이 `--list-modules` 의 설명이다. `ABOUT` 은 템플릿이 아니라 **설치되지 않는다**.
 
 ## 상태 파일 (설치 후 생김)
@@ -146,7 +144,7 @@
 > 반대로 **레이어 책임은 변형 무관 원칙으로 중립화**해 `guardrails.md`에 두고, 구체 경로·계약은 `structure.md`·`ARCHITECTURE.md`(변형별)로 위임한다.
 > `frontend` 도메인 규칙 4종이 스택이 아니라 도메인에 있는 이유: web 과 electron 이 **같은 규약을 쓴다**. 스택에 두면 두 벌이 되고 곧 어긋난다.
 > 템플릿 합계 = 200 + 10 + 4 = **214개**(백엔드 3스택) · 200 + 4 + 10 + 4 = **218개**(web·electron). 하네스 폴더 파일은 배치가 더한다(위 「에이전트 선택」 표).
-> 선택 모듈(`jira-workflow` 5 · `platform-guards` 3 · `multi-harness` 9)은 여기에 더해진다.
+> 선택 모듈(`jira-workflow` 5 · `multi-harness` 9)은 여기에 더해진다.
 > 여기에 상태 파일 2개(`harness-kit.json`·`harness-kit.lock`)가 더해진다.
 >
 > 슬래시 커맨드는 원본 1곳 + 복사본 · 생성물. 본문 원본은 `agents-skills/hx-*/SKILL.md`(설치 위치 `.agents/skills/`)이고
@@ -199,8 +197,8 @@
 | `.agents/rules/{design-system,accessibility,ui-state,frontend-performance}.md` | **`frontend` 도메인 전용**(web·electron). 토큰이 원본 · 시맨틱/키보드/대비/모션 · 상태 4종 분리 · 예산과 측정 | 도메인별 | 인간 |
 | `.agents/issue-tracker.yml` | **모듈 `jira-workflow`**. 상태 ID·전이 ID·락 설정. 설치 시 전부 `TBD` — 채우기 전에는 읽기만 한다 | — | 인간 |
 | `.agents/rules/{issue-tracker-workflow,issue-agent-lock}.md` | **모듈 `jira-workflow`**. 한 세션 = 한 활성 티켓 · pull gate · ID 로 전이 · 에이전트는 In Review 까지 · 락 획득/갱신/해제 | — | 인간 |
-| `scripts/run-guards.sh` + `scripts/guards/_template.sh` | **모듈 `platform-guards`**. `scripts/guards/*.sh` 를 찾아 실행(`_` 로 시작하면 건너뜀). 가드 헤더 `# harness-guard-enforce: 0\|1` 로 경고/강제 구분, `GUARD_ENFORCE` 로 덮어쓴다 | — | 인간 |
-| `.agents/rules/platform-invariants.md` | 불변식을 문서 → 경고 가드 → 강제 가드로 승격시키는 절차(공통). 모듈 `platform-guards` 가 실행기를 더한다 | — | 인간 |
+| `scripts/run-guards.sh` + `scripts/guards/_template.sh` | 공통 층. `scripts/guards/*.sh` 를 찾아 실행(`_` 로 시작하면 건너뜀). 가드 헤더 `# harness-guard-enforce: 0\|1` 로 경고/강제 구분, `GUARD_ENFORCE` 로 덮어쓴다 | — | 인간 |
+| `.agents/rules/platform-invariants.md` | 불변식을 문서 → 경고 가드 → 강제 가드로 승격시키는 절차(공통). 실행기는 `scripts/run-guards.sh` | — | 인간 |
 | `.agents/rules/reliability.md` | timeout·retry·서킷·멱등·**언어별 동시성 함정** | ✅ | 인간 |
 | `.agents/rules/quality-score.md` | 코드품질·Story/Epic DoD·커버리지 도구 | ✅ | 인간 |
 | `.kiro/steering/*.md` | 위 원본에서 만든 생성물(본문 전체, `paths` → `fileMatch`) | 일부 ✅ | 배치 |
