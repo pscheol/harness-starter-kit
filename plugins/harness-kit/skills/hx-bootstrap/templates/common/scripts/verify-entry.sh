@@ -4,7 +4,7 @@
 #   changed · affected → scripts/verify-changed.py (바뀐 파일 · 바뀐 모듈에 필요한 검사만)
 #   fast · full        → 아래 스택 본문(지금 그대로)
 #   --from-base <ref> → MR 판정: base 판 검증 코드 · 설정을 .agents/state/ci-base/ 에 꺼내 그 판으로 돈다(설계 09 §3.7)
-#   --bootstrap        → base 에 하네스가 없어 head 판으로 돈다는 표지(판정 결과에 남는다)
+#   --bootstrap        → base 에 하네스가 없거나 base 판이 --from-base 를 몰라 head 판으로 돈다는 표지(판정 결과에 남는다)
 # 정적 분석(설계 09 §3.4): changed · affected 는 verify-changed.py 안에서, fast(설정 검사) · full 은 본문 끝에서 돈다.
 # bash 3.2(macOS 기본)와 set -u 에서 돈다 — 빈 배열은 ${a[@]+"${a[@]}"} 로만 펼친다.
 
@@ -45,10 +45,15 @@ if [ "${HX_VERIFY_BOOTSTRAP:-}" = 1 ] && [ -n "${HX_BASE_REF:-}" ]; then
     echo "✖ bootstrap: base ref($HX_BASE_REF)를 찾지 못했다 — head 판으로 판정하지 않는다. git fetch 뒤 다시 돈다" >&2
     exit 2
   fi
-  if git -C "$verification_bootstrap_root" cat-file -e "$HX_BASE_REF:${verification_prefix}scripts/verify.sh" 2>/dev/null \
-    && git -C "$verification_bootstrap_root" cat-file -e "$HX_BASE_REF:${verification_prefix}scripts/verify-entry.sh" 2>/dev/null; then
-    echo "✖ bootstrap: base($HX_BASE_REF)에 검증 코드가 있다 — base 판으로 판정한다(--from-base)" >&2
-    exit 2
+  # base 의 verify-entry.sh 가 --from-base 를 모르면(킷을 처음 올리는 MR) head 판으로 돈다. 알면 base 판이 판정한다.
+  verification_base_entry="$(git -C "$verification_bootstrap_root" show "$HX_BASE_REF:${verification_prefix}scripts/verify-entry.sh" 2>/dev/null)"
+  if git -C "$verification_bootstrap_root" cat-file -e "$HX_BASE_REF:${verification_prefix}scripts/verify.sh" 2>/dev/null; then
+    case "$verification_base_entry" in
+      *--from-base*)
+        echo "✖ bootstrap: base($HX_BASE_REF)에 검증 코드가 있다 — base 판으로 판정한다(--from-base)" >&2
+        exit 2
+        ;;
+    esac
   fi
 fi
 if [ -n "$verification_from_base" ]; then

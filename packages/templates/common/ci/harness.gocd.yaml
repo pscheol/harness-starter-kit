@@ -31,7 +31,7 @@ pipelines:
               artifacts:
                 - build: { source: .agents/reports, destination: harness-reports }
               tasks:
-                - exec: { command: bash, arguments: ["-c", "git fetch --quiet origin \"+refs/heads/$HX_BASE_BRANCH:refs/remotes/origin/$HX_BASE_BRANCH\"; mkdir -p .agents/state; git show \"$HX_BASE_REF:scripts/verify.sh\" > .agents/state/verify-base.sh || true; git show \"$HX_BASE_REF:scripts/verify-entry.sh\" > .agents/state/verify-entry.sh || true; if [ -s .agents/state/verify-base.sh ] && [ -s .agents/state/verify-entry.sh ]; then bash .agents/state/verify-base.sh --from-base \"$HX_BASE_REF\" --affected; else bash scripts/verify.sh --affected --bootstrap; fi"] }
+                - exec: { command: bash, arguments: ["-c", "git fetch --quiet origin \"+refs/heads/$HX_BASE_BRANCH:refs/remotes/origin/$HX_BASE_BRANCH\"; mkdir -p .agents/state; git show \"$HX_BASE_REF:scripts/verify.sh\" > .agents/state/verify-base.sh || true; git show \"$HX_BASE_REF:scripts/verify-entry.sh\" > .agents/state/verify-entry.sh || true; if [ -s .agents/state/verify-base.sh ] && grep -q -- --from-base .agents/state/verify-entry.sh; then bash .agents/state/verify-base.sh --from-base \"$HX_BASE_REF\" --affected; else bash scripts/verify.sh --affected --bootstrap; fi"] }
   harness-nightly:
     group: harness
     label_template: "${COUNT}"

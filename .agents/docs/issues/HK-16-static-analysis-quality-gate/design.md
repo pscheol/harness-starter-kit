@@ -132,8 +132,8 @@ MR(CI):              base 판 verify.sh · verify-entry.sh 를 꺼내 --from-bas
 ```text
 CI: git show $HX_BASE_REF:scripts/verify.sh       > .agents/state/verify-base.sh
     git show $HX_BASE_REF:scripts/verify-entry.sh > .agents/state/verify-entry.sh
-    둘 다 있으면 bash .agents/state/verify-base.sh --from-base "$HX_BASE_REF" --affected
-    아니면 bash scripts/verify.sh --affected --bootstrap
+    verify-base.sh 가 있고 verify-entry.sh 가 --from-base 를 알면 bash .agents/state/verify-base.sh --from-base "$HX_BASE_REF" --affected
+    아니면(하네스를 처음 들이는 MR · 킷을 이 판으로 처음 올리는 MR) bash scripts/verify.sh --affected --bootstrap
 verify-entry.sh(base 판) --from-base <ref>:
     루트 = 현재 폴더에서 위로 .agents/harness-kit.json · .agents/harness.json 을 찾은 곳
     <루트>/.agents/state/ci-base/ 를 비우고 git archive <ref> 로 base 에 있는 것만 꺼낸다:
@@ -194,7 +194,7 @@ verify-entry.sh(base 판) --from-base <ref>:
 | README §8 Stop 훅 = fast | 지금 훅(changed)은 정적 분석을 건너뛴다(§9) | 토큰 · 턴 시간 |
 | 스택 `.github/workflows/verify.yml` | 지우고 셋업을 `harness-setup` 액션으로 옮긴다 | PR 마다 full 이 돌아 base 판 affected 와 겹친다 |
 | §3.6 게이트 하한은 `newIssues.CRITICAL` · `review.openMax.CRITICAL` | `enforceAt` 에 `affected` · `full` 이 있어야 한다는 검사를 더한다 | "엄하게만 바꾼다"를 형식 검사로 강제한다. `enforceAt: []` 은 하한 둘을 지켜도 게이트를 끈다 |
-| §3.7 bootstrap 조건은 "base 에 없으면" | `--bootstrap` 은 `HX_BASE_REF` 가 풀리고 base 에 검증 코드가 없을 때만 돈다(아니면 exit 2) | fetch 실패로 `git show` 가 비면 head 판이 자기 MR 을 판정한다 |
+| §3.7 bootstrap 조건은 "base 에 없으면" | `--bootstrap` 은 `HX_BASE_REF` 가 풀리고, base 에 검증 코드가 없거나 base `verify-entry.sh` 가 `--from-base` 를 모를 때만 돈다(아니면 exit 2) | fetch 실패로 `git show` 가 비면 head 판이 자기 MR 을 판정한다. 옛 판 base 는 `--from-base` 를 몰라 킷을 올리는 MR 이 영영 막힌다 |
 | §3.5 정규화 | 도구 지문 · 위치가 같은 결과는 하나로 센다. 메시지의 임시 복사 폴더 · 리포 절대 경로를 뺀다 | osv-scanner 2.7.1 은 같은 취약점을 두 번 낸다. gitleaks 메시지에 `{targetsDir}` 절대 경로가 남는다(실측) |
 | §3.5 기준선 갱신 거부 = 에이전트 세션 판정 | 판정에서 `CI` 표지를 뺀다 | `CI=true` 를 붙인 에이전트 세션이 CI 로 보인다 |
 

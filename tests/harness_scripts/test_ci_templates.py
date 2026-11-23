@@ -26,7 +26,8 @@ ALLOWED = tuple(re.compile(pattern) for pattern in (
     r'git show "\$HX_BASE_REF:scripts/verify(?:-entry)?\.sh" > \.agents/state/verify-(?:base|entry)\.sh',
     r"git fetch [^|;&]+",
     r"git diff --quiet [^|;&]+",
-    r"\[ -s \.agents/state/verify-(?:base|entry)\.sh \]",
+    r"\[ -s \.agents/state/verify-base\.sh \]",
+    r"grep -q -- --from-base \.agents/state/verify-entry\.sh",
     r"true",
 ))
 KEYWORDS = re.compile(r"^(?:if|then|else)\s+")
@@ -214,6 +215,28 @@ class BaseJudgedTest(QualityFixture):
 
 
 class BootstrapTest(QualityFixture):
+    def test_base_with_older_entry_runs_head_with_bootstrap(self):
+        """킷을 처음 올리는 MR: base 의 verify-entry.sh 가 --from-base 를 모르면 head 판으로 돈다(막히지 않는다)."""
+        self.gate(PASSING_BODY)
+        entry = self.root / "scripts/verify-entry.sh"
+        current = entry.read_text()
+        entry.write_text("# 옛 진입 블록\nexec python3 \"$(dirname \"${BASH_SOURCE[0]}\")/verify-changed.py\" \"$@\"\n")
+        self.commit("base: older harness")
+        origin = self.base / "origin.git"
+        subprocess.run(["git", "init", "-q", "--bare", str(origin)], check=True, capture_output=True)
+        self.git("remote", "add", "origin", str(origin))
+        self.git("push", "-q", "origin", "develop")
+        self.git("checkout", "-q", "-b", "feat/HK-16-upgrade")
+        entry.write_text(current)
+        self.gate_config()
+        self.registry(analyzer("scan"))
+        self.fake_analyzer("scan")
+        self.write("conf/app.txt", "value = 1\n")
+        self.commit("head: upgrade harness")
+        run = BaseJudgedTest.mr_pipeline(self)
+        self.assertIn(run.returncode, (0, 2), run.stdout[-3000:] + run.stderr[-3000:])
+        self.assertEqual((self.gate_result()["bootstrap"], self.gate_result()["judgedBy"]), (True, "head"))
+
     def test_base_without_harness_runs_head_with_bootstrap(self):
         (self.root / "scripts").rename(self.base / "scripts-later")
         self.write("README.md", "# 하네스 전\n")

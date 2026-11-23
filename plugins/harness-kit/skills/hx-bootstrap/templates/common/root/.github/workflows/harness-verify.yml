@@ -47,7 +47,7 @@ jobs:
           mkdir -p .agents/state
           git show "$HX_BASE_REF:scripts/verify.sh" > .agents/state/verify-base.sh || true
           git show "$HX_BASE_REF:scripts/verify-entry.sh" > .agents/state/verify-entry.sh || true
-          if [ -s .agents/state/verify-base.sh ] && [ -s .agents/state/verify-entry.sh ]; then bash .agents/state/verify-base.sh --from-base "$HX_BASE_REF" --affected; else bash scripts/verify.sh --affected --bootstrap; fi
+          if [ -s .agents/state/verify-base.sh ] && grep -q -- --from-base .agents/state/verify-entry.sh; then bash .agents/state/verify-base.sh --from-base "$HX_BASE_REF" --affected; else bash scripts/verify.sh --affected --bootstrap; fi
 
       - name: full
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
