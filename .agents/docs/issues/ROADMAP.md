@@ -25,8 +25,8 @@
 | HK-9 | v1.1 | SDD 새 경로 따라잡기 | 01 §3.7 | HK-3 | 끝 |
 | HK-10 | v1.1 | setup.sh 층 겹침 · 치환 특수 문자 | 02 §3.5 · §3.6 | HK-8 | 끝 |
 | HK-11 | P17 | CLI update · repair · uninstall | 02 §3.10 · §3.12 · §3.13 | HK-8 | 끝 |
-| HK-12 | P17 | CLI add · remove · outdated · 스킬 전환 + 설치 전 파일 보존 · 스택 문구 · README 표 · later-wins update 동일성 | 02 §3.3 · §3.14 | HK-11 | 진행 |
-| HK-13 | P18 | 배치 엔진: 하네스 어댑터 · mirror · render · merge · 규칙 paths 자동 로드 · 역할 파일 · CLAUDE.md 블록 · check_layout | 03 · 12 | HK-12 | 대기 |
+| HK-12 | P17 | CLI add · remove · outdated · 스킬 전환 + 설치 전 파일 보존 · 스택 문구 · README 표 · later-wins update 동일성 | 02 §3.3 · §3.14 | HK-11 | 끝 |
+| HK-13 | P18 | 배치 엔진: 하네스 어댑터 · mirror · render · merge · 규칙 paths 자동 로드 · 역할 파일 · CLAUDE.md 블록 · check_layout | 03 · 12 | HK-12 | 진행 |
 | HK-24 | P18 | 훅: hooks.json 생성 · dispatch · hook_root(worktree) · 동기화 · 보호 훅 · 업그레이드 공지 · 세션 시작 예산 | 03 §3.4 · §3.10~§3.12 | HK-13 | 대기 |
 | HK-14 | P18 | 확장 층(회사 팩 · 개인 층 · 게이트 하한) | 04 | HK-13 | 대기 |
 | HK-15 | P19 | worktree 운영 | 05 | HK-13 | 대기 |
@@ -49,4 +49,6 @@
 ## 사람에게 물을 것(아침에)
 
 - platform-guards 모듈: HK-10 뒤로 공통 층과 같은 파일만 남아 따로 더하는 파일이 없다. 모듈을 남길지 뺄지.
-- 승인 대기 설계 문서: HK-9 · HK-10 · HK-11 design.md는 에이전트가 approved로 두었다. 사람 확인이 필요하다.
+- 승인 대기 설계 문서: HK-9 ~ HK-12 design.md는 에이전트가 approved로 두었다. 사람 확인이 필요하다.
+- v1.0.8 lock으로 처음 update하면, 킷이 바꾼 미수정 파일도 설치 전 파일과 구별할 수 없어 `.new`로 둔다(HK-12 R12.6). 이대로 둘지.
+- `outdated`의 기본 원격(배포 원격이 정해지면 `package.json` repository 등).
