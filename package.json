@@ -4,7 +4,9 @@
   "description": "하네스 엔지니어링 스타터 킷 — 원본은 packages/, plugins/harness-kit/ 은 생성물",
   "engines": { "node": ">=18" },
   "scripts": {
-    "gen": "node scripts/gen-plugins.mjs",
+    "build": "pnpm -C packages/cli build",
+    "test:cli": "pnpm -C packages/cli test",
+    "gen": "pnpm build && node scripts/gen-plugins.mjs",
     "gen:check": "node scripts/gen-plugins.mjs --check",
     "test": "python3 -m unittest discover -s tests -p \"test_*.py\""
   }
