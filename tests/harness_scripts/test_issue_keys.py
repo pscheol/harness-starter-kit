@@ -1,6 +1,7 @@
 """이슈 키 · 이름 규칙, `--next` 번호, jira 설정, 종료 코드, 키 충돌 · rekey, 옛 구조 동결, 브랜치 규칙(설계 01 §3.7)."""
 
 import re
+import subprocess
 import sys
 import unittest
 
@@ -283,6 +284,23 @@ class BranchRuleTest(SddCase):
             stdin=f"refs/heads/feat/DEMO-17-desktop-parity {sha} refs/heads/feat/DEMO-17-desktop-parity {ZERO}\n",
         )
         self.assert_exit(result, 1, "DEMO-17")
+
+    def test_domain_repo_finds_the_issue_folder_in_the_main_repo(self):
+        # 다층 리포(§3.7.8): SDD 폴더는 메인 리포에 있고, 도메인 리포 pre-push 는 메인 리포 작업 트리에서 찾는다.
+        main = self.base / "main"
+        main.mkdir()
+        self.git("init", "-q", cwd=main)
+        self.git("-c", "protocol.file.allow=always", "submodule", "add", "-q", str(self.root), "domain", cwd=main)
+        domain = main / "domain"
+        sha = self.git("rev-parse", "HEAD", cwd=domain).stdout.strip()
+        refs = self.base / "refs.txt"
+        refs.write_text(f"refs/heads/feat/DEMO-17-desktop-parity {sha} refs/heads/feat/DEMO-17-desktop-parity {ZERO}\n")
+        check = [sys.executable, str(domain / "scripts/sdd-layout.py"), "branch-check", str(refs)]
+        blocked = subprocess.run(check, cwd=domain, env=self.env, capture_output=True, text=True, timeout=60)
+        self.assert_exit(blocked, 1, "DEMO-17")
+        (main / ".agents/docs/issues/DEMO-17-desktop-parity").mkdir(parents=True)
+        passed = subprocess.run(check, cwd=domain, env=self.env, capture_output=True, text=True, timeout=60)
+        self.assert_ok(passed)
 
 
 class IssueFrontmatterInTemplatesTest(SddCase):

@@ -32,7 +32,7 @@ created: 2026-11-23
 | `agents-docs/_spec-templates/{README.md,tasks/README.md}` | 새 위치 · `state` 값 |
 | `agents-docs/_spec-templates/index.md` | 삭제(영역별 `index.md`를 더 만들지 않는다, §3.7.5) |
 | `agents-docs/specs-index.md` | 새 보드 빈 상태 · 새 명령 |
-| `agents-docs/{README.md,guides/*.md}` · `agents-rules/{sdd-workflow,agent-harness}.md` · `kiro-steering/sdd-workflow.md` · `agents-skills/hx-{specify,plan,tasks,implement}/SKILL.md` · `root/README.md` | `new-feature.sh` · `check-sdd-prerequisites.sh` 사용법 줄과 SDD 경로 |
+| `agents-docs/{README.md,guides/{sdd-pattern,doc-standards,harness-engineering}.md,references/README.md,decisions/{_template,index}.md}` · `agents-rules/{sdd-workflow,agent-harness,git-workflow,reuse-before-new}.md` · `kiro-steering/{sdd-workflow,agent-harness,git-workflow}.md` · `agents-skills/hx-{specify,clarify,checklist,plan,tasks,analyze,implement,converge,harness}/SKILL.md`(+ `sync-commands.sh` 포인터) · `agents-root/roles/planner.md` · `root/README.md` | `new-feature.sh` · `check-sdd-prerequisites.sh` 사용법 줄, SDD 경로, `state` 값, 브랜치 규칙(git-workflow) |
 | `packages/legacy-setup/hx-bootstrap/lib/harness-lib.sh` | `harness_write_meta`를 Python JSON 병합으로(R7.11) |
 
 ## 2. 설정(`.agents/harness-kit.json`)
@@ -173,3 +173,5 @@ new-feature.sh <키> --stage=design|tasks [--dry-run]
 | §3.7.2 prefix = PROJECT_SLUG 대문자 | 영숫자만 · 앞 숫자 제거 · 10자, 2자 미만이면 `ISSUE` | 키 정규식(`^[A-Z][A-Z0-9]{1,9}`)을 만족해야 한다 |
 | §3.7.6 apply 5단계 한 줄 교체 | 옛 `index.md` 보드 렌더러가 옛 이슈 0개일 때 그 한 줄을 낸다 | `board.sh`가 다시 돌아도 같은 결과가 나온다 |
 | §3.7.3 `rekey <키> --next` | `rekey <키> <새 키>`도 받는다 | Jira 키로 바꿀 때 쓴다 |
+| §3.7.2 `harness_write_meta`만 병합 | `harness_meta_list`도 python3 가 있으면 JSON 으로 읽는다 | 사람이 배열을 여러 줄로 고치면 sed 로는 에이전트 목록을 못 읽어 update 가 에이전트 층을 건너뛴다 |
+| §3.6 표의 파일 범위 | `stacks/*`(AGENTS · CLAUDE · ARCHITECTURE · structure · guardrails)와 `tools/docs` · `optional/jira-workflow` · `packages/plugin` · `setup.sh` 의 옛 경로 문구는 바꾸지 않았다 | 이 이슈의 담당 파일이 아니다. 후속 정리 목록으로 넘긴다 |
