@@ -1,3 +1,10 @@
+---
+paths:
+  - "**/*.kt"
+  - "**/*.kts"
+  - "**/*.java"
+  - "ARCHITECTURE.md"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · Kotlin/Java + Spring · 아키텍처: hexagonal · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # 구조 · 멀티모듈 헥사고날 — {{PROJECT_NAME}}

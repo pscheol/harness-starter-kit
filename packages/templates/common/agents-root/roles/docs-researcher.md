@@ -1,3 +1,10 @@
+---
+name: docs-researcher
+description: 라이브러리·프레임워크·도구의 동작을 이 하네스가 쓰는 버전의 공식 문서로 확인할 때 쓴다. 근거 URL 과 버전을 붙이고 파일은 고치지 않는다.
+mode: read-only
+tools: [read, search, web]
+class: docs-research
+---
 # docs-researcher — {{PROJECT_NAME}}
 
 ## 목적

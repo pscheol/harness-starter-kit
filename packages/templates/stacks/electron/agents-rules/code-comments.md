@@ -1,3 +1,12 @@
+---
+paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
+  - "**/*.mjs"
+  - "**/*.cjs"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · Electron 데스크톱 · 플레이스홀더({{PROJECT_NAME}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # 주석 작성 가이드 (TypeScript · React · Electron)
@@ -5,7 +14,7 @@
 > 기본값은 **주석 없음**이다. 모듈 밖으로 나가는 공개 API에만 한 줄을 달고, 나머지는 코드로 말할 수 없는 것만 적는다.
 > 문장을 어떻게 쓸지는 [`writing-style.md`](./writing-style.md)가 정한다. 이 파일은 **어디에 얼마나** 쓸지를 정한다.
 
-이 문서가 주석 표준의 원본이다. steering·진입 파일은 요약과 포인터만 둔다.
+이 문서가 주석 표준의 원본이다. 진입 파일은 요약만 두고, 하네스 폴더의 규칙 파일은 이 원본의 복사본 · 생성물이다.
 
 ## TSDoc 규약 (지켜야 하는 형식)
 

@@ -12,17 +12,17 @@ Claude Code · Codex · Kiro가 함께 작업한다. 규칙은 `.agents/rules/`,
 3. `.agents/rules/` — 규칙 원본(가드레일·보안·API·구조·스택·제품·주석·문체·하네스). 작업 유형에 맞는 파일을 직접 연다.
 4. `.agents/docs/` — SDD 기록(issues/<키>-<이름>/·decisions). 진입 `.agents/docs/README.md`.
 
-## 에이전트 로딩 규칙 (3 에이전트, 원본 1곳)
+## 에이전트 로딩 규칙 (원본 1곳)
 
-규칙 본문은 어느 에이전트도 소유하지 않는다. 원본은 `.agents/rules/` 한 곳이고, 각 에이전트 진입 파일은 그 원본으로 유도만 한다.
+규칙 원본은 `.agents/rules/` 한 곳이다. 하네스 폴더의 규칙 · 스킬 · 역할은 원본의 복사본 · 생성물이고, 규칙은 머리의 `paths` 경로를 다룰 때 자동으로 실린다.
 
-| 에이전트 | 진입 파일 | 원본 접근 |
+| 에이전트 | 진입 파일 | 규칙 |
 |---|---|---|
-| Claude Code | `CLAUDE.md` (→ 이 `AGENTS.md` 위임) | `.agents/rules/*` 직접 |
-| Codex | 이 `AGENTS.md` + `.codex/config.toml`(리포 정책) | `.agents/rules/*` 직접 |
-| Kiro | `.kiro/steering/*.md` (얇은 포인터) | 포인터가 `.agents/rules/*` 원본으로 유도 |
+| Claude Code | `CLAUDE.md`(`@AGENTS.md`) | `.claude/rules/*`(자동) |
+| Codex | 이 `AGENTS.md` | `.agents/rules/*`를 직접 연다 |
+| Cursor · Kiro | 이 `AGENTS.md` | `.cursor/rules/*.mdc` · `.kiro/steering/*`(자동) |
 
-- 어느 에이전트도 `.agents/rules/` 전체가 자동 주입된다고 가정하지 않는다. 작업 시작 시 아래 "규약"의 해당 파일을 직접 연다.
+- 자동으로 실리지 않은 규칙은 아래 "규약"의 해당 파일을 직접 연다.
 - 모든 코드/문서 변경 전 최소 기준은 `.agents/rules/guardrails.md`다. API·보안·구조 변경은 해당 규칙을 추가로 연다.
 
 ## 규약 (반드시 준수 — 원본은 `.agents/rules/`)
@@ -72,4 +72,4 @@ Claude Code · Codex · Kiro가 함께 작업한다. 규칙은 `.agents/rules/`,
 
 ## 규칙 변경 절차 (드리프트 방지)
 
-규칙/지식이 바뀌면 `.agents/rules/`의 원본을 먼저 고치고, 이 목차(`AGENTS.md`)·`CLAUDE.md`·Kiro 포인터(`.kiro/steering/*`)를 동기화한다. 규칙 본문은 원본 1곳에만 두고 진입 파일은 항상 짧게 유지한다.
+규칙/지식이 바뀌면 `.agents/rules/`의 원본을 먼저 고치고 이 목차를 맞춘다. 하네스 폴더의 복사본 · 생성물은 고치지 않는다(`npx harness-kit repair`가 다시 만든다).

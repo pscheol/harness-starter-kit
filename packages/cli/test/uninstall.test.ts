@@ -128,17 +128,17 @@ describe("uninstall", () => {
     expect([...readTree(target).keys()].sort()).toEqual([A, "AGENTS.md"]);
   });
 
-  it("설치 안 됨 · lock 없음은 exit 3, mirror · render · merge 항목은 exit 3", async () => {
+  it("설치 안 됨 · lock 없음 · 모르는 op 항목은 exit 3(mirror · render · merge 는 HK-13 뒤 받는다)", async () => {
     expect((await run(["uninstall", "--yes", "--cwd", tmpDir()])).code).toBe(3);
     const a = await installedFixture();
     fs.rmSync(path.join(a.target, LOCK_FILE));
     expect((await a.cli("uninstall", ["--yes"])).code).toBe(3);
     const b = await installedFixture();
-    patchLock(b.target, { ".claude/settings.json": { op: "merge", owner: "kit", keys: ["hooks.Stop:x"] } });
+    patchLock(b.target, { ".claude/settings.json": { op: "symlink", owner: "kit", keys: ["hooks.Stop:x"] } });
     const before = readTree(b.target);
     const r = await b.cli("uninstall", ["--yes", "--json"]);
     expect(r.code).toBe(3);
-    expect(json(r).error.message).toContain("지원하지 않는다");
+    expect(json(r).error.message).toMatch(/모른다|지원하지 않는다/);
     expect(readTree(b.target)).toEqual(before);
   });
 });

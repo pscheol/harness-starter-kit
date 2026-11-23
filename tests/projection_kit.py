@@ -17,11 +17,11 @@ CHECK_LAYOUT = KIT / "packages/templates/common/scripts/harness/check_layout.py"
 TOKENS = {"PROJECT_NAME": "Acme Notes", "PROJECT_SLUG": "acme-notes", "PACKAGE_NS": "com.acme.notes", "SERVICE_NAME": "notes-api"}
 # design §11 실측(e181b6f, 위 토큰, --agents=all, 모듈 없음)
 V108_CONTEXT = {
-    "jvm": {"claude": 10311, "codex": 9894, "cursor": 9075, "kiro": 26579},
-    "python": {"claude": 10567, "codex": 10150, "cursor": 9331, "kiro": 26830},
-    "go": {"claude": 10991, "codex": 10574, "cursor": 9755, "kiro": 27258},
-    "web": {"claude": 12025, "codex": 11608, "cursor": 10789, "kiro": 33191},
-    "electron": {"claude": 12431, "codex": 12014, "cursor": 11195, "kiro": 33924},
+    "jvm": {"claude": 10307, "codex": 9890, "cursor": 9071, "kiro": 26575},
+    "python": {"claude": 10563, "codex": 10146, "cursor": 9327, "kiro": 26826},
+    "go": {"claude": 10987, "codex": 10570, "cursor": 9751, "kiro": 27254},
+    "web": {"claude": 12021, "codex": 11604, "cursor": 10785, "kiro": 33187},
+    "electron": {"claude": 12427, "codex": 12010, "cursor": 11191, "kiro": 33920},
 }
 
 

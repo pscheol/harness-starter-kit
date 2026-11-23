@@ -137,7 +137,7 @@ for a in $NEW; do
     claude) echo "  · Claude Code: .claude/settings.json 의 권한·hook 을 확인하고 세션을 다시 연다" ;;
     codex)  echo "  · Codex: .codex/config.toml·hooks.json 을 확인한다. 스킬은 \$hx-specify 로 멘션한다" ;;
     cursor) echo "  · Cursor: .cursor/commands/ 의 /hx-* 커맨드가 잡히는지 확인한다" ;;
-    kiro)   echo "  · Kiro: .kiro/steering/ 은 얇은 포인터다(규칙 본문은 .agents/rules 원본)" ;;
+    kiro)   echo "  · Kiro: .kiro/steering/ · .kiro/skills/ 는 .agents/ 원본에서 만든 생성물 · 복사본이다(고칠 때는 원본)" ;;
   esac
 done
 echo "  · 규칙 원본(.agents/rules)은 에이전트가 공유한다 — 추가해도 중복되지 않는다"

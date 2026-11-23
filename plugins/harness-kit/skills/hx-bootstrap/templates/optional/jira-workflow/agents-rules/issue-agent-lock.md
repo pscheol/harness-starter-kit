@@ -1,3 +1,8 @@
+---
+paths:
+  - ".agents/issue-tracker.yml"
+  - ".agents/docs/issues/**"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · 선택 모듈: jira-workflow · 플레이스홀더 치환 후 사용 -->
 
 # 이슈 작업 락 — 두 작업자가 같은 티켓을 잡지 않게

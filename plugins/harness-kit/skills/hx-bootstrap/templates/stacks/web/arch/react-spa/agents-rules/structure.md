@@ -1,3 +1,13 @@
+---
+paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
+  - "**/*.mjs"
+  - "**/*.cjs"
+  - "ARCHITECTURE.md"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · 웹 프론트엔드 · 아키텍처: react-spa · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # 구조 · React 단일 페이지 앱 — {{PROJECT_NAME}}

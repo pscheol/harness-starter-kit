@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/*.py"
+  - "ARCHITECTURE.md"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · Python 백엔드 · 아키텍처: django · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # 구조 · Django 앱 레이아웃 (services/selectors 분리) — {{PROJECT_NAME}}

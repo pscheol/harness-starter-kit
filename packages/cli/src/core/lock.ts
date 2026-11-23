@@ -29,7 +29,9 @@ export interface LockV2 {
   entries: LockEntry[];
 }
 
-const ENTRY_ORDER = ["path", "op", "owner", "sha256", "layer", "from", "fromSha256", "keys"];
+const ENTRY_ORDER = ["path", "op", "owner", "sha256", "layer", "from", "fromSha256", "keys", "createdByKit"];
+/** v1 lock 의 배치 줄 라벨(HK-13 design §7.2). setup.sh · update.sh 가 projection.py 로 적는다. */
+const V1_PROJECTION = new Set(["mirror", "render", "merge", "merge+"]);
 
 function orderEntry(e: LockEntry): Record<string, unknown> {
   const known = ENTRY_ORDER.filter((k) => k in e).map((k) => [k, e[k]] as const);
@@ -57,6 +59,13 @@ export function v1LabelToLayer(label: string): string {
   return `stacks/${label}`;
 }
 
+/** v1 배치 줄 → v2 항목. merge 는 키를 적지 않는다(지금 원하는 키로 다시 구한다), merge+ 는 킷이 만든 파일. */
+function v1ProjectionEntry(sha: string, label: string, rel: string): LockEntry {
+  if (label === "merge+") return { path: rel, op: "merge", owner: "kit", createdByKit: true };
+  if (label === "merge") return { path: rel, op: "merge", owner: "kit" };
+  return { path: rel, op: label, owner: "kit", sha256: sha === "-" ? null : sha };
+}
+
 function parseV1(text: string): LockV2 {
   const seen = new Map<string, LockEntry>();
   const lines = text.split("\n");
@@ -66,6 +75,10 @@ function parseV1(text: string): LockV2 {
     const cols = line.split("\t");
     if (cols.length !== 4 || cols.some((c) => c === "")) throw new Error(`v1 lock ${i + 1}번째 줄: 칸이 4개가 아니다`);
     const [sha, label, , rel] = cols as [string, string, string, string];
+    if (V1_PROJECTION.has(label)) {
+      seen.set(rel, v1ProjectionEntry(sha, label, rel));
+      continue;
+    }
     const layer = v1LabelToLayer(label);
     const prev = seen.get(rel);
     // 같은 경로가 여러 줄: 뒤 줄의 layer, 앞 줄의 sha256(v1 setup.sh 가 실제로 쓴 판이 앞 레이어다)

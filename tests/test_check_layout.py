@@ -41,8 +41,9 @@ class CheckLayoutTest(unittest.TestCase):
 
     def cli_install(self, agents: str = "all", modules: str = "none", stack: str = "python") -> Path:
         target = self.tmp / "acme-notes"
+        # --issue-prefix: CLI 기본값(슬러그 대문자 'ACME-NOTES')은 check_harness 가 받지 않는 형식이다(HK-13 밖 — 보고).
         r = run(["node", str(self.cli), "init", "--yes", "--templates", str(TEMPLATES), "--cwd", str(target),
-                 "--stack", stack, "--agents", agents, "--modules", modules], self.tmp, env=base_env(TOKENS))
+                 "--stack", stack, "--agents", agents, "--modules", modules, "--issue-prefix", "ACMENOTES"], self.tmp, env=base_env(TOKENS))
         self.assertEqual(r.returncode, 0, r.stdout[-2000:] + r.stderr[-2000:])
         subprocess.run(["git", "init", "-q"], cwd=target, check=True)
         subprocess.run(["git", "add", "-A"], cwd=target, check=True)

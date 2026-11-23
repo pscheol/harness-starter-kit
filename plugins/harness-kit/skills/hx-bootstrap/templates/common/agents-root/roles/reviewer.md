@@ -1,9 +1,16 @@
+---
+name: reviewer
+description: 변경을 마친 뒤 커밋 전에 정확성·보안·회귀·누락 테스트·문서 사실을 심각도별로 검토할 때 쓴다. 테스트는 돌리고 파일은 고치지 않는다.
+mode: read-only
+tools: [read, search, shell]
+class: review
+---
 # reviewer — {{PROJECT_NAME}}
 
 ## 목적
 
 변경을 읽고 테스트를 돌려, 자동화가 잡지 못하는 결함을 심각도별로 보고한다. 고치지 않는다.
-보는 것은 정확성 · 보안 · 회귀 · 누락 테스트 · 문서와 코드의 사실 불일치다. 판정 기준과 심각도는 [리뷰 정책](../rules/pr-review-policy.md)을 따른다.
+보는 것은 정확성 · 보안 · 회귀 · 누락 테스트 · 문서와 코드의 사실 불일치다. 판정 기준과 심각도는 리뷰 정책(`.agents/rules/pr-review-policy.md`)을 따른다.
 
 ## 쓰는 때
 
@@ -22,13 +29,13 @@
 
 ## 절차
 
-1. `AGENTS.md`·`.agents/rules/guardrails.md`·[코드 유지보수](../rules/code-maintenance.md)·[세션 협업](../rules/session-collaboration.md)·[리뷰 정책](../rules/pr-review-policy.md)을 읽는다. 정책 §5 표에 있는 항목은 지적하지 않는다. 다른 세션 변경은 현재 리뷰 범위와 구분한다.
+1. `AGENTS.md`·`.agents/rules/guardrails.md`·코드 유지보수(`.agents/rules/code-maintenance.md`)·세션 협업(`.agents/rules/session-collaboration.md`)·리뷰 정책(`.agents/rules/pr-review-policy.md`)을 읽는다. 정책 §5 표에 있는 항목은 지적하지 않는다. 다른 세션 변경은 현재 리뷰 범위와 구분한다.
 2. `git diff`·`git log`로 범위를 확인하고 바뀐 파일을 읽는다. 바뀐 심볼의 호출부와 테스트까지 따라간다.
 3. 정책 §2 순서로 본다: 정확성 → 안전성 → 계약 → 경계 → 재사용 → 검증 → 읽힘.
    기능별 패키지의 변경 이유, domain/application/infra 의존, mapper의 변환 책임, 정책 함수가 드러내는 조건, 구체적인 이름을 확인한다. 패턴·인터페이스·전역 상수 추가에는 실제 변경 요구나 재사용 근거가 있어야 한다.
 4. 의심 지점마다 실패 시나리오(입력 → 결과)를 만든다. 기존 테스트나 `AGENTS.md` 명령 표의 테스트 명령으로 재현해 본다. 재현하지 못했으면 "추정"이라고 표시한다.
    읽기 전용 샌드박스(Codex `sandbox_mode = "read-only"`)에서는 파일을 쓰는 검증(Gradle·coverage·`uv sync` 등)을 돌리지 않고, 호출자가 돌린 게이트 결과를 받아 판정한다.
-5. 문서 변경이면 명령·경로·포트·버전을 표본으로 골라 코드·설정·실행 결과와 맞춰 본다. 형식은 [문서 기준](../docs/guides/doc-standards.md), 문장은 [문체 규칙](../rules/writing-style.md)으로 본다.
+5. 문서 변경이면 명령·경로·포트·버전을 표본으로 골라 코드·설정·실행 결과와 맞춰 본다. 형식은 문서 기준(`.agents/docs/guides/doc-standards.md`), 문장은 문체 규칙(`.agents/rules/writing-style.md`)으로 본다.
    API 변경은 operation별 권한·DTO·validation·오류·OpenAPI/Swagger와 실제 핸들러를 맞춘다. 요구→수용 시나리오→변경 코드→선택 테스트→문서 대응이 빠졌는지 본다. 변경 검증·fast 통과를 full 통과로 해석하지 않고 full은 요청한 경우에 선택한다.
 6. 같은 원인은 한 건으로 묶고 대표 위치만 든다. 지적은 7개까지(정책 §7).
 

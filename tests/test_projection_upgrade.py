@@ -53,23 +53,55 @@ class ProjectionUpgradeTest(unittest.TestCase):
         cls.cl = cls.tmp / "cli" / "acme-notes"
         for target in (cls.sh, cls.cl):
             shutil.copytree(base, target, symlinks=True)
+        # 1차 update: 표시 줄 없는 v1.0.8 lock 이라 킷이 바꾼 파일은 모두 .new(HK-12 R12.6). 원본이 .new 대기인 배치는 미룬다(design §6.3).
+        cls.first = cls.update_both()
+        cls.first_trees = (snapshot(cls.sh), snapshot(cls.cl))
+        cls.first_context = cls.measure(cls.cl)
+        # 사람이 .new 를 모두 받아들인다(mv) — 그다음 update 가 포인터를 복사본 · 생성물로 바꾼다.
+        for target in (cls.sh, cls.cl):
+            for p in sorted(target.rglob("*.new")):
+                os.replace(p, p.with_suffix(""))
+        cls.sh_run, cls.cli_run = cls.update_both()
+
+    @classmethod
+    def update_both(cls) -> tuple[subprocess.CompletedProcess, subprocess.CompletedProcess]:
         env = base_env({})
-        cls.sh_run = subprocess.run(["bash", str(UPDATE), str(cls.sh)], env=env, capture_output=True, text=True, timeout=600)
-        cls.cli_run = subprocess.run(["node", str(cls.cli), "update", "--json", "--templates", str(TEMPLATES), "--cwd", str(cls.cl)],
-                                     env=env, capture_output=True, text=True, timeout=600)
+        sh = subprocess.run(["bash", str(UPDATE), str(cls.sh)], env=env, capture_output=True, text=True, timeout=600)
+        cl = subprocess.run(["node", str(cls.cli), "update", "--json", "--templates", str(TEMPLATES), "--cwd", str(cls.cl)],
+                            env=env, capture_output=True, text=True, timeout=600)
+        return sh, cl
+
+    @classmethod
+    def measure(cls, root: Path) -> dict[str, int]:
+        r = subprocess.run([sys.executable, "-B", str(CHECK_LAYOUT), "--root", str(root), "--context", "--json"],
+                           capture_output=True, text=True, timeout=120, env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
+        if r.returncode != 0:
+            raise RuntimeError(r.stdout + r.stderr)
+        return {h: v["total"] for h, v in json.loads(r.stdout)["context"].items()}
 
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree(cls.tmp, ignore_errors=True)
 
     def test_both_updates_give_the_same_tree(self):
+        sh1, cl1 = self.first
+        self.assertEqual(sh1.returncode, 0, sh1.stdout[-2000:] + sh1.stderr[-2000:])
+        self.assertEqual(cl1.returncode, 4, cl1.stdout[-2000:] + cl1.stderr[-2000:])
         self.assertEqual(self.sh_run.returncode, 0, self.sh_run.stdout[-2000:] + self.sh_run.stderr[-2000:])
         self.assertEqual(self.cli_run.returncode, 4, self.cli_run.stdout[-2000:] + self.cli_run.stderr[-2000:])
-        sh_files, sh_dirs = snapshot(self.sh)
-        cl_files, cl_dirs = snapshot(self.cl)
-        self.assertEqual(sorted(set(sh_files) ^ set(cl_files)), [])
-        self.assertEqual(sorted(r for r in sh_files if sh_files[r] != cl_files[r]), [])
-        self.assertEqual(sorted(sh_dirs ^ cl_dirs), [])
+        for (sh_files, sh_dirs), (cl_files, cl_dirs) in (self.first_trees, (snapshot(self.sh), snapshot(self.cl))):
+            self.assertEqual(sorted(set(sh_files) ^ set(cl_files)), [])
+            self.assertEqual(sorted(r for r in sh_files if sh_files[r] != cl_files[r]), [])
+            self.assertEqual(sorted(sh_dirs ^ cl_dirs), [])
+
+    def test_first_update_defers_projection_and_keeps_budget(self):
+        """원본이 .new 대기면 옛 포인터를 두고 paths 없는 옛 규칙을 배치하지 않는다 — 상시 양이 늘지 않는다."""
+        before = self.measure(self.base)
+        for h, size in self.first_context.items():
+            with self.subTest(harness=h):
+                self.assertLessEqual(size, before[h])
+        j = json.loads(self.first[1].stdout)
+        self.assertIn("defer", {o["action"] for o in j["projection"]["ops"]})
 
     def test_untouched_pointers_become_copies(self):
         for target in (self.sh, self.cl):
@@ -83,9 +115,7 @@ class ProjectionUpgradeTest(unittest.TestCase):
                 self.assertTrue((target / "CLAUDE.md").read_text(encoding="utf-8").startswith("@AGENTS.md\n"))
                 left = [f for f in files if not f.endswith((".new", ".bak")) and f not in (EDITED_STEERING, EDITED_COMMAND)
                         and any(p in (target / f).read_text(encoding="utf-8", errors="replace") for p in POINTER_PHRASES)]
-                # 원본(.agents/rules)이 .new 대기인 규칙의 배치는 미룬다(design §6.3) — 그 옛 포인터는 남는다.
-                waiting = {f".kiro/steering/{p.name.removesuffix('.new')}" for p in (target / ".agents/rules").glob("*.md.new")}
-                self.assertEqual([f for f in left if f not in waiting], [])
+                self.assertEqual(left, [])
 
     def test_edited_pointers_are_kept_with_new(self):
         j = json.loads(self.cli_run.stdout)
@@ -94,14 +124,13 @@ class ProjectionUpgradeTest(unittest.TestCase):
                 self.assertIn("사람이 고친 포인터 줄", (target / EDITED_STEERING).read_text(encoding="utf-8"))
                 self.assertIn("사람이 고친 포인터 줄", (target / EDITED_COMMAND).read_text(encoding="utf-8"))
         conflicts = [c["path"] for c in j["conflicts"]]
-        if not (self.cl / ".agents/rules/git-workflow.md.new").exists():
-            self.assertTrue((self.cl / f"{EDITED_STEERING}.new").is_file())
-            self.assertIn(EDITED_STEERING, conflicts)
+        self.assertTrue((self.cl / f"{EDITED_STEERING}.new").is_file())
+        self.assertIn(EDITED_STEERING, conflicts)
         self.assertIn(EDITED_COMMAND, [o["path"] for o in j["projection"]["ops"] if o["action"] == "keep-modified"])
 
     def test_session_context_does_not_grow_after_upgrade(self):
-        before = self.context(self.base)
-        after = self.context(self.cl)
+        before = self.measure(self.base)
+        after = self.measure(self.cl)
         for h, size in after.items():
             with self.subTest(harness=h):
                 self.assertLessEqual(size, before[h])
@@ -112,12 +141,6 @@ class ProjectionUpgradeTest(unittest.TestCase):
         kinds = {f["kind"] for f in report["findings"] if f["severity"] == "error"}
         # 남는 오류는 사람이 고친 포인터(drifted)뿐이다.
         self.assertLessEqual(kinds, {"drifted"}, r.stdout[-2000:])
-
-    def context(self, root: Path) -> dict[str, int]:
-        r = subprocess.run([sys.executable, "-B", str(CHECK_LAYOUT), "--root", str(root), "--context", "--json"],
-                           capture_output=True, text=True, timeout=120, env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"})
-        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        return {h: v["total"] for h, v in json.loads(r.stdout)["context"].items()}
 
 
 if __name__ == "__main__":

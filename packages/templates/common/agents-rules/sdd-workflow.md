@@ -1,3 +1,9 @@
+---
+paths:
+  - ".agents/docs/**"
+  - "scripts/new-feature.sh"
+  - "scripts/board.sh"
+---
 # SDD 워크플로 — 이슈별 요구 · 설계 · 작업
 
 Claude·Codex·Kiro의 SDD 원본이다. 한 이슈의 요구·설계·작업·검증을 한 폴더에 보관한다.

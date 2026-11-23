@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""하네스 구조 검사 — SDD 상태 · 키 충돌 · 옛 구조 동결, 문서 링크, 에이전트 설정, 규칙·스킬 포인터.
+"""하네스 구조 검사 — SDD 상태 · 키 충돌 · 옛 구조 동결, 문서 링크, 에이전트 설정, 규칙·스킬 복사본이 있는지.
 
 스택과 무관한 공통 검사다. 단위 고유 검사는 scripts/check_unit.py 의 errors(root) 가 있으면 함께 부른다.
 파일을 고치지 않는다.
@@ -50,7 +50,7 @@ AGENT_REQUIRED = {
 }
 
 
-#: `.agents/harness.json` 의 `agents` 에 올 수 있는 이름. cursor 는 필수 파일이 없다(포인터만).
+#: `.agents/harness.json` 의 `agents` 에 올 수 있는 이름. cursor 는 필수 파일이 없다(생성물만).
 KNOWN_AGENTS = ("claude", "codex", "cursor", "kiro")
 
 
@@ -212,33 +212,33 @@ def config_errors(root):
 
 
 def pointer_errors(root):
+    """하네스 폴더에 원본마다 복사본 · 생성물이 있는지 본다(HK-13). 내용 대조는 scripts/harness/check_layout.py 가 lock 으로 한다."""
     errors = []
     agents = selected_agents(root)
     rules = {path.stem for path in (root / ".agents/rules").glob("*.md")}
     for rule in sorted(rules) if "kiro" in agents else []:
-        pointer = root / ".kiro/steering" / f"{rule}.md"
-        if not pointer.is_file() or f".agents/rules/{rule}.md" not in pointer.read_text():
-            errors.append(f"{rule}.md: missing Kiro rule pointer")
-    for pointer in sorted((root / ".kiro/steering").glob("*.md")):
-        text = pointer.read_text()
+        steering = root / ".kiro/steering" / f"{rule}.md"
+        if not steering.is_file() or f".agents/rules/{rule}.md" not in steering.read_text():
+            errors.append(f"{rule}.md: missing Kiro steering")
+    for steering in sorted((root / ".kiro/steering").glob("*.md")):
+        text = steering.read_text()
         fields = front_matter(text)
         if fields is None or fields.get("inclusion", "always") not in INCLUSIONS:
-            errors.append(f"{label(root, pointer)}: steering needs front matter with a known inclusion")
-        if pointer.stem.startswith("hx-"):
+            errors.append(f"{label(root, steering)}: steering needs front matter with a known inclusion")
+        if steering.stem.startswith("hx-"):
             continue
-        for target in re.findall(r"\.agents/rules/([a-z0-9-]+)\.md", text):
+        for target in re.findall(r"원본[:\s`]*\.agents/rules/([a-z0-9-]+)\.md", text):
             if target not in rules:
-                errors.append(f"{label(root, pointer)}: points to orphan rule {target}.md")
+                errors.append(f"{label(root, steering)}: points to orphan rule {target}.md")
     for skill in sorted((root / ".agents/skills").glob("hx-*")):
         canonical = f".agents/skills/{skill.name}/SKILL.md"
         fields = front_matter((skill / "SKILL.md").read_text()) if (skill / "SKILL.md").is_file() else None
         if not fields or fields.get("name") != skill.name or not fields.get("description"):
             errors.append(f"{canonical}: skill needs name matching its folder and description")
-        pointers = {"claude": f".claude/commands/{skill.name}.md", "kiro": f".kiro/skills/{skill.name}/SKILL.md"}
-        for name in (path for agent, path in pointers.items() if agent in agents):
-            path = root / name
-            if not path.is_file() or canonical not in path.read_text():
-                errors.append(f"{name}: missing canonical skill pointer")
+        copies = {"claude": f".claude/skills/{skill.name}/SKILL.md", "kiro": f".kiro/skills/{skill.name}/SKILL.md"}
+        for name in (path for agent, path in copies.items() if agent in agents):
+            if not (root / name).is_file():
+                errors.append(f"{name}: missing skill copy")
         kiro_skill = root / f".kiro/skills/{skill.name}/SKILL.md"
         if kiro_skill.is_file() and (front_matter(kiro_skill.read_text()) or {}).get("name") != skill.name:
             errors.append(f".kiro/skills/{skill.name}/SKILL.md: Kiro skill name must match its folder")

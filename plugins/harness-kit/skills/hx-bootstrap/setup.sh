@@ -40,10 +40,10 @@
 #
 # 에이전트별로 설치되는 것 (core 는 선택과 무관하게 항상 깔린다):
 #   core   .agents/rules · .agents/docs · scripts · AGENTS.md · ARCHITECTURE.md …
-#   claude .claude/(settings·hooks·commands) + CLAUDE.md
-#   codex  .codex/(hooks·config) + .agents/skills/
-#   cursor .cursor/commands/
-#   kiro   .kiro/steering/ + .kiro/skills/
+#   claude .claude/(settings·skills·rules·agents) + CLAUDE.md   — 배치가 .agents/ 원본에서 만든다(HK-13)
+#   codex  .codex/(hooks·config·agents) + .agents/skills/
+#   cursor .cursor/(commands·rules)
+#   kiro   .kiro/(steering·skills·agents·hooks)
 #
 # 설치 후 대상 리포에 상태 파일 두 개가 남는다. 나중에 에이전트를 더 깔거나
 # (hx-agent-add) 킷 새 버전을 반영할 때(hx-update) 이 파일을 읽는다:
@@ -70,8 +70,8 @@
 #            main-renderer(기본) = main·preload·renderer 3프로세스 + 레이어
 #            feature             = 3프로세스 위에 기능 슬라이스(양쪽 같은 기능 이름)
 #            monorepo            = apps/{desktop,web} + packages/{core,ui} 워크스페이스
-#   변형이 바꾸는 파일은 4개뿐이다 — ARCHITECTURE.md · .agents/rules/structure.md ·
-#   .agents/rules/tech.md · .kiro/steering/structure.md.
+#   변형이 바꾸는 파일은 3개뿐이다 — ARCHITECTURE.md · .agents/rules/structure.md ·
+#   .agents/rules/tech.md(하네스 폴더 사본은 배치가 만든다).
 #   나머지 규칙·스크립트는 스택 안에서 공유한다.
 #
 # 스택별 {{PACKAGE_NS}} 의미:
@@ -414,6 +414,12 @@ if [ "$DRY_RUN" != 1 ]; then
   harness_write_meta "$TARGET" "$(harness_kit_version "$PLUGIN_DIR")" \
     "$DOMAIN" "$STACK" "$ARCH" "$AGENTS_SEL" "$MODULES_SEL"
   harness_write_manifest "$TARGET" "$STACK" "$AGENTS_SEL"
+  # 하네스 배치(HK-13): 하네스 폴더의 스킬 · 규칙 · 역할 · CLAUDE.md · 설정은 .agents/ 원본에서 만든다(포인터 파일 없음).
+  if [ "$FORCE" = 1 ]; then
+    harness_project setup "$TARGET" "$LOCK" "$PREV_LOCK" "$AGENTS_SEL" --force
+  else
+    harness_project setup "$TARGET" "$LOCK" "$PREV_LOCK" "$AGENTS_SEL"
+  fi
   # 기능 문서 사이트를 처음 한 번 만든다(네트워크 없음). 그래야 설치 직후 fast 게이트의 문서 검사가 통과한다.
   if [ -f "$TARGET/tools/docs/feature_docs.py" ] && command -v python3 >/dev/null 2>&1; then
     (cd "$TARGET" && python3 tools/docs/feature_docs.py build >/dev/null) \
@@ -422,6 +428,7 @@ if [ "$DRY_RUN" != 1 ]; then
   fi
 fi
 
+[ "$DRY_RUN" = 1 ] && echo "  (dry-run — 하네스 배치(복사본 · 생성물)는 .agents/ 원본을 쓴 뒤에 만든다)"
 echo ""
 echo "✔ 완료: write=$count_written, skip=$count_skipped, 미선택 에이전트로 제외=$count_excluded$([ "$count_overlapped" -gt 0 ] && echo ", 겹침(뒤 레이어)=$count_overlapped") $([ $DRY_RUN = 1 ] && echo '(dry-run — 실제 변경 없음)')"
 if [ "$DRY_RUN" != 1 ]; then

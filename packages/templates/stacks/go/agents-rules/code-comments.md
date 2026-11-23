@@ -1,3 +1,7 @@
+---
+paths:
+  - "**/*.go"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · Go 백엔드 · 플레이스홀더({{PROJECT_NAME}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # 주석 작성 가이드 (Go)
@@ -5,7 +9,7 @@
 > 기본값은 **주석 없음**이다. exported 식별자의 doc comment만 관례로 챙기고, 나머지는 코드로 말할 수 없는 것만 적는다.
 > 문장을 어떻게 쓸지는 [`writing-style.md`](./writing-style.md)가 정한다. 이 파일은 **어디에 얼마나** 쓸지를 정한다.
 
-이 문서가 주석 표준의 원본이다. steering·진입 파일은 요약과 포인터만 둔다.
+이 문서가 주석 표준의 원본이다. 진입 파일은 요약만 두고, 하네스 폴더의 규칙 파일은 이 원본의 복사본 · 생성물이다.
 
 ## godoc 규약 (지켜야 하는 형식)
 

@@ -1,3 +1,10 @@
+---
+paths:
+  - "**/*.kt"
+  - "**/*.kts"
+  - "**/*.java"
+  - ".agents/docs/openapi/**"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · Kotlin/Java + Spring · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # API 표준 규약 — {{PROJECT_NAME}}

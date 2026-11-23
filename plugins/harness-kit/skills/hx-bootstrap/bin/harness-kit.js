@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 94d980d66c017a1986525841a153020c7e60282ace6577ea79c20d3bd20b78dd · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 3fcfd4279642204a2bbd08df19e5fed0925e32b4290b9ac9c9f2329262883201 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -147,16 +147,16 @@ function byteCompare(a, b) {
 }
 function walkFiles(dir) {
   const out = [];
-  const walk = (d, prefix) => {
+  const walk2 = (d, prefix) => {
     for (const name of import_node_fs.default.readdirSync(d)) {
-      const full7 = import_node_path.default.join(d, name);
+      const full9 = import_node_path.default.join(d, name);
       const rel = prefix ? `${prefix}/${name}` : name;
-      const st = import_node_fs.default.lstatSync(full7);
-      if (st.isDirectory()) walk(full7, rel);
+      const st = import_node_fs.default.lstatSync(full9);
+      if (st.isDirectory()) walk2(full9, rel);
       else if (st.isFile()) out.push(rel);
     }
   };
-  walk(dir, "");
+  walk2(dir, "");
   return out.sort(byteCompare);
 }
 function lstatOrNull(p) {
@@ -192,7 +192,7 @@ function writeFileAtomic(dest, data, executable) {
 }
 
 // src/core/legacy-lock.ts
-var import_node_path7 = __toESM(require("node:path"));
+var import_node_path11 = __toESM(require("node:path"));
 
 // src/core/hash.ts
 var import_node_crypto2 = __toESM(require("node:crypto"));
@@ -205,7 +205,7 @@ function sha256File(file) {
 }
 
 // src/core/installed.ts
-var import_node_path6 = __toESM(require("node:path"));
+var import_node_path10 = __toESM(require("node:path"));
 
 // src/core/layout.ts
 var import_node_fs3 = __toESM(require("node:fs"));
@@ -392,7 +392,8 @@ var LOCK_SCHEMA = "harness-kit.lock/v2";
 var V1_HEADER = "# harness-kit lock v1";
 var V1_MARK = "# pre-existing: -";
 var OPS = /* @__PURE__ */ new Set(["copy", "mirror", "render", "merge", "none"]);
-var ENTRY_ORDER = ["path", "op", "owner", "sha256", "layer", "from", "fromSha256", "keys"];
+var ENTRY_ORDER = ["path", "op", "owner", "sha256", "layer", "from", "fromSha256", "keys", "createdByKit"];
+var V1_PROJECTION = /* @__PURE__ */ new Set(["mirror", "render", "merge", "merge+"]);
 function orderEntry(e) {
   const known = ENTRY_ORDER.filter((k) => k in e).map((k) => [k, e[k]]);
   const rest = Object.keys(e).filter((k) => !ENTRY_ORDER.includes(k)).map((k) => [k, e[k]]);
@@ -412,6 +413,11 @@ function v1LabelToLayer(label) {
   if (slash > 0) return `stacks/${label.slice(0, slash)}/arch/${label.slice(slash + 1)}`;
   return `stacks/${label}`;
 }
+function v1ProjectionEntry(sha, label, rel) {
+  if (label === "merge+") return { path: rel, op: "merge", owner: "kit", createdByKit: true };
+  if (label === "merge") return { path: rel, op: "merge", owner: "kit" };
+  return { path: rel, op: label, owner: "kit", sha256: sha === "-" ? null : sha };
+}
 function parseV1(text) {
   const seen = /* @__PURE__ */ new Map();
   const lines = text.split("\n");
@@ -421,6 +427,10 @@ function parseV1(text) {
     const cols = line.split("	");
     if (cols.length !== 4 || cols.some((c) => c === "")) throw new Error(`v1 lock ${i + 1}번째 줄: 칸이 4개가 아니다`);
     const [sha, label, , rel] = cols;
+    if (V1_PROJECTION.has(label)) {
+      seen.set(rel, v1ProjectionEntry(sha, label, rel));
+      continue;
+    }
     const layer = v1LabelToLayer(label);
     const prev = seen.get(rel);
     seen.set(rel, { path: rel, op: "copy", owner: "kit", sha256: prev ? prev.sha256 ?? null : sha === "-" ? null : sha, layer });
@@ -638,8 +648,8 @@ function readMeta(file) {
 }
 
 // src/core/plan.ts
-var import_node_fs7 = __toESM(require("node:fs"));
-var import_node_path4 = __toESM(require("node:path"));
+var import_node_fs11 = __toESM(require("node:fs"));
+var import_node_path8 = __toESM(require("node:path"));
 
 // src/core/resolve.ts
 var import_node_fs6 = __toESM(require("node:fs"));
@@ -693,6 +703,1481 @@ function resolveCandidates(layout, templatesDir, sel, tokens) {
 }
 function readTemplate(templatesDir, src) {
   return import_node_fs6.default.readFileSync(import_node_path3.default.join(templatesDir, ...src.split("/")));
+}
+
+// src/projection/engine.ts
+var import_node_fs9 = __toESM(require("node:fs"));
+var import_node_path6 = __toESM(require("node:path"));
+
+// src/projection/frontmatter.ts
+var FM_KEY = /^([A-Za-z0-9_-]+):(.*)$/;
+var LIST_ITEM = /^\s+-\s?(.*)$/;
+function splitFrontmatter(text) {
+  if (!text.startsWith("---\n")) return { block: null, body: text };
+  const end = text.indexOf("\n---\n", 3);
+  if (end < 0) return { block: null, body: text };
+  return { block: end >= 4 ? text.slice(4, end) : "", body: text.slice(end + 5) };
+}
+function splitFlow(inner) {
+  const parts = [];
+  let cur = "";
+  let quote = "";
+  for (const ch of inner) {
+    if (quote) {
+      cur += ch;
+      if (ch === quote) quote = "";
+    } else if (ch === '"' || ch === "'") {
+      quote = ch;
+      cur += ch;
+    } else if (ch === ",") {
+      parts.push(cur);
+      cur = "";
+    } else cur += ch;
+  }
+  if (cur.trim() || parts.length) parts.push(cur);
+  return parts.map((p) => p.trim()).filter((p) => p !== "");
+}
+function strip(s) {
+  return s.replace(/^[\s]+|[\s]+$/g, "");
+}
+function scalar(raw) {
+  const v = strip(raw);
+  if (v.length >= 2 && v[0] === '"' && v[v.length - 1] === '"') {
+    try {
+      const out = JSON.parse(v);
+      return typeof out === "string" ? out : v.slice(1, -1);
+    } catch {
+      return v.slice(1, -1);
+    }
+  }
+  if (v.length >= 2 && v[0] === "'" && v[v.length - 1] === "'") return v.slice(1, -1).split("''").join("'");
+  return v;
+}
+function parseFrontmatter(block2) {
+  const out = {};
+  const lines = block2.split("\n");
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    i += 1;
+    const m = FM_KEY.exec(line);
+    if (!m) continue;
+    const key = m[1];
+    const raw = strip(m[2]);
+    if (raw === "") {
+      const items = [];
+      while (i < lines.length && LIST_ITEM.test(lines[i])) {
+        items.push(scalar(LIST_ITEM.exec(lines[i])[1]));
+        i += 1;
+      }
+      out[key] = items.length ? items : "";
+    } else if (raw.startsWith("[") && raw.endsWith("]")) {
+      out[key] = splitFlow(raw.slice(1, -1)).map(scalar);
+    } else if (raw.startsWith("{") && raw.endsWith("}")) {
+      const table = {};
+      for (const p of splitFlow(raw.slice(1, -1))) {
+        const at = p.indexOf(":");
+        if (at >= 0) table[scalar(p.slice(0, at))] = scalar(p.slice(at + 1));
+      }
+      out[key] = table;
+    } else out[key] = scalar(raw);
+  }
+  return out;
+}
+function fmStr(fm, key) {
+  const v = fm[key];
+  return typeof v === "string" ? v : "";
+}
+function fmList(fm, key) {
+  const v = fm[key];
+  if (Array.isArray(v)) return v.filter((x) => typeof x === "string" && x !== "");
+  if (typeof v === "string" && v !== "") return [v];
+  return [];
+}
+
+// src/projection/render.ts
+var LOCKED_MIN = ["implement", "design", "review"];
+var LOCKED_NAMES = ["worker", "reviewer", "designer"];
+var MODEL_HARNESSES = ["claude", "codex", "kiro"];
+var CLAUDE_TOOLS = [["read", ["Read"]], ["search", ["Glob", "Grep"]], ["shell", ["Bash"]], ["write", ["Edit", "Write"]], ["web", ["WebFetch", "WebSearch"]]];
+var KIRO_TOOLS = [["read", "read"], ["search", "read"], ["shell", "shell"], ["write", "write"], ["web", "web"]];
+var KIRO_RESOURCES = ["file://AGENTS.md", "file://.agents/rules/guardrails.md", "skill://.agents/skills/**/SKILL.md"];
+var EFFORT_KEY = { claude: "effort", codex: "model_reasoning_effort" };
+var genMd = (source) => `<!-- harness-kit 생성 · 원본 ${source} · 고칠 때는 원본을 고친다 -->`;
+var genToml = (source) => `# harness-kit 생성 · 원본 ${source} · 고칠 때는 원본을 고친다`;
+function basename(p) {
+  return p.slice(p.lastIndexOf("/") + 1);
+}
+function decode(data) {
+  return data.toString("utf8");
+}
+function parsed(text) {
+  const { block: block2, body } = splitFrontmatter(text);
+  return { fm: block2 === null ? {} : parseFrontmatter(block2), body, hasBlock: block2 !== null };
+}
+function parseRule(source, data) {
+  const bytes = typeof data === "string" ? Buffer.from(data, "utf8") : data;
+  const { fm, body } = parsed(decode(bytes));
+  const paths = fmList(fm, "paths");
+  return { name: basename(source).slice(0, -".md".length), source, data: bytes, paths: paths.length ? paths : null, body };
+}
+function parseSkill(source, files) {
+  const list2 = Array.isArray(files) ? files : [...files].map(([rel, f]) => ({ rel, bytes: f.bytes, executable: f.executable }));
+  const data = list2.find((f) => f.rel === "SKILL.md")?.bytes ?? Buffer.alloc(0);
+  const { fm, body } = parsed(decode(data));
+  return { name: fmStr(fm, "name") || basename(source), source, files: list2, description: fmStr(fm, "description"), body, fm };
+}
+function parseRole(source, data) {
+  const bytes = typeof data === "string" ? Buffer.from(data, "utf8") : data;
+  const { fm, body } = parsed(decode(bytes));
+  const tools = fmList(fm, "tools");
+  return {
+    name: fmStr(fm, "name") || basename(source).slice(0, -".md".length),
+    source,
+    data: bytes,
+    description: fmStr(fm, "description"),
+    mode: fmStr(fm, "mode") === "write" ? "write" : "read-only",
+    tools: tools.length ? tools : ["read"],
+    fm,
+    body
+  };
+}
+function isObject(v) {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
+function parsePolicy(text) {
+  let raw = null;
+  try {
+    raw = text === null ? null : JSON.parse(text);
+  } catch {
+    raw = null;
+  }
+  if (!isObject(raw)) return { locked: [], classes: {}, tiers: {} };
+  const locked = Array.isArray(raw.locked) ? raw.locked.filter((x) => typeof x === "string") : [];
+  return { locked, classes: isObject(raw.classes) ? raw.classes : {}, tiers: isObject(raw.tiers) ? raw.tiers : {} };
+}
+function direct(fm, key) {
+  const v = fm[key];
+  if (!isObject(v)) return {};
+  return Object.fromEntries(Object.entries(v).filter(([, x]) => typeof x === "string" && x !== ""));
+}
+function resolveModel(role, policy) {
+  const cls = fmStr(role.fm, "class");
+  const locked = /* @__PURE__ */ new Set([...policy.locked, ...LOCKED_MIN]);
+  const hasModel = ["tier", "model", "effort"].some((k) => Object.hasOwn(role.fm, k));
+  if (cls && locked.has(cls) || LOCKED_NAMES.includes(role.name)) {
+    if (hasModel) return { ok: false, error: `잠긴 역할 '${role.name}' 에는 tier · model · effort 를 둘 수 없다(12 MR-R3)` };
+    return { ok: true, locked: true, fields: { claude: { model: "inherit" }, codex: {}, kiro: {} } };
+  }
+  const fromClass = cls && typeof policy.classes[cls] === "string" ? policy.classes[cls] : "";
+  const tier = fmStr(role.fm, "tier") || fromClass || "inherit";
+  const model = direct(role.fm, "model");
+  const effort = direct(role.fm, "effort");
+  const fields = {};
+  for (const h of MODEL_HARNESSES) {
+    const tierSpec = tier !== "inherit" && isObject(policy.tiers[tier]) ? policy.tiers[tier][h] : void 0;
+    let out = {};
+    if (isObject(tierSpec)) out = Object.fromEntries(Object.entries(tierSpec).filter(([, v]) => typeof v === "string"));
+    if (Object.hasOwn(model, h)) out.model = model[h];
+    const ek = EFFORT_KEY[h];
+    if (Object.hasOwn(effort, h) && ek) out[ek] = effort[h];
+    if (h === "kiro") out = Object.fromEntries(Object.entries(out).filter(([k]) => k === "model"));
+    if (h === "claude" && !Object.hasOwn(out, "model")) out = { model: "inherit", ...out };
+    fields[h] = out;
+  }
+  return { ok: true, locked: false, fields };
+}
+function renderCursorRule(r) {
+  const globs = r.paths ? r.paths.join(",") : "";
+  return `---
+description:
+globs:${globs ? ` ${globs}` : ""}
+alwaysApply: ${r.paths ? "false" : "true"}
+---
+${genMd(r.source)}
+${r.body}`;
+}
+function renderKiroRule(r) {
+  let head;
+  if (r.paths) {
+    const pattern = r.paths.length === 1 ? JSON.stringify(r.paths[0]) : `[${r.paths.map((p) => JSON.stringify(p)).join(", ")}]`;
+    head = `---
+inclusion: fileMatch
+fileMatchPattern: ${pattern}
+---
+`;
+  } else head = "---\ninclusion: always\n---\n";
+  return `${head}${genMd(r.source)}
+${r.body}`;
+}
+function renderCursorCommand(s) {
+  return `---
+description: ${s.description}
+---
+${genMd(`${s.source}/SKILL.md`)}
+${s.body}`;
+}
+function renderKiroSkillSteering(s) {
+  return `---
+inclusion: manual
+description: ${s.description}
+---
+${genMd(`${s.source}/SKILL.md`)}
+${s.body}`;
+}
+function claudeTools(tools) {
+  return CLAUDE_TOOLS.filter(([k]) => tools.includes(k)).flatMap(([, names]) => names);
+}
+function kiroTools(tools) {
+  const out = [];
+  for (const [k, name] of KIRO_TOOLS) if (tools.includes(k) && !out.includes(name)) out.push(name);
+  return out;
+}
+function withNewline(text) {
+  return text === "" || text.endsWith("\n") ? text : `${text}
+`;
+}
+function renderClaudeRole(r, fields) {
+  const lines = ["---", `name: ${r.name}`, `description: ${r.description}`, `tools: ${claudeTools(r.tools).join(", ")}`];
+  for (const [k, v] of Object.entries(fields)) lines.push(`${k}: ${v}`);
+  lines.push("---", genMd(r.source));
+  return `${lines.join("\n")}
+${r.body}`;
+}
+function control(ch, keep) {
+  const code = ch.codePointAt(0);
+  if (keep.includes(ch)) return ch;
+  if (code < 32 || code === 127) return `\\u${code.toString(16).toUpperCase().padStart(4, "0")}`;
+  return ch;
+}
+var TOML_SHORT = { "\b": "\\b", "	": "\\t", "\n": "\\n", "\f": "\\f", "\r": "\\r", '"': '\\"', "\\": "\\\\" };
+function tomlString(value) {
+  let out = "";
+  for (const ch of value) out += TOML_SHORT[ch] ?? control(ch, "");
+  return `"${out}"`;
+}
+function tomlMultiline(value) {
+  const escaped = value.split("\\").join("\\\\").split('"""').join('""\\"');
+  let out = "";
+  for (const ch of escaped) out += control(ch, "\n	");
+  return out;
+}
+function renderCodexRole(r, fields, spec) {
+  const lines = [genToml(r.source), `name = ${tomlString(r.name)}`, `description = ${tomlString(r.description)}`, `sandbox_mode = "${r.mode === "write" ? "workspace-write" : "read-only"}"`];
+  for (const [k, v] of Object.entries(fields)) lines.push(`${k} = ${tomlString(v)}`);
+  lines.push("", 'developer_instructions = """');
+  const instructions = (r.mode !== "write" ? `${spec.readOnlyLine}
+` : "") + withNewline(r.body);
+  return `${lines.join("\n")}
+${tomlMultiline(instructions)}"""
+`;
+}
+function renderKiroRole(r, fields, spec) {
+  const obj2 = {
+    name: r.name,
+    description: r.description,
+    prompt: r.body,
+    tools: kiroTools(r.tools),
+    allowedTools: r.mode === "write" ? ["read", "write"] : ["read"],
+    resources: [...KIRO_RESOURCES]
+  };
+  if (r.mode === "write") obj2.hooks = spec.kiroWriteHooks;
+  Object.assign(obj2, fields);
+  return `${JSON.stringify(obj2, null, 2)}
+`;
+}
+function skillModelProblem(s) {
+  return (Object.hasOwn(s.fm, "model") || Object.hasOwn(s.fm, "effort")) && fmStr(s.fm, "context") !== "fork";
+}
+
+// src/projection/merge.ts
+var CLAUDE_BEGIN = "<!-- harness-kit:begin claude";
+var CLAUDE_END = "<!-- harness-kit:end claude -->";
+var GEN_BEGIN = "# harness-kit:begin generated";
+var GEN_BEGIN_LINE = "# harness-kit:begin generated — .agents/ 원본에서 만든 파일이다. 고칠 때는 원본을 고친다";
+var GEN_END = "# harness-kit:end generated";
+var AGENTS_LINE = "@AGENTS.md";
+var HARNESS_ORDER = ["claude", "codex", "cursor", "kiro"];
+var TOKEN = /(?:^|\s)harness-[a-z0-9-]+(?:\s|$)/;
+var TABLE_HEADER = /^\s*\[\[?\s*([^[\]]+?)\s*\]\]?\s*(?:#.*)?$/;
+var MERGE_KIND = { "CLAUDE.md": "claude-md", ".claude/settings.json": "settings", ".codex/config.toml": "codex-config", ".gitattributes": "gitattributes" };
+var fail = (reason) => ({ ok: false, reason });
+var isBlank = (l) => l.trim() === "";
+function splitLines(text) {
+  const lines = text.split("\n");
+  if (lines.length && lines[lines.length - 1] === "") lines.pop();
+  return lines;
+}
+function joinLines(lines) {
+  return lines.length ? `${lines.join("\n")}
+` : "";
+}
+function stripTrailingBlank(lines) {
+  const out = [...lines];
+  while (out.length && isBlank(out[out.length - 1])) out.pop();
+  return out;
+}
+function allBlank(lines, comments = false) {
+  return lines.every((l) => isBlank(l) || comments && l.trimStart().startsWith("#"));
+}
+function findBlock(lines, begin, end) {
+  const b = lines.findIndex((l) => l.startsWith(begin));
+  if (b < 0) return null;
+  let e = -1;
+  for (let i = b + 1; i < lines.length; i += 1) {
+    if (lines[i].trim() === end) {
+      e = i;
+      break;
+    }
+  }
+  return e < 0 ? "unclosed" : [b, e];
+}
+function appendBlock(lines, block2) {
+  const out = [...lines];
+  if (out.length && !isBlank(out[out.length - 1])) out.push("");
+  return [...out, ...block2];
+}
+function claudeMdWant(spec) {
+  return { block: [...spec.claudeBlock] };
+}
+var claudeMd = {
+  merge(cur, want, prev = []) {
+    const block2 = want.block;
+    if (cur === null) return { ok: true, text: joinLines([AGENTS_LINE, "", ...block2]), keys: ["line:@AGENTS.md", "block:claude"], created: true };
+    let lines = splitLines(cur);
+    const found = findBlock(lines, CLAUDE_BEGIN, CLAUDE_END);
+    if (found === "unclosed") return fail("CLAUDE.md 킷 블록의 끝 표지가 없다");
+    const hasLine = lines.some((l) => l === AGENTS_LINE);
+    const keys = [];
+    if (found !== null) {
+      const [b, e] = found;
+      const insert = hasLine ? [] : [AGENTS_LINE, ""];
+      lines = [...lines.slice(0, b), ...insert, ...block2, ...lines.slice(e + 1)];
+      if (!hasLine || prev.includes("line:@AGENTS.md")) keys.push("line:@AGENTS.md");
+    } else {
+      if (!hasLine) {
+        lines = appendBlock(lines, [AGENTS_LINE, ""]);
+        keys.push("line:@AGENTS.md");
+      } else if (prev.includes("line:@AGENTS.md")) keys.push("line:@AGENTS.md");
+      lines = appendBlock(lines, block2);
+    }
+    keys.push("block:claude");
+    return { ok: true, text: joinLines(lines), keys, created: false };
+  },
+  unmerge(cur, keys) {
+    let lines = splitLines(cur);
+    const found = findBlock(lines, CLAUDE_BEGIN, CLAUDE_END);
+    if (found === "unclosed") return fail("CLAUDE.md 킷 블록의 끝 표지가 없다");
+    if (found !== null && keys.includes("block:claude")) lines = [...lines.slice(0, found[0]), ...lines.slice(found[1] + 1)];
+    if (keys.includes("line:@AGENTS.md") && lines.includes(AGENTS_LINE)) lines.splice(lines.indexOf(AGENTS_LINE), 1);
+    lines = stripTrailingBlank(lines);
+    return { ok: true, text: joinLines(lines), empty: allBlank(lines) };
+  },
+  missing(cur, keys) {
+    const lines = splitLines(cur);
+    const found = findBlock(lines, CLAUDE_BEGIN, CLAUDE_END);
+    return keys.filter((k) => k === "line:@AGENTS.md" && !lines.includes(AGENTS_LINE) || k === "block:claude" && !Array.isArray(found));
+  }
+};
+function gitattributesWant(spec, agents) {
+  const patterns = HARNESS_ORDER.filter((h) => agents.includes(h)).flatMap((h) => spec.gitattributes[h] ?? []);
+  return { lines: [GEN_BEGIN_LINE, ...patterns.map((p) => `${p} linguist-generated=true`), GEN_END] };
+}
+var gitattributes = {
+  merge(cur, want) {
+    const block2 = want.lines;
+    if (cur === null) return { ok: true, text: joinLines(block2), keys: ["block:generated"], created: true };
+    let lines = splitLines(cur);
+    const found = findBlock(lines, GEN_BEGIN, GEN_END);
+    if (found === "unclosed") return fail(".gitattributes 킷 블록의 끝 표지가 없다");
+    lines = found === null ? appendBlock(lines, block2) : [...lines.slice(0, found[0]), ...block2, ...lines.slice(found[1] + 1)];
+    return { ok: true, text: joinLines(lines), keys: ["block:generated"], created: false };
+  },
+  unmerge(cur) {
+    let lines = splitLines(cur);
+    const found = findBlock(lines, GEN_BEGIN, GEN_END);
+    if (found === "unclosed") return fail(".gitattributes 킷 블록의 끝 표지가 없다");
+    if (Array.isArray(found)) lines = [...lines.slice(0, found[0]), ...lines.slice(found[1] + 1)];
+    lines = stripTrailingBlank(lines);
+    return { ok: true, text: joinLines(lines), empty: allBlank(lines) };
+  },
+  missing(cur, keys) {
+    const found = findBlock(splitLines(cur), GEN_BEGIN, GEN_END);
+    return keys.filter((k) => k === "block:generated" && !Array.isArray(found));
+  }
+};
+function settingsWant(spec, tokens) {
+  const sub = (value) => Object.entries(tokens).reduce((v, [k, x]) => x ? v.split(`{{${k}}}`).join(x) : v, value);
+  return { deny: spec.claudeSettings.deny.map(sub), hooks: spec.claudeSettings.hooks.map((h) => ({ ...h })) };
+}
+var isObj2 = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+function commandOf(h) {
+  return isObj2(h) && typeof h.command === "string" ? h.command : null;
+}
+function rstrip(s) {
+  return s.replace(/\s+$/, "");
+}
+function isKitHook(h, scripts) {
+  const cmd = commandOf(h);
+  if (cmd === null) return false;
+  return TOKEN.test(cmd) || scripts.some((s) => rstrip(cmd).endsWith(s));
+}
+function escapeRe(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function hookMatches(h, id, script) {
+  const cmd = commandOf(h);
+  if (cmd === null) return false;
+  if (new RegExp(`(?:^|\\s)${escapeRe(id)}(?:\\s|$)`).test(cmd)) return true;
+  return Boolean(script) && rstrip(cmd).endsWith(script);
+}
+function stripHooks(arr, isKit) {
+  const out = [];
+  let first = null;
+  for (const g of arr) {
+    const items = isObj2(g) ? g.hooks : void 0;
+    if (!Array.isArray(items)) {
+      out.push(g);
+      continue;
+    }
+    const kept = items.filter((h) => !isKit(h));
+    if (kept.length === items.length) {
+      out.push(g);
+      continue;
+    }
+    if (kept.length) out.push({ ...g, hooks: kept });
+    else if (first === null) first = out.length;
+  }
+  return { out, first };
+}
+function desiredGroups(hooks) {
+  const out = /* @__PURE__ */ new Map();
+  for (const h of hooks) {
+    const groups = out.get(h.event) ?? [];
+    out.set(h.event, groups);
+    let group = groups.find((g) => g.matcher === h.matcher || g.matcher === void 0 && !h.matcher);
+    if (!group) {
+      group = h.matcher ? { matcher: h.matcher, hooks: [] } : { hooks: [] };
+      groups.push(group);
+    }
+    group.hooks.push({ ...h.hook });
+  }
+  return out;
+}
+function dump(data) {
+  return `${JSON.stringify(data, null, 2)}
+`;
+}
+function parseObject(cur) {
+  let data;
+  try {
+    data = JSON.parse(cur);
+  } catch (err) {
+    return `JSON 을 해석할 수 없다: ${err instanceof Error ? err.message : String(err)}`;
+  }
+  return isObj2(data) ? data : "최상위가 객체가 아니다";
+}
+var settings = {
+  merge(cur, want, prev = []) {
+    const parsed2 = cur === null ? {} : parseObject(cur);
+    if (typeof parsed2 === "string") return fail(parsed2);
+    const data = { ...parsed2 };
+    const perms = data.permissions;
+    if (perms !== void 0 && !isObj2(perms)) return fail("permissions 가 객체가 아니다");
+    const deny = isObj2(perms) ? perms.deny : void 0;
+    if (deny !== void 0 && !Array.isArray(deny)) return fail("permissions.deny 가 배열이 아니다");
+    const hooks = data.hooks;
+    if (hooks !== void 0 && !isObj2(hooks)) return fail("hooks 가 객체가 아니다");
+    const prevDeny = prev.filter((k) => k.startsWith("permissions.deny:")).map((k) => k.slice("permissions.deny:".length));
+    const newDeny = (deny ?? []).filter((v) => !(typeof v === "string" && prevDeny.includes(v) && !want.deny.includes(v)));
+    for (const v of want.deny) if (!newDeny.includes(v)) newDeny.push(v);
+    if (deny !== void 0 || newDeny.length) data.permissions = { ...perms ?? {}, deny: newDeny };
+    const scripts = want.hooks.map((h) => h.script).filter((s) => Boolean(s));
+    const desired = desiredGroups(want.hooks);
+    const src = hooks ?? {};
+    const outHooks = {};
+    const events = [...Object.keys(src), ...[...desired.keys()].filter((e) => !Object.hasOwn(src, e))];
+    for (const event of events) {
+      const arr = Object.hasOwn(src, event) ? src[event] : [];
+      if (!Array.isArray(arr)) {
+        if (desired.has(event)) return fail(`hooks.${event} 가 배열이 아니다`);
+        outHooks[event] = arr;
+        continue;
+      }
+      const { out, first } = stripHooks(arr, (h) => isKitHook(h, scripts));
+      const groups = desired.get(event) ?? [];
+      const at = first ?? out.length;
+      const next = [...out.slice(0, at), ...groups, ...out.slice(at)];
+      if (!next.length && arr.length) continue;
+      outHooks[event] = next;
+    }
+    if (hooks !== void 0 || Object.keys(outHooks).length) data.hooks = outHooks;
+    const keys = [...want.deny.map((v) => `permissions.deny:${v}`), ...want.hooks.map((h) => `hooks.${h.event}:${h.id}`)];
+    return { ok: true, text: dump(data), keys, created: cur === null };
+  },
+  unmerge(cur, keys, want) {
+    const parsed2 = parseObject(cur);
+    if (typeof parsed2 === "string") return fail(parsed2);
+    const data = { ...parsed2 };
+    const byId = new Map(want.hooks.map((h) => [h.id, h.script]));
+    const ids = keys.filter((k) => k.startsWith("hooks.") && k.includes(":")).map((k) => k.slice(k.indexOf(":") + 1));
+    const hooks = data.hooks;
+    if (isObj2(hooks)) {
+      const out = {};
+      for (const [event, arr] of Object.entries(hooks)) {
+        if (!Array.isArray(arr)) {
+          out[event] = arr;
+          continue;
+        }
+        const next = stripHooks(arr, (h) => ids.some((i) => hookMatches(h, i, byId.get(i)))).out;
+        if (!next.length && arr.length) continue;
+        out[event] = next;
+      }
+      if (Object.keys(out).length || !Object.keys(hooks).length) data.hooks = out;
+      else delete data.hooks;
+    }
+    const denyVals = keys.filter((k) => k.startsWith("permissions.deny:")).map((k) => k.slice("permissions.deny:".length));
+    const perms = data.permissions;
+    if (isObj2(perms) && Array.isArray(perms.deny)) {
+      const deny = perms.deny;
+      const kept = deny.filter((v) => !(typeof v === "string" && denyVals.includes(v)));
+      const next = { ...perms };
+      if (kept.length || !deny.length) next.deny = kept;
+      else delete next.deny;
+      if (Object.keys(next).length || !Object.keys(perms).length) data.permissions = next;
+      else delete data.permissions;
+    }
+    return { ok: true, text: dump(data), empty: Object.keys(data).length === 0 };
+  },
+  missing(cur, keys, want) {
+    const data = parseObject(cur);
+    if (typeof data === "string") return [...keys];
+    const byId = new Map(want.hooks.map((h) => [h.id, h.script]));
+    const deny = isObj2(data.permissions) ? data.permissions.deny : void 0;
+    const hooks = isObj2(data.hooks) ? data.hooks : {};
+    return keys.filter((k) => {
+      if (k.startsWith("permissions.deny:")) return !Array.isArray(deny) || !deny.includes(k.slice("permissions.deny:".length));
+      if (k.startsWith("hooks.") && k.includes(":")) {
+        const rest = k.slice("hooks.".length);
+        const event = rest.slice(0, rest.indexOf(":"));
+        const id = rest.slice(rest.indexOf(":") + 1);
+        const arr = hooks[event];
+        const items = Array.isArray(arr) ? arr.flatMap((g) => isObj2(g) && Array.isArray(g.hooks) ? g.hooks : []) : [];
+        return !items.some((h) => hookMatches(h, id, byId.get(id)));
+      }
+      return false;
+    });
+  }
+};
+function codexConfigWant(spec, roles, keep = []) {
+  const cc = spec.codexConfig;
+  const ordered = [...roles].sort((a, b) => Buffer.compare(Buffer.from(a.name), Buffer.from(b.name)));
+  return {
+    header: [...cc.header],
+    defaults: cc.defaults.map((d) => ({ ...d })),
+    tables: cc.tables.map((t) => ({ ...t, lines: [...t.lines] })),
+    roles: ordered.map((r) => ({ name: r.name, description: r.description })),
+    keep: [...keep]
+  };
+}
+function tables(lines) {
+  const heads = [];
+  lines.forEach((l, i) => {
+    const m = TABLE_HEADER.exec(l);
+    if (m) heads.push([i, m[1]]);
+  });
+  return heads.map(([i, name], n) => {
+    const j = n + 1 < heads.length ? heads[n + 1][0] : lines.length;
+    let last = i;
+    for (let k = i + 1; k < j; k += 1) {
+      const s = lines[k].trim();
+      if (s && !s.startsWith("#")) last = k;
+    }
+    return [name, i, last + 1];
+  });
+}
+function findTable(lines, name) {
+  return tables(lines).find((t) => t[0] === name) ?? null;
+}
+function keyLine(lines, t, key) {
+  const pat = new RegExp(`^\\s*(?:${escapeRe(key)}|"${escapeRe(key)}")\\s*=`);
+  for (let k = t[1] + 1; k < t[2]; k += 1) if (pat.test(lines[k])) return k;
+  return -1;
+}
+function removeTable(lines, t) {
+  let start = t[1];
+  while (start > 0 && isBlank(lines[start - 1])) start -= 1;
+  return [...lines.slice(0, start), ...lines.slice(t[2])];
+}
+function roleTable(r) {
+  return [`[agents.${r.name}]`, `description = ${tomlString(r.description)}`, `config_file = ${tomlString(`agents/${r.name}.toml`)}`];
+}
+function keyKinds(want) {
+  return { defaults: new Set(want.defaults.map((d) => `toml:${d.table}.${d.key}`)), tableKeys: new Set(want.tables.map((t) => `toml:${t.table}`)) };
+}
+var codexConfig = {
+  merge(cur, want, prev = []) {
+    let lines = splitLines(cur === null ? joinLines(want.header) : cur);
+    const keys = [];
+    for (const d of want.defaults) {
+      const key = `toml:${d.table}.${d.key}`;
+      const t = findTable(lines, d.table);
+      if (t === null) {
+        lines = appendBlock(lines, [`[${d.table}]`, d.line]);
+        keys.push(key);
+      } else if (keyLine(lines, t, d.key) < 0) {
+        lines = [...lines.slice(0, t[2]), d.line, ...lines.slice(t[2])];
+        keys.push(key);
+      } else if (prev.includes(key)) keys.push(key);
+    }
+    for (const tb of want.tables) {
+      const key = `toml:${tb.table}`;
+      if (findTable(lines, tb.table) === null) {
+        lines = appendBlock(lines, [`[${tb.table}]`, ...tb.lines]);
+        keys.push(key);
+      } else if (prev.includes(key)) keys.push(key);
+    }
+    const { defaults, tableKeys } = keyKinds(want);
+    const wanted2 = new Set(want.roles.map((r) => `toml:agents.${r.name}`));
+    const keep = new Set(want.keep.map((n) => `toml:agents.${n}`));
+    for (const k of prev) {
+      if (k.startsWith("toml:agents.") && !defaults.has(k) && !tableKeys.has(k) && !wanted2.has(k) && !keep.has(k)) {
+        const t = findTable(lines, k.slice("toml:".length));
+        if (t !== null) lines = removeTable(lines, t);
+      }
+    }
+    for (const k of [...keep].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)))) {
+      if (prev.includes(k) && findTable(lines, k.slice("toml:".length)) !== null) keys.push(k);
+    }
+    for (const r of want.roles) {
+      const block2 = roleTable(r);
+      const t = findTable(lines, `agents.${r.name}`);
+      lines = t === null ? appendBlock(lines, block2) : [...lines.slice(0, t[1]), ...block2, ...lines.slice(t[2])];
+      keys.push(`toml:agents.${r.name}`);
+    }
+    return { ok: true, text: joinLines(lines), keys, created: cur === null };
+  },
+  unmerge(cur, keys, want) {
+    let lines = splitLines(cur);
+    const { defaults } = keyKinds(want);
+    for (const k of keys) {
+      const name = k.slice("toml:".length);
+      if (defaults.has(k)) {
+        const dot = name.lastIndexOf(".");
+        const table = name.slice(0, dot);
+        const key = name.slice(dot + 1);
+        let t = findTable(lines, table);
+        if (t === null) continue;
+        const at = keyLine(lines, t, key);
+        if (at >= 0) {
+          lines = [...lines.slice(0, at), ...lines.slice(at + 1)];
+          t = findTable(lines, table);
+          if (t !== null && allBlank(lines.slice(t[1] + 1, t[2]), true)) lines = removeTable(lines, t);
+        }
+      } else {
+        const t = findTable(lines, name);
+        if (t !== null) lines = removeTable(lines, t);
+      }
+    }
+    lines = stripTrailingBlank(lines);
+    return { ok: true, text: joinLines(lines), empty: allBlank(lines, true) };
+  },
+  missing(cur, keys, want) {
+    const lines = splitLines(cur);
+    const { defaults } = keyKinds(want);
+    return keys.filter((k) => {
+      const name = k.slice("toml:".length);
+      if (defaults.has(k)) {
+        const dot = name.lastIndexOf(".");
+        const t = findTable(lines, name.slice(0, dot));
+        return t === null || keyLine(lines, t, name.slice(dot + 1)) < 0;
+      }
+      return findTable(lines, name) === null;
+    });
+  }
+};
+var MERGERS = {
+  "claude-md": claudeMd,
+  settings,
+  "codex-config": codexConfig,
+  gitattributes
+};
+function mergeWith(kind, cur, want, prev) {
+  return MERGERS[kind].merge(cur, want, prev);
+}
+function unmergeWith(kind, cur, keys, want) {
+  return MERGERS[kind].unmerge(cur, keys, want);
+}
+function missingWith(kind, cur, keys, want) {
+  return MERGERS[kind].missing(cur, keys, want);
+}
+
+// src/projection/sources.ts
+function ignoredName(name) {
+  return name === ".DS_Store" || name.endsWith(".new") || name.endsWith(".bak") || name.startsWith(".") && name.includes(".hk-") || name === "__pycache__" || name.endsWith(".pyc");
+}
+function treeSha(files) {
+  const sorted = [...files].sort((a, b) => byteCompare(a.rel, b.rel));
+  return sha256(sorted.map((f) => `${f.rel}\0${sha256(f.bytes)}
+`).join(""));
+}
+function walkView(view, rel, prefix = "") {
+  const out = [];
+  for (const e of view.list(rel) ?? []) {
+    if (ignoredName(e.name)) continue;
+    const sub = prefix ? `${prefix}/${e.name}` : e.name;
+    const full9 = rel ? `${rel}/${e.name}` : e.name;
+    if (e.kind === "dir") out.push(...walkView(view, full9, sub));
+    else if (e.kind === "file") out.push({ rel: sub, bytes: view.read(full9), executable: view.executable(full9) });
+  }
+  return out.sort((a, b) => byteCompare(a.rel, b.rel));
+}
+function hasPendingNew(view, rel) {
+  const k = view.kind(rel);
+  if (k === "file") return view.kind(`${rel}.new`) !== "none";
+  if (k !== "dir") return false;
+  for (const e of view.list(rel) ?? []) {
+    const sub = `${rel}/${e.name}`;
+    if (e.kind === "file" && e.name.endsWith(".new")) return true;
+    if (e.kind === "dir" && hasPendingNew(view, sub)) return true;
+  }
+  return false;
+}
+function loadSources(view) {
+  const src = { rules: [], skills: [], roles: [], policy: parsePolicy(null), deferred: /* @__PURE__ */ new Set() };
+  for (const e of view.list(".agents/rules") ?? []) {
+    if (!e.name.endsWith(".md") || ignoredName(e.name) || e.kind !== "file") continue;
+    const rel = `.agents/rules/${e.name}`;
+    src.rules.push(parseRule(rel, view.read(rel)));
+    if (hasPendingNew(view, rel)) src.deferred.add(rel);
+  }
+  for (const e of view.list(".agents/skills") ?? []) {
+    const rel = `.agents/skills/${e.name}`;
+    if (ignoredName(e.name) || e.name.startsWith(".") || e.kind !== "dir" || view.kind(`${rel}/SKILL.md`) !== "file") continue;
+    src.skills.push(parseSkill(rel, walkView(view, rel)));
+    if (hasPendingNew(view, rel)) src.deferred.add(rel);
+  }
+  for (const e of view.list(".agents/roles") ?? []) {
+    if (!e.name.endsWith(".md") || ignoredName(e.name) || e.kind !== "file") continue;
+    const rel = `.agents/roles/${e.name}`;
+    src.roles.push(parseRole(rel, view.read(rel)));
+    if (hasPendingNew(view, rel)) src.deferred.add(rel);
+  }
+  const policy = view.read(".agents/model-policy.json");
+  src.policy = parsePolicy(policy === null ? null : policy.toString("utf8"));
+  return src;
+}
+
+// src/adapters/wants.ts
+function stem(source) {
+  const base = source.slice(source.lastIndexOf("/") + 1);
+  return base.endsWith(".md") ? base.slice(0, -".md".length) : base;
+}
+function mirrorDir(path28, harness, skill, deferred) {
+  const t = treeSha(skill.files);
+  return { op: "mirror", path: path28, harness, from: skill.source, kind: "dir", files: skill.files, data: Buffer.alloc(0), executable: false, sha256: t, fromSha256: t, deferred: deferred.has(skill.source) };
+}
+function mirrorFile(path28, harness, rule, view, deferred) {
+  const s = sha256(rule.data);
+  return { op: "mirror", path: path28, harness, from: rule.source, kind: "file", files: [], data: rule.data, executable: view.executable(rule.source), sha256: s, fromSha256: s, deferred: deferred.has(rule.source) };
+}
+function renderWant(path28, harness, from, text, sourceData, deferred) {
+  const data = Buffer.from(text, "utf8");
+  return { op: "render", path: path28, harness, from, kind: "file", files: [], data, executable: false, sha256: sha256(data), fromSha256: sha256(sourceData), deferred: deferred.has(from) };
+}
+function skillData(skill) {
+  return skill.files.find((f) => f.rel === "SKILL.md")?.bytes ?? Buffer.alloc(0);
+}
+function withSkillFiles(deferred) {
+  return /* @__PURE__ */ new Set([...deferred, ...[...deferred].map((d) => `${d}/SKILL.md`)]);
+}
+
+// src/adapters/claude.ts
+var claude = {
+  id: "claude",
+  label: "Claude Code",
+  checkedVersion: "2.1",
+  plan(ctx) {
+    const d = ctx.sources.deferred;
+    return [
+      ...ctx.skills.map((s) => mirrorDir(`.claude/skills/${stem(s.source)}`, "claude", s, d)),
+      ...ctx.rules.map((r) => mirrorFile(`.claude/rules/${stem(r.source)}.md`, "claude", r, ctx.view, d)),
+      ...ctx.roles.map(({ role, fields }) => renderWant(`.claude/agents/${stem(role.source)}.md`, "claude", role.source, renderClaudeRole(role, fields.claude ?? {}), role.data, d)),
+      { op: "merge", path: "CLAUDE.md", harness: "claude", kind: "claude-md", want: claudeMdWant(ctx.spec) },
+      { op: "merge", path: ".claude/settings.json", harness: "claude", kind: "settings", want: settingsWant(ctx.spec, ctx.tokens) }
+    ];
+  }
+};
+
+// src/adapters/codex.ts
+var codex = {
+  id: "codex",
+  label: "Codex",
+  checkedVersion: "0.1",
+  plan(ctx) {
+    const d = ctx.sources.deferred;
+    const live = ctx.roles.filter(({ role }) => !d.has(role.source)).map(({ role }) => ({ name: stem(role.source), description: role.description }));
+    const keep = ctx.roles.filter(({ role }) => d.has(role.source)).map(({ role }) => stem(role.source));
+    return [
+      ...ctx.roles.map(({ role, fields }) => renderWant(`.codex/agents/${stem(role.source)}.toml`, "codex", role.source, renderCodexRole(role, fields.codex ?? {}, ctx.spec), role.data, d)),
+      { op: "merge", path: ".codex/config.toml", harness: "codex", kind: "codex-config", want: codexConfigWant(ctx.spec, live, keep) }
+    ];
+  }
+};
+
+// src/adapters/cursor.ts
+var cursor = {
+  id: "cursor",
+  label: "Cursor",
+  checkedVersion: "1.7",
+  plan(ctx) {
+    const d = ctx.sources.deferred;
+    const ds = withSkillFiles(d);
+    return [
+      ...ctx.skills.map((s) => renderWant(`.cursor/commands/${stem(s.source)}.md`, "cursor", `${s.source}/SKILL.md`, renderCursorCommand(s), skillData(s), ds)),
+      ...ctx.rules.map((r) => renderWant(`.cursor/rules/${stem(r.source)}.mdc`, "cursor", r.source, renderCursorRule(r), r.data, d))
+    ];
+  }
+};
+
+// src/adapters/kiro.ts
+var kiro = {
+  id: "kiro",
+  label: "Kiro",
+  checkedVersion: "0.9",
+  plan(ctx) {
+    const d = ctx.sources.deferred;
+    const ds = withSkillFiles(d);
+    return [
+      ...ctx.skills.map((s) => mirrorDir(`.kiro/skills/${stem(s.source)}`, "kiro", s, d)),
+      ...ctx.rules.map((r) => renderWant(`.kiro/steering/${stem(r.source)}.md`, "kiro", r.source, renderKiroRule(r), r.data, d)),
+      ...ctx.skills.map((s) => renderWant(`.kiro/steering/${stem(s.source)}.md`, "kiro", `${s.source}/SKILL.md`, renderKiroSkillSteering(s), skillData(s), ds)),
+      ...ctx.roles.map(({ role, fields }) => renderWant(`.kiro/agents/${stem(role.source)}.json`, "kiro", role.source, renderKiroRole(role, fields.kiro ?? {}, ctx.spec), role.data, d))
+    ];
+  }
+};
+
+// src/adapters/index.ts
+var ADAPTERS = [claude, codex, cursor, kiro];
+
+// src/core/remove.ts
+var import_node_fs7 = __toESM(require("node:fs"));
+var import_node_path4 = __toESM(require("node:path"));
+function full(target, rel) {
+  return import_node_path4.default.join(target, ...rel.split("/"));
+}
+function removeFile(target, rel) {
+  import_node_fs7.default.rmSync(full(target, rel), { force: true });
+}
+function ancestorDirs(rels) {
+  const dirs = /* @__PURE__ */ new Set();
+  for (const rel of rels) {
+    const parts = rel.split("/");
+    for (let i = parts.length - 1; i > 0; i -= 1) dirs.add(parts.slice(0, i).join("/"));
+  }
+  return [...dirs].sort((a, b) => b.split("/").length - a.split("/").length || byteCompare(a, b));
+}
+function removeEmptyDirs(target, rels) {
+  let removed = 0;
+  for (const dir of ancestorDirs(rels)) {
+    const p = full(target, dir);
+    try {
+      if (!import_node_fs7.default.lstatSync(p).isDirectory()) continue;
+      import_node_fs7.default.rmdirSync(p);
+      removed += 1;
+    } catch (err) {
+      const code = err.code;
+      if (code !== "ENOENT" && code !== "ENOTEMPTY" && code !== "EEXIST" && code !== "ENOTDIR") throw err;
+    }
+  }
+  return removed;
+}
+
+// src/projection/view.ts
+var import_node_fs8 = __toESM(require("node:fs"));
+var import_node_path5 = __toESM(require("node:path"));
+function full2(root, rel) {
+  return rel === "" ? root : import_node_path5.default.join(root, ...rel.split("/"));
+}
+function kindOf(st) {
+  if (st.isSymbolicLink()) return "link";
+  if (st.isDirectory()) return "dir";
+  if (st.isFile()) return "file";
+  return "other";
+}
+var FsView = class {
+  constructor(root) {
+    this.root = root;
+  }
+  root;
+  kind(rel) {
+    try {
+      return kindOf(import_node_fs8.default.lstatSync(full2(this.root, rel)));
+    } catch {
+      return "none";
+    }
+  }
+  list(rel) {
+    if (this.kind(rel) !== "dir") return null;
+    return import_node_fs8.default.readdirSync(full2(this.root, rel)).sort(byteCompare).map((name) => ({ name, kind: this.kind(rel ? `${rel}/${name}` : name) }));
+  }
+  read(rel) {
+    return this.kind(rel) === "file" ? import_node_fs8.default.readFileSync(full2(this.root, rel)) : null;
+  }
+  executable(rel) {
+    try {
+      return (import_node_fs8.default.lstatSync(full2(this.root, rel)).mode & 64) !== 0;
+    } catch {
+      return false;
+    }
+  }
+};
+var OverlayView = class {
+  constructor(base, writes, deletes = /* @__PURE__ */ new Set()) {
+    this.base = base;
+    this.writes = writes;
+    this.deletes = deletes;
+    for (const rel of writes.keys()) {
+      const parts = rel.split("/");
+      for (let i = 1; i < parts.length; i += 1) this.dirs.add(parts.slice(0, i).join("/"));
+    }
+  }
+  base;
+  writes;
+  deletes;
+  dirs = /* @__PURE__ */ new Set();
+  kind(rel) {
+    if (this.writes.has(rel)) return "file";
+    if (this.dirs.has(rel)) return "dir";
+    if (this.deletes.has(rel)) return "none";
+    return this.base.kind(rel);
+  }
+  list(rel) {
+    if (this.kind(rel) !== "dir") return null;
+    const names = /* @__PURE__ */ new Set();
+    for (const e of this.base.list(rel) ?? []) names.add(e.name);
+    const prefix = rel ? `${rel}/` : "";
+    for (const w of [...this.writes.keys(), ...this.dirs]) {
+      if (w.startsWith(prefix) && w.length > prefix.length) names.add(w.slice(prefix.length).split("/")[0]);
+    }
+    const out = [];
+    for (const name of [...names].sort(byteCompare)) {
+      const k = this.kind(`${prefix}${name}`);
+      if (k !== "none") out.push({ name, kind: k });
+    }
+    return out;
+  }
+  read(rel) {
+    const w = this.writes.get(rel);
+    if (w) return w.content;
+    if (this.deletes.has(rel)) return null;
+    return this.base.read(rel);
+  }
+  executable(rel) {
+    const w = this.writes.get(rel);
+    if (w) return w.executable;
+    return this.base.executable(rel);
+  }
+};
+
+// src/projection/engine.ts
+var PROJECTION_OPS = /* @__PURE__ */ new Set(["mirror", "render", "merge"]);
+var HARNESS_DIRS = [".claude/", ".codex/", ".cursor/", ".kiro/"];
+var ALL_HARNESSES = ["claude", "codex", "cursor", "kiro"];
+function buildContext(args) {
+  const sources = loadSources(args.view);
+  const findings = [];
+  const skills = sources.skills.filter((s) => {
+    if (!skillModelProblem(s)) return true;
+    const kit = s.source.slice(s.source.lastIndexOf("/") + 1).startsWith("hx-");
+    findings.push({ kind: "skill-model-field", severity: kit ? "error" : "warn", path: `${s.source}/SKILL.md`, hint: "context: fork 가 아닌 스킬에 model · effort 를 두지 않는다(그 턴의 사람 세션 모델이 바뀐다)" });
+    return !kit;
+  });
+  const roles = [];
+  for (const role of sources.roles) {
+    const m = resolveModel(role, sources.policy);
+    if (!m.ok) findings.push({ kind: "role-model-locked", severity: "error", path: role.source, hint: m.error });
+    else roles.push({ role, fields: m.fields });
+  }
+  return { ...args, sources, skills, roles, rules: sources.rules, findings };
+}
+function wantedOps(ctx) {
+  const wants = [];
+  for (const a of ADAPTERS) if (ctx.agents.includes(a.id)) wants.push(...a.plan(ctx));
+  wants.push({ op: "merge", path: ".gitattributes", harness: "core", kind: "gitattributes", want: gitattributesWant(ctx.spec, ctx.agents) });
+  const seen = /* @__PURE__ */ new Set();
+  for (const w of wants) {
+    if (seen.has(w.path)) throw new CliError(EXIT.STATE, `배치 경로가 겹친다: ${w.path}`, "같은 이름의 규칙 · 스킬 원본 중 하나의 이름을 바꾼다");
+    seen.add(w.path);
+  }
+  for (const w of wants) {
+    if (w.op === "mirror" && w.kind === "dir" && wants.some((o) => o.path.startsWith(`${w.path}/`))) throw new CliError(EXIT.STATE, `배치 경로가 겹친다: ${w.path}`);
+  }
+  return wants;
+}
+function full3(target, rel) {
+  return import_node_path6.default.join(target, ...rel.split("/"));
+}
+function lstat(p) {
+  try {
+    return import_node_fs9.default.lstatSync(p);
+  } catch {
+    return null;
+  }
+}
+function blocked(target, rel) {
+  let cur = target;
+  for (const part of rel.split("/").slice(0, -1)) {
+    cur = import_node_path6.default.join(cur, part);
+    const st = lstat(cur);
+    if (st && (st.isSymbolicLink() || !st.isDirectory())) return true;
+  }
+  return false;
+}
+function stateOf(target, rel, isDir2) {
+  if (blocked(target, rel)) return { kind: "other", what: "상위 경로가 폴더가 아니다" };
+  const st = lstat(full3(target, rel));
+  if (!st) return { kind: "none" };
+  if (st.isSymbolicLink()) return { kind: "link" };
+  if (isDir2) {
+    if (!st.isDirectory()) return { kind: "other", what: "폴더 자리에 파일이 있다" };
+    const files = walkView(new FsView(full3(target, rel)), "");
+    return { kind: "file", sha: treeSha(files), files: new Map(files.map((f) => [f.rel, f.bytes])) };
+  }
+  if (!st.isFile()) return { kind: "other", what: "같은 이름의 폴더가 있다" };
+  const data = import_node_fs9.default.readFileSync(full3(target, rel));
+  return { kind: "file", sha: sha256(data), data };
+}
+function readTextAt(target, rel) {
+  const st = lstat(full3(target, rel));
+  return st?.isFile() ? import_node_fs9.default.readFileSync(full3(target, rel), "utf8") : null;
+}
+var ownerKind = (owner) => owner === "kit" || owner === "user" ? owner : owner.startsWith("external:") ? "external" : owner.startsWith("pack:") ? "pack" : "unknown";
+var shaOf = (e) => e && typeof e.sha256 === "string" ? e.sha256 : null;
+var keysOf = (e) => e && Array.isArray(e.keys) ? e.keys : void 0;
+function kitEntry(w, sha = w.sha256) {
+  return { path: w.path, op: w.op, owner: "kit", sha256: sha, from: w.from, fromSha256: w.fromSha256 };
+}
+function mergeEntry(path_, keys, created) {
+  return created ? { path: path_, op: "merge", owner: "kit", keys, createdByKit: true } : { path: path_, op: "merge", owner: "kit", keys };
+}
+var userEntry = (p, op) => ({ path: p, op, owner: "user", sha256: null });
+function fullMergeWant(kind, spec, tokens, sources) {
+  if (kind === "claude-md") return claudeMdWant(spec);
+  if (kind === "settings") return settingsWant(spec, tokens);
+  if (kind === "codex-config") return codexConfigWant(spec, (sources?.roles ?? []).map((r) => ({ name: r.source.slice(r.source.lastIndexOf("/") + 1, -".md".length), description: r.description })));
+  return gitattributesWant(spec, ALL_HARNESSES);
+}
+function differing(w, cur) {
+  const have = cur.kind === "file" ? cur.files ?? /* @__PURE__ */ new Map() : /* @__PURE__ */ new Map();
+  return w.files.filter((f) => !have.get(f.rel)?.equals(f.bytes)).map((f) => f.rel);
+}
+function extraFiles(w, cur) {
+  const wanted2 = new Set(w.files.map((f) => f.rel));
+  return cur.kind === "file" && cur.files ? [...cur.files.keys()].filter((rel) => !wanted2.has(rel)) : [];
+}
+var Engine = class {
+  constructor(target, spec, tokens, sources) {
+    this.target = target;
+    this.spec = spec;
+    this.tokens = tokens;
+    this.sources = sources;
+  }
+  target;
+  spec;
+  tokens;
+  sources;
+  ops = [];
+  entries = [];
+  emit(op, entry) {
+    this.ops.push(op);
+    if (entry) this.entries.push(entry);
+  }
+  merge(w, prev, claimed) {
+    let cur = readTextAt(this.target, w.path);
+    const exists = lstat(full3(this.target, w.path)) !== null;
+    if (cur === null && exists) {
+      this.emit({ path: w.path, op: "merge", harness: w.harness, action: "conflict", reason: "일반 파일이 아니다" }, prev);
+      return;
+    }
+    const v1 = claimed.find((c) => c.path === w.path);
+    let created = prev?.createdByKit === true;
+    if (v1 && cur !== null) {
+      const unmodified = shaOf(v1) !== null && sha256(cur) === shaOf(v1);
+      if (w.kind === "claude-md") {
+        const hasBlock = cur.split("\n").some((l) => l.startsWith("<!-- harness-kit:begin claude"));
+        if (unmodified) {
+          cur = null;
+          created = true;
+        } else if (!hasBlock) {
+          const fresh = mergeWith(w.kind, null, w.want);
+          const neu = `${w.path}.new`;
+          this.emit({ path: w.path, op: "merge", harness: w.harness, action: "conflict", reason: "v1 CLAUDE.md 를 사람이 고쳤다", newFiles: [neu], effect: { extra: fresh.ok ? [{ path: neu, data: Buffer.from(fresh.text, "utf8") }] : [] } }, v1);
+          return;
+        }
+      } else created = unmodified;
+    }
+    const r = mergeWith(w.kind, cur, w.want, keysOf(prev));
+    if (!r.ok) {
+      this.emit({ path: w.path, op: "merge", harness: w.harness, action: "conflict", reason: r.reason }, prev ?? { path: w.path, op: "merge", owner: "kit", keys: [] });
+      return;
+    }
+    created = created || r.created;
+    const action = cur === null && !exists ? "create" : cur === r.text ? "same" : "merge";
+    this.emit({ path: w.path, op: "merge", harness: w.harness, action, ...action !== "same" ? { effect: { text: r.text } } : {} }, mergeEntry(w.path, r.keys, created));
+  }
+  install(w, prev, force) {
+    if (w.op === "merge") {
+      this.merge(w, prev, []);
+      return;
+    }
+    if (w.deferred) {
+      this.emit({ path: w.path, op: w.op, harness: w.harness, action: "defer", reason: "원본이 .new 대기 중이다" }, prev);
+      return;
+    }
+    const cur = stateOf(this.target, w.path, w.kind === "dir");
+    const base = { path: w.path, op: w.op, harness: w.harness };
+    if (cur.kind === "none") this.emit({ ...base, action: "create", effect: { write: w } }, kitEntry(w));
+    else if (cur.kind !== "file") this.emit({ ...base, action: "skip-user", reason: cur.kind === "other" ? cur.what : "링크다" }, prev ?? userEntry(w.path, w.op));
+    else if (cur.sha === w.sha256) this.emit({ ...base, action: "same" }, kitEntry(w));
+    else if (prev && ownerKind(prev.owner) === "kit") this.emit({ ...base, action: "keep" }, prev);
+    else if (force) this.emit({ ...base, action: "replace", effect: { write: w } }, kitEntry(w));
+    else this.emit({ ...base, action: "skip-user", reason: "사람이 둔 파일이다" }, userEntry(w.path, w.op));
+  }
+  unmodifiedClaimed(w, cur, claimed) {
+    if (cur.kind !== "file") return false;
+    if (w.kind !== "dir") {
+      const c = claimed.find((x) => x.path === w.path);
+      return c !== void 0 && shaOf(c) !== null && cur.sha === shaOf(c);
+    }
+    const shas = new Map(claimed.filter((c) => c.path.startsWith(`${w.path}/`)).map((c) => [c.path.slice(w.path.length + 1), shaOf(c)]));
+    const files = cur.files ?? /* @__PURE__ */ new Map();
+    return shas.size > 0 && [...files].every(([rel, data]) => shas.has(rel) && shas.get(rel) !== null && sha256(data) === shas.get(rel));
+  }
+  update(w, prev, claimed, acceptAll) {
+    if (w.op === "merge") {
+      this.merge(w, prev, claimed);
+      return;
+    }
+    const base = { path: w.path, op: w.op, harness: w.harness };
+    if (w.deferred) {
+      this.emit({ ...base, action: "defer", reason: "원본이 .new 대기 중이다" }, prev);
+      this.entries.push(...claimed);
+      return;
+    }
+    if (prev && ownerKind(prev.owner) !== "kit") {
+      const k = ownerKind(prev.owner);
+      this.emit({ ...base, action: k === "external" ? "skip-external" : k === "pack" ? "skip-pack" : "skip-user" }, prev);
+      return;
+    }
+    const cur = stateOf(this.target, w.path, w.kind === "dir");
+    const tracked = prev !== void 0 || claimed.length > 0;
+    if (cur.kind === "link") return this.write(w, "replace", "symlink-found");
+    if (cur.kind === "other") {
+      this.emit({ ...base, action: "skip-user", reason: cur.what }, prev ?? userEntry(w.path, w.op));
+      return;
+    }
+    if (!tracked) {
+      if (cur.kind === "none") return this.write(w, "new");
+      if (cur.sha === w.sha256) this.emit({ ...base, action: "same" }, kitEntry(w));
+      else this.emit({ ...base, action: "skip-user", reason: "사람이 둔 파일이다" }, userEntry(w.path, w.op));
+      return;
+    }
+    if (cur.kind === "none") return this.write(w, "restore");
+    if (cur.sha === w.sha256) {
+      this.emit({ ...base, action: "same" }, kitEntry(w));
+      return;
+    }
+    const unmodified = prev ? shaOf(prev) !== null && cur.sha === shaOf(prev) : this.unmodifiedClaimed(w, cur, claimed);
+    if (unmodified) return this.write(w, "update");
+    const baseSha = prev ? shaOf(prev) : w.kind !== "dir" ? shaOf(claimed.find((c) => c.path === w.path)) : null;
+    if (acceptAll) {
+      const have = cur.files ?? /* @__PURE__ */ new Map();
+      const backups = w.kind !== "dir" ? [`${w.path}.bak`] : [...differing(w, cur), ...extraFiles(w, cur)].filter((rel) => have.has(rel)).map((rel) => `${w.path}/${rel}.bak`);
+      this.write(w, "replace", void 0, backups);
+      return;
+    }
+    const newFiles = w.kind !== "dir" ? [`${w.path}.new`] : differing(w, cur).map((rel) => `${w.path}/${rel}.new`);
+    const data = new Map(w.files.map((f) => [f.rel, f.bytes]));
+    const extra = w.kind !== "dir" ? [{ path: `${w.path}.new`, data: w.data }] : newFiles.map((n) => ({ path: n, data: data.get(n.slice(w.path.length + 1, -".new".length)) }));
+    this.emit({ ...base, action: "conflict", reason: "복사본 · 생성물을 직접 고쳤다 — 원본을 고친다", newFiles, effect: { extra } }, kitEntry(w, baseSha));
+  }
+  write(w, action, reason, backups = []) {
+    const renames = backups.map((b) => [b.slice(0, -".bak".length), b]);
+    this.emit({ path: w.path, op: w.op, harness: w.harness, action, ...reason ? { reason } : {}, ...backups.length ? { backups } : {}, effect: { renames, write: w } }, kitEntry(w));
+  }
+  /** 원하지 않게 된 배치 항목 · retire. merge 는 킷 키를 뺀다(design §6.3 · §6.5). */
+  drop(e, why = "") {
+    if (ownerKind(e.owner) !== "kit") {
+      this.entries.push(e);
+      return;
+    }
+    if (e.op === "merge") {
+      const kind = MERGE_KIND[e.path];
+      const cur2 = readTextAt(this.target, e.path);
+      if (!kind || cur2 === null) {
+        this.ops.push({ path: e.path, op: "merge", harness: "", action: cur2 === null ? "delete" : "keep-modified", ...why ? { reason: why } : {} });
+        return;
+      }
+      const want = fullMergeWant(kind, this.spec, this.tokens, this.sources);
+      const keys = keysOf(e) ?? (() => {
+        const fresh = mergeWith(kind, null, want);
+        return fresh.ok ? fresh.keys : [];
+      })();
+      const r = unmergeWith(kind, cur2, keys, want);
+      if (!r.ok) {
+        this.emit({ path: e.path, op: "merge", harness: "", action: "conflict", reason: r.reason }, e);
+        return;
+      }
+      if (r.empty && e.createdByKit === true) this.ops.push({ path: e.path, op: "merge", harness: "", action: "delete", effect: { remove: { dir: false } } });
+      else this.ops.push({ path: e.path, op: "merge", harness: "", action: "unmerge", ...r.text !== cur2 ? { effect: { text: r.text } } : {} });
+      return;
+    }
+    const st = lstat(full3(this.target, e.path));
+    const isDir2 = Boolean(st?.isDirectory() && !st.isSymbolicLink());
+    const cur = stateOf(this.target, e.path, isDir2);
+    const action = e.op === "copy" ? "retire" : "delete";
+    if (cur.kind === "none") {
+      this.ops.push({ path: e.path, op: e.op, harness: "", action, reason: "파일이 이미 없다" });
+      return;
+    }
+    if (cur.kind === "file" && shaOf(e) !== null && cur.sha === shaOf(e)) {
+      this.ops.push({ path: e.path, op: e.op, harness: "", action, ...why ? { reason: why } : {}, effect: { remove: { dir: isDir2 } } });
+      return;
+    }
+    const kept = { path: e.path, op: e.op, owner: "user", sha256: null, ...e.layer ? { layer: e.layer } : {} };
+    this.emit({ path: e.path, op: e.op, harness: "", action: "keep-modified", reason: "사람이 고친 파일이다 — 지우지 않았다" }, kept);
+  }
+};
+function claims(w, p) {
+  return p === w.path || w.op === "mirror" && w.kind === "dir" && p.startsWith(`${w.path}/`);
+}
+function replacementDeferred(p, wants) {
+  if (p.startsWith(".claude/commands/") && p.endsWith(".md")) {
+    const w = wants.get(`.claude/skills/${p.slice(".claude/commands/".length, -".md".length)}`);
+    return Boolean(w && w.op !== "merge" && w.deferred);
+  }
+  return false;
+}
+var sortWants = (wants) => [...wants].sort((a, b) => byteCompare(a.path, b.path));
+function judgeInstall(args) {
+  const engine = new Engine(args.target, args.spec, args.tokens, args.sources);
+  const byPath = new Map(args.prev.filter((e) => PROJECTION_OPS.has(e.op)).map((e) => [e.path, e]));
+  for (const w of sortWants(args.wants)) engine.install(w, byPath.get(w.path), args.force);
+  return { ops: engine.ops, entries: engine.entries, claimed: /* @__PURE__ */ new Set() };
+}
+function judgeUpdate(args) {
+  const engine = new Engine(args.target, args.spec, args.tokens, args.sources);
+  const wants = new Map(args.wants.map((w) => [w.path, w]));
+  const projection = new Map(args.prev.filter((e) => PROJECTION_OPS.has(e.op)).map((e) => [e.path, e]));
+  const orphans = args.prev.filter((e) => e.op === "copy" && ownerKind(e.owner) === "kit" && !args.copyNow.has(e.path));
+  const claimedBy = /* @__PURE__ */ new Map();
+  const rest = [];
+  for (const e of orphans) {
+    const w = args.wants.find((x) => claims(x, e.path));
+    if (w) claimedBy.set(w.path, [...claimedBy.get(w.path) ?? [], e]);
+    else rest.push(e);
+  }
+  const claimed = new Set([...claimedBy.values()].flat().map((e) => e.path));
+  for (const w of sortWants(args.wants)) engine.update(w, projection.get(w.path), claimedBy.get(w.path) ?? [], args.acceptAll);
+  for (const p of [...projection.keys()].filter((x) => !wants.has(x)).sort(byteCompare)) engine.drop(projection.get(p), "원본이 없다");
+  if (args.retire) {
+    for (const e of rest.sort((a, b) => byteCompare(a.path, b.path))) {
+      if (!HARNESS_DIRS.some((d) => e.path.startsWith(d))) continue;
+      claimed.add(e.path);
+      if (replacementDeferred(e.path, wants)) {
+        engine.ops.push({ path: e.path, op: "copy", harness: "", action: "defer", reason: "바꿀 스킬 원본이 .new 대기 중이다" });
+        engine.entries.push(e);
+        continue;
+      }
+      engine.drop(e, "v1 포인터 — 복사본 · 생성물로 바뀌었다");
+    }
+  }
+  return { ops: engine.ops, entries: engine.entries, claimed };
+}
+function removeEmptySubdirs(dir) {
+  const st = lstat(dir);
+  if (!st?.isDirectory()) return;
+  for (const name of import_node_fs9.default.readdirSync(dir)) {
+    const p = import_node_path6.default.join(dir, name);
+    const s = lstat(p);
+    if (s?.isDirectory() && !s.isSymbolicLink()) {
+      removeEmptySubdirs(p);
+      if (import_node_fs9.default.readdirSync(p).length === 0) import_node_fs9.default.rmdirSync(p);
+    }
+  }
+}
+function sameFile(p, data, executable) {
+  const st = lstat(p);
+  return Boolean(st?.isFile() && (st.mode & 64) !== 0 === executable && import_node_fs9.default.readFileSync(p).equals(data));
+}
+function writeWant(target, w) {
+  const p = full3(target, w.path);
+  const st = lstat(p);
+  if (st?.isSymbolicLink()) import_node_fs9.default.unlinkSync(p);
+  if (w.kind !== "dir") {
+    writeFileAtomic(p, w.data, w.executable);
+    return;
+  }
+  if (st && !st.isSymbolicLink() && !st.isDirectory()) import_node_fs9.default.unlinkSync(p);
+  const wanted2 = new Set(w.files.map((f) => f.rel));
+  for (const f of walkView(new FsView(p), "")) if (!wanted2.has(f.rel)) import_node_fs9.default.unlinkSync(import_node_path6.default.join(p, ...f.rel.split("/")));
+  for (const f of w.files) {
+    const q = import_node_path6.default.join(p, ...f.rel.split("/"));
+    if (!sameFile(q, f.bytes, f.executable)) writeFileAtomic(q, f.bytes, f.executable);
+  }
+  removeEmptySubdirs(p);
+}
+function removeTarget(target, rel, dir) {
+  const p = full3(target, rel);
+  const st = lstat(p);
+  if (dir && st?.isDirectory() && !st.isSymbolicLink()) {
+    const files = walkView(new FsView(p), "").map((f) => `${rel}/${f.rel}`);
+    for (const f of files) import_node_fs9.default.unlinkSync(full3(target, f));
+    removeEmptySubdirs(p);
+    removeEmptyDirs(target, [...files, `${rel}/x`]);
+    return;
+  }
+  if (st && (st.isFile() || st.isSymbolicLink())) import_node_fs9.default.unlinkSync(p);
+  removeEmptyDirs(target, [rel]);
+}
+function applyProjection(target, ops) {
+  for (const o of ops) {
+    const e = o.effect;
+    if (!e) continue;
+    for (const [from, to] of e.renames ?? []) import_node_fs9.default.renameSync(full3(target, from), full3(target, to));
+    if (e.write) writeWant(target, e.write);
+    if (e.text !== void 0) writeFileAtomic(full3(target, o.path), Buffer.from(e.text, "utf8"), false);
+    for (const x of e.extra ?? []) writeFileAtomic(full3(target, x.path), x.data, false);
+    if (e.remove) removeTarget(target, o.path, e.remove.dir);
+  }
+}
+function projOpJson(o) {
+  const j = { path: o.path, op: o.op, action: o.action };
+  if (o.harness) j.harness = o.harness;
+  if (o.reason) j.reason = o.reason;
+  if (o.newFiles?.length) j.new = o.newFiles.length === 1 ? o.newFiles[0] : o.newFiles;
+  if (o.backups?.length) j.backups = o.backups;
+  return j;
+}
+var QUIET_ACTIONS = /* @__PURE__ */ new Set(["same", "keep"]);
+var ATTENTION_ACTIONS = /* @__PURE__ */ new Set(["conflict", "keep-modified"]);
+function projCounts(ops) {
+  const out = {};
+  for (const o of ops) out[o.action] = (out[o.action] ?? 0) + 1;
+  return out;
+}
+function projLine(o) {
+  const extra = [...(o.newFiles ?? []).map((n) => `  → ${n}`), ...(o.backups ?? []).map((b) => `  (수정본 → ${b})`)].join("");
+  return `  ${o.action.padEnd(13)} ${o.path}${extra}${o.reason ? `  ${o.reason}` : ""}`;
+}
+function projSummary(ops) {
+  const c = projCounts(ops);
+  const shown = Object.entries(c).filter(([a]) => !QUIET_ACTIONS.has(a)).map(([a, n]) => `${a} ${n}`).join(" · ");
+  return `  배치: ${shown || "바꿀 것 없음"}${c.same ? ` (같음 ${c.same})` : ""}`;
+}
+
+// src/core/shell.ts
+function shellQuote(s) {
+  return /^[A-Za-z0-9_./@%+=:,-]+$/.test(s) ? s : `'${s.replace(/'/g, "'\\''")}'`;
+}
+
+// src/projection/flow.ts
+function prepare(args) {
+  const base = new FsView(args.target);
+  const view = args.writes || args.deletes ? new OverlayView(base, args.writes ?? /* @__PURE__ */ new Map(), args.deletes ?? /* @__PURE__ */ new Set()) : base;
+  const ctx = buildContext({ view, spec: args.spec, tokens: args.tokens, agents: args.agents });
+  const wants = wantedOps(ctx);
+  if (args.copyPaths) assertNoCopyOverlap(wants, args.copyPaths);
+  return { spec: args.spec, wants, sources: ctx.sources, findings: ctx.findings };
+}
+function assertNoCopyOverlap(wants, copyPaths) {
+  const copies = [...copyPaths];
+  for (const w of wants) {
+    const hit = copies.find((p) => p === w.path || w.op === "mirror" && w.kind === "dir" && p.startsWith(`${w.path}/`));
+    if (hit) throw new CliError(EXIT.STATE, `템플릿 copy 경로와 배치 경로가 겹친다: ${hit}`, "템플릿에서 그 하네스 파일을 지운다(하네스 파일은 .agents/ 원본에서 만든다)");
+  }
+}
+function needsHuman(plan, findings) {
+  return Boolean(plan?.ops.some((o) => ATTENTION_ACTIONS.has(o.action))) || findings.some((f) => f.severity === "error");
+}
+function projectionConflicts(plan) {
+  if (!plan) return [];
+  return plan.ops.filter((o) => o.action === "conflict").map((o) => {
+    const neu = o.newFiles?.[0] ?? null;
+    return { path: o.path, new: neu, diff: neu ? `diff -u ${shellQuote(o.path)} ${shellQuote(neu)}` : null };
+  });
+}
+function projectionData(plan, findings, all = false) {
+  if (!plan) return null;
+  return {
+    counts: projCounts(plan.ops),
+    ops: plan.ops.filter((o) => all || !QUIET_ACTIONS.has(o.action)).map(projOpJson),
+    findings
+  };
+}
+function projectionLines(plan, findings, quiet, all = false, hide = /* @__PURE__ */ new Set()) {
+  if (!plan) return [];
+  const shown = plan.ops.filter((o) => (all || !QUIET_ACTIONS.has(o.action) && !hide.has(o.action)) && (!quiet || ATTENTION_ACTIONS.has(o.action)));
+  return [
+    ...findings.map((f) => `  ${f.severity === "error" ? "✖" : "⚠"} ${f.kind.padEnd(16)} ${f.path} — ${f.hint}`),
+    ...shown.map(projLine),
+    projSummary(plan.ops)
+  ];
+}
+function mergeEntries(copyEntries, plan) {
+  if (!plan) return copyEntries;
+  const owned = /* @__PURE__ */ new Set([...plan.claimed, ...plan.entries.map((e) => e.path), ...plan.ops.map((o) => o.path)]);
+  return [...copyEntries.filter((e) => !owned.has(e.path) && !PROJECTION_OPS.has(e.op)), ...plan.entries];
+}
+
+// src/projection/spec.ts
+var import_node_fs10 = __toESM(require("node:fs"));
+var import_node_path7 = __toESM(require("node:path"));
+var SPEC_REL = "common/scripts/harness/projection.json";
+var SPEC_SCHEMA = "harness-kit.projection/v1";
+var FORBIDDEN_CLAUDE = /* @__PURE__ */ new Set(["model", "effortLevel", "modelSettings", "maxEffortLevel", "fallbackModel", "availableModels", "advisorModel"]);
+var FORBIDDEN_ENV = /* @__PURE__ */ new Set(["ANTHROPIC_MODEL", "CLAUDE_CODE_EFFORT_LEVEL", "MAX_THINKING_TOKENS", "CLAUDE_CODE_SUBAGENT_MODEL", "CLAUDE_CODE_SUBAGENT_MODEL_FORCE", "CLAUDE_CODE_SUBAGENT_EFFORT"]);
+var FORBIDDEN_CODEX = /* @__PURE__ */ new Set(["model", "model_reasoning_effort", "model_reasoning_summary", "model_verbosity", "model_provider", "profile", "profiles", "default_subagent_model", "default_subagent_reasoning_effort"]);
+function bad2(message) {
+  return new CliError(EXIT.ENV, `projection.json: ${message}`, "킷 템플릿을 다시 받는다");
+}
+function walk(v, at) {
+  if (Array.isArray(v)) {
+    v.forEach((x, i) => walk(x, `${at}[${i}]`));
+    return;
+  }
+  if (v === null || typeof v !== "object") return;
+  for (const [k, x] of Object.entries(v)) {
+    if (FORBIDDEN_CLAUDE.has(k) && !at.endsWith(".hook")) throw bad2(`${at}.${k}: 사람 세션의 모델 키를 쓰지 않는다(12 §3.1)`);
+    if (at.endsWith(".env") && (FORBIDDEN_ENV.has(k) || k.startsWith("ANTHROPIC_DEFAULT_") && k.endsWith("_MODEL"))) throw bad2(`${at}.${k}: 사람 세션의 모델 환경변수를 쓰지 않는다(12 §3.1)`);
+    walk(x, `${at}.${k}`);
+  }
+}
+function parseSpec(text) {
+  let raw;
+  try {
+    raw = JSON.parse(text);
+  } catch (err) {
+    throw bad2(err instanceof Error ? err.message : String(err));
+  }
+  if (raw.schema !== SPEC_SCHEMA) throw bad2(`모르는 schema ${String(raw.schema)}`);
+  const cs = raw.claudeSettings ?? {};
+  walk(Object.fromEntries(Object.entries(cs).filter(([k]) => k !== "hooks")), "claudeSettings");
+  const cc = raw.codexConfig ?? {};
+  for (const d of cc.defaults ?? []) {
+    if (FORBIDDEN_CODEX.has(d.key) || FORBIDDEN_CODEX.has(d.table)) throw bad2(`codexConfig ${d.table}.${d.key}: 사람 세션의 모델 키를 쓰지 않는다(12 §3.1)`);
+  }
+  for (const t of cc.tables ?? []) {
+    const names = [t.table, ...(t.lines ?? []).filter((l) => l.includes("=")).map((l) => l.slice(0, l.indexOf("=")).trim())];
+    if (names.some((n) => FORBIDDEN_CODEX.has(n) || n.startsWith("profiles"))) throw bad2(`codexConfig ${t.table}: 사람 세션의 모델 키를 쓰지 않는다(12 §3.1)`);
+  }
+  return raw;
+}
+function loadSpecOrNull(templatesDir) {
+  const file = import_node_path7.default.join(templatesDir, ...SPEC_REL.split("/"));
+  if (!import_node_fs10.default.existsSync(file)) return null;
+  return parseSpec(import_node_fs10.default.readFileSync(file, "utf8"));
 }
 
 // src/core/tokens.ts
@@ -770,13 +2255,13 @@ function manifestContent(sel, tokens) {
     "utf8"
   );
 }
-function existing(full7) {
-  const st = lstatOrNull(full7);
+function existing(full9) {
+  const st = lstatOrNull(full9);
   if (!st) return { kind: "none" };
   if (st.isSymbolicLink()) return { kind: "other", what: "링크다" };
   if (st.isDirectory()) return { kind: "other", what: "같은 이름의 폴더가 있다" };
   if (!st.isFile()) return { kind: "other", what: "일반 파일이 아니다" };
-  return { kind: "file", bytes: import_node_fs7.default.readFileSync(full7), executable: (st.mode & 64) !== 0 };
+  return { kind: "file", bytes: import_node_fs11.default.readFileSync(full9), executable: (st.mode & 64) !== 0 };
 }
 function decide(cur, content, executable, mode) {
   if (cur.kind === "none") return { action: "create" };
@@ -797,7 +2282,7 @@ var AncestorCheck = class {
   state(rel) {
     let cur = this.target;
     for (const part of rel.split("/").slice(0, -1)) {
-      cur = import_node_path4.default.join(cur, part);
+      cur = import_node_path8.default.join(cur, part);
       const known = this.cache.get(cur) ?? this.inspect(cur, rel);
       this.cache.set(cur, known);
       if (known === "missing") return "ok";
@@ -812,20 +2297,20 @@ var AncestorCheck = class {
     if (!st.isSymbolicLink()) return "blocked";
     let real;
     try {
-      real = import_node_fs7.default.realpathSync(dir);
+      real = import_node_fs11.default.realpathSync(dir);
     } catch {
       throw new CliError(EXIT.STATE, `설치 경로의 상위 폴더가 끊어진 링크다: ${rel}`, `${dir} 를 확인한다`);
     }
     if (!isInside(real, this.targetReal)) {
       throw new CliError(EXIT.STATE, `설치 경로가 링크를 따라 리포 밖으로 나간다: ${rel}`, `${dir} → ${real}`);
     }
-    return import_node_fs7.default.statSync(dir).isDirectory() ? "ok" : "blocked";
+    return import_node_fs11.default.statSync(dir).isDirectory() ? "ok" : "blocked";
   }
 };
 var BLOCKED = "상위 경로가 폴더가 아니다";
 function manifestPlan(target, ancestors, content, adopt) {
   if (ancestors?.state(MANIFEST_PATH) === "blocked") return { path: MANIFEST_PATH, action: "skip-user", content };
-  const cur = ancestors ? existing(import_node_path4.default.join(target, ...MANIFEST_PATH.split("/"))) : { kind: "none" };
+  const cur = ancestors ? existing(import_node_path8.default.join(target, ...MANIFEST_PATH.split("/"))) : { kind: "none" };
   if (cur.kind === "none") return { path: MANIFEST_PATH, action: "create", content };
   if (adopt || cur.kind === "other") return { path: MANIFEST_PATH, action: "skip-user", content };
   return { path: MANIFEST_PATH, action: cur.bytes.equals(content) ? "same" : "replace", content };
@@ -833,14 +2318,14 @@ function manifestPlan(target, ancestors, content, adopt) {
 function buildPlan(args) {
   const { layout, templatesDir, target, selection, tokens, mode } = args;
   const res = resolveCandidates(layout, templatesDir, selection, tokens);
-  const ancestors = import_node_fs7.default.existsSync(target) ? new AncestorCheck(target, import_node_fs7.default.realpathSync(target)) : null;
+  const ancestors = import_node_fs11.default.existsSync(target) ? new AncestorCheck(target, import_node_fs11.default.realpathSync(target)) : null;
   const ops = res.winners.map((c) => {
     assertSafeRelPath(c.dest);
     const content = substitute(readTemplate(templatesDir, c.src), tokens, layout.tokens);
     const executable = isExecutable(layout, c.dest);
-    const blocked = ancestors?.state(c.dest) === "blocked";
-    const cur = !ancestors || blocked ? { kind: "none" } : existing(import_node_path4.default.join(target, ...c.dest.split("/")));
-    const { action, reason } = blocked ? { action: "skip-user", reason: BLOCKED } : decide(cur, content, executable, mode);
+    const blocked2 = ancestors?.state(c.dest) === "blocked";
+    const cur = !ancestors || blocked2 ? { kind: "none" } : existing(import_node_path8.default.join(target, ...c.dest.split("/")));
+    const { action, reason } = blocked2 ? { action: "skip-user", reason: BLOCKED } : decide(cur, content, executable, mode);
     const op = {
       path: c.dest,
       op: "copy",
@@ -858,21 +2343,30 @@ function buildPlan(args) {
   const generated = [manifestPlan(target, ancestors, manifestContent(selection, tokens), mode.adopt)];
   const counts2 = { create: 0, replace: 0, same: 0, "skip-user": 0, excludedByHarness: res.excludedByHarness, overlapped: res.overlaps.length };
   for (const o of ops) counts2[o.action] += 1;
-  return { target, ops, overlaps: res.overlaps, excludedByHarness: res.excludedByHarness, generated, counts: counts2 };
+  const { projection, projectionFindings } = planProjection(args, ops);
+  return { target, ops, overlaps: res.overlaps, excludedByHarness: res.excludedByHarness, generated, counts: counts2, projection, projectionFindings };
+}
+function planProjection(args, ops) {
+  const spec = loadSpecOrNull(args.templatesDir);
+  if (!spec) return { projection: null, projectionFindings: [] };
+  const writes = new Map(ops.filter((o) => o.action === "create" || o.action === "replace").map((o) => [o.path, { content: o.content, executable: o.executable }]));
+  const p = prepare({ target: args.target, spec, tokens: args.tokens, agents: args.selection.agents, writes, copyPaths: ops.map((o) => o.path) });
+  const projection = judgeInstall({ target: args.target, spec, tokens: args.tokens, sources: p.sources, wants: p.wants, prev: [], force: args.mode.force });
+  return { projection, projectionFindings: p.findings };
 }
 
 // src/core/selection.ts
-var import_node_fs8 = __toESM(require("node:fs"));
-var import_node_path5 = __toESM(require("node:path"));
+var import_node_fs12 = __toESM(require("node:fs"));
+var import_node_path9 = __toESM(require("node:path"));
 function subdirs(dir) {
   if (!isDir(dir)) return [];
-  return import_node_fs8.default.readdirSync(dir).filter((n) => isDir(import_node_path5.default.join(dir, n))).sort();
+  return import_node_fs12.default.readdirSync(dir).filter((n) => isDir(import_node_path9.default.join(dir, n))).sort();
 }
 function listStacks(templatesDir) {
-  return subdirs(import_node_path5.default.join(templatesDir, "stacks"));
+  return subdirs(import_node_path9.default.join(templatesDir, "stacks"));
 }
 function listArchs(templatesDir, stack) {
-  return subdirs(import_node_path5.default.join(templatesDir, "stacks", stack, "arch"));
+  return subdirs(import_node_path9.default.join(templatesDir, "stacks", stack, "arch"));
 }
 function parseList(raw, valid, what, allowNone) {
   const words = raw.split(/[\s,]+/).filter(Boolean);
@@ -889,7 +2383,7 @@ function parseList(raw, valid, what, allowNone) {
   return out;
 }
 function detectHarnesses(layout, target, env) {
-  const byDir = layout.harnesses.filter((h) => (layout.harnessDetect[h]?.dirs ?? []).some((d) => isDir(import_node_path5.default.join(target, d))));
+  const byDir = layout.harnesses.filter((h) => (layout.harnessDetect[h]?.dirs ?? []).some((d) => isDir(import_node_path9.default.join(target, d))));
   if (byDir.length) return byDir;
   return layout.harnesses.filter((h) => (layout.harnessDetect[h]?.env ?? []).some((v) => (env[v] ?? "") !== ""));
 }
@@ -927,8 +2421,8 @@ function resolveSelection(layout, templatesDir, input, ctx) {
   }
   const modules = input.modules === void 0 ? [] : parseList(input.modules, layout.modules, "모듈", true);
   for (const m of modules) {
-    if (!isDir(import_node_path5.default.join(templatesDir, "optional", m))) {
-      throw new CliError(EXIT.ENV, `모듈 템플릿이 없다: ${import_node_path5.default.join(templatesDir, "optional", m)}`);
+    if (!isDir(import_node_path9.default.join(templatesDir, "optional", m))) {
+      throw new CliError(EXIT.ENV, `모듈 템플릿이 없다: ${import_node_path9.default.join(templatesDir, "optional", m)}`);
     }
   }
   return { stack, arch, domain, lang, agents, agentsOrigin, modules };
@@ -979,10 +2473,10 @@ function compareSemver(a, b) {
 // src/core/installed.ts
 var NOT_INSTALLED_HINT = "설치는 harness-kit init";
 function loadInstalled(target, command) {
-  const m = readMeta(import_node_path6.default.join(target, META_REL));
+  const m = readMeta(import_node_path10.default.join(target, META_REL));
   if (m.status === "missing") throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, NOT_INSTALLED_HINT);
   if (m.status === "invalid") throw new CliError(EXIT.STATE, `메타를 해석하지 못했다: ${m.error}`, "harness-kit doctor 로 상태를 본다");
-  const l = readLock(import_node_path6.default.join(target, LOCK_REL));
+  const l = readLock(import_node_path10.default.join(target, LOCK_REL));
   if (l.status === "missing") {
     throw new CliError(EXIT.STATE, `lock 이 없다(${LOCK_REL})`, `lock 없이 ${command} 하면 사람 파일과 킷 파일을 가리지 못한다. harness-kit doctor 로 상태를 본다`);
   }
@@ -999,12 +2493,15 @@ function entryKind(e) {
   switch (e.op) {
     case "copy":
     case "none":
+    case "mirror":
+    case "render":
+    case "merge":
       return e.op;
     default:
-      throw new CliError(EXIT.STATE, `lock 항목 ${e.path} 의 op '${e.op}' 는 이 판(${VERSION})에서 지원하지 않는다`, "mirror · render · merge 는 P18 판 CLI 로 실행한다");
+      throw new CliError(EXIT.STATE, `lock 항목 ${e.path} 의 op '${e.op}' 는 이 판(${VERSION})에서 지원하지 않는다`, "새 판 CLI 로 실행한다");
   }
 }
-function ownerKind(owner) {
+function ownerKind2(owner) {
   if (owner === "kit" || owner === "user") return owner;
   if (owner.startsWith("external:")) return "external";
   if (owner.startsWith("pack:")) return "pack";
@@ -1017,7 +2514,7 @@ function selectionFromMeta(layout, templatesDir, meta) {
   if (!listArchs(templatesDir, meta.stack).includes(meta.arch)) {
     throw new CliError(EXIT.STATE, `이 킷에 없는 변형이다: '${meta.arch}' (스택 ${meta.stack})`, "메타의 arch 를 고치거나 그 변형이 있는 킷 판을 쓴다");
   }
-  const modules = meta.modules.filter((m) => isDir(import_node_path6.default.join(templatesDir, "optional", m)));
+  const modules = meta.modules.filter((m) => isDir(import_node_path10.default.join(templatesDir, "optional", m)));
   const selection = {
     stack: meta.stack,
     arch: meta.arch,
@@ -1037,7 +2534,7 @@ function tokensFromMeta(layout, sel, meta, env, target) {
     else if (Object.hasOwn(meta.tokens, k)) fixed.set(k, meta.tokens[k]);
   }
   const flags = Object.fromEntries([...fixed].filter(([, v]) => v !== ""));
-  const defaults = resolveTokens(layout, sel, { flags, env: {}, targetBasename: import_node_path6.default.basename(target) });
+  const defaults = resolveTokens(layout, sel, { flags, env: {}, targetBasename: import_node_path10.default.basename(target) });
   return Object.fromEntries(layout.tokens.map((k) => [k, fixed.get(k) ?? defaults[k] ?? ""]));
 }
 
@@ -1046,23 +2543,23 @@ var AMBIGUOUS_REASON = "v1 lock — 미리 있던 파일인지 가릴 수 없다
 function resolveLegacyHashes(target, entries, want) {
   const ambiguous = /* @__PURE__ */ new Set();
   const out = entries.map((e) => {
-    if (ownerKind(e.owner) !== "kit" || e.op !== "copy" || !e.sha256) return e;
+    if (ownerKind2(e.owner) !== "kit" || e.op !== "copy" || !e.sha256) return e;
     if (want && want.get(e.path) === e.sha256) return e;
-    const cur = existing(import_node_path7.default.join(target, ...e.path.split("/")));
+    const cur = existing(import_node_path11.default.join(target, ...e.path.split("/")));
     if (cur.kind !== "file" || sha256(cur.bytes) !== e.sha256) return e;
     ambiguous.add(e.path);
     return { ...e, sha256: null };
   });
   return { entries: out, ambiguous };
 }
-function resolvedLock(inst, target, shaOf) {
+function resolvedLock(inst, target, shaOf2) {
   if (!inst.lockAmbiguous) return { lock: inst.lock, ambiguous: /* @__PURE__ */ new Set() };
-  const r = resolveLegacyHashes(target, inst.lock.entries, shaOf());
+  const r = resolveLegacyHashes(target, inst.lock.entries, shaOf2());
   return { lock: { ...inst.lock, entries: r.entries }, ambiguous: r.ambiguous };
 }
 
 // src/core/selection-change.ts
-var import_node_path8 = __toESM(require("node:path"));
+var import_node_path12 = __toESM(require("node:path"));
 var LATER_MODULES = {
   aidlc: "P22(외부 도구 모듈, 설계 10 §3.2)",
   entire: "P22(외부 도구 모듈, 설계 10 §3.3)",
@@ -1082,7 +2579,7 @@ function parseNames(layout, raw, command) {
 }
 function assertModuleDirs(templatesDir, modules) {
   for (const m of modules) {
-    if (!isDir(import_node_path8.default.join(templatesDir, "optional", m))) throw new CliError(EXIT.ENV, `모듈 템플릿이 없다: ${import_node_path8.default.join(templatesDir, "optional", m)}`);
+    if (!isDir(import_node_path12.default.join(templatesDir, "optional", m))) throw new CliError(EXIT.ENV, `모듈 템플릿이 없다: ${import_node_path12.default.join(templatesDir, "optional", m)}`);
   }
 }
 function withNames(sel, names) {
@@ -1112,8 +2609,9 @@ function relayered(before, after, skip = /* @__PURE__ */ new Set()) {
 }
 
 // src/core/update-plan.ts
-var import_node_fs9 = __toESM(require("node:fs"));
-var import_node_path9 = __toESM(require("node:path"));
+var import_node_fs13 = __toESM(require("node:fs"));
+var import_node_path13 = __toESM(require("node:path"));
+var PROJECTION_OPS2 = /* @__PURE__ */ new Set(["mirror", "render", "merge"]);
 var UPDATE_ACTIONS = [
   "new",
   "restore",
@@ -1128,22 +2626,22 @@ var UPDATE_ACTIONS = [
   "skip-pack",
   "forget"
 ];
-function full(target, rel) {
-  return import_node_path9.default.join(target, ...rel.split("/"));
+function full4(target, rel) {
+  return import_node_path13.default.join(target, ...rel.split("/"));
 }
 function current(ctx, rel) {
   if (ctx.ancestors.state(rel) === "blocked") return { kind: "other", what: BLOCKED };
-  const cur = existing(full(ctx.target, rel));
+  const cur = existing(full4(ctx.target, rel));
   if (cur.kind === "file") return { kind: "file", sha: sha256(cur.bytes) };
   return cur;
 }
-var kitEntry = (p, w) => ({ path: p, op: "copy", owner: "kit", sha256: w.sha256, layer: w.layer });
-var userEntry = (p, layer) => ({ path: p, op: "copy", owner: "user", sha256: null, layer });
+var kitEntry2 = (p, w) => ({ path: p, op: "copy", owner: "kit", sha256: w.sha256, layer: w.layer });
+var userEntry2 = (p, layer) => ({ path: p, op: "copy", owner: "user", sha256: null, layer });
 function withD(p, w, action, extra = {}) {
   return { path: p, op: "copy", owner: "kit", layer: w.layer, action, executable: w.executable, content: w.content, sha256: w.sha256, ...extra };
 }
 function skipByOwner(e) {
-  switch (ownerKind(e.owner)) {
+  switch (ownerKind2(e.owner)) {
     case "user":
       return { action: "skip-user" };
     case "external":
@@ -1168,18 +2666,18 @@ function orphan(ctx, p, e, cur) {
   return { op: { ...base, action: "orphan", modified }, entry: e };
 }
 function untracked(p, w, cur) {
-  if (cur.kind === "none") return { op: withD(p, w, "new"), entry: kitEntry(p, w) };
-  if (cur.kind === "file" && cur.sha === w.sha256) return { op: withD(p, w, "same"), entry: kitEntry(p, w) };
-  return { op: { path: p, op: "copy", owner: "user", layer: w.layer, action: "skip-user", reason: "사람이 둔 파일이다" }, entry: userEntry(p, w.layer) };
+  if (cur.kind === "none") return { op: withD(p, w, "new"), entry: kitEntry2(p, w) };
+  if (cur.kind === "file" && cur.sha === w.sha256) return { op: withD(p, w, "same"), entry: kitEntry2(p, w) };
+  return { op: { path: p, op: "copy", owner: "user", layer: w.layer, action: "skip-user", reason: "사람이 둔 파일이다" }, entry: userEntry2(p, w.layer) };
 }
 function sideState(ctx, rel) {
-  return existing(full(ctx.target, rel)).kind;
+  return existing(full4(ctx.target, rel)).kind;
 }
 function modifiedFile(ctx, p, e, w) {
   const keepB = { path: p, op: "copy", owner: "kit", sha256: e.sha256 ?? null, layer: w.layer };
   if (ctx.acceptAll) {
     const bak = `${p}.bak`;
-    if (sideState(ctx, bak) !== "other") return { op: withD(p, w, "replace", { backup: bak }), entry: kitEntry(p, w) };
+    if (sideState(ctx, bak) !== "other") return { op: withD(p, w, "replace", { backup: bak }), entry: kitEntry2(p, w) };
     return { op: withD(p, w, "conflict", { reason: `${bak} 자리에 파일이 아닌 것이 있다` }), entry: keepB };
   }
   const neu = `${p}.new`;
@@ -1196,12 +2694,12 @@ function judge(ctx, forget, p, e, w) {
   const cur = current(ctx, p);
   if (!w) return orphan(ctx, p, e, cur);
   if (cur.kind === "other") {
-    return { op: { path: p, op: "copy", owner: e?.owner ?? "user", layer: w.layer, action: "skip-user", reason: cur.what }, entry: e ?? userEntry(p, w.layer) };
+    return { op: { path: p, op: "copy", owner: e?.owner ?? "user", layer: w.layer, action: "skip-user", reason: cur.what }, entry: e ?? userEntry2(p, w.layer) };
   }
   if (!e) return untracked(p, w, cur);
-  if (cur.kind === "none") return { op: withD(p, w, "restore"), entry: kitEntry(p, w) };
-  if (cur.sha === w.sha256) return { op: withD(p, w, "same"), entry: kitEntry(p, w) };
-  if (e.sha256 && cur.sha === e.sha256) return { op: withD(p, w, "update"), entry: kitEntry(p, w) };
+  if (cur.kind === "none") return { op: withD(p, w, "restore"), entry: kitEntry2(p, w) };
+  if (cur.sha === w.sha256) return { op: withD(p, w, "same"), entry: kitEntry2(p, w) };
+  if (e.sha256 && cur.sha === e.sha256) return { op: withD(p, w, "update"), entry: kitEntry2(p, w) };
   return modifiedFile(ctx, p, e, w);
 }
 function wanted(input) {
@@ -1227,9 +2725,9 @@ function forgetSet(raw, locked, want) {
 }
 function buildUpdatePlan(input) {
   const { want, overlaps, excludedByHarness } = wanted(input);
-  const locked = new Map(input.lock.entries.map((e) => [e.path, e]));
+  const locked = new Map(input.lock.entries.filter((e) => !PROJECTION_OPS2.has(e.op)).map((e) => [e.path, e]));
   const forget = forgetSet(input.forget, locked, want);
-  const ctx = { target: input.target, ancestors: new AncestorCheck(input.target, import_node_fs9.default.realpathSync(input.target)), acceptAll: input.acceptAll, prune: input.prune };
+  const ctx = { target: input.target, ancestors: new AncestorCheck(input.target, import_node_fs13.default.realpathSync(input.target)), acceptAll: input.acceptAll, prune: input.prune };
   const counts2 = Object.fromEntries(UPDATE_ACTIONS.map((a) => [a, 0]));
   const ops = [];
   const entries = [];
@@ -1239,18 +2737,18 @@ function buildUpdatePlan(input) {
     counts2[j.op.action] += 1;
     if (j.entry) entries.push(j.entry);
   }
-  return { ops, entries, counts: counts2, overlaps, excludedByHarness };
+  return { ops, entries, counts: counts2, overlaps, excludedByHarness, wantPaths: new Set(want.keys()) };
 }
 
 // src/commands/change.ts
-var import_node_fs15 = __toESM(require("node:fs"));
-var import_node_path16 = __toESM(require("node:path"));
+var import_node_fs18 = __toESM(require("node:fs"));
+var import_node_path19 = __toESM(require("node:path"));
 
 // src/cli/context.ts
-var import_node_path10 = __toESM(require("node:path"));
+var import_node_path14 = __toESM(require("node:path"));
 function targetOf(ctx) {
   const cwd = ctx.values.cwd;
-  return import_node_path10.default.resolve(ctx.io.cwd, typeof cwd === "string" ? cwd : ".");
+  return import_node_path14.default.resolve(ctx.io.cwd, typeof cwd === "string" ? cwd : ".");
 }
 function today(io2) {
   if (io2.today) return io2.today;
@@ -1261,18 +2759,18 @@ function today(io2) {
 
 // src/core/apply.ts
 var import_node_child_process = require("node:child_process");
-var import_node_fs10 = __toESM(require("node:fs"));
-var import_node_path11 = __toESM(require("node:path"));
+var import_node_fs14 = __toESM(require("node:fs"));
+var import_node_path15 = __toESM(require("node:path"));
 var FEATURE_DOCS = "tools/docs/feature_docs.py";
-function full2(target, rel) {
-  return import_node_path11.default.join(target, ...rel.split("/"));
+function full5(target, rel) {
+  return import_node_path15.default.join(target, ...rel.split("/"));
 }
 function featureDocsAllowed(plan) {
-  const docs = plan.ops.filter((o) => o.path.startsWith(`${import_node_path11.default.posix.dirname(FEATURE_DOCS)}/`));
+  const docs = plan.ops.filter((o) => o.path.startsWith(`${import_node_path15.default.posix.dirname(FEATURE_DOCS)}/`));
   return docs.some((o) => o.path === FEATURE_DOCS) && docs.every((o) => o.owner === "kit");
 }
 function buildFeatureDocs(target, env) {
-  if (!import_node_fs10.default.existsSync(full2(target, FEATURE_DOCS))) return { status: "skipped", reason: `${FEATURE_DOCS} 없음` };
+  if (!import_node_fs14.default.existsSync(full5(target, FEATURE_DOCS))) return { status: "skipped", reason: `${FEATURE_DOCS} 없음` };
   const r = (0, import_node_child_process.spawnSync)("python3", [FEATURE_DOCS, "build"], {
     cwd: target,
     env: env.PATH === void 0 ? { ...env, PATH: process.env.PATH } : env,
@@ -1294,103 +2792,72 @@ function applyPlan(args) {
   let current3 = "";
   try {
     current3 = target;
-    import_node_fs10.default.mkdirSync(target, { recursive: true });
+    import_node_fs14.default.mkdirSync(target, { recursive: true });
     for (const op of plan.ops) {
       if (op.action !== "create" && op.action !== "replace") continue;
       current3 = op.path;
-      writeFileAtomic(full2(target, op.path), op.content, op.executable);
+      writeFileAtomic(full5(target, op.path), op.content, op.executable);
       written += 1;
     }
     for (const g of plan.generated) {
       if (g.action !== "create" && g.action !== "replace") continue;
       current3 = g.path;
-      writeFileAtomic(full2(target, g.path), g.content, false);
+      writeFileAtomic(full5(target, g.path), g.content, false);
     }
+    current3 = "배치(mirror · render · merge)";
+    if (plan.projection) applyProjection(target, plan.projection.ops);
   } catch (err) {
     throw fsError(err, `쓰기 실패 ${current3}`);
   }
   const featureDocs = featureDocsAllowed(plan) ? buildFeatureDocs(target, env) : { status: "skipped", reason: "tools/docs/ 에 킷 판이 아닌 파일이 있다" };
   try {
     current3 = LOCK_REL;
-    writeFileAtomic(full2(target, LOCK_REL), Buffer.from(lockText2, "utf8"), false);
+    writeFileAtomic(full5(target, LOCK_REL), Buffer.from(lockText2, "utf8"), false);
     current3 = META_REL;
-    writeFileAtomic(full2(target, META_REL), Buffer.from(metaText, "utf8"), false);
+    writeFileAtomic(full5(target, META_REL), Buffer.from(metaText, "utf8"), false);
   } catch (err) {
     throw fsError(err, `쓰기 실패 ${current3}`);
   }
   return { written, featureDocs };
 }
 
-// src/core/remove.ts
-var import_node_fs11 = __toESM(require("node:fs"));
-var import_node_path12 = __toESM(require("node:path"));
-function full3(target, rel) {
-  return import_node_path12.default.join(target, ...rel.split("/"));
-}
-function removeFile(target, rel) {
-  import_node_fs11.default.rmSync(full3(target, rel), { force: true });
-}
-function ancestorDirs(rels) {
-  const dirs = /* @__PURE__ */ new Set();
-  for (const rel of rels) {
-    const parts = rel.split("/");
-    for (let i = parts.length - 1; i > 0; i -= 1) dirs.add(parts.slice(0, i).join("/"));
-  }
-  return [...dirs].sort((a, b) => b.split("/").length - a.split("/").length || byteCompare(a, b));
-}
-function removeEmptyDirs(target, rels) {
-  let removed = 0;
-  for (const dir of ancestorDirs(rels)) {
-    const p = full3(target, dir);
-    try {
-      if (!import_node_fs11.default.lstatSync(p).isDirectory()) continue;
-      import_node_fs11.default.rmdirSync(p);
-      removed += 1;
-    } catch (err) {
-      const code = err.code;
-      if (code !== "ENOENT" && code !== "ENOTEMPTY" && code !== "EEXIST" && code !== "ENOTDIR") throw err;
-    }
-  }
-  return removed;
-}
-
 // src/core/templates.ts
-var import_node_fs12 = __toESM(require("node:fs"));
-var import_node_path13 = __toESM(require("node:path"));
+var import_node_fs15 = __toESM(require("node:fs"));
+var import_node_path16 = __toESM(require("node:path"));
 function hasLayout(dir) {
-  return import_node_fs12.default.existsSync(import_node_path13.default.join(dir, "layout.json"));
+  return import_node_fs15.default.existsSync(import_node_path16.default.join(dir, "layout.json"));
 }
 function locateTemplates(opts) {
   const explicit = opts.flag ?? (opts.env.HARNESS_KIT_TEMPLATES || void 0);
   if (explicit !== void 0) {
-    const dir = import_node_path13.default.resolve(opts.cwd, explicit);
+    const dir = import_node_path16.default.resolve(opts.cwd, explicit);
     if (!hasLayout(dir)) throw new CliError(EXIT.ENV, `템플릿 폴더가 아니다(layout.json 없음): ${dir}`);
     return { dir, source: `file:${dir}` };
   }
   let cliDir;
   try {
-    cliDir = import_node_path13.default.dirname(import_node_fs12.default.realpathSync(opts.cliFile));
+    cliDir = import_node_path16.default.dirname(import_node_fs15.default.realpathSync(opts.cliFile));
   } catch {
-    cliDir = import_node_path13.default.dirname(import_node_path13.default.resolve(opts.cliFile));
+    cliDir = import_node_path16.default.dirname(import_node_path16.default.resolve(opts.cliFile));
   }
-  const beside = import_node_path13.default.resolve(cliDir, "..", "templates");
+  const beside = import_node_path16.default.resolve(cliDir, "..", "templates");
   if (hasLayout(beside)) {
-    const where = import_node_path13.default.basename(cliDir) === "bin" ? "plugin" : "npm";
+    const where = import_node_path16.default.basename(cliDir) === "bin" ? "plugin" : "npm";
     return { dir: beside, source: `${where}:harness-kit@${opts.version}` };
   }
-  const mono = import_node_path13.default.resolve(cliDir, "..", "..", "templates");
+  const mono = import_node_path16.default.resolve(cliDir, "..", "..", "templates");
   if (hasLayout(mono)) return { dir: mono, source: `file:${mono}` };
   throw new CliError(EXIT.ENV, "템플릿 폴더를 찾지 못했다", `--templates <폴더> 또는 HARNESS_KIT_TEMPLATES 로 준다 (찾은 곳: ${beside} · ${mono})`);
 }
 
 // src/commands/update.ts
-var import_node_fs14 = __toESM(require("node:fs"));
-var import_node_path15 = __toESM(require("node:path"));
+var import_node_fs17 = __toESM(require("node:fs"));
+var import_node_path18 = __toESM(require("node:path"));
 
 // src/core/board.ts
 var import_node_child_process2 = require("node:child_process");
-var import_node_fs13 = __toESM(require("node:fs"));
-var import_node_path14 = __toESM(require("node:path"));
+var import_node_fs16 = __toESM(require("node:fs"));
+var import_node_path17 = __toESM(require("node:path"));
 var BOARD_SCRIPT = "scripts/board.sh";
 function isBoardCode(rel) {
   return rel === BOARD_SCRIPT || rel === "scripts/sdd-layout.py" || rel.startsWith("scripts/harness/");
@@ -1399,10 +2866,10 @@ function runEnv(env) {
   return env.PATH === void 0 ? { ...env, PATH: process.env.PATH } : env;
 }
 function refreshBoard(target, env, blockedBy) {
-  const script = import_node_path14.default.join(target, ...BOARD_SCRIPT.split("/"));
+  const script = import_node_path17.default.join(target, ...BOARD_SCRIPT.split("/"));
   let st = null;
   try {
-    st = import_node_fs13.default.lstatSync(script);
+    st = import_node_fs16.default.lstatSync(script);
   } catch {
     st = null;
   }
@@ -1431,11 +2898,8 @@ var LATER_FLAGS = {
   packs: "--packs(팩 갱신)는 P18(확장 층, 설계 04)에서 제공한다",
   tools: "--tools(외부 도구 갱신)는 P22(외부 도구 모듈, 설계 10)에서 제공한다"
 };
-function full4(target, rel) {
-  return import_node_path15.default.join(target, ...rel.split("/"));
-}
-function shellQuote(s) {
-  return /^[A-Za-z0-9_./@%+=:,-]+$/.test(s) ? s : `'${s.replace(/'/g, "'\\''")}'`;
+function full6(target, rel) {
+  return import_node_path18.default.join(target, ...rel.split("/"));
 }
 function checkFlags(ctx) {
   for (const [flag, message] of Object.entries(LATER_FLAGS)) if (bool(ctx.values, flag)) throw usageError(message);
@@ -1475,23 +2939,25 @@ function countsLine(c) {
 function selectionLine(sel) {
   return `  선택: ${sel.stack} · ${sel.arch} · ${sel.domain || "도메인 없음"} · 하네스 ${sel.agents.join(",")} · 모듈 ${sel.modules.join(",") || "none"}`;
 }
-function applyUpdate(target, plan, w) {
+function applyUpdate(target, plan, w, projection) {
   let current3 = "";
   try {
     const deleted = [];
     for (const o of plan.ops) {
       current3 = o.path;
-      if (o.action === "new" || o.action === "restore" || o.action === "update") writeFileAtomic(full4(target, o.path), o.content, o.executable === true);
+      if (o.action === "new" || o.action === "restore" || o.action === "update") writeFileAtomic(full6(target, o.path), o.content, o.executable === true);
       else if (o.action === "replace") {
-        import_node_fs14.default.renameSync(full4(target, o.path), full4(target, o.backup));
-        writeFileAtomic(full4(target, o.path), o.content, o.executable === true);
-      } else if (o.action === "conflict" && o.newFile) writeFileAtomic(full4(target, o.newFile), o.content, false);
+        import_node_fs17.default.renameSync(full6(target, o.path), full6(target, o.backup));
+        writeFileAtomic(full6(target, o.path), o.content, o.executable === true);
+      } else if (o.action === "conflict" && o.newFile) writeFileAtomic(full6(target, o.newFile), o.content, false);
       else if (o.action === "delete" && o.removeFile) {
         removeFile(target, o.path);
         deleted.push(o.path);
       }
     }
     removeEmptyDirs(target, deleted);
+    current3 = "배치(mirror · render · merge)";
+    if (projection) applyProjection(target, projection.ops);
     const state = [
       [MANIFEST_PATH, w.manifest],
       [V1_LOCK_BACKUP, w.v1Backup],
@@ -1500,7 +2966,7 @@ function applyUpdate(target, plan, w) {
     ];
     for (const [rel, data] of state) {
       current3 = rel;
-      if (data) writeFileAtomic(full4(target, rel), data, false);
+      if (data) writeFileAtomic(full6(target, rel), data, false);
     }
   } catch (err) {
     throw fsError(err, `쓰기 실패 ${current3}`);
@@ -1522,11 +2988,11 @@ function humanLines(ctx, head, plan, shown, conflicts, dryRun, board) {
   lines.push(dryRun ? "  (dry-run — 쓰지 않았다)" : "  다음: harness-kit doctor");
   return lines;
 }
-function writtenState(ctx, target, inst, plan, sel, tokens, source) {
-  const lockText2 = serializeLock({ schema: "harness-kit.lock/v2", kit: { version: VERSION, source }, packs: inst.lock.packs, entries: plan.entries });
+function writtenState(ctx, target, inst, entries, sel, tokens, source) {
+  const lockText2 = serializeLock({ schema: "harness-kit.lock/v2", kit: { version: VERSION, source }, packs: inst.lock.packs, entries });
   const meta = mergeMetaForUpdate(inst.meta, { version: VERSION, selection: sel, tokens, today: today(ctx.io) });
-  const manifest = lstatOrNull(full4(target, MANIFEST_PATH)) ? null : manifestContent(sel, tokens);
-  const v1Backup = inst.lockFormat === "v1" ? import_node_fs14.default.readFileSync(full4(target, LOCK_REL)) : null;
+  const manifest = lstatOrNull(full6(target, MANIFEST_PATH)) ? null : manifestContent(sel, tokens);
+  const v1Backup = inst.lockFormat === "v1" ? import_node_fs17.default.readFileSync(full6(target, LOCK_REL)) : null;
   return { lockText: lockText2, metaText: serializeMeta(meta), manifest, v1Backup };
 }
 var ANY_SKIP = /* @__PURE__ */ new Set(["conflict", "skip-user", "skip-external", "skip-pack"]);
@@ -1545,18 +3011,23 @@ function runUpdate(ctx) {
   const { selection, droppedModules } = selectionFromMeta(layout, loc.dir, inst.meta);
   const tokens = tokensFromMeta(layout, selection, inst.meta, io2.env, target);
   const prune = bool(ctx.values, "prune");
-  const shaOf = () => new Map([...wanted({ layout, templatesDir: loc.dir, selection, tokens }).want].map(([p, d]) => [p, d.sha256]));
-  const { lock, ambiguous } = resolvedLock(inst, target, shaOf);
-  const raw = buildUpdatePlan({ layout, templatesDir: loc.dir, target, selection, tokens, lock, acceptAll: bool(ctx.values, "accept-all"), prune, forget: list(ctx.values, "forget") });
-  const plan = { ...raw, ops: raw.ops.map((o) => ambiguous.has(o.path) && AMBIGUOUS_ACTIONS.has(o.action) && !o.reason ? { ...o, reason: AMBIGUOUS_REASON } : o) };
+  const shaOf2 = () => new Map([...wanted({ layout, templatesDir: loc.dir, selection, tokens }).want].map(([p, d]) => [p, d.sha256]));
+  const { lock, ambiguous } = resolvedLock(inst, target, shaOf2);
+  const acceptAll = bool(ctx.values, "accept-all");
+  const raw = buildUpdatePlan({ layout, templatesDir: loc.dir, target, selection, tokens, lock, acceptAll, prune, forget: list(ctx.values, "forget") });
+  const marked = { ...raw, ops: raw.ops.map((o) => ambiguous.has(o.path) && AMBIGUOUS_ACTIONS.has(o.action) && !o.reason ? { ...o, reason: AMBIGUOUS_REASON } : o) };
+  const projection = projectionForUpdate({ target, templatesDir: loc.dir, tokens, agents: selection.agents, inst, plan: marked, acceptAll });
+  const plan = withoutClaimed(marked, projection?.plan ?? null);
+  const entries = projection ? mergeEntries(plan.entries, projection.plan) : [...plan.entries, ...inst.lock.entries.filter((e) => PROJECTION_OPS.has(e.op))];
   const dryRun = bool(ctx.values, "dry-run");
-  const w = writtenState(ctx, target, inst, plan, selection, tokens, loc.source);
-  if (!dryRun) applyUpdate(target, plan, w);
+  const w = writtenState(ctx, target, inst, entries, selection, tokens, loc.source);
+  if (!dryRun) applyUpdate(target, plan, w, projection?.plan ?? null);
   const board = dryRun ? { status: "skipped", reason: "dry-run" } : refreshBoard(target, io2.env, boardBlocker(plan));
   const keptModified = prune && plan.ops.some((o) => o.action === "orphan" && o.modified);
-  const code = plan.counts.conflict > 0 || keptModified ? EXIT.HUMAN : EXIT.OK;
+  const human = projection ? needsHuman(projection.plan, projection.findings) : false;
+  const code = plan.counts.conflict > 0 || keptModified || human ? EXIT.HUMAN : EXIT.OK;
   const shown = plan.ops.filter((o) => o.action !== "same" && (!ctx.quiet || o.action === "conflict"));
-  const conflicts = conflictList(plan);
+  const conflicts = [...conflictList(plan), ...projectionConflicts(projection?.plan ?? null)];
   const counts2 = { ...plan.counts, excludedByHarness: plan.excludedByHarness, overlapped: plan.overlaps.length };
   const data = {
     command: "update",
@@ -1574,13 +3045,38 @@ function runUpdate(ctx) {
     board,
     state: [META_REL, LOCK_REL, ...w.v1Backup ? [V1_LOCK_BACKUP] : []]
   };
+  if (projection) data.projection = projectionData(projection.plan, projection.findings);
   const head = [
     `harness-kit update — ${target}`,
     `  킷: ${inst.meta.kit.version} → ${VERSION} · 메타 ${inst.metaFormat} · lock ${inst.lockFormat}`,
     selectionLine(selection),
     ...droppedModules.length ? [`  ⚠ 킷에 없는 모듈을 뺀다: ${droppedModules.join(", ")}`] : []
   ];
-  return { code, data, lines: humanLines(ctx, head, plan, shown, conflicts, dryRun, board) };
+  const lines = humanLines(ctx, head, plan, shown, conflicts, dryRun, board);
+  if (projection) lines.splice(head.length + shown.length + 1, 0, ...projectionLines(projection.plan, projection.findings, ctx.quiet));
+  else if (inst.lock.entries.some((e) => PROJECTION_OPS.has(e.op))) lines.splice(head.length + shown.length + 1, 0, "  배치: 이 템플릿에 projection.json 이 없다 — 배치 항목은 그대로 둔다");
+  return { code, data, lines };
+}
+function projectionForUpdate(args) {
+  const spec = loadSpecOrNull(args.templatesDir);
+  if (!spec) return null;
+  const writes = /* @__PURE__ */ new Map();
+  const deletes = /* @__PURE__ */ new Set();
+  for (const o of args.plan.ops) {
+    if ((o.action === "new" || o.action === "restore" || o.action === "update" || o.action === "replace") && o.content) writes.set(o.path, { content: o.content, executable: o.executable === true });
+    else if (o.action === "conflict" && o.newFile && o.content) writes.set(o.newFile, { content: o.content, executable: false });
+    else if (o.action === "delete" && o.removeFile) deletes.add(o.path);
+  }
+  const p = prepare({ target: args.target, spec, tokens: args.tokens, agents: args.agents, writes, deletes, copyPaths: args.plan.wantPaths });
+  const plan = judgeUpdate({ target: args.target, spec, tokens: args.tokens, sources: p.sources, wants: p.wants, prev: args.inst.lock.entries, copyNow: args.plan.wantPaths, acceptAll: args.acceptAll, retire: true });
+  return { plan, findings: p.findings };
+}
+function withoutClaimed(plan, projection) {
+  if (!projection || projection.claimed.size === 0) return plan;
+  const ops = plan.ops.filter((o) => !projection.claimed.has(o.path));
+  const counts2 = Object.fromEntries(Object.keys(plan.counts).map((k) => [k, 0]));
+  for (const o of ops) counts2[o.action] += 1;
+  return { ...plan, ops, counts: counts2, entries: plan.entries.filter((e) => !projection.claimed.has(e.path)) };
 }
 
 // src/commands/change.ts
@@ -1620,43 +3116,52 @@ function loadForChange(ctx, command, kit) {
 }
 function currentOf(target, ancestors, rel) {
   if (ancestors.state(rel) === "blocked") return { kind: "other", what: BLOCKED };
-  const cur = existing(import_node_path16.default.join(target, ...rel.split("/")));
+  const cur = existing(import_node_path19.default.join(target, ...rel.split("/")));
   return cur.kind === "file" ? { kind: "file", sha: sha256(cur.bytes) } : cur;
 }
 function ancestorsOf(target) {
-  return new AncestorCheck(target, import_node_fs15.default.realpathSync(target));
+  return new AncestorCheck(target, import_node_fs18.default.realpathSync(target));
 }
-var isKitCopy = (e) => ownerKind(e.owner) === "kit" && e.op === "copy";
+var isKitCopy = (e) => ownerKind2(e.owner) === "kit" && e.op === "copy";
 function manifestChange(l, ancestors, after) {
   if (l.before.agents.join(",") === after.agents.join(",")) return null;
   const want = manifestContent(after, l.tokens);
   if (ancestors.state(MANIFEST_PATH) === "blocked") return { action: "conflict", content: want };
-  const cur = existing(import_node_path16.default.join(l.target, ...MANIFEST_PATH.split("/")));
+  const cur = existing(import_node_path19.default.join(l.target, ...MANIFEST_PATH.split("/")));
   if (cur.kind === "none") return { action: "create", content: want };
   if (cur.kind === "file" && cur.bytes.equals(want)) return { action: "same", content: want };
   if (cur.kind === "file" && cur.bytes.equals(manifestContent(l.before, l.tokens))) return { action: "replace", content: want };
   const neu = `${MANIFEST_PATH}.new`;
-  return existing(import_node_path16.default.join(l.target, ...neu.split("/"))).kind === "other" ? { action: "conflict", content: want } : { action: "conflict", content: want, newFile: neu };
+  return existing(import_node_path19.default.join(l.target, ...neu.split("/"))).kind === "other" ? { action: "conflict", content: want } : { action: "conflict", content: want, newFile: neu };
 }
 function featureDocsAllowed2(target, entries) {
-  const docs = entries.filter((e) => e.path.startsWith(`${import_node_path16.default.posix.dirname(FEATURE_DOCS)}/`));
+  const docs = entries.filter((e) => e.path.startsWith(`${import_node_path19.default.posix.dirname(FEATURE_DOCS)}/`));
   if (!docs.some((e) => e.path === FEATURE_DOCS)) return false;
   return docs.every((e) => {
     if (!isKitCopy(e) || !e.sha256) return false;
-    const cur = existing(import_node_path16.default.join(target, ...e.path.split("/")));
+    const cur = existing(import_node_path19.default.join(target, ...e.path.split("/")));
     return cur.kind === "file" && sha256(cur.bytes) === e.sha256;
   });
 }
+function changeOverlay(ops) {
+  const writes = /* @__PURE__ */ new Map();
+  const deletes = /* @__PURE__ */ new Set();
+  for (const o of ops) {
+    if ((o.action === "create" || o.action === "restore" || o.action === "update") && o.content) writes.set(o.path, { content: o.content, executable: o.executable === true });
+    else if (o.action === "delete") deletes.add(o.path);
+  }
+  return { writes, deletes };
+}
 function applyChange(ctx, l, after, r) {
   const { target, inst } = l;
-  const full7 = (rel) => import_node_path16.default.join(target, ...rel.split("/"));
+  const full9 = (rel) => import_node_path19.default.join(target, ...rel.split("/"));
   let current3 = "";
   try {
     const deleted = [];
     for (const o of r.ops) {
       current3 = o.path;
-      if ((o.action === "create" || o.action === "restore" || o.action === "update") && o.content) writeFileAtomic(full7(o.path), o.content, o.executable === true);
-      else if (o.action === "conflict" && o.newFile && o.content) writeFileAtomic(full7(o.newFile), o.content, false);
+      if ((o.action === "create" || o.action === "restore" || o.action === "update") && o.content) writeFileAtomic(full9(o.path), o.content, o.executable === true);
+      else if (o.action === "conflict" && o.newFile && o.content) writeFileAtomic(full9(o.newFile), o.content, false);
       else if (o.action === "delete") {
         removeFile(target, o.path);
         deleted.push(o.path);
@@ -1664,25 +3169,28 @@ function applyChange(ctx, l, after, r) {
       }
     }
     removeEmptyDirs(target, deleted);
+    current3 = "배치(mirror · render · merge)";
+    if (r.projection) applyProjection(target, r.projection.ops);
     const m = r.manifest;
     current3 = MANIFEST_PATH;
-    if (m && (m.action === "create" || m.action === "replace")) writeFileAtomic(full7(MANIFEST_PATH), m.content, false);
-    if (m?.action === "conflict" && m.newFile) writeFileAtomic(full7(m.newFile), m.content, false);
+    if (m && (m.action === "create" || m.action === "replace")) writeFileAtomic(full9(MANIFEST_PATH), m.content, false);
+    if (m?.action === "conflict" && m.newFile) writeFileAtomic(full9(m.newFile), m.content, false);
   } catch (err) {
     throw fsError(err, `쓰기 실패 ${current3}`);
   }
   const docs = featureDocsAllowed2(target, r.entries) ? buildFeatureDocs(target, ctx.io.env) : { status: "skipped", reason: "tools/docs/ 에 킷 판이 아닌 파일이 있다" };
-  const lockText2 = serializeLock({ schema: "harness-kit.lock/v2", kit: { version: inst.lock.kit.version ?? inst.meta.kit.version, source: inst.lock.kit.source }, packs: inst.lock.packs, entries: r.entries });
+  const entries = r.projection ? mergeEntries(r.entries, r.projection) : r.entries;
+  const lockText2 = serializeLock({ schema: "harness-kit.lock/v2", kit: { version: inst.lock.kit.version ?? inst.meta.kit.version, source: inst.lock.kit.source }, packs: inst.lock.packs, entries });
   const meta = mergeMetaForUpdate(inst.meta, { version: inst.meta.kit.version, selection: after, tokens: l.tokens, today: today(ctx.io) });
   const state = [
-    ...inst.lockFormat === "v1" ? [[V1_LOCK_BACKUP, import_node_fs15.default.readFileSync(full7(LOCK_REL))]] : [],
+    ...inst.lockFormat === "v1" ? [[V1_LOCK_BACKUP, import_node_fs18.default.readFileSync(full9(LOCK_REL))]] : [],
     [LOCK_REL, Buffer.from(lockText2, "utf8")],
     [META_REL, Buffer.from(serializeMeta(meta), "utf8")]
   ];
   try {
     for (const [rel, data] of state) {
       current3 = rel;
-      writeFileAtomic(full7(rel), data, false);
+      writeFileAtomic(full9(rel), data, false);
     }
   } catch (err) {
     throw fsError(err, `쓰기 실패 ${current3}`);
@@ -1691,6 +3199,7 @@ function applyChange(ctx, l, after, r) {
 }
 function conflictsOf(r) {
   const out = r.ops.filter((o) => o.action === "conflict").map((o) => ({ path: o.path, new: o.newFile ?? null, diff: o.newFile ? `diff -u ${shellQuote(o.path)} ${shellQuote(o.newFile)}` : null }));
+  out.push(...projectionConflicts(r.projection ?? null));
   if (r.manifest?.action === "conflict") {
     const n = r.manifest.newFile;
     out.push({ path: MANIFEST_PATH, new: n ?? null, diff: n ? `diff -u ${shellQuote(MANIFEST_PATH)} ${shellQuote(n)}` : null });
@@ -1732,6 +3241,8 @@ function report(ctx, l, rep) {
     featureDocs: rep.featureDocs,
     state: [META_REL, LOCK_REL, ...l.inst.lockFormat === "v1" ? [V1_LOCK_BACKUP] : []]
   };
+  const projection = projectionData(rep.result.projection ?? null, rep.result.projectionFindings ?? []);
+  if (projection) data.projection = projection;
   const counts2 = Object.entries(countsOf(rep.result.ops)).filter(([, n]) => n > 0).map(([k, n]) => `${k} ${n}`).join(" · ");
   const lines = [
     `harness-kit ${rep.command} — ${l.target}`,
@@ -1739,7 +3250,8 @@ function report(ctx, l, rep) {
     ...rep.notes,
     ...l.droppedModules.length ? [`  ⚠ 킷에 없는 모듈을 메타에서 뺀다: ${l.droppedModules.join(", ")}`] : [],
     ...shown.map(opLine2),
-    `  파일: ${counts2 || "바꿀 것 없음"}`
+    `  파일: ${counts2 || "바꿀 것 없음"}`,
+    ...projectionLines(rep.result.projection ?? null, rep.result.projectionFindings ?? [], ctx.quiet)
   ];
   if (m && m.action !== "same") lines.push(`  매니페스트 ${MANIFEST_PATH}: ${m.action}${m.newFile ? ` → ${m.newFile}` : ""}`);
   if (conflicts.length) {
@@ -1752,19 +3264,19 @@ function report(ctx, l, rep) {
 var dryRunOf = (ctx) => bool(ctx.values, "dry-run");
 
 // src/commands/add.ts
-var kitEntry2 = (p, w) => ({ path: p, op: "copy", owner: "kit", sha256: w.sha256, layer: w.layer });
-var userEntry2 = (p, layer) => ({ path: p, op: "copy", owner: "user", sha256: null, layer });
+var kitEntry3 = (p, w) => ({ path: p, op: "copy", owner: "kit", sha256: w.sha256, layer: w.layer });
+var userEntry3 = (p, layer) => ({ path: p, op: "copy", owner: "user", sha256: null, layer });
 function withD2(p, w, action) {
   return { path: p, owner: "kit", layer: w.layer, action, executable: w.executable, content: w.content };
 }
 function judgeShare(p, w, e, cur) {
   const skip = e ? skipByOwner(e) : null;
   if (e && skip) return { op: { path: p, owner: e.owner, layer: e.layer ?? w.layer, action: skip.action, ...skip.reason ? { reason: skip.reason } : {} }, entry: e };
-  if (cur.kind === "other") return { op: { path: p, owner: e?.owner ?? "user", layer: w.layer, action: "skip-user", reason: cur.what }, entry: e ?? userEntry2(p, w.layer) };
-  if (cur.kind === "none") return { op: withD2(p, w, e ? "restore" : "create"), entry: kitEntry2(p, w) };
+  if (cur.kind === "other") return { op: { path: p, owner: e?.owner ?? "user", layer: w.layer, action: "skip-user", reason: cur.what }, entry: e ?? userEntry3(p, w.layer) };
+  if (cur.kind === "none") return { op: withD2(p, w, e ? "restore" : "create"), entry: kitEntry3(p, w) };
   if (!e) {
-    if (cur.sha === w.sha256) return { op: { path: p, owner: "kit", layer: w.layer, action: "same" }, entry: kitEntry2(p, w) };
-    return { op: { path: p, owner: "user", layer: w.layer, action: "skip-user", reason: "사람이 둔 파일이다" }, entry: userEntry2(p, w.layer) };
+    if (cur.sha === w.sha256) return { op: { path: p, owner: "kit", layer: w.layer, action: "same" }, entry: kitEntry3(p, w) };
+    return { op: { path: p, owner: "user", layer: w.layer, action: "skip-user", reason: "사람이 둔 파일이다" }, entry: userEntry3(p, w.layer) };
   }
   return { op: { path: p, owner: e.owner, layer: w.layer, action: "keep" }, entry: { ...e, layer: w.layer } };
 }
@@ -1773,25 +3285,30 @@ function planAdd(l, names) {
   const afterLayers = winnerLayers(l.layout, l.loc.dir, after, l.tokens);
   const beforeLayers = winnerLayers(l.layout, l.loc.dir, l.before, l.tokens);
   const { want } = wanted({ layout: l.layout, templatesDir: l.loc.dir, selection: after, tokens: l.tokens });
-  const { lock } = resolvedLock(l.inst, l.target, () => new Map([...want].map(([p, d]) => [p, d.sha256])));
+  const { lock } = resolvedLock(l.inst, l.target, () => new Map([...want].map(([p2, d]) => [p2, d.sha256])));
   const locked = new Map(lock.entries.map((e) => [e.path, e]));
   const share = shareOf(l.layout, l.loc.dir, after, names, l.tokens, afterLayers);
   const ancestors = ancestorsOf(l.target);
   const ops = [];
-  for (const p of [...share].sort(byteCompare)) {
-    const j = judgeShare(p, want.get(p), locked.get(p), currentOf(l.target, ancestors, p));
+  for (const p2 of [...share].sort(byteCompare)) {
+    const j = judgeShare(p2, want.get(p2), locked.get(p2), currentOf(l.target, ancestors, p2));
     ops.push(j.op);
-    if (j.entry) locked.set(p, j.entry);
+    if (j.entry) locked.set(p2, j.entry);
   }
-  for (const p of relayered(beforeLayers, afterLayers, share)) {
-    const e = locked.get(p);
+  for (const p2 of relayered(beforeLayers, afterLayers, share)) {
+    const e = locked.get(p2);
     if (!e || !isKitCopy(e)) continue;
-    const layer = afterLayers.get(p);
-    ops.push({ path: p, owner: e.owner, layer, action: "relayer", reason: "이기는 판이 바뀌었다 — 내용은 update 가 맞춘다" });
-    locked.set(p, { ...e, layer });
+    const layer = afterLayers.get(p2);
+    ops.push({ path: p2, owner: e.owner, layer, action: "relayer", reason: "이기는 판이 바뀌었다 — 내용은 update 가 맞춘다" });
+    locked.set(p2, { ...e, layer });
   }
   const manifest = manifestChange(l, ancestors, after);
-  return { after, result: { ops, entries: [...locked.values()], manifest } };
+  const spec = loadSpecOrNull(l.loc.dir);
+  if (!spec) return { after, result: { ops, entries: [...locked.values()], manifest, projection: null } };
+  const { writes, deletes } = changeOverlay(ops);
+  const p = prepare({ target: l.target, spec, tokens: l.tokens, agents: after.agents, writes, deletes, copyPaths: want.keys() });
+  const projection = judgeInstall({ target: l.target, spec, tokens: l.tokens, sources: p.sources, wants: p.wants, prev: l.inst.lock.entries, force: false });
+  return { after, result: { ops, entries: [...locked.values()], manifest, projection, projectionFindings: p.findings } };
 }
 function runAdd(ctx) {
   const kit = kitOf(ctx);
@@ -1804,14 +3321,144 @@ function runAdd(ctx) {
   const featureDocs = dryRun ? null : applyChange(ctx, l, after, result);
   const notes = already.length ? [`  · 이미 켜져 있다 — 그 몫에서 빠진 파일만 채운다: ${already.join(", ")}`] : [];
   const { data, lines } = report(ctx, l, { command: "add", names: { ...names, already }, after, result, dryRun, featureDocs, notes });
-  const conflict = result.ops.some((o) => o.action === "conflict") || result.manifest?.action === "conflict";
+  const conflict = result.ops.some((o) => o.action === "conflict") || result.manifest?.action === "conflict" || needsHuman(result.projection ?? null, result.projectionFindings ?? []);
   return { code: conflict ? EXIT.HUMAN : EXIT.OK, data, lines };
 }
 
 // src/commands/doctor.ts
-var import_node_fs16 = __toESM(require("node:fs"));
-var import_node_path17 = __toESM(require("node:path"));
-var DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "version-mismatch", "missing", "drifted", "gitignore", "entry-size"];
+var import_node_fs20 = __toESM(require("node:fs"));
+var import_node_path21 = __toESM(require("node:path"));
+
+// src/projection/check.ts
+var import_node_fs19 = __toESM(require("node:fs"));
+var import_node_path20 = __toESM(require("node:path"));
+var PROJECTION_KINDS = ["stale", "symlink-found", "merge-missing", "relative-ref", "skill-model-field", "role-model-locked", "pending-new", "steering-size", "layout-conflict"];
+var LIMIT = 24 * 1024;
+var SOURCE_DIRS = [".agents/rules/", ".agents/skills/", ".agents/roles/"];
+function lstat2(p) {
+  try {
+    return import_node_fs19.default.lstatSync(p);
+  } catch {
+    return null;
+  }
+}
+function currentSha(p, isDir2) {
+  const st = lstat2(p);
+  if (!st || st.isSymbolicLink()) return null;
+  if (isDir2) return st.isDirectory() ? treeSha(walkView(new FsView(p), "")) : null;
+  return st.isFile() ? sha256(import_node_fs19.default.readFileSync(p)) : null;
+}
+function linksInside(p, prefix = "") {
+  const st = lstat2(p);
+  if (!st?.isDirectory() || st.isSymbolicLink()) return [];
+  const out = [];
+  for (const name of import_node_fs19.default.readdirSync(p).sort()) {
+    const q = import_node_path20.default.join(p, name);
+    const s = lstat2(q);
+    const rel = prefix ? `${prefix}/${name}` : name;
+    if (s?.isSymbolicLink()) out.push(rel);
+    else if (s?.isDirectory()) out.push(...linksInside(q, rel));
+  }
+  return out.sort();
+}
+function hasRelativeRef(text) {
+  const stripped = text.replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
+  return /\[[^\]]*\]\((\.\.\/[^)\s]*)\)/.test(stripped);
+}
+function fmOf(file) {
+  const { block: block2 } = splitFrontmatter(import_node_fs19.default.readFileSync(file, "utf8"));
+  return block2 === null ? {} : parseFrontmatter(block2);
+}
+function kiroAlwaysBytes(target) {
+  const dir = import_node_path20.default.join(target, ".kiro/steering");
+  if (!import_node_fs19.default.existsSync(dir)) return 0;
+  let total = 0;
+  for (const name of import_node_fs19.default.readdirSync(dir).filter((n) => n.endsWith(".md"))) {
+    const p = import_node_path20.default.join(dir, name);
+    if (!lstat2(p)?.isFile()) continue;
+    const inc = fmOf(p).inclusion;
+    if ((typeof inc === "string" && inc || "always") === "always") total += import_node_fs19.default.statSync(p).size;
+  }
+  return total;
+}
+function specAt(target) {
+  const file = import_node_path20.default.join(target, "scripts/harness/projection.json");
+  return import_node_fs19.default.existsSync(file) ? parseSpec(import_node_fs19.default.readFileSync(file, "utf8")) : null;
+}
+function layoutFindings(target, entries) {
+  const out = [];
+  const meta = readMeta(import_node_path20.default.join(target, META_REL));
+  const tokens = meta.status === "ok" ? meta.meta.tokens : {};
+  const agents = meta.status === "ok" ? meta.meta.agents : [];
+  let spec;
+  for (const e of entries) {
+    if (e.owner !== "kit") continue;
+    const p = import_node_path20.default.join(target, ...e.path.split("/"));
+    const from = typeof e.from === "string" ? e.from : null;
+    if (e.op === "mirror" || e.op === "render") {
+      const st = lstat2(p);
+      const isDir2 = e.op === "mirror" && (Boolean(st?.isDirectory()) && !st?.isSymbolicLink() || Boolean(from && lstat2(import_node_path20.default.join(target, ...from.split("/")))?.isDirectory()));
+      if (st?.isSymbolicLink()) {
+        out.push({ kind: "symlink-found", severity: "error", path: e.path, hint: "링크 대신 실제 파일을 둔다 → npx harness-kit repair" });
+        continue;
+      }
+      for (const inner of linksInside(p)) out.push({ kind: "symlink-found", severity: "error", path: `${e.path}/${inner}`, hint: "링크 대신 실제 파일을 둔다 → npx harness-kit repair" });
+      const cur = currentSha(p, isDir2);
+      if (cur === null) {
+        out.push({ kind: "missing", severity: "error", path: e.path, hint: `원본 ${from ?? "?"} 에서 다시 만든다 → npx harness-kit repair` });
+        continue;
+      }
+      if (typeof e.sha256 !== "string" || cur !== e.sha256) {
+        out.push({ kind: "drifted", severity: "error", path: e.path, hint: `복사본 · 생성물을 직접 고쳤다. 원본 ${from ?? "?"} 을 고친다 → npx harness-kit repair` });
+        continue;
+      }
+      if (from && typeof e.fromSha256 === "string") {
+        const sp = import_node_path20.default.join(target, ...from.split("/"));
+        const now = currentSha(sp, Boolean(lstat2(sp)?.isDirectory()));
+        if (now === null) out.push({ kind: "stale", severity: "error", path: e.path, hint: `원본 ${from} 이 없다 → npx harness-kit update` });
+        else if (now !== e.fromSha256) out.push({ kind: "stale", severity: "error", path: e.path, hint: `원본 ${from} 가 바뀌었다 → npx harness-kit repair` });
+      }
+    } else if (e.op === "merge" && Array.isArray(e.keys) && e.keys.length) {
+      const kind = MERGE_KIND[e.path];
+      if (!kind) continue;
+      if (spec === void 0) spec = specAt(target);
+      if (!spec) continue;
+      const st = lstat2(p);
+      const cur = st?.isFile() ? import_node_fs19.default.readFileSync(p, "utf8") : null;
+      const keys = e.keys;
+      const lost = cur === null ? keys : missingWith(kind, cur, keys, fullMergeWant(kind, spec, tokens, loadSources(new FsView(target))));
+      if (lost.length) out.push({ kind: "merge-missing", severity: "error", path: e.path, hint: `킷 키 ${lost.slice(0, 3).join(", ")}${lost.length > 3 ? " …" : ""} 가 없다 → npx harness-kit repair` });
+    } else if (e.op === "copy") {
+      const st = lstat2(p);
+      if (!st?.isFile()) continue;
+      if (SOURCE_DIRS.some((d) => e.path.startsWith(d)) && e.path.endsWith(".md") && hasRelativeRef(import_node_fs19.default.readFileSync(p, "utf8"))) {
+        out.push({ kind: "relative-ref", severity: "error", path: e.path, hint: "킷 원본은 `../` 대신 리포 기준 경로(.agents/…)를 쓴다(복사본에서 깨진다)" });
+      }
+    }
+  }
+  for (const e of entries) {
+    for (const side of [`${e.path}.new`, `${e.path}.bak`]) {
+      if (lstat2(import_node_path20.default.join(target, ...side.split("/")))) out.push({ kind: "pending-new", severity: "warn", path: side, hint: `병합하거나 지운다(diff -u ${e.path} ${side})` });
+    }
+  }
+  try {
+    const s = spec === void 0 ? specAt(target) : spec;
+    if (s) {
+      const ctx = buildContext({ view: new FsView(target), spec: s, tokens, agents });
+      wantedOps(ctx);
+      out.push(...ctx.findings);
+    }
+  } catch (err) {
+    if (!(err instanceof CliError)) throw err;
+    out.push({ kind: "layout-conflict", severity: "error", path: ".agents", hint: err.message });
+  }
+  const always = kiroAlwaysBytes(target);
+  if (always > LIMIT) out.push({ kind: "steering-size", severity: "warn", path: ".kiro/steering", hint: `inclusion: always steering = ${always.toLocaleString("en-US")} bytes (기준 ${LIMIT.toLocaleString("en-US")})` });
+  return out;
+}
+
+// src/commands/doctor.ts
+var DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "version-mismatch", "missing", "drifted", "gitignore", "entry-size", ...PROJECTION_KINDS];
 var GITIGNORE_NEEDS = [".agents/state/", ".agents/local/", ".agents/reports/"];
 var ENTRY_FILES = ["AGENTS.md", "CLAUDE.md"];
 var ENTRY_LIMIT = 24 * 1024;
@@ -1837,11 +3484,11 @@ function versionFindings(meta, lock) {
   }
   return out;
 }
-function fileState(full7, sha) {
-  const st = lstatOrNull(full7);
+function fileState(full9, sha) {
+  const st = lstatOrNull(full9);
   if (!st || !st.isFile()) return "missing";
   try {
-    return sha && sha256File(full7) === sha ? "ok" : "drifted";
+    return sha && sha256File(full9) === sha ? "ok" : "drifted";
   } catch (err) {
     return { unreadable: err.code ?? String(err) };
   }
@@ -1856,7 +3503,7 @@ function copyFindings(target, lock) {
       continue;
     }
     if (e.op !== "copy" || e.owner !== "kit") continue;
-    const state = fileState(import_node_path17.default.join(target, ...e.path.split("/")), e.sha256);
+    const state = fileState(import_node_path21.default.join(target, ...e.path.split("/")), e.sha256);
     if (state === "ok") ok += 1;
     else if (state === "missing") {
       findings.push({ kind: "missing", severity: "error", path: e.path, owner: e.owner, hint: "킷 파일이 없다. harness-kit repair 로 되살린다" });
@@ -1874,7 +3521,7 @@ function copyFindings(target, lock) {
 function gitignoreFinding(target) {
   let lines = [];
   try {
-    lines = import_node_fs16.default.readFileSync(import_node_path17.default.join(target, ".gitignore"), "utf8").split(/\r?\n/).map((l) => l.trim());
+    lines = import_node_fs20.default.readFileSync(import_node_path21.default.join(target, ".gitignore"), "utf8").split(/\r?\n/).map((l) => l.trim());
   } catch {
     lines = [];
   }
@@ -1889,7 +3536,7 @@ function gitignoreFinding(target) {
 function entrySizeFinding(target) {
   let bytes = 0;
   for (const f of ENTRY_FILES) {
-    const st = lstatOrNull(import_node_path17.default.join(target, f));
+    const st = lstatOrNull(import_node_path21.default.join(target, f));
     if (st?.isFile()) bytes += st.size;
   }
   if (bytes <= ENTRY_LIMIT) return null;
@@ -1910,14 +3557,14 @@ function parseOnly(raw) {
   return only;
 }
 function collect(target) {
-  const metaRead = readMeta(import_node_path17.default.join(target, META_REL));
+  const metaRead = readMeta(import_node_path21.default.join(target, META_REL));
   if (metaRead.status === "missing") {
     throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 harness-kit init");
   }
   const findings = [];
   const meta = metaRead.status === "ok" ? metaRead.meta : null;
   if (metaRead.status === "invalid") findings.push({ kind: "meta-invalid", severity: "error", path: META_REL, hint: metaRead.error });
-  const lockRead = readLock(import_node_path17.default.join(target, LOCK_REL));
+  const lockRead = readLock(import_node_path21.default.join(target, LOCK_REL));
   const lock = lockRead.status === "ok" ? lockRead.lock : null;
   if (lockRead.status === "ok" && lockRead.format === "v1") {
     findings.push({ kind: "lock-v1", severity: "info", path: LOCK_REL, hint: "v1(TSV) lock 이다. update 가 v2 로 바꾼다" });
@@ -1928,8 +3575,12 @@ function collect(target) {
   findings.push(...versionFindings(meta, lock));
   const copy = lock ? copyFindings(target, lock) : { ok: 0, findings: [] };
   findings.push(...copy.findings);
+  const layout = lock ? layoutFindings(target, lock.entries.filter((e) => isSafeRelPath(e.path))) : [];
+  findings.push(...layout.map((f) => ({ kind: f.kind, severity: f.severity, path: f.path, hint: f.hint })));
   for (const f of [gitignoreFinding(target), entrySizeFinding(target)]) if (f) findings.push(f);
-  return { meta, lock, ok: copy.ok, findings };
+  const projectionTotal = lock ? lock.entries.filter((e) => PROJECTION_OPS.has(e.op) && e.owner === "kit").length : 0;
+  const projectionBad = new Set(layout.filter((f) => f.severity === "error" && !f.path.startsWith(".agents/")).map((f) => f.path)).size;
+  return { meta, lock, ok: copy.ok, findings, projection: { ok: Math.max(0, projectionTotal - projectionBad), errors: layout.filter((f) => f.severity === "error").length } };
 }
 function summarize(findings, ok) {
   const count = (pred) => findings.filter(pred).length;
@@ -1952,12 +3603,14 @@ function runDoctor(ctx) {
   const c = collect(target);
   const findings = only ? c.findings.filter((f) => only.includes(f.kind)) : c.findings;
   const summary = summarize(findings, c.ok);
+  if (c.projection) summary.projection = c.projection;
   const code = bool(ctx.values, "check") && (summary.errors ?? 0) > 0 ? EXIT.CHECK : EXIT.OK;
   const kit = { installed: c.meta?.kit.version ?? null, lock: c.lock?.kit.version ?? null, cli: VERSION };
   const lines = [
     `harness-kit doctor — ${target}`,
     `  킷: 설치 ${kit.installed ?? "?"} · lock ${kit.lock ?? "?"} · CLI ${kit.cli}`,
     `  copy 항목: ok ${summary.ok} · drifted ${summary.drifted} · missing ${summary.missing}`,
+    ...c.projection ? [`  배치 항목: ok ${c.projection.ok} · 오류 ${c.projection.errors}`] : [],
     `  오류 ${summary.errors} · 경고 ${summary.warnings} · 정보 ${summary.infos}`,
     ...ctx.quiet ? [] : findings.map(findingLine)
   ];
@@ -1965,8 +3618,8 @@ function runDoctor(ctx) {
 }
 
 // src/commands/init.ts
-var import_node_fs17 = __toESM(require("node:fs"));
-var import_node_path18 = __toESM(require("node:path"));
+var import_node_fs21 = __toESM(require("node:fs"));
+var import_node_path22 = __toESM(require("node:path"));
 
 // src/cli/prompt.ts
 var import_node_readline = __toESM(require("node:readline"));
@@ -2069,11 +3722,11 @@ function readOptions(ctx, layout) {
 }
 function assertInstallable(target) {
   const st = lstatOrNull(target);
-  if (st && !(st.isDirectory() || st.isSymbolicLink() && import_node_fs17.default.statSync(target).isDirectory())) {
+  if (st && !(st.isDirectory() || st.isSymbolicLink() && import_node_fs21.default.statSync(target).isDirectory())) {
     throw new CliError(EXIT.STATE, `대상이 폴더가 아니다: ${target}`);
   }
-  if (import_node_fs17.default.existsSync(import_node_path18.default.join(target, META_REL))) {
-    throw new CliError(EXIT.STATE, `이미 설치된 리포다: ${import_node_path18.default.join(target, META_REL)}`, "킷 갱신은 harness-kit update, 하네스 · 모듈 추가는 harness-kit add 다. 지금 상태는 harness-kit doctor");
+  if (import_node_fs21.default.existsSync(import_node_path22.default.join(target, META_REL))) {
+    throw new CliError(EXIT.STATE, `이미 설치된 리포다: ${import_node_path22.default.join(target, META_REL)}`, "킷 갱신은 harness-kit update, 하네스 · 모듈 추가는 harness-kit add 다. 지금 상태는 harness-kit doctor");
   }
 }
 function selectionInput(ctx) {
@@ -2096,10 +3749,10 @@ function planData(command, target, templates, sel, tokens, plan, shown) {
   };
 }
 function lockText(plan, source) {
-  const entries = plan.ops.map(
+  const copies = plan.ops.map(
     (o) => o.owner === "kit" ? { path: o.path, op: "copy", owner: "kit", sha256: o.sha256, layer: o.layer } : { path: o.path, op: "copy", owner: "user", sha256: null, layer: o.layer }
   );
-  return serializeLock({ schema: "harness-kit.lock/v2", kit: { version: VERSION, source }, packs: [], entries });
+  return serializeLock({ schema: "harness-kit.lock/v2", kit: { version: VERSION, source }, packs: [], entries: mergeEntries(copies, plan.projection) });
 }
 var STATE_LINE = `  상태 파일: ${META_REL} · ${LOCK_REL} · ${MANIFEST_PATH}`;
 async function runInit(ctx) {
@@ -2115,14 +3768,20 @@ async function runInit(ctx) {
   try {
     const input = prompter ? await askMissing(prompter, selectionInput(ctx), layout, loc.dir) : selectionInput(ctx);
     const selection = resolveSelection(layout, loc.dir, input, { target, env: io2.env });
-    const tokens = resolveTokens(layout, selection, { flags: opts.flags, env: io2.env, targetBasename: import_node_path18.default.basename(target) });
+    const tokens = resolveTokens(layout, selection, { flags: opts.flags, env: io2.env, targetBasename: import_node_path22.default.basename(target) });
     checkSlug(tokens.PROJECT_SLUG ?? "");
     const plan = buildPlan({ layout, templatesDir: loc.dir, target, selection, tokens, mode: { force: opts.force, adopt: opts.adopt } });
     const shown = command === "plan" && !ctx.quiet ? plan.ops : plan.ops.filter(needsAttention);
     const data = planData(command, target, loc.dir, selection, tokens, plan, shown);
+    const projection = projectionData(plan.projection, plan.projectionFindings, command === "plan");
+    if (projection) data.projection = projection;
+    const human = needsHuman(plan.projection, plan.projectionFindings);
+    const conflicts = projectionConflicts(plan.projection);
+    if (conflicts.length) data.conflicts = conflicts;
     const lines = [`harness-kit ${command} — ${target}`, selectionLine2(selection)];
+    const projectionShown = projectionLines(plan.projection, plan.projectionFindings, ctx.quiet, command === "plan" && !ctx.quiet, /* @__PURE__ */ new Set(["create"]));
     if (command === "plan") {
-      lines.push(...shown.map(opLine3), countsLine2(plan), STATE_LINE, "  (plan — 쓰지 않았다)");
+      lines.push(...shown.map(opLine3), countsLine2(plan), ...projectionShown, STATE_LINE, "  (plan — 쓰지 않았다)");
       return { code: EXIT.OK, data, lines };
     }
     if (prompter) {
@@ -2133,15 +3792,15 @@ async function runInit(ctx) {
     const meta = buildMeta({ version: VERSION, selection, tokens, issue: { source: opts.issueSource, prefix: str(ctx.values, "issue-prefix") }, base: str(ctx.values, "base"), today: today(io2) });
     const result = applyPlan({ plan, metaText: serializeMeta(meta), lockText: lockText(plan, loc.source), env: io2.env });
     data.featureDocs = result.featureDocs;
-    lines.push(countsLine2(plan), ...shown.map(opLine3), STATE_LINE, docsLine(result.featureDocs), "  다음: harness-kit doctor");
-    return { code: EXIT.OK, data, lines };
+    lines.push(countsLine2(plan), ...shown.map(opLine3), ...projectionShown, STATE_LINE, docsLine(result.featureDocs), "  다음: harness-kit doctor");
+    return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines };
   } finally {
     prompter?.close();
   }
 }
 
 // src/commands/list.ts
-var import_node_path19 = __toESM(require("node:path"));
+var import_node_path23 = __toESM(require("node:path"));
 function tally(values) {
   const out = /* @__PURE__ */ new Map();
   for (const v of values) out.set(v, (out.get(v) ?? 0) + 1);
@@ -2149,7 +3808,7 @@ function tally(values) {
 }
 function runList(ctx) {
   const target = targetOf(ctx);
-  const read = readMeta(import_node_path19.default.join(target, META_REL));
+  const read = readMeta(import_node_path23.default.join(target, META_REL));
   if (read.status === "missing") throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 harness-kit init");
   if (read.status === "invalid") throw new CliError(EXIT.STATE, `메타를 해석하지 못했다: ${read.error}`, "harness-kit doctor 로 상태를 본다");
   const m = read.meta;
@@ -2178,7 +3837,7 @@ function runList(ctx) {
     `  이슈 키 ${m.issueKey.source}:${m.issueKey.prefix} · base ${m.git.base}`
   ];
   if (bool(ctx.values, "files")) {
-    const lr = readLock(import_node_path19.default.join(target, LOCK_REL));
+    const lr = readLock(import_node_path23.default.join(target, LOCK_REL));
     if (lr.status !== "ok") {
       throw new CliError(EXIT.STATE, `lock 을 읽지 못했다: ${lr.status === "missing" ? "없음" : lr.error}`, "harness-kit doctor 로 상태를 본다");
     }
@@ -2193,7 +3852,7 @@ function runList(ctx) {
 }
 
 // src/commands/outdated.ts
-var import_node_path20 = __toESM(require("node:path"));
+var import_node_path24 = __toESM(require("node:path"));
 
 // src/core/git.ts
 var import_node_child_process3 = require("node:child_process");
@@ -2253,7 +3912,7 @@ function sourceOf(ctx, target) {
     if (given.url.startsWith("-")) throw usageError(`--source 는 '-' 로 시작할 수 없다: '${given.url}'`, "git 원격 주소나 저장소 경로를 준다");
     return given;
   }
-  const lock = readLock(import_node_path20.default.join(target, LOCK_REL));
+  const lock = readLock(import_node_path24.default.join(target, LOCK_REL));
   const url = fromKitSource(lock.status === "ok" ? lock.lock.kit.source : null, ctx.io.env);
   if (url && !url.startsWith("-")) return { url, from: "lock" };
   return { url: null, reason: "소스를 모른다 — --source <git 원격> 또는 HARNESS_KIT_SOURCE 로 준다" };
@@ -2262,7 +3921,7 @@ var isPre = (v) => /^\d+\.\d+\.\d+-/.test(v);
 var newer = (a, b) => (compareSemver(a, b) ?? 0) > 0;
 function runOutdated(ctx) {
   const target = targetOf(ctx);
-  const m = readMeta(import_node_path20.default.join(target, META_REL));
+  const m = readMeta(import_node_path24.default.join(target, META_REL));
   if (m.status === "missing") throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 harness-kit init");
   if (m.status === "invalid") throw new CliError(EXIT.STATE, `메타를 해석하지 못했다: ${m.error}`, "harness-kit doctor 로 상태를 본다");
   const installed = m.meta.kit.version;
@@ -2296,9 +3955,9 @@ function runOutdated(ctx) {
 }
 
 // src/commands/remove.ts
-var import_node_path21 = __toESM(require("node:path"));
+var import_node_path25 = __toESM(require("node:path"));
 function keepAction(e) {
-  const owner = ownerKind(e.owner);
+  const owner = ownerKind2(e.owner);
   if (owner === "external") return "skip-external";
   if (owner === "pack") return "skip-pack";
   if (owner !== "kit" || entryKind(e) === "none") return "keep-user";
@@ -2311,7 +3970,7 @@ function judgeDrop(l, p, e, cur, ambiguous) {
   if (cur.kind === "none") return { op: { path: p, owner: e.owner, layer, action: "absent" }, entry: void 0 };
   if (cur.kind === "file" && e.sha256 && cur.sha === e.sha256) {
     const neu = `${p}.new`;
-    const alsoNew = existing(import_node_path21.default.join(l.target, ...neu.split("/"))).kind === "file" ? { alsoNew: neu } : {};
+    const alsoNew = existing(import_node_path25.default.join(l.target, ...neu.split("/"))).kind === "file" ? { alsoNew: neu } : {};
     return { op: { path: p, owner: e.owner, layer, action: "delete", ...alsoNew }, entry: void 0 };
   }
   const reason = cur.kind === "other" ? cur.what : ambiguous.has(p) ? AMBIGUOUS_REASON : e.sha256 ? "사람이 고친 파일이다" : "lock 에 기준 해시가 없다(고친 파일로 본다)";
@@ -2327,7 +3986,7 @@ function judgeRelayer(l, p, w, e, cur) {
   if (cur.sha === w.sha256) return { op: { path: p, owner: "kit", layer: w.layer, action: "same" }, entry: kit };
   if (e.sha256 && cur.sha === e.sha256) return { op: { path: p, ...withD3, action: "update" }, entry: kit };
   const neu = `${p}.new`;
-  const newFile = existing(import_node_path21.default.join(l.target, ...neu.split("/"))).kind === "other" ? {} : { newFile: neu };
+  const newFile = existing(import_node_path25.default.join(l.target, ...neu.split("/"))).kind === "other" ? {} : { newFile: neu };
   return { op: { path: p, ...withD3, action: "conflict", ...newFile }, entry: { ...e, layer: w.layer } };
 }
 function planRemove(l, after) {
@@ -2335,27 +3994,33 @@ function planRemove(l, after) {
   const afterLayers = winnerLayers(l.layout, l.loc.dir, after, l.tokens);
   const oldWant = wanted({ layout: l.layout, templatesDir: l.loc.dir, selection: l.before, tokens: l.tokens }).want;
   const newWant = wanted({ layout: l.layout, templatesDir: l.loc.dir, selection: after, tokens: l.tokens }).want;
-  const shaOf = () => new Map([...oldWant, ...newWant].map(([p, d]) => [p, d.sha256]));
-  const { lock, ambiguous } = resolvedLock(l.inst, l.target, shaOf);
+  const shaOf2 = () => new Map([...oldWant, ...newWant].map(([p2, d]) => [p2, d.sha256]));
+  const { lock, ambiguous } = resolvedLock(l.inst, l.target, shaOf2);
   const locked = new Map(lock.entries.map((e) => [e.path, e]));
   const ancestors = ancestorsOf(l.target);
   const ops = [];
-  for (const p of [...beforeLayers.keys()].filter((x) => !afterLayers.has(x)).sort(byteCompare)) {
-    const e = locked.get(p);
+  for (const p2 of [...beforeLayers.keys()].filter((x) => !afterLayers.has(x)).sort(byteCompare)) {
+    const e = locked.get(p2);
     if (!e) continue;
-    const j = judgeDrop(l, p, e, currentOf(l.target, ancestors, p), ambiguous);
+    const j = judgeDrop(l, p2, e, currentOf(l.target, ancestors, p2), ambiguous);
     ops.push(j.op);
-    if (j.entry) locked.set(p, j.entry);
-    else locked.delete(p);
+    if (j.entry) locked.set(p2, j.entry);
+    else locked.delete(p2);
   }
-  for (const p of relayered(beforeLayers, afterLayers)) {
-    const e = locked.get(p);
+  for (const p2 of relayered(beforeLayers, afterLayers)) {
+    const e = locked.get(p2);
     if (!e) continue;
-    const j = judgeRelayer(l, p, newWant.get(p), e, currentOf(l.target, ancestors, p));
+    const j = judgeRelayer(l, p2, newWant.get(p2), e, currentOf(l.target, ancestors, p2));
     ops.push(j.op);
-    locked.set(p, j.entry);
+    locked.set(p2, j.entry);
   }
-  return { ops, entries: [...locked.values()], manifest: manifestChange(l, ancestors, after) };
+  const manifest = manifestChange(l, ancestors, after);
+  const spec = loadSpecOrNull(l.loc.dir);
+  if (!spec) return { ops, entries: [...locked.values()], manifest, projection: null };
+  const { writes, deletes } = changeOverlay(ops);
+  const p = prepare({ target: l.target, spec, tokens: l.tokens, agents: after.agents, writes, deletes, copyPaths: newWant.keys() });
+  const projection = judgeUpdate({ target: l.target, spec, tokens: l.tokens, sources: p.sources, wants: p.wants, prev: l.inst.lock.entries, copyNow: new Set(newWant.keys()), acceptAll: false, retire: false });
+  return { ops, entries: [...locked.values()], manifest, projection, projectionFindings: p.findings };
 }
 function runRemove(ctx) {
   const kit = kitOf(ctx);
@@ -2370,19 +4035,19 @@ function runRemove(ctx) {
   const result = nothing ? { ops: [], entries: l.inst.lock.entries, manifest: null } : planRemove(l, after);
   const featureDocs = dryRun || nothing ? null : applyChange(ctx, l, after, result);
   const notes = notOn.length ? [`  · 켜져 있지 않다 — 건너뛴다: ${notOn.join(", ")}`] : [];
-  const keep = result.ops.filter((o) => o.action === "keep-modified").map((o) => o.path);
+  const keep = [...result.ops.filter((o) => o.action === "keep-modified").map((o) => o.path), ...(result.projection?.ops ?? []).filter((o) => o.action === "keep-modified").map((o) => o.path)];
   const { data, lines } = report(ctx, l, { command: "remove", names: { ...names, notOn }, after, result, dryRun, featureDocs, notes, extra: { keep } });
   if (keep.length) lines.splice(lines.length - 1, 0, "  고친 파일은 남겼다(lock 은 owner user). 필요 없으면 직접 지운다");
-  const human = keep.length > 0 || result.ops.some((o) => o.action === "conflict") || result.manifest?.action === "conflict";
+  const human = keep.length > 0 || result.ops.some((o) => o.action === "conflict") || result.manifest?.action === "conflict" || needsHuman(result.projection ?? null, result.projectionFindings ?? []);
   return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines };
 }
 
 // src/commands/repair.ts
-var import_node_fs18 = __toESM(require("node:fs"));
-var import_node_path22 = __toESM(require("node:path"));
+var import_node_fs22 = __toESM(require("node:fs"));
+var import_node_path26 = __toESM(require("node:path"));
 var REPAIR_KINDS = ["missing", "drifted", "stale", "merge"];
-function full5(target, rel) {
-  return import_node_path22.default.join(target, ...rel.split("/"));
+function full7(target, rel) {
+  return import_node_path26.default.join(target, ...rel.split("/"));
 }
 function parseOnly2(raw) {
   if (raw === void 0) return [...REPAIR_KINDS];
@@ -2392,10 +4057,10 @@ function parseOnly2(raw) {
   return only;
 }
 function survey(target, inst) {
-  const ancestors = new AncestorCheck(target, import_node_fs18.default.realpathSync(target));
+  const ancestors = new AncestorCheck(target, import_node_fs22.default.realpathSync(target));
   const out = { ok: 0, drifted: 0, skipped: 0, missing: [] };
   for (const e of inst.lock.entries) {
-    if (ownerKind(e.owner) !== "kit" || entryKind(e) !== "copy") {
+    if (ownerKind2(e.owner) !== "kit" || entryKind(e) !== "copy") {
       out.skipped += 1;
       continue;
     }
@@ -2403,7 +4068,7 @@ function survey(target, inst) {
       out.drifted += 1;
       continue;
     }
-    const cur = existing(full5(target, e.path));
+    const cur = existing(full7(target, e.path));
     if (cur.kind === "none") out.missing.push(e);
     else if (cur.kind === "file" && e.sha256 && sha256(cur.bytes) === e.sha256) out.ok += 1;
     else out.drifted += 1;
@@ -2429,23 +4094,95 @@ function judgeMissing(e, lockVersion, want) {
   if (e.sha256 && w.sha256 !== e.sha256) return { ...base, action: "needs-update", reason: "킷 내용이 lock 기록과 다르다" };
   return { ...base, action: "restore", want: w };
 }
-function applyRepair(target, inst, ops) {
+function applyRepair(target, inst, ops, projection) {
   const restored = new Map(ops.filter((o) => o.action === "restore").map((o) => [o.path, o.want]));
   let current3 = "";
   try {
     for (const [rel, w] of restored) {
       current3 = rel;
-      writeFileAtomic(full5(target, rel), w.content, w.executable);
+      writeFileAtomic(full7(target, rel), w.content, w.executable);
     }
-    const entries = inst.lock.entries.map((e) => {
+    current3 = "배치(mirror · render · merge)";
+    if (projection) applyProjection(target, projection.ops);
+    const copies = inst.lock.entries.map((e) => {
       const w = restored.get(e.path);
       return w ? { ...e, sha256: w.sha256, layer: w.layer } : e;
     });
+    const entries = projection ? [...copies.filter((e) => !projection.touched.has(e.path)), ...projection.entries] : copies;
     current3 = LOCK_REL;
-    writeFileAtomic(full5(target, LOCK_REL), Buffer.from(serializeLock({ ...inst.lock, entries }), "utf8"), false);
+    writeFileAtomic(full7(target, LOCK_REL), Buffer.from(serializeLock({ ...inst.lock, entries }), "utf8"), false);
   } catch (err) {
     throw fsError(err, `쓰기 실패 ${current3}`);
   }
+}
+function chosen(only, kind) {
+  return only.includes(kind);
+}
+function repairProjection(ctx, target, inst, only) {
+  const { io: io2 } = ctx;
+  if (!inst.lock.entries.some((e) => PROJECTION_OPS.has(e.op))) return null;
+  const loc = locateTemplates({ flag: str(ctx.values, "templates"), env: io2.env, cliFile: io2.cliFile, cwd: io2.cwd, version: VERSION });
+  const spec = loadSpecOrNull(loc.dir);
+  if (!spec) return null;
+  const layout = loadLayout(loc.dir);
+  const { selection } = selectionFromMeta(layout, loc.dir, inst.meta);
+  const tokens = tokensFromMeta(layout, selection, inst.meta, io2.env, target);
+  const p = prepare({ target, spec, tokens, agents: selection.agents });
+  const out = { ops: [], entries: [], touched: /* @__PURE__ */ new Set(), unrestorable: 0, findings: p.findings };
+  const byPath = new Map(inst.lock.entries.map((e) => [e.path, e]));
+  for (const w of [...p.wants].sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0)) {
+    const r = w.op === "merge" ? repairMerge(target, w, byPath.get(w.path), only) : repairFile(target, w, byPath.get(w.path), only);
+    if (!r) continue;
+    out.touched.add(w.path);
+    if (r.op) out.ops.push(r.op);
+    if (r.entry) out.entries.push(r.entry);
+  }
+  const wanted2 = new Set(p.wants.map((w) => w.path));
+  for (const e of inst.lock.entries) {
+    if (!PROJECTION_OPS.has(e.op) || e.owner !== "kit" || wanted2.has(e.path) || e.op === "merge") continue;
+    out.unrestorable += 1;
+    out.ops.push({ path: e.path, op: e.op, harness: "", action: "unrestorable", reason: "원본이 없다 — update 가 지운다" });
+  }
+  return out;
+}
+function repairMerge(target, w, e, only) {
+  const p = full7(target, w.path);
+  const cur = import_node_fs22.default.existsSync(p) && import_node_fs22.default.lstatSync(p).isFile() ? import_node_fs22.default.readFileSync(p, "utf8") : null;
+  const keys = e && Array.isArray(e.keys) ? e.keys : void 0;
+  const lost = cur === null ? ["(파일 없음)"] : keys ? missingWith(w.kind, cur, keys, w.want) : [];
+  if (lost.length === 0 && e || !chosen(only, cur === null ? "missing" : "merge")) return null;
+  const r = mergeWith(w.kind, cur, w.want, keys);
+  if (!r.ok) return { op: { path: w.path, op: "merge", harness: w.harness, action: "conflict", reason: r.reason } };
+  const created = e?.createdByKit === true || r.created;
+  const entry = created ? { path: w.path, op: "merge", owner: "kit", keys: r.keys, createdByKit: true } : { path: w.path, op: "merge", owner: "kit", keys: r.keys };
+  if (cur === r.text) return { entry };
+  return { op: { path: w.path, op: "merge", harness: w.harness, action: cur === null ? "restore" : "remerge", effect: { text: r.text } }, entry };
+}
+function fileOp(w, action, extra = {}) {
+  return { path: w.path, op: w.op, harness: w.harness, action, ...extra, effect: { ...extra.effect, write: w } };
+}
+function backupOp(w, cur) {
+  const have = cur.kind === "file" ? cur.files ?? /* @__PURE__ */ new Map() : /* @__PURE__ */ new Map();
+  const same = (rel) => w.files.some((f) => f.rel === rel && f.bytes.equals(have.get(rel)));
+  const backups = w.kind === "dir" ? [...have.keys()].filter((rel) => !same(rel)).map((rel) => `${w.path}/${rel}.bak`) : [`${w.path}.bak`];
+  const renames = backups.map((b) => [b.slice(0, -".bak".length), b]);
+  return fileOp(w, "backup", { reason: "생성 파일을 직접 고쳤다 — 수정본을 .bak 으로 옮겼다", backups, effect: { renames } });
+}
+function repairFile(target, w, e, only) {
+  if (w.deferred || e && e.owner !== "kit") return null;
+  const cur = stateOf(target, w.path, w.kind === "dir");
+  const entry = { path: w.path, op: w.op, owner: "kit", sha256: w.sha256, from: w.from, fromSha256: w.fromSha256 };
+  const when = (kind, op) => chosen(only, kind) ? { op, entry } : null;
+  if (!e) {
+    if (cur.kind === "none") return when("missing", fileOp(w, "create"));
+    return cur.kind === "file" && cur.sha === w.sha256 ? { entry } : null;
+  }
+  if (cur.kind === "other") return null;
+  if (cur.kind === "link") return when("drifted", fileOp(w, "relink", { reason: "symlink-found" }));
+  if (cur.kind === "none") return when("missing", fileOp(w, "restore"));
+  if (cur.sha === w.sha256) return { entry };
+  if (typeof e.sha256 === "string" && cur.sha === e.sha256) return when("stale", fileOp(w, "regenerate", { reason: "원본이 바뀌었다" }));
+  return when("drifted", backupOp(w, cur));
 }
 var HINTS = {
   "needs-update": "harness-kit update 로 킷 판을 맞춘다(되살리는 일도 update 가 한다)",
@@ -2462,12 +4199,15 @@ function runRepair(ctx) {
   const ops = doMissing ? s.missing.map((e) => judgeMissing(e, lockVersion, source?.want ?? null)) : [];
   const dryRun = bool(ctx.values, "dry-run");
   const count = (a) => ops.filter((o) => o.action === a).length;
-  if (!dryRun && count("restore") > 0) applyRepair(target, inst, ops);
-  const counts2 = { ok: s.ok, drifted: s.drifted, missing: s.missing.length, restore: count("restore"), "needs-update": count("needs-update"), unrestorable: count("unrestorable"), skipped: s.skipped };
+  const projection = repairProjection(ctx, target, inst, only);
+  const projectionWrites = (projection?.ops ?? []).some((o) => o.effect) || (projection?.entries ?? []).some((e) => JSON.stringify(e) !== JSON.stringify(inst.lock.entries.find((x) => x.path === e.path)));
+  if (!dryRun && (count("restore") > 0 || projectionWrites)) applyRepair(target, inst, ops, projection);
+  const counts2 = { ok: s.ok, drifted: s.drifted, missing: s.missing.length, restore: count("restore"), "needs-update": count("needs-update"), unrestorable: count("unrestorable") + (projection?.unrestorable ?? 0), skipped: s.skipped };
   const hints = ["needs-update", "unrestorable"].filter((a) => counts2[a] > 0).map((a) => HINTS[a]);
-  const code = hints.length ? EXIT.HUMAN : EXIT.OK;
+  const code = hints.length || (projection?.ops ?? []).some((o) => o.action === "conflict") ? EXIT.HUMAN : EXIT.OK;
   const opsJson = ops.map((o) => ({ path: o.path, layer: o.layer, action: o.action, ...o.reason ? { reason: o.reason } : {} }));
   const data = { command: "repair", target, dryRun, kit: { lock: lockVersion, cli: VERSION }, only, counts: counts2, ops: opsJson, hints };
+  if (projection) data.projection = { counts: projCounts(projection.ops), ops: projection.ops.map(projOpJson), findings: projection.findings };
   if (source) data.templates = source.templates;
   const lines = [
     `harness-kit repair — ${target}`,
@@ -2475,6 +4215,7 @@ function runRepair(ctx) {
     ...ops.map((o) => `  ${o.action.padEnd(13)} ${o.path}${o.reason ? `  ${o.reason}` : ""}`),
     `  copy 항목: ok ${counts2.ok} · drifted ${counts2.drifted}(사람이 고친 파일 — 그대로 둔다) · missing ${counts2.missing}`,
     `  되살림 ${counts2.restore} · update 필요 ${counts2["needs-update"]} · 킷에 없음 ${counts2.unrestorable}`,
+    ...projection ? [...projection.ops.map(projLine), projSummary(projection.ops)] : [],
     ...hints.map((h) => `  다음: ${h}`),
     ...dryRun ? ["  (dry-run — 쓰지 않았다)"] : []
   ];
@@ -2508,21 +4249,57 @@ var RESERVED = {
 
 // src/commands/uninstall.ts
 var import_node_child_process4 = require("node:child_process");
-var import_node_fs19 = __toESM(require("node:fs"));
-var import_node_path23 = __toESM(require("node:path"));
-var ACTIONS = ["delete", "keep-modified", "absent", "keep-user", "keep-external", "keep-pack"];
+var import_node_fs23 = __toESM(require("node:fs"));
+var import_node_path27 = __toESM(require("node:path"));
+var ACTIONS = ["delete", "keep-modified", "absent", "keep-user", "keep-external", "keep-pack", "unmerge"];
 var COUNT_ONLY = /* @__PURE__ */ new Set(["absent", "keep-user", "keep-external", "keep-pack"]);
 var HOOKS_PATH = "scripts/git-hooks";
-function full6(target, rel) {
-  return import_node_path23.default.join(target, ...rel.split("/"));
+function planMergeEntry(p, e) {
+  const kind = MERGE_KIND[e.path];
+  const cur = existing(full8(p.target, e.path));
+  if (cur.kind === "none") {
+    p.ops.push({ path: e.path, owner: e.owner, action: "absent" });
+    return;
+  }
+  if (!kind || !p.spec || cur.kind !== "file") {
+    p.ops.push({ path: e.path, owner: e.owner, action: "keep-modified", reason: "병합 파일을 해석하지 못했다" });
+    return;
+  }
+  const text = cur.bytes.toString("utf8");
+  const want = fullMergeWant(kind, p.spec, p.tokens, loadSources(new FsView(p.target)));
+  const r = unmergeWith(kind, text, mergeKeysOf(e, kind, want), want);
+  if (!r.ok) p.ops.push({ path: e.path, owner: e.owner, action: "keep-modified", reason: r.reason });
+  else if (r.empty && e.createdByKit === true) p.ops.push({ path: e.path, owner: e.owner, action: "delete", reason: "킷 키만 있던 병합 파일" });
+  else p.ops.push({ path: e.path, owner: e.owner, action: "unmerge", reason: "킷 키만 뺐다", ...r.text === text ? {} : { text: r.text } });
+}
+function mergeKeysOf(e, kind, want) {
+  if (Array.isArray(e.keys)) return e.keys;
+  const fresh = mergeWith(kind, null, want);
+  return fresh.ok ? fresh.keys : [];
+}
+function planProjectionEntry(p, e) {
+  if (e.op === "merge") {
+    planMergeEntry(p, e);
+    return;
+  }
+  const st = lstatOrNull(full8(p.target, e.path));
+  const dir = Boolean(st?.isDirectory() && !st.isSymbolicLink());
+  const cur = stateOf(p.target, e.path, dir);
+  if (cur.kind === "none") p.ops.push({ path: e.path, owner: e.owner, action: "absent" });
+  else if (cur.kind === "file" && typeof e.sha256 === "string" && cur.sha === e.sha256) p.ops.push({ path: e.path, owner: e.owner, action: "delete", dir });
+  else p.ops.push({ path: e.path, owner: e.owner, action: "keep-modified", reason: cur.kind === "link" ? "링크다" : "생성 파일을 사람이 고쳤다" });
+  if (!dir && cur.kind !== "other" && current2(p, `${e.path}.new`).kind === "file") p.ops.push({ path: `${e.path}.new`, owner: e.owner, action: "delete", reason: "update 가 둔 .new" });
+}
+function full8(target, rel) {
+  return import_node_path27.default.join(target, ...rel.split("/"));
 }
 function current2(p, rel) {
   if (p.ancestors.state(rel) === "blocked") return { kind: "other", what: BLOCKED };
-  const cur = existing(full6(p.target, rel));
+  const cur = existing(full8(p.target, rel));
   return cur.kind === "file" ? { kind: "file", sha: sha256(cur.bytes), bytes: cur.bytes } : cur;
 }
 function keepAction2(e, keepPacks) {
-  const owner = ownerKind(e.owner);
+  const owner = ownerKind2(e.owner);
   if (owner === "external") return "keep-external";
   if (owner === "user" || owner === "unknown" || entryKind(e) === "none") return "keep-user";
   if (owner === "pack" && keepPacks) return "keep-pack";
@@ -2532,6 +4309,10 @@ function planEntry(p, e) {
   const keep = keepAction2(e, p.keepPacks);
   if (keep) {
     p.ops.push({ path: e.path, owner: e.owner, action: keep });
+    return;
+  }
+  if (PROJECTION_OPS.has(e.op)) {
+    planProjectionEntry(p, e);
     return;
   }
   const cur = current2(p, e.path);
@@ -2552,8 +4333,20 @@ function planManifest(p, inst) {
   if (cur.kind === "file" && cur.bytes.equals(want)) p.ops.push({ path: MANIFEST_PATH, owner: "kit", action: "delete", reason: "생성물" });
   else p.ops.push({ path: MANIFEST_PATH, owner: "kit", action: "keep-modified", reason: "킷 판과 다르다" });
 }
-function buildUninstall(target, inst, keepPacks, keepState, ambiguous) {
-  const p = { target, ancestors: new AncestorCheck(target, import_node_fs19.default.realpathSync(target)), keepPacks, ops: [], ambiguous };
+function uninstallSpec(ctx, target) {
+  const installed = import_node_path27.default.join(target, "scripts/harness/projection.json");
+  try {
+    if (import_node_fs23.default.existsSync(installed)) return parseSpec(import_node_fs23.default.readFileSync(installed, "utf8"));
+    const { io: io2 } = ctx;
+    return loadSpecOrNull(locateTemplates({ flag: str(ctx.values, "templates"), env: io2.env, cliFile: io2.cliFile, cwd: io2.cwd, version: VERSION }).dir);
+  } catch (err) {
+    if (err instanceof CliError) return null;
+    throw err;
+  }
+}
+function buildUninstall(ctx, target, inst, keepPacks, keepState, ambiguous) {
+  const spec = inst.lock.entries.some((e) => e.op === "merge") ? uninstallSpec(ctx, target) : null;
+  const p = { target, ancestors: new AncestorCheck(target, import_node_fs23.default.realpathSync(target)), keepPacks, ops: [], ambiguous, spec, tokens: inst.meta.tokens };
   for (const e of inst.lock.entries) planEntry(p, e);
   planManifest(p, inst);
   if (!keepState) for (const rel of [LOCK_REL, META_REL]) p.ops.push({ path: rel, owner: "kit", action: "delete", reason: "상태 파일" });
@@ -2566,11 +4359,11 @@ function unhookGit(target, env, dryRun) {
   if (top.status !== 0) return { status: "none" };
   let topReal;
   try {
-    topReal = import_node_fs19.default.realpathSync(top.stdout.trim());
+    topReal = import_node_fs23.default.realpathSync(top.stdout.trim());
   } catch {
     return { status: "none" };
   }
-  if (topReal !== import_node_fs19.default.realpathSync(target)) return { status: "none" };
+  if (topReal !== import_node_fs23.default.realpathSync(target)) return { status: "none" };
   const get = git2("config", "--local", "--get", "core.hooksPath");
   if (get.status !== 0) return { status: "none" };
   const value = get.stdout.trim();
@@ -2583,9 +4376,11 @@ function applyUninstall(target, inst, ops, unhook) {
   let current3 = "";
   try {
     for (const o of ops) {
-      if (o.action !== "delete" || state.has(o.path)) continue;
       current3 = o.path;
-      removeFile(target, o.path);
+      if (o.action === "unmerge" && o.text !== void 0) writeFileAtomic(import_node_path27.default.join(target, ...o.path.split("/")), Buffer.from(o.text, "utf8"), false);
+      if (o.action !== "delete" || state.has(o.path)) continue;
+      if (o.dir) removeTarget(target, o.path, true);
+      else removeFile(target, o.path);
     }
     current3 = "git hook 연결";
     unhook();
@@ -2644,7 +4439,7 @@ async function runUninstall(ctx) {
   const dryRun = bool(ctx.values, "dry-run");
   const keepState = bool(ctx.values, "keep-state");
   const { lock, ambiguous } = resolvedLock(inst, target, () => kitHashes(ctx, inst, target));
-  const ops = buildUninstall(target, { ...inst, lock }, bool(ctx.values, "keep-packs"), keepState, ambiguous);
+  const ops = buildUninstall(ctx, target, { ...inst, lock }, bool(ctx.values, "keep-packs"), keepState, ambiguous);
   const interactive = io2.isTTY && !ctx.json && io2.stdin !== void 0;
   if (!dryRun && !bool(ctx.values, "yes")) {
     if (!interactive) throw usageError("uninstall 은 지울 목록을 확인받고 지운다. TTY 가 아니거나 --json 이면 --yes 를 준다", "목록은 harness-kit uninstall --dry-run 으로 먼저 본다");
@@ -2743,7 +4538,7 @@ function emitError(io2, command, err, json) {
   }
   return err.code;
 }
-function commandOf(argv, first, command) {
+function commandOf2(argv, first, command) {
   if (argv.length === 0) throw usageError("명령이 없다", USAGE.trimEnd());
   if (command === "") throw usageError(`명령이 먼저 온다: ${first}`, "harness-kit --help");
   if (Object.hasOwn(RESERVED, command)) {
@@ -2769,7 +4564,7 @@ async function main(argv, io2) {
     return EXIT.OK;
   }
   try {
-    const run = commandOf(argv, first, command);
+    const run = commandOf2(argv, first, command);
     const { values, positionals } = parseCommandArgs(command, argv.slice(1));
     if (bool(values, "help")) {
       io2.stdout(Object.hasOwn(COMMAND_HELP, command) ? COMMAND_HELP[command] : USAGE);

@@ -277,6 +277,8 @@ D = 원하는 내용(render: 파일, mirror: 파일 묶음 · tree-sha256), C = 
 - 배치하지 않는 하네스 폴더(`.claude/` `.codex/` `.cursor/` `.kiro/`)의 킷 copy 항목이 킷에서 빠지면(`.claude/commands/hx-*.md`) retire: C 없음 → 항목만 뺀다, sha(C) = B → 지운다, 고쳤으면 keep-modified(owner user, exit 4). `--prune` 없이 한다(생성 체계로 옮기는 일이라서다).
 - lock 배치 항목인데 이번에 원하지 않으면(원본이 사라짐 · 하네스를 뺌) 같은 규칙으로 지운다. merge는 킷 키를 빼고 빈 것 · `createdByKit`이면 파일을 지운다.
 - merge는 3방향 비교 없이 §5. v1 copy 항목의 `settings.json` · `config.toml`은 지금 파일에 그대로 병합한다(`createdByKit` = sha(C) = B).
+- 원본이 `.new` 대기 중이면(원본 옆 `<원본>.new`, 스킬은 폴더 안 `*.new`) 그 원본의 배치는 미룬다(`defer`): 있던 배치 · v1 포인터 파일과 lock 항목을 그대로 둔다. `.claude/commands/<스킬>.md` retire도 그 스킬이 대기 중이면 미룬다. 사람이 `.new`를 병합한 뒤 다음 update · repair가 배치한다. 고치지 않은 옛 규칙(`paths` 없음)을 배치해 상시 양이 느는 일을 막는다(표시 줄 없는 v1.0.8 lock은 킷이 바꾼 규칙마다 `.new`를 낸다, HK-12 R12.6).
+- v1 포인터의 기준 해시는 v1 모호성 풀기(HK-12) 전 값을 쓴다. 포인터 자리에 설치 전부터 사람 파일이 있었을 가능성은 무시한다(포인터 경로는 킷 이름이다).
 - 종료 코드: conflict · keep-modified가 하나라도 있으면 4(copy와 합친다).
 
 ### 6.4 repair(02 §3.12)
@@ -393,11 +395,11 @@ v1.0.8(e181b6f) 설치본 실측(토큰 `Acme Notes` · `acme-notes` · `com.acm
 
 | 스택 | claude | codex | cursor | kiro |
 |---|---|---|---|---|
-| jvm | 10,311 | 9,894 | 9,075 | 26,579 |
-| python | 10,567 | 10,150 | 9,331 | 26,830 |
-| go | 10,991 | 10,574 | 9,755 | 27,258 |
-| web | 12,025 | 11,608 | 10,789 | 33,191 |
-| electron | 12,431 | 12,014 | 11,195 | 33,924 |
+| jvm | 10,307 | 9,890 | 9,071 | 26,575 |
+| python | 10,563 | 10,146 | 9,327 | 26,826 |
+| go | 10,987 | 10,570 | 9,751 | 27,254 |
+| web | 12,021 | 11,604 | 10,785 | 33,187 |
+| electron | 12,427 | 12,010 | 11,191 | 33,920 |
 
 - 측정 함수는 `check_layout.py --context`(같은 코드로 v1.0.8 설치본과 새 설치본을 잰다). 시험은 e181b6f 플러그인을 `git archive`로 풀어 설치한 값과 새 setup.sh · CLI 설치 값을 스택 · 하네스마다 비교한다(새 값 ≤ 옛 값). 커밋을 못 찾으면 위 표를 기준으로 쓴다.
 - Claude는 v1.0.8에서 `CLAUDE.md`가 `AGENTS.md`를 먼저 읽으라고 지시했다(모델이 도구로 읽는다). v2는 `@AGENTS.md`로 가져와 같은 내용을 도구 호출 없이 싣는다. 이 정의는 두 판 모두 `AGENTS.md`를 진입 파일로 센다.
@@ -455,6 +457,10 @@ v1.0.8(e181b6f) 설치본 실측(토큰 `Acme Notes` · `acme-notes` · `com.acm
 | D8 | 03 §3.6 Kiro `resources`에 역할 원본 | 뺀다 | `prompt`에 본문이 있다(두 번 싣지 않는다) |
 | D9 | 03 §3.8 블록에 worktree · 훅 `cwd` 줄 | 넣지 않는다 | HK-15 · HK-24 전에는 사실이 아니다 |
 | D10 | 03 §3.2 `.claude/settings.json`의 훅은 hooks.json에서 | v1 템플릿의 훅 4개를 `projection.json` 조각으로 병합(id는 스크립트 이름) | 훅 생성은 HK-24. 병합 엔진은 그대로 쓴다 |
+| D11 | 03 R1.1 하네스 폴더 킷 파일은 모두 mirror · render · merge | 훅 설정(`.codex/hooks.json` · `.kiro/hooks/*.json` · `.kiro/agents/<slug>.json`)과 사람용 안내(`.codex/README.md` · `.kiro/README.md`)는 copy로 남는다 | 훅 설정 생성은 HK-24(hooks.json). 안내 문서는 포인터가 아니라 사람용 글이다. 시험이 이 목록만 허용한다 |
+| D12 | 03 §3.12 원본을 고치면 복사본을 다시 만든다 | 원본이 `.new` 대기 중이면 배치를 미룬다(§6.3) | v1.0.8 업그레이드에서 `paths` 없는 옛 규칙이 하네스 폴더에 늘 실리는 일을 막는다(토큰 예산) |
+| D13 | 02 §3.9 v1 lock은 copy 줄만 | setup.sh · update.sh lock에 배치 줄(라벨 `mirror` · `render` · `merge` · `merge+`)을 적는다 | bash 경로도 3방향 비교를 해야 한다. 옛 판 CLI는 이 라벨을 모르는 레이어로 읽는다(사전 출시라 받아들인다) |
+| D14 | 03 §3.9 v1 lock이면 한 줄 · exit 0 | 그대로. setup.sh 설치본은 fast에서 배치 내용 검사를 하지 않는다 | v1 lock에 `from` · `fromSha256` · `keys`가 없다. `check_harness.py`가 배치가 있는지는 본다 |
 
 ## 15. 확인 필요
 
@@ -462,3 +468,5 @@ v1.0.8(e181b6f) 설치본 실측(토큰 `Acme Notes` · `acme-notes` · `com.acm
 - Cursor `.mdc` `globs` 쉼표 목록과 빈 `description`의 동작.
 - Claude Code에서 `.claude/rules/*.md`의 `paths`가 Read한 파일에도 적용되는지(03 §5 #10 수동 점검).
 - 사람 세션이 `.agents/` 원본을 고친 뒤 동기화 훅(HK-24) 전까지는 `repair`로 맞춘다. fast 검증이 `stale`로 알린다.
+- 표시 줄 없는 v1.0.8 lock의 첫 update: 킷이 `paths`를 붙인 규칙(jvm 설치본 20개)이 모두 `.new`가 된다(HK-12 모호성). 그동안 그 규칙의 배치는 미뤄져 옛 포인터가 남는다(§6.3). `.agents/rules|skills|roles`를 모호성에서 빼서 바로 바꿀지 사람이 정한다.
+- CLI 기본 `issueKey.prefix`(슬러그 대문자, 예 `ACME-NOTES`)를 설치본 `check_harness.py`가 형식 오류로 막는다(setup.sh는 `[A-Z0-9]`만 남긴다). HK-8 시험이 지금 값을 묶고 있어 이번에 고치지 않았다.

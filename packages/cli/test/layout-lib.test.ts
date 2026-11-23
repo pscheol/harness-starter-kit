@@ -71,7 +71,8 @@ describe("layout.json = harness-lib.sh", () => {
       }
     }
     expect(diffs).toEqual([]);
-    expect(rels.length).toBeGreaterThan(300);
+    // HK-13 뒤 하네스 폴더 포인터 · 역할 생성물(132개)은 템플릿이 아니라 배치가 만든다.
+    expect(rels.length).toBeGreaterThan(200);
   });
 
   it("한 레이어 안에서 두 파일이 같은 설치 경로로 가지 않는다", () => {

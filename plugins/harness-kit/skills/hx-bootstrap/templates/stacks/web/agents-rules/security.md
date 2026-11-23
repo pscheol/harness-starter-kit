@@ -1,3 +1,17 @@
+---
+paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
+  - "**/*.mjs"
+  - "**/*.cjs"
+  - "**/package.json"
+  - "**/tsconfig*.json"
+  - "pnpm-workspace.yaml"
+  - "**/*.yml"
+  - "**/*.yaml"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · 웹 프론트엔드 · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # 보안 가드레일 — {{PROJECT_NAME}}

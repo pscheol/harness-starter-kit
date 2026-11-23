@@ -10,7 +10,10 @@ import { existing } from "../core/plan";
 import { parseNames, relayered, winnerLayers, withoutNames, type Names } from "../core/selection-change";
 import type { Selection } from "../core/selection";
 import { skipByOwner, wanted, type Want } from "../core/update-plan";
-import { ancestorsOf, applyChange, currentOf, dryRunOf, kitOf, loadForChange, manifestChange, report, type ChangeOp, type ChangeResult, type Cur, type Loaded } from "./change";
+import { judgeUpdate } from "../projection/engine";
+import { needsHuman, prepare } from "../projection/flow";
+import { loadSpecOrNull } from "../projection/spec";
+import { ancestorsOf, applyChange, changeOverlay, currentOf, dryRunOf, kitOf, loadForChange, manifestChange, report, type ChangeOp, type ChangeResult, type Cur, type Loaded } from "./change";
 
 function keepAction(e: LockEntry): ChangeOp["action"] | null {
   const owner = ownerKind(e.owner);
@@ -75,7 +78,14 @@ function planRemove(l: Loaded, after: Selection): ChangeResult {
     ops.push(j.op);
     locked.set(p, j.entry);
   }
-  return { ops, entries: [...locked.values()], manifest: manifestChange(l, ancestors, after) };
+  const manifest = manifestChange(l, ancestors, after);
+  const spec = loadSpecOrNull(l.loc.dir);
+  if (!spec) return { ops, entries: [...locked.values()], manifest, projection: null };
+  // 빠지는 하네스의 배치는 지우고(고쳤으면 남긴다), 남는 배치 · 병합은 새 선택값에 맞춘다(design §6.5).
+  const { writes, deletes } = changeOverlay(ops);
+  const p = prepare({ target: l.target, spec, tokens: l.tokens, agents: after.agents, writes, deletes, copyPaths: newWant.keys() });
+  const projection = judgeUpdate({ target: l.target, spec, tokens: l.tokens, sources: p.sources, wants: p.wants, prev: l.inst.lock.entries, copyNow: new Set(newWant.keys()), acceptAll: false, retire: false });
+  return { ops, entries: [...locked.values()], manifest, projection, projectionFindings: p.findings };
 }
 
 export function runRemove(ctx: Ctx): CommandResult {
@@ -91,9 +101,9 @@ export function runRemove(ctx: Ctx): CommandResult {
   const result: ChangeResult = nothing ? { ops: [], entries: l.inst.lock.entries, manifest: null } : planRemove(l, after);
   const featureDocs = dryRun || nothing ? null : applyChange(ctx, l, after, result);
   const notes = notOn.length ? [`  · 켜져 있지 않다 — 건너뛴다: ${notOn.join(", ")}`] : [];
-  const keep = result.ops.filter((o) => o.action === "keep-modified").map((o) => o.path);
+  const keep = [...result.ops.filter((o) => o.action === "keep-modified").map((o) => o.path), ...(result.projection?.ops ?? []).filter((o) => o.action === "keep-modified").map((o) => o.path)];
   const { data, lines } = report(ctx, l, { command: "remove", names: { ...names, notOn }, after, result, dryRun, featureDocs, notes, extra: { keep } });
   if (keep.length) lines.splice(lines.length - 1, 0, "  고친 파일은 남겼다(lock 은 owner user). 필요 없으면 직접 지운다");
-  const human = keep.length > 0 || result.ops.some((o) => o.action === "conflict") || result.manifest?.action === "conflict";
+  const human = keep.length > 0 || result.ops.some((o) => o.action === "conflict") || result.manifest?.action === "conflict" || needsHuman(result.projection ?? null, result.projectionFindings ?? []);
   return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines };
 }

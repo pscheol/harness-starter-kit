@@ -10,6 +10,8 @@ import { LOCK_REL, readLock, type LockV2 } from "../core/lock";
 import { META_REL, readMeta, type MetaV2 } from "../core/meta";
 import { isSafeRelPath } from "../core/plan";
 import { compareSemver, VERSION } from "../core/version";
+import { layoutFindings, PROJECTION_KINDS } from "../projection/check";
+import { PROJECTION_OPS } from "../projection/engine";
 
 export type Severity = "error" | "warn" | "info";
 
@@ -22,7 +24,7 @@ export interface Finding {
   detail?: Record<string, unknown>;
 }
 
-export const DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "version-mismatch", "missing", "drifted", "gitignore", "entry-size"];
+export const DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "version-mismatch", "missing", "drifted", "gitignore", "entry-size", ...PROJECTION_KINDS];
 export const GITIGNORE_NEEDS = [".agents/state/", ".agents/local/", ".agents/reports/"];
 export const ENTRY_FILES = ["AGENTS.md", "CLAUDE.md"];
 export const ENTRY_LIMIT = 24 * 1024;
@@ -135,6 +137,8 @@ interface Collected {
   lock: LockV2 | null;
   ok: number;
   findings: Finding[];
+  /** 배치 항목(mirror · render · merge) 요약 */
+  projection?: { ok: number; errors: number };
 }
 
 /** 검사 전부. 메타가 없으면(설치 안 됨) exit 3. */
@@ -158,8 +162,12 @@ function collect(target: string): Collected {
   findings.push(...versionFindings(meta, lock));
   const copy = lock ? copyFindings(target, lock) : { ok: 0, findings: [] };
   findings.push(...copy.findings);
+  const layout = lock ? layoutFindings(target, lock.entries.filter((e) => isSafeRelPath(e.path))) : [];
+  findings.push(...layout.map((f) => ({ kind: f.kind, severity: f.severity, path: f.path, hint: f.hint })));
   for (const f of [gitignoreFinding(target), entrySizeFinding(target)]) if (f) findings.push(f);
-  return { meta, lock, ok: copy.ok, findings };
+  const projectionTotal = lock ? lock.entries.filter((e) => PROJECTION_OPS.has(e.op) && e.owner === "kit").length : 0;
+  const projectionBad = new Set(layout.filter((f) => f.severity === "error" && !f.path.startsWith(".agents/")).map((f) => f.path)).size;
+  return { meta, lock, ok: copy.ok, findings, projection: { ok: Math.max(0, projectionTotal - projectionBad), errors: layout.filter((f) => f.severity === "error").length } };
 }
 
 function summarize(findings: Finding[], ok: number): Record<string, number> {
@@ -184,13 +192,15 @@ export function runDoctor(ctx: Ctx): CommandResult {
   const only = parseOnly(str(ctx.values, "only"));
   const c = collect(target);
   const findings = only ? c.findings.filter((f) => only.includes(f.kind)) : c.findings;
-  const summary = summarize(findings, c.ok);
-  const code = bool(ctx.values, "check") && (summary.errors ?? 0) > 0 ? EXIT.CHECK : EXIT.OK;
+  const summary: Record<string, unknown> = summarize(findings, c.ok);
+  if (c.projection) summary.projection = c.projection;
+  const code = bool(ctx.values, "check") && ((summary.errors as number) ?? 0) > 0 ? EXIT.CHECK : EXIT.OK;
   const kit = { installed: c.meta?.kit.version ?? null, lock: c.lock?.kit.version ?? null, cli: VERSION };
   const lines = [
     `harness-kit doctor — ${target}`,
     `  킷: 설치 ${kit.installed ?? "?"} · lock ${kit.lock ?? "?"} · CLI ${kit.cli}`,
     `  copy 항목: ok ${summary.ok} · drifted ${summary.drifted} · missing ${summary.missing}`,
+    ...(c.projection ? [`  배치 항목: ok ${c.projection.ok} · 오류 ${c.projection.errors}`] : []),
     `  오류 ${summary.errors} · 경고 ${summary.warnings} · 정보 ${summary.infos}`,
     ...(ctx.quiet ? [] : findings.map(findingLine)),
   ];

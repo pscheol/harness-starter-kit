@@ -47,7 +47,7 @@ harness-starter-kit/                        ← 마켓플레이스 루트 · pnp
 │           ├── hx-jira-setup/         ← 이슈 트래커 연동 설정 (선택 모듈을 켠 리포만)
 │           ├── hx-agent-add/          에이전트 배선 추가
 │           └── hx-update/             킷 새 버전 반영
-├── scripts/                                킷 개발 도구: gen-plugins.mjs · sync-commands.sh
+├── scripts/                                킷 개발 도구: gen-plugins.mjs
 ├── tests/                                  설치 시험 · 생성물 시험(test_generated.py)
 └── docs/
     ├── README.md                           문서 지도 (여기서 시작)
@@ -253,14 +253,14 @@ S1·S2 /hx-specify → (/hx-clarify · /hx-checklist) → S3 /hx-plan → S4 /hx
 
 | 하네스 | 설치 경로 | 호출 |
 |---|---|---|
-| Claude Code | `.claude/commands/hx-*.md` | `/hx-specify` |
-| Cursor | `.cursor/commands/hx-*.md` | `/hx-specify` |
-| Kiro (IDE) | `.kiro/steering/hx-*.md` (`inclusion: manual`) | 슬래시 메뉴에서 선택 |
-| Kiro (CLI) | `.kiro/skills/hx-*/SKILL.md` | `/hx-specify` |
+| Claude Code | `.claude/skills/hx-*/SKILL.md`(복사본) | `/hx-specify` |
+| Cursor | `.cursor/commands/hx-*.md`(생성물) | `/hx-specify` |
+| Kiro (IDE) | `.kiro/steering/hx-*.md` (`inclusion: manual`, 생성물) | 슬래시 메뉴에서 선택 |
+| Kiro (CLI) | `.kiro/skills/hx-*/SKILL.md`(복사본) | `/hx-specify` |
 | Codex | `.agents/skills/hx-*/SKILL.md` | `$hx-specify` (목록은 `/skills`) |
 
 커맨드 본문은 `.agents/skills/hx-*/SKILL.md` 한 곳에 있고(스킬이 `.agents/rules/sdd-workflow.md`의 해당 절을 읽는다),
-나머지 하네스 파일은 그 스킬을 가리키는 한 줄 포인터다.
+하네스 폴더에는 그 원본의 복사본 · 생성물이 있다(링크 · 포인터 파일이 아니다).
 `hx-` 접두사를 붙인 건 `/plan`이나 `/analyze` 같은 흔한 이름이 다른 플러그인과 부딪히는 걸 막기 위해서다.
 
 > Codex 경로에 주의한다. 프로젝트 로컬 `.codex/prompts/`는 탐색 경로가 아니다(유저 홈 전용이고
@@ -300,7 +300,7 @@ S1·S2 /hx-specify → (/hx-clarify · /hx-checklist) → S3 /hx-plan → S4 /hx
 스택(`jvm`·`python`·`go`·`web`·`electron`)과 아키텍처 변형을 정한 뒤 `setup.sh`로 골격을 깐다.
 
 깔리는 것은 진입점 목차(`AGENTS.md`/`CLAUDE.md`), 네 하네스가 공유하는 공통 규칙(`.agents/rules`),
-Kiro용 얇은 포인터(`.kiro/steering`), SDD 기록 시스템(`.agents/docs`), 검증 게이트(`scripts/verify.sh`),
+하네스 폴더의 규칙 · 스킬 · 역할 복사본 · 생성물(`paths` 자동 로드), SDD 기록 시스템(`.agents/docs`), 검증 게이트(`scripts/verify.sh`),
 네 하네스 분의 `hx-*` 커맨드 11종, 그리고 기능 문서 생성기와 원고 골격이다.
 
 설치가 끝나면 스택×변형별 후속 작업이 출력된다. 그다음 `/hx-harness`로 컨텍스트를 로드하고
@@ -552,15 +552,12 @@ codex plugin marketplace upgrade                 # Codex
 /plugin marketplace update harness-starter-kit   # Claude Code
 ```
 
-슬래시 커맨드를 고칠 때는 원본 한 곳만 고치고 포인터를 다시 만든다.
-포인터를 직접 고치면 하네스 사이에 설명이 어긋난다.
+슬래시 커맨드를 고칠 때는 원본 한 곳만 고친다. 설치본의 하네스 폴더 사본은 `npx harness-kit repair`(Node 가 없으면 `python3 scripts/harness/projection.py sync`)가 다시 만든다.
+사본을 직접 고치면 배치 검사(`scripts/harness/check_layout.py`)가 `drifted`로 막는다.
 
 ```bash
 # 1) packages/templates/common/agents-skills/hx-*/SKILL.md 를 고친다 (원본 — 설치 위치 .agents/skills, Codex 가 직접 읽는다)
-# 2) Claude · Cursor · Kiro(IDE·CLI) 포인터를 다시 만든다
-bash scripts/sync-commands.sh
-bash scripts/sync-commands.sh --check   # 어긋나면 1
-# 3) 생성물을 다시 만든다
+# 2) 플러그인 생성물을 다시 만든다(하네스 폴더 사본은 설치가 원본에서 만든다)
 node scripts/gen-plugins.mjs
 ```
 

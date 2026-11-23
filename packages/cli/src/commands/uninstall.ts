@@ -18,9 +18,15 @@ import { removeEmptyDirs, removeFile } from "../core/remove";
 import { locateTemplates } from "../core/templates";
 import { wanted } from "../core/update-plan";
 import { VERSION } from "../core/version";
+import { lstatOrNull, writeFileAtomic } from "../core/fsx";
+import { fullMergeWant, PROJECTION_OPS, removeTarget, stateOf } from "../projection/engine";
+import { MERGE_KIND, mergeWith, unmergeWith, type MergeKind, type MergeWant } from "../projection/merge";
+import { loadSources } from "../projection/sources";
+import { loadSpecOrNull, parseSpec, type ProjectionSpec } from "../projection/spec";
+import { FsView } from "../projection/view";
 
-type Action = "delete" | "keep-modified" | "absent" | "keep-user" | "keep-external" | "keep-pack";
-const ACTIONS: Action[] = ["delete", "keep-modified", "absent", "keep-user", "keep-external", "keep-pack"];
+type Action = "delete" | "keep-modified" | "absent" | "keep-user" | "keep-external" | "keep-pack" | "unmerge";
+const ACTIONS: Action[] = ["delete", "keep-modified", "absent", "keep-user", "keep-external", "keep-pack", "unmerge"];
 /** 개수로만 내는 판정(목록에 넣지 않는다) */
 const COUNT_ONLY = new Set<Action>(["absent", "keep-user", "keep-external", "keep-pack"]);
 const HOOKS_PATH = "scripts/git-hooks";
@@ -30,6 +36,10 @@ interface UOp {
   owner: string;
   action: Action;
   reason?: string;
+  /** 폴더 mirror 를 통째로 지운다 */
+  dir?: boolean;
+  /** merge: 킷 키를 뺀 내용(지우지 않을 때) */
+  text?: string;
 }
 
 interface Planner {
@@ -39,6 +49,50 @@ interface Planner {
   ops: UOp[];
   /** 표시 줄 없는 v1 lock 에서 기준 해시를 null 로 푼 경로(HK-12 R12.6) */
   ambiguous: Set<string>;
+  /** 배치 상수(merge 빼기에 쓴다). 없으면 merge 파일을 남긴다 */
+  spec: ProjectionSpec | null;
+  tokens: Record<string, string>;
+}
+
+/** merge 항목: 킷 키만 뺀다. 킷이 만든 파일이 비면 지운다. 키가 없는 v1 항목은 지금 원하는 킷 키 전부로 뺀다. */
+function planMergeEntry(p: Planner, e: LockEntry): void {
+  const kind = MERGE_KIND[e.path];
+  const cur = existing(full(p.target, e.path));
+  if (cur.kind === "none") {
+    p.ops.push({ path: e.path, owner: e.owner, action: "absent" });
+    return;
+  }
+  if (!kind || !p.spec || cur.kind !== "file") {
+    p.ops.push({ path: e.path, owner: e.owner, action: "keep-modified", reason: "병합 파일을 해석하지 못했다" });
+    return;
+  }
+  const text = cur.bytes.toString("utf8");
+  const want = fullMergeWant(kind, p.spec, p.tokens, loadSources(new FsView(p.target)));
+  const r = unmergeWith(kind, text, mergeKeysOf(e, kind, want), want);
+  if (!r.ok) p.ops.push({ path: e.path, owner: e.owner, action: "keep-modified", reason: r.reason });
+  else if (r.empty && e.createdByKit === true) p.ops.push({ path: e.path, owner: e.owner, action: "delete", reason: "킷 키만 있던 병합 파일" });
+  else p.ops.push({ path: e.path, owner: e.owner, action: "unmerge", reason: "킷 키만 뺐다", ...(r.text === text ? {} : { text: r.text }) });
+}
+
+function mergeKeysOf(e: LockEntry, kind: MergeKind, want: MergeWant): string[] {
+  if (Array.isArray(e.keys)) return e.keys as string[];
+  const fresh = mergeWith(kind, null, want);
+  return fresh.ok ? fresh.keys : [];
+}
+
+/** 배치 항목(design §6.5): mirror · render 는 copy 와 같은 규칙, merge 는 킷 키만 뺀다. */
+function planProjectionEntry(p: Planner, e: LockEntry): void {
+  if (e.op === "merge") {
+    planMergeEntry(p, e);
+    return;
+  }
+  const st = lstatOrNull(full(p.target, e.path));
+  const dir = Boolean(st?.isDirectory() && !st.isSymbolicLink());
+  const cur = stateOf(p.target, e.path, dir);
+  if (cur.kind === "none") p.ops.push({ path: e.path, owner: e.owner, action: "absent" });
+  else if (cur.kind === "file" && typeof e.sha256 === "string" && cur.sha === e.sha256) p.ops.push({ path: e.path, owner: e.owner, action: "delete", dir });
+  else p.ops.push({ path: e.path, owner: e.owner, action: "keep-modified", reason: cur.kind === "link" ? "링크다" : "생성 파일을 사람이 고쳤다" });
+  if (!dir && cur.kind !== "other" && current(p, `${e.path}.new`).kind === "file") p.ops.push({ path: `${e.path}.new`, owner: e.owner, action: "delete", reason: "update 가 둔 .new" });
 }
 
 function full(target: string, rel: string): string {
@@ -68,6 +122,10 @@ function planEntry(p: Planner, e: LockEntry): void {
     p.ops.push({ path: e.path, owner: e.owner, action: keep });
     return;
   }
+  if (PROJECTION_OPS.has(e.op)) {
+    planProjectionEntry(p, e);
+    return;
+  }
   const cur = current(p, e.path);
   if (cur.kind === "none") p.ops.push({ path: e.path, owner: e.owner, action: "absent" });
   else if (cur.kind === "file" && e.sha256 && cur.sha === e.sha256) p.ops.push({ path: e.path, owner: e.owner, action: "delete" });
@@ -88,8 +146,22 @@ function planManifest(p: Planner, inst: Installed): void {
   else p.ops.push({ path: MANIFEST_PATH, owner: "kit", action: "keep-modified", reason: "킷 판과 다르다" });
 }
 
-function buildUninstall(target: string, inst: Installed, keepPacks: boolean, keepState: boolean, ambiguous: Set<string>): UOp[] {
-  const p: Planner = { target, ancestors: new AncestorCheck(target, fs.realpathSync(target)), keepPacks, ops: [], ambiguous };
+/** merge 빼기에 쓸 배치 상수: 설치된 판(scripts/harness/projection.json), 없으면 킷 템플릿 판. */
+function uninstallSpec(ctx: Ctx, target: string): ProjectionSpec | null {
+  const installed = path.join(target, "scripts/harness/projection.json");
+  try {
+    if (fs.existsSync(installed)) return parseSpec(fs.readFileSync(installed, "utf8"));
+    const { io } = ctx;
+    return loadSpecOrNull(locateTemplates({ flag: str(ctx.values, "templates"), env: io.env, cliFile: io.cliFile, cwd: io.cwd, version: VERSION }).dir);
+  } catch (err) {
+    if (err instanceof CliError) return null;
+    throw err;
+  }
+}
+
+function buildUninstall(ctx: Ctx, target: string, inst: Installed, keepPacks: boolean, keepState: boolean, ambiguous: Set<string>): UOp[] {
+  const spec = inst.lock.entries.some((e) => e.op === "merge") ? uninstallSpec(ctx, target) : null;
+  const p: Planner = { target, ancestors: new AncestorCheck(target, fs.realpathSync(target)), keepPacks, ops: [], ambiguous, spec, tokens: inst.meta.tokens };
   for (const e of inst.lock.entries) planEntry(p, e);
   planManifest(p, inst);
   if (!keepState) for (const rel of [LOCK_REL, META_REL]) p.ops.push({ path: rel, owner: "kit", action: "delete", reason: "상태 파일" });
@@ -125,9 +197,11 @@ function applyUninstall(target: string, inst: Installed, ops: UOp[], unhook: () 
   let current = "";
   try {
     for (const o of ops) {
-      if (o.action !== "delete" || state.has(o.path)) continue;
       current = o.path;
-      removeFile(target, o.path);
+      if (o.action === "unmerge" && o.text !== undefined) writeFileAtomic(path.join(target, ...o.path.split("/")), Buffer.from(o.text, "utf8"), false);
+      if (o.action !== "delete" || state.has(o.path)) continue;
+      if (o.dir) removeTarget(target, o.path, true);
+      else removeFile(target, o.path);
     }
     current = "git hook 연결";
     unhook();
@@ -192,7 +266,7 @@ export async function runUninstall(ctx: Ctx): Promise<CommandResult> {
   const dryRun = bool(ctx.values, "dry-run");
   const keepState = bool(ctx.values, "keep-state");
   const { lock, ambiguous } = resolvedLock(inst, target, () => kitHashes(ctx, inst, target));
-  const ops = buildUninstall(target, { ...inst, lock }, bool(ctx.values, "keep-packs"), keepState, ambiguous);
+  const ops = buildUninstall(ctx, target, { ...inst, lock }, bool(ctx.values, "keep-packs"), keepState, ambiguous);
   const interactive = io.isTTY && !ctx.json && io.stdin !== undefined;
   if (!dryRun && !bool(ctx.values, "yes")) {
     if (!interactive) throw usageError("uninstall 은 지울 목록을 확인받고 지운다. TTY 가 아니거나 --json 이면 --yes 를 준다", "목록은 harness-kit uninstall --dry-run 으로 먼저 본다");

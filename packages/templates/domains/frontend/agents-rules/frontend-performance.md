@@ -1,3 +1,12 @@
+---
+paths:
+  - "**/*.tsx"
+  - "**/*.jsx"
+  - "**/*.vue"
+  - "**/*.css"
+  - "**/*.scss"
+  - "**/*.html"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · frontend 도메인 공통 규칙(web·electron 공유) -->
 
 # 프론트엔드 성능 — 예산을 먼저 정하고, 측정한 것만 고친다

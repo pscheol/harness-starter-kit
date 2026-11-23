@@ -1,6 +1,6 @@
 # Kiro
 
-이 하네스 루트를 workspace로 연다. `steering/`은 `.agents/rules/` 원본을 가리키는 포인터, `skills/`는 `.agents/skills/` 원본을 가리키는 포인터다.
+이 하네스 루트를 workspace로 연다. `steering/`은 `.agents/rules/` 원본에서 만든 생성물(`paths` → `fileMatch`), `skills/`는 `.agents/skills/` 원본의 복사본이다. 고칠 때는 원본을 고친다.
 
 - `agents/{{PROJECT_SLUG}}.json`은 다섯 역할(`explorer`·`reviewer`·`docs-researcher`·`planner`·`worker`)에 위임하는 조율 에이전트다. CLI에서는 이 하네스 루트에서 `kiro-cli chat --agent {{PROJECT_SLUG}}`로 시작한다(V3 는 `--v3`). 전역 기본 에이전트로 두지 않는다.
 - `hooks/`는 v1 형식이고 CLI V3 · IDE 가 읽는다. SessionStart가 하네스 컨텍스트를, PreToolUse가 보호 경로 쓰기 차단을, Stop이 changed 검증을 부른다.

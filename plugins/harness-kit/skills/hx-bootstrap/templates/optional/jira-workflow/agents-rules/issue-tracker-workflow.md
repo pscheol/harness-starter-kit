@@ -1,3 +1,8 @@
+---
+paths:
+  - ".agents/issue-tracker.yml"
+  - ".agents/docs/issues/**"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · 선택 모듈: jira-workflow · 플레이스홀더 치환 후 사용 -->
 
 # 이슈 트래커 작업 규약 — 티켓이 거짓말하지 않게

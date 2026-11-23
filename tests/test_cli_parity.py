@@ -34,9 +34,9 @@ DEFAULT_TOKENS = {"PROJECT_NAME": "Acme Notes", "PROJECT_SLUG": "acme-notes", "P
 # sed 가 다르게 읽는 문자(& · | · \)가 든 치환값(HK-10 R10.2).
 SPECIAL_TOKENS = {**DEFAULT_TOKENS, "PROJECT_NAME": "A&B | C\\D", "SERVICE_NAME": "notes&api|v2\\x"}
 # platform-guards 모듈이 common 과 같은 경로에 까는 파일(설치 경로 → 모듈 템플릿 경로).
+# (.kiro/steering/platform-invariants.md 는 HK-13 뒤 템플릿이 아니라 배치가 이긴 판의 원본에서 만든다.)
 GUARD_OVERLAPS = {
     ".agents/rules/platform-invariants.md": "optional/platform-guards/agents-rules/platform-invariants.md",
-    ".kiro/steering/platform-invariants.md": "optional/platform-guards/kiro-steering/platform-invariants.md",
     "scripts/run-guards.sh": "optional/platform-guards/scripts/run-guards.sh",
     "scripts/guards/_template.sh": "optional/platform-guards/scripts/guards/_template.sh",
 }
@@ -194,7 +194,8 @@ def lock_layers(path: Path) -> dict[str, list[str]]:
                 out.setdefault(rel, []).append(layer)
         return out
     for e in json.loads(text)["entries"]:
-        out.setdefault(e["path"], []).append(e["layer"])
+        if "layer" in e:  # 배치 항목(mirror · render · merge)은 레이어가 없다
+            out.setdefault(e["path"], []).append(e["layer"])
     return out
 
 

@@ -1,3 +1,12 @@
+---
+paths:
+  - "**/*.ts"
+  - "**/*.tsx"
+  - "**/*.js"
+  - "**/*.jsx"
+  - "**/*.mjs"
+  - "**/*.cjs"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · Electron 데스크톱 · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # 신뢰성 · 안정성 기준 — {{PROJECT_NAME}}

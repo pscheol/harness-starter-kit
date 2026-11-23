@@ -15,6 +15,7 @@ import { listArchs, listStacks, resolveSelection, type Selection, type Selection
 import { locateTemplates } from "../core/templates";
 import { resolveTokens } from "../core/tokens";
 import { VERSION } from "../core/version";
+import { mergeEntries, needsHuman, projectionConflicts, projectionData, projectionLines } from "../projection/flow";
 
 const TOKEN_FLAGS: Record<string, string> = {
   name: "PROJECT_NAME",
@@ -137,12 +138,12 @@ function planData(command: string, target: string, templates: string, sel: Selec
 }
 
 function lockText(plan: Plan, source: string): string {
-  const entries: LockEntry[] = plan.ops.map((o) =>
+  const copies: LockEntry[] = plan.ops.map((o) =>
     o.owner === "kit"
       ? { path: o.path, op: "copy", owner: "kit", sha256: o.sha256, layer: o.layer }
       : { path: o.path, op: "copy", owner: "user", sha256: null, layer: o.layer },
   );
-  return serializeLock({ schema: "harness-kit.lock/v2", kit: { version: VERSION, source }, packs: [], entries });
+  return serializeLock({ schema: "harness-kit.lock/v2", kit: { version: VERSION, source }, packs: [], entries: mergeEntries(copies, plan.projection) });
 }
 
 const STATE_LINE = `  상태 파일: ${META_REL} · ${LOCK_REL} · ${MANIFEST_PATH}`;
@@ -166,9 +167,15 @@ export async function runInit(ctx: Ctx): Promise<CommandResult> {
     const plan = buildPlan({ layout, templatesDir: loc.dir, target, selection, tokens, mode: { force: opts.force, adopt: opts.adopt } });
     const shown = command === "plan" && !ctx.quiet ? plan.ops : plan.ops.filter(needsAttention);
     const data = planData(command, target, loc.dir, selection, tokens, plan, shown);
+    const projection = projectionData(plan.projection, plan.projectionFindings, command === "plan");
+    if (projection) data.projection = projection;
+    const human = needsHuman(plan.projection, plan.projectionFindings);
+    const conflicts = projectionConflicts(plan.projection);
+    if (conflicts.length) data.conflicts = conflicts;
     const lines = [`harness-kit ${command} — ${target}`, selectionLine(selection)];
+    const projectionShown = projectionLines(plan.projection, plan.projectionFindings, ctx.quiet, command === "plan" && !ctx.quiet, new Set(["create"]));
     if (command === "plan") {
-      lines.push(...shown.map(opLine), countsLine(plan), STATE_LINE, "  (plan — 쓰지 않았다)");
+      lines.push(...shown.map(opLine), countsLine(plan), ...projectionShown, STATE_LINE, "  (plan — 쓰지 않았다)");
       return { code: EXIT.OK, data, lines };
     }
     if (prompter) {
@@ -178,8 +185,8 @@ export async function runInit(ctx: Ctx): Promise<CommandResult> {
     const meta = buildMeta({ version: VERSION, selection, tokens, issue: { source: opts.issueSource, prefix: str(ctx.values, "issue-prefix") }, base: str(ctx.values, "base"), today: today(io) });
     const result = applyPlan({ plan, metaText: serializeMeta(meta), lockText: lockText(plan, loc.source), env: io.env });
     data.featureDocs = result.featureDocs;
-    lines.push(countsLine(plan), ...shown.map(opLine), STATE_LINE, docsLine(result.featureDocs), "  다음: harness-kit doctor");
-    return { code: EXIT.OK, data, lines };
+    lines.push(countsLine(plan), ...shown.map(opLine), ...projectionShown, STATE_LINE, docsLine(result.featureDocs), "  다음: harness-kit doctor");
+    return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines };
   } finally {
     prompter?.close();
   }

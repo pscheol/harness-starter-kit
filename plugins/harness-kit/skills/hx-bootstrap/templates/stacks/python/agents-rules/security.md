@@ -1,3 +1,12 @@
+---
+paths:
+  - "**/*.py"
+  - "**/pyproject.toml"
+  - "**/requirements*.txt"
+  - "uv.lock"
+  - "**/*.yml"
+  - "**/*.yaml"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · Python 백엔드 · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # 보안 가드레일 — {{PROJECT_NAME}}

@@ -1,3 +1,10 @@
+---
+paths:
+  - "**/*.go"
+  - "**/go.mod"
+  - "go.sum"
+  - ".golangci.yml"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · Go 백엔드 · 아키텍처: flat · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # 기술 스택 / 실행 환경 — {{PROJECT_NAME}} (플랫)

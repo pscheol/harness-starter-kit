@@ -324,16 +324,24 @@ describe("update — 상태 · 버전 · 플래그", () => {
     expect(readJsonFile(file).kit.version).toBe(VERSION);
   });
 
-  it("lock 에 mirror · render · merge 항목이 있으면 쓰기 전에 exit 3", async () => {
+  it("lock 에 모르는 op 가 있으면 쓰기 전에 exit 3(HK-13 뒤 mirror · render · merge 는 받는다)", async () => {
+    const { target, templates, cli } = await installedFixture();
+    patchLock(target, { ".claude/settings.json": { op: "symlink", owner: "kit" } });
+    fs.rmSync(path.join(target, "AGENTS.md"));
+    const before = readTree(target);
+    const r = await cli("update", ["--json", "--templates", templates]);
+    expect(r.code).toBe(3);
+    expect(json(r).error.message).toMatch(/모른다|지원하지 않는다/);
+    expect(readTree(target)).toEqual(before);
+  });
+
+  it("배치 상수(projection.json)가 없는 킷으로 update 하면 mirror · render · merge 항목을 그대로 둔다", async () => {
     for (const op of ["mirror", "render", "merge"]) {
       const { target, templates, cli } = await installedFixture();
-      patchLock(target, { ".claude/settings.json": { op, owner: "kit", keys: ["hooks.Stop:x"] } });
-      fs.rmSync(path.join(target, "AGENTS.md"));
-      const before = readTree(target);
+      patchLock(target, { ".claude/x": { op, owner: "kit", sha256: null, keys: ["block:claude"] } });
       const r = await cli("update", ["--json", "--templates", templates]);
-      expect(r.code).toBe(3);
-      expect(json(r).error.message).toContain("지원하지 않는다");
-      expect(readTree(target)).toEqual(before);
+      expect(r.code, r.stdout).toBe(0);
+      expect(lockEntry(target, ".claude/x")).toMatchObject({ op, owner: "kit" });
     }
   });
 

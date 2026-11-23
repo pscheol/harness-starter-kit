@@ -12,14 +12,14 @@
 
 핵심 설계(v4):
 - **규칙 원본은 공통** — 가드레일·보안·API 표준 등 규칙은 `.agents/rules/` 한 곳에 두고 Claude Code·Codex·Cursor·Kiro 가 공유한다.
-- **Kiro steering은 얇은 포인터** — `.kiro/steering/*` 는 규칙 본문을 담지 않고 `.agents/rules/*` 원본을 가리키기만 한다.
+- **하네스 폴더는 원본의 복사본 · 생성물** — `.claude/` `.codex/` `.cursor/` `.kiro/` 의 규칙 · 스킬 · 역할은 `.agents/` 원본에서 만든 실제 파일이다(mirror · render · merge, lock 에 기록). 심볼릭 링크와 "원본을 읽어라" 포인터 파일은 없다. 규칙은 머리의 `paths` 로 그 경로 파일을 다룰 때 자동으로 실린다.
 - **기본은 하네스 하나** — 리포를 여럿으로 나누거나 배포 단위가 여럿이면 선택 모듈 `multi-harness`가 메인 → 도메인 → 단위 층의 공통 파일 배포와 게이트를 맡는다.
 - **SDLC 단계형 SDD** — 이슈마다 `.agents/docs/issues/<키>-<이름>/{requirements,design,tasks}.md`(상태는 문서 머리 `status` · `state`, 보드는 `specs-index.md` 영역별 표). S1 분석 → S2 기획 → S3 설계 → S4 계획 → S5 구현 → S6 테스트 → S7 문서 반영(`/hx-docs`) → S8 완료. 원본은 `agents-rules/sdd-workflow.md`.
 - **기능 문서 생성기** — `tools/docs/feature_docs.py`(표준 라이브러리만)가 OpenAPI·DB 카탈로그·코드 정적 분석·원고(`docs/features/_src`)로 정적 사이트를 만든다. API 명세는 Scalar, 그림은 Mermaid이고 둘 다 리포에 둔 판을 쓴다.
-- **스킬 원본은 core** — `.agents/skills/hx-*/SKILL.md`가 커맨드 본문이다. Claude·Cursor 커맨드와 Kiro 스킬·steering 은 그 원본을 가리키는 한 줄 포인터다(`tools/sync-commands.sh`가 만든다).
+- **스킬 원본은 core** — `.agents/skills/hx-*/SKILL.md`가 커맨드 본문이다. Claude · Kiro 스킬은 그 폴더의 복사본, Cursor 명령 · Kiro 명령 steering 은 본문 전체를 담은 생성물이다(설치 · `harness-kit repair` 가 만든다).
 - **도메인 레이어는 여러 스택이 공유하는 규약만** — `web`·`electron` 은 `frontend` 를 공유한다(디자인 시스템·접근성·UI 상태·성능). `jvm`·`python`·`go` 는 도메인 디렉터리가 **없다** — 규칙이 이미 언어별이라 스택 레이어가 그 역할을 한다. 빈 `backend/` 를 만들지 않는다.
 - **스택 오버레이** — 하네스 골격(SDD·게이트 구조·에이전트 배선)은 한 벌, 언어 종속 규약(컨벤션·주석·보안·검증 명령)만 스택별로 갈아 끼운다.
-- **아키텍처 변형 레이어** — 아키텍처에 종속되는 파일은 4개뿐(`ARCHITECTURE.md`·`agents-rules/structure.md`·`agents-rules/tech.md`·`kiro-steering/structure.md`)이다. 이 4개만 `arch/<variant>/`에 두고 선택한 하나만 설치하므로 조합이 늘어도 설치 파일 수는 달라지지 않는다.
+- **아키텍처 변형 레이어** — 아키텍처에 종속되는 파일은 3개뿐(`ARCHITECTURE.md`·`agents-rules/structure.md`·`agents-rules/tech.md`)이다. 이 3개만 `arch/<variant>/`에 두고 선택한 하나만 설치하므로 조합이 늘어도 설치 파일 수는 달라지지 않는다.
 - **선택 모듈은 기본 꺼짐** — `--modules=` 로 명시할 때만 깔린다. 각 모듈 폴더의 `ABOUT` 첫 줄이 `--list-modules` 설명이며, `ABOUT` 자체는 설치되지 않는다.
 - **에이전트 선택 설치** — 템플릿 전체를 다 깔지 않는다. core 는 항상 깔고 에이전트 배선은 고른 것만 얹는다.
 - **설치 상태 기록** — `.agents/harness-kit.json`(버전·스택·도메인·변형·에이전트·모듈·치환값) + `.agents/harness-kit.lock`(파일별 설치 시점 해시). `hx-agent-add`·`hx-update` 가 이 둘을 읽는다. 커밋 대상이다.
@@ -58,20 +58,27 @@
 
 | 묶음 | 템플릿 세그먼트 | 설치 여부 |
 |---|---|---|
-| `core` | `agents-rules/` · `agents-docs/` · `agents-root/` · `agents-skills/` · `scripts/` · `tools/` · `docs/` · `root/`(CLAUDE.md 제외) | 항상 |
-| `claude` | `claude/` + `root/CLAUDE.md` | 선택 |
-| `codex` | `codex/` | 선택 |
-| `cursor` | `cursor/` | 선택 |
-| `kiro` | `kiro-steering/` + `kiro-skills/` + `kiro-agents/` + `kiro-hooks/` + `kiro-root/` | 선택 |
+| `core` | `agents-rules/` · `agents-docs/` · `agents-root/` · `agents-skills/` · `scripts/` · `tools/` · `docs/` · `root/` | 항상 |
+| `claude` | (템플릿 없음 — 배치가 만든다) | 선택 |
+| `codex` | `codex/`(hooks.json · README) | 선택 |
+| `cursor` | (템플릿 없음 — 배치가 만든다) | 선택 |
+| `kiro` | `kiro-agents/`(조율 에이전트) + `kiro-hooks/` + `kiro-root/` | 선택 |
 
 파일 수는 스택군에 달렸다(`--modules` 제외):
 
 | 스택군 | core | claude | codex | cursor | kiro | 전부 고를 때 |
 |---|---|---|---|---|---|---|
-| `jvm` · `python` · `go` | 198 | 19 | 8 | 11 | 53 | **289** |
-| `web` · `electron` (`frontend` 도메인 +4 core/+4 kiro) | 202 | 19 | 8 | 11 | 57 | **297** |
+| `jvm` · `python` · `go` | 204 | 0 | 2 | 0 | 6 | **212** |
+| `web` · `electron` (`frontend` 도메인 +4 core) | 208 | 0 | 2 | 0 | 6 | **216** |
 
-- 설치 수 = core + 고른 에이전트의 합. 예(백엔드): claude 만 = 217, claude+kiro = 270, `all` = 289.
+하네스 폴더 파일은 설치가 `.agents/` 원본에서 만든다(배치 — mirror · render · merge, 모듈 없음 기준):
+
+| 스택군 | claude | codex | cursor | kiro | 공통 |
+|---|---|---|---|---|---|
+| `jvm` · `python` · `go` | 49(스킬 11 폴더 · 규칙 20 · 역할 5 · `CLAUDE.md` · `settings.json`) | 6(역할 5 · `config.toml`) | 31(명령 11 · 규칙 20) | 58(스킬 11 폴더 · steering 31 · 역할 5) | `.gitattributes` |
+| `web` · `electron` | 53 | 6 | 35 | 62 | `.gitattributes` |
+
+- 설치 수 = core + 고른 에이전트의 템플릿 + 그 에이전트의 배치. 정확한 수는 `harness-kit plan --json` 이 낸다.
 - 설치 끝에 `tools/docs/feature_docs.py build`가 한 번 돌아 `docs/features/*.html`이 생긴다. 이 생성물은 lock 에 오르지 않는다.
 - 감지 순서: 대상 리포의 `.claude/`·`.codex/`·`.cursor/`·`.kiro/` → 실행 CLI 환경변수 → 없으면 `claude`.
 - `--list-agents` 로 감지 결과와 파일 수만 출력할 수 있다(설치하지 않는다).
@@ -83,8 +90,8 @@
 
 | 모듈 | 파일 | 무엇을 넣나 |
 |---|---|---|
-| `jira-workflow` | 15 (core 5 · claude 2 · cursor 2 · kiro 6) | `.agents/issue-tracker.yml`(접근 수단·상태·전이 ID·락 설정, 전부 `TBD`) + `issue-tracker-workflow.md`·`issue-agent-lock.md` 규칙 + 슬래시 커맨드 **2종 × 4하네스** — `/hx-issue`(트래커 단품) · `/hx-ticket`(티켓→SDD→구현→리뷰 전 여정) |
-| `platform-guards` | 4 (core 3 · kiro 1) | `scripts/run-guards.sh` 실행기 + `scripts/guards/_template.sh` + `platform-invariants.md` 규칙 |
+| `jira-workflow` | 5 (core 5) | `.agents/issue-tracker.yml`(접근 수단·상태·전이 ID·락 설정, 전부 `TBD`) + `issue-tracker-workflow.md`·`issue-agent-lock.md` 규칙 + 슬래시 커맨드 **2종 × 4하네스** — `/hx-issue`(트래커 단품) · `/hx-ticket`(티켓→SDD→구현→리뷰 전 여정) |
+| `platform-guards` | 3 (core 3) | `scripts/run-guards.sh` 실행기 + `scripts/guards/_template.sh` + `platform-invariants.md` 규칙 |
 | `multi-harness` | 9 (core 9) | `tools/harness/sync.py`(공통 파일 원본 `tools/harness/shared/` → 등록표 `tools/harness/units.json`의 하네스로 배포, 지문 충돌 거부) · `sync_safety.py`(배포 잠금) · `gates.py`(메인 게이트가 하위 게이트를 부른다) · `install_verification_entry.py` + 시험 5개 |
 
 - `jira-workflow` 핵심: **한 세션 = 한 활성 티켓** · pull gate · **표시 이름이 아니라 ID 로 전이** · 에이전트는 In Review 까지.
@@ -114,42 +121,38 @@
 | `<root>/agents-rules/` | `./.agents/rules/` | **공통 규칙 원본 (전 에이전트 공유)** |
 | `<root>/agents-root/` | `./.agents/` | 에이전트 공용 설정 — 역할 원본 `roles/`(planner·explorer·worker·reviewer·docs-researcher) · `verify-checks.json`(경로별 추가 검사) · `issue-tracker.yml` |
 | `<root>/agents-docs/` | `./.agents/docs/` | SDD 기록 시스템 |
-| `<root>/kiro-steering/` | `./.kiro/steering/` | Kiro 얇은 포인터(원본 아님) + IDE 슬래시 커맨드(`inclusion: manual`) |
-| `<root>/kiro-skills/` | `./.kiro/skills/` | Kiro CLI 슬래시 커맨드(포인터) |
 | `<root>/kiro-agents/` · `kiro-hooks/` · `kiro-root/` | `./.kiro/agents/` · `./.kiro/hooks/` · `./.kiro/` | Kiro 조율 에이전트·역할 · hook(보호 경로·세션 컨텍스트·검증 게이트) · 안내 |
 | `<root>/agents-skills/` | `./.agents/skills/` | **커맨드 본문 원본**. Codex 스킬 탐색 경로이기도 하다(`$<name>` 멘션) |
 | `<root>/scripts/` | `./scripts/` | 검증 게이트·SDD 명령·세션 협업·hook·git hook·가드 |
 | `<root>/tools/` | `./tools/` | 기능 문서 생성기(`tools/docs/`) |
 | `<root>/docs/` | `./docs/` | 기능 문서 원고 골격(`docs/features/_src/` — 설정·catalog·단계 원고) |
-| `<root>/claude/` | `./.claude/` | Claude Code 트리거·권한·슬래시 커맨드 |
-| `<root>/codex/` | `./.codex/` | Codex 트리거·정책 |
-| `<root>/cursor/` | `./.cursor/` | Cursor 프로젝트 슬래시 커맨드 |
+| `<root>/codex/` | `./.codex/` | Codex hook 배선 · 안내 |
+
+하네스 폴더의 규칙 · 스킬 · 역할 · `CLAUDE.md` · `.claude/settings.json` · `.codex/config.toml` 은 템플릿이 아니라 배치(`scripts/harness/projection.py` · CLI 어댑터)가 `.agents/` 원본과 `scripts/harness/projection.json` 에서 만든다.
 
 ## 공통 vs 스택별 (무엇이 어디에 있나)
 
-| 영역 | `templates/common/` (271개) | `templates/domains/frontend/` (8개 · web·electron 만) | `templates/stacks/<stack>/` (변형 무관 14개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
+| 영역 | `templates/common/` (198개) | `templates/domains/frontend/` (8개 · web·electron 만) | `templates/stacks/<stack>/` (변형 무관 14개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
 |---|---|---|---|---|
-| 진입점 | `README.md` | — | `AGENTS.md` · `CLAUDE.md` · `.gitignore` · `.github/workflows/verify.yml` | `root/ARCHITECTURE.md` |
+| 진입점 | `README.md` | — | `AGENTS.md` · `.gitignore` · `.github/workflows/verify.yml` | `root/ARCHITECTURE.md` |
 | 규칙 | `agent-harness.md` · `sdd-workflow.md` · `product.md` · `writing-style.md` · `design-principles.md` · `reuse-before-new.md` · `verification-ladder.md` · `pr-review-policy.md` · `git-workflow.md` · `platform-invariants.md` · **`code-maintenance.md`** · **`session-collaboration.md`** | `design-system.md` · `accessibility.md` · `ui-state.md` · `frontend-performance.md` | `code-comments.md` · `api-standards.md` · `security.md` · `reliability.md` · `quality-score.md` · `guardrails.md` | `agents-rules/structure.md` · `agents-rules/tech.md` |
-| Kiro 포인터 | agent-harness · sdd-workflow · guardrails · security · api-standards · quality-score · reliability · product · writing-style · **design-principles** · reuse-before-new · verification-ladder · pr-review-policy | design-system · accessibility · ui-state · frontend-performance | `tech.md` · `code-comments.md` | `kiro-steering/structure.md` |
 | 스크립트 | `verify-entry.sh`(진입) · `verify-changed.py`(changed 계획) · `check_harness.py` · `new-feature.sh`·`sdd-layout.py`(이슈 SDD) · `check-sdd-prerequisites.sh` · `check-exec-plan-status.sh` · `check-spec-freshness.sh` · `board.sh` · `session-coordination.py` · `check-maintenance.py` · `hooks/` · `git-hooks/` · `guards/` · `harness/`(파이썬 모듈) | — | `verify.sh` (스택 검증 게이트 — 진입 블록이 changed·fast·full 을 가르고 하네스 검사·문서 검사를 부른다) | — |
 | SDD 기록 | `agents-docs/` 전체 — 이슈 폴더 템플릿(requirements 정책·화면 표, design §4.3·§4.4·§7.1~7.3, tasks Polish 문서 반영) | — | — | — |
 | 기능 문서 | `tools/docs/`(생성기 · 시험 · `site.json` · `vendor.lock.json` · `schema-snapshot.sh`) · `docs/features/_src/`(catalog · 단계 원고) | — | `docs/features/_src/docs.config.json`(스택에 맞는 단위·원본 경로) | — |
-| 에이전트 배선 | `claude/`·`codex/`·`kiro-agents/`·`kiro-hooks/` 전체 · 역할 원본 `agents-root/roles/` | — | — | — |
-| 슬래시 커맨드(`hx-` 11종) | 원본 `agents-skills/hx-*/SKILL.md` + 포인터 `claude/commands/` · `cursor/commands/` · `kiro-steering/hx-*.md` · `kiro-skills/` (11 × 5 = 55) | — | — | — |
+| 에이전트 배선 | `codex/` · `kiro-agents/` · `kiro-hooks/` · 역할 원본 `agents-root/roles/` · 모델 정책 `agents-root/model-policy.json` · 배치 상수 `scripts/harness/projection.json` | — | — | — |
+| 슬래시 커맨드(`hx-` 11종) | 원본 `agents-skills/hx-*/SKILL.md`(하네스 폴더 사본은 배치가 만든다) | — | — | — |
 
 > 규칙 7종이 스택별인 이유: 주석 표준·보안 위험·신뢰성 패턴·DoD가 언어마다 실제로 다르기 때문이다(주석 규약, 동시성 함정, 커버리지 도구 등).
 > 반대로 **레이어 책임은 변형 무관 원칙으로 중립화**해 `guardrails.md`에 두고, 구체 경로·계약은 `structure.md`·`ARCHITECTURE.md`(변형별)로 위임한다.
 > `frontend` 도메인 규칙 4종이 스택이 아니라 도메인에 있는 이유: web 과 electron 이 **같은 규약을 쓴다**. 스택에 두면 두 벌이 되고 곧 어긋난다.
-> 템플릿 합계 = 271 + 14 + 4 = **289개**(백엔드 3스택) · 271 + 8 + 14 + 4 = **297개**(web·electron).
-> 실제 설치 수는 고른 에이전트에 달렸다 — 백엔드 core 198 + (claude 19 · codex 8 · cursor 11 · kiro 53) · 프론트엔드 core 202 + (19 · 8 · 11 · 57).
-> 선택 모듈(`jira-workflow` 15 · `platform-guards` 4 · `multi-harness` 9)은 여기에 더해진다.
+> 템플릿 합계 = 198 + 10 + 4 = **212개**(백엔드 3스택) · 198 + 4 + 10 + 4 = **216개**(web·electron). 하네스 폴더 파일은 배치가 더한다(위 「에이전트 선택」 표).
+> 선택 모듈(`jira-workflow` 5 · `platform-guards` 3 · `multi-harness` 9)은 여기에 더해진다.
 > 여기에 상태 파일 2개(`harness-kit.json`·`harness-kit.lock`)가 더해진다.
 >
-> 슬래시 커맨드는 원본 1곳 + 포인터. 본문 원본은 `agents-skills/hx-*/SKILL.md`(설치 위치 `.agents/skills/`)이고
-> 스킬이 `.agents/rules/sdd-workflow.md`의 해당 절을 읽는다. Claude·Cursor·Kiro 파일은 원본 description 을 그대로 쓰는 한 줄 포인터다.
-> 커맨드 내용을 고치면 스킬 원본을 고친 뒤 `bash tools/sync-commands.sh`로 포인터를 다시 만든다(`--check`는 어긋나면 1).
-> 설치본의 `scripts/check_harness.py`가 스킬마다 고른 에이전트의 포인터가 있는지 검사한다.
+> 슬래시 커맨드는 원본 1곳 + 복사본 · 생성물. 본문 원본은 `agents-skills/hx-*/SKILL.md`(설치 위치 `.agents/skills/`)이고
+> 스킬이 `.agents/rules/sdd-workflow.md`의 해당 절을 읽는다. Claude · Kiro 스킬은 폴더 복사본, Cursor · Kiro 명령은 본문 전체를 담은 생성물이다.
+> 원본을 고치면 `npx harness-kit repair`(Node 가 없으면 `python3 scripts/harness/projection.py sync`)가 다시 만든다.
+> 설치본의 `scripts/harness/check_layout.py`가 lock 기준으로 복사본 · 생성물이 원본과 같은지(stale · drifted) 검사한다.
 
 ## 에이전트가 규칙을 공유하는 방식
 
@@ -159,19 +162,19 @@
    (CLAUDE.md→        │  guardrails · security     │
     AGENTS.md,        │  api-standards · tech ...  │
     session-start)    └──────────▲───────────────┘
-                                 │ 포인터
-                        .kiro/steering/*  (Kiro 얇은 스텁)
+                                 │ 복사 · 생성(paths 자동 로드)
+          .claude/rules · .cursor/rules · .kiro/steering
 ```
 
 - Claude/Codex: `AGENTS.md` 규약 링크표 + `session-start` hook 이 `.agents/rules/` 를 가리킨다.
-- Kiro: `.kiro/steering/*`(inclusion: always) 얇은 스텁이 `.agents/rules/*` 원본을 열도록 유도한다.
+- Claude · Cursor · Kiro: `.claude/rules/*`(복사본) · `.cursor/rules/*.mdc` · `.kiro/steering/*`(생성물)이 규칙 머리의 `paths`로 그 경로 파일을 다룰 때 자동으로 실린다.
 
 ## 파일별 역할 / 작성 주체
 
 | 설치 경로 | 역할 | 스택별? | 작성 주체 |
 |---|---|:---:|---|
 | `AGENTS.md` | 에이전트 진입 목차(map) | ✅ | 인간(1회) |
-| `CLAUDE.md` | AGENTS.md로 위임하는 얇은 리다이렉트 + 스택 한 줄 | ✅ | 인간(1회) |
+| `CLAUDE.md` | `@AGENTS.md` 가져오기 + 킷 블록(`harness-kit:begin claude` … `end`, merge). 블록 밖은 프로젝트 몫 | — | 배치 + 인간 |
 | `ARCHITECTURE.md` | **변형별** 아키텍처 원본(레이아웃·의존 방향·기계적 강제 수단·선택 기준·승격 신호·전환 절차·Anti-pattern) | ✅ 변형별 | 인간(1회+갱신) |
 | `.github/workflows/verify.yml` | CI 트리거(얇음) — `scripts/verify.sh` 한 곳만 호출(런타임 셋업만 스택별) | ✅ | 인간 |
 | `README.md` | 사람이 읽는 리포 안내 — 하네스·SDLC 단계·검증 명령·기능 문서 위치 | — | 인간(1회+갱신) |
@@ -200,7 +203,7 @@
 | `.agents/rules/platform-invariants.md` | 불변식을 문서 → 경고 가드 → 강제 가드로 승격시키는 절차(공통). 모듈 `platform-guards` 가 실행기를 더한다 | — | 인간 |
 | `.agents/rules/reliability.md` | timeout·retry·서킷·멱등·**언어별 동시성 함정** | ✅ | 인간 |
 | `.agents/rules/quality-score.md` | 코드품질·Story/Epic DoD·커버리지 도구 | ✅ | 인간 |
-| `.kiro/steering/*.md` | 위 원본을 가리키는 **얇은 포인터**(inclusion 유지) | 일부 ✅ | 인간 |
+| `.kiro/steering/*.md` | 위 원본에서 만든 생성물(본문 전체, `paths` → `fileMatch`) | 일부 ✅ | 배치 |
 | `.agents/docs/README.md` | 기록 시스템 자기서술 + 4대 축 매핑 | — | 인간 |
 | `.agents/docs/_spec-templates/{README, requirements/_template, design/_template, checklists/_template, tasks/{_template,README}}.md` | SDD 단계 템플릿 **원본 한 벌**(복사 원본). requirements 에 정책·화면·기능 문서 칸, design 에 순서도·상태 전이·쿼리→인덱스·캐시·동시성 절, tasks Polish 에 문서 반영 작업이 있다. 이슈 폴더 `issues/<키>-<이름>/` 는 `new-feature.sh` 가 만들고, 단계 문서는 그 단계에 들어갈 때 하나씩 렌더된다(앞에 문서 머리) | — | 인간→에이전트 실행 |
 | `.agents/docs/guides/{sdd-pattern,harness-engineering,doc-standards,…}.md` | 사용 안내 — 이슈 SDD 따라 하기, 하네스 구조·검사 표, 문서 작성 기준 | — | 인간 |
@@ -210,14 +213,15 @@
 | `.agents/docs/references/README.md` | 압축 참고자료(*-llms.txt) 규약 | — | 인간/에이전트 |
 | `scripts/verify.sh` | **단일 강제 지점**(스택별 빌드·린트·타입·아키텍처·테스트 + 변형 전용 조건부 단계). 앞의 진입 블록(`verify-entry.sh`)이 레벨을 가른다 — 기본 `changed`(바뀐 파일에 필요한 검사만, `verify-changed.py`) / `--fast`(구조 점검 + 가벼운 정적 검사) / `--full`(전체, CI) | ✅ | 인간 |
 | `scripts/verify-changed.py` + `scripts/harness/verify_*.py` | changed 계획기 — 바뀐 파일·세션 점유 파일로 검사·시험을 고른다. `--plan` 은 실행 없이 계획만, `.agents/verify-checks.json` 의 경로별 검사(기능 문서 검사 등)를 더한다 | — | 인간 |
-| `scripts/check_harness.py` | 하네스 검사 — 필수 파일·설정 파싱·포인터(고른 에이전트만)·이슈 문서 머리(`state` · 작업 ID)·키 충돌·옛 구조 동결 | — | 인간 |
+| `scripts/check_harness.py` | 하네스 검사 — 필수 파일·설정 파싱·복사본이 있는지(고른 에이전트만)·이슈 문서 머리(`state` · 작업 ID)·키 충돌·옛 구조 동결 | — | 인간 |
 | `scripts/session-coordination.py` + `scripts/harness/coordination_*.py` | 동시 세션의 파일 점유(register·claim·release)·공지(inbox·acknowledge)·상태 | — | 인간/에이전트 |
 | `scripts/check-maintenance.py` | 코드 유지보수 후보(긴 함수·이름·조건식) 경고. 실패 판정이 아니다 | — | 에이전트 |
 | `scripts/board.sh` | SDD 보드(`specs-index.md`의 영역별 표)를 문서 머리로 다시 만든다. `--check` 는 어긋나면 실패, `--area <영역>` 은 그 표만 | — | 도구 |
 | `scripts/hooks/{session-start.sh,session-context.py,protect-sources.sh,verify-gate.sh}` | 에이전트 공용 hook 본문 — 세션 컨텍스트 주입 · 보호 경로 쓰기 차단 · 턴 끝 changed 검증 | — | 인간 |
 | `scripts/git-hooks/{pre-commit,pre-push,global-hook.sh}` + `scripts/install-git-hooks.sh` | git hook — 커밋·push 때 changed 검증. 전역 `core.hooksPath` 가 있어도 리포 hook 을 부르게 건다 | — | 인간 |
 | `scripts/guards/{_template,no-secrets-in-env-example}.sh` | 가드 골격과 `.env.example` 비밀 값 검사 | — | 인간 |
-| `.agents/roles/{planner,explorer,worker,reviewer,docs-researcher}.md` | 역할 원본. `.claude/agents/`·`.codex/agents/`·`.kiro/agents/` 가 이 원본을 가리킨다 | — | 인간 |
+| `.agents/roles/{planner,explorer,worker,reviewer,docs-researcher}.md` | 역할 원본(머리 `mode` · `tools` · `class`). `.claude/agents/`·`.codex/agents/`·`.kiro/agents/` 는 이 원본에서 만든 생성물이다(위임 역할만 모델 · effort, `.agents/model-policy.json`) | — | 인간 |
+| `scripts/harness/{projection,projection_render,projection_merge,check_layout}.py` · `projection.json` | 배치 — 원본에서 하네스 폴더 복사본 · 생성물 · 병합을 만든다(`sync`), lock 기준 배치 검사(fast) | — | 도구 |
 | `.agents/verify-checks.json` | changed 계획기의 경로별 추가 검사(기본: 문서·생성기·소스 경로 → `feature_docs.py check`). `"covers": true` 규칙은 생성물·외부 라이브러리·fixture 경로를 관련 시험 대신 책임진다(사이트 자산 → `check --assets`) | — | 인간 |
 | `tools/docs/` | 기능 문서 생성기(`feature_docs.py` · `docskit/` · 시험 · `README.md`). 명령 `build`·`check`·`stats`·`brief`·`refresh openapi|schema|vendor` | — | 인간 |
 | `docs/features/_src/{docs.config.json,catalog.json,stages/*.md,features/*.md}` | 기능 문서 원고 — 단위·원본 경로 설정, 영역·기능·배정 규칙, 단계 원고, 기능 원고 | 설정만 ✅ | 인간/에이전트(`/hx-docs`) |
@@ -226,17 +230,16 @@
 | `scripts/new-feature.sh` | 이슈 SDD 단계 문서 스캐폴딩(`_spec-templates/` → `issues/<키>-<이름>/` 에 **그 단계 하나만**). `new-feature.sh <키\|--next> <이름> --area <영역> [--type feat\|fix\|refactor\|perf\|chore\|docs]` · `new-feature.sh <키> --stage=design\|tasks`. 앞 문서 머리가 `status: approved` 가 아니면 거부한다. `--all` · `--legacy` 는 없다 | — | 인간/에이전트 |
 | `scripts/check-sdd-prerequisites.sh` | SDD 단계 선행조건 검사(design/tasks/implement). `--stage` 는 공백·등호 두 표기를 받고 모르는 단계는 거부 | — | 에이전트 |
 | `scripts/check-spec-freshness.sh` | 스펙이 최신인지 확인하는 리포트(읽기 전용·항상 exit 0). `/hx-converge` 근거 | — | 인간/에이전트 |
-| `.claude/settings.json` | 권한(deny) + defaultMode(기본 acceptEdits) + hook 4개 배선(`scripts/hooks/` 를 부른다 — 세션 시작 · 보호 경로 · full 차단 · 턴 끝 검증) | — | 인간 |
-| `.claude/agents/*.md` · `.claude/rules/*.md` | 역할 다섯(원본 `.agents/roles/`를 가리킨다) · Claude 가 함께 읽는 규칙 포인터 | — | 인간 |
-| `.claude/commands/hx-*.md` (11종) | Claude 슬래시 명령 — 스킬 원본을 가리키는 한 줄 포인터 | — | 도구(`sync-commands.sh`) |
-| `.codex/{hooks.json,config.toml,agents/*.toml}` | Codex hook 배선(`scripts/hooks/`)·정책·역할 | — | 인간 |
-| `.cursor/commands/hx-*.md` (11종) | Cursor 슬래시 명령 — 같은 포인터 | — | 도구 |
-| `.kiro/steering/hx-*.md` (11종) | Kiro **IDE** 슬래시 명령(`inclusion: manual`) | — | 도구 |
-| `.kiro/skills/hx-*/SKILL.md` (11종) | Kiro **CLI** 슬래시 명령 | — | 도구 |
-| `.kiro/agents/*.json` · `.kiro/hooks/*.json` | Kiro 조율 에이전트(`<slug>.json`)와 역할 다섯 · hook 넷(보호 경로·세션 컨텍스트·검증 게이트·full 차단) | — | 인간 |
+| `.claude/settings.json` | 권한(deny) + hook 4개 배선(세션 시작 · 보호 경로 · full 차단 · 턴 끝 검증) — 킷 키만 병합한다(merge). 다른 도구 · 사람 항목은 그대로 | — | 배치 + 인간 |
+| `.claude/skills/<스킬>/` · `.claude/rules/*.md` · `.claude/agents/*.md` | 스킬 폴더 · 규칙 복사본(mirror) · 역할 생성물(render, 본문 전체) | — | 배치 |
+| `.codex/hooks.json` · `.codex/config.toml` · `.codex/agents/*.toml` | Codex hook 배선(copy) · 정책과 역할 등록(merge) · 역할 생성물(render) | — | 인간 · 배치 |
+| `.cursor/commands/hx-*.md` · `.cursor/rules/*.mdc` | Cursor 명령(SKILL.md 본문 전체) · 규칙(`globs` = `paths`) — 생성물 | — | 배치 |
+| `.kiro/skills/<스킬>/` · `.kiro/steering/*.md` | Kiro CLI 스킬 복사본 · 규칙 steering(`fileMatch`)과 IDE 명령 steering(`inclusion: manual`) 생성물 | — | 배치 |
+| `.kiro/agents/<slug>.json` · `.kiro/agents/<역할>.json` · `.kiro/hooks/*.json` | Kiro 조율 에이전트(copy) · 역할 생성물 · hook 넷(copy) | — | 인간 · 배치 |
+| `.gitattributes` | 생성 경로에 `linguist-generated=true`(킷 블록만 병합) | — | 배치 |
 | `.agents/skills/hx-*/SKILL.md` (11종) | **커맨드 본문 원본**. Codex 는 이 경로를 직접 읽는다(`$hx-specify` 로 멘션, `/skills` 로 목록) | — | 인간 |
 | `.agents/harness-kit.json` | 설치 메타 — 킷 버전·스택·변형·에이전트·치환값. `hx-agent-add`·`hx-update` 의 입력 | — | 도구(손편집 금지) |
-| `.agents/harness-kit.lock` | 파일별 설치 시점 원본 해시(TSV). 업데이트가 사용자 수정본을 가려내는 근거 | — | 도구(손편집 금지) |
+| `.agents/harness-kit.lock` | 파일별 설치 시점 원본 해시(setup.sh 는 TSV — 배치 줄 `mirror` · `render` · `merge` 포함, CLI 는 v2 JSON). 업데이트가 사용자 수정본을 가려내는 근거 | — | 도구(손편집 금지) |
 
 ## 치환 토큰
 

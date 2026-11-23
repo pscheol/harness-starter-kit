@@ -1,3 +1,12 @@
+---
+paths:
+  - "**/*.tsx"
+  - "**/*.jsx"
+  - "**/*.vue"
+  - "**/*.css"
+  - "**/*.scss"
+  - "**/*.html"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · frontend 도메인 공통 규칙(web·electron 공유) -->
 
 # UI 상태 — 종류를 먼저 정하고, 파생은 저장하지 않는다

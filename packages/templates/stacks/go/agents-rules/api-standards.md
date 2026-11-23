@@ -1,3 +1,8 @@
+---
+paths:
+  - "**/*.go"
+  - ".agents/docs/openapi/**"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · Go 백엔드 · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # API 표준 규약 — {{PROJECT_NAME}}

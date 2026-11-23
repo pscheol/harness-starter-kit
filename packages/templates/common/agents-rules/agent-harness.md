@@ -1,3 +1,14 @@
+---
+paths:
+  - ".agents/**"
+  - "scripts/**"
+  - "AGENTS.md"
+  - "CLAUDE.md"
+  - ".claude/**"
+  - ".codex/**"
+  - ".cursor/**"
+  - ".kiro/**"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · 스택 무관 공통 규칙 · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # 하네스 규약 (단일 프로젝트)
@@ -24,7 +35,7 @@
 - 둘을 섞지 않는다. 규칙은 오래 살아남고, 기록은 특정 작업이나 기능에서 나온 결과물이다.
 
 > 컨텍스트에 들어오지 않은 내용은 에이전트에게 없는 것과 같다. 결정과 배경, 규칙은 반드시 문서로 남긴다.
-> 진입 파일(AGENTS.md·CLAUDE.md·kiro 포인터)은 목차일 뿐이라 상세를 여기에 또 적지 않는다.
+> 진입 파일(AGENTS.md·CLAUDE.md)은 목차일 뿐이라 상세를 여기에 또 적지 않는다.
 
 ## 에이전트별 진입점 → 공통 원본
 
@@ -34,7 +45,7 @@
 |---|---|---|
 | Claude Code | `/CLAUDE.md` | → `/AGENTS.md`로 위임, `.agents/rules/` 참조 + `.claude/`(settings·commands·hook) |
 | Codex | `/AGENTS.md` | 목차 → `.agents/rules/` 참조 + `.codex/config.toml`(리포 정책) |
-| Kiro | `.kiro/steering/*.md` | **얇은 포인터**(항상 로드) → `.agents/rules/`의 해당 원본으로 위임 |
+| Kiro | `.kiro/steering/*.md` | 규칙 원본에서 만든 생성물(본문 전체, `paths` → `fileMatch`) |
 
 - Kiro steering은 규칙을 복제하지 않는다. `inclusion: always`로 로드되는 얇은 파일이 "원본은 `.agents/rules/<file>.md`"라고 알려주기만 한다.
 - Claude Code와 Codex는 `.kiro/`가 자동으로 주입된다고 가정하지 않는다. 작업을 시작할 때 `.agents/rules/`에서 필요한 파일을 직접 연다.
@@ -132,7 +143,7 @@ Claude·Codex·Kiro hook 은 로직 없이 `scripts/hooks/*`(세션 안내 · �
 규칙이나 지식이 바뀌면 순서를 지킨다.
 
 1. `.agents/rules/`의 원본을 먼저 고친다. 규칙은 여기가 유일한 출처다.
-2. `AGENTS.md`·`CLAUDE.md`·`.kiro/steering/`의 얇은 포인터를 원본에 맞춘다. 내용을 복제하지 말고 링크나 한 줄 요약만 둔다.
+2. `AGENTS.md` 목차를 원본에 맞춘다. 하네스 폴더(`.claude/` `.cursor/` `.kiro/` …)의 복사본 · 생성물은 `npx harness-kit repair`(Node 가 없으면 `python3 scripts/harness/projection.py sync`)가 다시 만든다. 직접 고치지 않는다.
 3. 진입 파일은 계속 짧게 유지한다. 거대한 지침 파일 하나를 만들지 않는다.
 4. 규칙이 아니라 특정 기능의 설계나 계획이면 `.agents/rules/`가 아니라 `.agents/docs/`에 기록한다.
 

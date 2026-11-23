@@ -1,6 +1,6 @@
 ---
 name: hx-bootstrap
-description: 단일 프로젝트에 하네스 엔지니어링 기본 골격을 스캐폴딩한다. 스택은 jvm(Kotlin/Java+Spring) · python(FastAPI/ASGI) · go(표준 Go 레이아웃) · web(TypeScript+React) · electron(TypeScript 데스크톱) 중에서 고르고, 아키텍처 변형(ARCH)은 jvm 8종(hexagonal·hexagonal-nested·hexagonal-standalone·layered·layered-multimodule·modulith·feature·multimodule) · python 5종(hexagonal·layered·modular·django·ai-service) · go 4종(hexagonal·layered·feature·flat) · web 3종(nextjs-app·react-spa·feature-sliced) · electron 3종(main-renderer·feature·monorepo) 중에서 고른다. web·electron 은 frontend 도메인 규칙(디자인 시스템·접근성·UI 상태·성능)을 공유한다. 선택 모듈(--modules)로 jira-workflow(이슈 트래커 연동) · platform-guards(프로젝트 고유 불변식 가드) · multi-harness(여러 리포·단위 하네스)를 얹을 수 있다. 진입점=목차(AGENTS.md/CLAUDE.md), 공통 규칙 원본(.agents/rules — Claude Code·Codex·Cursor·Kiro 공유), Kiro 얇은 포인터(.kiro/steering), SDLC 단계형 SDD 기록 시스템(.agents/docs — 템플릿 원본 _spec-templates + 이슈 단위 issues/<키>-<이름>/{requirements,design,tasks} + decisions), 단일 검증 게이트(scripts/verify.sh, 기본 changed)와 얇은 트리거(hook), 세션 협업 도구, 기능 문서 생성기(tools/docs — Scalar API 명세·Mermaid 그림)를 한 번에 깐다. "하네스 초기 설정", "AGENTS.md 만들기", "에이전트 규칙 세팅", "harness bootstrap/scaffold", "steering 초기화", "exec-plan/SDD 구조 만들기" 요청 시 사용.
+description: 단일 프로젝트에 하네스 엔지니어링 기본 골격을 스캐폴딩한다. 스택은 jvm(Kotlin/Java+Spring) · python(FastAPI/ASGI) · go(표준 Go 레이아웃) · web(TypeScript+React) · electron(TypeScript 데스크톱) 중에서 고르고, 아키텍처 변형(ARCH)은 jvm 8종(hexagonal·hexagonal-nested·hexagonal-standalone·layered·layered-multimodule·modulith·feature·multimodule) · python 5종(hexagonal·layered·modular·django·ai-service) · go 4종(hexagonal·layered·feature·flat) · web 3종(nextjs-app·react-spa·feature-sliced) · electron 3종(main-renderer·feature·monorepo) 중에서 고른다. web·electron 은 frontend 도메인 규칙(디자인 시스템·접근성·UI 상태·성능)을 공유한다. 선택 모듈(--modules)로 jira-workflow(이슈 트래커 연동) · platform-guards(프로젝트 고유 불변식 가드) · multi-harness(여러 리포·단위 하네스)를 얹을 수 있다. 진입점=목차(AGENTS.md/CLAUDE.md), 공통 규칙 원본(.agents/rules — Claude Code·Codex·Cursor·Kiro 공유), 규칙 복사본(하네스 폴더), SDLC 단계형 SDD 기록 시스템(.agents/docs — 템플릿 원본 _spec-templates + 이슈 단위 issues/<키>-<이름>/{requirements,design,tasks} + decisions), 단일 검증 게이트(scripts/verify.sh, 기본 changed)와 얇은 트리거(hook), 세션 협업 도구, 기능 문서 생성기(tools/docs — Scalar API 명세·Mermaid 그림)를 한 번에 깐다. "하네스 초기 설정", "AGENTS.md 만들기", "에이전트 규칙 세팅", "harness bootstrap/scaffold", "steering 초기화", "exec-plan/SDD 구조 만들기" 요청 시 사용.
 ---
 
 # hx-bootstrap — 하네스 엔지니어링 초기 설정 스킬
@@ -11,12 +11,12 @@ description: 단일 프로젝트에 하네스 엔지니어링 기본 골격을 �
 ## 설계 원칙
 
 - **규칙은 공통 원본 한 곳** — 가드레일·보안·API 표준·기술 규약을 `.agents/rules/` 에 두고 Claude Code · Codex · Kiro 에이전트가 공유한다. 특정 에이전트가 소유하지 않는다.
-- **Kiro steering = 얇은 포인터** — `.kiro/steering/*` 는 규칙 본문 대신 `.agents/rules/*` 원본을 가리킨다.
+- **하네스 폴더 = 원본의 복사본 · 생성물** — `.claude/` `.cursor/` `.kiro/` 의 규칙 · 스킬 · 역할은 `.agents/` 원본에서 만든 실제 파일이다(링크 · 포인터 파일 없음). 규칙은 머리의 `paths` 로 자동으로 실린다.
 - **5층 오버레이** — 뒤 레이어가 앞 레이어를 덮는다:
   `common/` (스택 무관 골격) → `domains/<domain>/` (여러 스택이 공유하는 규약) → `stacks/<stack>/` (언어·런타임 규약) → `stacks/<stack>/arch/<ARCH>/` (레이아웃) → `optional/<module>/` (선택).
   도메인 레이어는 **규칙이 이미 언어별인 스택에는 없다** — jvm·python·go 는 `backend` 도메인 디렉터리를 두지 않고 스택 규칙이 그 역할을 한다. web·electron 만 `frontend` 를 공유한다.
 - **선택 모듈은 기본 꺼짐** — `--modules=` 로 명시할 때만 깔린다(`--list-modules` 로 목록). 모든 프로젝트가 이슈 트래커를 자동화하지도, 고유 불변식을 갖지도 않는다.
-- **아키텍처 변형(ARCH)** — 한 스택 안에서도 레이아웃은 하나가 아니다. 아키텍처에 종속되는 파일은 4개뿐(`ARCHITECTURE.md`·`.agents/rules/structure.md`·`.agents/rules/tech.md`·`.kiro/steering/structure.md`)이라, 이 4개만 `templates/stacks/<stack>/arch/<variant>/`에 두고 선택한 하나만 설치한다. 변형을 바꿔도 설치 파일 수는 달라지지 않는다.
+- **아키텍처 변형(ARCH)** — 한 스택 안에서도 레이아웃은 하나가 아니다. 아키텍처에 종속되는 파일은 3개뿐(`ARCHITECTURE.md`·`.agents/rules/structure.md`·`.agents/rules/tech.md`)이라, 이 3개만 `templates/stacks/<stack>/arch/<variant>/`에 두고 선택한 하나만 설치한다. 변형을 바꿔도 설치 파일 수는 달라지지 않는다.
 - **에이전트는 쓰는 것만** — `.claude/`·`.codex/`·`.cursor/`·`.kiro/` 를 전부 깔지 않는다. 규칙·SDD·게이트(core)는 항상 깔고, 에이전트 배선은 고른 것만 얹는다. 나중에 `hx-agent-add` 로 더할 수 있다.
 
   | 스택군 | core | claude | codex | cursor | kiro | 전부 고를 때 |
@@ -26,7 +26,7 @@ description: 단일 프로젝트에 하네스 엔지니어링 기본 골격을 �
 
   선택 모듈은 여기에 더해진다(`jira-workflow` 15 · `platform-guards` 4 — 고른 에이전트에 따라 실제 수는 줄어든다).
 - **설치 상태를 남긴다** — `.agents/harness-kit.json`(버전·스택·변형·에이전트·치환값)과 `.agents/harness-kit.lock`(파일별 설치 시점 해시). 이 두 파일이 있어야 `hx-agent-add`·`hx-update` 가 다시 묻지 않고, 업데이트가 **사용자가 고친 파일**을 가려낼 수 있다. 둘 다 커밋한다.
-- **슬래시 커맨드는 4개 하네스 공통** — 커맨드 11종을 `hx-` 접두사로 깔되(SDLC: `/hx-specify` → `/hx-plan` → `/hx-tasks` → `/hx-implement` → `/hx-docs`), 본문 원본은 `.agents/skills/hx-*/SKILL.md` 한 곳이고(스킬이 `.agents/rules/sdd-workflow.md`의 절을 읽는다) 각 하네스 파일은 그것을 가리키는 한 줄 포인터다. Claude Code(`.claude/commands/`) · Cursor(`.cursor/commands/`) · Kiro(IDE `.kiro/steering/` + CLI `.kiro/skills/`) · Codex(`.agents/skills/`). 접두사는 `/plan` 같은 흔한 이름이 타 플러그인과 충돌하는 것을 막는다.
+- **슬래시 커맨드는 4개 하네스 공통** — 커맨드 11종을 `hx-` 접두사로 깔되(SDLC: `/hx-specify` → `/hx-plan` → `/hx-tasks` → `/hx-implement` → `/hx-docs`), 본문 원본은 `.agents/skills/hx-*/SKILL.md` 한 곳이고(스킬이 `.agents/rules/sdd-workflow.md`의 절을 읽는다) 하네스 폴더에는 그 복사본 · 생성물이 있다. Claude Code(`.claude/skills/`) · Cursor(`.cursor/commands/`) · Kiro(IDE `.kiro/steering/` + CLI `.kiro/skills/`) · Codex(`.agents/skills/` 그대로). 접두사는 `/plan` 같은 흔한 이름이 타 플러그인과 충돌하는 것을 막는다.
 
 ## 지원 스택
 
@@ -87,7 +87,7 @@ description: 단일 프로젝트에 하네스 엔지니어링 기본 골격을 �
 
 | 축 | 만들어지는 것 |
 |---|---|
-| ① 규칙·헌법·가드레일 | `AGENTS.md`(목차), `CLAUDE.md`(리다이렉트), **`.agents/rules/*`(공통 원본 + 스택별 규약)**, `.kiro/steering/*`(얇은 포인터) |
+| ① 규칙·헌법·가드레일 | `AGENTS.md`(목차), `CLAUDE.md`(`@AGENTS.md` + 킷 블록), **`.agents/rules/*`(공통 원본 + 스택별 규약)**, 하네스 폴더의 규칙 복사본 · 생성물(`paths` 자동 로드) |
 | ② 아키텍처 제약·스캐폴딩 | `ARCHITECTURE.md`(스택별 의존 방향·기계적 강제 수단), `.agents/docs/_spec-templates/`(SDD 단계 템플릿 원본 — 이슈 폴더 `issues/<키>-<이름>/` 는 `new-feature.sh` 가 첫 이슈에서 생성), 이슈 단위 SDD |
 | ③ 검증·피드백 루프 | `scripts/verify.sh`(스택별 단일 게이트) + `check-exec-plan-status.sh` + `.claude`/`.codex` hook(얇은 트리거), 완료 게이트(tasks `state` active→check→completed) |
 | ④ 부채·문서 관리 | `tech-debt-tracker.md`, `generated/`·`references/` 규약 |

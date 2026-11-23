@@ -1,3 +1,10 @@
+---
+paths:
+  - "**/*.py"
+  - "**/pyproject.toml"
+  - "**/requirements*.txt"
+  - "uv.lock"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · Python 백엔드(Django) · 아키텍처: django · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{PACKAGE_NS}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # 기술 스택 / 실행 환경 — {{PROJECT_NAME}} (Django)

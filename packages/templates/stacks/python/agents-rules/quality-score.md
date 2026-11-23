@@ -1,3 +1,7 @@
+---
+paths:
+  - "**/*.py"
+---
 <!-- HARNESS STARTER KIT · {{PROJECT_NAME}} · Python 백엔드 · 플레이스홀더({{PROJECT_NAME}}·{{PROJECT_SLUG}}·{{DOMAIN_EXAMPLE}}) 치환 후 사용 -->
 
 # 품질 기준 / DoD — {{PROJECT_NAME}}
