@@ -76,7 +76,7 @@ created: 2026-11-23
 | `harness_subst` | `sed` → `LC_ALL=C awk`. 토큰 값은 환경변수(`HX_SUBST_<이름>`)로 넘겨 `ENVIRON`으로 읽는다(`-v`는 `\`를 해석한다). `RS="\001"`로 파일 전체를 한 레코드로 읽고 `index` · `substr`로 리터럴 치환한다. 토큰은 `HARNESS_TOKENS` 순서(= `layout.json` `tokens`), 빈 값은 건너뛴다. 마지막 줄바꿈이 없는 파일 · 빈 파일 · CRLF도 바이트가 그대로다(macOS awk 20200816에서 확인) |
 | `harness_json_str` | 새로. awk로 `"` · `\` · 제어 문자를 JSON 이스케이프한다. Node `JSON.stringify`와 같은 출력(7가지 값으로 확인) |
 | `harness_write_manifest` | `unit` · `title` · `stack`을 `harness_json_str`로 쓴다. CLI `manifestContent`와 바이트가 같다 |
-| `harness_load_tokens` | `python3`가 있으면 메타를 JSON으로 읽는다(값을 NUL로 나눠 한 번에 받는다). 없으면 지금처럼 sed |
+| `harness_load_tokens` | 새 `harness_meta_token`으로 읽는다: `python3`가 있으면 메타를 JSON으로 읽어 `tokens.<이름>`을 낸다(토큰마다 한 번, update · add-agent에서만 돈다). `python3`가 없거나 JSON이 깨졌으면 지금처럼 sed |
 | 머리 | `shopt -u patsub_replacement 2>/dev/null \|\| true` — bash 5.2 이상에서 `${v//p/r}`의 `&`가 일치 문자열이 되는 것을 끈다(`harness_dest_name`). bash 3.2에는 없는 옵션이라 오류를 버린다 |
 
 전제: 템플릿에 NUL · `\001` 바이트가 없다(CLI는 NUL이 든 파일을 치환하지 않는다). 시험이 전제를 확인한다.
