@@ -24,12 +24,13 @@
 | HK-8 | P17 | CLI init · plan · doctor · list | 02 | HK-1 | 끝 |
 | HK-9 | v1.1 | SDD 새 경로 따라잡기 | 01 §3.7 | HK-3 | 진행 |
 | HK-10 | v1.1 | setup.sh 층 겹침 · 치환 특수 문자 | 02 §3.5 · §3.6 | HK-8 | 진행 |
-| HK-11 | P17 | CLI update · repair · uninstall | 02 §3.10 · §3.12 · §3.13 | HK-8 | 진행 |
+| HK-11 | P17 | CLI update · repair · uninstall | 02 §3.10 · §3.12 · §3.13 | HK-8 | 끝 |
 | HK-12 | P17 | CLI add · remove · outdated · 스킬 전환 | 02 §3.3 · §3.14 | HK-11 | 대기 |
 | HK-13 | P18 | 하네스 어댑터 · 복사본 배치(mirror · render · merge) · hooks.json · 동기화 · 보호 훅 · 훅 루트(worktree) · 업그레이드 공지 · check_layout | 03 · 12(역할 파일의 모델) | HK-12 | 대기 |
 | HK-14 | P18 | 확장 층(회사 팩 · 개인 층 · 게이트 하한) | 04 | HK-13 | 대기 |
 | HK-15 | P19 | worktree 운영 | 05 | HK-13 | 대기 |
-| HK-16 | P23 | 검증 확장: 오픈소스 정적 분석 · SARIF · 새 문제만 막는 게이트 · 자체 리뷰 에이전트 · CI 템플릿 · 승인 규칙 | 09 | HK-12 | 대기 |
+| HK-16 | P23 | 정적 분석 · SARIF · 새 문제만 막는 게이트 · CI 템플릿 · 지표 | 09 §3.2~§3.7 · §3.9 | HK-8 | 진행 |
+| HK-23 | P23 | 자체 리뷰 에이전트(/hx-review) · 승인 규칙 강제(approve.py · approvals.md 덧붙이기 전용 · done 승인) | 09 §3.1 · §3.8 | HK-16 | 대기 |
 | HK-17 | P20 | 관리 페이지 서버(REST · 읽기 · 쓰기 규칙 · 승인 · 질문 · 세션 · 작업 요청 · 내보내기) | 06 §3.1~§3.15 | HK-13 | 대기 |
 | HK-18 | P20 | 관리 페이지 화면 · 흐름 보기(React Flow) · 전체 프로젝트 · 기록 · 사용량 · 스킬 목록 | 06 §3.16~§3.19 · 07 · screens | HK-17 | 대기 |
 | HK-19 | P21 | 킷 설계 단계: 접수(intake) · /hx-intent · Unit 목록 · 질문 · 기획물 · 역할 | 08 · 12 | HK-17 | 대기 |
@@ -39,6 +40,7 @@
 
 ## 진행 방식
 
-- 슬롯 A(CLI 줄기): HK-11 → HK-12 → HK-13 → HK-14 → HK-15 → HK-20 → HK-22
-- 슬롯 B(나머지): HK-9/10 → HK-16 → HK-17 → HK-18 → HK-19 → HK-21
+- 슬롯 A: HK-11(끝) → HK-16 → HK-23 → HK-17 → HK-18 → HK-19 → HK-21
+- 슬롯 B: HK-9/10 → HK-12 → HK-13 → HK-14 → HK-15 → HK-20 → HK-22
+- HK-12는 HK-9 · HK-10과 같은 파일(플러그인 문서 · setup.sh · CLI 겹침)을 건드려서 HK-9/10을 합친 뒤에 띄운다. 합친 뒤 HK-11 update 동일성 시험이 HK-9의 update.sh 보드 재생성 · HK-10 겹침 순서를 따라가는지 HK-12에서 맞춘다.
 - 합칠 때마다 깨끗한 worktree에서 시험 전체(`pnpm -C packages/cli test` · `node scripts/gen-plugins.mjs --check` · `python3 -m unittest discover -s tests -p "test_*.py"`)를 돌린다.
