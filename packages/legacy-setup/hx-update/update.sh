@@ -96,6 +96,11 @@ echo "  선택 모듈 : ${MODULES_SEL:-none}"
 echo "  모드      : $([ $DRY_RUN = 1 ] && echo dry-run || echo write)$([ $ACCEPT_ALL = 1 ] && echo ' +accept-all')"
 echo ""
 
+# 표시 줄 없는 lock(v1.0.8 이하)은 설치 전부터 있던 파일을 그 파일 해시로 적었다. 그 lock 에서는
+# "지금 해시 = lock 해시"가 킷이 쓴 판인지 사람 파일인지 가리지 못하므로 덮지 않고 .new 를 쓴다(HK-12 R12.6).
+LOCK_MARKED=0
+harness_lock_marked "$LOCK" && LOCK_MARKED=1
+
 NEW_LOCK="$(mktemp)"
 SEEN="$(mktemp)"
 RENDER="$(mktemp -d)"
@@ -148,6 +153,11 @@ process_file() {
 
   # lock 에 기록이 없으면(구버전 설치·수동 편집) 수정 여부를 확인할 길이 없다.
   # 사용자 작업을 지우는 쪽보다 conflict 로 보고하는 쪽이 안전하다.
+  local unsure=""
+  if [ -n "$lock_sha" ] && [ "$lock_sha" = "$cur_sha" ] && [ "$LOCK_MARKED" != 1 ]; then
+    unsure="   (v1 lock — 미리 있던 파일인지 가릴 수 없다)"
+    lock_sha=""
+  fi
   if [ -n "$lock_sha" ] && [ "$lock_sha" = "$cur_sha" ]; then
     echo "  update    $dest_rel"
     n_update=$((n_update+1))
@@ -160,7 +170,7 @@ process_file() {
   fi
 
   if [ "$ACCEPT_ALL" = 1 ]; then
-    echo "  overwrite $dest_rel   (수정본 → $dest_rel.bak)"
+    echo "  overwrite $dest_rel   (수정본 → $dest_rel.bak)$unsure"
     n_update=$((n_update+1))
     if [ "$DRY_RUN" != 1 ]; then
       cp "$dest" "$dest.bak"
@@ -171,7 +181,7 @@ process_file() {
     return 0
   fi
 
-  echo "  conflict  $dest_rel   → $dest_rel.new"
+  echo "  conflict  $dest_rel   → $dest_rel.new$unsure"
   n_conflict=$((n_conflict+1))
   conflicts="$conflicts $dest_rel"
   [ "$DRY_RUN" != 1 ] && cp "$tmp" "$dest.new"

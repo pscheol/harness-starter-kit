@@ -359,18 +359,27 @@ if [ "$DRY_RUN" != 1 ]; then
   # 재실행 시 lock 을 그냥 새로 쓰면, 이미 사용자가 고쳐 둔 파일의 '현재' 해시가
   # 원본 해시 자리에 들어가 업데이트가 그 파일을 미수정으로 오판한다.
   # 그래서 이전 lock 을 옆에 떠 두고, skip 되는 파일은 옛 해시를 그대로 물려준다.
+  # 표시 줄: 이전 lock 이 표시 줄 없는 옛 lock 이면(옛 설치에 덧설치 · add-agent.sh) 물려받는 해시를 아직 가리지 못했으므로 쓰지 않는다.
+  LOCK_MARK_ON=1
   if [ -f "$LOCK" ]; then
     PREV_LOCK="$(mktemp)"
     cp "$LOCK" "$PREV_LOCK"
+    harness_lock_marked "$PREV_LOCK" || [ "$FORCE" = 1 ] || LOCK_MARK_ON=0
   fi
-  harness_lock_init "$LOCK"
+  harness_lock_init "$LOCK" "$LOCK_MARK_ON"
 fi
 
 # skip 된 파일의 해시를 정한다. 이전 lock 에 기록이 있으면 그것이 원본 해시다.
+# 없으면 설치 전부터 있던 파일이다: 킷 판과 바이트가 같을 때만 그 해시, 다르면 '-'(사람 파일 — 업데이트가 덮지 않고 .new 를 쓴다).
 inherited_hash() {
-  local path="$1" old=""
+  local path="$1" src="$2" old="" rendered="$PLAN_DIR/inherited.render"
   [ -n "$PREV_LOCK" ] && old="$(harness_lock_hash "$PREV_LOCK" "$path" || true)"
-  if [ -n "$old" ]; then echo "$old"; else harness_sha256 "$TARGET/$path"; fi
+  if [ -n "$old" ]; then echo "$old"; return 0; fi
+  if [ -f "$TARGET/$path" ] && [ ! -L "$TARGET/$path" ]; then
+    harness_render "$src" "$rendered"
+    if [ "$(harness_sha256 "$rendered")" = "$(harness_sha256 "$TARGET/$path")" ]; then harness_sha256 "$rendered"; return 0; fi
+  fi
+  echo -
 }
 
 # 계획의 한 줄(이긴 레이어의 파일)을 대상에 복사한다.
@@ -381,7 +390,7 @@ install_file() {
   if [ -e "$dest" ] && [ "$FORCE" != 1 ]; then
     echo "  ↷ skip (존재)   $dest_rel"
     count_skipped=$((count_skipped+1))
-    [ "$DRY_RUN" != 1 ] && harness_lock_append "$LOCK" "$(inherited_hash "$dest_rel")" "$label" "$owner" "$dest_rel"
+    [ "$DRY_RUN" != 1 ] && harness_lock_append "$LOCK" "$(inherited_hash "$dest_rel" "$src")" "$label" "$owner" "$dest_rel"
     return 0
   fi
   echo "  ✎ write [$label/$owner] $dest_rel"
@@ -627,7 +636,7 @@ echo "      → .agents/docs/issues/<키>-<이름>/ 에 문서를 만들고 spec
 echo "      빈 design·tasks 를 미리 깔면 보드가 곧장 구현으로 뛰고 단계 게이트가 무력해진다."
 echo "    템플릿 원본은 .agents/docs/_spec-templates/ 한 곳이다(제품 폴더에 복사되지 않는다)."
 echo "  · 검증 레벨: 에이전트 Stop hook 은 fast(구조 점검 + 가벼운 정적 검사, 수 초)만 돈다."
-echo "    빌드·테스트를 포함한 full 은 커밋·푸시 전에 직접 실행한다:  bash scripts/verify.sh"
+echo "    MR 전에는 bash scripts/verify.sh --affected, 빌드·테스트를 포함한 full 은 CI 가 돈다"
 echo "    (hook 이 full 을 돌면 턴마다 빌드가 겹쳐 lock 경합으로 멈춘다. 그래서 나눠 둔 것이다)"
 echo "  · 미치환 토큰 확인:  grep -rn '{{' . --include='*.md' --include='*.sh' | grep -vE '_spec-templates/|\{\{\.\.\.\}\}|PRODUCT_SLUG'"
 echo "    (_spec-templates/ 의 {{PRODUCT_SLUG}}·{{FEATURE_NAME}}·{{EPIC_ID}} 는 의도적으로 남긴 토큰이다)"
