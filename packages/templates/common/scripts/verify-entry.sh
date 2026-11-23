@@ -34,10 +34,32 @@ case "${HARNESS_VERIFY_LEVEL:-changed}" in
     ;;
 esac
 
+verification_recorder="$verification_script_directory/harness/verify_record.py"
+verification_root="$(cd "$verification_script_directory/.." && pwd)"
+
 # 에이전트 세션의 full 은 CI 몫이다(설계 01 R2.6). 사람 터미널 · CI · 상위 게이트가 부른 하위 단위는 그대로 돈다.
 if [ "$HARNESS_VERIFY_LEVEL" = full ]; then
   verification_hook="$verification_script_directory/hooks/block_full_verify.py"
   if [ -f "$verification_hook" ]; then
-    python3 "$verification_hook" --entry-check || exit $?
+    verification_status=0
+    python3 "$verification_hook" --entry-check || verification_status=$?
+    if [ "$verification_status" -ne 0 ]; then
+      if [ -f "$verification_recorder" ]; then
+        python3 "$verification_recorder" --status blocked --level full --exit "$verification_status" --root "$verification_root" || true
+      fi
+      exit "$verification_status"
+    fi
   fi
+fi
+
+# fast · full 본문의 stdout 을 기록기로 흘린다(설계 01 §3.5). 본문은 고치지 않는다.
+# 바깥 호출은 같은 스크립트를 다시 띄워 기록기 파이프에 물리고, 다시 뜬 본문은 끝날 때 exit code 한 줄을 낸다.
+# 표지를 부모 PID 로 두므로 본문이 부르는 하위 게이트는 각자 자기 기록을 쓴다.
+if [ "${HARNESS_VERIFY_RECORDING:-}" = "$PPID" ]; then
+  trap 'printf "::harness-exit %s\n" "$?"' EXIT
+elif [ -f "$verification_recorder" ] && [ -n "${BASH_SOURCE[1]:-}" ]; then
+  export HARNESS_VERIFY_RECORDING="$$"
+  bash "${BASH_SOURCE[1]}" ${verification_arguments[@]+"${verification_arguments[@]}"} \
+    | python3 "$verification_recorder" --tee --level "$HARNESS_VERIFY_LEVEL" --root "$verification_root"
+  exit "${PIPESTATUS[0]}"
 fi

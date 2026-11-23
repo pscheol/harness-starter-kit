@@ -9,6 +9,7 @@ import argparse
 import json
 import math
 import sys
+import time
 from pathlib import Path
 
 sys.dont_write_bytecode = True
@@ -17,6 +18,7 @@ from harness.verify_affected import affected_plan
 from harness.verify_changes import changed_files, expand_gitlink_files, resolve_base, session_files
 from harness.verify_paths import safe_file, units_for
 from harness.verify_planner import verification_plan
+from harness.verify_record import record_result, write_record
 from harness.verify_runner import execute_plan
 from harness.verify_summary import summary_text
 
@@ -119,6 +121,7 @@ def build_plan(root, options):
 def main():
     options = parse_options()
     root = Path(__file__).resolve().parents[1]
+    started = time.time()
     try:
         validate(root, options)
         plan = build_plan(root, options)
@@ -127,11 +130,13 @@ def main():
             return 0
         result, exit_code = execute_plan(plan, options.timeout, options.lock_timeout, options.budget)
         print(summary_text(result) if options.summary else json.dumps(result, ensure_ascii=False, indent=2))
-        return exit_code
     except (ValueError, OSError) as error:
-        failure = {"status": "incomplete", "level": options.level, "error": str(error), "test_commands": 0}
-        print(summary_text(failure) if options.summary else json.dumps(failure, ensure_ascii=False))
-        return 2
+        result, exit_code = {"status": "incomplete", "level": options.level, "error": str(error), "test_commands": 0}, 2
+        print(summary_text(result) if options.summary else json.dumps(result, ensure_ascii=False))
+    # 기록은 검증 결과(exit code)를 바꾸지 않는다 — 쓰기 실패는 경고 한 줄이다.
+    if (root / ".agents/harness.json").is_file():
+        write_record(root, record_result(root, result, options.level, started, exit_code, session=options.session))
+    return exit_code
 
 
 if __name__ == "__main__":

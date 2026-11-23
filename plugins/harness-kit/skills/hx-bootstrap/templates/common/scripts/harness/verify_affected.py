@@ -10,6 +10,7 @@ from harness.verify_modules import (
     DOC_SUFFIXES,
     GRADLE_FLAGS,
     KIT_STACKS,
+    PYTEST,
     ModuleError,
     dependents,
     find_module,
@@ -29,7 +30,6 @@ from harness.verify_paths import CODE_EXTENSIONS, is_test, owner_for
 from harness.verify_planner import command, covered_by_checks, verification_plan
 
 SCRIPTS = ("lint", "typecheck", "test")
-PYTEST = ["-m", "pytest", "-p", "no:cacheprovider", "-o", "addopts=", "-m", "not model", "-q"]
 
 
 def gradle_commands(build, selection, unit, harness_root):

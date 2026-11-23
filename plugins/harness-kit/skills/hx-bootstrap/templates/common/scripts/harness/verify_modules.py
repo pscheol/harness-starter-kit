@@ -520,3 +520,91 @@ def find_module(path, unit_root, harness_root):
         go_find(path, unit_root),
     ) if found is not None]
     return max(candidates, key=lambda found: len(found.build.root.parts), default=None)
+
+
+# ── 모듈 시험(관련 테스트가 없을 때, 설계 01 §3.3) ──────────────────────────────
+
+CONTRACT = "contract"
+PYTEST = ("-m", "pytest", "-p", "no:cacheprovider", "-o", "addopts=", "-m", "not model", "-q")
+SCRIPT_TEST_FILE = re.compile(r"\.(test|spec)\.[cm]?[jt]sx?$")
+
+
+@dataclass(frozen=True)
+class ModuleTest:
+    module: str
+    test: str  # 화면 이름: ":orders:test" · "tests" · "./store" · "@acme/ui test"
+    cwd: Path
+    arguments: tuple | None  # None 이면 그 모듈에 시험 소스가 없다
+    missing: str | None = None  # 런타임이 없다(설치하지 않는다)
+
+
+def has_script_tests(directory):
+    for _, folders, names in os.walk(directory):
+        folders[:] = [folder for folder in folders if folder not in IGNORED_DIRECTORIES and not folder.startswith(".")]
+        if any(SCRIPT_TEST_FILE.search(name) for name in names):
+            return True
+    return False
+
+
+def gradle_module_test(build, module, harness_root):
+    projects, _ = gradle_graph(build.root, harness_root)
+    task = gradle_task(module, "test")
+    if not (projects[module] / "src/test").is_dir():
+        return ModuleTest(module, task, build.root, None)
+    wrapper = build.root / "gradlew"
+    missing = None if os.access(wrapper, os.X_OK) else "Gradle wrapper runtime missing; no download/install was attempted"
+    return ModuleTest(module, task, build.root, (str(wrapper), task, "--no-daemon", "--console=plain", "--dependency-verification=strict"), missing)
+
+
+def python_module_test(build, module, unit_root):
+    tests = "tests" if module == "." else f"{module}/tests"
+    if not (build.root / tests).is_dir():
+        return ModuleTest(module, tests, build.root, None)
+    runtime = python_runtime(build.root, unit_root)
+    missing = None if runtime else "existing Python runtime missing (.venv-verify or .venv); installation was skipped"
+    return ModuleTest(module, tests, build.root, (runtime or "python3", *PYTEST, tests), missing)
+
+
+def go_module_test(build, module, path):
+    directory = nearest(path, build.root, lambda folder: any(folder.glob("*.go")))
+    relative = "./" + relative_to(directory, build.root) if directory != build.root else "."
+    if not any(directory.glob("*_test.go")):
+        return ModuleTest(module, relative, build.root, None)
+    runtime = shutil.which("go")
+    missing = None if runtime else "go runtime missing; no SDK installation was attempted"
+    return ModuleTest(module, relative, build.root, (runtime or "go", "test", relative), missing)
+
+
+def script_module_test(build, module, unit_root):
+    workspace = build.stack in {"pnpm", "npm"}
+    directory = script_workspace(build.root, build.stack)[0][module] if workspace else build.root
+    scripts = read_json(directory / "package.json").get("scripts", {})
+    label = f"{module} test"
+    if not (isinstance(scripts, dict) and "test" in scripts and has_script_tests(directory)):
+        return ModuleTest(module, label, build.root, None)
+    manager = build.stack if workspace else package_manager(directory, unit_root)
+    runtime = shutil.which(manager)
+    missing = None if runtime else f"{manager} runtime missing; no install was attempted"
+    if build.stack == "pnpm":
+        arguments = (runtime or manager, "--filter", module, "run", "--if-present", "test")
+    elif build.stack == "npm":
+        arguments = (runtime or manager, "run", "test", f"--workspace={module}")
+    else:
+        arguments = (runtime or manager, "run", "test")
+    return ModuleTest(module, label, build.root if workspace else directory, arguments, missing)
+
+
+def module_test(path, unit_root, harness_root):
+    """관련 테스트가 없는 파일의 모듈 시험. None 은 모듈을 정하지 못함, CONTRACT 는 빌드 계약 파일이다."""
+    found = find_module(path, unit_root, harness_root)
+    if found is None:
+        return None
+    if found.contract:
+        return CONTRACT
+    if found.build.stack == "gradle":
+        return gradle_module_test(found.build, found.module, harness_root)
+    if found.build.stack in {"uv", "python"}:
+        return python_module_test(found.build, found.module, unit_root)
+    if found.build.stack == "go":
+        return go_module_test(found.build, found.module, path)
+    return script_module_test(found.build, found.module, unit_root)

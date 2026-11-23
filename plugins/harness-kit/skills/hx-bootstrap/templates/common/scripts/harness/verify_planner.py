@@ -17,6 +17,7 @@ from harness.verify_mapping import (
     jvm_test_names,
     related_tests,
 )
+from harness.verify_modules import CONTRACT, ModuleError, module_test
 from harness.verify_paths import CODE_EXTENSIONS, is_test, owner_for, project_for, uv_workspace_root
 
 
@@ -215,7 +216,7 @@ def script_commands(unit, project, files, tests):
                 )
             )
         else:
-            missing.append(f"{unit['id']}: installed test runtime missing or unsupported; no install or full suite was run")
+            missing.append(f"{unit['id']}: installed test runtime missing or unsupported; no install or whole-suite run was attempted")
     linter = next((name for name in ("oxlint", "eslint") if name in dependencies), None)
     if linter and checked:
         if os.access(binaries / linter, os.X_OK):
@@ -330,11 +331,40 @@ def python_and_shell_commands(unit, project, files, tests):
     return syntax + planned, missing
 
 
+def go_directory(root, directory):
+    return "." if directory == root else "./" + directory.relative_to(root).as_posix()
+
+
+def go_commands(unit, project, files, tests):
+    """Go 패키지 시험 — 관련 시험은 같은 폴더의 *_test.go 다(패키지 하나가 시험 단위)."""
+    runtime = shutil.which("go")
+    if runtime is None:
+        return [], [f"{unit['id']}: go runtime missing; no SDK installation was attempted"]
+    roots = {}
+    for path in sorted(files | tests):
+        root = next((parent for parent in path.parents if parent.is_relative_to(unit["root"]) and (parent / "go.mod").is_file()), None)
+        if root is None:
+            return [], [f"{path.relative_to(unit['root'])}: go.mod not found; Go package was not guessed"]
+        entry = roots.setdefault(root, {"vet": set(), "test": set()})
+        if path in files and path.parent.is_dir():
+            entry["vet"].add(go_directory(root, path.parent))
+        if path in tests:
+            entry["test"].add(go_directory(root, path.parent))
+    commands = []
+    for root, entry in sorted(roots.items()):
+        if entry["vet"]:
+            commands.append(command(unit, root, "lint", [runtime, "vet", *sorted(entry["vet"])]))
+        if entry["test"]:
+            commands.append(command(unit, root, "test", [runtime, "test", *sorted(entry["test"])]))
+    return commands, []
+
+
 LANGUAGE_FAMILIES = (
     ({".py", ".sh"}, python_and_shell_commands),
     (SCRIPT_EXTENSIONS, script_commands),
     ({".kt", ".kts", ".gradle", ".java"}, jvm_commands),
     ({".dart"}, dart_commands),
+    ({".go"}, go_commands),
 )
 
 
@@ -342,7 +372,7 @@ def commands_for(unit, project, files, tests):
     """프로젝트 하나의 검증 명령. 언어가 섞이면(파이썬 도구 + 사이트 JS 등) 언어 묶음마다 따로 고른다."""
     known = set().union(*(extensions for extensions, _ in LANGUAGE_FAMILIES))
     if any(path.suffix not in known for path in files | tests):
-        return [], [f"{unit['id']}: language/test mapping is unsupported; select --tests or opt in to full verification"]
+        return [], [f"{unit['id']}: language/test mapping is unsupported; select --tests <test-file>"]
     commands, missing = [], []
     for extensions, planner in LANGUAGE_FAMILIES:
         family_files = {path for path in files if path.suffix in extensions}
@@ -383,16 +413,49 @@ def shared_source_commands(root, source, units, tests):
 
 
 def tests_for_project(root, project, changed_files, explicit_tests):
+    """(관련 시험, 미완료, 관련 시험이 없는 파일). 없는 파일은 widen_untested 가 모듈 시험으로 넓힌다."""
     if explicit_tests:
         changed_tests = {path for path in changed_files if is_test(path) and path.is_file()}
-        return set(explicit_tests) | changed_tests, []
-    inferred_tests, missing = set(), []
+        return set(explicit_tests) | changed_tests, [], []
+    inferred_tests, missing, untested = set(), [], []
     for source in sorted(changed_files):
         mapped_tests = related_tests(source, project)
         inferred_tests.update(mapped_tests)
-        if not mapped_tests:
-            missing.append(f"{source.relative_to(root)}: no related test found; select --tests <test-file> or opt in to full verification")
-    return inferred_tests, missing
+        if mapped_tests:
+            continue
+        if not source.exists() and not deleted_from_git(source):
+            missing.append(f"{source.relative_to(root)}: file not found and unknown to git; check the path or select --tests <test-file>")
+        else:
+            untested.append(source)
+    return inferred_tests, missing, untested
+
+
+def widen_untested(root, unit, sources, planned):
+    """관련 시험이 없는 파일은 그 모듈의 시험 하나로 넓힌다(R3.1). 모듈 시험도 없으면 unverified 다(R3.2).
+
+    planned 는 (폴더, 인자) → 명령. 같은 모듈 시험은 한 번만 돈다.
+    """
+    widened, unverified, missing = [], [], []
+    for source in sorted(sources):
+        relative = source.relative_to(root).as_posix()
+        try:
+            found = module_test(source, unit["root"], root)
+        except (ModuleError, OSError, ValueError) as error:
+            missing.append(f"{relative}: {error}")
+            continue
+        if found == CONTRACT:
+            unverified.append({"file": relative, "reason": "build-contract"})
+        elif found is None or found.arguments is None:
+            unverified.append({"file": relative, "reason": "no-module-test"})
+        elif found.missing:
+            missing.append(f"{unit['id']}: {found.missing}")
+        else:
+            key = (str(found.cwd), found.arguments)
+            if key not in planned:
+                planned[key] = {**command(unit, found.cwd, "test", list(found.arguments), label=f"{found.test} (모듈 시험)"), "widenedFiles": []}
+            planned[key]["widenedFiles"].append(relative)
+            widened.append({"file": relative, "module": found.module, "test": found.test, "reason": "no-related-test"})
+    return widened, unverified, missing
 
 
 def deleted_from_git(path):
@@ -416,6 +479,7 @@ def verification_plan(root, relative_files, explicit_tests, units, scope_files=N
     scope_files = relative_files if scope_files is None else scope_files
     groups, documents = {}, []
     missing, recommendations, skipped = [], [], []
+    widened, unverified, module_tests = [], [], {}
     covered = covered_by_checks(root, relative_files)
     for test in explicit_tests:
         if not is_test(test) or any(character in test.name for character in "*?[]"):
@@ -430,7 +494,7 @@ def verification_plan(root, relative_files, explicit_tests, units, scope_files=N
                 "settings.gradle.kts",
                 "settings.gradle",
             } or path.suffix in {".sql", ".lock"}:
-                recommendations.append(f"{relative}: dependencies/schema/build contract changed; opt in to full and relevant integration verification")
+                recommendations.append(f"{relative}: dependencies/schema/build contract changed; run bash scripts/verify.sh --affected before the MR")
             continue
         if relative in covered:
             continue
@@ -443,9 +507,9 @@ def verification_plan(root, relative_files, explicit_tests, units, scope_files=N
         project = project_for(path, owner["root"])
         groups.setdefault((owner["id"], project), {"unit": owner, "files": set()})["files"].add(path)
         if path.suffix in {".kts", ".gradle"}:
-            recommendations.append(f"{relative}: Gradle build contract changed; opt in to full and relevant integration verification")
+            recommendations.append(f"{relative}: Gradle build contract changed; run bash scripts/verify.sh --affected before the MR")
         if any(part in {"shared", "contracts", "contract", "common", "core"} for part in path.parts):
-            recommendations.append(f"{relative}: shared/contract change; review consumer coverage and opt in to full or contract verification")
+            recommendations.append(f"{relative}: shared/contract change; review consumer coverage and run bash scripts/verify.sh --affected before the MR")
     for test in explicit_tests:
         owner = owner_for(test, units)
         project = project_for(test, owner["root"])
@@ -472,8 +536,12 @@ def verification_plan(root, relative_files, explicit_tests, units, scope_files=N
         selected_tests = {test for test in explicit_tests if test.is_relative_to(project) and project_for(test, group["unit"]["root"]) == project}
         # uv workspace 하위면 상위 전체에서 고른다 — 이 하위를 쓰는 다른 하위의 시험도 영향 범위다.
         search = uv_workspace_root(project, group["unit"]["root"]) or project
-        tests, missing_tests = tests_for_project(root, search, group["files"], selected_tests)
+        tests, missing_tests, untested = tests_for_project(root, search, group["files"], selected_tests)
         missing.extend(missing_tests)
+        more_widened, more_unverified, absent_modules = widen_untested(root, group["unit"], untested, module_tests)
+        widened.extend(more_widened)
+        unverified.extend(more_unverified)
+        missing.extend(absent_modules)
         others = {}
         for test in tests:
             owner_project = project_for(test, group["unit"]["root"])
@@ -492,7 +560,8 @@ def verification_plan(root, relative_files, explicit_tests, units, scope_files=N
             planned, absent = commands_for(group["unit"], other, set(), other_tests)
             commands.extend(planned)
             missing.extend(absent)
-        skipped.append(f"{group['unit']['id']}: full suite, coverage, E2E and dependency installation not selected")
+        skipped.append(f"{group['unit']['id']}: whole-suite run, coverage, E2E and dependency installation not selected")
+    commands.extend(module_tests.values())
     commands.extend(path_checks(root, scope_files, units))
     diagnostic = root / "scripts/check-maintenance.py"
     covered = covered | covered_by_checks(root, scope_files)
@@ -514,7 +583,9 @@ def verification_plan(root, relative_files, explicit_tests, units, scope_files=N
         "files": relative_files,
         "commands": commands,
         "locks": sorted({item["lock"] for item in commands if item["lock"]}),
-        "incomplete": missing,
+        "incomplete": list(dict.fromkeys(missing)),
+        "unverified": unverified,
+        "widened": widened,
         "skipped": skipped,
         "recommendations": sorted(set(recommendations)),
         "test_commands": 0,

@@ -72,7 +72,7 @@ def execute_plan(plan, timeout, lock_timeout, budget=None):
         return plan, 0
     if plan["incomplete"] or plan.get("unverified"):
         return {**plan, "status": "incomplete"}, 2
-    results, failures, tests, incomplete, skipped = [], 0, 0, [], []
+    results, failures, tests, incomplete, skipped, unverified = [], 0, 0, [], [], []
     environment = {
         **os.environ,
         "PYTHONDONTWRITEBYTECODE": "1",
@@ -96,9 +96,15 @@ def execute_plan(plan, timeout, lock_timeout, budget=None):
                 failures += outcome["exit_code"] != 0
             tests += item["kind"] in TESTING_KINDS
             if item["kind"] == "test" and outcome["exit_code"] == 0 and ZERO_TESTS.search(outcome["output"]):
-                incomplete.append(f"{item['unit']}: zero tests executed; select --tests <test-file> or add a test")
+                if item.get("widenedFiles"):
+                    # 넓힌 모듈 시험이 0개를 돌았다 — 그 파일들은 검증되지 않았다(R3.2).
+                    unverified.extend({"file": relative, "reason": "zero-tests"} for relative in item["widenedFiles"])
+                else:
+                    incomplete.append(f"{item['unit']}: zero tests executed; select --tests <test-file> or add a test")
             results.append(outcome)
     summary = {"results": results, "test_commands": tests, "skipped": plan.get("skipped", []) + skipped}
+    if unverified and not failures:
+        return {**plan, **summary, "status": "incomplete", "unverified": plan.get("unverified", []) + unverified}, 2
     if skipped and not failures:
         return {**plan, **summary, "status": "incomplete"}, 2
     if incomplete and not failures:

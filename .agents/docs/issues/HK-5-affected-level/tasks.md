@@ -3,7 +3,7 @@ key: HK-5
 area: verify
 type: feat
 title: 바꾼 모듈과 그 모듈을 쓰는 모듈만 검사하는 affected 레벨을 더한다
-state: check
+state: active
 created: 2026-11-23
 ---
 

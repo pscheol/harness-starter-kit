@@ -139,7 +139,7 @@ def gitlink_changed_paths(root, relative, previous, current):
     if not (nested / ".git").exists():
         raise ValueError(f"gitlink is not initialized: {relative}; initialize it before verification")
     if current is None:
-        raise ValueError(f"gitlink was removed: {relative}; review removal and select explicit tests or full")
+        raise ValueError(f"gitlink was removed: {relative}; review the removal and select --tests explicitly")
     head = git_output(nested, "rev-parse", "HEAD").decode().strip()
     if head != current:
         raise ValueError(f"gitlink checkout does not match selected pointer: {relative}; select the matching harness checkout")
@@ -214,7 +214,15 @@ def changed_files(root, base=None):
             nested_paths.extend(diff_paths(difference))
         paths = [path for path in paths if path != relative]
         paths.extend(relative + "/" + path for path in nested_paths)
-    return sorted(set(paths))
+    return sorted({path for path in paths if not is_state_path(path)})
+
+
+STATE_DIRECTORY = ".agents/state/"
+
+
+def is_state_path(path):
+    """실행 기록 폴더(.agents/state/)는 검증 대상 변경이 아니다. 하위 하네스의 기록 폴더도 같다."""
+    return path.startswith(STATE_DIRECTORY) or ("/" + STATE_DIRECTORY) in path
 
 
 def session_files(root, session):

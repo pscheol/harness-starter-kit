@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 턴이 끝날 때(Stop) 해당 세션의 변경 검증을 부른다. full 은 명시적으로 선택한다.
+# 턴이 끝날 때(Stop) 해당 세션의 변경 검증(changed)을 부른다. 전체 검증(full)은 CI 가 돈다.
 #
 # 에이전트 중립이다 — Claude Code, Codex, Kiro가 같은 파일을 부른다.
 # 강제 로직은 리포 scripts/verify.sh 하나에만 둔다. 이 파일은 트리거 + 어댑터일 뿐이다.
@@ -101,7 +101,7 @@ elif command -v gtimeout >/dev/null 2>&1; then to=gtimeout
 else to=""; fi
 
 if [ -n "$to" ]; then
-  HARNESS_VERIFY_LEVEL="$level" "$to" -k 5 "$limit" "${gate[@]}" </dev/null >"$out" 2>&1
+  HARNESS_VERIFY_TRIGGER=stop-hook HARNESS_VERIFY_LEVEL="$level" "$to" -k 5 "$limit" "${gate[@]}" </dev/null >"$out" 2>&1
   rc=$?
   [ "$rc" -eq 124 ] && : >"$timedout"
 else
@@ -113,7 +113,7 @@ else
   # 에이전트에게 실패처럼 읽힌다.
   {
     set -m
-    HARNESS_VERIFY_LEVEL="$level" "${gate[@]}" </dev/null >"$out" 2>&1 &
+    HARNESS_VERIFY_TRIGGER=stop-hook HARNESS_VERIFY_LEVEL="$level" "${gate[@]}" </dev/null >"$out" 2>&1 &
     pid=$!
     set +m
     # 워치독의 sleep 이 이 스크립트의 stdout 을 물고 남으면, hook 을 부른 쪽은 출력이 닫히길 기다리며
@@ -137,7 +137,7 @@ fi
 
 # 타임아웃은 게이트 실패로 보지 않는다 — 막아 봐야 원인이 코드에 있지 않다.
 if [ -e "$timedout" ]; then
-  echo "검증 미완료: ${limit}s 를 초과해 중단했다. 이번 호출은 통과가 아니다. scripts/verify-changed.py --files <변경 파일> 로 직접 확인하고 full 은 bash scripts/verify.sh --full 로 선택하라." >&2
+  echo "검증 미완료: ${limit}s 를 초과해 중단했다. 이번 호출은 통과가 아니다. python3 scripts/verify-changed.py --files <변경 파일> 로 직접 확인한다. MR 전 범위는 bash scripts/verify.sh --affected 이고, 전체 검증(full)은 CI 가 돈다." >&2
   exit 0
 fi
 
