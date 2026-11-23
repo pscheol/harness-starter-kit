@@ -61,6 +61,11 @@ REMOVE_CASES = (
 )
 
 
+def all_ops(j: dict) -> list[dict]:
+    """복사 판정 + 배치 판정(HK-13 — 하네스 폴더 파일은 대부분 배치 쪽에 있다)."""
+    return [*j["ops"], *(j.get("projection") or {}).get("ops", [])]
+
+
 def setup(target: Path, stack: str, arch: str, agents: str, modules: str) -> None:
     target.mkdir(parents=True)
     r = subprocess.run(["bash", str(SETUP), f"--stack={stack}", f"--arch={arch}", f"--agents={agents}", f"--modules={modules}", str(target)],
@@ -197,7 +202,7 @@ class CliAddRemoveParityTest(unittest.TestCase):
         self.assert_lock_means_same(o)
         self.assert_meta_means_same(o)
         self.assertEqual(j["names"]["harnesses"], ["codex"])
-        self.assertGreater(j["counts"]["create"], 5)
+        self.assertGreater(len([op for op in all_ops(j) if op["action"] == "create"]), 5)
         self.doctor_ok(o.cli)
 
     def test_a2_add_harness_and_module_with_user_file(self):
@@ -207,7 +212,7 @@ class CliAddRemoveParityTest(unittest.TestCase):
         self.assert_lock_means_same(o, user={mine})
         self.assert_meta_means_same(o)
         self.assertEqual((o.cli / mine).read_text(encoding="utf-8"), "사람이 먼저 둔 커맨드\n")
-        self.assertEqual([op["action"] for op in j["ops"] if op["path"] == mine], ["skip-user"])
+        self.assertEqual([op["action"] for op in all_ops(j) if op["path"] == mine], ["skip-user"])
 
     def test_a3_add_overlapping_module_only_relayers(self):
         o, j = self.ran("A3-web-add-guards-claude")
@@ -224,7 +229,7 @@ class CliAddRemoveParityTest(unittest.TestCase):
         self.assert_same_tree(o)
         self.assert_lock_means_same(o)
         self.assert_meta_means_same(o)
-        kiro = [op["path"] for op in j["ops"] if op["path"].startswith(".kiro/") and op["action"] == "create"]
+        kiro = [op["path"] for op in all_ops(j) if op["path"].startswith(".kiro/") and op["action"] == "create"]
         self.assertTrue(any("issue" in p or "ticket" in p for p in kiro), kiro)
 
     def test_r1_remove_equals_fresh_install(self):
@@ -232,7 +237,7 @@ class CliAddRemoveParityTest(unittest.TestCase):
         self.assert_same_tree(o)
         self.assert_lock_means_same(o)
         self.assert_meta_means_same(o)
-        self.assertGreater(len([op for op in j["ops"] if op["action"] == "delete"]), 5)
+        self.assertGreater(len([op for op in all_ops(j) if op["action"] == "delete"]), 5)
         self.assertFalse((o.cli / ".codex").exists())
         self.doctor_ok(o.cli)
 
