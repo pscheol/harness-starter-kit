@@ -15,12 +15,14 @@ created: 2026-11-23
 
 ```text
 packages/cli/
-├── package.json          name harness-kit · bin dist/cli.js · engines node>=18 · dependencies {}
+├── package.json          name harness-kit · bin dist/cli.js · engines node>=18.3 · dependencies {}
 ├── tsconfig.json         strict, noEmit(타입 검사만). 번들은 esbuild
 ├── build.mjs             esbuild → dist/cli.js 한 파일(cjs, node18, shebang, 소스 해시 머리줄)
 ├── scripts/src-hash.mjs  소스 해시(build.mjs · gen-plugins.mjs가 같이 쓴다)
+├── vitest.config.mts     시험에 버전 상수를 넣는다
 ├── src/
-│   ├── main.ts           Node 버전 확인 → 인자 해석 → 명령 → 종료 코드
+│   ├── cli.ts            번들 진입점(실제 프로세스를 Io 로 넘긴다)
+│   ├── main.ts           Node 버전 확인 → 인자 해석 → 명령 → 종료 코드(시험은 Io 를 바꿔 부른다)
 │   ├── cli/              args.ts(parseArgs 2단계) · output.ts(사람 · JSON) · prompt.ts(TTY 질문)
 │   ├── commands/         init.ts(plan 포함) · doctor.ts · list.ts · reserved.ts
 │   └── core/             layout · selection · tokens · resolve · plan · apply · meta · lock · json · hash · fsx · templates · version · errors
@@ -46,14 +48,17 @@ packages/cli/
 
 ### 2.3 gen-plugins.mjs
 
+CLI 사본의 원본(`skills/hx-bootstrap/bin/harness-kit.js`, 755)은 머리줄 해시가 지금 소스 해시와 같은 번들만 쓴다.
+
 | 상황 | 쓰기(`gen`) | `--check` |
 |---|---|---|
-| `dist/cli.js` 있음, 머리줄 해시 = 소스 해시 | `skills/hx-bootstrap/bin/harness-kit.js`(755)로 복사 | 다른 생성물과 같이 바이트 · 실행 비트 비교 |
-| `dist/cli.js` 있음, 해시 다름(오래된 빌드) | exit 2 `dist 가 소스와 맞지 않는다 → pnpm build` | exit 2(같은 안내) |
-| `dist/cli.js` 없음 | exit 2 `dist 가 없다 → pnpm install && pnpm build` | 커밋된 사본의 머리줄 해시 = 소스 해시면 그 사본을 기준으로 삼는다. 다르면 `~ skills/hx-bootstrap/bin/harness-kit.js` 1건으로 exit 1 |
+| `dist/cli.js` 있음, 해시 같음 | dist를 복사 | dist와 바이트 · 실행 비트 비교 |
+| `dist/cli.js` 있음, 해시 다름(오래된 빌드) | exit 2 `pnpm build 뒤 다시` | exit 2(같은 안내) |
+| `dist/cli.js` 없음, 커밋된 사본 해시 같음 | 커밋된 사본을 원본으로 쓴다 | 커밋된 사본을 원본으로 쓴다 |
+| `dist/cli.js` 없음, 사본 없음 · 해시 다름 | exit 2 `pnpm install && pnpm build` | `- skills/hx-bootstrap/bin/harness-kit.js` 1건, exit 1 |
 
-- 빌드는 생성 스크립트 안에서 돌리지 않는다. 생성 스크립트는 Node 표준 모듈만 쓰고 `node_modules` 없이 돈다(HK-1 성질 유지). 루트 `pnpm gen`이 `pnpm build && node scripts/gen-plugins.mjs`로 순서를 묶는다.
-- `dist` 없는 `--check`는 소스 해시로만 사본을 본다. 사본 본문을 손으로 고치고 머리줄을 남기면 이 경우에는 잡지 못한다. `dist`가 있으면(개발 환경 · `pnpm build` 뒤) 바이트 비교로 잡는다.
+- 빌드는 생성 스크립트 안에서 돌리지 않는다. 생성 스크립트는 Node 표준 모듈만 쓰고 `node_modules` 없이 돈다(HK-1 성질 유지). 새로 받은 저장소(dist 없음)에서도 CLI 소스를 고치지 않았으면 `gen` · `--check`가 돈다. CLI 소스를 고치면 `pnpm build`가 먼저다. 루트 `pnpm gen`이 `pnpm build && node scripts/gen-plugins.mjs`로 순서를 묶는다.
+- dist가 없을 때는 소스 해시로만 사본을 본다. 사본 본문을 손으로 고치고 머리줄을 남기면 이 경우에는 잡지 못한다. dist가 있으면(개발 환경 · `pnpm build` 뒤) 바이트 비교로 잡는다.
 - 같은 경로가 다른 층에 있으면 지금처럼 거부한다(겹침 검사에 CLI 사본도 넣는다).
 
 ### 2.4 무시 · 루트 스크립트
@@ -131,7 +136,7 @@ STACK · ARCH · HARNESS_AGENTS 같은 환경변수는 읽지 않는다(설계 0
 1. 대상 폴더를 만든다(`mkdir -p`). 이미 설치됨(`.agents/harness-kit.json` 있음)이면 아무것도 쓰지 않고 exit 3, `update` · `add` 안내.
 2. 파일: 같은 폴더의 임시 파일(`.<이름>.hk-<난수>`)에 `mode 0666`(실행 파일 `0777`)로 만들고 `rename`. 모드는 umask를 거친다 — setup.sh의 `sed > tmp && mv` + `chmod +x`와 같은 결과(umask 022 → 644 · 755).
 3. `.agents/harness.json`(하네스 매니페스트): setup.sh `harness_write_manifest`와 같은 바이트. 있어도 덮는다(setup.sh와 같다). lock에는 적지 않는다(v1 lock과 같은 범위).
-4. `tools/docs/feature_docs.py`가 있고 `python3`가 있으면 `python3 tools/docs/feature_docs.py build`(stdout 버림). 실패하면 경고만 하고 계속한다(setup.sh와 같다).
+4. `tools/docs/` 아래 작업이 모두 킷 판이고 `python3`가 있으면 `python3 tools/docs/feature_docs.py build`(stdout 버림, §10 D17). 실패하면 경고만 하고 계속한다(setup.sh와 같다).
 5. lock v2, 마지막에 메타 v2. 메타가 "설치됨" 판정이므로 중간에 멈추면 `init`을 다시 돌려 같은 결과를 얻는다(이미 쓴 파일은 same).
 
 쓰기 오류 `EACCES` · `EPERM` · `EROFS`는 exit 5.
@@ -163,7 +168,7 @@ init이 쓰는 키(README §5 순서): `schema` `harness-kit/v2` · `kit.version
 | `pack` · `dashboard` `skills` `status` `projects` `sessions` `dispatch` `usage` `answer` `flow` · `intake` `approve` `mob` `units` · `review` `quality` · `deploy` `ops` `metrics` `rules` `sync` | 제공 단계(P18 · P20 · P21 · P23 · P24) 안내 | 2 |
 
 - 공통 플래그: `--cwd` `--dry-run` `--yes` `--json` `--templates` `--no-color` `--quiet` `--help`. `--version`(`-v`) · `--help`(`-h`)는 명령 없이도 받는다. 명령별로 모르는 플래그는 exit 2.
-- Node 확인: `process.versions.node`의 주 번호 < 18이면 다른 일을 하기 전에 exit 5와 `Node 18 이상이 필요하다(지금 vX)`.
+- Node 확인: `process.versions.node`가 18.3 미만이면 다른 일을 하기 전에 exit 5와 `Node 18.3 이상이 필요하다(지금 vX)`(§10 D18).
 - 템플릿 자리: `--templates` > `HARNESS_KIT_TEMPLATES` > `<CLI 폴더>/../templates`(플러그인 `bin/` 옆, npm 패키지) > `<CLI 폴더>/../../templates`(모노레포 `packages/cli/dist`). `layout.json`이 있는 첫 폴더. 없으면 exit 5.
 - `--json`: stdout에 JSON 객체 하나. 오류도 `{"command", "error": {"code", "message"}}`로 stdout에 낸다. stderr에는 쓰지 않는다(§10 D9).
 - 사람용 출력은 요약 위주다. `plan`은 작업 목록 전체(`--quiet`면 create가 아닌 것만), `init`은 요약과 create가 아닌 항목(skip-user · replace)만 적는다. JSON도 같은 규칙으로 `ops`를 담는다.
@@ -214,8 +219,8 @@ init이 쓰는 키(README §5 순서): `schema` `harness-kit/v2` · `kit.version
 | `tokens.test.ts` | 우선순위 4단계 · `lang` · 빈 값 남김 · `&` · `|` · `\` · `$&` 리터럴 · 순서 치환 · NUL 파일 |
 | `selection.test.ts` | 오류 exit 2(스택 · 변형 · 도메인 · lang · 하네스 · 모듈) · `all` · `none` · 순서 · 감지(폴더 · 환경 · 기본) |
 | `plan.test.ts` | fixture 템플릿: 겹침 first · 하네스 제외 수 · create/same/skip-user/replace · `--adopt` · `--force` · `..` 거부 · 링크로 밖을 가리키면 거부 |
-| `json.test.ts` · `meta.test.ts` · `lock.test.ts` | 형식 · 키 순서 · 모르는 키 보존 · v1 메타 → v2 · v1 lock 규칙 1~4 · v2 정렬 · 왕복 |
-| `cli.test.ts` | `main(argv)`: `--version` · 모르는 명령 · 예약 명령 단계 · 모르는 플래그 · 두 번째 init exit 3 · `--dry-run` 쓰기 0 · 모든 명령 `--json` 한 객체 · 메타 v1.1 기본값 · lock v2 · Node 16 → exit 5 |
+| `state.test.ts` | json · 메타 · lock: 형식 · 키 순서 · 모르는 키 보존 · v1 메타 → v2 · v1 lock 규칙 1~4 · v2 정렬 · 왕복 |
+| `cli.test.ts` | `main(argv)`: `--version` · 모르는 명령 · 예약 명령 단계 · 모르는 플래그 · 두 번째 init exit 3 · `--dry-run` 쓰기 0 · 모든 명령 `--json` 한 객체 · 메타 v1.1 기본값 · lock v2 · Node 16 · 18.2 → exit 5 · 프로토타입 이름 명령 · 사람 tools/docs 면 기능 문서 건너뜀 |
 | `doctor.test.ts` | 새 설치 `--check` 0 · 파일 삭제 → missing · exit 1 · 수정 → drifted · 쓰기 0(전후 트리 같음) · gitignore · entry-size · v1 lock → lock-v1 · 메타 깨짐 |
 
 ### 9.2 동일성(`tests/test_cli_parity.py`)
@@ -240,7 +245,7 @@ init이 쓰는 키(README §5 순서): `schema` `harness-kit/v2` · `kit.version
 
 ### 9.3 번들 · 생성물
 
-- `test_cli_parity.py`의 번들 시험: `cli.js`만 빈 폴더에 복사해 `--version`(node_modules 없이), `--templates`로 init, Node 버전을 16으로 꾸며 exit 5, `package.json` `dependencies` 비어 있음.
+- `test_cli_parity.py`의 번들 시험: `cli.js`만 빈 폴더에 복사해 `--version` · 템플릿 없음 exit 5 · `--templates`로 plan(node_modules 없이), 번들 옆 템플릿 찾기, Node 버전을 16 · 18.2로 꾸며 exit 5(아무것도 쓰지 않음), `require` 가 `node:` 모듈뿐, `package.json` `dependencies` 비어 있음 · engines `>=18.3`.
 - `test_generated.py`: 플러그인 사본이 있고 실행 비트가 있고 머리줄 해시 = 소스 해시. 소스를 고친 복사본에서 `--check`가 실패(exit 1 또는 2).
 
 ## 10. 설계와 다른 점
@@ -261,6 +266,11 @@ init이 쓰는 키(README §5 순서): `schema` `harness-kit/v2` · `kit.version
 | D12 | §3.15 규칙 3: `docs/features/` 날짜 문자열을 지운 뒤 비교 | 그대로 비교 | 생성물에 날짜가 없다. 같은 환경에서 두 번 설치하면 바이트가 같다 |
 | D13 | §3.11 "doctor와 check_layout.py 판정이 같다" | 시험하지 않는다 | `check_layout.py`는 P18 |
 | D14 | 매니페스트 값 그대로 삽입 | `.agents/harness.json` 값은 JSON 이스케이프 | `"`가 든 이름에서 setup.sh는 깨진 JSON을 쓴다. 보통 값에서는 바이트가 같다 |
+| D15 | 종료 코드 표(§3.2)에 내부 오류가 없다 | 예상하지 못한 예외는 `내부 오류: …`와 exit 1 | Node 기본값과 같다. `doctor --check`의 1과 구별하려면 메시지를 본다 |
+| D16 | 하네스 폴더 · 템플릿 파일 자리의 링크(§3.12 원칙) | 설치 경로가 링크면 skip-user. 상위 폴더가 끊어진 링크이거나 링크로 리포 밖을 가리키면 exit 3. 상위 경로가 파일이면 그 아래는 skip-user | setup.sh는 링크를 따라 쓰고(`cp`), 상위가 파일이면 `mkdir -p`에서 멈춘다. 동일성 조합에는 둘 다 없다 |
+| D17 | 설치 끝에 `feature_docs.py build`를 돌린다(setup.sh와 같다) | `tools/docs/` 아래 작업이 모두 킷 판(create · replace · same)일 때만 돌린다. 하나라도 skip-user면 건너뛴다 | 사람이 둔 `tools/docs/` 코드를 `init`이 실행하지 않게 한다(검토 지적). 빈 폴더 설치와 동일성 조합에서는 결과가 같다 |
+| D18 | R1.1 "Node 18 이상", engines `>=18` | engines `>=18.3`, 18.3 미만이면 exit 5 | `util.parseArgs`가 18.3에 들어왔다. 18.0~18.2에서는 모든 명령이 TypeError로 멈춘다 |
+| D19 | §3.5 모듈 목록에서 `all` · `none` | 모르는 이름을 먼저 모두 거부한 뒤 `all` · `none`을 본다 | setup.sh는 `bogus,all`을 전체로 받는다. 파일 결과는 같고 오타를 놓치지 않는다 |
 
 ## 11. 확인 필요
 
