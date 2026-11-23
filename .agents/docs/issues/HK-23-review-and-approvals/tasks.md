@@ -84,7 +84,7 @@ HK-13 이 합쳐진 뒤 받은 안내(스킬 · 규칙 · 역할의 하네스 �
 3. HK-13 CLI 시험 `packages/cli/test/projection-merge.test.ts` 의 settings 기대값에 deny 다섯 줄과 `hooks.PreToolUse:harness-protect-approvals` 를 더한다.
 4. `pnpm build` · `node scripts/gen-plugins.mjs` 로 생성물을 다시 만든다.
 
-시험 폴더 결과: `pnpm -C packages/cli test` 268개 통과(3번 전에는 settings 시험 3개 실패), `gen-plugins --check` 일치(411개), 킷 문구 · fixture · 정적 분석 템플릿 시험 24개 통과, 전체 시험은 아래.
+시험 폴더 결과: `pnpm -C packages/cli test` 268개 통과(3번 전에는 settings 시험 3개 실패), `gen-plugins --check` 일치(411개). 전체 시험 첫 실행은 manifest 수 시험 3개가 1씩 어긋났다(fixture 시험의 `.pyc`, 아래 "뒤에 찾은 것"). 시험을 고친 뒤 다시 돈 `python3 -m unittest discover -s tests -p "test_*.py"`: `Ran 100 tests in 1136.747s` · `OK (skipped=1)`. 풀이 스크립트 · 패치는 `/tmp/hk23-scratch/`(`port_projection.py` · `port_manifest.py` · `port_cli_test.py` · `*.patch`)에 있다.
 
 ## 설계와 다른 점(구현 중)
 
