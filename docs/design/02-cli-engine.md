@@ -17,7 +17,7 @@
 
 ## 2. 요구사항
 
-- R1.1 Node 18 이상에서 `npx harness-kit <명령>`이 돈다. Node가 18 미만이면 exit 5와 필요한 버전을 출력한다.
+- R1.1 Node 18.3 이상에서 `npx harness-kit <명령>`이 돈다(인자 해석에 쓰는 `node:util` `parseArgs`가 18.3부터 있다). Node가 18.3 미만이면 exit 5와 필요한 버전을 출력한다.
 - R1.2 `dist/cli.js`는 파일 하나이고, 런타임에 `node_modules`의 패키지를 읽지 않는다. `package.json`의 `dependencies`는 비어 있다.
 - R2.1 `init`은 같은 선택값에서 setup.sh와 같은 파일 목록·내용·실행 권한을 만든다(lock·메타 파일 제외).
 - R2.2 `init`은 쓰기 전에 전체 작업 목록을 만들고, `--dry-run`이면 목록만 출력한다.
@@ -43,7 +43,7 @@ harness-starter-kit/
 ├── package.json                      private, 워크스페이스 루트. scripts: build · test · release
 ├── pnpm-workspace.yaml               packages/*
 ├── packages/
-│   ├── cli/                          npm "harness-kit", bin { "harness-kit": "dist/cli.js" }, engines { "node": ">=18" }
+│   ├── cli/                          npm "harness-kit", bin { "harness-kit": "dist/cli.js" }, engines { "node": ">=18.3" }
 │   │   ├── src/
 │   │   │   ├── main.ts               인자 해석(node:util parseArgs) → 명령 실행 → exit code
 │   │   │   ├── commands/             init.ts plan.ts add.ts remove.ts update.ts outdated.ts doctor.ts
@@ -380,7 +380,7 @@ hx-bootstrap SKILL.md 절차
      node "<이 스킬 폴더>/bin/harness-kit.js" init --cwd "<대상>" --stack … --yes
 3. Node 가 없거나 18 미만이면:
      STACK=… bash "<이 스킬 폴더>/setup.sh" --arch=… --agents=… "<대상>"
-   출력 첫 줄에 "Node 18 이 없어 setup.sh 로 설치했다. v2.1 부터는 Node 가 필요하다"를 붙인다.
+   출력 첫 줄에 "Node 18.3 이 없어 setup.sh 로 설치했다. v2.1 부터는 Node 가 필요하다"를 붙인다.
 ```
 
 - `hx-update` → `update --dry-run` 결과를 보여 준 뒤 `update`. 내려가는 경로는 `bash ../hx-bootstrap/../hx-update/update.sh`.
@@ -437,7 +437,7 @@ hx-bootstrap SKILL.md 절차
 3. 킷 파일 하나(`.agents/rules/git-workflow.md`)를 고친 뒤 템플릿을 바꾼 킷으로 `update` → 그 파일 옆에 `.new` 1개, exit 4. 이어서 `uninstall` → 리포에 남은 킷 파일이 고친 그 파일 하나(`.agents/state/` 제외).
 4. v1.0.7 설치 fixture(knots lock 형식)에서 `update`가 v1 lock을 읽어 v2로 쓴다. 이전 lock의 경로 수 = v2 `entries` 수 − 새로 생긴 파일 수.
 5. `npm pack` 결과의 `package.json` `dependencies`가 비어 있고, `node dist/cli.js --version`이 `node_modules` 없는 폴더에서 돈다.
-6. Node 16 환경에서 `npx harness-kit init`이 exit 5와 "Node 18 이상"을 출력한다. 같은 환경에서 `hx-bootstrap` 스킬 절차가 setup.sh로 설치를 끝낸다.
+6. Node 16 환경에서 `npx harness-kit init`이 exit 5와 "Node 18.3 이상"을 출력한다. 같은 환경에서 `hx-bootstrap` 스킬 절차가 setup.sh로 설치를 끝낸다.
 7. `doctor`와 `check_layout.py`의 판정 목록이 fixture 5종(정상·수정·누락·오래된 생성·끊어진 링크)에서 같다.
 
 ## 6. 확인 필요

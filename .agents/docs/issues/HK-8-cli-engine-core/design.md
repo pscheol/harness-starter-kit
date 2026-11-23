@@ -3,7 +3,7 @@ key: HK-8
 area: cli
 type: feat
 title: npx harness-kit CLI의 뼈대와 init · plan · doctor · list를 만든다
-status: in-review
+status: approved
 created: 2026-11-23
 ---
 

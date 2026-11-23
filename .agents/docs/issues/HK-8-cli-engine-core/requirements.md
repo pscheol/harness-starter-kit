@@ -28,7 +28,7 @@ created: 2026-11-23
 
 ## 요구사항(EARS)
 
-- **R1.1** Node 18 이상에서 `node dist/cli.js <명령>`(npx 진입과 같은 파일)이 돈다. 18 미만이면 exit 5와 필요한 버전을 출력한다.
+- **R1.1** Node 18.3 이상에서 `node dist/cli.js <명령>`(npx 진입과 같은 파일)이 돈다. 18.3 미만이면 exit 5와 필요한 버전을 출력한다(`util.parseArgs`가 18.3부터 있다. 설계 검토에서 18 → 18.3으로 고쳤다).
 - **R1.2** `dist/cli.js`는 파일 하나이고 런타임에 `node_modules`를 읽지 않는다. `packages/cli/package.json`의 `dependencies`는 비어 있다.
 - **R2.1** `init`은 같은 선택값(스택 · 변형 · 도메인 · 하네스 · 모듈 · 치환값)에서 setup.sh와 같은 파일 목록 · 내용 · 실행 권한을 만든다. lock · 메타 파일은 비교에서 뺀다.
 - **R2.2** `init`은 쓰기 전에 전체 작업 목록을 만들고, `--dry-run`(= `plan`)이면 목록만 출력한다.
