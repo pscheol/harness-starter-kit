@@ -9,6 +9,6 @@ inclusion: always
 요약:
 - 규칙 원본 = `.agents/rules/`, 설계·기록의 기준 = `.agents/docs/`. 진입 파일은 목차.
 - SDD: 이슈 폴더 `.agents/docs/issues/<키>-<이름>/` 안 requirements → design → tasks.md. 워크플로 원본 `.agents/rules/sdd-workflow.md`.
-- exec-plan 완료 게이트: active → check → **사용자 검증 · `done` 승인 기록** → completed(임의 이동 금지).
+- exec-plan 완료 게이트: active → check → **사용자 검증** → completed(임의 이동 금지).
 - 강제 로직은 리포 스크립트 1곳 + 에이전트별 얇은 트리거(로직 복제 금지).
 - 검증 레벨: hook = `fast`(구조 점검 + 가벼운 정적 검사), 커밋·푸시·CI = `full`(빌드·테스트 포함). hook 통과 ≠ full 통과.

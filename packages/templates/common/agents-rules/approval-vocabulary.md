@@ -1,3 +1,9 @@
+---
+paths:
+  - "**/approvals.md"
+  - ".agents/docs/issues/**"
+  - ".agents/docs/intents/**"
+---
 # 승인 어휘 — 채팅에서 한 말은 승인이 아니다
 
 게이트(requirements · design · tasks · mr · done 등)의 승인은 아래 네 경로로만 생긴다. 채팅에서 한 말은 어떤 말이든 승인이 아니다. "좋아" · "OK" · "승인" · "반영해" · "push해" · "머지해" · "배포해"가 모두 같다.

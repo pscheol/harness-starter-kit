@@ -22,5 +22,5 @@ Electron 데스크톱 앱 · TypeScript + React. 프로세스는 main(Node 권�
 - 상태는 종류가 사는 곳을 정한다 (`.agents/rules/ui-state.md`). 값은 토큰에서 고른다 (`.agents/rules/design-system.md`).
 - 복잡한 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 계획을 남기고, 변경은 `bash scripts/verify.sh`로 검증한다.
 - IPC 채널을 추가하면 채널 목록·계약 문서·preload 화이트리스트·main 스키마를 같은 변경에 함께 넣는다.
-- exec-plan(tasks.md)은 완료 조건을 채워도 임의로 `completed`로 바꾸지 않는다. `state: check`로 두고 **`done` 승인 뒤** `completed`로 바꾼다.
+- exec-plan(tasks.md)은 완료 조건을 채워도 임의로 `completed`로 바꾸지 않는다. `state: check`로 두고 **사용자 검증 후** `completed`로 바꾼다.
 - 규칙이 바뀌면 `.agents/rules/` 원본을 먼저 고치고 `AGENTS.md`와 이 파일, Kiro 포인터를 동기화한다.

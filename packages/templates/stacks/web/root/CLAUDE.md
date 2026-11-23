@@ -21,5 +21,5 @@ Claude Code는 먼저 `AGENTS.md`를 읽고 거기서 연결하는 `.agents/rule
 - 시맨틱 요소 우선, 키보드 도달 가능, 이름·역할·상태 제공 (`.agents/rules/accessibility.md`).
 - 성능은 예산과 측정으로 다룬다 (`.agents/rules/frontend-performance.md`).
 - 복잡한 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 계획을 남기고, 변경은 `bash scripts/verify.sh`로 검증한다.
-- exec-plan(tasks.md)은 완료 조건을 채워도 임의로 `completed`로 바꾸지 않는다. `state: check`로 두고 **`done` 승인 뒤** `completed`로 바꾼다.
+- exec-plan(tasks.md)은 완료 조건을 채워도 임의로 `completed`로 바꾸지 않는다. `state: check`로 두고 **사용자 검증 후** `completed`로 바꾼다.
 - 규칙이 바뀌면 `.agents/rules/` 원본을 먼저 고치고 `AGENTS.md`와 이 파일, Kiro 포인터를 동기화한다.

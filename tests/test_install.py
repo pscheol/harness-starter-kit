@@ -101,16 +101,6 @@ class InstallTest(unittest.TestCase):
                     "docs/features/_src/docs.config.json",
                     "docs/features/_src/catalog.json",
                     ".claude/commands/hx-docs.md",
-                    ".agents/skills/hx-review/SKILL.md",
-                    ".agents/rules/approval-vocabulary.md",
-                    ".claude/commands/hx-review.md",
-                    ".kiro/steering/approval-vocabulary.md",
-                    "scripts/harness/approve.py",
-                    "scripts/harness/review.py",
-                    "scripts/harness/review_state.py",
-                    "scripts/harness/mr_comment.py",
-                    "scripts/hooks/protect-approvals.sh",
-                    ".kiro/hooks/harness-protect-approvals.json",
                     ".codex/config.toml",
                     ".kiro/hooks/harness-verify-gate.json",
                     ".kiro/agents/acme-notes.json",
@@ -376,6 +366,29 @@ class InstallTest(unittest.TestCase):
         self.assertEqual(update.returncode, 0, update.stdout[-3000:] + update.stderr[-3000:])
         self.assertRegex(update.stdout, r"new=0 +update=0 +same=\d+ +conflict=0")
         self.assertEqual(sorted(p.relative_to(root).as_posix() for p in root.rglob("*.new")), [])
+
+
+    def test_review_and_approval_files_are_installed(self):
+        # HK-23: /hx-review · 승인 강제 파일은 하네스와 상관없이 깔린다. 하네스 복사본(.claude/skills · .kiro/steering)은 배치 엔진 몫이다.
+        for stack in ("python", "web"):
+            with self.subTest(stack=stack):
+                root = self.installed(stack)
+                for rel in (
+                    ".agents/skills/hx-review/SKILL.md",
+                    ".agents/rules/approval-vocabulary.md",
+                    "scripts/harness/approve.py",
+                    "scripts/harness/approvals.py",
+                    "scripts/harness/approvals_guard.py",
+                    "scripts/harness/sdd_gates.py",
+                    "scripts/harness/review.py",
+                    "scripts/harness/review_state.py",
+                    "scripts/harness/mr_comment.py",
+                    "scripts/hooks/protect-approvals.sh",
+                    "scripts/hooks/protect_approvals.py",
+                    ".kiro/hooks/harness-protect-approvals.json",
+                ):
+                    self.assertTrue((root / rel).is_file(), f"{stack}: {rel}")
+                self.assertTrue(os.access(root / "scripts/harness/approve.py", os.X_OK))
 
 
 class HarnessScriptTests(unittest.TestCase):
