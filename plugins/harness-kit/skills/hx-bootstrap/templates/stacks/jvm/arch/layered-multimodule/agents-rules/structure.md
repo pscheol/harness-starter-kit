@@ -200,7 +200,7 @@ class LayeredModuleTest {
    4. `api`: `@WebMvcTest`로 검증·상태코드·**envelope** 확인.
    5. 통합: `@SpringBootTest` smoke.
 4. **검증**: `bash scripts/verify.sh`(= `./gradlew check`) 통과 + `.agents/docs/openapi` 동기화.
-5. **계획 추적**: 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
+5. **계획 추적**: 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
 
 ## 7. 새 기능 착수 규칙
 

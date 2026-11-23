@@ -270,7 +270,7 @@ REFACTOR 중복 제거·의도 드러내기
 2. **(신규 컨텍스트)** `src/{{PACKAGE_NS}}/<ctx>/{domain,application,primary,infra}/` 4패키지 생성 → `pyproject.toml`의 import-linter 계약(§3.2)에 등록(등록 누락 = 강제 누락).
 3. **TDD 사이클**: `domain`(애그리거트/VO) → `application`(유스케이스 + fake port) → `infra`(실제 DB로 포트 구현) → `primary`(`AsyncClient`로 라우터, 응답은 envelope) → `bootstrap`(와이어링·smoke).
 4. **검증**: `bash scripts/verify.sh` 통과 + OpenAPI 스냅샷/문서 동기화(`.agents/docs/openapi`).
-5. **계획 추적**: 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록.
+5. **계획 추적**: 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록.
 
 ---
 

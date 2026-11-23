@@ -33,6 +33,7 @@ def install(
     modules: str = "none",
     extra: tuple[str, ...] = (),
     env_extra: dict[str, str] | None = None,
+    setup: Path = SETUP,
 ) -> subprocess.CompletedProcess:
     env = {
         **os.environ,
@@ -43,7 +44,7 @@ def install(
         **(env_extra or {}),
     }
     return subprocess.run(
-        ["bash", str(SETUP), f"--stack={stack}", f"--agents={agents}", f"--modules={modules}", *extra, str(target)],
+        ["bash", str(setup), f"--stack={stack}", f"--agents={agents}", f"--modules={modules}", *extra, str(target)],
         env=env,
         capture_output=True,
         text=True,
@@ -224,6 +225,9 @@ class InstallTest(unittest.TestCase):
         for command in ("build", "check"):
             result = subprocess.run([sys.executable, "tools/docs/feature_docs.py", command], cwd=root, capture_output=True, text=True, timeout=120)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        # 새 구조 이슈가 백로그 화면에 보인다(HK-9 R9.2).
+        backlog = next((root / "docs/features").glob("*백로그*.html"))
+        self.assertIn("ACMENOTES-1-folder-bookmark", backlog.read_text(encoding="utf-8"))
 
     def test_feature_docs_tool_tests_pass_in_install(self):
         root = self.installed("go")
@@ -265,6 +269,62 @@ class InstallTest(unittest.TestCase):
         result = subprocess.run(["bash", str(UPDATE), str(root)], capture_output=True, text=True, timeout=300)
         self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
         self.assertIn("사용자가 고친 줄", rule.read_text())
+
+    def test_update_rebuilds_board_after_format_change(self):
+        # v1.0.8 리포: 옛 구조 이슈가 있고 specs-index.md 의 보드가 옛 형식이다(HK-9 R9.3).
+        root = self.installed("python")
+        issue = root / ".agents/docs/demo-specs/issues/1-feat-sample"
+        issue.mkdir(parents=True)
+        (issue / "requirements.md").write_text("# Requirements — 1-feat-sample\n\n| 상태 | approved |\n")
+        index = root / ".agents/docs/specs-index.md"
+        old_board = "\n## 전체 보드 (전 제품)\n\n| 📋 요구 (1) | 🎨 설계 (0) |\n|---|---|\n| `demo/1-feat-sample` | — |\n\n"
+        index.write_text(re.sub(r"(<!-- BOARD:BEGIN[^\n]*-->\n).*?(<!-- BOARD:END -->)", lambda m: m[1] + old_board + m[2], index.read_text(), flags=re.S))
+        git_init(root)
+        plans = ["bash", "scripts/check-exec-plan-status.sh"]
+        before = subprocess.run(plans, cwd=root, capture_output=True, text=True, timeout=60)
+        self.assertNotEqual(before.returncode, 0, "옛 형식 보드인데 fast 검사가 통과한다 — 시험 전제가 틀렸다")
+        result = subprocess.run(["bash", str(UPDATE), str(root)], capture_output=True, text=True, timeout=300)
+        self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
+        self.assertEqual(result.stdout.count("SDD 보드"), 1, result.stdout[-3000:])
+        after = subprocess.run(plans, cwd=root, capture_output=True, text=True, timeout=60)
+        self.assertEqual(after.returncode, 0, after.stdout + after.stderr)
+        self.assertIn("| 1 (옛) | sample | feat |", index.read_text())
+        again = subprocess.run(["bash", str(UPDATE), str(root)], capture_output=True, text=True, timeout=300)
+        self.assertNotIn("SDD 보드", again.stdout, "보드가 이미 맞으면 다시 만들지 않는다")
+
+    def test_overlap_later_layer_wins_on_install_and_update(self):
+        # common 과 platform-guards 모듈이 같은 경로를 깐다. 첫 설치 · update 모두 뒤 레이어(모듈) 판이다(HK-10 R10.1).
+        kit = self.tmp / "kit"
+        shutil.copytree(KIT / "plugins/harness-kit", kit, symlinks=True)
+        mark = "\n# 뒤 레이어 판(HK-10)\n"
+        with (kit / "skills/hx-bootstrap/templates/optional/platform-guards/scripts/run-guards.sh").open("a", encoding="utf-8") as handle:
+            handle.write(mark)
+        root = self.tmp / "python"
+        result = install(root, "python", agents="claude", modules="platform-guards", setup=kit / "skills/hx-bootstrap/setup.sh")
+        self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
+        guard = root / "scripts/run-guards.sh"
+        self.assertTrue(guard.read_text().endswith(mark), "첫 설치가 앞 레이어(common) 판을 깔았다")
+        lock_lines = [line for line in (root / ".agents/harness-kit.lock").read_text().splitlines() if line.endswith("\tscripts/run-guards.sh")]
+        self.assertEqual([line.split("\t")[1] for line in lock_lines], ["mod/platform-guards"])
+        for run in (1, 2):
+            update = subprocess.run(["bash", str(kit / "skills/hx-update/update.sh"), str(root)], capture_output=True, text=True, timeout=300)
+            self.assertEqual(update.returncode, 0, update.stdout[-3000:] + update.stderr[-3000:])
+            with self.subTest(run=run):
+                self.assertRegex(update.stdout, r"update=0 +same=\d+ +conflict=0")
+        self.assertEqual(sorted(p.relative_to(root).as_posix() for p in root.rglob("*.new")), [])
+        self.assertTrue(guard.read_text().endswith(mark))
+
+    def test_special_token_values_survive_install_and_update(self):
+        # & · | · \ 가 든 값은 sed 치환에서 깨졌다. 설치와 update 모두 글자 그대로 넣는다(HK-10 R10.2).
+        name = "A&B | C\\D"
+        root = self.installed("go", agents="claude", env_extra={"PROJECT_NAME": name})
+        self.assertIn(name, (root / "AGENTS.md").read_text())
+        self.assertEqual(json.loads((root / ".agents/harness.json").read_text())["title"], name)
+        self.assertEqual(json.loads((root / ".agents/harness-kit.json").read_text())["tokens"]["PROJECT_NAME"], name)
+        update = subprocess.run(["bash", str(UPDATE), str(root)], capture_output=True, text=True, timeout=300)
+        self.assertEqual(update.returncode, 0, update.stdout[-3000:] + update.stderr[-3000:])
+        self.assertRegex(update.stdout, r"new=0 +update=0 +same=\d+ +conflict=0")
+        self.assertEqual(sorted(p.relative_to(root).as_posix() for p in root.rglob("*.new")), [])
 
 
 class HarnessScriptTests(unittest.TestCase):

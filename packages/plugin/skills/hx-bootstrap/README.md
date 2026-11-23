@@ -73,14 +73,14 @@ skills/hx-bootstrap/          ← 스킬 루트 (= SKILL_DIR)
 ├── README.md · SKILL.md · setup.sh · manifest.md
 ├── tools/sync-commands.sh         킷 개발용 — 스킬 원본에서 Claude·Cursor·Kiro 포인터 재생성(설치 안 됨, --check)
 └── templates/
-    ├── common/           ★ 스택 무관 골격 (모든 스택 공통 설치 · 259개)
+    ├── common/           ★ 스택 무관 골격 (모든 스택 공통 설치 · 271개)
     │   ├── agents-rules/  agent-harness · sdd-workflow · product · writing-style · design-principles · reuse-before-new · verification-ladder · pr-review-policy · git-workflow · platform-invariants · code-maintenance · session-collaboration
-    │   ├── agents-docs/   SDD 기록 (README · specs-index · _spec-templates/{index,requirements,design,checklists,tasks} · decisions · guides · tech-debt-tracker · generated · references) — <slug>-specs/issues/<key>/ 는 new-feature.sh 가 만든다
+    │   ├── agents-docs/   SDD 기록 (README · specs-index · _spec-templates/{requirements,design,checklists,tasks} · decisions · guides · tech-debt-tracker · generated · references) — issues/<키>-<이름>/ 는 new-feature.sh 가 만든다
     │   ├── agents-root/   roles/(planner·explorer·worker·reviewer·docs-researcher) · verify-checks.json
     │   ├── agents-skills/ hx-*/SKILL.md 11종 — 커맨드 본문 원본(core, Codex 가 직접 읽는다)
     │   ├── kiro-steering/ 규칙 포인터 17종 + hx-* 11종(Kiro IDE 슬래시 · inclusion: manual)
     │   ├── kiro-skills/   hx-*/SKILL.md 11종 (Kiro CLI 슬래시 · 포인터)
-    │   ├── kiro-agents/ · kiro-hooks/ · kiro-root/   조율 에이전트 + 역할 5 · hook 3 · 안내
+    │   ├── kiro-agents/ · kiro-hooks/ · kiro-root/   조율 에이전트 + 역할 5 · hook 4 · 안내
     │   ├── claude/        settings.json · commands/(hx- 11종 포인터) · agents/(역할 5) · rules/
     │   ├── codex/         hooks.json · config.toml · agents/(역할 5)
     │   ├── cursor/        commands/(hx- 11종 포인터) — Cursor 프로젝트 슬래시
@@ -100,7 +100,7 @@ skills/hx-bootstrap/          ← 스킬 루트 (= SKILL_DIR)
     └── optional/         ★ --modules= 로 켤 때만 (기본 none)
         ├── jira-workflow/    issue-tracker.yml · 규칙 2 · /hx-issue + /hx-ticket 각 4하네스 · Kiro 포인터 3
         ├── platform-guards/  run-guards.sh · guards/_template.sh · 규칙 1 · Kiro 포인터 1
-        └── multi-harness/    tools/harness/{sync,sync_safety,gates,install_verification_entry}.py + 시험 4 — 여러 리포·단위 하네스
+        └── multi-harness/    tools/harness/{sync,sync_safety,gates,install_verification_entry}.py + 시험 5 — 여러 리포·단위 하네스
 ```
 
 스택별 6종 규칙(변형 무관): `code-comments` · `api-standards` · `security` · `reliability` · `quality-score` · `guardrails`. 스택마다 `docs/features/_src/docs.config.json`(기능 문서 단위 설정)도 따로 있다.
@@ -168,7 +168,7 @@ go=`github.com/org/my-app`(모듈 경로) · web=`@`(임포트 별칭 루트 →
 
 1. **규칙·헌법·가드레일** — 진입점은 목차(`AGENTS.md`/`CLAUDE.md` 짧게), 규칙 원본은 `.agents/rules/`, 기록은 `.agents/docs/`. "추측 금지" 헌법.
 2. **아키텍처 제약·스캐폴딩** — `ARCHITECTURE.md`가 스택별 의존 방향과 기계적 강제 수단을 정의 + `_spec-templates/tasks/_template.md` 작업 지시서(추적성·DoD·결정 로그).
-3. **검증·피드백 루프** — 강제는 `scripts/verify.sh` 한 곳, hook/CI/pre-commit 은 트리거만("1곳 + N트리거"). exec-plan 완료 게이트(active→check→사용자 승인→completed).
+3. **검증·피드백 루프** — 강제는 `scripts/verify.sh` 한 곳, hook/CI/pre-commit 은 트리거만("1곳 + N트리거"). exec-plan 완료 게이트(tasks `state` active→check→사용자 승인→completed).
 4. **부채·문서 관리** — `tech-debt-tracker.md`, `generated/`·`references/` 최신 상태 유지 규약.
 
 ## 스택 노트

@@ -14,7 +14,7 @@
 - **규칙 원본은 공통** — 가드레일·보안·API 표준 등 규칙은 `.agents/rules/` 한 곳에 두고 Claude Code·Codex·Cursor·Kiro 가 공유한다.
 - **Kiro steering은 얇은 포인터** — `.kiro/steering/*` 는 규칙 본문을 담지 않고 `.agents/rules/*` 원본을 가리키기만 한다.
 - **기본은 하네스 하나** — 리포를 여럿으로 나누거나 배포 단위가 여럿이면 선택 모듈 `multi-harness`가 메인 → 도메인 → 단위 층의 공통 파일 배포와 게이트를 맡는다.
-- **SDLC 단계형 SDD** — 이슈마다 `.agents/docs/<slug>-specs/issues/<key>/{requirements,design,tasks/active}.md`. S1 분석 → S2 기획 → S3 설계 → S4 계획 → S5 구현 → S6 테스트 → S7 문서 반영(`/hx-docs`) → S8 완료. 원본은 `agents-rules/sdd-workflow.md`.
+- **SDLC 단계형 SDD** — 이슈마다 `.agents/docs/issues/<키>-<이름>/{requirements,design,tasks}.md`(상태는 문서 머리 `status` · `state`, 보드는 `specs-index.md` 영역별 표). S1 분석 → S2 기획 → S3 설계 → S4 계획 → S5 구현 → S6 테스트 → S7 문서 반영(`/hx-docs`) → S8 완료. 원본은 `agents-rules/sdd-workflow.md`.
 - **기능 문서 생성기** — `tools/docs/feature_docs.py`(표준 라이브러리만)가 OpenAPI·DB 카탈로그·코드 정적 분석·원고(`docs/features/_src`)로 정적 사이트를 만든다. API 명세는 Scalar, 그림은 Mermaid이고 둘 다 리포에 둔 판을 쓴다.
 - **스킬 원본은 core** — `.agents/skills/hx-*/SKILL.md`가 커맨드 본문이다. Claude·Cursor 커맨드와 Kiro 스킬·steering 은 그 원본을 가리키는 한 줄 포인터다(`tools/sync-commands.sh`가 만든다).
 - **도메인 레이어는 여러 스택이 공유하는 규약만** — `web`·`electron` 은 `frontend` 를 공유한다(디자인 시스템·접근성·UI 상태·성능). `jvm`·`python`·`go` 는 도메인 디렉터리가 **없다** — 규칙이 이미 언어별이라 스택 레이어가 그 역할을 한다. 빈 `backend/` 를 만들지 않는다.
@@ -68,10 +68,10 @@
 
 | 스택군 | core | claude | codex | cursor | kiro | 전부 고를 때 |
 |---|---|---|---|---|---|---|
-| `jvm` · `python` · `go` | 187 | 19 | 8 | 11 | 52 | **277** |
-| `web` · `electron` (`frontend` 도메인 +4 core/+4 kiro) | 191 | 19 | 8 | 11 | 56 | **285** |
+| `jvm` · `python` · `go` | 198 | 19 | 8 | 11 | 53 | **289** |
+| `web` · `electron` (`frontend` 도메인 +4 core/+4 kiro) | 202 | 19 | 8 | 11 | 57 | **297** |
 
-- 설치 수 = core + 고른 에이전트의 합. 예(백엔드): claude 만 = 206, claude+kiro = 258, `all` = 277.
+- 설치 수 = core + 고른 에이전트의 합. 예(백엔드): claude 만 = 217, claude+kiro = 270, `all` = 289.
 - 설치 끝에 `tools/docs/feature_docs.py build`가 한 번 돌아 `docs/features/*.html`이 생긴다. 이 생성물은 lock 에 오르지 않는다.
 - 감지 순서: 대상 리포의 `.claude/`·`.codex/`·`.cursor/`·`.kiro/` → 실행 CLI 환경변수 → 없으면 `claude`.
 - `--list-agents` 로 감지 결과와 파일 수만 출력할 수 있다(설치하지 않는다).
@@ -83,9 +83,9 @@
 
 | 모듈 | 파일 | 무엇을 넣나 |
 |---|---|---|
-| `jira-workflow` | 15 (core 3 · claude 2 · codex 2 · cursor 2 · kiro 6) | `.agents/issue-tracker.yml`(접근 수단·상태·전이 ID·락 설정, 전부 `TBD`) + `issue-tracker-workflow.md`·`issue-agent-lock.md` 규칙 + 슬래시 커맨드 **2종 × 4하네스** — `/hx-issue`(트래커 단품) · `/hx-ticket`(티켓→SDD→구현→리뷰 전 여정) |
+| `jira-workflow` | 15 (core 5 · claude 2 · cursor 2 · kiro 6) | `.agents/issue-tracker.yml`(접근 수단·상태·전이 ID·락 설정, 전부 `TBD`) + `issue-tracker-workflow.md`·`issue-agent-lock.md` 규칙 + 슬래시 커맨드 **2종 × 4하네스** — `/hx-issue`(트래커 단품) · `/hx-ticket`(티켓→SDD→구현→리뷰 전 여정) |
 | `platform-guards` | 4 (core 3 · kiro 1) | `scripts/run-guards.sh` 실행기 + `scripts/guards/_template.sh` + `platform-invariants.md` 규칙 |
-| `multi-harness` | 8 (core 8) | `tools/harness/sync.py`(공통 파일 원본 `tools/harness/shared/` → 등록표 `tools/harness/units.json`의 하네스로 배포, 지문 충돌 거부) · `sync_safety.py`(배포 잠금) · `gates.py`(메인 게이트가 하위 게이트를 부른다) · `install_verification_entry.py` + 시험 4개 |
+| `multi-harness` | 9 (core 9) | `tools/harness/sync.py`(공통 파일 원본 `tools/harness/shared/` → 등록표 `tools/harness/units.json`의 하네스로 배포, 지문 충돌 거부) · `sync_safety.py`(배포 잠금) · `gates.py`(메인 게이트가 하위 게이트를 부른다) · `install_verification_entry.py` + 시험 5개 |
 
 - `jira-workflow` 핵심: **한 세션 = 한 활성 티켓** · pull gate · **표시 이름이 아니라 ID 로 전이** · 에이전트는 In Review 까지.
   **킷은 트래커 호출 수단을 제공하지 않는다** — MCP·CLI·REST 중 무엇으로 닿을지는 `access` 절에 프로젝트가 적는다.
@@ -127,7 +127,7 @@
 
 ## 공통 vs 스택별 (무엇이 어디에 있나)
 
-| 영역 | `templates/common/` (259개) | `templates/domains/frontend/` (8개 · web·electron 만) | `templates/stacks/<stack>/` (변형 무관 14개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
+| 영역 | `templates/common/` (271개) | `templates/domains/frontend/` (8개 · web·electron 만) | `templates/stacks/<stack>/` (변형 무관 14개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
 |---|---|---|---|---|
 | 진입점 | `README.md` | — | `AGENTS.md` · `CLAUDE.md` · `.gitignore` · `.github/workflows/verify.yml` | `root/ARCHITECTURE.md` |
 | 규칙 | `agent-harness.md` · `sdd-workflow.md` · `product.md` · `writing-style.md` · `design-principles.md` · `reuse-before-new.md` · `verification-ladder.md` · `pr-review-policy.md` · `git-workflow.md` · `platform-invariants.md` · **`code-maintenance.md`** · **`session-collaboration.md`** | `design-system.md` · `accessibility.md` · `ui-state.md` · `frontend-performance.md` | `code-comments.md` · `api-standards.md` · `security.md` · `reliability.md` · `quality-score.md` · `guardrails.md` | `agents-rules/structure.md` · `agents-rules/tech.md` |
@@ -141,9 +141,9 @@
 > 규칙 7종이 스택별인 이유: 주석 표준·보안 위험·신뢰성 패턴·DoD가 언어마다 실제로 다르기 때문이다(주석 규약, 동시성 함정, 커버리지 도구 등).
 > 반대로 **레이어 책임은 변형 무관 원칙으로 중립화**해 `guardrails.md`에 두고, 구체 경로·계약은 `structure.md`·`ARCHITECTURE.md`(변형별)로 위임한다.
 > `frontend` 도메인 규칙 4종이 스택이 아니라 도메인에 있는 이유: web 과 electron 이 **같은 규약을 쓴다**. 스택에 두면 두 벌이 되고 곧 어긋난다.
-> 템플릿 합계 = 259 + 14 + 4 = **277개**(백엔드 3스택) · 259 + 8 + 14 + 4 = **285개**(web·electron).
-> 실제 설치 수는 고른 에이전트에 달렸다 — 백엔드 core 187 + (claude 19 · codex 8 · cursor 11 · kiro 52) · 프론트엔드 core 191 + (19 · 8 · 11 · 56).
-> 선택 모듈(`jira-workflow` 15 · `platform-guards` 4 · `multi-harness` 8)은 여기에 더해진다.
+> 템플릿 합계 = 271 + 14 + 4 = **289개**(백엔드 3스택) · 271 + 8 + 14 + 4 = **297개**(web·electron).
+> 실제 설치 수는 고른 에이전트에 달렸다 — 백엔드 core 198 + (claude 19 · codex 8 · cursor 11 · kiro 53) · 프론트엔드 core 202 + (19 · 8 · 11 · 57).
+> 선택 모듈(`jira-workflow` 15 · `platform-guards` 4 · `multi-harness` 9)은 여기에 더해진다.
 > 여기에 상태 파일 2개(`harness-kit.json`·`harness-kit.lock`)가 더해진다.
 >
 > 슬래시 커맨드는 원본 1곳 + 포인터. 본문 원본은 `agents-skills/hx-*/SKILL.md`(설치 위치 `.agents/skills/`)이고
@@ -202,18 +202,18 @@
 | `.agents/rules/quality-score.md` | 코드품질·Story/Epic DoD·커버리지 도구 | ✅ | 인간 |
 | `.kiro/steering/*.md` | 위 원본을 가리키는 **얇은 포인터**(inclusion 유지) | 일부 ✅ | 인간 |
 | `.agents/docs/README.md` | 기록 시스템 자기서술 + 4대 축 매핑 | — | 인간 |
-| `.agents/docs/_spec-templates/{README, index, requirements/_template, design/_template, checklists/_template, tasks/{_template,README}}.md` | SDD 단계 템플릿 **원본 한 벌**(복사 원본). requirements 에 정책·화면·기능 문서 칸, design 에 순서도·상태 전이·쿼리→인덱스·캐시·동시성 절, tasks Polish 에 문서 반영 작업이 있다. 제품 폴더 `<slug>-specs/` 는 `new-feature.sh` 가 첫 이슈에서 만들고, 단계 문서는 그 단계에 들어갈 때 이슈 폴더에 하나씩 렌더된다 | — | 인간→에이전트 실행 |
+| `.agents/docs/_spec-templates/{README, requirements/_template, design/_template, checklists/_template, tasks/{_template,README}}.md` | SDD 단계 템플릿 **원본 한 벌**(복사 원본). requirements 에 정책·화면·기능 문서 칸, design 에 순서도·상태 전이·쿼리→인덱스·캐시·동시성 절, tasks Polish 에 문서 반영 작업이 있다. 이슈 폴더 `issues/<키>-<이름>/` 는 `new-feature.sh` 가 만들고, 단계 문서는 그 단계에 들어갈 때 하나씩 렌더된다(앞에 문서 머리) | — | 인간→에이전트 실행 |
 | `.agents/docs/guides/{sdd-pattern,harness-engineering,doc-standards,…}.md` | 사용 안내 — 이슈 SDD 따라 하기, 하네스 구조·검사 표, 문서 작성 기준 | — | 인간 |
 | `.agents/docs/decisions/{index,_template,core-beliefs}.md` | 전역 설계 결정(ADR)·핵심 원칙 | — | 인간 |
-| `.agents/docs/{specs-index,tech-debt-tracker}.md` | 전 제품 스펙 색인·전역 기술부채 | — | 인간 |
+| `.agents/docs/{specs-index,tech-debt-tracker}.md` | 영역별 이슈 보드·영역 등록표 · 전역 기술부채 | — | 인간 |
 | `.agents/docs/generated/README.md` | 에이전트가 만드는 문서 규약(손편집 금지) | — | 에이전트 |
 | `.agents/docs/references/README.md` | 압축 참고자료(*-llms.txt) 규약 | — | 인간/에이전트 |
 | `scripts/verify.sh` | **단일 강제 지점**(스택별 빌드·린트·타입·아키텍처·테스트 + 변형 전용 조건부 단계). 앞의 진입 블록(`verify-entry.sh`)이 레벨을 가른다 — 기본 `changed`(바뀐 파일에 필요한 검사만, `verify-changed.py`) / `--fast`(구조 점검 + 가벼운 정적 검사) / `--full`(전체, CI) | ✅ | 인간 |
 | `scripts/verify-changed.py` + `scripts/harness/verify_*.py` | changed 계획기 — 바뀐 파일·세션 점유 파일로 검사·시험을 고른다. `--plan` 은 실행 없이 계획만, `.agents/verify-checks.json` 의 경로별 검사(기능 문서 검사 등)를 더한다 | — | 인간 |
-| `scripts/check_harness.py` | 하네스 검사 — 필수 파일·설정 파싱·포인터(고른 에이전트만)·task 위치↔상태 | — | 인간 |
+| `scripts/check_harness.py` | 하네스 검사 — 필수 파일·설정 파싱·포인터(고른 에이전트만)·이슈 문서 머리(`state` · 작업 ID)·키 충돌·옛 구조 동결 | — | 인간 |
 | `scripts/session-coordination.py` + `scripts/harness/coordination_*.py` | 동시 세션의 파일 점유(register·claim·release)·공지(inbox·acknowledge)·상태 | — | 인간/에이전트 |
 | `scripts/check-maintenance.py` | 코드 유지보수 후보(긴 함수·이름·조건식) 경고. 실패 판정이 아니다 | — | 에이전트 |
-| `scripts/board.sh` | SDD 보드(`specs-index.md`의 표)를 파일 위치로 다시 만든다. `--check` 는 어긋나면 실패 | — | 도구 |
+| `scripts/board.sh` | SDD 보드(`specs-index.md`의 영역별 표)를 문서 머리로 다시 만든다. `--check` 는 어긋나면 실패, `--area <영역>` 은 그 표만 | — | 도구 |
 | `scripts/hooks/{session-start.sh,session-context.py,protect-sources.sh,verify-gate.sh}` | 에이전트 공용 hook 본문 — 세션 컨텍스트 주입 · 보호 경로 쓰기 차단 · 턴 끝 changed 검증 | — | 인간 |
 | `scripts/git-hooks/{pre-commit,pre-push,global-hook.sh}` + `scripts/install-git-hooks.sh` | git hook — 커밋·push 때 changed 검증. 전역 `core.hooksPath` 가 있어도 리포 hook 을 부르게 건다 | — | 인간 |
 | `scripts/guards/{_template,no-secrets-in-env-example}.sh` | 가드 골격과 `.env.example` 비밀 값 검사 | — | 인간 |
@@ -222,18 +222,18 @@
 | `tools/docs/` | 기능 문서 생성기(`feature_docs.py` · `docskit/` · 시험 · `README.md`). 명령 `build`·`check`·`stats`·`brief`·`refresh openapi|schema|vendor` | — | 인간 |
 | `docs/features/_src/{docs.config.json,catalog.json,stages/*.md,features/*.md}` | 기능 문서 원고 — 단위·원본 경로 설정, 영역·기능·배정 규칙, 단계 원고, 기능 원고 | 설정만 ✅ | 인간/에이전트(`/hx-docs`) |
 | `docs/features/*.html` · `docs/features/assets/` | 생성물(손편집 금지)과 사이트 자산. Scalar·Mermaid 는 `refresh vendor` 가 `assets/vendor/` 에 받는다 | — | 도구 |
-| `scripts/check-exec-plan-status.sh` | exec-plan(tasks) 위치↔상태 일관성 검사(전 제품 순회) | — | 인간 |
-| `scripts/new-feature.sh` | 이슈 SDD 단계 문서 스캐폴딩(`_spec-templates/` → `issues/<N>-<type>-<name>/` 에 **그 단계 하나만**. `--stage=requirements`(기본)·`design`·`tasks`, `--type=feat|fix|refactor|perf|chore|docs`). 앞 문서가 `approved` 가 아니면 거부한다. `--all` 은 없다. 제품 폴더가 없으면 골격까지 생성. `--legacy` 는 옛 단계별 폴더 형식 | — | 인간/에이전트 |
+| `scripts/check-exec-plan-status.sh` | tasks 상태(`state`) · 작업 ID · 보드 일관성 검사(전 이슈 순회) | — | 인간 |
+| `scripts/new-feature.sh` | 이슈 SDD 단계 문서 스캐폴딩(`_spec-templates/` → `issues/<키>-<이름>/` 에 **그 단계 하나만**). `new-feature.sh <키\|--next> <이름> --area <영역> [--type feat\|fix\|refactor\|perf\|chore\|docs]` · `new-feature.sh <키> --stage=design\|tasks`. 앞 문서 머리가 `status: approved` 가 아니면 거부한다. `--all` · `--legacy` 는 없다 | — | 인간/에이전트 |
 | `scripts/check-sdd-prerequisites.sh` | SDD 단계 선행조건 검사(design/tasks/implement). `--stage` 는 공백·등호 두 표기를 받고 모르는 단계는 거부 | — | 에이전트 |
 | `scripts/check-spec-freshness.sh` | 스펙이 최신인지 확인하는 리포트(읽기 전용·항상 exit 0). `/hx-converge` 근거 | — | 인간/에이전트 |
-| `.claude/settings.json` | 권한(deny) + defaultMode(기본 acceptEdits) + hook 3종 배선(`scripts/hooks/` 를 부른다) | — | 인간 |
+| `.claude/settings.json` | 권한(deny) + defaultMode(기본 acceptEdits) + hook 4개 배선(`scripts/hooks/` 를 부른다 — 세션 시작 · 보호 경로 · full 차단 · 턴 끝 검증) | — | 인간 |
 | `.claude/agents/*.md` · `.claude/rules/*.md` | 역할 다섯(원본 `.agents/roles/`를 가리킨다) · Claude 가 함께 읽는 규칙 포인터 | — | 인간 |
 | `.claude/commands/hx-*.md` (11종) | Claude 슬래시 명령 — 스킬 원본을 가리키는 한 줄 포인터 | — | 도구(`sync-commands.sh`) |
 | `.codex/{hooks.json,config.toml,agents/*.toml}` | Codex hook 배선(`scripts/hooks/`)·정책·역할 | — | 인간 |
 | `.cursor/commands/hx-*.md` (11종) | Cursor 슬래시 명령 — 같은 포인터 | — | 도구 |
 | `.kiro/steering/hx-*.md` (11종) | Kiro **IDE** 슬래시 명령(`inclusion: manual`) | — | 도구 |
 | `.kiro/skills/hx-*/SKILL.md` (11종) | Kiro **CLI** 슬래시 명령 | — | 도구 |
-| `.kiro/agents/*.json` · `.kiro/hooks/*.json` | Kiro 조율 에이전트(`<slug>.json`)와 역할 다섯 · hook 셋(보호 경로·세션 컨텍스트·검증 게이트) | — | 인간 |
+| `.kiro/agents/*.json` · `.kiro/hooks/*.json` | Kiro 조율 에이전트(`<slug>.json`)와 역할 다섯 · hook 넷(보호 경로·세션 컨텍스트·검증 게이트·full 차단) | — | 인간 |
 | `.agents/skills/hx-*/SKILL.md` (11종) | **커맨드 본문 원본**. Codex 는 이 경로를 직접 읽는다(`$hx-specify` 로 멘션, `/skills` 로 목록) | — | 인간 |
 | `.agents/harness-kit.json` | 설치 메타 — 킷 버전·스택·변형·에이전트·치환값. `hx-agent-add`·`hx-update` 의 입력 | — | 도구(손편집 금지) |
 | `.agents/harness-kit.lock` | 파일별 설치 시점 원본 해시(TSV). 업데이트가 사용자 수정본을 가려내는 근거 | — | 도구(손편집 금지) |
@@ -244,7 +244,7 @@
 |---|---|:---:|
 | `{{PROJECT_NAME}}` | 제품 표시명 | ✅ |
 | `{{PROJECT_SLUG}}` | 리포/모듈 슬러그(기본=대상 폴더명) | ✅ |
-| `{{PRODUCT_SLUG}}` | 제품/바운디드 컨텍스트 슬러그. 설치 시점에는 정해지지 않는다 — `_spec-templates/` 안에 남아 있다가 `new-feature.sh <slug>` 가 복사할 때 치환된다 | ❌(그대로 유지) |
+| `{{ISSUE_KEY}}` `{{AREA}}` `{{TYPE}}` `{{TITLE}}` `{{CREATED}}` `{{PRODUCT_SLUG}}` | 이슈 키 · 영역 · 종류 · 제목 · 날짜. 설치 시점에는 정해지지 않는다 — `_spec-templates/` 안에 남아 있다가 `new-feature.sh <키\|--next> <이름> --area <영역>` 이 문서를 만들 때 채운다(`{{PRODUCT_SLUG}}` 는 영역) | ❌(그대로 유지) |
 | `{{PACKAGE_NS}}` | **스택별 의미 상이** — jvm=`com.example.app` · python=`myapp` · go=`github.com/org/app` · web=임포트 별칭 루트(`@`) · electron=앱 ID(`com.example.app`) | ✅ |
 | `{{SERVICE_NAME}}` | 배포 단위명(단일=프로젝트명) | ✅ |
 | `{{PRIMARY_LANGUAGE}}` `{{BUILD_TOOL}}` `{{TEST_CMD}}` | 스택 기본값 자동 설정(환경변수로 덮어쓰기 가능) | ✅ |

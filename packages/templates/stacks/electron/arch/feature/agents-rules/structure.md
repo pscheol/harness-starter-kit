@@ -112,7 +112,7 @@
 6. `renderer/features/<f>/`에 화면·훅을 만들고 `index.ts`로 공개 API를 좁힌다. 라우트는 앱 셸에서 등록.
 7. **다른 기능이 필요하면** (a)/(b)/(c) 중 하나를 고르고 이유를 `.agents/docs/decisions/`에 남긴다. 기본은 (b).
 8. **검증**: `bash scripts/verify.sh` 통과 + 채널 계약 문서·화면 명세 갱신.
-9. 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
+9. 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
 
 ## 경계 오류 신호
 

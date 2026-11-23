@@ -275,7 +275,7 @@ REFACTOR 중복 제거·의도 드러내기
 3. **통합 방식 선택**: 즉시 결과면 `api` 호출, 부수 효과면 이벤트(§3.2).
 4. **TDD 사이클**: `domain` → `service`(fake) → `repository`(`@DataJpaTest`) → `web`(`@WebMvcTest`, envelope) → 통합 smoke.
 5. **검증**: `./gradlew check` 통과(슬라이스 규칙 포함) + OpenAPI/문서 동기화(`.agents/docs/openapi`).
-6. **계획 추적**: 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록.
+6. **계획 추적**: 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록.
 
 ---
 

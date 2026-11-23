@@ -107,7 +107,7 @@
 5. `renderer/ipc/`에 데이터 접근 계층을 만들고 화면에서 그것만 쓴다.
 6. 화면은 네 상태(loading·empty·error·partial)를 처음부터 만든다.
 7. **검증**: `bash scripts/verify.sh` 통과 + 채널 계약 문서·화면 명세 갱신 + 키보드·대비 확인.
-8. 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
+8. 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
 
 ## 승격 신호
 

@@ -202,7 +202,7 @@ REFACTOR 중복 제거·의도 드러내기·패턴 적용
 2. **(신규 컨텍스트)** `settings.gradle.kts`에 4모듈 등록 → 각 `build.gradle.kts` 작성(§3.1 의존표 그대로, `group` 분리).
 3. **TDD 사이클**: `domain`(애그리거트/VO) → `application`(유스케이스 + fake `port.out`) → `infra`(Testcontainers로 `port.out` 구현) → `primary`(`@WebMvcTest`, 응답은 envelope) → `bootstrap`(빈 등록·smoke).
 4. **검증**: `./gradlew check` 통과 + OpenAPI/문서 동기화(`.agents/docs/openapi`).
-5. **계획 추적**: 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록.
+5. **계획 추적**: 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록.
 
 ---
 

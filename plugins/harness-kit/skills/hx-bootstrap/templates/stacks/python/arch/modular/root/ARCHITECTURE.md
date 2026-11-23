@@ -301,7 +301,7 @@ REFACTOR 중복 제거·의도 드러내기
 3. **TDD 사이클**: `service`(fake repository) → `repository`(실제 DB) → `router`(`AsyncClient`, 응답은 envelope) → `main`(등록·smoke).
 4. **다른 모듈이 필요하면** §4의 (a)/(b)/(c) 중 하나를 고르고 그 이유를 `.agents/docs/decisions/`에 한 줄 남긴다.
 5. **검증**: `bash scripts/verify.sh` 통과 + OpenAPI 스냅샷/문서 동기화(`.agents/docs/openapi`).
-6. **계획 추적**: 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록.
+6. **계획 추적**: 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록.
 
 ---
 

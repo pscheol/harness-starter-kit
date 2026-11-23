@@ -31,6 +31,18 @@ STATE = (".agents/harness-kit.lock", ".agents/harness-kit.json")
 TOKEN_VARS = ("PROJECT_NAME", "PROJECT_SLUG", "PACKAGE_NS", "SERVICE_NAME", "PRIMARY_LANGUAGE", "BUILD_TOOL", "TEST_CMD", "DOMAIN_EXAMPLE", "PROTECTED_PATH")
 SELECTION_VARS = ("STACK", "ARCH", "DOMAIN", "JVM_LANG", "HARNESS_AGENTS", "HARNESS_MODULES", "HARNESS_KIT_TEMPLATES")
 DEFAULT_TOKENS = {"PROJECT_NAME": "Acme Notes", "PROJECT_SLUG": "acme-notes", "PACKAGE_NS": "com.acme.notes", "SERVICE_NAME": "notes-api"}
+# sed 가 다르게 읽는 문자(& · | · \)가 든 치환값(HK-10 R10.2).
+SPECIAL_TOKENS = {**DEFAULT_TOKENS, "PROJECT_NAME": "A&B | C\\D", "SERVICE_NAME": "notes&api|v2\\x"}
+# platform-guards 모듈이 common 과 같은 경로에 까는 파일(설치 경로 → 모듈 템플릿 경로).
+GUARD_OVERLAPS = {
+    ".agents/rules/platform-invariants.md": "optional/platform-guards/agents-rules/platform-invariants.md",
+    ".kiro/steering/platform-invariants.md": "optional/platform-guards/kiro-steering/platform-invariants.md",
+    "scripts/run-guards.sh": "optional/platform-guards/scripts/run-guards.sh",
+    "scripts/guards/_template.sh": "optional/platform-guards/scripts/guards/_template.sh",
+}
+LATER_MARK = {"md": "\n<!-- 뒤 레이어 판(HK-10) -->\n", "sh": "\n# 뒤 레이어 판(HK-10)\n"}
+# 겹침 경로마다 모듈 판에만 표시 줄을 붙인 템플릿 사본 — 뒤 레이어가 이기면 두 설치 모두 표시 줄이 있다(HK-10 R10.1).
+LATER_PATCH = {src: LATER_MARK[src.rsplit(".", 1)[1]] for src in GUARD_OVERLAPS.values()}
 
 
 @dataclass(frozen=True)
@@ -45,6 +57,8 @@ class Case:
     tokens: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_TOKENS))
     folder: str = "acme-notes"
     pre: dict[str, str] = field(default_factory=dict)
+    # 템플릿 사본에 덧붙일 줄(템플릿 상대 경로 → 내용). 있으면 플러그인 사본으로 두 설치를 한다.
+    patch: dict[str, str] = field(default_factory=dict)
 
 
 CASES = (
@@ -72,6 +86,8 @@ CASES = (
     Case("22-python-ai-service", "python", "ai-service"),
     Case("23-go-layered", "go", "layered"),
     Case("24-electron-feature", "electron", "feature"),
+    Case("25-python-layered-guards-later-wins", "python", "layered", modules="platform-guards", patch=LATER_PATCH),
+    Case("26-go-special-tokens", "go", "hexagonal", agents="claude", tokens=SPECIAL_TOKENS),
 )
 
 
@@ -80,8 +96,8 @@ def base_env(tokens: dict[str, str]) -> dict[str, str]:
     return {**env, **tokens}
 
 
-def setup_args(c: Case, target: Path) -> list[str]:
-    args = ["bash", str(SETUP), f"--stack={c.stack}", f"--agents={c.agents}", f"--modules={c.modules}"]
+def setup_args(c: Case, target: Path, setup: Path = SETUP) -> list[str]:
+    args = ["bash", str(setup), f"--stack={c.stack}", f"--agents={c.agents}", f"--modules={c.modules}"]
     if c.arch:
         args.append(f"--arch={c.arch}")
     if c.lang:
@@ -91,8 +107,8 @@ def setup_args(c: Case, target: Path) -> list[str]:
     return [*args, str(target)]
 
 
-def cli_args(cli: Path, c: Case, target: Path) -> list[str]:
-    args = ["node", str(cli), "init", "--yes", "--templates", str(TEMPLATES), "--cwd", str(target),
+def cli_args(cli: Path, c: Case, target: Path, templates: Path = TEMPLATES) -> list[str]:
+    args = ["node", str(cli), "init", "--yes", "--templates", str(templates), "--cwd", str(target),
             "--stack", c.stack, "--agents", c.agents, "--modules", c.modules]
     if c.arch:
         args += ["--arch", c.arch]
@@ -150,6 +166,21 @@ def lock_hashes(path: Path) -> dict[str, str | None]:
     return out
 
 
+def lock_layers(path: Path) -> dict[str, list[str]]:
+    """lock 의 경로 → 레이어 줄 목록(v1 은 같은 경로가 여러 줄일 수 있다)."""
+    text = path.read_text(encoding="utf-8")
+    out: dict[str, list[str]] = {}
+    if text.startswith("# harness-kit lock v1"):
+        for line in text.splitlines():
+            if line and not line.startswith("#"):
+                _sha, layer, _agent, rel = line.split("\t")
+                out.setdefault(rel, []).append(layer)
+        return out
+    for e in json.loads(text)["entries"]:
+        out.setdefault(e["path"], []).append(e["layer"])
+    return out
+
+
 @dataclass
 class Outcome:
     case: Case
@@ -157,6 +188,19 @@ class Outcome:
     cli: Path
     sh_run: subprocess.CompletedProcess
     cli_run: subprocess.CompletedProcess
+
+
+def kit_for(root: Path, c: Case) -> tuple[Path, Path]:
+    """조합이 쓸 setup.sh 와 템플릿. patch 가 있으면 플러그인 사본에 줄을 덧붙여 두 설치가 같은 사본을 쓴다."""
+    if not c.patch:
+        return SETUP, TEMPLATES
+    kit = root / c.name / "kit"
+    shutil.copytree(KIT / "plugins/harness-kit", kit, symlinks=True)
+    templates = kit / "skills/hx-bootstrap/templates"
+    for rel, extra in c.patch.items():
+        with (templates / rel).open("a", encoding="utf-8") as handle:
+            handle.write(extra)
+    return kit / "skills/hx-bootstrap/setup.sh", templates
 
 
 def install_pair(cli: Path, root: Path, c: Case) -> Outcome:
@@ -168,9 +212,10 @@ def install_pair(cli: Path, root: Path, c: Case) -> Outcome:
             p = target / rel
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(body, encoding="utf-8")
+    setup, templates = kit_for(root, c)
     env = base_env(c.tokens)
-    sh_run = subprocess.run(setup_args(c, sh), env=env, capture_output=True, text=True, timeout=300)
-    cli_run = subprocess.run(cli_args(cli, c, cl), env=env, capture_output=True, text=True, timeout=300)
+    sh_run = subprocess.run(setup_args(c, sh, setup), env=env, capture_output=True, text=True, timeout=300)
+    cli_run = subprocess.run(cli_args(cli, c, cl, templates), env=env, capture_output=True, text=True, timeout=300)
     return Outcome(c, sh, cl, sh_run, cli_run)
 
 
@@ -238,14 +283,56 @@ class CliParityTest(unittest.TestCase):
                 user = sorted(r for r, sha in cl_lock.items() if sha is None)
                 self.assertEqual(user, sorted(o.case.pre), "사람 파일(owner user)")
 
+    def outcome(self, name: str) -> Outcome:
+        found = next(o for o in self.outcomes if o.case.name == name)
+        if found.sh_run.returncode or found.cli_run.returncode:
+            self.fail(f"{name} 설치 실패(test_same_files_bytes_and_modes 참고): {found.sh_run.stderr[-1000:]}")
+        return found
+
+    def test_overlap_later_layer_wins(self):
+        """같은 설치 경로가 common 과 모듈에 있으면 두 설치 모두 모듈(뒤 레이어) 판을 쓰고 lock 에 한 줄만 남긴다(HK-10 R10.1)."""
+        patched = self.outcome("25-python-layered-guards-later-wins")
+        for rel, src in GUARD_OVERLAPS.items():
+            for target in (patched.sh, patched.cli):
+                with self.subTest(path=rel, target=target.parent.name):
+                    self.assertTrue((target / rel).read_text(encoding="utf-8").endswith(LATER_PATCH[src]))
+        for name in ("07-jvm-standalone-guards", "10-web-fsd-two-modules", "13-python-modular-all-modules", "25-python-layered-guards-later-wins"):
+            o = self.outcome(name)
+            sh_layers, cl_layers = lock_layers(o.sh / STATE[0]), lock_layers(o.cli / STATE[0])
+            for rel in (r for r in GUARD_OVERLAPS if (o.sh / r).is_file()):
+                with self.subTest(case=name, path=rel):
+                    self.assertEqual(sh_layers[rel], ["mod/platform-guards"])
+                    self.assertEqual(cl_layers[rel], ["optional/platform-guards"])
+
+    def test_special_tokens_are_literal(self):
+        """& · | · \\ 가 든 치환값이 두 설치에 글자 그대로 들어간다(HK-10 R10.2)."""
+        o = self.outcome("26-go-special-tokens")
+        name, service = SPECIAL_TOKENS["PROJECT_NAME"], SPECIAL_TOKENS["SERVICE_NAME"]
+        for target in (o.sh, o.cli):
+            with self.subTest(target=target.parent.name):
+                agents = (target / "AGENTS.md").read_text(encoding="utf-8")
+                self.assertIn(name, agents)
+                self.assertNotIn("{{PROJECT_NAME}}", agents)
+                self.assertIn(service, (target / "ARCHITECTURE.md").read_text(encoding="utf-8"))
+                manifest = json.loads((target / ".agents/harness.json").read_text(encoding="utf-8"))
+                self.assertEqual(manifest["title"], name)
+
+    def test_templates_have_no_nul_or_soh_bytes(self):
+        """setup.sh 의 awk 치환은 파일 하나를 \\001 로 나눈 레코드로 읽고, CLI 는 NUL 이 든 파일을 치환하지 않는다."""
+        found = sorted(p.relative_to(TEMPLATES).as_posix() for p in TEMPLATES.rglob("*") if p.is_file() and (b"\0" in p.read_bytes() or b"\x01" in p.read_bytes()))
+        self.assertEqual(found, [])
+
     def test_doctor_passes_on_both_installs(self):
         for o in self.outcomes:
             with self.subTest(case=o.case.name):
                 for target in (o.cli, o.sh):
                     r = doctor(self.cli, target)
                     self.assertEqual(r.returncode, 0, r.stdout[-2000:] + r.stderr[-2000:])
-                    summary = json.loads(r.stdout)["summary"]
+                    report = json.loads(r.stdout)
+                    summary = report["summary"]
                     self.assertEqual((summary["errors"], summary["missing"]), (0, 0), target)
+                    # 설치되는 .gitignore 가 .agents/state · local · reports 를 넣는다(HK-9 R9.4).
+                    self.assertEqual([f for f in report["findings"] if f["kind"] == "gitignore"], [], target)
 
 
 @unittest.skipUnless(shutil.which("node"), "Node 18 이상이 필요하다")

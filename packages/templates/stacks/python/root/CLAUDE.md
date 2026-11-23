@@ -17,6 +17,6 @@ Python 백엔드(ASGI, FastAPI) · src 레이아웃 헥사고날. 검증 게이�
 - 보안/권한 경계, API 표준, 구조·스택 규약은 `.agents/rules/*`, 아키텍처 원본은 `ARCHITECTURE.md` 참조.
 - 레이어 의존 방향은 **import-linter 계약**이 강제한다. 새 컨텍스트·모듈·앱은 `pyproject.toml` 계약에 등록해야 강제된다(등록 누락 = 강제 누락).
 - 도메인은 프레임워크 무의존(Pydantic·SQLAlchemy·FastAPI 금지). 경계에서만 검증·직렬화한다.
-- 복잡한 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 계획을 남기고, 변경은 `bash scripts/verify.sh`로 검증한다.
-- exec-plan은 완료 조건을 채워도 임의로 `completed/`로 옮기지 않는다. `check/`로 옮기고(상태 `check`) **사용자 검증 후** `completed/`로 이동한다.
+- 복잡한 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 계획을 남기고, 변경은 `bash scripts/verify.sh`로 검증한다.
+- exec-plan(tasks.md)은 완료 조건을 채워도 임의로 `completed`로 바꾸지 않는다. `state: check`로 두고 **사용자 검증 후** `completed`로 바꾼다.
 - 규칙이 바뀌면 `.agents/rules/` 원본을 먼저 고치고 `AGENTS.md`와 이 파일, Kiro 포인터를 동기화한다.

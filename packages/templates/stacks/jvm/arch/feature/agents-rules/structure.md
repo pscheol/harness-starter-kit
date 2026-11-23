@@ -59,7 +59,7 @@
    4. `web`: `@WebMvcTest`로 검증·상태코드·**envelope** 확인.
    5. 통합: `@SpringBootTest` smoke.
 5. **검증**: `scripts/verify.sh`(= `./gradlew check`, 슬라이스 규칙 포함) + OpenAPI/문서 동기화(`.agents/docs/openapi`).
-6. **계획 추적**: 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
+6. **계획 추적**: 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
 
 ## 아키텍처 구조 테스트 (ArchUnit — 이 변형의 강제 장치)
 

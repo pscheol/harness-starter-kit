@@ -288,7 +288,7 @@ REFACTOR 중복 제거·의도 드러내기
 2. **파일 세트 생성**: `models/<x>.py` → `repositories/<x>_repository.py` → `services/<x>_service.py` → `schemas/<x>.py` → `api/routers/<x>.py`. 레이어 패키지를 새로 만들면 §3.2 (1)에 등록한다.
 3. **TDD 사이클**: `services`(fake repository) → `repositories`(실제 DB) → `api`(`AsyncClient`, 응답은 envelope) → `main`(라우터 등록·smoke).
 4. **검증**: `bash scripts/verify.sh` 통과 + OpenAPI 스냅샷/문서 동기화(`.agents/docs/openapi`).
-5. **계획 추적**: 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록.
+5. **계획 추적**: 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록.
 
 ---
 

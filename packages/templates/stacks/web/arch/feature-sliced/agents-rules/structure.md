@@ -111,7 +111,7 @@
 5. 공용으로 올릴 것이 있으면 먼저 Inventory([`reuse-before-new.md`](./reuse-before-new.md)).
    **도메인 냄새가 나면 `shared`로 올리지 않는다.**
 6. **검증**: `bash scripts/verify.sh`(경계 위반이 여기서 잡힌다) + 화면 명세 갱신 + 키보드·대비 확인.
-7. 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
+7. 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록([`agent-harness.md`](./agent-harness.md) 게이트).
 
 ## 경계 오류 신호
 

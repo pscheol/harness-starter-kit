@@ -61,6 +61,6 @@
 2. 실패 시 수정 후 재검증 → 3. 결과 제시.
 - 도구가 없으면 표준 도구로 셋업하고, 불가하면 그 사유를 명시한다.
 - **게이트 통과는 "안 깨졌다"이지 "의도대로 보인다"가 아니다.** UI 확인은 사람의 몫이다([`verification-ladder.md`](./verification-ladder.md) L4).
-- exec-plan 완료는 임의로 `completed/`로 옮기지 않는다. `check/`로 옮겨 사용자 검증을 요청한다([`agent-harness.md`](./agent-harness.md)).
+- exec-plan 완료는 임의로 `state: completed`로 바꾸지 않는다. `state: check`로 바꿔 사용자 검증을 요청한다([`agent-harness.md`](./agent-harness.md)).
 
 > 상세 DoD 원본이 별도 백로그 문서에 있으면 여기 링크만 둔다(같은 내용을 두 곳에 두지 않는다).

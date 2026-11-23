@@ -1,7 +1,7 @@
 {
   "schema": "harness-kit.layout/v1",
   "ignore": [".DS_Store", "ABOUT"],
-  "overlap": "first",
+  "overlap": "last",
   "layers": [
     { "id": "common", "dir": "common" },
     { "id": "domain", "dir": "domains/{domain}", "whenExists": true },

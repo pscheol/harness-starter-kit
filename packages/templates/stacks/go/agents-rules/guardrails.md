@@ -17,15 +17,15 @@
 
 - 규칙 원본은 `.agents/rules/`, 기록/SDD 원본은 `.agents/docs/`다. 진입 파일(AGENTS.md 등)은 목차일 뿐 상세를 중복 보관하지 않는다.
 - 규칙이 바뀌면 `.agents/rules/`의 원본을 **먼저** 고치고 진입 파일·kiro 포인터를 동기화한다(절차: [`agent-harness.md`](./agent-harness.md)).
-- 복잡한 작업은 `.agents/docs/<slug>-specs/tasks/active/<feature>.md`에 계획을 남기고 진행한다.
+- 복잡한 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 계획을 남기고 진행한다.
 - 기술 부채는 `.agents/docs/tech-debt-tracker.md`에 등록한다.
 - 변경은 `scripts/verify.sh`(fmt·build·vet·lint·race 테스트)로 검증한 뒤 결과를 제시한다.
 
 ## exec-plan 완료 게이트 (사용자 검증 필수)
 
-상태 전이 `active/` → `check/` → `completed/`.
-- DoD/verify 충족 시 임의로 `completed/`로 옮기지 않는다. 상태를 `check`로 두고 `check/`로 이동해 **사용자 검증을 요청**한다.
-- 사용자가 명시 승인한 뒤에만 `completed`로 바꿔 `completed/`로 이동한다.
+상태 전이(tasks.md 머리 `state`) `active` → `check` → `completed`.
+- DoD/verify 충족 시 임의로 `completed`로 바꾸지 않는다. `state: check`로 바꿔 **사용자 검증을 요청**한다.
+- 사용자가 명시 승인한 뒤에만 `state: completed`로 바꾼다.
 
 ## 기능 구현 시 docs 명세 동시 갱신 (필수)
 

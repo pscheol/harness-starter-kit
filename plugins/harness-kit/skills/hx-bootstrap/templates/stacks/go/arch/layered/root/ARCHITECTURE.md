@@ -305,7 +305,7 @@ REFACTOR 중복 제거·의도 드러내기
 2. **파일 세트 생성**: `model/<x>.go` → `repository/<x>.go` → `service/<x>.go` → `handler/<x>.go`. 새 레이어 패키지를 만들면 depguard 규칙이 덮는지 확인한다.
 3. **TDD 사이클**: `model`(불변식) → `service`(fake store) → `repository`(실제 DB) → `handler`(`httptest`, 응답은 envelope) → `cmd`(조립·smoke).
 4. **검증**: `bash scripts/verify.sh` 통과 + `api/`의 OpenAPI 스펙 동기화.
-5. **계획 추적**: 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록.
+5. **계획 추적**: 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록.
 
 ---
 

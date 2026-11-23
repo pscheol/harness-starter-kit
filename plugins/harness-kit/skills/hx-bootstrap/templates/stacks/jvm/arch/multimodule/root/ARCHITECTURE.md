@@ -428,7 +428,7 @@ REFACTOR 중복 제거·의도 드러내기
 1. **모듈 결정**: 기존 모듈 안인지 새 모듈인지 먼저 답한다.
 2. TDD 사이클: 도메인 → 유스케이스(fake 계약) → 어댑터/영속 → 웹 → 구조 검증.
 3. **검증**: `./gradlew check` 통과 + OpenAPI/문서 동기화(`.agents/docs/openapi`).
-4. **계획 추적**: 복잡 작업은 `.agents/docs/<slug>-specs/tasks/active/`에 기록.
+4. **계획 추적**: 복잡 작업은 `.agents/docs/issues/<키>-<이름>/tasks.md`에 기록.
 
 ---
 
