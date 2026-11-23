@@ -1,0 +1,89 @@
+{
+  "schema": "harness-kit.layout/v1",
+  "ignore": [".DS_Store", "ABOUT"],
+  "overlap": "first",
+  "layers": [
+    { "id": "common", "dir": "common" },
+    { "id": "domain", "dir": "domains/{domain}", "whenExists": true },
+    { "id": "stack", "dir": "stacks/{stack}", "exclude": ["**/arch/**"] },
+    { "id": "arch", "dir": "stacks/{stack}/arch/{arch}" },
+    { "id": "module", "dir": "optional/{module}", "each": "modules" }
+  ],
+  "segments": [
+    { "from": "root/CLAUDE.md", "to": "CLAUDE.md", "harness": "claude" },
+    { "from": "root/", "to": "", "harness": null },
+    { "from": "kiro-steering/", "to": ".kiro/steering/", "harness": "kiro" },
+    { "from": "kiro-skills/", "to": ".kiro/skills/", "harness": "kiro" },
+    { "from": "kiro-agents/", "to": ".kiro/agents/", "harness": "kiro" },
+    { "from": "kiro-hooks/", "to": ".kiro/hooks/", "harness": "kiro" },
+    { "from": "kiro-root/", "to": ".kiro/", "harness": "kiro" },
+    { "from": "agents-rules/", "to": ".agents/rules/", "harness": null },
+    { "from": "agents-skills/", "to": ".agents/skills/", "harness": null },
+    { "from": "agents-docs/", "to": ".agents/docs/", "harness": null },
+    { "from": "agents-root/", "to": ".agents/", "harness": null },
+    { "from": "scripts/", "to": "scripts/", "harness": null },
+    { "from": "claude/", "to": ".claude/", "harness": "claude" },
+    { "from": "codex/", "to": ".codex/", "harness": "codex" },
+    { "from": "cursor/", "to": ".cursor/", "harness": "cursor" },
+    { "from": "", "to": "", "harness": null }
+  ],
+  "pathTokens": { "__PROJECT_SLUG__": "PROJECT_SLUG" },
+  "executable": ["**/*.sh", "scripts/**/*.py", "scripts/git-hooks/**"],
+  "tokens": [
+    "PROJECT_NAME",
+    "PROJECT_SLUG",
+    "PACKAGE_NS",
+    "SERVICE_NAME",
+    "PRIMARY_LANGUAGE",
+    "BUILD_TOOL",
+    "TEST_CMD",
+    "DOMAIN_EXAMPLE",
+    "PROTECTED_PATH"
+  ],
+  "harnesses": ["claude", "codex", "cursor", "kiro"],
+  "harnessDetect": {
+    "claude": { "dirs": [".claude"], "env": ["CLAUDECODE", "CLAUDE_PROJECT_DIR"] },
+    "codex": { "dirs": [".codex"], "env": ["CODEX_HOME", "CODEX_SANDBOX"] },
+    "cursor": { "dirs": [".cursor"], "env": ["CURSOR_TRACE_ID"] },
+    "kiro": { "dirs": [".kiro"], "env": ["KIRO_IDE", "KIRO_HOME"] }
+  },
+  "defaultHarnesses": ["claude"],
+  "modules": ["jira-workflow", "platform-guards", "multi-harness"],
+  "domains": ["backend", "frontend"],
+  "defaultStack": "jvm",
+  "stacks": {
+    "jvm": {
+      "domain": "backend",
+      "defaultArch": "hexagonal",
+      "tokens": { "PRIMARY_LANGUAGE": "Kotlin/Java", "BUILD_TOOL": "Gradle", "TEST_CMD": "./gradlew check" },
+      "lang": { "kotlin": { "PRIMARY_LANGUAGE": "Kotlin" }, "java": { "PRIMARY_LANGUAGE": "Java" } }
+    },
+    "python": {
+      "domain": "backend",
+      "defaultArch": "hexagonal",
+      "tokens": { "PRIMARY_LANGUAGE": "Python", "BUILD_TOOL": "uv", "TEST_CMD": "pytest" }
+    },
+    "go": {
+      "domain": "backend",
+      "defaultArch": "hexagonal",
+      "tokens": { "PRIMARY_LANGUAGE": "Go", "BUILD_TOOL": "go", "TEST_CMD": "go test -race ./..." }
+    },
+    "web": {
+      "domain": "frontend",
+      "defaultArch": "nextjs-app",
+      "tokens": { "PRIMARY_LANGUAGE": "TypeScript", "BUILD_TOOL": "pnpm", "TEST_CMD": "pnpm test" }
+    },
+    "electron": {
+      "domain": "frontend",
+      "defaultArch": "main-renderer",
+      "tokens": { "PRIMARY_LANGUAGE": "TypeScript", "BUILD_TOOL": "pnpm + electron-builder", "TEST_CMD": "pnpm test" }
+    }
+  },
+  "stackFallback": { "domain": null, "defaultArch": "hexagonal", "tokens": {} },
+  "tokenDefaults": {
+    "PROJECT_SLUG": "{targetBasename}",
+    "PROJECT_NAME": "{PROJECT_SLUG}",
+    "SERVICE_NAME": "{PROJECT_SLUG}",
+    "PROTECTED_PATH": "docs/references"
+  }
+}
