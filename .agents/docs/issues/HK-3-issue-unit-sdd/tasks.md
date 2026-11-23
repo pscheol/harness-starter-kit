@@ -11,7 +11,7 @@ created: 2026-11-23
 
 | ID | 할 일 | 요구 | 상태 |
 |---|---|---|---|
-| T1 | 시험 작성(RED): `test_issue_sdd.py` 새 구조 · `test_issue_keys.py` · `test_issue_migrate.py` · `test_install.py` | R7.1~R7.11 | todo |
+| T1 | 시험 작성(RED): `test_issue_sdd.py` 새 구조 · `test_issue_keys.py` · `test_issue_migrate.py` · `test_install.py` | R7.1~R7.11 | done |
 | T2 | `sdd_frontmatter.py` · `sdd_keys.py` · `sdd_issues.py` | R7.1~R7.4 · R7.10 | todo |
 | T3 | `sdd_commands.py` scaffold · prerequisites · freshness · plans 새 구조 | R7.1~R7.4 · R7.10 | todo |
 | T4 | `sdd_board.py` 영역별 보드 · `--area` | R7.5 | todo |
@@ -24,4 +24,9 @@ created: 2026-11-23
 
 ## 검증 기록
 
-(작업 후 기록)
+- T1 RED(구현 전, 설치본 python 스택 · `bash dev.sh <파일>`):
+  - `test_issue_sdd.py` 37개: 실패 27 · 오류 1(`--next` · `--area` 인자 없음, 보드 형식 다름, frontmatter 검사 없음).
+  - `test_issue_keys.py`: 모듈 오류 1(`harness.sdd_frontmatter` · `harness.sdd_keys` 없음).
+  - `test_issue_migrate.py` 5개: 실패 5(`migrate` 명령 없음).
+  - `test_harness_shared.py` 43개 중 실패 2, `test_session_hooks.py` 19개 중 실패 2(옛 호출 · 세션 안내 문구).
+  - `tests/test_install.py` 새 시험 4개: 실패 2 · 오류 1(`issueKey` 없음, `--next` 없음, 세션 안내에 새 경로 없음). `test_fresh_install_board_is_current`는 지금도 통과(보호 시험).
