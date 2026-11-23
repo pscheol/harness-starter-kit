@@ -1,0 +1,186 @@
+/** init · plan(HK-8 design §5 · §7). plan = init --dry-run. */
+import fs from "node:fs";
+import path from "node:path";
+import { bool, list, str } from "../cli/args";
+import { targetOf, today, type CommandResult, type Ctx } from "../cli/context";
+import { createPrompter, type Prompter } from "../cli/prompt";
+import { applyPlan, type FeatureDocsResult } from "../core/apply";
+import { CliError, EXIT, usageError } from "../core/errors";
+import { lstatOrNull } from "../core/fsx";
+import { loadLayout, stackSpecOf, type Layout } from "../core/layout";
+import { LOCK_REL, serializeLock, type LockEntry } from "../core/lock";
+import { buildMeta, META_REL, serializeMeta } from "../core/meta";
+import { buildPlan, MANIFEST_PATH, type Plan, type PlannedOp } from "../core/plan";
+import { listArchs, listStacks, resolveSelection, type Selection, type SelectionInput } from "../core/selection";
+import { locateTemplates } from "../core/templates";
+import { resolveTokens } from "../core/tokens";
+import { VERSION } from "../core/version";
+
+const TOKEN_FLAGS: Record<string, string> = {
+  name: "PROJECT_NAME",
+  slug: "PROJECT_SLUG",
+  "package-ns": "PACKAGE_NS",
+  "protected-path": "PROTECTED_PATH",
+};
+const ISSUE_SOURCES = ["kit", "jira"];
+
+function tokenFlags(ctx: Ctx, layout: Layout): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const raw of list(ctx.values, "token")) {
+    const eq = raw.indexOf("=");
+    if (eq <= 0) throw usageError(`--token 은 KEY=VALUE 형식이다: '${raw}'`);
+    const key = raw.slice(0, eq);
+    if (!layout.tokens.includes(key)) throw usageError(`모르는 토큰: ${key}`, `사용 가능: ${layout.tokens.join(" ")}`);
+    out[key] = raw.slice(eq + 1);
+  }
+  for (const [flag, key] of Object.entries(TOKEN_FLAGS)) {
+    const v = str(ctx.values, flag);
+    if (v !== undefined) out[key] = v;
+  }
+  return out;
+}
+
+function checkSlug(slug: string): void {
+  if (slug === "" || slug === "." || slug === ".." || /[/\\\0]/.test(slug)) {
+    throw usageError(`PROJECT_SLUG 로 쓸 수 없는 값: '${slug}'`, "/ · \\ · . · .. 없이 폴더 이름처럼 쓴다");
+  }
+}
+
+async function askMissing(p: Prompter, input: SelectionInput, layout: Layout, templatesDir: string): Promise<SelectionInput> {
+  const out = { ...input };
+  if (out.stack === undefined) out.stack = await p.ask(`스택 [${listStacks(templatesDir).join("/")}]`, layout.defaultStack);
+  if (out.arch === undefined) {
+    out.arch = await p.ask(`변형 [${listArchs(templatesDir, out.stack).join("/")}]`, stackSpecOf(layout, out.stack).defaultArch);
+  }
+  if (out.agents === undefined) out.agents = await p.ask(`하네스 [${layout.harnesses.join(",")}|all]`, "");
+  if (out.agents === "") delete out.agents;
+  if (out.modules === undefined) out.modules = await p.ask(`모듈 [${layout.modules.join(",")}|all|none]`, "none");
+  return out;
+}
+
+function opJson(o: PlannedOp): Record<string, unknown> {
+  const j: Record<string, unknown> = { path: o.path, op: o.op, owner: o.owner, layer: o.layer, action: o.action, executable: o.executable };
+  if (o.reason !== undefined) j.reason = o.reason;
+  return j;
+}
+
+const needsAttention = (o: PlannedOp): boolean => o.action === "skip-user" || o.action === "replace";
+
+function selectionLine(sel: Selection): string {
+  const parts = [sel.stack, sel.arch, sel.domain || "도메인 없음", ...(sel.lang ? [`lang ${sel.lang}`] : [])];
+  return `  선택: ${parts.join(" · ")} · 하네스 ${sel.agents.join(",")} · 모듈 ${sel.modules.join(",") || "none"}`;
+}
+
+function countsLine(plan: Plan): string {
+  const c = plan.counts;
+  return `  파일: 생성 ${c.create} · 교체 ${c.replace} · 같음 ${c.same} · 건너뜀(사람 파일) ${c["skip-user"]} · 하네스 제외 ${c.excludedByHarness} · 겹침 ${c.overlapped}`;
+}
+
+function opLine(o: PlannedOp): string {
+  return `  ${o.action.padEnd(9)} ${o.path}  [${o.layer}]${o.reason ? `  ${o.reason}` : ""}`;
+}
+
+function docsLine(r: FeatureDocsResult): string {
+  if (r.status === "built") return "  기능 문서: docs/features/ 생성";
+  if (r.status === "skipped") return `  기능 문서: 건너뜀(${r.reason})`;
+  return `  ⚠ 기능 문서 생성 실패 — 'python3 tools/docs/feature_docs.py build' 를 직접 실행한다 (${r.error})`;
+}
+
+interface InitOptions {
+  force: boolean;
+  adopt: boolean;
+  issueSource: string | undefined;
+  flags: Record<string, string>;
+}
+
+function readOptions(ctx: Ctx, layout: Layout): InitOptions {
+  const force = bool(ctx.values, "force");
+  const adopt = bool(ctx.values, "adopt");
+  if (force && adopt) throw usageError("--force 와 --adopt 는 같이 쓰지 않는다", "--force 는 있는 파일을 덮고, --adopt 는 있는 파일을 모두 사람 파일로 둔다");
+  const issueSource = str(ctx.values, "issue-source");
+  if (issueSource !== undefined && !ISSUE_SOURCES.includes(issueSource)) {
+    throw usageError(`알 수 없는 --issue-source: '${issueSource}'`, `사용 가능: ${ISSUE_SOURCES.join(" ")}`);
+  }
+  return { force, adopt, issueSource, flags: tokenFlags(ctx, layout) };
+}
+
+/** 대상이 폴더(또는 없음)이고 아직 설치되지 않았는지 본다(R2.3). */
+function assertInstallable(target: string): void {
+  const st = lstatOrNull(target);
+  if (st && !(st.isDirectory() || (st.isSymbolicLink() && fs.statSync(target).isDirectory()))) {
+    throw new CliError(EXIT.STATE, `대상이 폴더가 아니다: ${target}`);
+  }
+  if (fs.existsSync(path.join(target, META_REL))) {
+    throw new CliError(EXIT.STATE, `이미 설치된 리포다: ${path.join(target, META_REL)}`, "킷 갱신은 harness-kit update, 하네스 · 모듈 추가는 harness-kit add 다(다음 조각). 지금 상태는 harness-kit doctor");
+  }
+}
+
+function selectionInput(ctx: Ctx): SelectionInput {
+  const keys = ["stack", "arch", "domain", "lang", "agents", "modules"] as const;
+  return Object.fromEntries(keys.map((k) => [k, str(ctx.values, k)])) as SelectionInput;
+}
+
+function planData(command: string, target: string, templates: string, sel: Selection, tokens: Record<string, string>, plan: Plan, shown: PlannedOp[]): Record<string, unknown> {
+  return {
+    command,
+    target,
+    templates,
+    dryRun: command === "plan",
+    selection: { stack: sel.stack, arch: sel.arch, domain: sel.domain, lang: sel.lang, agents: sel.agents, agentsOrigin: sel.agentsOrigin, modules: sel.modules },
+    tokens,
+    counts: plan.counts,
+    ops: shown.map(opJson),
+    overlaps: plan.overlaps,
+    generated: plan.generated.map((g) => ({ path: g.path, action: g.action })),
+    state: [META_REL, LOCK_REL],
+  };
+}
+
+function lockText(plan: Plan, source: string): string {
+  const entries: LockEntry[] = plan.ops.map((o) =>
+    o.owner === "kit"
+      ? { path: o.path, op: "copy", owner: "kit", sha256: o.sha256, layer: o.layer }
+      : { path: o.path, op: "copy", owner: "user", sha256: null, layer: o.layer },
+  );
+  return serializeLock({ schema: "harness-kit.lock/v2", kit: { version: VERSION, source }, packs: [], entries });
+}
+
+const STATE_LINE = `  상태 파일: ${META_REL} · ${LOCK_REL} · ${MANIFEST_PATH}`;
+
+export async function runInit(ctx: Ctx): Promise<CommandResult> {
+  const command = ctx.command === "plan" || bool(ctx.values, "dry-run") ? "plan" : "init";
+  const { io } = ctx;
+  const target = targetOf(ctx);
+  const loc = locateTemplates({ flag: str(ctx.values, "templates"), env: io.env, cliFile: io.cliFile, cwd: io.cwd, version: VERSION });
+  const layout = loadLayout(loc.dir);
+  const opts = readOptions(ctx, layout);
+  assertInstallable(target);
+
+  const interactive = io.isTTY && !bool(ctx.values, "yes") && !ctx.json && io.stdin !== undefined;
+  const prompter = interactive ? createPrompter(io.stdin as NodeJS.ReadableStream, io.stderr) : null;
+  try {
+    const input = prompter ? await askMissing(prompter, selectionInput(ctx), layout, loc.dir) : selectionInput(ctx);
+    const selection = resolveSelection(layout, loc.dir, input, { target, env: io.env });
+    const tokens = resolveTokens(layout, selection, { flags: opts.flags, env: io.env, targetBasename: path.basename(target) });
+    checkSlug(tokens.PROJECT_SLUG ?? "");
+    const plan = buildPlan({ layout, templatesDir: loc.dir, target, selection, tokens, mode: { force: opts.force, adopt: opts.adopt } });
+    const shown = command === "plan" && !ctx.quiet ? plan.ops : plan.ops.filter(needsAttention);
+    const data = planData(command, target, loc.dir, selection, tokens, plan, shown);
+    const lines = [`harness-kit ${command} — ${target}`, selectionLine(selection)];
+    if (command === "plan") {
+      lines.push(...shown.map(opLine), countsLine(plan), STATE_LINE, "  (plan — 쓰지 않았다)");
+      return { code: EXIT.OK, data, lines };
+    }
+    if (prompter) {
+      io.stderr(`${countsLine(plan)}\n`);
+      if (!(await prompter.confirm("진행할까?"))) throw new CliError(EXIT.ABORT, "중단했다(아무것도 쓰지 않았다)");
+    }
+    const meta = buildMeta({ version: VERSION, selection, tokens, issue: { source: opts.issueSource, prefix: str(ctx.values, "issue-prefix") }, base: str(ctx.values, "base"), today: today(io) });
+    const result = applyPlan({ plan, metaText: serializeMeta(meta), lockText: lockText(plan, loc.source), env: io.env });
+    data.featureDocs = result.featureDocs;
+    lines.push(countsLine(plan), ...shown.map(opLine), STATE_LINE, docsLine(result.featureDocs), "  다음: harness-kit doctor");
+    return { code: EXIT.OK, data, lines };
+  } finally {
+    prompter?.close();
+  }
+}
