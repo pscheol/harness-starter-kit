@@ -25,15 +25,20 @@ def lock_for(project):
     return str(Path(tempfile.gettempdir()) / f"harness-changed-{os.getuid()}-{key}.lock")
 
 
-def command(unit, project, kind, arguments):
-    lock = lock_for(project) if kind not in {"static", "diagnostic"} else None
-    return {
+def command(unit, project, kind, arguments, env=None, label=None):
+    lock = lock_for(project) if kind not in {"static", "diagnostic", "gate"} else None
+    item = {
         "unit": unit["id"],
         "cwd": str(project),
         "kind": kind,
         "arguments": arguments,
         "lock": lock,
     }
+    if env:
+        item["env"] = env
+    if label:
+        item["label"] = label
+    return item
 
 
 CHECKS_FILE = ".agents/verify-checks.json"
@@ -406,7 +411,9 @@ def deleted_from_git(path):
     return found.returncode == 0
 
 
-def verification_plan(root, relative_files, explicit_tests, units):
+def verification_plan(root, relative_files, explicit_tests, units, scope_files=None):
+    """changed 계획. scope_files 는 경로 검사 · 유지보수 진단에 쓸 바뀐 파일 전체다(affected 가 일부만 넘길 때)."""
+    scope_files = relative_files if scope_files is None else scope_files
     groups, documents = {}, []
     missing, recommendations, skipped = [], [], []
     covered = covered_by_checks(root, relative_files)
@@ -486,9 +493,10 @@ def verification_plan(root, relative_files, explicit_tests, units):
             commands.extend(planned)
             missing.extend(absent)
         skipped.append(f"{group['unit']['id']}: full suite, coverage, E2E and dependency installation not selected")
-    commands.extend(path_checks(root, relative_files, units))
+    commands.extend(path_checks(root, scope_files, units))
     diagnostic = root / "scripts/check-maintenance.py"
-    code = [relative for relative in relative_files if (root / relative).suffix in CODE_EXTENSIONS and (root / relative).is_file() and relative not in covered]
+    covered = covered | covered_by_checks(root, scope_files)
+    code = [relative for relative in scope_files if (root / relative).suffix in CODE_EXTENSIONS and (root / relative).is_file() and relative not in covered]
     if code and diagnostic.is_file():
         commands.append(
             command(
@@ -498,9 +506,11 @@ def verification_plan(root, relative_files, explicit_tests, units):
                 [sys.executable, str(diagnostic), "--files", *code],
             )
         )
+    scope = "L1" if groups else "L0"
     return {
         "status": "plan" if relative_files else "noop",
-        "level": "L1" if groups else "L0",
+        "level": scope,
+        "scope": scope,
         "files": relative_files,
         "commands": commands,
         "locks": sorted({item["lock"] for item in commands if item["lock"]}),

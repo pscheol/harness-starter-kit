@@ -22,11 +22,67 @@ def git_output(root, *arguments, optional=False):
     return result.stdout
 
 
-def validate_ref(root, reference):
-    if not re.fullmatch(r"[A-Za-z0-9_./@{}~^+-]+", reference) or reference.startswith("-"):
+REF_FORMAT = re.compile(r"[A-Za-z0-9_./@{}~^+-]+")
+
+
+def check_ref_format(reference):
+    if not REF_FORMAT.fullmatch(reference) or reference.startswith("-"):
         raise ValueError("invalid git ref for --base")
+
+
+def validate_ref(root, reference):
+    check_ref_format(reference)
     revision = git_output(root, "rev-parse", "--verify", "--end-of-options", reference + "^{commit}")
     return revision.decode().strip()
+
+
+META_FILE = ".agents/harness-kit.json"
+DEFAULT_BASE = "develop"
+BRANCH_NAME = re.compile(r"\w[\w./-]*")
+
+
+def git_base_name(root):
+    """`.agents/harness-kit.json` 의 `git.base`. 하네스 루트부터 저장소 뿌리까지 찾고, 없거나 형식이 틀리면 develop."""
+    for directory in (root, *root.parents):
+        meta = directory / META_FILE
+        if meta.is_file():
+            try:
+                value = json.loads(meta.read_text(encoding="utf-8")).get("git", {}).get("base")
+            except (ValueError, OSError, AttributeError):
+                return DEFAULT_BASE
+            return value if isinstance(value, str) and BRANCH_NAME.fullmatch(value) else DEFAULT_BASE
+        if (directory / ".git").exists():
+            break
+    return DEFAULT_BASE
+
+
+def commit_of(root, reference):
+    result = subprocess.run(
+        ["git", "-C", str(root), "rev-parse", "--verify", "--quiet", "--end-of-options", reference + "^{commit}"],
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    return result.stdout.strip() if result.returncode == 0 else None
+
+
+def resolve_base(root, reference=None):
+    """affected 의 비교 기준 {"ref", "sha", "mergeBase"}. 지정 ref, 아니면 origin/<git.base> → <git.base> 순서로 찾는다."""
+    if reference:
+        check_ref_format(reference)
+        candidates = [reference]
+    else:
+        name = git_base_name(root)
+        candidates = [f"origin/{name}", name]
+    for candidate in candidates:
+        sha = commit_of(root, candidate)
+        if sha:
+            merge_base = git_output(root, "merge-base", "HEAD", sha).decode().strip()
+            return {"ref": candidate, "sha": sha, "mergeBase": merge_base}
+    missing = candidates[0]
+    branch = missing.removeprefix("origin/")
+    raise ValueError(f"base ref 없음: {missing} — git fetch origin {branch} 뒤 다시 실행")
 
 
 def status_paths(raw):
