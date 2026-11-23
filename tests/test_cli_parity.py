@@ -282,6 +282,9 @@ class CliParityTest(unittest.TestCase):
                         self.assertEqual(sha, sh_lock[rel], rel)
                 user = sorted(r for r, sha in cl_lock.items() if sha is None)
                 self.assertEqual(user, sorted(o.case.pre), "사람 파일(owner user)")
+                # 설치 전부터 있던 파일은 setup.sh 도 '-' 로 적어 update 가 덮지 않는다. 표시 줄이 그 약속이다(HK-12 R12.6).
+                self.assertEqual({r: sh_lock[r] for r in o.case.pre}, {r: "-" for r in o.case.pre})
+                self.assertEqual((o.sh / STATE[0]).read_text(encoding="utf-8").splitlines()[1], "# pre-existing: -")
 
     def outcome(self, name: str) -> Outcome:
         found = next(o for o in self.outcomes if o.case.name == name)

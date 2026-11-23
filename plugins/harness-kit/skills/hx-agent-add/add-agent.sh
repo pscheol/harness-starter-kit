@@ -6,15 +6,17 @@
 # 스택·변형·치환값은 .agents/harness-kit.json 에서 읽으므로 다시 물어보지 않는다.
 #
 # 사용법:
-#   bash add-agent.sh --agents=cursor,kiro [대상경로]
+#   bash add-agent.sh --agents=cursor,kiro [--modules=jira-workflow] [대상경로]
 #
 # 옵션:
-#   --agents=<목록>  추가할 에이전트 (claude,codex,cursor,kiro · all)   [필수]
-#   --dry-run        실제로 쓰지 않고 계획만 출력
-#   --force          이미 있는 파일도 덮어쓴다 (기본: skip)
+#   --agents=<목록>   추가할 에이전트 (claude,codex,cursor,kiro · all)
+#   --modules=<목록>  추가할 선택 모듈 (jira-workflow,platform-guards,multi-harness · all)
+#                     둘 중 하나는 있어야 한다
+#   --dry-run         실제로 쓰지 않고 계획만 출력
+#   --force           이미 있는 파일도 덮어쓴다 (기본: skip)
 #
 # core 파일은 이미 깔려 있으므로 건드리지 않는다(존재하면 skip 된다).
-# 설치가 끝나면 메타의 agents 는 기존 ∪ 추가 가 된다.
+# 설치가 끝나면 메타의 agents · modules 는 기존 ∪ 추가 가 된다(CLI 의 harness-kit add 와 같은 결과).
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
@@ -24,11 +26,13 @@ BOOTSTRAP_DIR="$(cd "$SCRIPT_DIR/../hx-bootstrap" && pwd)"
 . "$BOOTSTRAP_DIR/lib/harness-lib.sh"
 
 ADD=""
+ADD_MODULES=""
 TARGET=""
 PASS=()
 for arg in "$@"; do
   case "$arg" in
     --agents=*)        ADD="${arg#--agents=}" ;;
+    --modules=*)       ADD_MODULES="${arg#--modules=}" ;;
     --dry-run|--force) PASS+=("$arg") ;;
     -*) echo "알 수 없는 옵션: $arg" >&2; exit 2 ;;
     *)  TARGET="$arg" ;;
@@ -46,22 +50,37 @@ if [ ! -f "$META" ]; then
   exit 1
 fi
 
-if [ -z "$ADD" ]; then
-  echo "✖ --agents= 가 필요하다" >&2
-  echo "  사용 가능: $HARNESS_ALL_AGENTS   (전체는 all)" >&2
-  echo "  현재 설치됨: $(harness_meta_agents "$META")" >&2
+if [ -z "$ADD" ] && [ -z "$ADD_MODULES" ]; then
+  echo "✖ --agents= 나 --modules= 가 필요하다" >&2
+  echo "  에이전트: $HARNESS_ALL_AGENTS   (전체는 all) · 모듈: $HARNESS_ALL_MODULES" >&2
+  echo "  현재 설치됨: $(harness_meta_agents "$META") · 모듈 $(harness_meta_modules "$META" || true)" >&2
   exit 2
 fi
 
-ADD_NORM="$(harness_normalize_agents "$ADD")"
-ADD_OK="${ADD_NORM%%|*}"
-ADD_BAD="${ADD_NORM#*|}"
-if [ -n "$ADD_BAD" ]; then
-  echo "✖ 알 수 없는 에이전트: $ADD_BAD" >&2
-  echo "  사용 가능: $HARNESS_ALL_AGENTS   (전체는 all)" >&2
-  exit 2
+ADD_OK=""
+if [ -n "$ADD" ]; then
+  ADD_NORM="$(harness_normalize_agents "$ADD")"
+  ADD_OK="${ADD_NORM%%|*}"
+  ADD_BAD="${ADD_NORM#*|}"
+  if [ -n "$ADD_BAD" ]; then
+    echo "✖ 알 수 없는 에이전트: $ADD_BAD" >&2
+    echo "  사용 가능: $HARNESS_ALL_AGENTS   (전체는 all)" >&2
+    exit 2
+  fi
+  [ -n "$ADD_OK" ] || { echo "✖ --agents= 값이 비어 있다" >&2; exit 2; }
 fi
-[ -n "$ADD_OK" ] || { echo "✖ --agents= 값이 비어 있다" >&2; exit 2; }
+ADD_MOD_OK=""
+if [ -n "$ADD_MODULES" ]; then
+  MOD_NORM="$(harness_normalize_modules "$ADD_MODULES")"
+  ADD_MOD_OK="${MOD_NORM%%|*}"
+  MOD_BAD="${MOD_NORM#*|}"
+  if [ -n "$MOD_BAD" ]; then
+    echo "✖ 알 수 없는 모듈: $MOD_BAD" >&2
+    echo "  사용 가능: $HARNESS_ALL_MODULES   (전체는 all)" >&2
+    exit 2
+  fi
+  [ -n "$ADD_MOD_OK" ] || { echo "✖ --modules= 값이 비어 있다" >&2; exit 2; }
+fi
 
 CURRENT="$(harness_meta_agents "$META")"
 STACK="$(harness_meta_get "$META" stack)"
@@ -88,6 +107,10 @@ for a in $ADD_OK; do
 done
 MERGED="${MERGED# }"
 NEW="${NEW# }"
+# 모듈도 기존 뒤에 적은 순서로 더한다(모듈 순서가 레이어 순서다).
+for m in $ADD_MOD_OK; do
+  case " $MODULES " in *" $m "*) echo "· 모듈 $m 는 이미 켜져 있다 — 빠진 파일이 있으면 이번에 채워진다" ;; *) MODULES="${MODULES:+$MODULES }$m" ;; esac
+done
 
 echo "▶ 에이전트 추가"
 echo "  대상    : $TARGET"

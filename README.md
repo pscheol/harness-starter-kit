@@ -203,14 +203,11 @@ bash "$SKILL_DIR/setup.sh" --dry-run --stack=python --arch=modular /path/to/proj
 
 설치되는 파일 수는 **스택군과 고른 에이전트**에 달렸다. 규칙·SDD·게이트(core)는 항상 깔고,
 에이전트 배선은 쓰는 것만 얹는다. `.claude/`·`.codex/`·`.cursor/`·`.kiro/` 를 전부 만들지 않는다.
+스택군 × 하네스별 파일 수의 원본은 [hx-bootstrap manifest](plugins/harness-kit/skills/hx-bootstrap/manifest.md)의
+「에이전트 선택」 · 「선택 모듈」 표다(시험이 템플릿과 맞춘다). 고른 값으로 정확한 수는 `harness-kit plan --json` 의 `counts` 가 낸다.
 
-| 스택군 | core | claude | codex | cursor | kiro | 전부 고를 때 |
-|---|---|---|---|---|---|---|
-| `jvm` · `python` · `go` | 187 | 19 | 8 | 11 | 52 | 277 |
-| `web` · `electron` | 191 | 19 | 8 | 11 | 56 | 285 |
-
-프론트엔드가 4개씩 많은 건 `web`·`electron` 이 공유하는 `frontend` 도메인 규칙(디자인 시스템·접근성·
-UI 상태·성능) 때문이다. 선택 모듈(`jira-workflow` 15 · `platform-guards` 4 · `multi-harness` 8)은 여기에 더해진다.
+프론트엔드가 많은 건 `web`·`electron` 이 공유하는 `frontend` 도메인 규칙(디자인 시스템·접근성·
+UI 상태·성능) 때문이다. 선택 모듈(`jira-workflow` · `platform-guards` · `multi-harness`)은 여기에 더해진다.
 core 에는 규칙·SDD 템플릿·검증 스크립트·세션 협업 도구·역할 정의와 기능 문서 생성기가 들어 있다.
 설치 끝에 `tools/docs/feature_docs.py build`가 한 번 돌아 `docs/features/*.html`이 생긴다(위 수에 없다).
 

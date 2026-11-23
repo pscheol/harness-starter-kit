@@ -2,6 +2,8 @@
 
 - 에이전트에게 전체 검증(full)을 지시 · 권고하는 문장이 없다(HK-7, 설계 01 R6.1 · R6.2).
 - 옛 SDD 경로(`<영역>-specs/…`) · 옛 명령 형식이 읽기 전용 설명 밖에 남지 않는다. manifest 파일 수가 템플릿과 같다(HK-9 R9.1).
+- "커밋 · 푸시 전에 full" 문형이 없고 진입 파일이 커지지 않는다. README 에 낡을 수 있는 파일 수 표가 없다.
+  스킬 절차가 kit.sh(CLI · v1 스크립트 갈래)를 부르고, 세션에 실리는 description 이 늘지 않는다(HK-12 R12.4 · R12.5 · R12.7 · R12.8).
 
     python3 -m unittest tests.test_template_wording
 """
@@ -182,6 +184,109 @@ class TemplateWordingTest(unittest.TestCase):
             body = (TEMPLATES / f"common/agents-docs/_spec-templates/{stage}/_template.md").read_text(encoding="utf-8")
             with self.subTest(stage=stage):
                 self.assertIn("affected 결과 · CI full 링크", body)
+
+
+# "커밋 · 푸시 전에 full(전체)을 돌린다" 문형(HK-12 R12.7). MR 전에는 --affected, full 은 CI 가 돈다.
+_SAME_SENTENCE = r"(?:(?![.。] )[^\n])"  # 문장 끝(". ")을 넘지 않는 한 글자
+BEFORE_COMMIT = [
+    re.compile(rf"(커밋|푸시){_SAME_SENTENCE}{{0,12}}전{_SAME_SENTENCE}{{0,40}}(full|전체)"),
+    re.compile(rf"(full|전체){_SAME_SENTENCE}{{0,40}}(커밋|푸시){_SAME_SENTENCE}{{0,8}}전"),
+]
+# 이 판 전(d385454) 스택마다 AGENTS.md + CLAUDE.md 바이트. 진입 파일은 세션마다 읽힌다(README 원칙 10).
+ENTRY_BYTES = {"jvm": 7802, "python": 8046, "go": 8470, "web": 9504, "electron": 9910}
+
+
+def before_commit_lines() -> list[str]:
+    paths = [p for p in sorted(TEMPLATES.rglob("*")) if p.is_file() and p.suffix in TEXT_SUFFIXES]
+    paths += sorted((PACKAGES / "legacy-setup").rglob("*.sh")) + sorted((PACKAGES / "plugin").rglob("*.md"))
+    hits: list[str] = []
+    for path in paths:
+        rel = path.relative_to(PACKAGES).as_posix()
+        if any(token in rel for token in EXEMPT) or "/tests/" in f"/{rel}" or path.name.startswith("test_"):
+            continue
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except UnicodeDecodeError:
+            continue
+        for number, line in enumerate(lines, 1):
+            if any(p.search(line) for p in BEFORE_COMMIT):
+                hits.append(f"{rel}:{number}: {line.strip()[:120]}")
+    return hits
+
+
+class FullBeforeCommitTest(unittest.TestCase):
+    def test_no_full_before_commit_or_push(self):
+        hits = before_commit_lines()
+        self.assertEqual(hits, [], f"커밋 · 푸시 전에 full 을 시키는 문장 {len(hits)}건:\n" + "\n".join(hits))
+
+    def test_pattern_catches_old_wording(self):
+        old = "빌드·테스트를 포함한 `full`은 커밋·푸시 전에 직접 `bash scripts/verify.sh`를 실행해 통과시킨다"
+        self.assertTrue(any(p.search(old) for p in BEFORE_COMMIT))
+        self.assertTrue(any(p.search("커밋 전에는 반드시 `scripts/verify.sh` 전체를 돌린다") for p in BEFORE_COMMIT))
+        self.assertFalse(any(p.search("MR 전에는 `bash scripts/verify.sh --affected`, `full`은 CI가 돈다") for p in BEFORE_COMMIT))
+
+    def test_entry_files_do_not_grow(self):
+        for stack, limit in ENTRY_BYTES.items():
+            root = TEMPLATES / "stacks" / stack / "root"
+            size = sum(len((root / name).read_bytes()) for name in ("AGENTS.md", "CLAUDE.md"))
+            with self.subTest(stack=stack):
+                self.assertLessEqual(size, limit)
+                self.assertIn("--affected", (root / "AGENTS.md").read_text(encoding="utf-8"))
+
+
+class ReadmeCountTest(unittest.TestCase):
+    """파일 수의 원본은 manifest 하나다(시험이 템플릿과 맞춘다). README 는 그곳을 가리킨다(HK-12 R12.8)."""
+
+    def test_readme_points_to_manifest_instead_of_own_counts(self):
+        readme = (KIT / "README.md").read_text(encoding="utf-8")
+        self.assertIsNone(re.search(r"^\| `jvm` · `python` · `go` \| \d+", readme, re.M), "README 에 파일 수 표가 남았다")
+        self.assertIsNone(re.search(r"`multi-harness` \d+", readme), "README 에 모듈 파일 수가 남았다")
+        self.assertIn("plugins/harness-kit/skills/hx-bootstrap/manifest.md", readme)
+        self.assertIn("harness-kit plan --json", readme)
+        manifest = (PACKAGES / "plugin/skills/hx-bootstrap/manifest.md").read_text(encoding="utf-8")
+        self.assertIn("## 에이전트 선택", manifest)
+
+
+# 스킬 · 커맨드 → (description 바이트 상한 = 이 판 전 값, 내려가는 v1 스크립트)
+SKILL_DOCS = {
+    "skills/hx-bootstrap/SKILL.md": (1661, "setup.sh"),
+    "skills/hx-update/SKILL.md": (548, "update.sh"),
+    "skills/hx-agent-add/SKILL.md": (547, "add-agent.sh"),
+    "commands/bootstrap.md": (210, "setup.sh"),
+    "commands/update.md": (141, "update.sh"),
+    "commands/agent-add.md": (180, "add-agent.sh"),
+}
+KIT_CALL = re.compile(r'bash "\$SKILL_DIR/(\.\./hx-bootstrap/)?kit\.sh" (init|plan|update|add|remove)\b')
+
+
+class SkillProcedureTest(unittest.TestCase):
+    """스킬 절차가 kit.sh 로 CLI 를 부르고 Node 가 없을 때 갈래를 적는다. description 은 늘지 않는다(HK-12 R12.4 · R12.5)."""
+
+    def test_procedures_call_kit_sh_and_document_fallback(self):
+        for rel, (_limit, legacy) in SKILL_DOCS.items():
+            body = (PACKAGES / "plugin" / rel).read_text(encoding="utf-8")
+            with self.subTest(doc=rel):
+                self.assertRegex(body, KIT_CALL)
+                self.assertIn("bin/harness-kit.js", body)
+                self.assertIn("Node 18.3", body)
+                self.assertIn(legacy, body)
+                self.assertIn("--json", body)
+                self.assertIn("exit 4", body)
+
+    def test_descriptions_do_not_grow(self):
+        for rel, (limit, _legacy) in SKILL_DOCS.items():
+            text = (PACKAGES / "plugin" / rel).read_text(encoding="utf-8")
+            desc = re.search(r"^description:\s*(.*)$", text, re.M)
+            with self.subTest(doc=rel):
+                self.assertIsNotNone(desc)
+                self.assertLessEqual(len(desc[1].encode("utf-8")), limit)
+
+    def test_kit_skill_descriptions_stay_within_300_chars(self):
+        for skill in sorted((TEMPLATES / "common/agents-skills").glob("*/SKILL.md")):
+            desc = re.search(r"^description:\s*(.*)$", skill.read_text(encoding="utf-8"), re.M)
+            with self.subTest(skill=skill.parent.name):
+                self.assertIsNotNone(desc)
+                self.assertLessEqual(len(desc[1]), 300)
 
 
 if __name__ == "__main__":

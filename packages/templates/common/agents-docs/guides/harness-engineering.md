@@ -24,7 +24,7 @@ Böckeler(martinfowler.com "Harness engineering")는 하네스의 제어를 둘�
 검사를 두는 원칙:
 
 1. 프로그램이 판정할 수 있는 규칙은 검사로 옮긴다. 문서로만 둔 규칙은 지켜졌는지 알 수 없다.
-2. 검사는 이른 단계에 둔다. 턴이 끝날 때마다 fast, 커밋·푸시 전에 full 이 돈다(§6).
+2. 검사는 이른 단계에 둔다. 턴이 끝날 때마다 fast, MR 전에 affected 가 돌고 full 은 CI 가 돈다(§6).
 3. 실패 메시지에 고칠 곳을 넣는다. 예: `README.md: missing section '## 기여' — see .agents/docs/guides/doc-standards.md`.
 4. 검사가 실패하면 Stop hook 이 출력을 에이전트에게 돌려준다(실패 코드는 클라이언트마다 다르다 — §6). 에이전트가 고치면 다음 턴 끝에 검사가 다시 돈다.
 

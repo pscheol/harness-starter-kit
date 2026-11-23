@@ -1,8 +1,5 @@
 /** 이름만 둔 명령(설계 02 §1 · §3.3, README §7). 부르면 exit 2 와 제공 단계를 낸다. */
 export const RESERVED: Record<string, string> = {
-  add: "P17(다음 조각)",
-  remove: "P17(다음 조각)",
-  outdated: "P17(다음 조각)",
   pack: "P18(확장 층, 설계 04)",
   dashboard: "P20(관리 페이지, 설계 06)",
   skills: "P20(스킬 목록, 설계 07)",

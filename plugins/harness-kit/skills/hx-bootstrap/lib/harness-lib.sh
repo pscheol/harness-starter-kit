@@ -443,8 +443,18 @@ harness_load_tokens() {
   return 0
 }
 
+# lock 둘째 줄 표시. 이 줄이 있는 lock 은 설치 전부터 있던 파일을 해시 '-'(킷 판과 같으면 그 해시)로 적었다(HK-12 R12.6).
+# 없는 lock(v1.0.8 이하)은 미리 있던 파일을 그 파일 해시로 적어서, 업데이트가 사람 파일을 킷 파일로 보고 덮을 수 있다.
+HARNESS_LOCK_MARK="# pre-existing: -"
+
+# lock 을 새로 연다. 둘째 인자가 0 이면 표시 줄을 쓰지 않는다(물려받은 해시를 아직 가리지 못했을 때).
 harness_lock_init() {
   printf '# harness-kit lock v1 — sha256<TAB>layer<TAB>agent<TAB>path\n' > "$1"
+  [ "${2:-1}" = 0 ] || printf '%s\n' "$HARNESS_LOCK_MARK" >> "$1"
+}
+
+harness_lock_marked() {
+  [ -f "$1" ] && grep -qxF "$HARNESS_LOCK_MARK" "$1"
 }
 
 harness_lock_append() {

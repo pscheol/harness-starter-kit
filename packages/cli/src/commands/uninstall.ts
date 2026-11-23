@@ -2,16 +2,22 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { bool } from "../cli/args";
+import { bool, str } from "../cli/args";
 import { targetOf, type CommandResult, type Ctx } from "../cli/context";
 import { createPrompter } from "../cli/prompt";
 import { CliError, EXIT, fsError, usageError } from "../core/errors";
+import { gitEnv } from "../core/git";
 import { sha256 } from "../core/hash";
-import { entryKind, loadInstalled, ownerKind, type Installed } from "../core/installed";
+import { entryKind, loadInstalled, ownerKind, selectionFromMeta, tokensFromMeta, type Installed } from "../core/installed";
+import { loadLayout } from "../core/layout";
+import { AMBIGUOUS_REASON, resolvedLock } from "../core/legacy-lock";
 import { LOCK_REL, type LockEntry } from "../core/lock";
 import { META_REL } from "../core/meta";
 import { AncestorCheck, BLOCKED, existing, MANIFEST_PATH, manifestContent } from "../core/plan";
 import { removeEmptyDirs, removeFile } from "../core/remove";
+import { locateTemplates } from "../core/templates";
+import { wanted } from "../core/update-plan";
+import { VERSION } from "../core/version";
 
 type Action = "delete" | "keep-modified" | "absent" | "keep-user" | "keep-external" | "keep-pack";
 const ACTIONS: Action[] = ["delete", "keep-modified", "absent", "keep-user", "keep-external", "keep-pack"];
@@ -31,6 +37,8 @@ interface Planner {
   ancestors: AncestorCheck;
   keepPacks: boolean;
   ops: UOp[];
+  /** 표시 줄 없는 v1 lock 에서 기준 해시를 null 로 푼 경로(HK-12 R12.6) */
+  ambiguous: Set<string>;
 }
 
 function full(target: string, rel: string): string {
@@ -64,7 +72,7 @@ function planEntry(p: Planner, e: LockEntry): void {
   if (cur.kind === "none") p.ops.push({ path: e.path, owner: e.owner, action: "absent" });
   else if (cur.kind === "file" && e.sha256 && cur.sha === e.sha256) p.ops.push({ path: e.path, owner: e.owner, action: "delete" });
   else {
-    const reason = cur.kind === "other" ? cur.what : e.sha256 ? "사람이 고친 파일이다" : "lock 에 기준 해시가 없다(고친 파일로 본다)";
+    const reason = cur.kind === "other" ? cur.what : e.sha256 ? "사람이 고친 파일이다" : p.ambiguous.has(e.path) ? AMBIGUOUS_REASON : "lock 에 기준 해시가 없다(고친 파일로 본다)";
     p.ops.push({ path: e.path, owner: e.owner, action: "keep-modified", reason });
   }
   if (cur.kind !== "other" && current(p, `${e.path}.new`).kind === "file") {
@@ -80,8 +88,8 @@ function planManifest(p: Planner, inst: Installed): void {
   else p.ops.push({ path: MANIFEST_PATH, owner: "kit", action: "keep-modified", reason: "킷 판과 다르다" });
 }
 
-function buildUninstall(target: string, inst: Installed, keepPacks: boolean, keepState: boolean): UOp[] {
-  const p: Planner = { target, ancestors: new AncestorCheck(target, fs.realpathSync(target)), keepPacks, ops: [] };
+function buildUninstall(target: string, inst: Installed, keepPacks: boolean, keepState: boolean, ambiguous: Set<string>): UOp[] {
+  const p: Planner = { target, ancestors: new AncestorCheck(target, fs.realpathSync(target)), keepPacks, ops: [], ambiguous };
   for (const e of inst.lock.entries) planEntry(p, e);
   planManifest(p, inst);
   if (!keepState) for (const rel of [LOCK_REL, META_REL]) p.ops.push({ path: rel, owner: "kit", action: "delete", reason: "상태 파일" });
@@ -89,12 +97,6 @@ function buildUninstall(target: string, inst: Installed, keepPacks: boolean, kee
 }
 
 type GitHooks = { status: "unset" | "kept" | "none" | "no-git" | "failed"; value?: string };
-
-function gitEnv(env: Record<string, string | undefined>): NodeJS.ProcessEnv {
-  const out: Record<string, string | undefined> = { ...env, PATH: env.PATH ?? process.env.PATH, HOME: env.HOME ?? process.env.HOME };
-  for (const k of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_CONFIG"]) delete out[k];
-  return out as NodeJS.ProcessEnv;
-}
 
 /** 리포 폴더가 git 최상위이고 로컬 core.hooksPath 가 scripts/git-hooks 면 지운다(design §5.2 4단계 · D9). */
 export function unhookGit(target: string, env: Record<string, string | undefined>, dryRun: boolean): GitHooks {
@@ -165,13 +167,32 @@ async function confirm(ctx: Ctx, ops: UOp[]): Promise<void> {
   }
 }
 
+/**
+ * 메타 선택값으로 만든 킷 판 해시(표시 줄 없는 v1 lock 에서만 부른다). 템플릿 · 스택을 못 찾으면 null —
+ * 그때는 sha(C) = B 인 항목을 모두 사람 파일로 보고 남긴다(지우는 쪽보다 안전하다).
+ */
+function kitHashes(ctx: Ctx, inst: Installed, target: string): Map<string, string> | null {
+  const { io } = ctx;
+  try {
+    const loc = locateTemplates({ flag: str(ctx.values, "templates"), env: io.env, cliFile: io.cliFile, cwd: io.cwd, version: VERSION });
+    const layout = loadLayout(loc.dir);
+    const { selection } = selectionFromMeta(layout, loc.dir, inst.meta);
+    const tokens = tokensFromMeta(layout, selection, inst.meta, io.env, target);
+    return new Map([...wanted({ layout, templatesDir: loc.dir, selection, tokens }).want].map(([p, d]) => [p, d.sha256]));
+  } catch (err) {
+    if (err instanceof CliError) return null;
+    throw err;
+  }
+}
+
 export async function runUninstall(ctx: Ctx): Promise<CommandResult> {
   const { io } = ctx;
   const target = targetOf(ctx);
   const inst = loadInstalled(target, "uninstall");
   const dryRun = bool(ctx.values, "dry-run");
   const keepState = bool(ctx.values, "keep-state");
-  const ops = buildUninstall(target, inst, bool(ctx.values, "keep-packs"), keepState);
+  const { lock, ambiguous } = resolvedLock(inst, target, () => kitHashes(ctx, inst, target));
+  const ops = buildUninstall(target, { ...inst, lock }, bool(ctx.values, "keep-packs"), keepState, ambiguous);
   const interactive = io.isTTY && !ctx.json && io.stdin !== undefined;
   if (!dryRun && !bool(ctx.values, "yes")) {
     if (!interactive) throw usageError("uninstall 은 지울 목록을 확인받고 지운다. TTY 가 아니거나 --json 이면 --yes 를 준다", "목록은 harness-kit uninstall --dry-run 으로 먼저 본다");

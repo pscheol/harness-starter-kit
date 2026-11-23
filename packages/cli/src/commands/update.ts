@@ -3,17 +3,19 @@ import fs from "node:fs";
 import path from "node:path";
 import { bool, list, str } from "../cli/args";
 import { targetOf, today, type CommandResult, type Ctx } from "../cli/context";
+import { boardLine, isBoardCode, refreshBoard, type BoardResult } from "../core/board";
 import { CliError, EXIT, fsError, usageError } from "../core/errors";
 import { lstatOrNull, writeFileAtomic } from "../core/fsx";
 import { loadInstalled, selectionFromMeta, tokensFromMeta, type Installed } from "../core/installed";
 import { loadLayout } from "../core/layout";
+import { AMBIGUOUS_REASON, resolvedLock } from "../core/legacy-lock";
 import { LOCK_REL, serializeLock } from "../core/lock";
 import { mergeMetaForUpdate, META_REL, serializeMeta } from "../core/meta";
 import { MANIFEST_PATH, manifestContent } from "../core/plan";
 import { removeEmptyDirs, removeFile } from "../core/remove";
 import type { Selection } from "../core/selection";
 import { locateTemplates } from "../core/templates";
-import { buildUpdatePlan, type UpdateAction, type UpdateOp, type UpdatePlan } from "../core/update-plan";
+import { buildUpdatePlan, wanted, type UpdateAction, type UpdateOp, type UpdatePlan } from "../core/update-plan";
 import { compareSemver, VERSION } from "../core/version";
 
 export const V1_LOCK_BACKUP = ".agents/state/harness-kit.lock.v1.bak";
@@ -123,8 +125,10 @@ function conflictList(plan: UpdatePlan): Record<string, unknown>[] {
     .map((o) => ({ path: o.path, new: o.newFile ?? null, diff: o.newFile ? `diff -u ${shellQuote(o.path)} ${shellQuote(o.newFile)}` : null }));
 }
 
-function humanLines(ctx: Ctx, head: string[], plan: UpdatePlan, shown: UpdateOp[], conflicts: Record<string, unknown>[], dryRun: boolean): string[] {
+function humanLines(ctx: Ctx, head: string[], plan: UpdatePlan, shown: UpdateOp[], conflicts: Record<string, unknown>[], dryRun: boolean, board: BoardResult): string[] {
   const lines = [...head, ...shown.map(opLine), countsLine(plan.counts)];
+  const b = boardLine(board);
+  if (b) lines.push(b);
   if (conflicts.length) {
     lines.push("  충돌 — 고친 파일이라 덮지 않았다. 새 판은 .new 에 있다(리포 폴더에서):");
     for (const c of conflicts) if (c.diff) lines.push(`    ${String(c.diff)}`);
@@ -143,6 +147,15 @@ function writtenState(ctx: Ctx, target: string, inst: Installed, plan: UpdatePla
   return { lockText, metaText: serializeMeta(meta), manifest, v1Backup };
 }
 
+const ANY_SKIP = new Set<UpdateAction>(["conflict", "skip-user", "skip-external", "skip-pack"]);
+
+/** 보드 코드가 사람 판이면 그 경로(update.sh 는 conflict 만 본다 — design §12 A7). */
+function boardBlocker(plan: UpdatePlan): string | null {
+  return plan.ops.find((o) => isBoardCode(o.path) && ANY_SKIP.has(o.action))?.path ?? null;
+}
+
+const AMBIGUOUS_ACTIONS = new Set<UpdateAction>(["conflict", "replace", "orphan"]);
+
 export function runUpdate(ctx: Ctx): CommandResult {
   const { io } = ctx;
   const to = checkFlags(ctx);
@@ -154,10 +167,14 @@ export function runUpdate(ctx: Ctx): CommandResult {
   const { selection, droppedModules } = selectionFromMeta(layout, loc.dir, inst.meta);
   const tokens = tokensFromMeta(layout, selection, inst.meta, io.env, target);
   const prune = bool(ctx.values, "prune");
-  const plan = buildUpdatePlan({ layout, templatesDir: loc.dir, target, selection, tokens, lock: inst.lock, acceptAll: bool(ctx.values, "accept-all"), prune, forget: list(ctx.values, "forget") });
+  const shaOf = (): Map<string, string> => new Map([...wanted({ layout, templatesDir: loc.dir, selection, tokens }).want].map(([p, d]) => [p, d.sha256]));
+  const { lock, ambiguous } = resolvedLock(inst, target, shaOf);
+  const raw = buildUpdatePlan({ layout, templatesDir: loc.dir, target, selection, tokens, lock, acceptAll: bool(ctx.values, "accept-all"), prune, forget: list(ctx.values, "forget") });
+  const plan: UpdatePlan = { ...raw, ops: raw.ops.map((o) => (ambiguous.has(o.path) && AMBIGUOUS_ACTIONS.has(o.action) && !o.reason ? { ...o, reason: AMBIGUOUS_REASON } : o)) };
   const dryRun = bool(ctx.values, "dry-run");
   const w = writtenState(ctx, target, inst, plan, selection, tokens, loc.source);
   if (!dryRun) applyUpdate(target, plan, w);
+  const board: BoardResult = dryRun ? { status: "skipped", reason: "dry-run" } : refreshBoard(target, io.env, boardBlocker(plan));
 
   const keptModified = prune && plan.ops.some((o) => o.action === "orphan" && o.modified);
   const code = plan.counts.conflict > 0 || keptModified ? EXIT.HUMAN : EXIT.OK;
@@ -177,6 +194,7 @@ export function runUpdate(ctx: Ctx): CommandResult {
     ops: shown.map(opJson),
     conflicts,
     generated: w.manifest ? [{ path: MANIFEST_PATH, action: "create" }] : [],
+    board,
     state: [META_REL, LOCK_REL, ...(w.v1Backup ? [V1_LOCK_BACKUP] : [])],
   };
   const head = [
@@ -185,5 +203,5 @@ export function runUpdate(ctx: Ctx): CommandResult {
     selectionLine(selection),
     ...(droppedModules.length ? [`  ⚠ 킷에 없는 모듈을 뺀다: ${droppedModules.join(", ")}`] : []),
   ];
-  return { code, data, lines: humanLines(ctx, head, plan, shown, conflicts, dryRun) };
+  return { code, data, lines: humanLines(ctx, head, plan, shown, conflicts, dryRun, board) };
 }

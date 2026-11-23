@@ -226,7 +226,7 @@ jar      { enabled = true  }
 - 강제 게이트는 `scripts/verify.sh` 한 곳(예: `./gradlew check --no-daemon -q`). hook/CI/pre-commit은 이를 호출하는 얇은 트리거([`agent-harness.md`](./agent-harness.md)).
 - **의존 방향 위반은 컴파일 실패**로 나타난다. 원인이 모호하면 `:<runtime>:dependencies`로 그래프를 본다.
 - 타입 누출은 `./gradlew check`의 `ModuleBoundaryTest` 실패로 나타난다.
-- 멀티모듈은 전체 빌드가 느리다. 작업 중에는 `:<모듈>:test`로 좁히고, 커밋 전에는 반드시 `scripts/verify.sh` 전체를 돌린다. 느리면 `gradle.properties`에 `org.gradle.parallel=true`·`org.gradle.caching=true`부터 켠다.
+- 멀티모듈은 전체 빌드가 느리다. 작업 중에는 `:<모듈>:test`로 좁히고, MR 전에는 `bash scripts/verify.sh --affected`를 돌린다(전체 검증은 CI). 느리면 `gradle.properties`에 `org.gradle.parallel=true`·`org.gradle.caching=true`부터 켠다.
 
 ## 7. 테스트 도구 (프로젝트가 고르되 지킬 규약)
 

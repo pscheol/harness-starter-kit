@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -291,6 +292,46 @@ class InstallTest(unittest.TestCase):
         self.assertIn("| 1 (옛) | sample | feat |", index.read_text())
         again = subprocess.run(["bash", str(UPDATE), str(root)], capture_output=True, text=True, timeout=300)
         self.assertNotIn("SDD 보드", again.stdout, "보드가 이미 맞으면 다시 만들지 않는다")
+
+    def test_pre_existing_files_are_not_replaced_by_update(self):
+        # 설치 전부터 있던 파일: 다르면 lock 해시 '-'(update 가 덮지 않고 .new), 킷 판과 같으면 그 해시(HK-12 R12.6).
+        same = self.installed("python", agents="claude") / ".agents/rules/writing-style.md"
+        root = self.tmp / "pre"
+        (root / ".agents/rules").mkdir(parents=True)
+        (root / "AGENTS.md").write_text("# 손으로 쓴 AGENTS\n")
+        shutil.copy2(same, root / ".agents/rules/writing-style.md")
+        result = install(root, "python", agents="claude")
+        self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
+        lock = (root / ".agents/harness-kit.lock").read_text().splitlines()
+        self.assertEqual(lock[1], "# pre-existing: -")
+        hashes = {line.split("\t")[3]: line.split("\t")[0] for line in lock if line and not line.startswith("#")}
+        self.assertEqual(hashes["AGENTS.md"], "-")
+        self.assertRegex(hashes[".agents/rules/writing-style.md"], r"^[0-9a-f]{64}$")
+        update = subprocess.run(["bash", str(UPDATE), str(root)], capture_output=True, text=True, timeout=300)
+        self.assertEqual(update.returncode, 0, update.stdout[-3000:] + update.stderr[-3000:])
+        self.assertEqual((root / "AGENTS.md").read_text(), "# 손으로 쓴 AGENTS\n")
+        self.assertTrue((root / "AGENTS.md.new").is_file())
+        self.assertRegex(update.stdout, r"update=0 +same=\d+ +conflict=1")
+
+    def test_update_with_legacy_lock_writes_new_instead_of_replacing(self):
+        # v1.0.8 lock(표시 줄 없음)은 미리 있던 파일을 그 파일 해시로 적었다. 가릴 수 없으니 .new 를 쓴다(HK-12 R12.6).
+        root = self.tmp / "legacy"
+        root.mkdir()
+        (root / "AGENTS.md").write_text("# 손으로 쓴 AGENTS\n")
+        result = install(root, "go", agents="codex")
+        self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
+        lock = root / ".agents/harness-kit.lock"
+        mine = hashlib.sha256((root / "AGENTS.md").read_bytes()).hexdigest()
+        lines = [line for line in lock.read_text().splitlines() if line != "# pre-existing: -"]
+        lock.write_text("\n".join(mine + line[line.index("\t"):] if line.endswith("\tAGENTS.md") else line for line in lines) + "\n")
+        update = subprocess.run(["bash", str(UPDATE), str(root)], capture_output=True, text=True, timeout=300)
+        self.assertEqual(update.returncode, 0, update.stdout[-3000:] + update.stderr[-3000:])
+        self.assertEqual((root / "AGENTS.md").read_text(), "# 손으로 쓴 AGENTS\n")
+        self.assertTrue((root / "AGENTS.md.new").is_file())
+        self.assertIn("v1 lock", update.stdout)
+        after = lock.read_text().splitlines()
+        self.assertEqual(after[1], "# pre-existing: -")
+        self.assertIn("-\tgo\tcore\tAGENTS.md", after)
 
     def test_overlap_later_layer_wins_on_install_and_update(self):
         # common 과 platform-guards 모듈이 같은 경로를 깐다. 첫 설치 · update 모두 뒤 레이어(모듈) 판이다(HK-10 R10.1).

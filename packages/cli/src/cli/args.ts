@@ -50,15 +50,26 @@ export const COMMAND_OPTIONS: Record<string, OptSpec> = {
   },
   repair: { only: { type: "string" } },
   uninstall: { "keep-state": { type: "boolean" }, "keep-packs": { type: "boolean" } },
+  add: {},
+  remove: {},
+  outdated: { check: { type: "boolean" }, source: { type: "string" } },
 };
+
+/** 위치 인자(이름)를 받는 명령. 나머지는 위치 인자를 거부한다(대상 폴더는 --cwd). */
+const POSITIONAL = new Set(["add", "remove"]);
 
 export type Values = Record<string, string | boolean | string[] | undefined>;
 
-export function parseCommandArgs(command: string, argv: string[]): Values {
+export interface ParsedArgs {
+  values: Values;
+  positionals: string[];
+}
+
+export function parseCommandArgs(command: string, argv: string[]): ParsedArgs {
   const options = { ...COMMON, ...(COMMAND_OPTIONS[command] ?? {}) };
   try {
-    const { values } = parseArgs({ args: argv, options, strict: true, allowPositionals: false });
-    return values as Values;
+    const { values, positionals } = parseArgs({ args: argv, options, strict: true, allowPositionals: POSITIONAL.has(command) });
+    return { values: values as Values, positionals };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     const code = (err as { code?: string }).code;

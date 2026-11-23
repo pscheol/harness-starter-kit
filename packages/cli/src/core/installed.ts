@@ -18,6 +18,8 @@ export interface Installed {
   metaFormat: "v1" | "v2";
   lock: LockV2;
   lockFormat: "v1" | "v2";
+  /** 표시 줄 없는 v1 lock(HK-12 R12.6) */
+  lockAmbiguous: boolean;
 }
 
 /** 이 판이 다루는 op. 나머지(mirror · render · merge)는 P18 어댑터 몫이다. */
@@ -36,7 +38,7 @@ export function loadInstalled(target: string, command: string): Installed {
   }
   if (l.status === "invalid") throw new CliError(EXIT.STATE, `lock 을 해석하지 못했다: ${l.error}`, "harness-kit doctor 로 상태를 본다");
   assertLockUsable(l.lock.entries);
-  return { meta: m.meta, metaFormat: m.schema, lock: l.lock, lockFormat: l.format };
+  return { meta: m.meta, metaFormat: m.schema, lock: l.lock, lockFormat: l.format, lockAmbiguous: l.ambiguous };
 }
 
 /** lock 경로가 리포 안인지, op 를 이 판이 다루는지 본다. 아무것도 쓰기 전에 부른다. */

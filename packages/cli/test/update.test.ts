@@ -379,3 +379,53 @@ describe("update · uninstall — 설계 02 §5 완료 기준 3(실제 템플릿
     expect(exists(target, META_FILE)).toBe(false);
   });
 });
+
+// 보드 — update 뒤 board.sh --check 가 실패하면 한 번 다시 만든다(HK-12 R12.9, update.sh rebuild_board 와 같은 조건).
+const BOARD = [
+  "#!/usr/bin/env bash",
+  'if [ "${1:-}" = --check ]; then [ ! -f .agents/board-stale ]; exit $?; fi',
+  "[ -f .agents/board-broken ] && exit 3",
+  "rm -f .agents/board-stale; echo rebuilt >> .agents/board.txt",
+  "",
+].join("\n");
+
+describe("update — SDD 보드", () => {
+  const files = { ...BASIC_FILES, "common/scripts/board.sh": BOARD };
+
+  it("보드가 낡았으면 한 번 다시 만들고, 맞으면 아무것도 하지 않는다", async () => {
+    const { target, templates, cli } = await installedFixture({ files });
+    writeTree(target, { ".agents/board-stale": "x\n" });
+    const r = await cli("update", ["--json", "--templates", templates]);
+    expect(r.code, r.stdout).toBe(0);
+    expect(r.stderr).toBe("");
+    expect(json(r).board).toEqual({ status: "rebuilt" });
+    expect(readText(target, ".agents/board.txt")).toBe("rebuilt\n");
+    const again = await cli("update", ["--json", "--templates", templates]);
+    expect(json(again).board).toEqual({ status: "ok" });
+    expect(readText(target, ".agents/board.txt")).toBe("rebuilt\n");
+    const human = await cli("update", ["--templates", templates]);
+    expect(human.stdout).not.toContain("보드");
+  });
+
+  it("--dry-run · 보드 코드가 사람 판(conflict · user)이면 실행하지 않는다", async () => {
+    const { target, templates, cli } = await installedFixture({ files });
+    writeTree(target, { ".agents/board-stale": "x\n" });
+    expect(json(await cli("update", ["--json", "--dry-run", "--templates", templates])).board).toMatchObject({ status: "skipped" });
+    fs.appendFileSync(path.join(target, "scripts/board.sh"), "echo mine >> .agents/board.txt\n");
+    const r = await cli("update", ["--json", "--templates", fixtureTemplates({ ...files, "common/scripts/board.sh": `${BOARD}# v2\n` })]);
+    expect(r.code).toBe(4);
+    expect(json(r).board).toMatchObject({ status: "skipped" });
+    expect(exists(target, ".agents/board.txt")).toBe(false);
+  });
+
+  it("다시 만들기가 실패하면 경고만 하고 종료 코드는 그대로다", async () => {
+    const { target, templates, cli } = await installedFixture({ files });
+    writeTree(target, { ".agents/board-stale": "x\n", ".agents/board-broken": "x\n" });
+    const r = await cli("update", ["--json", "--templates", templates]);
+    expect(r.code, r.stdout).toBe(0);
+    expect(json(r).board).toMatchObject({ status: "failed" });
+    const human = await cli("update", ["--templates", templates]);
+    expect(human.code).toBe(0);
+    expect(human.stdout).toContain("보드");
+  });
+});

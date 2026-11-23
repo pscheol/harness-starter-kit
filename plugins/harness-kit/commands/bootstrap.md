@@ -29,17 +29,20 @@ argument-hint: [경로] [--stack=jvm|python|go|web|electron] [--arch=<변형>] [
 
 1. **스킬 위치 확인** — 이 커맨드가 속한 플러그인의 `skills/hx-bootstrap/` 절대경로를 `SKILL_DIR` 로 잡는다. 대상 리포의 `pwd` 로 유추하지 않는다(플러그인 스킬은 보통 대상 리포 바깥에 있다).
 2. **스택·변형 결정** — 위 표대로. 임의로 정하지 않는다.
-3. **에이전트 결정** — `--list-agents` 로 감지 결과를 보여주고 확정받는다. 감지가 0건이면 `claude` 로 떨어지므로 반드시 묻는다: `bash "$SKILL_DIR/setup.sh" --stack=<stack> --arch=<variant> --list-agents <대상_프로젝트_경로>`
+3. **에이전트 결정** — `plan --json` 의 `selection.agents` · `agentsOrigin` 으로 감지 결과를 보여주고 확정받는다. 감지가 0건이면 `claude` 로 떨어지므로 반드시 묻는다.
 4. **치환값 확정** — `PROJECT_NAME` · `PROJECT_SLUG` · `PACKAGE_NS`(스택마다 의미가 다르다) · `PROTECTED_PATH` · `DOMAIN_EXAMPLE`. 모르면 합리적 기본값을 제안하고 확인받는다.
-5. **`--dry-run` 선실행** — 설치될 파일 목록과 선택된 변형·에이전트를 보여준다.
-6. **사용자 승인 후 실제 설치** — `--dry-run` 없이 재실행.
-7. **다음 단계 안내** — `setup.sh` 가 출력하는 스택×변형별 후속 작업을 그대로 전달한다.
+5. **`plan` 선실행** — `--json` 의 `counts`(create · skip-user)와 선택된 변형·에이전트를 보여준다.
+6. **사용자 승인 후 실제 설치** — 같은 플래그로 `init`. exit 4 면 `.new` 목록을 그대로 보인다.
+7. **다음 단계 안내** — 스택×변형별 후속 작업(스킬 `hx-bootstrap` 5단계)을 전달한다.
 
 ```bash
 SKILL_DIR="<플러그인 내 skills/hx-bootstrap 절대경로>"
-STACK=<stack> ARCH=<variant> PROJECT_NAME="<이름>" PROJECT_SLUG="<슬러그>" PACKAGE_NS="<네임스페이스>" \
-  bash "$SKILL_DIR/setup.sh" [--lang=kotlin|java] --agents=<목록> [--dry-run] <대상_프로젝트_경로>
+bash "$SKILL_DIR/kit.sh" plan --cwd <대상_프로젝트_경로> --stack <stack> --arch <variant> [--lang kotlin|java] --agents <목록> \
+  --name "<이름>" --slug <슬러그> --package-ns <네임스페이스> --yes --json
+bash "$SKILL_DIR/kit.sh" init --cwd <대상_프로젝트_경로> (같은 플래그) --yes --json
 ```
+
+`kit.sh` 는 Node 18.3 이상이면 `bin/harness-kit.js`(CLI)를, 없거나 낮으면 같은 플래그로 `setup.sh` 를 부른다(v2.0 동안만).
 
 ## 주의
 
