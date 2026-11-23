@@ -10,8 +10,10 @@ lock · 메타 · .agents/state/ 는 파일 비교에서 빼고 의미로 본다
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -90,11 +92,18 @@ def make_old_kit(root: Path) -> Path:
     return kit
 
 
+# platform-guards: 이기는 판(모듈) · 지는 판(common)을 새 킷이 바꾼다(HK-12 R12.9 — HK-10 뒤 레이어 우선).
+GUARD_WINNER = ("optional/platform-guards/scripts/run-guards.sh", "scripts/run-guards.sh")
+GUARD_LOSER = ("common/agents-rules/platform-invariants.md", ".agents/rules/platform-invariants.md")
+PRE_AGENTS = "# 손으로 쓴 AGENTS — 설치 전부터 있었다\n"
+LOCK_MARK = "# pre-existing: -"
+
+
 def make_new_kit(root: Path, old: Path, picks: Picks) -> Path:
     kit = root / "new"
     shutil.copytree(old, kit, symlinks=True)
     tpl = kit / "skills/hx-bootstrap/templates"
-    for rel in (picks.changed[0], picks.script[0]):
+    for rel in (picks.changed[0], picks.script[0], GUARD_WINNER[0], GUARD_LOSER[0]):
         with (tpl / rel).open("a", encoding="utf-8") as f:
             f.write("\n<!-- HK-11 새 판 줄 -->\n" if rel.endswith(".md") else "\n# HK-11 새 판 줄\n")
     (tpl / NEW_RULE[0]).write_text("새 규칙 {{PROJECT_NAME}}\n", encoding="utf-8")
@@ -141,6 +150,38 @@ def two_edits(target: Path, picks: Picks) -> None:
     append(target, picks.kept[1])
 
 
+def stale_board(target: Path, picks: Picks) -> None:
+    """v1.0.8 리포: 옛 구조 이슈가 있고 specs-index.md 보드가 옛 형식이다(HK-9 R9.3 시험과 같다)."""
+    issue = target / ".agents/docs/demo-specs/issues/1-feat-sample"
+    issue.mkdir(parents=True)
+    (issue / "requirements.md").write_text("# Requirements — 1-feat-sample\n\n| 상태 | approved |\n", encoding="utf-8")
+    index = target / ".agents/docs/specs-index.md"
+    old_board = "\n## 전체 보드 (전 제품)\n\n| 📋 요구 (1) | 🎨 설계 (0) |\n|---|---|\n| `demo/1-feat-sample` | — |\n\n"
+    text = re.sub(r"(<!-- BOARD:BEGIN[^\n]*-->\n).*?(<!-- BOARD:END -->)", lambda m: m[1] + old_board + m[2], index.read_text(encoding="utf-8"), flags=re.S)
+    index.write_text(text, encoding="utf-8")
+
+
+def pre_agents(target: Path) -> None:
+    target.mkdir(parents=True, exist_ok=True)
+    (target / "AGENTS.md").write_text(PRE_AGENTS, encoding="utf-8")
+
+
+def legacy_lock(target: Path, picks: Picks) -> None:
+    """v1.0.8 setup.sh 가 쓴 lock 을 흉내 낸다: 표시 줄이 없고 미리 있던 AGENTS.md 를 그 파일 해시로 적었다(R12.6)."""
+    out = []
+    for line in (target / LOCK).read_text(encoding="utf-8").splitlines():
+        if line == LOCK_MARK:
+            continue
+        if line.endswith("\tAGENTS.md"):
+            line = hashlib.sha256((target / "AGENTS.md").read_bytes()).hexdigest() + line[line.index("\t"):]
+        out.append(line)
+    (target / LOCK).write_text("\n".join(out) + "\n", encoding="utf-8")
+
+
+def nothing(target: Path, picks: Picks) -> None:
+    return None
+
+
 @dataclass(frozen=True)
 class Case:
     name: str
@@ -151,6 +192,9 @@ class Case:
     cli_flags: tuple[str, ...] = ()
     sh_flags: tuple[str, ...] = ()
     tokens: dict[str, str] = field(default_factory=lambda: dict(DEFAULT_TOKENS))
+    modules: str = "none"
+    # 설치 전에 대상 폴더에 둘 것(설치 전부터 있던 파일)
+    prep: Callable[[Path], None] | None = None
 
 
 CASES = (
@@ -160,6 +204,10 @@ CASES = (
     Case("04-orphans-prune", "go", "hexagonal", "codex", edit_gone, cli_flags=("--prune",)),
     Case("05-user-owned", "web", "nextjs-app", "claude", user_owned),
     Case("06-accept-all", "jvm", "layered", "claude", two_edits, cli_flags=("--accept-all",), sh_flags=("--accept-all",)),
+    Case("07-guards-later-wins", "python", "layered", "claude,kiro", nothing, modules="platform-guards"),
+    Case("08-board-rebuild", "go", "hexagonal", "codex", stale_board),
+    Case("09-pre-existing-legacy-lock", "jvm", "hexagonal", "claude", legacy_lock, prep=pre_agents),
+    Case("10-pre-existing-marked-lock", "jvm", "hexagonal", "claude", nothing, prep=pre_agents),
 )
 
 
@@ -207,9 +255,11 @@ def run_case(cli: Path, root: Path, old: Path, new: Path, picks: Picks, c: Case)
     work = root / c.name
     base = work / "base" / "acme-notes"
     base.mkdir(parents=True)
+    if c.prep:
+        c.prep(base)
     setup = [
         "bash", str(old / "skills/hx-bootstrap/setup.sh"), f"--stack={c.stack}", f"--arch={c.arch}",
-        f"--agents={c.agents}", "--modules=none", str(base),
+        f"--agents={c.agents}", f"--modules={c.modules}", str(base),
     ]
     r = subprocess.run(setup, env=base_env(c.tokens), capture_output=True, text=True, timeout=300)
     if r.returncode != 0:
@@ -356,6 +406,57 @@ class CliUpdateParityTest(unittest.TestCase):
         baks = sorted(p for p in snapshot(o.cli)[0] if p.endswith(".bak"))
         self.assertEqual(baks, sorted(f"{p}.bak" for p in (self.picks.changed[1], self.picks.kept[1])))
         self.assertEqual(j["counts"]["replace"], 2)
+
+    def test_07_platform_guards_later_layer_wins(self):
+        o, j = self.ran("07-guards-later-wins")
+        self.assertEqual(o.cli_run.returncode, 0)
+        self.assert_same_tree(o)
+        self.assert_lock_means_same(o)
+        self.assertTrue((o.cli / GUARD_WINNER[1]).read_text(encoding="utf-8").endswith("# HK-11 새 판 줄\n"))
+        self.assertFalse((o.cli / GUARD_LOSER[1]).read_text(encoding="utf-8").endswith("<!-- HK-11 새 판 줄 -->\n"))
+        actions = {op["path"]: op["action"] for op in j["ops"]}
+        self.assertEqual(actions.get(GUARD_WINNER[1]), "update")
+        self.assertNotIn(GUARD_LOSER[1], actions)
+        lock = {e["path"]: e for e in json.loads((o.cli / LOCK).read_text(encoding="utf-8"))["entries"]}
+        for rel in (GUARD_WINNER[1], GUARD_LOSER[1]):
+            self.assertEqual(lock[rel]["layer"], "optional/platform-guards", rel)
+        self.assertEqual(sorted(p for p in snapshot(o.cli)[0] if p.endswith(".new")), [])
+
+    def test_08_board_rebuilt_like_update_sh(self):
+        o, j = self.ran("08-board-rebuild")
+        # 옛 형식 보드는 킷 파일(specs-index.md)을 고친 것이라 두 쪽 모두 .new 를 받는다. 보드는 그 뒤에 다시 만든다.
+        self.assertEqual(o.cli_run.returncode, 4)
+        self.assertEqual([c["path"] for c in j["conflicts"]], [".agents/docs/specs-index.md"])
+        self.assertIn("SDD 보드", o.sh_run.stdout)
+        self.assert_same_tree(o)
+        self.assertEqual(j["board"], {"status": "rebuilt"})
+        self.assertIn("| 1 (옛) | sample | feat |", (o.cli / ".agents/docs/specs-index.md").read_text(encoding="utf-8"))
+
+    def test_09_pre_existing_file_with_legacy_lock_gets_new(self):
+        o, j = self.ran("09-pre-existing-legacy-lock")
+        self.assertEqual(o.cli_run.returncode, 4)
+        self.assert_same_tree(o)
+        self.assert_lock_means_same(o)
+        for target in (o.sh, o.cli):
+            self.assertEqual((target / "AGENTS.md").read_text(encoding="utf-8"), PRE_AGENTS, target)
+            self.assertTrue((target / "AGENTS.md.new").is_file(), target)
+            self.assertTrue((target / f"{self.picks.changed[1]}.new").is_file(), target)
+        sh_lock = lock_hashes(o.sh / LOCK)
+        self.assertEqual((sh_lock["AGENTS.md"], sh_lock[self.picks.changed[1]]), ("-", "-"))
+        self.assertTrue((o.sh / LOCK).read_text(encoding="utf-8").splitlines()[1] == LOCK_MARK)
+        self.assertIn("AGENTS.md", [c["path"] for c in j["conflicts"]])
+
+    def test_10_pre_existing_file_with_marked_lock(self):
+        o, j = self.ran("10-pre-existing-marked-lock")
+        self.assertEqual(o.cli_run.returncode, 4)
+        self.assertEqual(lock_hashes(o.base / LOCK)["AGENTS.md"], "-")
+        self.assert_same_tree(o)
+        self.assert_lock_means_same(o)
+        for target in (o.sh, o.cli):
+            self.assertEqual((target / "AGENTS.md").read_text(encoding="utf-8"), PRE_AGENTS, target)
+            self.assertTrue((target / "AGENTS.md.new").is_file(), target)
+            self.assertFalse((target / f"{self.picks.changed[1]}.new").exists(), target)
+        self.assertEqual([c["path"] for c in j["conflicts"]], ["AGENTS.md"])
 
 
 if __name__ == "__main__":

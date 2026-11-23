@@ -37,16 +37,24 @@ describe("진입점", () => {
     expect((await run(["doctor", "--stack", "jvm"])).code).toBe(2);
   });
 
-  it.each(["update", "repair", "uninstall"])("%s 는 예약 명령이 아니다(설치 안 된 폴더면 exit 3, HK-11)", async (cmd) => {
+  it.each(["update", "repair", "uninstall", "outdated"])("%s 는 예약 명령이 아니다(설치 안 된 폴더면 exit 3, HK-11 · HK-12)", async (cmd) => {
     const r = await run([cmd, "--yes", "--cwd", tmpDir()]);
     expect(r.code).toBe(3);
     expect(r.stderr).toContain("init");
   });
 
+  it.each(["add", "remove"])("%s 는 예약 명령이 아니다 — 이름을 위치 인자로 받고, 설치 안 된 폴더면 exit 3(HK-12)", async (cmd) => {
+    const r = await run([cmd, "codex", "--cwd", tmpDir()]);
+    expect(r.code, r.stderr).toBe(3);
+    expect(r.stderr).toContain("init");
+    expect((await run([cmd, "--cwd", tmpDir()])).code).toBe(2);
+  });
+
+  it("add · remove 밖의 명령은 위치 인자를 받지 않는다", async () => {
+    for (const cmd of ["update", "doctor", "outdated"]) expect((await run([cmd, "extra", "--cwd", tmpDir()])).code).toBe(2);
+  });
+
   it.each([
-    ["add", "P17"],
-    ["remove", "P17"],
-    ["outdated", "P17"],
     ["pack", "P18"],
     ["dashboard", "P20"],
     ["approve", "P21"],

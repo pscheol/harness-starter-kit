@@ -200,3 +200,21 @@ export async function installedFixture(opts: { files?: Record<string, string>; m
   const cli = (command: string, args: string[] = [], o: RunOptions = {}): Promise<RunResult> => run([command, "--cwd", target, ...args], o);
   return { target, templates, cli };
 }
+
+const STATE_SKIP = new Set([LOCK_FILE, META_FILE, ".agents/state/harness-kit.lock.v1.bak"]);
+
+/** lock · 메타 · v1 백업을 뺀 파일 → (내용, 권한). */
+export function filesOf(target: string): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const [rel, e] of readTree(target)) if (!STATE_SKIP.has(rel)) out.set(rel, `${e.mode.toString(8)} ${e.bytes.toString("hex")}`);
+  return out;
+}
+
+/** 같은 템플릿 · 같은 폴더 이름으로 새로 init 한 리포. */
+export async function freshInit(templates: string, agents: string, modules = "none"): Promise<string> {
+  const target = path.join(tmpDir(), "acme");
+  const r = await run(["init", "--yes", "--templates", templates, "--cwd", target, "--agents", agents, "--modules", modules], { env: FIXTURE_ENV });
+  if (r.code !== 0) throw new Error(r.stdout + r.stderr);
+  return target;
+}
+
