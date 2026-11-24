@@ -57,3 +57,14 @@ created: 2026-11-24
 | 킷 `python3 -m unittest discover -s tests`(120개) | 119 통과 · 1 시간 초과: `test_harness_scripts_suite_passes_in_install` 이 설치본 시험 묶음을 1200초 제한으로 돌리는데, 부하가 높아 설치본 시험이 1,658초 걸렸다(묶음을 따로 돌린 위 줄이 통과). 시험 제한은 바꾸지 않았다 |
 | `node scripts/gen-plugins.mjs --check` | 생성물 일치(469개) |
 | S10 화면 | `S10-ops-1440.png`(1440px, 시연 fixture). 콘솔 오류 · CSP 위반 0건 |
+
+### 통합 브랜치에 합친 뒤(2026-11-24, HK-19 · HK-26 · HK-20a 위)
+
+| 시험 | 결과 |
+|---|---|
+| `pnpm -C packages/cli test` | 486 통과 |
+| `pnpm -C packages/dashboard test` | 153 통과(부하로 시간 초과 3건 — 단독 재실행 통과) |
+| `pnpm test:ui` | 33 통과 |
+| `node scripts/gen-plugins.mjs --check` | 생성물 일치(477개) |
+| 설치본 시험(`scripts/tests`) | 669 통과(1,401초) |
+| 킷 python 전체(120개) | 119 통과 · 1 시간 초과: `test_harness_scripts_suite_passes_in_install`(설치본 묶음 1,200초 제한 — 위 줄에서 같은 묶음을 따로 돌려 통과) |
