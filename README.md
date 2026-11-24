@@ -2,6 +2,8 @@
 
 Claude Code, Codex, Kiro, Cursor 네 하네스에서 같은 규칙과 같은 슬래시 커맨드를 쓰기 위한 스타터 킷이다.
 
+**처음이라면 [사용 안내서](docs/guide/index.html)부터 본다** — 설치 · 하루 흐름 · 관리 페이지 · 역할별 활용(HTML, 브라우저로 연다).
+
 에이전트마다 규칙 파일을 따로 관리하다 보면 내용이 조금씩 어긋난다. 이 킷은 규칙을 `.agents/rules/`
 한 곳에만 두고 나머지 하네스는 그곳을 가리키게 만든다. 백엔드(JVM·Python·Go)든 프론트엔드(Web·Electron)든
 리포에 그 골격을 한 번에 깔아주는 `kns:bootstrap` 스킬을 배포한다.
