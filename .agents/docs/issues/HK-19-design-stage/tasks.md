@@ -49,4 +49,17 @@ created: 2026-11-24
 
 ## 검증 기록
 
-(구현 뒤 채운다)
+2026-11-24, 통합 브랜치(`844f3a4`)에 HK-19(`6ac7486`)와 HK-26(`f14cd44`)을 합친 깨끗한 worktree(`a923b59`)에서 하나씩 돌렸다.
+
+| 시험 | 결과 |
+|---|---|
+| `pnpm test:ui`(관리 페이지 화면, HK-26) | 4파일 30개 통과 |
+| `pnpm -C packages/flow-view test` | 4개 통과 |
+| `pnpm -C packages/dashboard test` | 17파일 148개 통과 |
+| `pnpm -C packages/cli test` | 36파일 443개 통과 |
+| `node scripts/gen-plugins.mjs --check` | 생성물 일치 453개 |
+| 킷 Python `python3 -m unittest discover -s tests -p "test_*.py"` | 120개 통과(1,978초) |
+| 설치본(python 스택) `scripts/tests` 전체 | 618개 통과(1,095초) |
+
+- 앞서 HK-19 브랜치에서 관리 페이지 시험 1건이 부하(평균 18) 아래 60초 시간 초과로 실패했다가 혼자 돌리면 통과했다. 위 표는 하나씩 돌린 결과다.
+- 사람 확인이 남은 것: 설계 세션 실제 한 바퀴(/hx-intent → 답 → intent 승인 → /hx-plans → /hx-specify --from-unit), 긴 위임 결과가 SubagentStop 훅으로 한 번 돌아오는지(설계 12 §5 #8), design.md 승인.
