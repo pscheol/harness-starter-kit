@@ -43,6 +43,7 @@ CLI(`npx harness-kit`)에 명령을 더하지 않는다. 설계 05 · README §7
 | §3.6 의존성 단위 | `git ls-files` 가 아는 `pnpm-lock.yaml` · `uv.lock` · `package-lock.json` · `Cargo.toml` 위치(sparse 로 빠진 폴더 제외)다. `.agents/harness.json` 표지를 읽지 않는다 | 표지가 없는 단일 리포도 같은 규칙으로 돈다 |
 | §3.10 세션의 `worktree` 객체 | 만들지 않고 세션 기록의 `cwd` 가 P 아래인지로 센다 | HK-17 형식이 이미 `cwd` · `checkout` 을 가진다. 필드를 늘리면 세션 시작 훅 출력 예산 시험을 다시 묶어야 한다 |
 | §3.13 `claude -w "#1234"` 이름 | 임시 이름에서 `[A-Za-z0-9._-]` 밖의 글자를 `-` 로 바꾸고 `#` 로 시작하면 `pr-` 를 붙인다 | `name` 값이 확인되지 않았다(05 §6). 어떤 값이 와도 폴더 이름으로 안전하게 만든다 |
+| §3.9 VS Code 병합 조건 `.vscode/` 가 있거나 `git.ide` 가 `code` | `.vscode/` 폴더가 있을 때만 | CLI 가 `git.ide: code` 를 기본으로 적는다. 조건에 넣으면 모든 리포에 `.vscode/settings.json` 이 생기고 bash 설치본과 트리가 어긋난다(킷 시험 두 건이 잡았다) |
 | §3.8 `wt list` 대상 | 기본은 지금 리포의 worktree, `--all` 은 S 의 모든 기록. root 밖 worktree 는 `외부` 로 한 줄만 | 05 §3.8 에 대상 범위 문장이 없어 정한다 |
 
 ## 3. 자리 · 설정 읽기
@@ -73,7 +74,7 @@ CLI(`npx harness-kit`)에 명령을 더하지 않는다. 설계 05 · README §7
 
 ## 6. VS Code 설정 병합(R6.1)
 
-병합 종류 `vscode-settings`(대상 `.vscode/settings.json`, lock 키 `jsonc:git.detectWorktrees`). 조건: `.vscode/` 폴더가 있거나 `harness-kit.json` 에 `git.ide` 가 `code` 로 적혀 있다. 적지 않았으면 만들지 않는다(기본값만으로 파일을 만들면 VS Code 를 안 쓰는 리포에 `.vscode/` 가 생긴다).
+병합 종류 `vscode-settings`(대상 `.vscode/settings.json`, lock 키 `jsonc:git.detectWorktrees`). 조건: 배치 때 `.vscode/` 폴더가 있다. `git.ide` 는 보지 않는다(설계 05 §3.9 는 `git.ide` 가 `code` 여도 만든다고 쓰지만, CLI 가 기본값 `code` 를 메타에 적으므로 그러면 VS Code 를 안 쓰는 모든 리포에 `.vscode/` 가 생기고 setup.sh · update.sh 설치본과 트리가 달라진다).
 
 JSONC 문자열을 줄 단위로 고친다(주석 · 다른 키 · 들여쓰기를 그대로 둔다):
 

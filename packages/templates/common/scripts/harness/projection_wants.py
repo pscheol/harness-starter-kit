@@ -323,11 +323,9 @@ def build_wants(root: Path, spec: dict, tokens: dict, agents: list[str]) -> tupl
 
 
 def wants_vscode(root: Path) -> bool:
-    """VS Code 를 쓰는 리포인가: `.vscode/` 폴더가 있거나 harness-kit.json 에 git.ide 가 code 로 적혀 있다(HK-15 design §6)."""
-    if (root / ".vscode").is_dir() and not (root / ".vscode").is_symlink():
-        return True
-    git = read_meta(root).get("git")
-    return isinstance(git, dict) and git.get("ide") == "code"
+    """VS Code 를 쓰는 리포인가: `.vscode/` 폴더가 있다(HK-15 design §6). git.ide 기본값(code)만으로는 만들지 않는다."""
+    folder = root / ".vscode"
+    return folder.is_dir() and not folder.is_symlink()
 
 
 def check_spec(spec: dict) -> None:

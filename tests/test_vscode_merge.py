@@ -35,7 +35,7 @@ class SharedFixtureTest(unittest.TestCase):
     def test_registered_for_the_vscode_settings_path(self):
         self.assertEqual("vscode-settings", MERGE_KIND[".vscode/settings.json"])
 
-    def test_wants_vscode_only_when_the_folder_or_ide_setting_exists(self):
+    def test_wants_vscode_only_when_the_folder_exists(self):
         import tempfile
 
         from projection_wants import wants_vscode
@@ -44,11 +44,8 @@ class SharedFixtureTest(unittest.TestCase):
             root = Path(tmp)
             self.assertFalse(wants_vscode(root))
             (root / ".agents").mkdir()
-            (root / ".agents/harness-kit.json").write_text(json.dumps({"git": {"ide": "idea"}}), encoding="utf-8")
-            self.assertFalse(wants_vscode(root))
             (root / ".agents/harness-kit.json").write_text(json.dumps({"git": {"ide": "code"}}), encoding="utf-8")
-            self.assertTrue(wants_vscode(root))
-            (root / ".agents/harness-kit.json").write_text("{}", encoding="utf-8")
+            self.assertFalse(wants_vscode(root))  # git.ide 기본값(code)만으로는 만들지 않는다
             (root / ".vscode").mkdir()
             self.assertTrue(wants_vscode(root))
 

@@ -55,17 +55,9 @@ export function buildContext(args: { view: RepoView; spec: ProjectionSpec; token
   return { ...args, sources, skills, roles, rules: sources.rules, hooks: parsed ?? [], hooksPresent: parsed !== null, findings };
 }
 
-/** VS Code 를 쓰는 리포인가: `.vscode/` 폴더가 있거나 harness-kit.json 에 git.ide 가 code 로 적혀 있다(HK-15 design §6). */
+/** VS Code 를 쓰는 리포인가: `.vscode/` 폴더가 있다(HK-15 design §6). git.ide 기본값(code)만으로는 만들지 않는다. */
 export function wantsVscode(ctx: Pick<ProjectionContext, "view">): boolean {
-  if (ctx.view.kind(".vscode") === "dir") return true;
-  const raw = ctx.view.read(".agents/harness-kit.json");
-  if (raw === null) return false;
-  try {
-    const meta = JSON.parse(raw.toString("utf8")) as { git?: { ide?: unknown } };
-    return meta?.git?.ide === "code";
-  } catch {
-    return false;
-  }
+  return ctx.view.kind(".vscode") === "dir";
 }
 
 /** 깐 하네스 어댑터의 작업 + .gitattributes. 같은 배치 경로가 둘이면 exit 3. */

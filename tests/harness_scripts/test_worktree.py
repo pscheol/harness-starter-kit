@@ -29,7 +29,7 @@ def clean_env(**extra):
 
 
 def git(cwd, *arguments, check=True):
-    result = subprocess.run(["git", "-c", "maintenance.auto=false", "-c", "gc.auto=0", "-c", "protocol.file.allow=always", *arguments],
+    result = subprocess.run(["git", "-c", "maintenance.auto=false", "-c", "gc.auto=0", "-c", "core.hooksPath=/dev/null", "-c", "protocol.file.allow=always", *arguments],
                             cwd=cwd, capture_output=True, text=True, env=clean_env())
     if check and result.returncode != 0:
         raise AssertionError(f"git {' '.join(arguments)} 실패: {result.stderr}")

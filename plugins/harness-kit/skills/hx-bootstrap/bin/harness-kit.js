@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 2db4884c92c87056107175198208cbebac33f457d6e15040401d9f3978655dd7 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 bce137d9d7ce84119be98a1e362a785eee3a4aae9199c6330b8425c16fec5127 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -2203,15 +2203,7 @@ function buildContext(args) {
   return { ...args, sources, skills, roles, rules: sources.rules, hooks: parsed2 ?? [], hooksPresent: parsed2 !== null, findings };
 }
 function wantsVscode(ctx) {
-  if (ctx.view.kind(".vscode") === "dir") return true;
-  const raw = ctx.view.read(".agents/harness-kit.json");
-  if (raw === null) return false;
-  try {
-    const meta = JSON.parse(raw.toString("utf8"));
-    return meta?.git?.ide === "code";
-  } catch {
-    return false;
-  }
+  return ctx.view.kind(".vscode") === "dir";
 }
 function wantedOps(ctx) {
   const wants = [];

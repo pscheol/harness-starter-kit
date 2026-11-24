@@ -37,15 +37,19 @@ describe(".vscode/settings.json 병합", () => {
     expect(readText(target, ".vscode/settings.json")).toBe(before);
   });
 
-  it("git.ide 가 code 면 .vscode 가 없어도 만든다(파일을 킷이 만들었다)", async () => {
-    const templates = projectionTemplates();
-    const { target, r, cli } = await initWith(templates);
+  it("git.ide 기본값(code)만으로는 .vscode 를 만들지 않는다", async () => {
+    const { target, r } = await initWith(projectionTemplates());
     expect(r.code).toBe(0);
-    const metaPath = path.join(target, ".agents/harness-kit.json");
-    const meta = JSON.parse(fs.readFileSync(metaPath, "utf8")) as Record<string, unknown>;
-    fs.writeFileSync(metaPath, `${JSON.stringify({ ...meta, git: { base: "develop", ide: "code" } }, null, 2)}\n`);
-    const u = await cli("repair", ["--json"]);
-    expect(u.code, u.stdout).toBe(0);
+    const meta = JSON.parse(readText(target, ".agents/harness-kit.json")) as { git?: { ide?: string } };
+    expect(meta.git?.ide).toBe("code");
+    expect(fs.existsSync(path.join(target, ".vscode"))).toBe(false);
+  });
+
+  it(".vscode 폴더가 뒤늦게 생기면 repair 가 파일을 만들고, uninstall 이 킷이 만든 파일을 지운다", async () => {
+    const { target, cli } = await initWith(projectionTemplates());
+    fs.mkdirSync(path.join(target, ".vscode"));
+    const fixed = await cli("repair", ["--json"]);
+    expect(fixed.code, fixed.stdout).toBe(0);
     expect(readText(target, ".vscode/settings.json")).toBe('{\n  "git.detectWorktrees": true\n}\n');
     const un = await cli("uninstall", ["--yes", "--json"]);
     expect(un.code, un.stdout).toBe(0);
@@ -97,14 +101,12 @@ describe(".vscode/settings.json 병합", () => {
     expect(ts.some((x) => (x as { path: string }).path === ".vscode/settings.json")).toBe(true);
   });
 
-  it("wantsVscode: 폴더 · git.ide 판정", () => {
+  it("wantsVscode: .vscode 폴더만 본다", () => {
     const dir = tmpDir("hk-vsc-w-");
     expect(wantsVscode({ view: new FsView(dir) })).toBe(false);
-    writeTree(dir, { ".agents/harness-kit.json": JSON.stringify({ git: { ide: "idea" } }) });
-    expect(wantsVscode({ view: new FsView(dir) })).toBe(false);
     writeTree(dir, { ".agents/harness-kit.json": JSON.stringify({ git: { ide: "code" } }) });
-    expect(wantsVscode({ view: new FsView(dir) })).toBe(true);
-    writeTree(dir, { ".agents/harness-kit.json": "{ broken", ".vscode/x.json": "{}" });
+    expect(wantsVscode({ view: new FsView(dir) })).toBe(false);
+    writeTree(dir, { ".vscode/x.json": "{}" });
     expect(wantsVscode({ view: new FsView(dir) })).toBe(true);
   });
 });
