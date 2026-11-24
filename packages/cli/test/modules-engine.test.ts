@@ -35,9 +35,9 @@ function externalHashes(t: string, hookMarks: string[]): Record<string, string> 
 }
 
 describe("module.json 선언(MD-R1)", () => {
-  it("모듈 넷의 선언이 읽히고 모듈 폴더의 파일은 모두 선언돼 있다", () => {
+  it("모듈 다섯의 선언이 읽히고 모듈 폴더의 파일은 모두 선언돼 있다", () => {
     const ids = listModuleIds(REAL_TEMPLATES);
-    expect(ids).toEqual(["aidlc", "entire", "jira-workflow", "multi-harness"]);
+    expect(ids).toEqual(["aidlc", "entire", "jira-workflow", "multi-harness", "notion"]);
     for (const id of ids) {
       const m = loadModule(REAL_TEMPLATES, id);
       expect(undeclaredTemplateFiles(REAL_TEMPLATES, m)).toEqual([]);

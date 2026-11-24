@@ -68,6 +68,29 @@ def keep_rows(folder: Path) -> list[str]:
     return out
 
 
+REGISTRY = "tools/harness/units.json"
+
+
+def issue_root(root: Path, unit: dict, notes: list[str]) -> Path:
+    """Unit 의 이슈를 만들 하네스 루트(설계 10 §3.5). Unit `repo` 가 배포 단위 id 이고 계약 Unit 이 아니면 그 도메인 폴더, 그 밖은 상위."""
+    repo = unit.get("repo")
+    if not repo or unit.get("kind") == "contract":
+        return root
+    registry = intents.read_json(root / REGISTRY)
+    if not isinstance(registry, dict):
+        notes.append(f"multi-harness 모듈이 꺼져 있어 Unit repo({repo}) 를 쓰지 않는다")
+        return root
+    row = next((u for u in registry.get("units") or [] if isinstance(u, dict) and u.get("id") == repo), None)
+    path = row.get("path") if row else None
+    if not isinstance(path, str) or not path or path == "." or Path(path).is_absolute() or ".." in Path(path).parts:
+        raise Stop(f"Unit repo {repo} 가 {REGISTRY} 에 없거나 쓸 수 없는 경로다")
+    target = root / path
+    if not (target / "scripts/new-feature.sh").is_file():
+        raise Stop(f"{path}/scripts/new-feature.sh 가 없다 — 도메인 리포에 하네스를 먼저 배포한다(harness-kit sync units)")
+    notes.append(f"Unit repo {repo} — 이슈를 {path} 에 만든다")
+    return target
+
+
 def link_of(folder: Path) -> dict | None:
     """AI-DLC 를 켠 Intent(intent.json 만 있음, 08 §3.10)의 링크. 그 밖이면 None."""
     if (folder / "intent.md").is_file():
@@ -153,7 +176,11 @@ def run_from_unit(root: Path, target: str, key: str | None, dry_run: bool) -> di
         raise Stop(f"{ikey} 에 계획된 Unit {uid} 가 없다")
     if unit.get("issue"):
         try:
-            path = find_issue(root, unit["issue"]).relative_to(root).as_posix()
+            base = issue_root(root, unit, notes)
+        except Stop:
+            base = root
+        try:
+            path = find_issue(base, unit["issue"]).relative_to(root).as_posix()
         except ValueError:
             path = f"(이 체크아웃에 폴더 없음 — 이슈 {unit['issue']})"
         return {"action": "existing", "issue": unit["issue"], "path": path, "notes": notes}
@@ -165,16 +192,17 @@ def run_from_unit(root: Path, target: str, key: str | None, dry_run: bool) -> di
     if "jira-workflow" in modules and not key:
         raise Stop("jira-workflow 모듈이 켜져 있다 — Jira 작업 항목을 만든 뒤 그 키를 --key 로 준다(DS-R13)")
     name, area = unit.get("name") or "", unit.get("area") or ""
+    base = issue_root(root, unit, notes)
     if dry_run:
-        return {"action": "dry-run", "would": f"new-feature.sh {key or '--next'} {name} --area {area} --type feat", "notes": notes}
+        return {"action": "dry-run", "would": f"new-feature.sh {key or '--next'} {name} --area {area} --type feat" + (f" (in {base.relative_to(root).as_posix()})" if base != root else ""), "notes": notes}
     args = ["bash", "scripts/new-feature.sh", key or "--next", name, "--area", area, "--type", "feat"]
-    r = subprocess.run(args, cwd=root, capture_output=True, text=True, timeout=120)
+    r = subprocess.run(args, cwd=base, capture_output=True, text=True, timeout=120)
     if r.returncode != 0:
         raise Stop(f"new-feature.sh 실패: {(r.stderr or r.stdout).strip().splitlines()[-1] if (r.stderr or r.stdout).strip() else r.returncode}")
     m = CREATED.search(r.stdout)
     if not m:
         raise Stop(f"new-feature.sh 출력에서 만든 경로를 찾지 못했다: {r.stdout.strip()[:200]}")
-    req = root / m[1]
+    req = base / m[1]
     issue_folder = req.parent if req.name == "requirements.md" else req
     req = issue_folder / "requirements.md"
     issue_key = intents.FOLDER.match(issue_folder.name)[1]
@@ -191,7 +219,7 @@ def run_from_unit(root: Path, target: str, key: str | None, dry_run: bool) -> di
     req.write_text(text, encoding="utf-8")
     unit["issue"] = issue_key
     (folder / "units.json").write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    return {"action": "created", "issue": issue_key, "path": req.relative_to(root).as_posix(), "branch": f"feat/{issue_folder.name}", "notes": notes}
+    return {"action": "created", "issue": issue_key, "path": req.relative_to(root).as_posix(), "repo": base.relative_to(root).as_posix() if base != root else ".", "branch": f"feat/{issue_folder.name}", "notes": notes}
 
 
 def main(argv=None) -> int:

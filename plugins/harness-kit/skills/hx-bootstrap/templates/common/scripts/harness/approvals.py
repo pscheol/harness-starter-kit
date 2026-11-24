@@ -17,7 +17,8 @@ FIELD = re.compile(r"^- ([^:]+):\s*(.*?)\s*$")
 TIME = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})$")
 APPROVER = re.compile(r"^(?P<email>[^\s@()]+@[^\s@()]+)(?: \((?P<name>[^()]*)\))?(?: · 그룹: (?P<group>\S+))?$")
 ENTRY_ID = re.compile(r"^[0-9A-HJKMNP-TV-Z]{26}$")
-TARGET_PARTS = (("sha256", re.compile(r"^sha256: ([0-9a-f]{64})$")), ("fingerprint", re.compile(r"^지문: ([0-9a-f]{12,64})$")),
+JIRA_SHA = "(jira)"  # 경로 jira 기록은 그 시점 문서 sha 를 알 수 없어 이 값으로 남긴다(설계 10 §3.4). 그 뒤 문서 변경과 비교하지 않는다
+TARGET_PARTS = (("sha256", re.compile(r"^sha256: ([0-9a-f]{64}|\(jira\))$")), ("fingerprint", re.compile(r"^지문: ([0-9a-f]{12,64})$")),
                 ("head", re.compile(r"^head: ([0-9a-f]{7,40})$")))
 CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"
 
@@ -126,6 +127,8 @@ def required_errors(entry, seen):
         target = entry["target"]
         if entry["gate"] in DOC_GATES and not target["sha256"]:
             errors.append("bad-target")
+        if target["sha256"] == JIRA_SHA and path != "jira":
+            errors.append("bad-target")
         if REVIEW_GATE.match(entry["gate"]) and not target["fingerprint"]:
             errors.append("bad-target")
     if "path" not in seen or not path:
@@ -219,6 +222,12 @@ def allowed(email, gate, policy):
 HIGH_GATES = ("design", "mr", "deploy")
 
 
+def sha_matches(entry, sha256):
+    """기록의 대상 sha 가 sha256 과 같은가. 경로 jira 의 `(jira)` 기록은 어떤 sha 와도 맞는다(승인 시점 = Jira 기록 시각)."""
+    target = entry["target"]
+    return bool(target) and (target["sha256"] == sha256 or (target["sha256"] == JIRA_SHA and entry["path"] == "jira"))
+
+
 def approval_state(entries, gate, sha256=None, policy=None, need=1):
     """설계 06 §3.3: none · valid(sha 같음) · stale(승인 뒤 바뀜) · invalid(승인자가 approvers 밖) ·
     partial(risk high 라 서로 다른 승인자 need 명이 필요한데 모자람, 08 DS-R26)."""
@@ -226,7 +235,7 @@ def approval_state(entries, gate, sha256=None, policy=None, need=1):
     if not found:
         return "none"
     if sha256 is not None:
-        found = [entry for entry in found if entry["target"] and entry["target"]["sha256"] == sha256]
+        found = [entry for entry in found if sha_matches(entry, sha256)]
         if not found:
             return "stale"
     people = {entry["approver"]["email"].lower() for entry in found if allowed(entry["approver"]["email"], gate, policy)}
@@ -238,7 +247,7 @@ def approval_state(entries, gate, sha256=None, policy=None, need=1):
 def approvers_of(entries, gate, sha256=None):
     """그 게이트 · 그 내용으로 승인한 사람(email 소문자)."""
     return {entry["approver"]["email"].lower() for entry in entries if entry["valid"] and entry["gate"] == gate and entry["decision"] == "approved"
-            and (sha256 is None or (entry["target"] and entry["target"]["sha256"] == sha256))}
+            and (sha256 is None or sha_matches(entry, sha256))}
 
 
 def need_of(meta, risk, gate):
@@ -304,6 +313,8 @@ def render_entry(entry):
     if phrase:
         lines.append(f'- 문구: "{phrase}"')
     lines.append(f"- 경로: {entry['path']}")
+    if entry.get("evidence"):
+        lines.append(f"- 근거: {entry['evidence']}")
     if entry.get("ruleCandidate"):
         lines.append("- 규칙 후보: 예")
     if entry.get("rollbackWaiver"):

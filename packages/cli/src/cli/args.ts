@@ -120,7 +120,12 @@ export const COMMAND_OPTIONS: Record<string, OptSpec> = {
   pack: { dir: { type: "string" }, from: { type: "string", multiple: true }, "kit-range": { type: "string" } },
   local: {},
   // 외부 도구 모듈의 어댑터 · 체크포인트(HK-20, 설계 10 §3.2 · §3.3)
-  sync: { intent: { type: "string" }, check: { type: "boolean" }, key: { type: "string" } },
+  sync: {
+    intent: { type: "string" }, check: { type: "boolean" }, key: { type: "string" },
+    // sync jira(설계 10 §3.4) · sync units(설계 10 §3.5)
+    approvals: { type: "boolean" }, verify: { type: "boolean" }, issue: { type: "string" }, to: { type: "string" }, "mr-url": { type: "string" },
+    unit: { type: "string", multiple: true }, adopt: { type: "boolean" },
+  },
   checkpoints: { issue: { type: "string" } },
   // 배포 · 운영(HK-21, 설계 14)
   deploy: { env: { type: "string" }, tag: { type: "string" }, "require-approved": { type: "boolean" }, waive: { type: "string" }, "from-ci": { type: "string" }, from: { type: "string" }, record: { type: "string" }, "rollback-test": { type: "boolean" }, "to-sha": { type: "string" } },
@@ -128,7 +133,7 @@ export const COMMAND_OPTIONS: Record<string, OptSpec> = {
   metrics: { baseline: { type: "boolean" }, force: { type: "boolean" }, "verify-baseline": { type: "boolean" }, from: { type: "string" }, to: { type: "string" }, fill: { type: "string" }, "adopted-at": { type: "string" } },
   rules: { since: { type: "string" }, reason: { type: "string" } },
   // 설계 단계(HK-19, 설계 08)
-  intake: { from: { type: "string" }, title: { type: "string" }, kind: { type: "string" }, name: { type: "string" }, area: { type: "string" }, text: { type: "string" }, "text-file": { type: "string" }, attach: { type: "string", multiple: true }, link: { type: "string", multiple: true } },
+  intake: { from: { type: "string" }, depth: { type: "string" }, key: { type: "string" }, title: { type: "string" }, kind: { type: "string" }, name: { type: "string" }, area: { type: "string" }, text: { type: "string" }, "text-file": { type: "string" }, attach: { type: "string", multiple: true }, link: { type: "string", multiple: true } },
 };
 
 /** 위치 인자(이름 · 하위 명령 · 키)를 받는 명령. 나머지는 위치 인자를 거부한다(대상 폴더는 --cwd). */

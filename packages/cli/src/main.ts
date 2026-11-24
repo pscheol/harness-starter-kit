@@ -90,9 +90,9 @@ const USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 �
   pack       pack new <이름> --dir <경로> --from <파일>… — 프로젝트 파일로 회사 팩 골격을 만든다
   local      local sync | list — 개인 층(.agents/local/)을 하네스 폴더에 배치한다(공유 lock 밖)
   mob        몹 정리 세션 start | next | close | status(진행자 터미널, 회차를 닫아도 세션에 요청하지 않는다)
-  sync       외부 도구 산출물 가져오기 — sync aidlc [--intent <AI-DLC 폴더>] [--check]
+  sync       맞추기 — sync aidlc [--intent <AI-DLC 폴더>] [--check] · sync jira [--approvals | --verify] · sync units [--check] [--unit <id>] [--adopt]
   checkpoints  Entire 체크포인트 목록 · 설명(entire 모듈을 켠 리포)
-  intake     요구사항 접수 — 글 · 첨부를 Intent 폴더(bug 는 이슈 폴더)로 받는다(신뢰하지 않는 입력으로 표시). --from ops:<운영 기록>#INC-n|NX-n 은 운영 기록에서
+  intake     요구사항 접수 — 글 · 첨부를 Intent 폴더(bug 는 이슈 폴더)로 받는다(신뢰하지 않는 입력으로 표시). --from jira:<키>|notion:<페이지> 는 외부 출처, --from ops:<운영 기록>#INC-n|NX-n 은 운영 기록에서
   deploy     배포 기록 plan · check · record · run · result(승인은 approve deploy:<기록> --gate deploy). 킷은 운영 배포 명령을 부를 뿐이다
   ops        운영 기록 new · check(읽기는 status --ops)
   metrics    전달 지표 5개(git · 승인 기록 · 배포 기록에서만 계산) · --baseline 기준선 · --verify-baseline
@@ -102,7 +102,7 @@ const USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 �
 init · plan: --stack --arch --domain --lang --agents <목록|all> --modules <목록|all|none>
              --name --slug --package-ns --protected-path --token KEY=VALUE --issue-source kit|jira
              --issue-prefix --base --adopt --force --no-register(등록부에 더하지 않는다) --install-tools --allow-unverified(외부 도구 모듈 aidlc · entire 는 이름을 줄 때만 켠다)
-add · remove: <이름>…(하네스 claude codex cursor kiro · 모듈 jira-workflow multi-harness aidlc entire)
+add · remove: <이름>…(하네스 claude codex cursor kiro · 모듈 jira-workflow multi-harness aidlc entire notion)
              add: --install-tools(도구가 없을 때 사람 터미널에서만 설치) --allow-unverified(검증 범위 밖 도구 버전을 허용)
 dashboard: --port --open --read-only --export <폴더> --all --root <dir> --workspace <file> · 관리 페이지 명령은 harness-kit <명령> --help
 update: --accept-all --prune --forget <경로>(반복) --to <CLI 버전> --packs(메타 packs 의 팩만 받아 깐다) --tools(켠 외부 도구의 지금 · 최신 버전을 보이고 사람이 고른 것만 올린다 · --allow-unverified) · outdated: --check --source <git 원격>
@@ -137,13 +137,13 @@ const COMMAND_HELP: Record<string, string> = {
   skills: "harness-kit skills [--stage <단계>] [--harness <h>] [--conflicts] [--errors] [--all] [--no-user] [--refresh] [--json] — 읽기만 한다. 단계는 설계 · 구현 · 검증 · 반영 · 운영(영어도 된다)\n",
   usage: "harness-kit usage [--days n] [--harness h] [--sources] | usage --now | usage --kit [--json] — 대화 기록 읽기가 꺼져 있으면(기본) 킷이 덧붙인 양(--kit)만 보인다\n",
   pack: "harness-kit pack new <이름> --dir <경로> [--from <파일|폴더>[#훅·검사 id]]… [--kit-range \">=2.0.0 <3.0.0\"] [--json] — --dir 은 빈 폴더나 없는 경로\n",
-  sync: "harness-kit sync aidlc [--intent <AI-DLC Intent 폴더>] [--key <Intent 키>] [--check] [--json] — AI-DLC 산출물을 intent.json · units.json 으로 옮긴다. 같은 입력이면 쓰지 않는다. --check 는 쓰지 않고 차이가 있으면 exit 1. sync units · jira 는 HK-20b\n",
+  sync: "harness-kit sync aidlc [--intent <AI-DLC Intent 폴더>] [--key <Intent 키>] [--check] [--json] — AI-DLC 산출물을 intent.json · units.json 으로 옮긴다. 같은 입력이면 쓰지 않는다. --check 는 쓰지 않고 차이가 있으면 exit 1. sync jira [--approvals | --verify] [--issue <키> --to <상태>] [--dry-run] — Jira 와 맞춘다(jira-workflow 모듈, 에이전트 몫 전이만 · 승인 전이는 하지 않는다. --approvals 는 사람이 한 승인 전이를 approvals.md 로 가져온다. 모듈이 꺼져 있으면 exit 0). sync units [--check] [--unit <id>] [--adopt] — 배포 단위(tools/harness/units.json)에 공통 하네스를 복사한다. --check 줄 형식은 tools/harness/sync.py 와 같다\n",
+  intake: "harness-kit intake --from ops:<운영 기록>#INC-<n>|NX-<n> [--kind bug] [--name <영문-kebab>] — 운영 기록의 장애 · 다음 Intent 후보에서 접수한다\n  harness-kit intake --from jira:<키>|notion:<페이지 URL|id> --name <영문-kebab> [--kind …] [--key <Intent 키>] [--depth n] [--yes] — 외부 출처를 같은 형식 · 제한 · 비밀값 검사로 가져온다. 이미 가져온 출처면 diff 만 보이고(exit 4) --yes 로 반영한다. 토큰은 환경 변수(JIRA_API_TOKEN · JIRA_USER_EMAIL · NOTION_TOKEN)만 읽는다\n  harness-kit intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--area <영역>] [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]… [--json] — 비밀값이 든 글은 접수하지 않는다(exit 1)\n",
   checkpoints: "harness-kit checkpoints [--issue <키>] [--json] | checkpoints <체크포인트 id> [--json] — Entire 체크포인트 목록(이슈 브랜치 커밋의 Entire-Checkpoint 트레일러) · 설명(entire checkpoint explain, 10초 제한)\n",
   deploy: "harness-kit deploy plan <키…> [--env production] [--tag v2.3.0] | check <기록> [--require-approved] [--waive <사유>] | record <기록> --from-ci <URL|파일|폴더> | run --env <이름> [--record <기록>] [--rollback-test] [--to-sha <sha>] | result <기록> --from <파일> [--json]\n",
   ops: "harness-kit ops new --topic <영문-kebab 2~5단어> [--from YYYY-MM-DD] [--to YYYY-MM-DD] | ops check [--json] — 읽기는 harness-kit status --ops [--json]\n",
   metrics: "harness-kit metrics [--baseline [--force] [--adopted-at <날짜|커밋>]] [--verify-baseline] [--from YYYY-MM-DD --to YYYY-MM-DD] [--fill <운영 기록>] [--json] — 기준선 재계산 값이 다르면 exit 1\n",
   rules: "harness-kit rules candidates [--since 30d] | list | promote RC-<n> | reject RC-<n> --reason \"…\" [--json] — promote · reject 는 사람 터미널에서만(exit 3)\n",
-  intake: "harness-kit intake --from ops:<운영 기록>#INC-<n>|NX-<n> [--kind bug] [--name <영문-kebab>] | intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--area <영역>] [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]… [--json] — 비밀값이 든 글은 접수하지 않는다(exit 1)\n",
   local: "harness-kit local sync [--dry-run] | local list [--json] — 개인 스킬 · Kiro 규칙 · 개인 훅(.claude/settings.local.json · .kiro/hooks/local-*). 공유 원본과 이름이 같으면 배치하지 않는다\n",
 };
 

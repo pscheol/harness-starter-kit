@@ -128,7 +128,7 @@ class IntakeFromOpsTest(OpsCase):
         self.assertFalse(data["existing"])
         folder = self.root / data["folder"]
         self.assertTrue((folder / "requirements.md").is_file())
-        self.assertIn("type: ops", (folder / "intake.md").read_text(encoding="utf-8"))
+        self.assertIn('"type": "ops"', (folder / "intake.md").read_text(encoding="utf-8"))
         self.assertIn("source:", (folder / "requirements.md").read_text(encoding="utf-8"))
         stat = self.git("diff", "--numstat", "--", f".agents/docs/ops/records/{NAME}.md").stdout.split()
         self.assertEqual(["1", "1"], stat[:2], "운영 기록 diff 는 한 줄이다")
@@ -142,7 +142,7 @@ class IntakeFromOpsTest(OpsCase):
         data = json.loads(r.stdout)
         folder = self.root / data["folder"]
         text = (folder / "intake.md").read_text(encoding="utf-8")
-        self.assertIn("source: { type: ops", text)
+        self.assertIn('source: {"type": "ops"', text)
         self.assertIn("HDRV3D-12 NFR-1", text)
         self.assertRegex(self.path.read_text(encoding="utf-8"), r"\| NX-1 \| 결제 API p95 개선 \| HDRV3D-12 NFR-1 \| change \| INT-\d+ \|")
         count = len(list((self.root / ".agents/docs/intents").glob("INT-*")))

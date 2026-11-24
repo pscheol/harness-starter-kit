@@ -111,13 +111,13 @@ describe("add — 하네스 · 모듈", () => {
     expect(readJsonFile(path.join(target, META_FILE)).agents).toEqual(["claude"]);
   });
 
-  it("notion 모듈은 exit 2 와 제공 단계 HK-20b(aidlc · entire 는 HK-20a 에서 들어왔다 — modules-engine.test.ts)", async () => {
+  it("notion 은 externalModules 이름이라 알아보되 그 템플릿 폴더가 없으면 exit 5 다(켜는 시험은 modules-hk20b.test.ts)", async () => {
     const { cli, templates } = await installedFixture();
     const r = await cli("add", ["notion", "--templates", templates]);
-    expect(r.code).toBe(2);
-    expect(r.stderr).toContain("HK-20b");
+    expect(r.code).toBe(5);
+    expect(r.stderr).toContain("모듈 템플릿이 없다");
     const j = await cli("add", ["notion", "--json", "--templates", templates]);
-    expect(json(j).error.message).toContain("HK-20b");
+    expect(json(j).error.message).toContain("모듈 템플릿이 없다");
   });
 
   it("모르는 이름 · all · 빈 목록은 exit 2, 아무것도 쓰지 않는다", async () => {

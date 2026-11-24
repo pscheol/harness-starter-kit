@@ -7,6 +7,7 @@ import path from "node:path";
 import type { CommandResult, Ctx } from "../cli/context";
 import { targetOf } from "../cli/context";
 import { usageError } from "../core/errors";
+import { runIntakeFrom } from "../modules/intake/from";
 import { run } from "./api-call";
 
 const str = (ctx: Ctx, k: string): string | undefined => (typeof ctx.values[k] === "string" ? (ctx.values[k] as string) : undefined);
@@ -33,11 +34,15 @@ async function runIntakeFromOps(ctx: Ctx, from: string): Promise<CommandResult> 
 
 export async function runIntake(ctx: Ctx): Promise<CommandResult> {
   const from = str(ctx, "from");
-  if (from !== undefined) return runIntakeFromOps(ctx, from);
+  if (from !== undefined) {
+    if (from.startsWith("ops:")) return runIntakeFromOps(ctx, from);
+    if (str(ctx, "text") !== undefined || str(ctx, "text-file") !== undefined || list(ctx, "attach").length) throw usageError("--from 은 --text · --text-file · --attach 와 같이 쓰지 않는다(출처의 글 · 첨부를 가져온다)");
+    return runIntakeFrom(ctx, from);
+  }
   const title = str(ctx, "title");
   const kind = str(ctx, "kind");
   const name = str(ctx, "name");
-  if (!title || !kind || !name) throw usageError("harness-kit intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]…");
+  if (!title || !kind || !name) throw usageError("harness-kit intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--key 키] [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]… | --from jira:<키>|notion:<페이지> --name <영문-kebab> [--depth n] [--yes]");
   const textArg = str(ctx, "text");
   const textFile = str(ctx, "text-file");
   if (textArg !== undefined && textFile !== undefined) throw usageError("--text 와 --text-file 은 하나만 쓴다");
@@ -52,7 +57,8 @@ export async function runIntake(ctx: Ctx): Promise<CommandResult> {
   const missing = paths.find((a) => !fs.statSync(a, { throwIfNoEntry: false })?.isFile());
   if (missing) throw usageError(`첨부가 없다: ${path.relative(cwd, missing) || missing}`);
   const area = str(ctx, "area");
-  const body = { title, kind, name, text, links: list(ctx, "link"), paths, ...(area ? { area } : {}) };
+  const key = str(ctx, "key");
+  const body = { title, kind, name, text, links: list(ctx, "link"), paths, ...(area ? { area } : {}), ...(key ? { key } : {}) };
   return run(ctx, "POST", "/intake", { body }, (d) => {
     const warnings = Array.isArray(d.warnings) ? (d.warnings as string[]) : [];
     return [`✔ 접수: ${String(d.folder)}`, ...warnings.map((w) => `⚠ ${w}`), `다음: ${String(d.next)} (세션 요청은 사람이 고를 때만)`];

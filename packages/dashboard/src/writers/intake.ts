@@ -26,6 +26,8 @@ export interface IntakeBody {
   kind: string;
   name: string;
   area: string | null;
+  /** Intent 키(jira-workflow 모듈이면 Jira 에픽 키). 없으면 INT-<n> */
+  key: string | null;
   text: string;
   links: string[];
   files: Upload[];
@@ -40,12 +42,13 @@ function strings(v: unknown, field: string): string[] {
 
 export function intakeBody(body: unknown, via: Via): IntakeBody {
   if (!isObj(body)) throw bad("본문은 JSON 객체입니다");
-  const { title, kind, name, area, text } = body;
+  const { title, kind, name, area, text, key } = body;
   if (typeof title !== "string" || !title.trim() || title.length > 200) throw bad("title 은 1~200자 문자열입니다");
   if (typeof kind !== "string" || !KINDS.has(kind)) throw bad(`kind 는 ${[...KINDS].join(" · ")}`);
   if (typeof name !== "string" || !NAME.test(name) || name.length > 60) throw bad("name 은 영문 소문자 · 숫자 kebab-case(60자 이하)다");
   if (area !== undefined && area !== null && (typeof area !== "string" || !NAME.test(area))) throw bad("area 는 kebab-case 다");
   if (text !== undefined && typeof text !== "string") throw bad("text 는 문자열입니다");
+  if (key !== undefined && key !== null && (typeof key !== "string" || !/^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5}$/.test(key))) throw bad("key 는 이슈 키 형식입니다(예: HDRV3D-40)");
   const links = strings(body.links, "links");
   if (links.some((l) => !/^https?:\/\/\S+$/.test(l))) throw bad("링크는 http(s):// 로 시작합니다");
   const paths = strings(body.paths, "paths");
@@ -59,7 +62,7 @@ export function intakeBody(body: unknown, via: Via): IntakeBody {
     }
     return { name: f.name, data: Buffer.from(f.base64, "base64") };
   });
-  return { title, kind, name, area: typeof area === "string" ? area : null, text: typeof text === "string" ? text : "", links, files, paths };
+  return { title, kind, name, area: typeof area === "string" ? area : null, key: typeof key === "string" ? key : null, text: typeof text === "string" ? text : "", links, files, paths };
 }
 
 /** intake.py 의 SystemExit 문구 → 422. JSON 이 아니면 그대로 잘라 낸다. */
@@ -111,6 +114,7 @@ export async function postIntake(p: Project, body: unknown, via: Via): Promise<R
     const files = [...b.paths.map((x) => path.resolve(p.root, x)), ...attach];
     const args = ["scripts/harness/intake.py", "new", "--json", "--title", b.title, "--kind", b.kind, "--name", b.name, "--text-file", textFile];
     if (b.area) args.push("--area", b.area);
+    if (b.key) args.push("--key", b.key);
     for (const f of files) args.push("--attach", f);
     for (const l of b.links) args.push("--link", l);
     const r = await python(p.root, p.env, args, 300_000);

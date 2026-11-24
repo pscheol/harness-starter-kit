@@ -5,6 +5,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { boardStatusOf, type BoardStatus } from "../board-status";
 import { approvalSha, approvalState, needOf, parse as parseApprovals, type ApprovalState, type Entry } from "../approvals";
 import { fileStamp, treeStamp } from "../cache";
 import { parseLoose } from "../frontmatter";
@@ -76,6 +77,8 @@ export interface IssueModel {
   boardState: string | null;
   docs: { requirements: DocInfo | null; design: DocInfo | null; tasks: DocInfo | null };
   stage: string;
+  /** 보드 여덟 상태(설계 10 §3.4, MD-R15). 킷 단계에서 계산하므로 Jira 가 없어도 같다 */
+  boardStatus: BoardStatus;
   gates: GateResult[];
   waitingOn: { gate: string; approvers: string[]; mine: boolean } | null;
   review: { open: Record<string, number>; report: string | null; stale: boolean } | null;
@@ -343,6 +346,7 @@ function build(ctx: Context, key: string, f: FolderDocs, extra: Partial<IssueMod
     boardState: board?.state ?? null,
     docs,
     stage,
+    boardStatus: boardStatusOf(docs),
     gates,
     waitingOn: waitingOf(p, stage, gates, docs, ctx.email),
     review: review ? { open: review.open, report: review.report ? rel(p.root, path.resolve(root ?? p.root, review.report)) : null, stale: review.stale } : null,
@@ -487,7 +491,7 @@ function legacyModel(ctx: Context, b: BoardItem, checkout: IssueModel["checkout"
     key: b.key, name: b.name, dir: b.folder, area: b.area, type: b.type, title: null, intent: null, unit: null, branch: base, checkout,
     source: "base", legacy: true, boardState: b.state,
     docs: { requirements: d(b.requirements), design: d(b.design), tasks: b.tasks ? { status: null, state: b.tasks, sha256: "", approvalSha256: "", clarify: 0, approval: "none", bolts: { total: 0, done: 0 } } : null },
-    stage, gates: [], waitingOn: null, review: null, verify: null, roles: rolesOf(ctx.p), sessions: [], root,
+    stage, boardStatus: boardStatusOf({ requirements: d(b.requirements), design: d(b.design), tasks: b.tasks ? { status: null, state: b.tasks } : null }), gates: [], waitingOn: null, review: null, verify: null, roles: rolesOf(ctx.p), sessions: [], root,
   };
 }
 

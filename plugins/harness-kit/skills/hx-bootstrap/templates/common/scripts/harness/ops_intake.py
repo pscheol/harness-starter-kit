@@ -66,7 +66,7 @@ def from_incident(root, record, path, incident, kind, name, user, now):
                       f"- 원인 배포: {cause}", f"- 조치: {fields.get('조치', '')}", f"- 런북: {fields.get('런북', '')}", "", f"출처: {ref}"])
     title = f"장애 {incident['id']} — {fields.get('영향', '').strip()[:80] or record['fm'].get('topic')}"
     result = intake_mod.take(root, title, "bug", name or slug(str(record["fm"].get("topic") or path.stem), incident["id"]), body, [], [], user, now, "bug",
-                             {"type": "ops", "ref": ref, "version": hashlib.sha256(path.read_bytes()).hexdigest()[:12]})
+                             source={"type": "ops", "ref": ref, "version": hashlib.sha256(path.read_bytes()).hexdigest()[:12]})
     folder = Path(root) / result["folder"]
     key = intents.FOLDER.match(folder.name)[1]
     requirements = folder / "requirements.md"
@@ -107,7 +107,7 @@ def from_candidate(root, record, path, candidate, kind, name, user, now):
         raise OpsIntakeError("다음 요구사항 후보(NX-n)는 Intent 로 접수한다(feature · change · refactor · product)")
     ref = f"ops/records/{path.name}#{candidate['id']}"
     source = {"type": "ops", "ref": ref, "version": hashlib.sha256(path.read_bytes()).hexdigest()[:12]}
-    result = intake_mod.take(root, candidate["title"], kind, name or slug(str(record["fm"].get("topic") or path.stem), candidate["id"]), evidence_text(record, candidate), [], [], user, now, "bug", source)
+    result = intake_mod.take(root, candidate["title"], kind, name or slug(str(record["fm"].get("topic") or path.stem), candidate["id"]), evidence_text(record, candidate), [], [], user, now, "bug", source=source)
     key = intents.FOLDER.match(Path(result["folder"]).name)[1]
     cells = candidate["raw"].strip().strip("|").split("|")
     cells[4] = f" {key} "

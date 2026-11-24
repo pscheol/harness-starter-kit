@@ -165,7 +165,7 @@ describe("ops · metrics · rules · intake --from · status --ops", () => {
     commitAll(repo.root);
     const first = await cli(["intake", "--from", "ops:ops/records/2026-12-08-payment-v2-week1.md#NX-1", "--json"], repo);
     expect(first.code, first.stdout + first.stderr).toBe(0);
-    expect(readFile(repo.root, `${first.json.folder}/intake.md`)).toContain("type: ops");
+    expect(readFile(repo.root, `${first.json.folder}/intake.md`)).toContain('"type": "ops"');
     const again = await cli(["intake", "--from", "ops:ops/records/2026-12-08-payment-v2-week1.md#NX-1", "--json"], repo);
     expect([again.code, again.json.existing]).toEqual([0, true]);
     const bad = await cli(["intake", "--from", "ops:nothing#NX-1"], repo);
