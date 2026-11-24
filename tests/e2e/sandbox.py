@@ -110,6 +110,11 @@ class Sandbox:
                 dest = self.toolbin / name
                 shutil.copy2(STUBS / name, dest)
                 dest.chmod(0o755)
+        # 정적 분석기는 두 모드 모두 가짜다(이 e2e 의 대상이 아니다). 빈 SARIF 로 affected 검증 · mr 앞 조건을 채운다.
+        for name in ("gitleaks", "semgrep"):
+            dest = self.toolbin / name
+            shutil.copy2(STUBS / name, dest)
+            dest.chmod(0o755)
         for name, target in links.items():
             if target:
                 (self.toolbin / name).symlink_to(target)
@@ -160,9 +165,28 @@ class Sandbox:
         self.git("init", "-q", "-b", "develop")
         self.git("remote", "add", "origin", str(self.origin))
         make_sample_repo.make(self.repo)
-        self.write(".gitignore", "__pycache__/\n*.pyc\n")
+        self.write(".gitignore", "__pycache__/\n*.pyc\n.venv/\n")
+        self.make_venv()
         self.commit("chore: sample repo")
         self.git("push", "-q", "origin", "develop")
+
+    def make_venv(self) -> None:
+        """검증용 .venv(설치 없음). affected 검증은 이미 있는 .venv 만 쓴다(verify_modules.python_runtime).
+        표본 시험은 unittest 꼴이라, pip 없이 `python -m pytest` 를 unittest 로 돌리는 대용 모듈 하나만 둔다(네트워크 없이 진짜 시험을 돌린다)."""
+        venv = self.repo / ".venv"
+        self.run("python3", "-m", "venv", "--without-pip", str(venv))
+        site = next((venv / "lib").glob("python3*/site-packages"))
+        shim = site / "pytest"
+        shim.mkdir()
+        (shim / "__init__.py").write_text('"""e2e 대용 pytest — unittest 로 돌린다."""\n', encoding="utf-8")
+        (shim / "__main__.py").write_text(
+            "import sys\nimport unittest\nfrom pathlib import Path\n\n"
+            "paths = [a for a in sys.argv[1:] if Path(a).is_dir()] or ['tests']\n"
+            "suite = unittest.TestSuite(unittest.defaultTestLoader.discover(p, top_level_dir=p) for p in paths)\n"
+            "result = unittest.TextTestRunner(verbosity=0).run(suite)\n"
+            "sys.exit(0 if result.wasSuccessful() and result.testsRun else 1)\n",
+            encoding="utf-8",
+        )
 
     def list_files(self) -> list[dict]:
         r = self.hk("list", "--files", "--json")

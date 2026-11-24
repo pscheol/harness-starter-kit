@@ -94,4 +94,12 @@ describe("생성 구간(보드)만 다른 킷 파일", () => {
     expect(again.code).toBe(4);
     expect(exists(target, ".agents/docs/specs-index.md.new")).toBe(true);
   });
+
+  it("uninstall 도 보드 구간만 바뀐 파일은 킷 파일로 지운다(exit 0)", async () => {
+    const { target, templates, cli } = await installedFixture({ files });
+    fs.writeFileSync(path.join(target, ".agents/docs/specs-index.md"), INDEX.replace("(비어 있음)", "| DEMO-1 | 요구 |"));
+    const r = await cli("uninstall", ["--yes", "--json", "--templates", templates]);
+    expect(r.code, r.stdout + r.stderr).toBe(0);
+    expect(exists(target, ".agents/docs/specs-index.md")).toBe(false);
+  });
 });

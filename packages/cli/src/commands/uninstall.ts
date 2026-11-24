@@ -26,6 +26,7 @@ import { loadSources } from "../projection/sources";
 import { loadSpecOrNull, parseSpec, type ProjectionSpec } from "../projection/spec";
 import { FsView } from "../projection/view";
 import { renameLegacyState } from "../core/legacy-names";
+import { sameOutsideGenerated } from "../core/generated";
 
 type Action = "delete" | "keep-modified" | "absent" | "keep-user" | "keep-external" | "keep-pack" | "unmerge";
 const ACTIONS: Action[] = ["delete", "keep-modified", "absent", "keep-user", "keep-external", "keep-pack", "unmerge"];
@@ -54,6 +55,8 @@ interface Planner {
   /** 배치 상수(merge 빼기에 쓴다). 없으면 merge 파일을 남긴다 */
   spec: ProjectionSpec | null;
   tokens: Record<string, string>;
+  /** 킷 판 글(생성 구간 비교용, 처음 부를 때 템플릿에서 만든다). 템플릿을 못 찾으면 null */
+  kitText: (rel: string) => string | null;
 }
 
 /** merge 항목: 킷 키만 뺀다. 킷이 만든 파일이 비면 지운다. 키가 없는 v1 항목은 지금 원하는 킷 키 전부로 뺀다. */
@@ -117,6 +120,18 @@ function keepAction(e: LockEntry, keepPacks: boolean): Action | null {
   return null;
 }
 
+/** 생성 구간(SDD 보드)만 킷 판과 다른가(HK-22b) — 이슈를 만들면 board.sh 가 그 구간을 다시 쓴다. */
+function generatedOnly(p: Planner, rel: string): boolean {
+  if (!rel.endsWith(".md")) return false;
+  const kit = p.kitText(rel);
+  if (kit === null) return false;
+  try {
+    return sameOutsideGenerated(fs.readFileSync(path.join(p.target, ...rel.split("/")), "utf8"), kit);
+  } catch {
+    return false;
+  }
+}
+
 /** lock 항목 하나(design §5.1 표의 위 세 줄 + .new). */
 function planEntry(p: Planner, e: LockEntry): void {
   const keep = keepAction(e, p.keepPacks);
@@ -131,6 +146,7 @@ function planEntry(p: Planner, e: LockEntry): void {
   const cur = current(p, e.path);
   if (cur.kind === "none") p.ops.push({ path: e.path, owner: e.owner, action: "absent" });
   else if (cur.kind === "file" && e.sha256 && cur.sha === e.sha256) p.ops.push({ path: e.path, owner: e.owner, action: "delete" });
+  else if (cur.kind === "file" && e.sha256 && generatedOnly(p, e.path)) p.ops.push({ path: e.path, owner: e.owner, action: "delete", reason: "생성 구간(보드)만 다르다" });
   else {
     const reason = cur.kind === "other" ? cur.what : e.sha256 ? "사람이 고친 파일이다" : p.ambiguous.has(e.path) ? AMBIGUOUS_REASON : "lock 에 기준 해시가 없다(고친 파일로 본다)";
     p.ops.push({ path: e.path, owner: e.owner, action: "keep-modified", reason });
@@ -175,7 +191,12 @@ function planNotice(p: Planner): void {
 
 function buildUninstall(ctx: Ctx, target: string, inst: Installed, keepPacks: boolean, keepState: boolean, ambiguous: Set<string>): UOp[] {
   const spec = inst.lock.entries.some((e) => e.op === "merge") ? uninstallSpec(ctx, target) : null;
-  const p: Planner = { target, ancestors: new AncestorCheck(target, fs.realpathSync(target)), keepPacks, ops: [], ambiguous, spec, tokens: inst.meta.tokens };
+  let texts: Map<string, Buffer> | null | undefined;
+  const kitText = (rel: string): string | null => {
+    if (texts === undefined) texts = kitContents(ctx, inst, target);
+    return texts?.get(rel)?.toString("utf8") ?? null;
+  };
+  const p: Planner = { target, ancestors: new AncestorCheck(target, fs.realpathSync(target)), keepPacks, ops: [], ambiguous, spec, tokens: inst.meta.tokens, kitText };
   for (const e of inst.lock.entries) planEntry(p, e);
   planManifest(p, inst);
   planNotice(p);
@@ -262,13 +283,19 @@ async function confirm(ctx: Ctx, ops: UOp[]): Promise<void> {
  * 그때는 sha(C) = B 인 항목을 모두 사람 파일로 보고 남긴다(지우는 쪽보다 안전하다).
  */
 function kitHashes(ctx: Ctx, inst: Installed, target: string): Map<string, string> | null {
+  const contents = kitContents(ctx, inst, target);
+  return contents ? new Map([...contents].map(([p, d]) => [p, sha256(d)])) : null;
+}
+
+/** 메타 선택값으로 만든 킷 판 글. 템플릿 · 스택을 못 찾으면 null. */
+function kitContents(ctx: Ctx, inst: Installed, target: string): Map<string, Buffer> | null {
   const { io } = ctx;
   try {
     const loc = locateTemplates({ flag: str(ctx.values, "templates"), env: io.env, cliFile: io.cliFile, cwd: io.cwd, version: VERSION });
     const layout = loadLayout(loc.dir);
     const { selection } = selectionFromMeta(layout, loc.dir, inst.meta);
     const tokens = tokensFromMeta(layout, selection, inst.meta, io.env, target);
-    return new Map([...wanted({ layout, templatesDir: loc.dir, selection, tokens }).want].map(([p, d]) => [p, d.sha256]));
+    return new Map([...wanted({ layout, templatesDir: loc.dir, selection, tokens }).want].map(([p, d]) => [p, d.content]));
   } catch (err) {
     if (err instanceof CliError) return null;
     throw err;

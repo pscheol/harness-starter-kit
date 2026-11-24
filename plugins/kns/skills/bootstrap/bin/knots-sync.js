@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// knots-sync 2.0.0-alpha.0 · src-sha256 4f10be505da97dc74620e40dc454b6a764548aa97a15db69d3df94d5d866d7fb · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// knots-sync 2.0.0-alpha.0 · src-sha256 0fec52ebd0c9c94f3783f8555d7a6e39a6c1820b266168b050ddd8cd7b17e185 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -3732,6 +3732,23 @@ function relayered(before, after, skip = /* @__PURE__ */ new Set()) {
 // src/core/update-plan.ts
 var import_node_fs14 = __toESM(require("node:fs"));
 var import_node_path14 = __toESM(require("node:path"));
+
+// src/core/generated.ts
+var BLOCK = /(<!-- ([A-Z]+):BEGIN[^\n]*-->)[\s\S]*?(<!-- \2:END -->)/g;
+function hasGenerated(text4) {
+  BLOCK.lastIndex = 0;
+  const found = BLOCK.test(text4);
+  BLOCK.lastIndex = 0;
+  return found;
+}
+function withoutGenerated(text4) {
+  return text4.replace(BLOCK, "$1$3");
+}
+function sameOutsideGenerated(current4, kit) {
+  return hasGenerated(current4) && withoutGenerated(current4) === withoutGenerated(kit);
+}
+
+// src/core/update-plan.ts
 var PROJECTION_OPS2 = /* @__PURE__ */ new Set(["mirror", "render", "merge"]);
 var UPDATE_ACTIONS = [
   "new",
@@ -3795,10 +3812,6 @@ function untracked(p, w, cur) {
 function sideState(ctx, rel2) {
   return existing(full4(ctx.target, rel2)).kind;
 }
-var GENERATED_BLOCK = /(<!-- ([A-Z]+):BEGIN[^\n]*-->)[\s\S]*?(<!-- \2:END -->)/g;
-function withoutGenerated(text4) {
-  return text4.replace(GENERATED_BLOCK, "$1$3");
-}
 function generatedOnly(ctx, p, w) {
   if (!p.endsWith(".md")) return false;
   let cur;
@@ -3807,9 +3820,7 @@ function generatedOnly(ctx, p, w) {
   } catch {
     return false;
   }
-  if (!GENERATED_BLOCK.test(cur)) return false;
-  GENERATED_BLOCK.lastIndex = 0;
-  return withoutGenerated(cur) === withoutGenerated(w.content.toString("utf8"));
+  return sameOutsideGenerated(cur, w.content.toString("utf8"));
 }
 function modifiedFile(ctx, p, e, w) {
   const keepB = { path: p, op: "copy", owner: "kit", sha256: e.sha256 ?? null, layer: w.layer };
@@ -4129,7 +4140,7 @@ var import_node_path19 = __toESM(require("node:path"));
 
 // src/core/tar.ts
 var import_node_zlib = __toESM(require("node:zlib"));
-var BLOCK = 512;
+var BLOCK2 = 512;
 function text(buf, start, len) {
   const slice = buf.subarray(start, start + len);
   const end = slice.indexOf(0);
@@ -4161,17 +4172,17 @@ function untgz(gz) {
   const out = [];
   let off2 = 0;
   let longName = null;
-  while (off2 + BLOCK <= buf.length) {
-    const header = buf.subarray(off2, off2 + BLOCK);
+  while (off2 + BLOCK2 <= buf.length) {
+    const header = buf.subarray(off2, off2 + BLOCK2);
     if (header.every((b) => b === 0)) break;
     const size = octal(header, 124, 12);
     const type = String.fromCharCode(header[156] || 48);
     const prefix = text(header, 345, 155);
     let name = longName ?? (prefix ? `${prefix}/${text(header, 0, 100)}` : text(header, 0, 100));
     longName = null;
-    const dataStart = off2 + BLOCK;
+    const dataStart = off2 + BLOCK2;
     const data = buf.subarray(dataStart, dataStart + size);
-    off2 = dataStart + Math.ceil(size / BLOCK) * BLOCK;
+    off2 = dataStart + Math.ceil(size / BLOCK2) * BLOCK2;
     if (type === "x") {
       longName = paxPath(data);
       continue;
@@ -16865,6 +16876,16 @@ function keepAction2(e, keepPacks) {
   if (owner === "pack" && keepPacks) return "keep-pack";
   return null;
 }
+function generatedOnly2(p, rel2) {
+  if (!rel2.endsWith(".md")) return false;
+  const kit = p.kitText(rel2);
+  if (kit === null) return false;
+  try {
+    return sameOutsideGenerated(import_node_fs73.default.readFileSync(import_node_path79.default.join(p.target, ...rel2.split("/")), "utf8"), kit);
+  } catch {
+    return false;
+  }
+}
 function planEntry(p, e) {
   const keep = keepAction2(e, p.keepPacks);
   if (keep) {
@@ -16878,6 +16899,7 @@ function planEntry(p, e) {
   const cur = current3(p, e.path);
   if (cur.kind === "none") p.ops.push({ path: e.path, owner: e.owner, action: "absent" });
   else if (cur.kind === "file" && e.sha256 && cur.sha === e.sha256) p.ops.push({ path: e.path, owner: e.owner, action: "delete" });
+  else if (cur.kind === "file" && e.sha256 && generatedOnly2(p, e.path)) p.ops.push({ path: e.path, owner: e.owner, action: "delete", reason: "생성 구간(보드)만 다르다" });
   else {
     const reason = cur.kind === "other" ? cur.what : e.sha256 ? "사람이 고친 파일이다" : p.ambiguous.has(e.path) ? AMBIGUOUS_REASON : "lock 에 기준 해시가 없다(고친 파일로 본다)";
     p.ops.push({ path: e.path, owner: e.owner, action: "keep-modified", reason });
@@ -16916,7 +16938,12 @@ function planNotice2(p) {
 }
 function buildUninstall(ctx, target, inst, keepPacks, keepState, ambiguous) {
   const spec = inst.lock.entries.some((e) => e.op === "merge") ? uninstallSpec(ctx, target) : null;
-  const p = { target, ancestors: new AncestorCheck(target, import_node_fs73.default.realpathSync(target)), keepPacks, ops: [], ambiguous, spec, tokens: inst.meta.tokens };
+  let texts;
+  const kitText = (rel2) => {
+    if (texts === void 0) texts = kitContents(ctx, inst, target);
+    return texts?.get(rel2)?.toString("utf8") ?? null;
+  };
+  const p = { target, ancestors: new AncestorCheck(target, import_node_fs73.default.realpathSync(target)), keepPacks, ops: [], ambiguous, spec, tokens: inst.meta.tokens, kitText };
   for (const e of inst.lock.entries) planEntry(p, e);
   planManifest(p, inst);
   planNotice2(p);
@@ -16992,13 +17019,17 @@ ${keep.map((o3) => `${opLine4(o3)}
   }
 }
 function kitHashes(ctx, inst, target) {
+  const contents = kitContents(ctx, inst, target);
+  return contents ? new Map([...contents].map(([p, d]) => [p, sha256(d)])) : null;
+}
+function kitContents(ctx, inst, target) {
   const { io: io2 } = ctx;
   try {
     const loc = locateTemplates({ flag: str(ctx.values, "templates"), env: io2.env, cliFile: io2.cliFile, cwd: io2.cwd, version: VERSION });
     const layout2 = loadLayout(loc.dir);
     const { selection } = selectionFromMeta(layout2, loc.dir, inst.meta);
     const tokens = tokensFromMeta(layout2, selection, inst.meta, io2.env, target);
-    return new Map([...wanted({ layout: layout2, templatesDir: loc.dir, selection, tokens }).want].map(([p, d]) => [p, d.sha256]));
+    return new Map([...wanted({ layout: layout2, templatesDir: loc.dir, selection, tokens }).want].map(([p, d]) => [p, d.content]));
   } catch (err) {
     if (err instanceof CliError) return null;
     throw err;

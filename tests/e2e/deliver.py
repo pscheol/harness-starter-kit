@@ -81,19 +81,22 @@ def implement(sb: Sandbox, config: str, report: Report, issue: dict, checkpoints
     area = scripted.UNIT_AREAS[issue["unit"]]
     sb.git("switch", "-q", "-c", f"feat/{name}")
     commits = []
+    # e2e-stub 만: 실제 Entire 가 구현 하네스 훅으로 남기는 결과 모양(커밋 트레일러 Entire-Checkpoint + refs/entire/checkpoints/)을 흉내 낸다.
+    stub_checkpoints = checkpoints and sb.mode == "stub"
+    ids = {bolt: f"{bolt:02d}" + "ab" * 5 for bolt in (1, 2)}
     for bolt in (1, 2):
         src = f"src/{area}/__init__.py"
         sb.write(src, sb.read(src) + f"\n\ndef bolt_{bolt}_{key.lower().replace('-', '_')}():\n    return {bolt}\n")
-        sb.commit(f"feat: {key} Bolt {bolt}", env={"KNS_E2E_ROLE": IMPLEMENT_ROLE})
+        trailer = f"\n\nEntire-Checkpoint: {ids[bolt]}" if stub_checkpoints else ""
+        sb.commit(f"feat: {key} Bolt {bolt}{trailer}", env={"KNS_E2E_ROLE": IMPLEMENT_ROLE})
         commits.append(sb.git("rev-parse", "HEAD"))
     if not checkpoints:
         return
     if sb.mode != "stub":
         report.add(config, f"E4.checkpoints{tag}", "skip", "실제 Entire 체크포인트는 구현 하네스(Claude Code) 세션 훅이 만든다 — 대본 에이전트로는 만들 수 없다")
         return
-    # e2e-stub 만: 실제 Entire 가 낼 결과 모양(구현 커밋마다 ref)을 가짜 entire 가 만든다. 리뷰 세션 커밋에는 만들지 않는다.
-    for n, sha in enumerate(commits, 1):
-        sb.run("entire", "checkpoint-make", sha, f"{n:02d}" + "ab" * 5)
+    for bolt, sha in zip((1, 2), commits):
+        sb.run("entire", "checkpoint-make", sha, ids[bolt])
     sb.write("review-note.md", "리뷰 세션이 남긴 메모\n")
     review_sha = sb.commit(f"docs: {key} 리뷰 메모", env={"KNS_E2E_ROLE": REVIEW_ROLE})
     status, data = sb.call("GET", f"/api/v1/checkpoints?issue={key}")
