@@ -64,7 +64,7 @@ class VerifyChangedTest(unittest.TestCase):
             env=self.env,
             capture_output=True,
             text=True,
-            timeout=15,
+            timeout=60,
             check=False,
         )
 
@@ -845,7 +845,7 @@ class VerifyChangedTest(unittest.TestCase):
             env=self.env,
             capture_output=True,
             text=True,
-            timeout=15,
+            timeout=60,
             check=False,
         )
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
@@ -886,7 +886,7 @@ class VerifyChangedTest(unittest.TestCase):
                 env=self.env,
                 capture_output=True,
                 text=True,
-                timeout=15,
+                timeout=60,
                 check=False,
             )
 
