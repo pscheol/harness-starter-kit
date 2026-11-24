@@ -16,6 +16,7 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from harness import approvals  # noqa: E402
+from harness.intent import parse_questions  # noqa: E402
 from harness.sdd_frontmatter import parse as parse_frontmatter  # noqa: E402
 
 HARNESS_ROOT = Path(__file__).resolve().parents[2]
@@ -32,6 +33,10 @@ APPROVED = re.compile(r"(?m)^[+\s]*status:\s*approved\b")
 SHELL_COMPLETED = re.compile(r"state:\s*completed\b")
 SHELL_APPROVED = re.compile(r"status:\s*approved\b")
 ISSUE_DOC = re.compile(r"(?:^|/)\.agents/docs/issues/[^/]+/(requirements|design|tasks)\.md$")
+QUESTIONS_DOC = re.compile(r"(?:^|/)\.agents/docs/(?:intents|issues)/[^/]+/questions\.md$")
+ANSWER_LINE = re.compile(r"(?m)^[+\s]*- 답:[ \t]*\S")
+FULL_KEYS = ("content", "contents", "file_text", "text")
+ANSWER_HOW = "→ 답은 사람이 관리 페이지 질문 화면 · harness-kit answer 로 쓴다(08 §3.3). 에이전트는 질문 · 선택지 · 빈 '- 답:' 줄만 쓴다."
 APPROVE_COMMAND = re.compile(r"\bapprove\.py\b|\bharness-kit(?:\.js)?\s+(?:approve|answer(?![^|;&\n]*--list)|review\s+decide)\b")
 #: 관리 페이지의 승인 · 질문 답 · 리뷰 판단 API(06 §3.15). 토큰 · PIN 이 없어도 부르는 명령 자체를 막는다
 PIN_API = re.compile(r"api/v1/(?:p/[0-9a-f]{12}/)?(?:approvals\b|questions/[^/\s]+/[^/\s]+/answer\b|reviews/[^/\s]+/[^/\s]+/decision\b)")
@@ -125,6 +130,51 @@ def check_status(path):
     raise Blocked(f"차단: {Path(path).name} 머리 status 를 approved 로 바꾸는 것은 승인 명령만 한다.\n{HOW}")
 
 
+def answers_of(text):
+    try:
+        return {q["id"]: (q["answer"] or None) for q in parse_questions(text)["questions"]}
+    except (KeyError, TypeError, ValueError):
+        return {}
+
+
+def after_edit(path, tool_input):
+    """편집 뒤 파일 전체. 전체 내용 칸이면 그것, old/new 편집이면 지금 파일에 적용한 결과. 모르면 None."""
+    for key in FULL_KEYS:
+        if isinstance(tool_input.get(key), str):
+            return tool_input[key]
+    try:
+        text = Path(path).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        text = ""
+    edits = [tool_input] if any(k in tool_input for k in OLD_KEYS) else [e for e in tool_input.get("edits") or [] if isinstance(e, dict)]
+    if not edits:
+        return None
+    for edit in edits:
+        old = next((edit[k] for k in OLD_KEYS if isinstance(edit.get(k), str)), None)
+        new = next((edit[k] for k in NEW_KEYS if isinstance(edit.get(k), str)), None)
+        if old is None or new is None or (old and old not in text):
+            return None
+        text = text.replace(old, new) if edit.get("replace_all") else text.replace(old, new, 1)
+    return text
+
+
+def check_answers(path, tool_input, content):
+    """questions.md 의 답 줄: 새 답이 생기거나 있던 답이 바뀌면 막는다. 빈 답 줄을 둔 새 질문은 된다."""
+    after = after_edit(path, tool_input)
+    if after is None:
+        if ANSWER_LINE.search(content):
+            raise Blocked(f"차단: {Path(path).name} 의 '- 답:' 줄에 값을 쓰는 편집이다.\n{ANSWER_HOW}")
+        return
+    try:
+        before = answers_of(Path(path).read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError):
+        before = {}
+    now = answers_of(after)
+    changed = sorted(q for q in set(before) | set(now) if before.get(q) != now.get(q) and (before.get(q) or now.get(q)))
+    if changed:
+        raise Blocked(f"차단: {Path(path).name} 의 답({', '.join(changed)})은 사람만 쓴다.\n{ANSWER_HOW}")
+
+
 def protected_block(path):
     raise Blocked(f"차단: {path} 는 사람만 쓴다(승인 기록 · 기준선 · 관리 페이지 토큰, VQ-R12).\n{HOW}")
 
@@ -143,6 +193,9 @@ def check_write(tool_input, cwd):
         path = resolve(raw, cwd)
         if is_protected(raw):
             protected_block(raw)
+        if QUESTIONS_DOC.search(str(path).replace("\\", "/")):
+            check_answers(path, tool_input, content)
+            continue
         match = ISSUE_DOC.search(str(path).replace("\\", "/"))
         if not match:
             continue
@@ -209,6 +262,8 @@ def check_shell(command, cwd):
     for segment in segments(command):
         if NAMES.search(segment) and segment_writes(segment, NAMES.pattern):
             protected_block(NAMES.search(segment).group(0))
+        if "questions.md" in segment and "답:" in command and segment_writes(segment, r"questions\.md"):
+            raise Blocked(f"차단: 셸로 questions.md 의 답 줄을 쓰지 않는다.\n{ANSWER_HOW}")
         if "tasks.md" in segment and SHELL_COMPLETED.search(command) and segment_writes(segment, r"tasks\.md"):
             paths = doc_paths(segment, "tasks.md", cwd)
             if not paths:

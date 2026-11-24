@@ -38,7 +38,7 @@ class SessionStartBudgetTest(SessionRegisterCase):
         cwd = cwd or self.tree
         payload = {"session_id": sid, "hook_event_name": "SessionStart", "cwd": str(cwd)}
         return subprocess.run(["bash", str(cwd / "scripts/hooks/session-start.sh")], cwd=cwd, input=json.dumps(payload),
-                              env=clean_env(HX_HARNESS="claude", **env), capture_output=True, text=True, timeout=60)
+                              env=clean_env(**{"HX_HARNESS": "claude", **env}), capture_output=True, text=True, timeout=60)
 
     def fixed_text(self):
         source = (self.root / "scripts/hooks/session-start.sh").read_text(encoding="utf-8")
@@ -131,6 +131,20 @@ class SessionStartBudgetTest(SessionRegisterCase):
         tail = result.stdout[len(result.stdout.rsplit("full 통과가 아니다\n", 1)[0]) + len("full 통과가 아니다\n"):]
         self.assertEqual(1, len(tail.strip().splitlines()), tail)
         self.assertIn("파일 점유를 등록하지 않았다", tail)
+
+    def test_design_session_gets_a_role_line_and_a_harness_warning(self):
+        meta = self.tree / ".agents/harness-kit.json"
+        data = json.loads(meta.read_text(encoding="utf-8")) if meta.is_file() else {}
+        meta.write_text(json.dumps({**data, "roles": {"design": {"harness": "claude"}, "implement": {"harness": "codex"}}}), encoding="utf-8")
+        same = self.start(sid="s-design", HX_ROLE="design")
+        self.assertEqual(0, same.returncode, same.stderr)
+        self.assertIn("설계 세션: Intent 폴더", same.stdout)
+        self.assertNotIn("roles.design.harness", same.stdout)
+        other = self.start(sid="s-design-2", HX_ROLE="design", HX_HARNESS="codex")
+        self.assertIn("⚠ 이 세션 하네스 codex ≠ roles.design.harness claude", other.stdout)
+        self.assertLessEqual(len(other.stdout.encode("utf-8")), TOTAL)
+        plain = self.start(sid="s-impl")
+        self.assertNotIn("설계 세션", plain.stdout)
 
 
 if __name__ == "__main__":
