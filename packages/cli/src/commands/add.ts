@@ -9,7 +9,8 @@ import { skipByOwner, wanted, type Want } from "../core/update-plan";
 import { judgeInstall } from "../projection/engine";
 import { needsHuman, prepare } from "../projection/flow";
 import { loadSpecOrNull } from "../projection/spec";
-import { ancestorsOf, applyChange, changeOverlay, currentOf, dryRunOf, kitOf, isKitCopy, loadForChange, manifestChange, report, retiredNotes, retiredOnly, type ChangeOp, type ChangeResult, type Cur, type Loaded } from "./change";
+import { isExternalModule, runModuleAdd } from "../modules/engine";
+import { ancestorsOf, withAfterMeta, applyChange, changeOverlay, currentOf, dryRunOf, kitOf, isKitCopy, loadForChange, manifestChange, report, retiredNotes, retiredOnly, type ChangeOp, type ChangeResult, type Cur, type Loaded } from "./change";
 
 const kitEntry = (p: string, w: Want): LockEntry => ({ path: p, op: "copy", owner: "kit", sha256: w.sha256, layer: w.layer });
 const userEntry = (p: string, layer: string): LockEntry => ({ path: p, op: "copy", owner: "user", sha256: null, layer });
@@ -31,7 +32,7 @@ function judgeShare(p: string, w: Want, e: LockEntry | undefined, cur: Cur): { o
   return { op: { path: p, owner: e.owner, layer: w.layer, action: "keep" }, entry: { ...e, layer: w.layer } };
 }
 
-function planAdd(l: Loaded, names: Names): { after: ReturnType<typeof withNames>; result: ChangeResult } {
+export function planAdd(l: Loaded, names: Names): { after: ReturnType<typeof withNames>; result: ChangeResult } {
   const after = withNames(l.before, names);
   const afterLayers = winnerLayers(l.layout, l.loc.dir, after, l.tokens);
   const beforeLayers = winnerLayers(l.layout, l.loc.dir, l.before, l.tokens);
@@ -58,18 +59,26 @@ function planAdd(l: Loaded, names: Names): { after: ReturnType<typeof withNames>
   const spec = loadSpecOrNull(l.loc.dir);
   if (!spec) return { after, result: { ops, entries: [...locked.values()], manifest, projection: null } };
   // 설치 판정(design §6.2): 새 하네스 몫은 create, 이미 있는 배치는 keep(add-agent.sh = setup.sh 재실행과 같다).
-  const { writes, deletes } = changeOverlay(ops);
+  const { writes: copyWrites, deletes } = changeOverlay(ops);
+  const writes = withAfterMeta(l, after, copyWrites);
   const p = prepare({ target: l.target, spec, tokens: l.tokens, agents: after.agents, writes, deletes, copyPaths: want.keys() });
   const projection = judgeInstall({ target: l.target, spec, tokens: l.tokens, sources: p.sources, wants: p.wants, prev: l.inst.lock.entries, force: false });
   return { after, result: { ops, entries: [...locked.values()], manifest, projection, projectionFindings: p.findings } };
 }
 
-export function runAdd(ctx: Ctx): CommandResult {
+export async function runAdd(ctx: Ctx): Promise<CommandResult> {
   const kit = kitOf(ctx);
   const names = parseNames(kit.layout, ctx.positionals, "add");
   const only = retiredOnly(ctx, "add", names);
   if (only) return { ...only, data: { ...only.data, names: { ...names, already: [] } } };
   assertModuleDirs(kit.loc.dir, names.modules);
+  // 외부 도구 모듈은 모듈 엔진이 맡는다(설계 10 §3.1). 나머지 이름은 아래 기존 흐름이 한 번에 한다.
+  const external = names.modules.filter((m) => isExternalModule(kit.loc.dir, m));
+  if (external.length) return runModuleAdd(ctx, kit, { ...names, modules: names.modules.filter((m) => !external.includes(m)) }, external);
+  return runKitAdd(ctx, kit, names);
+}
+
+export function runKitAdd(ctx: Ctx, kit: ReturnType<typeof kitOf>, names: Names): CommandResult {
   const l = loadForChange(ctx, "add", kit);
   const already = [...names.harnesses.filter((h) => l.before.agents.includes(h)), ...names.modules.filter((m) => l.before.modules.includes(m))];
   const { after, result } = planAdd(l, names);

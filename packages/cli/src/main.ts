@@ -4,6 +4,7 @@ import type { CommandResult, Ctx, Io } from "./cli/context";
 import { runAdd } from "./commands/add";
 import { runDashboard } from "./commands/dashboard";
 import { runAnswer, runApprove, runReview } from "./commands/decide";
+import { runCheckpoints } from "./commands/checkpoints";
 import { runDoctor } from "./commands/doctor";
 import { runInit } from "./commands/init";
 import { runIntake } from "./commands/intake";
@@ -13,6 +14,7 @@ import { runOutdated } from "./commands/outdated";
 import { runRemove } from "./commands/remove";
 import { runRepair } from "./commands/repair";
 import { RESERVED } from "./commands/reserved";
+import { runSync } from "./commands/sync";
 import { runSkills, runUsage, runHistory } from "./commands/skills";
 import { runFlow, runQuality, runSessions, runStatus } from "./commands/status";
 import { runUninstall } from "./commands/uninstall";
@@ -55,6 +57,8 @@ const COMMANDS: Record<string, (ctx: Ctx) => CommandResult | Promise<CommandResu
   local: runLocal,
   intake: runIntake,
   mob: runMob,
+  sync: runSync,
+  checkpoints: runCheckpoints,
 };
 
 const USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 킷
@@ -81,15 +85,18 @@ const USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 �
   pack       pack new <이름> --dir <경로> --from <파일>… — 프로젝트 파일로 회사 팩 골격을 만든다
   local      local sync | list — 개인 층(.agents/local/)을 하네스 폴더에 배치한다(공유 lock 밖)
   mob        몹 정리 세션 start | next | close | status(진행자 터미널, 회차를 닫아도 세션에 요청하지 않는다)
+  sync       외부 도구 산출물 가져오기 — sync aidlc [--intent <AI-DLC 폴더>] [--check]
+  checkpoints  Entire 체크포인트 목록 · 설명(entire 모듈을 켠 리포)
   intake     요구사항 접수 — 글 · 첨부를 Intent 폴더(bug 는 이슈 폴더)로 받는다(신뢰하지 않는 입력으로 표시)
 
 공통 플래그: --cwd <폴더> --dry-run --yes --json --templates <폴더> --quiet --no-color --help
 init · plan: --stack --arch --domain --lang --agents <목록|all> --modules <목록|all|none>
              --name --slug --package-ns --protected-path --token KEY=VALUE --issue-source kit|jira
-             --issue-prefix --base --adopt --force --no-register(등록부에 더하지 않는다)
-add · remove: <이름>…(하네스 claude codex cursor kiro · 모듈 jira-workflow multi-harness)
+             --issue-prefix --base --adopt --force --no-register(등록부에 더하지 않는다) --install-tools --allow-unverified(외부 도구 모듈 aidlc · entire 는 이름을 줄 때만 켠다)
+add · remove: <이름>…(하네스 claude codex cursor kiro · 모듈 jira-workflow multi-harness aidlc entire)
+             add: --install-tools(도구가 없을 때 사람 터미널에서만 설치) --allow-unverified(검증 범위 밖 도구 버전을 허용)
 dashboard: --port --open --read-only --export <폴더> --all --root <dir> --workspace <file> · 관리 페이지 명령은 harness-kit <명령> --help
-update: --accept-all --prune --forget <경로>(반복) --to <CLI 버전> --packs(메타 packs 의 팩만 받아 깐다) · outdated: --check --source <git 원격>
+update: --accept-all --prune --forget <경로>(반복) --to <CLI 버전> --packs(메타 packs 의 팩만 받아 깐다) --tools(켠 외부 도구의 지금 · 최신 버전을 보이고 사람이 고른 것만 올린다 · --allow-unverified) · outdated: --check --source <git 원격>
 repair: --only missing,drifted,stale,merge · uninstall: --keep-state --keep-packs
 종료 코드: 0 성공 · 1 검사 문제 · 2 사용법 · 3 리포 상태 · 4 사람 판단 필요 · 5 실행 환경 · 130 중단
 `;
@@ -99,7 +106,7 @@ const COMMAND_HELP: Record<string, string> = {
   plan: "harness-kit plan [init 과 같은 플래그] — 작업 목록만 출력한다\n",
   doctor: "harness-kit doctor [--check] [--only 종류,…] [--json] — 종류: meta-invalid lock-invalid lock-v1 version-mismatch missing drifted gitignore entry-size\n",
   list: "harness-kit list [--files] [--json]\n",
-  add: "harness-kit add <하네스|모듈>… [--dry-run] [--json] — 그 몫만 깐다. 사람이 고친 매니페스트는 .new 로 받고 exit 4\n",
+  add: "harness-kit add <하네스|모듈>… [--dry-run] [--yes] [--install-tools] [--allow-unverified] [--json] — 그 몫만 깐다. 외부 도구 모듈(aidlc · entire)은 도구 확인 · 설치 안내 · 외부 명령 · 측정까지 한다. 도구가 없으면 exit 5, 검증 범위 밖이면 exit 4. 사람이 고친 매니페스트는 .new 로 받고 exit 4\n",
   remove: "harness-kit remove <하네스|모듈>… [--dry-run] [--json] — 고치지 않은 그 몫만 지운다. 고친 파일을 남기면 exit 4\n",
   outdated: "harness-kit outdated [--check] [--source <git 원격|경로>] [--json] — 소스: --source > HARNESS_KIT_SOURCE > lock kit.source. 닿지 못하면 '확인 못 함' 과 exit 0\n",
   update: "harness-kit update [--dry-run] [--accept-all] [--prune] [--forget 경로]… [--to 버전] [--templates 폴더] [--json] — conflict 가 있으면 exit 4. update --packs 는 팩만(검사 실패 exit 3 · 팩 충돌 exit 4)\n",
@@ -122,6 +129,8 @@ const COMMAND_HELP: Record<string, string> = {
   usage: "harness-kit usage [--days n] [--harness h] [--sources] | usage --now | usage --kit [--json] — 대화 기록 읽기가 꺼져 있으면(기본) 킷이 덧붙인 양(--kit)만 보인다\n",
   pack: "harness-kit pack new <이름> --dir <경로> [--from <파일|폴더>[#훅·검사 id]]… [--kit-range \">=2.0.0 <3.0.0\"] [--json] — --dir 은 빈 폴더나 없는 경로\n",
   intake: "harness-kit intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--area <영역>] [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]… [--json] — 비밀값이 든 글은 접수하지 않는다(exit 1)\n",
+  sync: "harness-kit sync aidlc [--intent <AI-DLC Intent 폴더>] [--key <Intent 키>] [--check] [--json] — AI-DLC 산출물을 intent.json · units.json 으로 옮긴다. 같은 입력이면 쓰지 않는다. --check 는 쓰지 않고 차이가 있으면 exit 1. sync units · jira 는 HK-20b\n",
+  checkpoints: "harness-kit checkpoints [--issue <키>] [--json] | checkpoints <체크포인트 id> [--json] — Entire 체크포인트 목록(이슈 브랜치 커밋의 Entire-Checkpoint 트레일러) · 설명(entire checkpoint explain, 10초 제한)\n",
   local: "harness-kit local sync [--dry-run] | local list [--json] — 개인 스킬 · Kiro 규칙 · 개인 훅(.claude/settings.local.json · .kiro/hooks/local-*). 공유 원본과 이름이 같으면 배치하지 않는다\n",
 };
 

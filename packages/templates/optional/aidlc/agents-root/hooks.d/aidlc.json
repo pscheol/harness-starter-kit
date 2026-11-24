@@ -1,0 +1,17 @@
+{
+  "schema": "harness-kit.hooks/v1",
+  "hooks": [
+    {
+      "id": "harness-aidlc-freshness",
+      "event": "stop",
+      "script": "scripts/hooks/aidlc-freshness.sh",
+      "timeoutSec": 10,
+      "owner": "kit",
+      "module": "aidlc",
+      "harnesses": ["claude"],
+      "maxOutputBytes": 512,
+      "title": "AI-DLC 산출물 최신 여부",
+      "description": "AI-DLC 산출물이 units.json 보다 새로우면 sync aidlc 를 안내한다. 새로운 것이 없으면 아무것도 출력하지 않는다"
+    }
+  ]
+}

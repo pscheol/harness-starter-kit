@@ -68,8 +68,20 @@ def keep_rows(folder: Path) -> list[str]:
     return out
 
 
-def block(folder: Path, intent_text: str, unit: dict, units: dict[str, dict], key_of: dict[str, str]) -> str:
+def link_of(folder: Path) -> dict | None:
+    """AI-DLC 를 켠 Intent(intent.json 만 있음, 08 §3.10)의 링크. 그 밖이면 None."""
+    if (folder / "intent.md").is_file():
+        return None
+    data = intents.read_json(folder / "intent.json")
+    return data if isinstance(data, dict) else None
+
+
+def block(folder: Path, intent_text: str, unit: dict, units: dict[str, dict], key_of: dict[str, str], link: dict | None = None) -> str:
     head = parse_frontmatter(intent_text) or {}
+    titles: dict[str, str] = {}
+    if link is not None:
+        head = {"title": link.get("title") or ""}
+        titles = {s["id"]: s.get("title") or "" for s in link.get("stories") or [] if isinstance(s, dict) and isinstance(s.get("id"), str)}
     ikey = intents.FOLDER.match(folder.name)[1]
     stories = story_blocks(intent_text)
     lines = [f"{BEGIN} — /hx-specify --from-unit 가 {ikey}/{unit['id']} 에서 옮겼다. 다듬은 뒤에도 ID 는 지우지 않는다 -->", "",
@@ -80,7 +92,7 @@ def block(folder: Path, intent_text: str, unit: dict, units: dict[str, dict], ke
         lines += ["### 목표(Intent §1)", "", *goal, ""]
     lines += ["### 스토리(US-n 은 이 이슈 번호, 괄호는 Intent ID)", ""]
     for n, sid in enumerate(unit.get("stories") or [], 1):
-        body = stories.get(sid, [f"### {sid}"])
+        body = stories.get(sid, [f"### {sid} {titles.get(sid, '')}".rstrip()])
         title = body[0].split(sid, 1)[-1].strip(" ~")
         lines.append(f"#### US-{n} ({sid}) {title}")
         lines += [l for l in body[1:] if l.strip()]
@@ -127,7 +139,8 @@ def run_from_unit(root: Path, target: str, key: str | None, dry_run: bool) -> di
     gates = intents.gates_of(meta)
     notes = []
     if "intent" in gates:
-        if intents.gate_state(folder, "intent", folder / "intent.md", meta) != "valid":
+        target_doc = folder / "intent.md" if (folder / "intent.md").is_file() else folder / "intent.json"
+        if intents.gate_state(folder, "intent", target_doc, meta) != "valid":
             raise Stop(f"{ikey} 의 intent 게이트 승인이 없다(또는 승인 뒤 바뀌었다) — 사람이 관리 페이지 · harness-kit approve 로 승인한 뒤 다시(DS-R9)")
     else:
         notes.append("intent 게이트 없음 — 승인 검사를 건너뛴다")
@@ -165,7 +178,8 @@ def run_from_unit(root: Path, target: str, key: str | None, dry_run: bool) -> di
     issue_folder = req.parent if req.name == "requirements.md" else req
     req = issue_folder / "requirements.md"
     issue_key = intents.FOLDER.match(issue_folder.name)[1]
-    intent_text = (folder / "intent.md").read_text(encoding="utf-8")
+    link = link_of(folder)
+    intent_text = "" if link is not None else (folder / "intent.md").read_text(encoding="utf-8")
     ihead = parse_frontmatter(intent_text) or {}
     key_of = {u: units[u].get("issue") for u in units if units[u].get("issue")}
     deps = [key_of[d] for d in unit.get("dependsOn") or [] if d in key_of]
@@ -173,7 +187,7 @@ def run_from_unit(root: Path, target: str, key: str | None, dry_run: bool) -> di
     text = update_frontmatter(text, {"intent": ikey, "unit": uid, "dependsOn": "[" + ", ".join(deps) + "]", "profile": str(ihead.get("profile") or ""), "risk": str(ihead.get("risk") or "")})
     lines = text.split("\n")
     at = next((i + 1 for i, l in enumerate(lines) if l.startswith("# ")), len(lines))
-    text = "\n".join(lines[:at] + ["", block(folder, intent_text, unit, units, key_of), ""] + lines[at:])
+    text = "\n".join(lines[:at] + ["", block(folder, intent_text, unit, units, key_of, link), ""] + lines[at:])
     req.write_text(text, encoding="utf-8")
     unit["issue"] = issue_key
     (folder / "units.json").write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

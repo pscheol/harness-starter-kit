@@ -5,6 +5,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { measureSession } from "../../cli/src/core/measure";
 import { ApiError, bad } from "./errors";
 import type { Project } from "./project";
 import { readSessions } from "./readers/sessions";
@@ -444,8 +445,24 @@ export async function usageKit(p: Project): Promise<Record<string, unknown>> {
     hooks, skipped,
     sessionStart: { avgBytes: avgTotal, maxBytes: start.reduce((s, h) => s + h.maxBytes, 0), limit: SESSION_START_LIMIT, ratio: avgTotal / SESSION_START_LIMIT, within: avgTotal <= SESSION_START_LIMIT, estTokens: Math.round(avgTotal / 3) },
     modules: modulesOf(p),
+    load: loadOf(p),
     note: "바이트 ÷ 3 은 한글 위주 글의 토큰 추정입니다",
   };
+}
+
+/**
+ * 세션마다 실리는 양(설계 10 §3.7 · MD-R16, S13): 구현 역할 하네스 기준 owner 별 바이트 · 훅 수.
+ * 외부 도구 훅은 lock 의 external:<도구> 이름이 명령에 든 것으로 가린다(모듈 선언 없이 읽는다).
+ */
+function loadOf(p: Project): Record<string, unknown> | null {
+  const lock = readJson(path.join(p.root, ".agents/harness-kit.lock"));
+  const entries = lock && Array.isArray(lock.entries) ? lock.entries.filter(isObj) : [];
+  const pairs = entries.filter((e) => typeof e.path === "string" && typeof e.owner === "string").map((e) => ({ path: e.path as string, owner: e.owner as string }));
+  const tools = [...new Set(pairs.map((e) => e.owner).filter((o) => o.startsWith("external:")))];
+  const roles = isObj(p.meta().roles) ? (p.meta().roles as Record<string, unknown>) : {};
+  const impl = isObj(roles.implement) && typeof roles.implement.harness === "string" ? roles.implement.harness : "claude";
+  const m = measureSession(p.root, { harness: impl, entries: pairs, hookOwners: tools.map((o) => [o, [`${o.slice("external:".length)} `]] as [string, string[]]) });
+  return { harness: m.harness, total: m.total, estTokens: Math.round(m.total / 3), owners: m.owners, hooks: m.hooks };
 }
 
 /** lock 의 owner 별 세션마다 실리는 파일 · hooks.json 의 owner 별 이벤트 수(정적 합계). */

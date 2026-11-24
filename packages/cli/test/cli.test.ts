@@ -61,7 +61,7 @@ describe("진입점", () => {
   });
 
   it.each([
-    ["sync", "P24"],
+    ["deploy", "P24"],
   ])("예약 명령 %s 는 exit 2 와 제공 단계 %s", async (cmd, stage) => {
     const r = await run([cmd]);
     expect(r.code).toBe(2);

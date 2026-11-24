@@ -18,6 +18,9 @@ import { isSafeRelPath } from "../core/plan";
 import { compareSemver, VERSION } from "../core/version";
 import { layoutFindings, PROJECTION_KINDS } from "../projection/check";
 import { PROJECTION_OPS } from "../projection/engine";
+import { measureFor, moduleFindings, MODULE_KINDS } from "../modules/doctor";
+import { HARNESS_LOAD, hookCount, type Measure } from "../core/measure";
+import { locateTemplates } from "../core/templates";
 
 export type Severity = "error" | "warn" | "info";
 
@@ -33,7 +36,7 @@ export interface Finding {
 export const FLOOR_KINDS = ["gate-floor", "floor-hook-missing", "floor-override", "full-allowed", "approvers"];
 export const PACK_KINDS = ["pack-unpinned", "pack-local-path"];
 export const LOCAL_KINDS = ["personal-ignored", "personal-weakens", "local-invalid"];
-export const DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "version-mismatch", "missing", "drifted", "gitignore", "entry-size", "upgrade-notice-expired", ...FLOOR_KINDS, ...PACK_KINDS, ...LOCAL_KINDS, ...PROJECTION_KINDS];
+export const DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "version-mismatch", "missing", "drifted", "gitignore", "entry-size", "upgrade-notice-expired", ...FLOOR_KINDS, ...PACK_KINDS, ...LOCAL_KINDS, ...PROJECTION_KINDS, ...MODULE_KINDS];
 export const GITIGNORE_NEEDS = [".agents/state/", ".agents/local/", ".agents/reports/"];
 export const ENTRY_FILES = ["AGENTS.md", "CLAUDE.md"];
 export const ENTRY_LIMIT = 24 * 1024;
@@ -148,6 +151,8 @@ interface Collected {
   findings: Finding[];
   /** 배치 항목(mirror · render · merge) 요약 */
   projection?: { ok: number; errors: number };
+  /** 세션마다 실리는 양(설계 10 §3.7) — 하네스별 */
+  load?: Measure[];
 }
 
 const isObjAny = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === "object" && !Array.isArray(v);
@@ -226,7 +231,7 @@ function noticeFinding(target: string, day: string): Finding | null {
 }
 
 /** 검사 전부. 메타가 없으면(설치 안 됨) exit 3. */
-function collect(target: string, day: string): Collected {
+function collect(ctx: Ctx, target: string, day: string): Collected {
   const metaRead = readMeta(path.join(target, META_REL));
   if (metaRead.status === "missing") {
     throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 harness-kit init");
@@ -250,9 +255,21 @@ function collect(target: string, day: string): Collected {
   findings.push(...layout.map((f) => ({ kind: f.kind, severity: f.severity, path: f.path, hint: f.hint })));
   for (const f of [gitignoreFinding(target), entrySizeFinding(target), noticeFinding(target, day)]) if (f) findings.push(f);
   findings.push(...floorFindings(target, metaRead.status === "ok" ? (metaRead.meta as unknown as Record<string, unknown>) : null));
+  let load: Measure[] | undefined;
+  if (meta && lock) {
+    let templatesDir: string | null = null;
+    try {
+      templatesDir = locateTemplates({ flag: str(ctx.values, "templates"), env: ctx.io.env, cliFile: ctx.io.cliFile, cwd: ctx.io.cwd, version: VERSION }).dir;
+    } catch {
+      templatesDir = null;
+    }
+    const dctx = { io: ctx.io, root: target, templatesDir, meta, entries: lock.entries };
+    findings.push(...moduleFindings(dctx).map((f) => ({ ...f })));
+    load = meta.agents.filter((h) => Object.hasOwn(HARNESS_LOAD, h)).map((h) => measureFor(dctx, h));
+  }
   const projectionTotal = lock ? lock.entries.filter((e) => PROJECTION_OPS.has(e.op) && e.owner === "kit").length : 0;
   const projectionBad = new Set(layout.filter((f) => f.severity === "error" && !f.path.startsWith(".agents/")).map((f) => f.path)).size;
-  return { meta, lock, ok: copy.ok, findings, projection: { ok: Math.max(0, projectionTotal - projectionBad), errors: layout.filter((f) => f.severity === "error").length } };
+  return { meta, lock, ok: copy.ok, findings, ...(load ? { load } : {}), projection: { ok: Math.max(0, projectionTotal - projectionBad), errors: layout.filter((f) => f.severity === "error").length } };
 }
 
 function summarize(findings: Finding[], ok: number): Record<string, number> {
@@ -272,6 +289,23 @@ function findingLine(f: Finding): string {
   return `  ${MARK[f.severity]} ${f.kind.padEnd(16)} ${f.path ?? ""}${hint}`;
 }
 
+const fmt = (n: number): string => n.toLocaleString("en-US");
+
+/** 세션마다 실리는 양(MD-R16). 모델을 부르지 않는 정적 합계 — owner 별 바이트와 훅 수 */
+function loadLines(load: Measure[]): string[] {
+  const out: string[] = [];
+  for (const m of load) {
+    const owners = Object.entries(m.owners).map(([o, v]) => `${o} ${fmt(v.bytes)}${hookCount(m, o) ? `(훅 ${hookCount(m, o)})` : ""}`);
+    const only = Object.keys(m.hooks).filter((o) => !m.owners[o]).map((o) => `${o} 훅 ${hookCount(m, o)}`);
+    out.push(`  세션마다 실리는 양(${m.harness}): ${[...owners, ...only].join(" · ") || "없음"} = ${fmt(m.total)}바이트`);
+  }
+  return out;
+}
+
+function loadJson(m: Measure): Record<string, unknown> {
+  return { harness: m.harness, total: m.total, owners: m.owners, hooks: m.hooks };
+}
+
 export function runDoctor(ctx: Ctx): CommandResult {
   const target = targetOf(ctx);
   if (str(ctx.values, "only") === "overrides") {
@@ -281,7 +315,7 @@ export function runDoctor(ctx: Ctx): CommandResult {
     return { code, data: { command: "doctor", target, only: "overrides", ...report }, lines: [`harness-kit doctor --only overrides — ${target}`, ...overridesLines(report)] };
   }
   const only = parseOnly(str(ctx.values, "only"));
-  const c = collect(target, today(ctx.io));
+  const c = collect(ctx, target, today(ctx.io));
   const findings = only ? c.findings.filter((f) => only.includes(f.kind)) : c.findings;
   const summary: Record<string, unknown> = summarize(findings, c.ok);
   if (c.projection) summary.projection = c.projection;
@@ -294,6 +328,7 @@ export function runDoctor(ctx: Ctx): CommandResult {
     ...(c.projection ? [`  배치 항목: ok ${c.projection.ok} · 오류 ${c.projection.errors}`] : []),
     `  오류 ${summary.errors} · 경고 ${summary.warnings} · 정보 ${summary.infos}`,
     ...(ctx.quiet ? [] : findings.map(findingLine)),
+    ...(ctx.quiet ? [] : loadLines(c.load ?? [])),
   ];
-  return { code, data: { command: "doctor", target, kit, summary, findings }, lines };
+  return { code, data: { command: "doctor", target, kit, summary, findings, ...(c.load ? { load: c.load.map(loadJson) } : {}) }, lines };
 }

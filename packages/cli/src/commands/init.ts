@@ -17,6 +17,8 @@ import { resolveTokens } from "../core/tokens";
 import { VERSION } from "../core/version";
 import { mergeEntries, needsHuman, projectionConflicts, projectionData, projectionLines } from "../projection/flow";
 import { addProject, registryFile } from "../../../dashboard/src/projects";
+import { addExternal } from "../modules/engine";
+import { kitOf } from "./change";
 
 const TOKEN_FLAGS: Record<string, string> = {
   name: "PROJECT_NAME",
@@ -56,7 +58,7 @@ async function askMissing(p: Prompter, input: SelectionInput, layout: Layout, te
   }
   if (out.agents === undefined) out.agents = await p.ask(`하네스 [${layout.harnesses.join(",")}|all]`, "");
   if (out.agents === "") delete out.agents;
-  if (out.modules === undefined) out.modules = await p.ask(`모듈 [${layout.modules.join(",")}|all|none]`, "none");
+  if (out.modules === undefined) out.modules = await p.ask(`모듈 [${[...layout.modules, ...layout.externalModules].join(",")}|all|none] (aidlc · entire 는 이름을 줄 때만)`, "none");
   return out;
 }
 
@@ -115,6 +117,16 @@ function assertInstallable(target: string): void {
   if (fs.existsSync(path.join(target, META_REL))) {
     throw new CliError(EXIT.STATE, `이미 설치된 리포다: ${path.join(target, META_REL)}`, "킷 갱신은 harness-kit update, 하네스 · 모듈 추가는 harness-kit add 다. 지금 상태는 harness-kit doctor");
   }
+}
+
+/** --modules 에서 외부 도구 모듈 이름을 따로 뗀다. all 은 킷 모듈만이다. */
+function splitExternal(layout: Layout, input: SelectionInput): { input: SelectionInput; externals: string[] } {
+  if (input.modules === undefined) return { input, externals: [] };
+  const words = input.modules.split(/[\s,]+/).filter(Boolean);
+  const externals = words.filter((w, i) => layout.externalModules.includes(w) && words.indexOf(w) === i);
+  if (externals.length === 0) return { input, externals };
+  const rest = words.filter((w) => !layout.externalModules.includes(w));
+  return { input: { ...input, modules: rest.length ? rest.join(",") : "none" }, externals };
 }
 
 function selectionInput(ctx: Ctx): SelectionInput {
@@ -187,7 +199,9 @@ export async function runInit(ctx: Ctx): Promise<CommandResult> {
   const interactive = io.isTTY && !bool(ctx.values, "yes") && !ctx.json && io.stdin !== undefined;
   const prompter = interactive ? createPrompter(io.stdin as NodeJS.ReadableStream, io.stderr) : null;
   try {
-    const input = prompter ? await askMissing(prompter, selectionInput(ctx), layout, loc.dir) : selectionInput(ctx);
+    const asked = prompter ? await askMissing(prompter, selectionInput(ctx), layout, loc.dir) : selectionInput(ctx);
+    // 외부 도구 모듈(aidlc · entire)은 init 이 끝난 뒤 모듈 엔진이 켠다(설계 10 §3.1). all 에는 들어가지 않는다.
+    const { input, externals } = splitExternal(layout, asked);
     const selection = resolveSelection(layout, loc.dir, input, { target, env: io.env });
     const tokens = resolveTokens(layout, selection, { flags: opts.flags, env: io.env, targetBasename: path.basename(target) });
     checkSlug(tokens.PROJECT_SLUG ?? "");
@@ -203,7 +217,10 @@ export async function runInit(ctx: Ctx): Promise<CommandResult> {
     if (selection.retiredModules) data.retiredModules = selection.retiredModules;
     const projectionShown = projectionLines(plan.projection, plan.projectionFindings, ctx.quiet, command === "plan" && !ctx.quiet, new Set(["create"]));
     if (command === "plan") {
-      lines.push(...shown.map(opLine), countsLine(plan), ...projectionShown, STATE_LINE, "  (plan — 쓰지 않았다)");
+      lines.push(...shown.map(opLine), countsLine(plan), ...projectionShown, STATE_LINE);
+      if (externals.length) lines.push(`  외부 도구 모듈 ${externals.join(", ")}: init 뒤 add 단계로 켠다(도구 확인 · 설치 안내 · 외부 명령 · 측정 — harness-kit add ${externals.join(" ")} --dry-run 으로 계획을 본다)`);
+      lines.push("  (plan — 쓰지 않았다)");
+      data.externalModules = externals;
       return { code: EXIT.OK, data, lines };
     }
     if (prompter) {
@@ -215,8 +232,29 @@ export async function runInit(ctx: Ctx): Promise<CommandResult> {
     data.featureDocs = result.featureDocs;
     const registry = registerAfterInit(ctx, target);
     data.registry = registry;
-    lines.push(countsLine(plan), ...shown.map(opLine), ...projectionShown, STATE_LINE, docsLine(result.featureDocs), registryLine(registry), "  다음: harness-kit doctor");
-    return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines };
+    lines.push(countsLine(plan), ...shown.map(opLine), ...projectionShown, STATE_LINE, docsLine(result.featureDocs), registryLine(registry));
+    let code: number = human ? EXIT.HUMAN : EXIT.OK;
+    if (externals.length) {
+      data.externalModules = externals;
+      const kit = kitOf(ctx);
+      const results: Record<string, unknown>[] = [];
+      for (const id of externals) {
+        try {
+          const o = await addExternal({ ...ctx, command: "add", values: { ...ctx.values, cwd: target }, positionals: [id] }, kit, id);
+          lines.push(...o.lines.slice(1));
+          results.push(o.data);
+          if (o.code !== EXIT.OK) code = Math.max(code, o.code);
+        } catch (err) {
+          if (!(err instanceof CliError)) throw err;
+          lines.push(`  ✖ ${id}: ${err.message}`, ...(err.hint ? err.hint.split("\n").map((h) => `    ${h}`) : []), `  init 은 끝났다. 모듈은 도구를 준비한 뒤 harness-kit add ${id} 로 켠다`);
+          results.push({ module: id, error: { code: err.code, message: err.message } });
+          code = Math.max(code, err.code);
+        }
+      }
+      data.modulesResult = results;
+    }
+    lines.push("  다음: harness-kit doctor");
+    return { code, data, lines };
   } finally {
     prompter?.close();
   }

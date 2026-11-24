@@ -30,12 +30,11 @@ import { loadSpecOrNull } from "../projection/spec";
 import type { OverlayWrite } from "../projection/view";
 import { localAfter } from "./local";
 import { runUpdatePacks } from "./update-packs";
+import { runUpdateTools } from "./update-tools";
 
 export const V1_LOCK_BACKUP = ".agents/state/harness-kit.lock.v1.bak";
 
-const LATER_FLAGS: Record<string, string> = {
-  tools: "--tools(외부 도구 갱신)는 P22(외부 도구 모듈, 설계 10)에서 제공한다",
-};
+const LATER_FLAGS: Record<string, string> = {};
 
 function full(target: string, rel: string): string {
   return path.join(target, ...rel.split("/"));
@@ -199,9 +198,10 @@ function boardBlocker(plan: UpdatePlan): string | null {
 
 const AMBIGUOUS_ACTIONS = new Set<UpdateAction>(["conflict", "replace", "orphan"]);
 
-export function runUpdate(ctx: Ctx): CommandResult {
+export function runUpdate(ctx: Ctx): CommandResult | Promise<CommandResult> {
   const { io } = ctx;
   if (bool(ctx.values, "packs")) return runUpdatePacks(ctx);
+  if (bool(ctx.values, "tools")) return runUpdateTools(ctx);
   const to = checkFlags(ctx);
   const target = targetOf(ctx);
   const inst = loadInstalled(target, "update");

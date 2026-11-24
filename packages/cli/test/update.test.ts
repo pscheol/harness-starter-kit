@@ -369,11 +369,11 @@ describe("update — 상태 · 버전 · 플래그", () => {
     expect(fs.existsSync(path.join(path.dirname(target), "outside.md"))).toBe(false);
   });
 
-  it("--tools 는 exit 2 와 제공 단계(--packs 는 HK-14 에서 들어왔다 — packs.test.ts)", async () => {
+  it("--tools 는 켠 외부 도구 모듈이 없으면 그렇게 알린다(--packs 는 packs.test.ts, 도구가 있는 경로는 modules-engine.test.ts)", async () => {
     const { templates, cli } = await installedFixture();
     const tools = await cli("update", ["--tools", "--templates", templates]);
-    expect(tools.code).toBe(2);
-    expect(tools.stderr).toContain("P22");
+    expect(tools.code).toBe(0);
+    expect(tools.stdout).toContain("켜 둔 외부 도구 모듈이 없다");
   });
 });
 

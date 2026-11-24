@@ -111,13 +111,13 @@ describe("add — 하네스 · 모듈", () => {
     expect(readJsonFile(path.join(target, META_FILE)).agents).toEqual(["claude"]);
   });
 
-  it.each(["aidlc", "entire", "notion"])("%s 모듈은 exit 2 와 제공 단계 P22", async (name) => {
+  it("notion 모듈은 exit 2 와 제공 단계 HK-20b(aidlc · entire 는 HK-20a 에서 들어왔다 — modules-engine.test.ts)", async () => {
     const { cli, templates } = await installedFixture();
-    const r = await cli("add", [name, "--templates", templates]);
+    const r = await cli("add", ["notion", "--templates", templates]);
     expect(r.code).toBe(2);
-    expect(r.stderr).toContain("P22");
-    const j = await cli("add", [name, "--json", "--templates", templates]);
-    expect(json(j).error.message).toContain("P22");
+    expect(r.stderr).toContain("HK-20b");
+    const j = await cli("add", ["notion", "--json", "--templates", templates]);
+    expect(json(j).error.message).toContain("HK-20b");
   });
 
   it("모르는 이름 · all · 빈 목록은 exit 2, 아무것도 쓰지 않는다", async () => {

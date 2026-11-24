@@ -4,5 +4,4 @@ export const RESERVED: Record<string, string> = {
   ops: "P24(배포 · 운영, 설계 14)",
   metrics: "P24(배포 · 운영, 설계 14)",
   rules: "P24(배포 · 운영, 설계 14)",
-  sync: "P24(설계 10)",
 };
