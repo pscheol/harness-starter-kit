@@ -55,6 +55,22 @@ describe("TS ↔ Python 배치 동일성", () => {
     expect(pyRecords(dir)).toEqual(tsRecords(dir, templates));
   });
 
+  it("팩 · 프로젝트 훅 파일(hooks.d)을 합친 결과도 같다(HK-14)", async () => {
+    const templates = projectionTemplates();
+    const { target } = await initWith(templates);
+    const doc = (hooks: Record<string, unknown>[]): string => `${JSON.stringify({ schema: "harness-kit.hooks/v1", hooks }, null, 2)}\n`;
+    const dir = sourcesOnly(target, {
+      ".agents/hooks.d/acme.json": doc([{ id: "harness-acme-scan", event: "pre-tool", tools: ["write", "shell"], script: "scripts/hooks/acme-scan.sh", timeoutSec: 10, owner: "pack:acme", subagents: true }]),
+      ".agents/hooks.d/project.json": doc([
+        { id: "harness-session-idle", event: "stop", script: "scripts/hooks/session-register.sh", timeoutSec: 30, owner: "user" },
+        { id: "harness-verify-gate", event: "stop", script: "scripts/hooks/x.sh", timeoutSec: 5, owner: "user" },
+      ]),
+    });
+    const ts = tsRecords(dir, templates);
+    expect(pyRecords(dir)).toEqual(ts);
+    expect(ts.some((r: any) => r.path === ".kiro/hooks/harness-acme-scan.json")).toBe(true);
+  });
+
   it("실제 템플릿 설치본의 원본으로도 같다", async () => {
     const { REAL_TEMPLATES, run, FIXTURE_ENV } = await import("./helpers");
     const target = path.join(tmpDir(), "acme-notes");

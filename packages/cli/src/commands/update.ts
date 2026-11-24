@@ -12,6 +12,7 @@ import { AMBIGUOUS_REASON, resolvedLock } from "../core/legacy-lock";
 import { LOCK_REL, serializeLock } from "../core/lock";
 import { mergeMetaForUpdate, META_REL, serializeMeta } from "../core/meta";
 import { NOTICE_REL, planNotice, UPGRADE_FILE, type NoticeAction, type NoticePlan } from "../core/notice";
+import { satisfiesKit } from "../core/packs";
 import { MANIFEST_PATH, manifestContent } from "../core/plan";
 import { removeEmptyDirs, removeFile } from "../core/remove";
 import { retiredNote, type Selection } from "../core/selection";
@@ -27,11 +28,12 @@ import { applyProjection, judgeUpdate, PROJECTION_OPS, type ProjectionPlan } fro
 import { mergeEntries, needsHuman, prepare, projectionConflicts, projectionData, projectionLines } from "../projection/flow";
 import { loadSpecOrNull } from "../projection/spec";
 import type { OverlayWrite } from "../projection/view";
+import { localAfter } from "./local";
+import { runUpdatePacks } from "./update-packs";
 
 export const V1_LOCK_BACKUP = ".agents/state/harness-kit.lock.v1.bak";
 
 const LATER_FLAGS: Record<string, string> = {
-  packs: "--packs(팩 갱신)는 P18(확장 층, 설계 04)에서 제공한다",
   tools: "--tools(외부 도구 갱신)는 P22(외부 도구 모듈, 설계 10)에서 제공한다",
 };
 
@@ -47,6 +49,15 @@ function checkFlags(ctx: Ctx): string | undefined {
   if (to === undefined || to === VERSION) return to;
   if (/[:#/]/.test(to)) throw usageError(`--to 에 소스는 아직 받지 않는다: '${to}'`, "다른 템플릿 폴더는 --templates <폴더> 로 준다");
   throw usageError(`이 CLI 는 ${VERSION} 판만 깐다: --to ${to}`, `그 판은 npx harness-kit@${to} update 로 올린다`);
+}
+
+/** 깐 팩이 요구하는 킷 범위 밖이면 쓰기 전에 exit 3(설계 04 §3.4). */
+function checkPackRanges(packs: unknown[]): void {
+  for (const p of packs) {
+    const r = p as { name?: unknown; version?: unknown; requiresKit?: unknown };
+    if (typeof r.requiresKit !== "string" || satisfiesKit(VERSION, r.requiresKit)) continue;
+    throw new CliError(EXIT.STATE, `팩 ${String(r.name)} ${String(r.version)} 은 kit ${r.requiresKit} 을 요구한다(이 CLI ${VERSION})`, "팩을 올리거나(update --packs) kit 판을 맞춘다");
+  }
 }
 
 /** 설치된 킷이 CLI 보다 새것이면 exit 3. --to <CLI 버전> 이면 내려가는 update 를 허락한다. */
@@ -190,10 +201,12 @@ const AMBIGUOUS_ACTIONS = new Set<UpdateAction>(["conflict", "replace", "orphan"
 
 export function runUpdate(ctx: Ctx): CommandResult {
   const { io } = ctx;
+  if (bool(ctx.values, "packs")) return runUpdatePacks(ctx);
   const to = checkFlags(ctx);
   const target = targetOf(ctx);
   const inst = loadInstalled(target, "update");
   checkVersion(inst.meta.kit.version, to);
+  checkPackRanges(inst.lock.packs);
   const loc = locateTemplates({ flag: str(ctx.values, "templates"), env: io.env, cliFile: io.cliFile, cwd: io.cwd, version: VERSION });
   const layout = loadLayout(loc.dir);
   const { selection, droppedModules, retiredModules } = selectionFromMeta(layout, loc.dir, inst.meta);
@@ -258,6 +271,12 @@ export function runUpdate(ctx: Ctx): CommandResult {
   const lines = humanLines(ctx, head, plan, shown, conflicts, dryRun, board, merged, `${MERGE_BACKUP_DIR}/${stamp}`);
   const noticeLine = NOTICE_LINES[notice.action];
   if (noticeLine) lines.splice(lines.length - 1, 0, `  ${noticeLine}`);
+  // 개인 층(HK-14 design §5): .agents/local/ 이 있으면 새 판 원본 기준으로 다시 배치한다
+  const local = localAfter(ctx, target, inst, loc.dir, dryRun);
+  if (local) {
+    data.local = local.result;
+    lines.splice(lines.length - 1, 0, ...local.lines);
+  }
   if (projection) lines.splice(head.length + shown.length + 1, 0, ...projectionLines(projection.plan, projection.findings, ctx.quiet));
   else if (inst.lock.entries.some((e) => PROJECTION_OPS.has(e.op))) lines.splice(head.length + shown.length + 1, 0, "  배치: 이 템플릿에 projection.json 이 없다 — 배치 항목은 그대로 둔다");
   return { code, data, lines };
@@ -292,7 +311,7 @@ function applyNotice(target: string, notice: NoticePlan): void {
 }
 
 /** copy 판정 뒤의 원본으로 배치를 판정한다(design §6.3). 템플릿에 배치 상수가 없으면 null — 배치 항목을 그대로 둔다. */
-function projectionForUpdate(args: { target: string; templatesDir: string; tokens: Record<string, string>; agents: string[]; inst: Installed; plan: UpdatePlan; acceptAll: boolean }): { plan: ProjectionPlan; findings: Finding[] } | null {
+export function projectionForUpdate(args: { target: string; templatesDir: string; tokens: Record<string, string>; agents: string[]; inst: Installed; plan: UpdatePlan; acceptAll: boolean }): { plan: ProjectionPlan; findings: Finding[] } | null {
   const spec = loadSpecOrNull(args.templatesDir);
   if (!spec) return null;
   const writes = new Map<string, OverlayWrite>();

@@ -141,7 +141,7 @@ def install_counts() -> dict[str, Counter]:
         found = Counter()
         for path in root.rglob("*"):
             rel = path.relative_to(root).as_posix()
-            if not path.is_file() or path.name in layout["ignore"] or (skip_arch and rel.startswith("arch/")):
+            if not path.is_file() or path.name in layout["ignore"] or "__pycache__" in path.parts or path.suffix == ".pyc" or (skip_arch and rel.startswith("arch/")):
                 continue
             found[harness_of(rel)] += 1
         return found

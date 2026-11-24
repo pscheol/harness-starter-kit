@@ -16,9 +16,13 @@ from pathlib import Path  # noqa: E402
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
+from floor import FLOOR_HOOKS  # noqa: E402
 from projection_hooks import (  # noqa: E402
+    HOOKS_DIR,
     HOOKS_REL,
     HooksError,
+    hook_doc_paths,
+    merge_hook_docs,
     kiro_cli_hooks,
     kiro_ide_files,
     kit_script_suffixes,
@@ -128,6 +132,7 @@ class Sources:
     deferred: set = field(default_factory=set)
     hooks_text: str | None = None
     hooks_data: bytes = b""
+    hook_docs: list = field(default_factory=list)   # [(경로, 내용)] hooks.d — 킷 hooks.json 뒤에 합친다(HK-14)
     modules: list = field(default_factory=list)
 
 
@@ -165,18 +170,38 @@ def load_sources(root: Path) -> Sources:
     src.policy = parse_policy(policy.read_text(encoding="utf-8") if regular(policy) else None)
     hooks = root / HOOKS_REL
     if regular(hooks):
-        src.hooks_data = hooks.read_bytes()
-        src.hooks_text = src.hooks_data.decode("utf-8")
+        data = hooks.read_bytes()
+        src.hooks_text = data.decode("utf-8")
+        src.hooks_data = HOOKS_REL.encode("utf-8") + b"\0" + data
         if has_pending_new(hooks):
             src.deferred.add(HOOKS_REL)
+    folder = root / HOOKS_DIR
+    if folder.is_dir() and not folder.is_symlink():
+        for rel in hook_doc_paths(os.listdir(folder)):
+            p = root / rel
+            if regular(p):
+                data = p.read_bytes()
+                src.hook_docs.append((rel, data.decode("utf-8")))
+                src.hooks_data += b"\n" + rel.encode("utf-8") + b"\0" + data
+                if has_pending_new(p):
+                    src.deferred.add(HOOKS_REL)
     modules = read_meta(root).get("modules")
     src.modules = [m for m in modules if isinstance(m, str)] if isinstance(modules, list) else []
     return src
 
 
-def load_hooks(src: Sources, spec: dict) -> list[dict] | None:
+def hooks_bundle_sha(root: Path) -> str | None:
+    """훅 원본 묶음(hooks.json + hooks.d)의 sha256 — Kiro 훅 · 조율 에이전트 생성물의 원본 해시. hooks.json 이 없으면 None."""
+    src = load_sources(root)
+    return sha256(src.hooks_data) if src.hooks_text is not None else None
+
+
+def load_hooks(src: Sources, spec: dict) -> tuple[list[dict] | None, list[dict]]:
+    """킷 hooks.json + hooks.d(팩 · 프로젝트). hooks.json 이 없으면 (None, [])."""
+    if src.hooks_text is None:
+        return None, []
     try:
-        return parse_hooks(src.hooks_text, spec["hookMap"])
+        return merge_hook_docs([(HOOKS_REL, src.hooks_text), *src.hook_docs], spec["hookMap"], FLOOR_HOOKS)
     except HooksError as error:
         raise ProjectionError(str(error)) from error
 
@@ -227,7 +252,8 @@ def skill_data(skill) -> bytes:
 def build_wants(root: Path, spec: dict, tokens: dict, agents: list[str]) -> tuple[list[Want], list[dict]]:
     src = load_sources(root)
     findings: list[dict] = []
-    parsed = load_hooks(src, spec)
+    parsed, hook_findings = load_hooks(src, spec)
+    findings += hook_findings
     if parsed is None:
         findings.append({"kind": "hooks-missing", "severity": "error", "path": HOOKS_REL,
                          "hint": "훅 원본이 없어 하네스 훅을 만들지 않는다 — harness-kit repair 로 되살린다"})
@@ -332,8 +358,8 @@ def full_merge_want(kind: str, spec: dict, tokens: dict, src: Sources | None) ->
     if kind in ("settings", "codex-hooks"):
         hm = spec["hookMap"]
         try:
-            hooks = (parse_hooks(src.hooks_text, hm) if src else None) or []
-        except HooksError:
+            hooks = (load_hooks(src, spec)[0] if src else None) or []
+        except ProjectionError:
             hooks = []
         modules = [h["module"] for h in hooks if h.get("module")]
         if kind == "settings":

@@ -199,3 +199,40 @@ def kit_script_suffixes(hooks: list[dict] | None, hook_map: dict) -> list[str]:
             if s not in out:
                 out.append(s)
     return out
+
+
+# ── 주인별 훅 파일 합치기(HK-14 design §1 · §4) ───────────────────────────────
+
+HOOKS_DIR = ".agents/hooks.d"
+PROJECT_FILE = "project.json"
+
+
+def hook_doc_paths(names: list[str]) -> list[str]:
+    """`.agents/hooks.d/` 의 파일 이름 → 읽는 순서(이름 순, project.json 은 마지막)."""
+    jsons = sorted((n for n in names if n.endswith(".json") and not n.startswith(".")), key=lambda n: (n == PROJECT_FILE, n.encode("utf-8")))
+    return [f"{HOOKS_DIR}/{n}" for n in jsons]
+
+
+def merge_hook_docs(docs: list[tuple[str, str]], hook_map: dict, floor: tuple[str, ...]) -> tuple[list[dict], list[dict]]:
+    """[(경로, 내용)] — 첫째가 킷 hooks.json. 팩 파일끼리 · 킷과 같은 id 는 HooksError.
+    project.json 은 같은 id 를 덮고(하한 id 는 버리고 floor-override), 새 id 는 뒤에 붙인다."""
+    hooks: list[dict] = []
+    findings: list[dict] = []
+    for rel, text in docs:
+        items = parse_hooks(text, hook_map) or []
+        project = rel == f"{HOOKS_DIR}/{PROJECT_FILE}"
+        index = {h["id"]: i for i, h in enumerate(hooks)}
+        for item in items:
+            if not project:
+                if item["id"] in index:
+                    raise HooksError(f"{rel}: 훅 id {item['id']} 가 다른 층에도 있다(팩 훅 id 는 harness-<팩>- 로 시작한다)")
+                hooks.append(item)
+                continue
+            if item["id"] in floor:
+                findings.append({"kind": "floor-override", "severity": "error", "path": rel,
+                                 "hint": f"하한 훅 {item['id']} 는 프로젝트가 덮지 못한다 — 이 항목은 쓰지 않았다"})
+            elif item["id"] in index:
+                hooks[index[item["id"]]] = item
+            else:
+                hooks.append(item)
+    return hooks, findings

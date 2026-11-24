@@ -97,6 +97,13 @@ class BlockFullVerifyTest(unittest.TestCase):
         self.meta(True)
         self.assertEqual(self.run_hook(payload("bash scripts/verify.sh --full")).returncode, 2)
 
+    def test_personal_layer_cannot_turn_the_rule_off(self):
+        # 개인 층(.agents/local/)은 verify.* 를 바꾸지 못한다(설계 04 §3.6 · §5 #2). 공유 메타만 본다.
+        self.meta(None)
+        (self.tmp / ".agents/local").mkdir()
+        (self.tmp / ".agents/local/harness-kit.local.json").write_text(json.dumps({"verify": {"fullOnlyInCI": False}, "flow": {"gates": []}}), encoding="utf-8")
+        self.assertEqual(self.run_hook(payload("bash scripts/verify.sh --full")).returncode, 2)
+
     def test_missing_or_broken_meta_defaults_to_blocking(self):
         self.assertEqual(self.run_hook(payload("bash scripts/verify.sh --full")).returncode, 2)
         (self.tmp / ".agents/harness-kit.json").write_text("{broken", encoding="utf-8")

@@ -10,6 +10,7 @@ import sys
 import unittest
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # 템플릿 폴더에 __pycache__ 를 만들지 않는다
 KIT = Path(__file__).resolve().parents[1]
 HARNESS = KIT / "packages/templates/common/scripts/harness"
 FIXTURE = KIT / "packages/cli/test/fixtures/hooks"

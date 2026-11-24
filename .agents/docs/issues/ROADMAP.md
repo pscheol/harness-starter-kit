@@ -12,6 +12,16 @@
 - 작업 브랜치는 push하지 않는다.
 - 문서에 ECC · spec-kit을 참고 · 활용했다는 내용을 쓰지 않는다.
 
+## 사용자가 정한 것 (2026-11-24)
+
+- 에이전트 세션의 `harness-kit dispatch` 는 막는다(exit 3). 사람이 터미널 · 관리 페이지에서 고를 때만 보낸다.
+- 회사 팩끼리 같은 파일 · 훅 id 를 가지면 멈추고 사람이 정한다(지금 구현, exit 4).
+- 관리 페이지 승인은 터미널 승인(approve.py)과 같은 규칙이다(승인 해시에서 status · state 줄 제외, tasks 게이트는 오래된 done 기록도 받음).
+- `init` 은 전체 프로젝트 등록부에 자동 등록하고 `--no-register` 로 끈다.
+- `outdated` 기본 원격은 `https://github.com/pscheol/harness-starter-kit.git`.
+- `pack new --dir` 은 사람이 명시한 경로면 리포 밖도 쓴다(빈 폴더 · 없는 경로만, 리포 `.agents/` 안은 거부).
+- HK-14 는 설계 04 와 다르게 주인별 훅 · 검사 파일(`hooks.d` · `verify-checks.d`), 개인 스킬 복사, Codex 개인 스킬 · Claude 개인 규칙 미배치로 간다.
+
 ## 이슈
 
 | 키 | 단계 | 내용 | 설계 | 선행 | 상태 |

@@ -116,7 +116,17 @@ def harness_process():
     return None, None
 
 
-def role_of(branch, meta, harness):
+def local_roles(root, main):
+    """개인 층(.agents/local/harness-kit.local.json)의 roles.<역할>.harness — 이 사람이 역할을 어느 하네스로 쓰는지(설계 04 §3.6)."""
+    for base in (root, main):
+        data = read_json(base / ".agents/local/harness-kit.local.json")
+        if data is not None:
+            roles = data.get("roles") if isinstance(data.get("roles"), dict) else {}
+            return {name: value["harness"] for name, value in roles.items() if isinstance(value, dict) and isinstance(value.get("harness"), str)}
+    return {}
+
+
+def role_of(branch, meta, harness, personal=None):
     if os.environ.get("HX_ROLE"):
         return os.environ["HX_ROLE"], "env"
     if branch and BRANCH_KEY.match(branch) and not branch.startswith("docs/"):
@@ -124,7 +134,9 @@ def role_of(branch, meta, harness):
     if branch and branch.startswith("docs/"):
         return "docs", "branch"
     roles = meta.get("roles") if isinstance(meta.get("roles"), dict) else {}
-    mine = [name for name, value in roles.items() if isinstance(value, dict) and value.get("harness") == harness]
+    effective = {name: (personal or {}).get(name, value.get("harness")) for name, value in roles.items() if isinstance(value, dict)}
+    effective.update({name: h for name, h in (personal or {}).items() if name not in effective})
+    mine = [name for name, value in effective.items() if value == harness]
     if len(mine) == 1:
         return mine[0], "config"
     return "unknown", "none"
@@ -154,7 +166,7 @@ def record(root, main, payload, sid, harness, previous):
     branch = git(root, "rev-parse", "--abbrev-ref", "HEAD")
     top = git(root, "rev-parse", "--show-toplevel")
     main_top = git(main, "rev-parse", "--show-toplevel")
-    role, source = role_of(branch, meta, harness)
+    role, source = role_of(branch, meta, harness, local_roles(root, main))
     pid, started = harness_process()
     cwd = payload.get("cwd") if isinstance(payload.get("cwd"), str) and os.path.isabs(payload["cwd"]) else os.getcwd()
     socket = os.environ.get("CLAUDE_CODE_MESSAGING_SOCKET")

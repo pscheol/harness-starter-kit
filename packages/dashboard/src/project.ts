@@ -30,7 +30,8 @@ export interface ProjectOptions {
 
 export const DEFAULT_GATES = ["codebase", "intent", "plans", "requirements", "design", "tasks", "mr", "done", "deploy"];
 export const ISSUE_GATES = ["requirements", "design", "tasks", "mr", "done"];
-export const GATE_FLOOR = ["requirements", "design", "mr", "done"];
+/** 하한 게이트 — 원본은 CLI core/floor.ts(설정으로 바꿀 수 없다, 설계 04 §3.8). */
+export { GATE_FLOOR } from "../../cli/src/core/floor";
 
 export function projectIdOf(dir: string): string {
   let p = path.resolve(dir);

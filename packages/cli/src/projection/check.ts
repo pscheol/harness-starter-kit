@@ -10,7 +10,8 @@ import { META_REL, readMeta } from "../core/meta";
 import { buildContext, fullMergeWant, wantedOps } from "./engine";
 import { parseFrontmatter, splitFrontmatter } from "./frontmatter";
 import { MERGE_KIND, missingWith } from "./merge";
-import { loadSources, treeSha, walkView } from "./sources";
+import { HOOKS_REL } from "./hooks";
+import { hooksBundleSha, loadSources, treeSha, walkView } from "./sources";
 import { parseSpec } from "./spec";
 import { FsView } from "./view";
 
@@ -113,7 +114,7 @@ export function layoutFindings(target: string, entries: LockEntry[]): LayoutFind
       }
       if (from && typeof e.fromSha256 === "string") {
         const sp = path.join(target, ...from.split("/"));
-        const now = currentSha(sp, Boolean(lstat(sp)?.isDirectory()));
+        const now = from === HOOKS_REL ? hooksBundleSha(new FsView(target)) : currentSha(sp, Boolean(lstat(sp)?.isDirectory()));
         if (now === null) out.push({ kind: "stale", severity: "error", path: e.path, hint: `원본 ${from} 이 없다 → npx harness-kit update` });
         else if (now !== e.fromSha256) out.push({ kind: "stale", severity: "error", path: e.path, hint: `원본 ${from} 가 바뀌었다 → npx harness-kit repair` });
       }

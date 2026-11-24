@@ -2,7 +2,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { HooksError, kiroCliHooks, kiroIdeFiles, kitScriptSuffixes, parseHooks, renderKiroCoordinator, settingsHooks, type HookDef } from "../src/projection/hooks";
+import { FLOOR_HOOKS } from "../src/core/floor";
+import { hookDocPaths, HooksError, kiroCliHooks, kiroIdeFiles, kitScriptSuffixes, mergeHookDocs, parseHooks, renderKiroCoordinator, settingsHooks, type HookDef } from "../src/projection/hooks";
 import { loadSpec } from "../src/projection/spec";
 import { REAL_TEMPLATES } from "./helpers";
 
@@ -52,6 +53,37 @@ describe("토큰(설치 때 치환하지 않는 {{kit:KEY}})", () => {
     expect(JSON.parse(text).name).toBe("acme");
     expect(JSON.stringify(spec.kiroCoordinator)).toContain("{{kit:PROJECT_NAME}}");
     expect(JSON.stringify(spec)).not.toMatch(/\{\{(PROJECT_NAME|PROJECT_SLUG|PROTECTED_PATH)\}\}/);
+  });
+});
+
+describe("주인별 훅 파일 합치기(HK-14 design §4)", () => {
+  const kitText = fs.readFileSync(path.join(REAL_TEMPLATES, "common/agents-root/hooks.json"), "utf8");
+  const one = (hooks: Record<string, unknown>[]): string => JSON.stringify({ schema: "harness-kit.hooks/v1", hooks });
+  const packHook = { id: "harness-acme-scan", event: "pre-tool", tools: ["write"], script: "scripts/hooks/acme-scan.sh", timeoutSec: 10, owner: "pack:acme" };
+
+  it("읽는 순서: 이름 순, project.json 마지막, 숨김 · json 아닌 파일은 뺀다", () => {
+    expect(hookDocPaths(["project.json", "zeta.json", "acme.json", ".x.json", "notes.md"])).toEqual([".agents/hooks.d/acme.json", ".agents/hooks.d/zeta.json", ".agents/hooks.d/project.json"]);
+  });
+
+  it("팩 훅은 뒤에 붙고, 킷 · 다른 팩과 같은 id 는 오류", () => {
+    const r = mergeHookDocs([{ rel: ".agents/hooks.json", text: kitText }, { rel: ".agents/hooks.d/acme.json", text: one([packHook]) }], map, FLOOR_HOOKS);
+    expect(r.hooks.at(-1)?.id).toBe("harness-acme-scan");
+    expect(() => mergeHookDocs([{ rel: ".agents/hooks.json", text: kitText }, { rel: ".agents/hooks.d/acme.json", text: one([{ ...packHook, id: "harness-session-idle" }]) }], map, FLOOR_HOOKS)).toThrow(/다른 층에도/);
+    expect(() =>
+      mergeHookDocs([{ rel: ".agents/hooks.json", text: kitText }, { rel: ".agents/hooks.d/a.json", text: one([packHook]) }, { rel: ".agents/hooks.d/b.json", text: one([packHook]) }], map, FLOOR_HOOKS),
+    ).toThrow(/harness-acme-scan/);
+  });
+
+  it("project.json 은 같은 id 를 덮지만 하한 훅은 덮지 못한다(floor-override)", () => {
+    const docs = [
+      { rel: ".agents/hooks.json", text: kitText },
+      { rel: ".agents/hooks.d/project.json", text: one([{ ...base, id: "harness-session-idle", event: "stop", timeoutSec: 30, owner: "user" }, { ...base, id: "harness-verify-gate", owner: "user" }, { ...base, id: "harness-my-lint", owner: "user" }]) },
+    ];
+    const r = mergeHookDocs(docs, map, FLOOR_HOOKS);
+    expect(r.hooks.find((h) => h.id === "harness-session-idle")?.timeoutSec).toBe(30);
+    expect(r.hooks.find((h) => h.id === "harness-verify-gate")?.script).toBe("scripts/hooks/verify-gate.sh");
+    expect(r.hooks.at(-1)?.id).toBe("harness-my-lint");
+    expect(r.findings).toEqual([{ kind: "floor-override", severity: "error", path: ".agents/hooks.d/project.json", hint: "하한 훅 harness-verify-gate 는 프로젝트가 덮지 못한다 — 이 항목은 쓰지 않았다" }]);
   });
 });
 

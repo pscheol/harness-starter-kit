@@ -193,3 +193,41 @@ export function kitScriptSuffixes(hooks: HookDef[] | null, map: HookMap): string
   for (const script of names) for (const s of [script, `_ ${script.slice(script.lastIndexOf("/") + 1)}`]) if (!out.includes(s)) out.push(s);
   return out;
 }
+
+// ── 주인별 훅 파일 합치기(HK-14 design §1 · §4) ───────────────────────────────
+
+export const HOOKS_DIR = ".agents/hooks.d";
+export const PROJECT_HOOKS = "project.json";
+
+/** `.agents/hooks.d/` 의 파일 이름 → 읽는 순서(이름 바이트 순, project.json 은 마지막). Python hook_doc_paths 와 같다. */
+export function hookDocPaths(names: string[]): string[] {
+  const enc = (n: string): Buffer => Buffer.from(n, "utf8");
+  return names
+    .filter((n) => n.endsWith(".json") && !n.startsWith("."))
+    .sort((a, b) => Number(a === PROJECT_HOOKS) - Number(b === PROJECT_HOOKS) || Buffer.compare(enc(a), enc(b)))
+    .map((n) => `${HOOKS_DIR}/${n}`);
+}
+
+/**
+ * [(경로, 내용)] — 첫째가 킷 hooks.json. 팩 파일끼리 · 킷과 같은 id 는 HooksError.
+ * project.json 은 같은 id 를 덮고(하한 id 는 버리고 floor-override), 새 id 는 뒤에 붙인다.
+ */
+export function mergeHookDocs(docs: { rel: string; text: string }[], map: HookMap, floor: readonly string[]): { hooks: HookDef[]; findings: { kind: string; severity: "error"; path: string; hint: string }[] } {
+  const hooks: HookDef[] = [];
+  const findings: { kind: string; severity: "error"; path: string; hint: string }[] = [];
+  for (const { rel, text } of docs) {
+    const items = parseHooks(text, map) ?? [];
+    const project = rel === `${HOOKS_DIR}/${PROJECT_HOOKS}`;
+    const index = new Map(hooks.map((h, i) => [h.id, i]));
+    for (const item of items) {
+      if (!project) {
+        if (index.has(item.id)) throw new HooksError(`${rel}: 훅 id ${item.id} 가 다른 층에도 있다(팩 훅 id 는 harness-<팩>- 로 시작한다)`);
+        hooks.push(item);
+      } else if (floor.includes(item.id)) {
+        findings.push({ kind: "floor-override", severity: "error", path: rel, hint: `하한 훅 ${item.id} 는 프로젝트가 덮지 못한다 — 이 항목은 쓰지 않았다` });
+      } else if (index.has(item.id)) hooks[index.get(item.id) as number] = item;
+      else hooks.push(item);
+    }
+  }
+  return { hooks, findings };
+}
