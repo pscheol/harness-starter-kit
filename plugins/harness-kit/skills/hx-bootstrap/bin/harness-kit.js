@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 731b61e2dd4d6726027f7848c6802baee4034941323e140c4504553456395011 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 ff2f42e26d3e3c9cda39347d3e2721d3920cdab5d45e2fc79c1973e3d131ab14 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -2373,17 +2373,17 @@ function stem(source) {
   const base = source.slice(source.lastIndexOf("/") + 1);
   return base.endsWith(".md") ? base.slice(0, -".md".length) : base;
 }
-function mirrorDir(path63, harness, skill, deferred) {
+function mirrorDir(path64, harness, skill, deferred) {
   const t = treeSha(skill.files);
-  return { op: "mirror", path: path63, harness, from: skill.source, kind: "dir", files: skill.files, data: Buffer.alloc(0), executable: false, sha256: t, fromSha256: t, deferred: deferred.has(skill.source) };
+  return { op: "mirror", path: path64, harness, from: skill.source, kind: "dir", files: skill.files, data: Buffer.alloc(0), executable: false, sha256: t, fromSha256: t, deferred: deferred.has(skill.source) };
 }
-function mirrorFile(path63, harness, rule, view, deferred) {
+function mirrorFile(path64, harness, rule, view, deferred) {
   const s = sha256(rule.data);
-  return { op: "mirror", path: path63, harness, from: rule.source, kind: "file", files: [], data: rule.data, executable: view.executable(rule.source), sha256: s, fromSha256: s, deferred: deferred.has(rule.source) };
+  return { op: "mirror", path: path64, harness, from: rule.source, kind: "file", files: [], data: rule.data, executable: view.executable(rule.source), sha256: s, fromSha256: s, deferred: deferred.has(rule.source) };
 }
-function renderWant(path63, harness, from, text2, sourceData, deferred) {
+function renderWant(path64, harness, from, text2, sourceData, deferred) {
   const data = Buffer.from(text2, "utf8");
-  return { op: "render", path: path63, harness, from, kind: "file", files: [], data, executable: false, sha256: sha256(data), fromSha256: sha256(sourceData), deferred: deferred.has(from) };
+  return { op: "render", path: path64, harness, from, kind: "file", files: [], data, executable: false, sha256: sha256(data), fromSha256: sha256(sourceData), deferred: deferred.has(from) };
 }
 function skillData(skill) {
   return skill.files.find((f) => f.rel === "SKILL.md")?.bytes ?? Buffer.alloc(0);
@@ -5632,7 +5632,7 @@ function runAdd(ctx) {
 
 // src/commands/dashboard.ts
 var import_node_child_process9 = require("node:child_process");
-var import_node_path53 = __toESM(require("node:path"));
+var import_node_path54 = __toESM(require("node:path"));
 
 // ../dashboard/src/export.ts
 var import_node_fs32 = __toESM(require("node:fs"));
@@ -6408,6 +6408,13 @@ function intentModel(p, info, issues) {
   }
   const intentState = approvalState(entries, "intent", iSha, p.policy());
   const plansState = approvalState(entries, "plans", null, p.policy());
+  let csSha = null;
+  try {
+    csSha = approvalSha(import_node_fs25.default.readFileSync(import_node_path27.default.join(info.abs, "current-state.md")));
+  } catch {
+    csSha = null;
+  }
+  const codebaseState = csSha ? approvalState(entries, "codebase", csSha, p.policy()) : "none";
   const gates = p.gates();
   const stage = gates.includes("intent") && intentState !== "valid" ? "intent" : gates.includes("plans") && plansState !== "valid" ? "plans" : "issues";
   return {
@@ -6423,7 +6430,7 @@ function intentModel(p, info, issues) {
     }),
     questions,
     plans,
-    approvals: { intent: intentState, plans: plansState },
+    approvals: { codebase: codebaseState, intent: intentState, plans: plansState },
     stage,
     proposal: proposalOf(info.abs) !== null
   };
@@ -7898,10 +7905,10 @@ function check2(out, p, home) {
 
 // ../dashboard/src/server.ts
 var import_node_crypto7 = __toESM(require("node:crypto"));
-var import_node_fs44 = __toESM(require("node:fs"));
+var import_node_fs45 = __toESM(require("node:fs"));
 var import_node_http = __toESM(require("node:http"));
 var import_node_os3 = __toESM(require("node:os"));
-var import_node_path48 = __toESM(require("node:path"));
+var import_node_path49 = __toESM(require("node:path"));
 
 // ../dashboard/src/agent.ts
 var import_node_child_process7 = require("node:child_process");
@@ -7955,6 +7962,10 @@ function parentMarker(start = process.ppid) {
 function agentSession(env) {
   return envMarker(env) ?? parentMarker();
 }
+
+// ../dashboard/src/api.ts
+var import_node_fs44 = __toESM(require("node:fs"));
+var import_node_path48 = __toESM(require("node:path"));
 
 // ../dashboard/src/burn.ts
 var DAY2 = 864e5;
@@ -10513,6 +10524,16 @@ async function deleteProposal(p, intent) {
 
 // ../dashboard/src/api.ts
 var ok = (data, status = 200, meta) => ({ status, data, ...meta ? { meta } : {} });
+async function intentNext(p, abs) {
+  const script = import_node_path48.default.join(p.root, "scripts/harness/intent.py");
+  if (!import_node_fs44.default.existsSync(script)) return null;
+  const r = await python(p.root, p.env, [script, "next", abs, "--json"], 3e4);
+  try {
+    return r.code === 0 ? JSON.parse(r.stdout) : null;
+  } catch {
+    return null;
+  }
+}
 var q = (r, k) => r.query.get(k) || null;
 async function issueList(p, r) {
   const { issues, errors } = await load(p);
@@ -10528,9 +10549,9 @@ async function oneIssue(p, key) {
   if (!i) throw notFound(`이슈가 없다: ${key}`);
   return i;
 }
-var stub = (method, path63, stage, cli, what) => ({
+var stub = (method, path64, stage, cli, what) => ({
   method,
-  path: path63,
+  path: path64,
   stub: stage,
   cli,
   handler: async () => {
@@ -10555,7 +10576,8 @@ var ROUTES = [
     cli: "status --intent <키>",
     handler: async (p, r) => {
       const { issues } = await load(p);
-      return ok(intentModel(p, findIntent(p.root, r.params.key), issues));
+      const info = findIntent(p.root, r.params.key);
+      return ok({ ...intentModel(p, info, issues), next: await intentNext(p, info.abs) });
     }
   },
   { method: "GET", path: "/intents/{key}/mob", cli: "mob status <INT>", handler: async (p, r) => ok(await getMob(p, r.params.key)) },
@@ -10732,10 +10754,10 @@ var COMPILED = ROUTES.map((route) => {
   })}$`);
   return { route, re, names };
 });
-function match(method, path63) {
+function match(method, path64) {
   const methods = [];
   for (const c of COMPILED) {
-    const m = c.re.exec(path63);
+    const m = c.re.exec(path64);
     if (!m) continue;
     if (c.route.method !== method) {
       methods.push(c.route.method);
@@ -10749,9 +10771,9 @@ function match(method, path63) {
   }
   return methods.length ? { methods } : null;
 }
-async function callApi(p, method, path63, opts = {}) {
-  const m = match(method, path63);
-  if (!m || !("route" in m)) throw notFound(`경로 없음: ${method} ${path63}`);
+async function callApi(p, method, path64, opts = {}) {
+  const m = match(method, path64);
+  if (!m || !("route" in m)) throw notFound(`경로 없음: ${method} ${path64}`);
   return m.route.handler(p, { method, params: m.params, query: new URLSearchParams(opts.query ?? {}), body: opts.body, via: opts.via ?? "terminal", mode: opts.mode ?? "single", ...opts.projects ? { projects: opts.projects } : {} });
 }
 
@@ -10784,22 +10806,22 @@ function same(a, b) {
   return x.length === y.length && import_node_crypto7.default.timingSafeEqual(x, y);
 }
 function stateFiles(root) {
-  const dir = import_node_path48.default.join(root, ".agents/state");
-  return { dir, token: import_node_path48.default.join(dir, "dashboard.token"), info: import_node_path48.default.join(dir, "dashboard.json") };
+  const dir = import_node_path49.default.join(root, ".agents/state");
+  return { dir, token: import_node_path49.default.join(dir, "dashboard.token"), info: import_node_path49.default.join(dir, "dashboard.json") };
 }
 function writeSecret(file, text2) {
   try {
-    const st = import_node_fs44.default.lstatSync(file);
-    if (st.isSymbolicLink() || st.isFile()) import_node_fs44.default.unlinkSync(file);
+    const st = import_node_fs45.default.lstatSync(file);
+    if (st.isSymbolicLink() || st.isFile()) import_node_fs45.default.unlinkSync(file);
   } catch {
   }
-  const fd = import_node_fs44.default.openSync(file, import_node_fs44.default.constants.O_WRONLY | import_node_fs44.default.constants.O_CREAT | import_node_fs44.default.constants.O_EXCL | (import_node_fs44.default.constants.O_NOFOLLOW ?? 0), 384);
+  const fd = import_node_fs45.default.openSync(file, import_node_fs45.default.constants.O_WRONLY | import_node_fs45.default.constants.O_CREAT | import_node_fs45.default.constants.O_EXCL | (import_node_fs45.default.constants.O_NOFOLLOW ?? 0), 384);
   try {
-    import_node_fs44.default.writeSync(fd, text2);
+    import_node_fs45.default.writeSync(fd, text2);
   } finally {
-    import_node_fs44.default.closeSync(fd);
+    import_node_fs45.default.closeSync(fd);
   }
-  import_node_fs44.default.chmodSync(file, 384);
+  import_node_fs45.default.chmodSync(file, 384);
 }
 function pidAlive(pid) {
   try {
@@ -10838,7 +10860,7 @@ async function findRunning(cwd, env, agent = () => agentSession(env)) {
   if (agent()) return { url: base, port: info.port };
   let token = "";
   try {
-    token = import_node_fs44.default.readFileSync(files.token, "utf8").trim();
+    token = import_node_fs45.default.readFileSync(files.token, "utf8").trim();
   } catch {
     token = "";
   }
@@ -10895,8 +10917,8 @@ async function startServer(opts) {
   let failures = 0;
   const files = single ? stateFiles(single.root) : null;
   if (files) {
-    import_node_fs44.default.mkdirSync(files.dir, { recursive: true, mode: 448 });
-    import_node_fs44.default.chmodSync(files.dir, 448);
+    import_node_fs45.default.mkdirSync(files.dir, { recursive: true, mode: 448 });
+    import_node_fs45.default.chmodSync(files.dir, 448);
     writeSecret(files.token, `${token}
 `);
   }
@@ -11089,7 +11111,7 @@ ${exp}`).digest("hex");
         server.closeAllConnections?.();
       });
       if (files) {
-        for (const f of [files.token, files.info]) import_node_fs44.default.rmSync(f, { force: true });
+        for (const f of [files.token, files.info]) import_node_fs45.default.rmSync(f, { force: true });
       }
     }
   };
@@ -11099,16 +11121,16 @@ ${exp}`).digest("hex");
 var import_node_os4 = __toESM(require("node:os"));
 
 // src/commands/doctor.ts
-var import_node_fs47 = __toESM(require("node:fs"));
-var import_node_path51 = __toESM(require("node:path"));
+var import_node_fs48 = __toESM(require("node:fs"));
+var import_node_path52 = __toESM(require("node:path"));
 
 // src/commands/doctor-overrides.ts
-var import_node_fs45 = __toESM(require("node:fs"));
-var import_node_path49 = __toESM(require("node:path"));
+var import_node_fs46 = __toESM(require("node:fs"));
+var import_node_path50 = __toESM(require("node:path"));
 var isObj7 = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 function readJson2(target, rel2) {
   try {
-    return JSON.parse(import_node_fs45.default.readFileSync(import_node_path49.default.join(target, ...rel2.split("/")), "utf8"));
+    return JSON.parse(import_node_fs46.default.readFileSync(import_node_path50.default.join(target, ...rel2.split("/")), "utf8"));
   } catch {
     return null;
   }
@@ -11135,11 +11157,11 @@ function overridesReport(ctx, target, inst) {
     if (e.op !== "copy" && e.op !== "none") continue;
     const kitHas = kit?.has(e.path) ?? false;
     if (e.owner.startsWith("pack:") && kitHas) out.push({ target: e.path, winner: e.layer && e.layer.startsWith("pack:") ? e.layer : e.owner, losers: [kitVer], declared: true });
-    else if (e.owner === "user" && kitHas) out.push({ target: e.path, winner: "user", losers: [kitVer], note: import_node_fs45.default.existsSync(import_node_path49.default.join(target, ...`${e.path}.new`.split("/"))) ? ".new 있음" : ".new 없음" });
+    else if (e.owner === "user" && kitHas) out.push({ target: e.path, winner: "user", losers: [kitVer], note: import_node_fs46.default.existsSync(import_node_path50.default.join(target, ...`${e.path}.new`.split("/"))) ? ".new 있음" : ".new 없음" });
     else if (e.owner === "kit" && e.op === "copy" && typeof e.sha256 === "string") {
       let cur = null;
       try {
-        cur = sha256(import_node_fs45.default.readFileSync(import_node_path49.default.join(target, ...e.path.split("/"))));
+        cur = sha256(import_node_fs46.default.readFileSync(import_node_path50.default.join(target, ...e.path.split("/"))));
       } catch {
         cur = null;
       }
@@ -11187,14 +11209,14 @@ function overridesLines(r) {
 }
 
 // src/projection/check.ts
-var import_node_fs46 = __toESM(require("node:fs"));
-var import_node_path50 = __toESM(require("node:path"));
+var import_node_fs47 = __toESM(require("node:fs"));
+var import_node_path51 = __toESM(require("node:path"));
 var PROJECTION_KINDS = ["stale", "symlink-found", "merge-missing", "relative-ref", "skill-model-field", "role-model-locked", "pending-new", "steering-size", "layout-conflict"];
 var LIMIT3 = 24 * 1024;
 var SOURCE_DIRS = [".agents/rules/", ".agents/skills/", ".agents/roles/"];
 function lstat2(p) {
   try {
-    return import_node_fs46.default.lstatSync(p);
+    return import_node_fs47.default.lstatSync(p);
   } catch {
     return null;
   }
@@ -11203,14 +11225,14 @@ function currentSha(p, isDir2) {
   const st = lstat2(p);
   if (!st || st.isSymbolicLink()) return null;
   if (isDir2) return st.isDirectory() ? treeSha(walkView(new FsView(p), "")) : null;
-  return st.isFile() ? sha256(import_node_fs46.default.readFileSync(p)) : null;
+  return st.isFile() ? sha256(import_node_fs47.default.readFileSync(p)) : null;
 }
 function linksInside(p, prefix = "") {
   const st = lstat2(p);
   if (!st?.isDirectory() || st.isSymbolicLink()) return [];
   const out = [];
-  for (const name of import_node_fs46.default.readdirSync(p).sort()) {
-    const q2 = import_node_path50.default.join(p, name);
+  for (const name of import_node_fs47.default.readdirSync(p).sort()) {
+    const q2 = import_node_path51.default.join(p, name);
     const s = lstat2(q2);
     const rel2 = prefix ? `${prefix}/${name}` : name;
     if (s?.isSymbolicLink()) out.push(rel2);
@@ -11223,38 +11245,38 @@ function hasRelativeRef(text2) {
   return /\[[^\]]*\]\((\.\.\/[^)\s]*)\)/.test(stripped);
 }
 function fmOf(file) {
-  const { block: block2 } = splitFrontmatter(import_node_fs46.default.readFileSync(file, "utf8"));
+  const { block: block2 } = splitFrontmatter(import_node_fs47.default.readFileSync(file, "utf8"));
   return block2 === null ? {} : parseFrontmatter(block2);
 }
 function kiroAlwaysBytes(target) {
-  const dir = import_node_path50.default.join(target, ".kiro/steering");
-  if (!import_node_fs46.default.existsSync(dir)) return 0;
+  const dir = import_node_path51.default.join(target, ".kiro/steering");
+  if (!import_node_fs47.default.existsSync(dir)) return 0;
   let total = 0;
-  for (const name of import_node_fs46.default.readdirSync(dir).filter((n) => n.endsWith(".md"))) {
-    const p = import_node_path50.default.join(dir, name);
+  for (const name of import_node_fs47.default.readdirSync(dir).filter((n) => n.endsWith(".md"))) {
+    const p = import_node_path51.default.join(dir, name);
     if (!lstat2(p)?.isFile()) continue;
     const inc = fmOf(p).inclusion;
-    if ((typeof inc === "string" && inc || "always") === "always") total += import_node_fs46.default.statSync(p).size;
+    if ((typeof inc === "string" && inc || "always") === "always") total += import_node_fs47.default.statSync(p).size;
   }
   return total;
 }
 function specAt(target) {
-  const file = import_node_path50.default.join(target, "scripts/harness/projection.json");
-  return import_node_fs46.default.existsSync(file) ? parseSpec(import_node_fs46.default.readFileSync(file, "utf8")) : null;
+  const file = import_node_path51.default.join(target, "scripts/harness/projection.json");
+  return import_node_fs47.default.existsSync(file) ? parseSpec(import_node_fs47.default.readFileSync(file, "utf8")) : null;
 }
 function layoutFindings(target, entries) {
   const out = [];
-  const meta = readMeta(import_node_path50.default.join(target, META_REL));
+  const meta = readMeta(import_node_path51.default.join(target, META_REL));
   const tokens = meta.status === "ok" ? meta.meta.tokens : {};
   const agents = meta.status === "ok" ? meta.meta.agents : [];
   let spec;
   for (const e of entries) {
     if (e.owner !== "kit") continue;
-    const p = import_node_path50.default.join(target, ...e.path.split("/"));
+    const p = import_node_path51.default.join(target, ...e.path.split("/"));
     const from = typeof e.from === "string" ? e.from : null;
     if (e.op === "mirror" || e.op === "render") {
       const st = lstat2(p);
-      const isDir2 = e.op === "mirror" && (Boolean(st?.isDirectory()) && !st?.isSymbolicLink() || Boolean(from && lstat2(import_node_path50.default.join(target, ...from.split("/")))?.isDirectory()));
+      const isDir2 = e.op === "mirror" && (Boolean(st?.isDirectory()) && !st?.isSymbolicLink() || Boolean(from && lstat2(import_node_path51.default.join(target, ...from.split("/")))?.isDirectory()));
       if (st?.isSymbolicLink()) {
         out.push({ kind: "symlink-found", severity: "error", path: e.path, hint: "링크 대신 실제 파일을 둔다 → npx harness-kit repair" });
         continue;
@@ -11270,7 +11292,7 @@ function layoutFindings(target, entries) {
         continue;
       }
       if (from && typeof e.fromSha256 === "string") {
-        const sp = import_node_path50.default.join(target, ...from.split("/"));
+        const sp = import_node_path51.default.join(target, ...from.split("/"));
         const now = from === HOOKS_REL ? hooksBundleSha(new FsView(target)) : currentSha(sp, Boolean(lstat2(sp)?.isDirectory()));
         if (now === null) out.push({ kind: "stale", severity: "error", path: e.path, hint: `원본 ${from} 이 없다 → npx harness-kit update` });
         else if (now !== e.fromSha256) out.push({ kind: "stale", severity: "error", path: e.path, hint: `원본 ${from} 가 바뀌었다 → npx harness-kit repair` });
@@ -11281,21 +11303,21 @@ function layoutFindings(target, entries) {
       if (spec === void 0) spec = specAt(target);
       if (!spec) continue;
       const st = lstat2(p);
-      const cur = st?.isFile() ? import_node_fs46.default.readFileSync(p, "utf8") : null;
+      const cur = st?.isFile() ? import_node_fs47.default.readFileSync(p, "utf8") : null;
       const keys = e.keys;
       const lost = cur === null ? keys : missingWith(kind, cur, keys, fullMergeWant(kind, spec, tokens, loadSources(new FsView(target))));
       if (lost.length) out.push({ kind: "merge-missing", severity: "error", path: e.path, hint: `킷 키 ${lost.slice(0, 3).join(", ")}${lost.length > 3 ? " …" : ""} 가 없다 → npx harness-kit repair` });
     } else if (e.op === "copy") {
       const st = lstat2(p);
       if (!st?.isFile()) continue;
-      if (SOURCE_DIRS.some((d) => e.path.startsWith(d)) && e.path.endsWith(".md") && hasRelativeRef(import_node_fs46.default.readFileSync(p, "utf8"))) {
+      if (SOURCE_DIRS.some((d) => e.path.startsWith(d)) && e.path.endsWith(".md") && hasRelativeRef(import_node_fs47.default.readFileSync(p, "utf8"))) {
         out.push({ kind: "relative-ref", severity: "error", path: e.path, hint: "킷 원본은 `../` 대신 리포 기준 경로(.agents/…)를 쓴다(복사본에서 깨진다)" });
       }
     }
   }
   for (const e of entries) {
     for (const side of [`${e.path}.new`, `${e.path}.bak`]) {
-      if (lstat2(import_node_path50.default.join(target, ...side.split("/")))) out.push({ kind: "pending-new", severity: "warn", path: side, hint: `병합하거나 지운다(diff -u ${e.path} ${side})` });
+      if (lstat2(import_node_path51.default.join(target, ...side.split("/")))) out.push({ kind: "pending-new", severity: "warn", path: side, hint: `병합하거나 지운다(diff -u ${e.path} ${side})` });
     }
   }
   try {
@@ -11363,7 +11385,7 @@ function copyFindings(target, lock) {
       continue;
     }
     if (e.op !== "copy" || e.owner !== "kit") continue;
-    const state = fileState(import_node_path51.default.join(target, ...e.path.split("/")), e.sha256);
+    const state = fileState(import_node_path52.default.join(target, ...e.path.split("/")), e.sha256);
     if (state === "ok") ok2 += 1;
     else if (state === "missing") {
       findings.push({ kind: "missing", severity: "error", path: e.path, owner: e.owner, hint: "킷 파일이 없다. harness-kit repair 로 되살린다" });
@@ -11381,7 +11403,7 @@ function copyFindings(target, lock) {
 function gitignoreFinding(target) {
   let lines3 = [];
   try {
-    lines3 = import_node_fs47.default.readFileSync(import_node_path51.default.join(target, ".gitignore"), "utf8").split(/\r?\n/).map((l) => l.trim());
+    lines3 = import_node_fs48.default.readFileSync(import_node_path52.default.join(target, ".gitignore"), "utf8").split(/\r?\n/).map((l) => l.trim());
   } catch {
     lines3 = [];
   }
@@ -11396,7 +11418,7 @@ function gitignoreFinding(target) {
 function entrySizeFinding(target) {
   let bytes = 0;
   for (const f of ENTRY_FILES) {
-    const st = lstatOrNull(import_node_path51.default.join(target, f));
+    const st = lstatOrNull(import_node_path52.default.join(target, f));
     if (st?.isFile()) bytes += st.size;
   }
   if (bytes <= ENTRY_LIMIT) return null;
@@ -11425,7 +11447,7 @@ function floorFindings(target, raw) {
   if (missingGates.length) out.push({ kind: "gate-floor", severity: "error", path: META_REL, hint: `flow.gates 에 하한 게이트 ${missingGates.join(" · ")} 가 없다. 하한은 빼지 못한다(check-sdd-prerequisites 는 설정과 상관없이 검사한다)`, detail: { missing: missingGates } });
   let hooks = null;
   try {
-    hooks = JSON.parse(import_node_fs47.default.readFileSync(import_node_path51.default.join(target, ".agents/hooks.json"), "utf8"));
+    hooks = JSON.parse(import_node_fs48.default.readFileSync(import_node_path52.default.join(target, ".agents/hooks.json"), "utf8"));
   } catch {
     hooks = null;
   }
@@ -11452,7 +11474,7 @@ function personalFindings(target) {
   for (const i of models.ignored) out.push({ kind: "personal-ignored", severity: "warn", path: LOCAL_MODEL_POLICY, hint: `${i.key} — ${i.why}(무시했다, MR-R7)` });
   let local = null;
   try {
-    local = JSON.parse(import_node_fs47.default.readFileSync(import_node_path51.default.join(target, ...SETTINGS_LOCAL.split("/")), "utf8"));
+    local = JSON.parse(import_node_fs48.default.readFileSync(import_node_path52.default.join(target, ...SETTINGS_LOCAL.split("/")), "utf8"));
   } catch {
     local = null;
   }
@@ -11475,7 +11497,7 @@ function approverFindings(raw) {
 function noticeFinding(target, day) {
   let text2;
   try {
-    text2 = import_node_fs47.default.readFileSync(import_node_path51.default.join(target, ...NOTICE_REL.split("/")), "utf8");
+    text2 = import_node_fs48.default.readFileSync(import_node_path52.default.join(target, ...NOTICE_REL.split("/")), "utf8");
   } catch {
     return null;
   }
@@ -11483,14 +11505,14 @@ function noticeFinding(target, day) {
   return { kind: "upgrade-notice-expired", severity: "info", path: NOTICE_REL, hint: "만료된 업그레이드 공지다. 다음 update 가 지운다(지금 지워도 된다)" };
 }
 function collect(target, day) {
-  const metaRead = readMeta(import_node_path51.default.join(target, META_REL));
+  const metaRead = readMeta(import_node_path52.default.join(target, META_REL));
   if (metaRead.status === "missing") {
     throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 harness-kit init");
   }
   const findings = [];
   const meta = metaRead.status === "ok" ? metaRead.meta : null;
   if (metaRead.status === "invalid") findings.push({ kind: "meta-invalid", severity: "error", path: META_REL, hint: metaRead.error });
-  const lockRead = readLock(import_node_path51.default.join(target, LOCK_REL));
+  const lockRead = readLock(import_node_path52.default.join(target, LOCK_REL));
   const lock = lockRead.status === "ok" ? lockRead.lock : null;
   if (lockRead.status === "ok" && lockRead.format === "v1") {
     findings.push({ kind: "lock-v1", severity: "info", path: LOCK_REL, hint: "v1(TSV) lock 이다. update 가 v2 로 바꾼다" });
@@ -11550,7 +11572,7 @@ function runDoctor(ctx) {
 }
 
 // src/commands/outdated.ts
-var import_node_path52 = __toESM(require("node:path"));
+var import_node_path53 = __toESM(require("node:path"));
 
 // src/core/git.ts
 var import_node_child_process8 = require("node:child_process");
@@ -11604,7 +11626,7 @@ function fromKitSource(raw, env) {
   return null;
 }
 function sourceOf(ctx, target) {
-  const lock = readLock(import_node_path52.default.join(target, LOCK_REL));
+  const lock = readLock(import_node_path53.default.join(target, LOCK_REL));
   return pickSource(str(ctx.values, "source"), ctx.io.env, lock.status === "ok" ? lock.lock.kit.source : null);
 }
 function pickSource(flag, envVars, lockSource) {
@@ -11623,7 +11645,7 @@ var isPre = (v) => /^\d+\.\d+\.\d+-/.test(v);
 var newer = (a, b) => (compareSemver(a, b) ?? 0) > 0;
 function runOutdated(ctx) {
   const target = targetOf(ctx);
-  const m = readMeta(import_node_path52.default.join(target, META_REL));
+  const m = readMeta(import_node_path53.default.join(target, META_REL));
   if (m.status === "missing") throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 harness-kit init");
   if (m.status === "invalid") throw new CliError(EXIT.STATE, `메타를 해석하지 못했다: ${m.error}`, "harness-kit doctor 로 상태를 본다");
   const installed = m.meta.kit.version;
@@ -11715,10 +11737,10 @@ function humanTerminal(ctx) {
   if (!ctx.io.isTTY) return new ApiError(403, "read_only", "TTY 가 아니다 — 사람이 터미널에서 직접 실행한다");
   return null;
 }
-async function run3(ctx, method, path63, opts, human) {
+async function run3(ctx, method, path64, opts, human) {
   try {
     const p = opts.project ?? await openProject(ctx);
-    const r = await callApi(p, method, path63, { ...opts.query ? { query: opts.query } : {}, body: opts.body, via: "terminal", mode: opts.mode ?? "single", ...opts.projects ? { projects: opts.projects } : {} });
+    const r = await callApi(p, method, path64, { ...opts.query ? { query: opts.query } : {}, body: opts.body, via: "terminal", mode: opts.mode ?? "single", ...opts.projects ? { projects: opts.projects } : {} });
     const data = r.data;
     return { code: EXIT.OK, data, lines: human(data) };
   } catch (err) {
@@ -11771,8 +11793,8 @@ function modeOf(ctx) {
   const ws = str(v, "workspace");
   if ([all, root !== void 0, ws !== void 0].filter(Boolean).length > 1) throw usageError("--all · --root · --workspace 는 하나만 준다");
   if (all) return { kind: "all" };
-  if (root !== void 0) return { kind: "root", dir: import_node_path53.default.resolve(ctx.io.cwd, root) };
-  if (ws !== void 0) return { kind: "workspace", file: import_node_path53.default.resolve(ctx.io.cwd, ws) };
+  if (root !== void 0) return { kind: "root", dir: import_node_path54.default.resolve(ctx.io.cwd, root) };
+  if (ws !== void 0) return { kind: "workspace", file: import_node_path54.default.resolve(ctx.io.cwd, ws) };
   return { kind: "single" };
 }
 function openBrowser(url) {
@@ -11784,7 +11806,7 @@ function openBrowser(url) {
 }
 async function runExport(ctx, out) {
   try {
-    const r = await exportStatic({ cwd: targetOf(ctx), env: ctx.io.env, out: import_node_path53.default.resolve(ctx.io.cwd, out) });
+    const r = await exportStatic({ cwd: targetOf(ctx), env: ctx.io.env, out: import_node_path54.default.resolve(ctx.io.cwd, out) });
     return { code: EXIT.OK, data: { command: "dashboard", export: r.out, files: r.files }, lines: [`정적 내보내기: ${r.out} (파일 ${r.files.length}개, 스크립트 · 버튼 없음)`] };
   } catch (err) {
     if (err instanceof ExportLeakError) throw new CliError(EXIT.CHECK, `${err.message} — 출력 폴더를 지웠다`, err.hits.slice(0, 5).join(" · "));
@@ -11924,8 +11946,8 @@ async function runReview(ctx) {
 }
 
 // src/commands/init.ts
-var import_node_fs48 = __toESM(require("node:fs"));
-var import_node_path54 = __toESM(require("node:path"));
+var import_node_fs49 = __toESM(require("node:fs"));
+var import_node_path55 = __toESM(require("node:path"));
 
 // src/cli/prompt.ts
 var import_node_readline = __toESM(require("node:readline"));
@@ -12028,11 +12050,11 @@ function readOptions(ctx, layout2) {
 }
 function assertInstallable(target) {
   const st = lstatOrNull(target);
-  if (st && !(st.isDirectory() || st.isSymbolicLink() && import_node_fs48.default.statSync(target).isDirectory())) {
+  if (st && !(st.isDirectory() || st.isSymbolicLink() && import_node_fs49.default.statSync(target).isDirectory())) {
     throw new CliError(EXIT.STATE, `대상이 폴더가 아니다: ${target}`);
   }
-  if (import_node_fs48.default.existsSync(import_node_path54.default.join(target, META_REL))) {
-    throw new CliError(EXIT.STATE, `이미 설치된 리포다: ${import_node_path54.default.join(target, META_REL)}`, "킷 갱신은 harness-kit update, 하네스 · 모듈 추가는 harness-kit add 다. 지금 상태는 harness-kit doctor");
+  if (import_node_fs49.default.existsSync(import_node_path55.default.join(target, META_REL))) {
+    throw new CliError(EXIT.STATE, `이미 설치된 리포다: ${import_node_path55.default.join(target, META_REL)}`, "킷 갱신은 harness-kit update, 하네스 · 모듈 추가는 harness-kit add 다. 지금 상태는 harness-kit doctor");
   }
 }
 function selectionInput(ctx) {
@@ -12074,7 +12096,7 @@ async function runInit(ctx) {
   try {
     const input = prompter ? await askMissing(prompter, selectionInput(ctx), layout2, loc.dir) : selectionInput(ctx);
     const selection = resolveSelection(layout2, loc.dir, input, { target, env: io2.env });
-    const tokens = resolveTokens(layout2, selection, { flags: opts.flags, env: io2.env, targetBasename: import_node_path54.default.basename(target) });
+    const tokens = resolveTokens(layout2, selection, { flags: opts.flags, env: io2.env, targetBasename: import_node_path55.default.basename(target) });
     checkSlug(tokens.PROJECT_SLUG ?? "");
     const plan = buildPlan({ layout: layout2, templatesDir: loc.dir, target, selection, tokens, mode: { force: opts.force, adopt: opts.adopt } });
     const shown = command === "plan" && !ctx.quiet ? plan.ops : plan.ops.filter(needsAttention);
@@ -12107,8 +12129,8 @@ async function runInit(ctx) {
 }
 
 // src/commands/intake.ts
-var import_node_fs49 = __toESM(require("node:fs"));
-var import_node_path55 = __toESM(require("node:path"));
+var import_node_fs50 = __toESM(require("node:fs"));
+var import_node_path56 = __toESM(require("node:path"));
 var str5 = (ctx, k) => typeof ctx.values[k] === "string" ? ctx.values[k] : void 0;
 var list2 = (ctx, k) => Array.isArray(ctx.values[k]) ? ctx.values[k] : [];
 async function readStdin(ctx) {
@@ -12129,13 +12151,13 @@ async function runIntake(ctx) {
   const cwd = targetOf(ctx);
   let text2 = textArg === "-" ? await readStdin(ctx) : textArg ?? "";
   if (textFile !== void 0) {
-    const file = import_node_path55.default.resolve(ctx.io.cwd, textFile);
-    if (!import_node_fs49.default.existsSync(file)) throw usageError(`--text-file 이 없다: ${textFile}`);
-    text2 = import_node_fs49.default.readFileSync(file, "utf8");
+    const file = import_node_path56.default.resolve(ctx.io.cwd, textFile);
+    if (!import_node_fs50.default.existsSync(file)) throw usageError(`--text-file 이 없다: ${textFile}`);
+    text2 = import_node_fs50.default.readFileSync(file, "utf8");
   }
-  const paths = list2(ctx, "attach").map((a) => import_node_path55.default.resolve(ctx.io.cwd, a));
-  const missing = paths.find((a) => !import_node_fs49.default.statSync(a, { throwIfNoEntry: false })?.isFile());
-  if (missing) throw usageError(`첨부가 없다: ${import_node_path55.default.relative(cwd, missing) || missing}`);
+  const paths = list2(ctx, "attach").map((a) => import_node_path56.default.resolve(ctx.io.cwd, a));
+  const missing = paths.find((a) => !import_node_fs50.default.statSync(a, { throwIfNoEntry: false })?.isFile());
+  if (missing) throw usageError(`첨부가 없다: ${import_node_path56.default.relative(cwd, missing) || missing}`);
   const area = str5(ctx, "area");
   const body = { title, kind, name, text: text2, links: list2(ctx, "link"), paths, ...area ? { area } : {} };
   return run3(ctx, "POST", "/intake", { body }, (d) => {
@@ -12179,7 +12201,7 @@ async function runMob2(ctx) {
 }
 
 // src/commands/list.ts
-var import_node_path56 = __toESM(require("node:path"));
+var import_node_path57 = __toESM(require("node:path"));
 function tally(values) {
   const out = /* @__PURE__ */ new Map();
   for (const v of values) out.set(v, (out.get(v) ?? 0) + 1);
@@ -12187,7 +12209,7 @@ function tally(values) {
 }
 function runList(ctx) {
   const target = targetOf(ctx);
-  const read = readMeta(import_node_path56.default.join(target, META_REL));
+  const read = readMeta(import_node_path57.default.join(target, META_REL));
   if (read.status === "missing") throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 harness-kit init");
   if (read.status === "invalid") throw new CliError(EXIT.STATE, `메타를 해석하지 못했다: ${read.error}`, "harness-kit doctor 로 상태를 본다");
   const m = read.meta;
@@ -12216,7 +12238,7 @@ function runList(ctx) {
     `  이슈 키 ${m.issueKey.source}:${m.issueKey.prefix} · base ${m.git.base}`
   ];
   if (bool(ctx.values, "files")) {
-    const lr = readLock(import_node_path56.default.join(target, LOCK_REL));
+    const lr = readLock(import_node_path57.default.join(target, LOCK_REL));
     if (lr.status !== "ok") {
       throw new CliError(EXIT.STATE, `lock 을 읽지 못했다: ${lr.status === "missing" ? "없음" : lr.error}`, "harness-kit doctor 로 상태를 본다");
     }
@@ -12231,7 +12253,7 @@ function runList(ctx) {
 }
 
 // src/commands/remove.ts
-var import_node_path57 = __toESM(require("node:path"));
+var import_node_path58 = __toESM(require("node:path"));
 function keepAction(e) {
   const owner = ownerKind2(e.owner);
   if (owner === "external") return "skip-external";
@@ -12246,7 +12268,7 @@ function judgeDrop(l, p, e, cur, ambiguous) {
   if (cur.kind === "none") return { op: { path: p, owner: e.owner, layer, action: "absent" }, entry: void 0 };
   if (cur.kind === "file" && e.sha256 && cur.sha === e.sha256) {
     const neu = `${p}.new`;
-    const alsoNew = existing(import_node_path57.default.join(l.target, ...neu.split("/"))).kind === "file" ? { alsoNew: neu } : {};
+    const alsoNew = existing(import_node_path58.default.join(l.target, ...neu.split("/"))).kind === "file" ? { alsoNew: neu } : {};
     return { op: { path: p, owner: e.owner, layer, action: "delete", ...alsoNew }, entry: void 0 };
   }
   const reason = cur.kind === "other" ? cur.what : ambiguous.has(p) ? AMBIGUOUS_REASON : e.sha256 ? "사람이 고친 파일이다" : "lock 에 기준 해시가 없다(고친 파일로 본다)";
@@ -12262,7 +12284,7 @@ function judgeRelayer(l, p, w, e, cur) {
   if (cur.sha === w.sha256) return { op: { path: p, owner: "kit", layer: w.layer, action: "same" }, entry: kit };
   if (e.sha256 && cur.sha === e.sha256) return { op: { path: p, ...withD3, action: "update" }, entry: kit };
   const neu = `${p}.new`;
-  const newFile = existing(import_node_path57.default.join(l.target, ...neu.split("/"))).kind === "other" ? {} : { newFile: neu };
+  const newFile = existing(import_node_path58.default.join(l.target, ...neu.split("/"))).kind === "other" ? {} : { newFile: neu };
   return { op: { path: p, ...withD3, action: "conflict", ...newFile }, entry: { ...e, layer: w.layer } };
 }
 function planRemove(l, after) {
@@ -12321,11 +12343,11 @@ function runRemove(ctx) {
 }
 
 // src/commands/repair.ts
-var import_node_fs50 = __toESM(require("node:fs"));
-var import_node_path58 = __toESM(require("node:path"));
+var import_node_fs51 = __toESM(require("node:fs"));
+var import_node_path59 = __toESM(require("node:path"));
 var REPAIR_KINDS = ["missing", "drifted", "stale", "merge"];
 function full9(target, rel2) {
-  return import_node_path58.default.join(target, ...rel2.split("/"));
+  return import_node_path59.default.join(target, ...rel2.split("/"));
 }
 function parseOnly2(raw) {
   if (raw === void 0) return [...REPAIR_KINDS];
@@ -12335,7 +12357,7 @@ function parseOnly2(raw) {
   return only;
 }
 function survey(target, inst) {
-  const ancestors = new AncestorCheck(target, import_node_fs50.default.realpathSync(target));
+  const ancestors = new AncestorCheck(target, import_node_fs51.default.realpathSync(target));
   const out = { ok: 0, drifted: 0, skipped: 0, missing: [] };
   for (const e of inst.lock.entries) {
     if (ownerKind2(e.owner) !== "kit" || entryKind(e) !== "copy") {
@@ -12425,7 +12447,7 @@ function repairProjection(ctx, target, inst, only) {
 }
 function repairMerge(target, w, e, only) {
   const p = full9(target, w.path);
-  const cur = import_node_fs50.default.existsSync(p) && import_node_fs50.default.lstatSync(p).isFile() ? import_node_fs50.default.readFileSync(p, "utf8") : null;
+  const cur = import_node_fs51.default.existsSync(p) && import_node_fs51.default.lstatSync(p).isFile() ? import_node_fs51.default.readFileSync(p, "utf8") : null;
   const keys = e && Array.isArray(e.keys) ? e.keys : void 0;
   const lost = cur === null ? ["(파일 없음)"] : keys ? missingWith(w.kind, cur, keys, w.want) : [];
   if (lost.length === 0 && e || !chosen(only, cur === null ? "missing" : "merge")) return null;
@@ -12612,8 +12634,8 @@ async function runHistory(ctx) {
 }
 
 // src/commands/status.ts
-var import_node_fs51 = __toESM(require("node:fs"));
-var import_node_path59 = __toESM(require("node:path"));
+var import_node_fs52 = __toESM(require("node:fs"));
+var import_node_path60 = __toESM(require("node:path"));
 function registryProjects(ctx) {
   const home = homeOf(ctx);
   return new Projects(() => readRegistry(home), { env: ctx.io.env, home, readOnly: true, multi: true, deps: dashboardDeps() });
@@ -12690,8 +12712,8 @@ async function runFlow(ctx) {
   const remove = str(ctx.values, "remove");
   if (add === void 0 && remove === void 0) return run3(ctx, "GET", "/flow/gates", {}, (d) => [`게이트: ${d.gates.join(" → ")}`, `바닥(줄일 수 없음): ${d.floor.join(" · ")}`]);
   const p = await openProject(ctx);
-  const file = import_node_path59.default.join(p.root, ".agents/harness-kit.json");
-  const meta = JSON.parse(import_node_fs51.default.readFileSync(file, "utf8"));
+  const file = import_node_path60.default.join(p.root, ".agents/harness-kit.json");
+  const meta = JSON.parse(import_node_fs52.default.readFileSync(file, "utf8"));
   const flow2 = meta.flow && typeof meta.flow === "object" ? meta.flow : {};
   let gates = p.gates();
   if (remove !== void 0) {
@@ -12707,15 +12729,15 @@ async function runFlow(ctx) {
   }
   const next = { ...meta, flow: { ...flow2, gates } };
   const tmp = `${file}.${process.pid}.tmp`;
-  import_node_fs51.default.writeFileSync(tmp, formatJson(next));
-  import_node_fs51.default.renameSync(tmp, file);
+  import_node_fs52.default.writeFileSync(tmp, formatJson(next));
+  import_node_fs52.default.renameSync(tmp, file);
   return { code: EXIT.OK, data: { gates, floor: GATE_FLOOR, file: ".agents/harness-kit.json" }, lines: [`flow.gates: ${gates.join(" → ")}`, "팀 설정이다. MR 로 올린다"] };
 }
 
 // src/commands/uninstall.ts
 var import_node_child_process10 = require("node:child_process");
-var import_node_fs52 = __toESM(require("node:fs"));
-var import_node_path60 = __toESM(require("node:path"));
+var import_node_fs53 = __toESM(require("node:fs"));
+var import_node_path61 = __toESM(require("node:path"));
 var ACTIONS2 = ["delete", "keep-modified", "absent", "keep-user", "keep-external", "keep-pack", "unmerge"];
 var COUNT_ONLY = /* @__PURE__ */ new Set(["absent", "keep-user", "keep-external", "keep-pack"]);
 var HOOKS_PATH = "scripts/git-hooks";
@@ -12756,7 +12778,7 @@ function planProjectionEntry(p, e) {
   if (!dir && cur.kind !== "other" && current3(p, `${e.path}.new`).kind === "file") p.ops.push({ path: `${e.path}.new`, owner: e.owner, action: "delete", reason: "update 가 둔 .new" });
 }
 function full10(target, rel2) {
-  return import_node_path60.default.join(target, ...rel2.split("/"));
+  return import_node_path61.default.join(target, ...rel2.split("/"));
 }
 function current3(p, rel2) {
   if (p.ancestors.state(rel2) === "blocked") return { kind: "other", what: BLOCKED };
@@ -12799,9 +12821,9 @@ function planManifest(p, inst) {
   else p.ops.push({ path: MANIFEST_PATH, owner: "kit", action: "keep-modified", reason: "킷 판과 다르다" });
 }
 function uninstallSpec(ctx, target) {
-  const installed = import_node_path60.default.join(target, "scripts/harness/projection.json");
+  const installed = import_node_path61.default.join(target, "scripts/harness/projection.json");
   try {
-    if (import_node_fs52.default.existsSync(installed)) return parseSpec(import_node_fs52.default.readFileSync(installed, "utf8"));
+    if (import_node_fs53.default.existsSync(installed)) return parseSpec(import_node_fs53.default.readFileSync(installed, "utf8"));
     const { io: io2 } = ctx;
     return loadSpecOrNull(locateTemplates({ flag: str(ctx.values, "templates"), env: io2.env, cliFile: io2.cliFile, cwd: io2.cwd, version: VERSION }).dir);
   } catch (err) {
@@ -12810,10 +12832,10 @@ function uninstallSpec(ctx, target) {
   }
 }
 function planNotice2(p) {
-  const file = import_node_path60.default.join(p.target, ...NOTICE_REL.split("/"));
+  const file = import_node_path61.default.join(p.target, ...NOTICE_REL.split("/"));
   let text2;
   try {
-    text2 = import_node_fs52.default.readFileSync(file, "utf8");
+    text2 = import_node_fs53.default.readFileSync(file, "utf8");
   } catch {
     return;
   }
@@ -12821,7 +12843,7 @@ function planNotice2(p) {
 }
 function buildUninstall(ctx, target, inst, keepPacks, keepState, ambiguous) {
   const spec = inst.lock.entries.some((e) => e.op === "merge") ? uninstallSpec(ctx, target) : null;
-  const p = { target, ancestors: new AncestorCheck(target, import_node_fs52.default.realpathSync(target)), keepPacks, ops: [], ambiguous, spec, tokens: inst.meta.tokens };
+  const p = { target, ancestors: new AncestorCheck(target, import_node_fs53.default.realpathSync(target)), keepPacks, ops: [], ambiguous, spec, tokens: inst.meta.tokens };
   for (const e of inst.lock.entries) planEntry(p, e);
   planManifest(p, inst);
   planNotice2(p);
@@ -12835,11 +12857,11 @@ function unhookGit(target, env, dryRun) {
   if (top.status !== 0) return { status: "none" };
   let topReal;
   try {
-    topReal = import_node_fs52.default.realpathSync(top.stdout.trim());
+    topReal = import_node_fs53.default.realpathSync(top.stdout.trim());
   } catch {
     return { status: "none" };
   }
-  if (topReal !== import_node_fs52.default.realpathSync(target)) return { status: "none" };
+  if (topReal !== import_node_fs53.default.realpathSync(target)) return { status: "none" };
   const get = git3("config", "--local", "--get", "core.hooksPath");
   if (get.status !== 0) return { status: "none" };
   const value2 = get.stdout.trim();
@@ -12853,7 +12875,7 @@ function applyUninstall(target, inst, ops, unhook) {
   try {
     for (const o of ops) {
       current4 = o.path;
-      if (o.action === "unmerge" && o.text !== void 0) writeFileAtomic(import_node_path60.default.join(target, ...o.path.split("/")), Buffer.from(o.text, "utf8"), false);
+      if (o.action === "unmerge" && o.text !== void 0) writeFileAtomic(import_node_path61.default.join(target, ...o.path.split("/")), Buffer.from(o.text, "utf8"), false);
       if (o.action !== "delete" || state.has(o.path)) continue;
       if (o.dir) removeTarget(target, o.path, true);
       else removeFile(target, o.path);
@@ -12952,8 +12974,8 @@ async function runUninstall(ctx) {
 }
 
 // src/commands/pack.ts
-var import_node_fs53 = __toESM(require("node:fs"));
-var import_node_path61 = __toESM(require("node:path"));
+var import_node_fs54 = __toESM(require("node:fs"));
+var import_node_path62 = __toESM(require("node:path"));
 var TEST_PY = `"""팩 자체 검사(설계 04 §3.2 검증) — 이 폴더에서 python3 -m unittest tests.test_pack 으로 돈다. 팩과 함께 설치하지 않는다."""
 
 import json
@@ -13017,16 +13039,16 @@ function classify(dest, provides, name) {
   return true;
 }
 function filesUnder(target, rel2) {
-  const abs = import_node_path61.default.join(target, ...rel2.split("/"));
-  const st = import_node_fs53.default.lstatSync(abs);
+  const abs = import_node_path62.default.join(target, ...rel2.split("/"));
+  const st = import_node_fs54.default.lstatSync(abs);
   if (st.isSymbolicLink()) throw usageError(`--from 은 링크를 받지 않는다: ${rel2}`);
   if (st.isFile()) return [rel2];
-  return import_node_fs53.default.readdirSync(abs).sort(byteCompare).flatMap((n) => filesUnder(target, `${rel2}/${n}`));
+  return import_node_fs54.default.readdirSync(abs).sort(byteCompare).flatMap((n) => filesUnder(target, `${rel2}/${n}`));
 }
 function pickItem(target, rel2, id, key) {
   let doc;
   try {
-    doc = JSON.parse(import_node_fs53.default.readFileSync(import_node_path61.default.join(target, ...rel2.split("/")), "utf8"));
+    doc = JSON.parse(import_node_fs54.default.readFileSync(import_node_path62.default.join(target, ...rel2.split("/")), "utf8"));
   } catch (err) {
     throw usageError(`--from ${rel2}#${id}: 읽을 수 없다(${err instanceof Error ? err.message : String(err)})`);
   }
@@ -13043,10 +13065,10 @@ function runPack(ctx) {
   const dirFlag = str(ctx.values, "dir");
   if (!dirFlag) throw usageError("pack new 는 --dir <경로> 가 필요하다(빈 폴더나 없는 경로)");
   const target = targetOf(ctx);
-  const dir = import_node_path61.default.resolve(ctx.io.cwd, dirFlag);
-  const relToRepo = import_node_path61.default.relative(import_node_path61.default.join(target, ".agents"), dir);
-  if (!relToRepo.startsWith("..") && !import_node_path61.default.isAbsolute(relToRepo)) throw usageError(`--dir 은 리포 .agents/ 안일 수 없다: ${dir}`);
-  if (import_node_fs53.default.existsSync(dir) && (!import_node_fs53.default.statSync(dir).isDirectory() || import_node_fs53.default.readdirSync(dir).length)) throw usageError(`--dir 은 빈 폴더나 없는 경로다: ${dir}`);
+  const dir = import_node_path62.default.resolve(ctx.io.cwd, dirFlag);
+  const relToRepo = import_node_path62.default.relative(import_node_path62.default.join(target, ".agents"), dir);
+  if (!relToRepo.startsWith("..") && !import_node_path62.default.isAbsolute(relToRepo)) throw usageError(`--dir 은 리포 .agents/ 안일 수 없다: ${dir}`);
+  if (import_node_fs54.default.existsSync(dir) && (!import_node_fs54.default.statSync(dir).isDirectory() || import_node_fs54.default.readdirSync(dir).length)) throw usageError(`--dir 은 빈 폴더나 없는 경로다: ${dir}`);
   const inst = loadInstalled(target, "pack new");
   const loc = locateTemplates({ flag: str(ctx.values, "templates"), env: ctx.io.env, cliFile: ctx.io.cliFile, cwd: ctx.io.cwd, version: VERSION });
   const layout2 = loadLayout(loc.dir);
@@ -13080,7 +13102,7 @@ function runPack(ctx) {
       } else throw usageError(`--from <파일>#<id> 는 .agents/hooks.json · hooks.d · verify-checks.json · verify-checks.d 에만 쓴다: ${raw}`);
       continue;
     }
-    if (!import_node_fs53.default.existsSync(import_node_path61.default.join(target, ...rel2.split("/")))) throw usageError(`--from 파일이 없다: ${rel2}`);
+    if (!import_node_fs54.default.existsSync(import_node_path62.default.join(target, ...rel2.split("/")))) throw usageError(`--from 파일이 없다: ${rel2}`);
     for (const f of filesUnder(target, rel2)) {
       const packPath = reverseMap(layout2, f);
       if (!packPath) throw usageError(`팩이 가질 수 없는 경로다(하네스 파일 · 루트 문서): ${f}`, "원본(.agents/ · scripts/)을 준다");
@@ -13088,8 +13110,8 @@ function runPack(ctx) {
         overrides.push(f);
         warnings.push(`${f} 는 킷 경로다 — overrides 에 넣었다(킷 판을 덮는다)`);
       } else if (!classify(f, provides, name)) throw usageError(`provides 로 나눌 수 없는 경로다: ${f}`, "규칙 · 스킬 · 역할 · 가드 · scripts · _spec-templates · tools/<팩>/ 만 옮긴다");
-      const abs = import_node_path61.default.join(target, ...f.split("/"));
-      files.set(packPath, { data: import_node_fs53.default.readFileSync(abs), executable: (import_node_fs53.default.statSync(abs).mode & 73) !== 0 });
+      const abs = import_node_path62.default.join(target, ...f.split("/"));
+      files.set(packPath, { data: import_node_fs54.default.readFileSync(abs), executable: (import_node_fs54.default.statSync(abs).mode & 73) !== 0 });
     }
   }
   const range = str(ctx.values, "kit-range") ?? defaultRange();
@@ -13111,8 +13133,8 @@ function runPack(ctx) {
     ...files
   ]);
   try {
-    import_node_fs53.default.mkdirSync(import_node_path61.default.join(dir, "common"), { recursive: true });
-    for (const [rel2, f] of out) writeFileAtomic(import_node_path61.default.join(dir, ...rel2.split("/")), f.data, f.executable);
+    import_node_fs54.default.mkdirSync(import_node_path62.default.join(dir, "common"), { recursive: true });
+    for (const [rel2, f] of out) writeFileAtomic(import_node_path62.default.join(dir, ...rel2.split("/")), f.data, f.executable);
   } catch (err) {
     throw new CliError(EXIT.ENV, `팩 골격을 쓰지 못했다: ${err instanceof Error ? err.message : String(err)}`);
   }
@@ -13129,8 +13151,8 @@ function runPack(ctx) {
 }
 
 // src/commands/work.ts
-var import_node_fs54 = __toESM(require("node:fs"));
-var import_node_path62 = __toESM(require("node:path"));
+var import_node_fs55 = __toESM(require("node:fs"));
+var import_node_path63 = __toESM(require("node:path"));
 var ISSUE_ROLE = /^([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5}):([a-z][a-z0-9-]*)$/;
 async function runDispatch(ctx) {
   const [sub2, id, extra] = ctx.positionals;
@@ -13150,7 +13172,7 @@ async function runDispatch(ctx) {
   const kind = str(ctx.values, "kind") ?? (text2 ? "custom" : "doc-changed");
   const m = ISSUE_ROLE.exec(to);
   const p = await openProject(ctx);
-  const isSession = import_node_fs54.default.existsSync(import_node_path62.default.join(p.root, ".agents/state/sessions", `${to}.json`));
+  const isSession = import_node_fs55.default.existsSync(import_node_path63.default.join(p.root, ".agents/state/sessions", `${to}.json`));
   const target = m ? { issue: m[1], role: m[2] } : isSession ? { sessionId: to } : { name: to };
   const via = str(ctx.values, "via");
   return run3(
@@ -13211,7 +13233,7 @@ async function runProjects(ctx) {
       return { code: EXIT.OK, data, lines: rows.length ? rows.map((r) => `${r.name.padEnd(24)} ${r.state === "ok" ? "" : `(${r.state}) `}${r.path}`) : ["등록한 프로젝트가 없다"] };
     }
     if (sub2 === "add" && arg && !extra) {
-      const r = addProject(home, import_node_path62.default.resolve(ctx.io.cwd, arg), today(ctx.io));
+      const r = addProject(home, import_node_path63.default.resolve(ctx.io.cwd, arg), today(ctx.io));
       return { code: EXIT.OK, data: { added: r.added, project: r.entry }, lines: [r.added ? `등록했다: ${r.entry.name} ${r.entry.path}` : `이미 있다: ${r.entry.name}`] };
     }
     if (sub2 === "remove" && arg && !extra) {

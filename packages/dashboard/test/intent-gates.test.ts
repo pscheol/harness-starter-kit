@@ -42,6 +42,8 @@ describe("codebase 게이트", () => {
   it("current-state.md 와 참조 모델을 함께 승인하고 파일마다 sha 를 남긴다 · status approved", async () => {
     const repo = codebaseRepo();
     const srv = await serve(repo);
+    const before = (await call(srv, "GET", "/api/v1/intents/INT-1")).json.data;
+    expect([before.approvals.codebase, before.next.step]).toEqual(["none", "codebase-approval-wait"]);
     const b = await bundle(srv, "codebase");
     expect(b.files.map((f: any) => f.name)).toEqual(["current-state.md", MODEL]);
     expect([b.reasons, b.stale]).toEqual([[], []]);
@@ -52,6 +54,8 @@ describe("codebase 게이트", () => {
     const entries = parse(readFile(repo.root, `${INT}/approvals.md`)).entries;
     expect(entries.map((e) => [e.gate, e.target?.name, e.valid])).toEqual([["codebase", "current-state.md", true], ["codebase", MODEL, true]]);
     expect(readFile(repo.root, `${INT}/current-state.md`)).toContain("status: approved");
+    const model = (await call(srv, "GET", "/api/v1/intents/INT-1")).json.data;
+    expect([model.approvals.codebase, model.next.step]).toEqual(["valid", "draft"]);
     const again = await call(srv, "POST", "/api/v1/approvals", { body: { target: { intent: "INT-1" }, gate: "codebase", decision: "approved", phrase: "또", docSha256: (await bundle(srv, "codebase")).sha256, pin: srv.pin } });
     expect([again.status, again.json.error.code]).toEqual([409, "already_approved"]);
   });

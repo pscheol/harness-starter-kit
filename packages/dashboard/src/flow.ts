@@ -182,6 +182,13 @@ export function intentModel(p: Project, info: IntentInfo, issues: IssueModel[]):
   }
   const intentState = approvalState(entries, "intent", iSha, p.policy());
   const plansState = approvalState(entries, "plans", null, p.policy());
+  let csSha: string | null = null;
+  try {
+    csSha = approvalSha(fs.readFileSync(path.join(info.abs, "current-state.md")));
+  } catch {
+    csSha = null;
+  }
+  const codebaseState = csSha ? approvalState(entries, "codebase", csSha, p.policy()) : "none";
   const gates = p.gates();
   const stage = gates.includes("intent") && intentState !== "valid" ? "intent" : gates.includes("plans") && plansState !== "valid" ? "plans" : "issues";
   return {
@@ -191,7 +198,7 @@ export function intentModel(p: Project, info: IntentInfo, issues: IssueModel[]):
       const issue = u.issue ? issues.find((i) => i.key === u.issue) : undefined;
       return { id: u.id, title: u.title, kind: u.kind, dependsOn: u.dependsOn, issue: u.issue, planned: u.planned, progress: issue ? issue.stage : u.issue ? "unknown" : "not-started" };
     }),
-    questions, plans, approvals: { intent: intentState, plans: plansState }, stage, proposal: proposalOf(info.abs) !== null,
+    questions, plans, approvals: { codebase: codebaseState, intent: intentState, plans: plansState }, stage, proposal: proposalOf(info.abs) !== null,
   };
 }
 

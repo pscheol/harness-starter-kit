@@ -3,6 +3,8 @@
  * 표의 cli 칸은 같은 결과를 내는 콘솔 명령이다. 이 모듈의 쓰기 처리는 세션에 아무것도 보내지 않는다(DB-R25) —
  * 세션 요청은 POST /dispatch 하나뿐이고 사람이 고를 때만 부른다.
  */
+import fs from "node:fs";
+import path from "node:path";
 import { burnData } from "./burn";
 import { bad, notFound, notImplemented } from "./errors";
 import { findIntent, flowData, intentFolders, intentModel } from "./flow";
@@ -15,7 +17,7 @@ import { readFindings, readReview, readSummary, readVerify, readWorktrees } from
 import { checkouts } from "./repo";
 import { filterInventory, skillsInventory } from "./skills";
 import { historyData, usageData, usageKit, usageNow } from "./usage";
-import { isObj } from "./util";
+import { isObj, python } from "./util";
 import { postAnswer, getQuestions } from "./writers/answers";
 import { issueFolder, postApproval, postReviewDecision, type Via } from "./writers/approvals";
 import { dropQueued, postDispatch } from "./writers/dispatch";
@@ -59,6 +61,18 @@ export interface Route {
 }
 
 const ok = (data: unknown, status = 200, meta?: Record<string, unknown>): ApiResult => ({ status, data, ...(meta ? { meta } : {}) });
+
+/** 다음 단계(08 §3.1 · DS-R2): 판정 원본은 intent.py next. 스크립트가 없거나 실패하면 null. */
+async function intentNext(p: Project, abs: string): Promise<Record<string, unknown> | null> {
+  const script = path.join(p.root, "scripts/harness/intent.py");
+  if (!fs.existsSync(script)) return null;
+  const r = await python(p.root, p.env, [script, "next", abs, "--json"], 30_000);
+  try {
+    return r.code === 0 ? (JSON.parse(r.stdout) as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
 const q = (r: ApiRequest, k: string): string | null => r.query.get(k) || null;
 
 async function issueList(p: Project, r: ApiRequest): Promise<ApiResult> {
@@ -98,7 +112,8 @@ export const ROUTES: Route[] = [
     method: "GET", path: "/intents/{key}", cli: "status --intent <키>",
     handler: async (p, r) => {
       const { issues } = await load(p);
-      return ok(intentModel(p, findIntent(p.root, r.params.key as string), issues));
+      const info = findIntent(p.root, r.params.key as string);
+      return ok({ ...intentModel(p, info, issues), next: await intentNext(p, info.abs) });
     },
   },
   { method: "GET", path: "/intents/{key}/mob", cli: "mob status <INT>", handler: async (p, r) => ok(await getMob(p, r.params.key as string)) },
