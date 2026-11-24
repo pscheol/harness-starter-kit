@@ -14,7 +14,7 @@
 #                              kns-bootstrap 은 setup.sh · lib/ · templates/ 까지 함께 갑니다.
 #
 #   Kiro 스킬 규약은 <홈>/skills/<스킬명>/SKILL.md 입니다. 프로젝트 레벨(.kiro/skills/)과 같은
-#   구조이며, 한 겹 더 감싸면(<홈>/skills/knots-sync/skills/…) 인식되지 않습니다.
+#   구조이며, 한 겹 더 감싸면(<홈>/skills/kns/skills/…) 인식되지 않습니다.
 #
 # 사용법:
 #   bash install-kiro.sh                      # ~/.kiro/skills 에 설치합니다

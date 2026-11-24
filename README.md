@@ -32,10 +32,9 @@ harness-starter-kit/                        ← 마켓플레이스 루트 · pnp
 │   ├── legacy-setup/<스킬>/                setup.sh · lib/harness-lib.sh · update.sh · add-agent.sh
 │   └── plugin/                             플러그인 매니페스트 · commands/ · skills/kns-*/SKILL.md
 ├── plugins/
-│   └── knots-sync/                        ← 생성물(손으로 고치지 않는다). node scripts/gen-plugins.mjs 가 만든다
+│   └── kns/                               ← 생성물(손으로 고치지 않는다). node scripts/gen-plugins.mjs 가 만든다
 │       ├── .claude-plugin/plugin.json      Claude Code 플러그인 매니페스트
 │       ├── .codex-plugin/plugin.json       Codex 플러그인 매니페스트
-│       ├── commands/                       /kns:{bootstrap,agent-add,update}
 │       └── skills/
 │           ├── bootstrap/          ← 설치 본체 (모든 스킬이 이것을 호출한다)
 │           │   ├── SKILL.md
@@ -115,9 +114,9 @@ bash install-kiro.sh --home=/path/.kiro   # 대상 홈 지정 (환경변수 KIRO
 ```
 
 Kiro 스킬 규약은 `<홈>/skills/<스킬명>/SKILL.md` 다. 프로젝트 레벨(`.kiro/skills/`)과 같은 구조이며,
-**한 겹 더 감싸면(`skills/knots-sync/skills/…`) 인식되지 않는다.** 리포를 통째로 복사해 넣으면 이 함정에 빠진다.
+**한 겹 더 감싸면(`skills/kns/skills/…`) 인식되지 않는다.** 리포를 통째로 복사해 넣으면 이 함정에 빠진다.
 
-세션이 시작될 때 로드되므로 설치 후 `kiro-cli` 를 다시 켜야 `/kns:bootstrap` · `/kns:jvm-setup` 이 잡힌다.
+세션이 시작될 때 로드되므로 설치 후 `kiro-cli` 를 다시 켜야 `/kns-bootstrap` · `/kns-jvm-setup` 이 잡힌다(Kiro 에는 플러그인 네임스페이스가 없어 설치기가 `kns-<명령>` 으로 깐다).
 
 스크립트를 직접 불러도 된다. 리포 없이 설치본만으로 스캐폴딩까지 끝난다.
 
@@ -179,8 +178,7 @@ Claude Code에서는 스킬을 슬래시로 바로 부른다. 짧은 형태는 �
 /kns:electron-setup                              Electron 데스크톱 진입 — 아키텍처 3종 선택
 ```
 
-`/kns:bootstrap` · `/kns:agent-add` · `/kns:update` 세 커맨드도 그대로 남아 있다.
-스킬을 가리키는 얇은 트리거라 어느 쪽으로 불러도 결과는 같다.
+옛 커맨드(`/harness-kit:bootstrap` 등)는 없앴다 — 플러그인 이름이 `kns` 가 되며 같은 이름의 스킬(`/kns:bootstrap` · `/kns:agent-add` · `/kns:update`)과 겹치기 때문이다.
 
 Codex는 플러그인 매니페스트에 커맨드 필드가 없어서 스킬로 부른다(`/skills` 목록 또는 `$kns:bootstrap`).
 어느 하네스든 자연어로도 걸린다.

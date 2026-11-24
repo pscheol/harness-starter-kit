@@ -96,7 +96,7 @@
 <span class="p">$ </span>bash install-kiro.sh --home=/path/.kiro   <span class="c"># 대상 홈(환경 변수 KIRO_HOME 도 된다)</span></code></pre>
 <ul>
 <li>스킬은 <code>~/.kiro/skills/kns-&lt;명령&gt;/SKILL.md</code> 로 깔린다(예: <code>kns-bootstrap</code> 에는 <code>setup.sh</code> · <code>lib/</code> · <code>templates/</code> 까지 함께 간다). 옛 이름(<code>hx-*</code>) 설치 기록이 있으면 그 폴더만 치운다.</li>
-<li>Kiro 스킬 규약은 <code>&lt;홈&gt;/skills/&lt;스킬명&gt;/SKILL.md</code> 다. 한 겹 더 감싸면(<code>skills/knots-sync/skills/…</code>) 인식되지 않는다 — 저장소를 통째로 복사해 넣으면 이 함정에 빠진다.</li>
+<li>Kiro 스킬 규약은 <code>&lt;홈&gt;/skills/&lt;스킬명&gt;/SKILL.md</code> 다. 한 겹 더 감싸면(<code>skills/kns/skills/…</code>) 인식되지 않는다 — 저장소를 통째로 복사해 넣으면 이 함정에 빠진다.</li>
 <li>설치 기록은 <code>~/.kiro/.knots-sync-manifest.json</code> 에 남고, <code>--uninstall</code> 은 그 기록에 적힌 폴더만 지운다.</li>
 <li>세션 시작 때 읽히므로 설치 뒤 <code>kiro-cli</code> 를 다시 켠다.</li>
 </ul>
