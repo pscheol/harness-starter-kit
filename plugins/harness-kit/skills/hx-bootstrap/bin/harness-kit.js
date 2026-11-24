@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 b1357ca945ab33f767bbb97017f87e0c76f31b412ab440346e05810bd7a40cc1 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 27a35b375546d385a4a22cbb9a35e809e1e04ebeeba88aba98edc225b8bf5270 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -3624,9 +3624,7 @@ function resolvedLock(inst, target, shaOf2) {
 
 // src/core/selection-change.ts
 var import_node_path12 = __toESM(require("node:path"));
-var LATER_MODULES = {
-  notion: "HK-20b(접수 출처 모듈, 설계 10 §3.6)"
-};
+var LATER_MODULES = {};
 function parseNames(layout2, raw, command) {
   const words = raw.flatMap((r) => r.split(/[\s,]+/)).filter(Boolean);
   const modules = [...layout2.modules, ...layout2.externalModules];
@@ -14057,7 +14055,7 @@ function readTracker(root) {
   if (!import_node_fs57.default.existsSync(file)) return null;
   let doc;
   try {
-    doc = parseYaml(import_node_fs57.default.readFileSync(file, "utf8"));
+    doc = parseYaml(import_node_fs57.default.readFileSync(file, "utf8").split("\n").filter((l) => !/^\s*#/.test(l) && l.trim() !== "").join("\n"));
   } catch (err) {
     throw new CliError(EXIT.STATE, `${TRACKER_FILE} 를 읽지 못했다: ${err instanceof Error ? err.message : String(err)}`, "hx-jira-setup 스킬로 다시 채운다");
   }
