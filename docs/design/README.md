@@ -158,7 +158,7 @@ worktree 자리는 리포 밖: `../<리포>.worktrees/<이슈키>-<이름>/`, su
   "packs": [],                                 // ["git:gitlab.com/<org>/harness-pack#v1.2.0"]
   "verify": { "fullOnlyInCI": true },
   "versions": { "aidlc": ">=2.11 <3", "entire": ">=0.13 <0.14" },
-  "tokens": { "PROJECT_NAME": "knots-platform", "PACKAGE_NS": "com.drimaes.knots" },  // update가 다시 치환할 값
+  "tokens": { "PROJECT_NAME": "knots-platform", "PACKAGE_NS": "com.example.knots" },  // update가 다시 치환할 값
   "installedAt": "2026-11-23", "updatedAt": "2026-11-23"
 }
 ```

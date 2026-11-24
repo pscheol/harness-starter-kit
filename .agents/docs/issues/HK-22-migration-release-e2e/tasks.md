@@ -70,7 +70,7 @@ created: 2026-11-24
 
 | | knots-platform | hr-vision-3d(hdr) |
 |---|---|---|
-| 원본 | `~/developments/drimaes/knots-platform` | `~/developments/drimaes/hdr-vision-3d/hr-vision-3d-parent` |
+| 원본 | 이 컴퓨터의 knots-platform 리포(읽기만) | 이 컴퓨터의 hr-vision-3d-parent 리포(읽기만) |
 | 복사본 기준 | 브랜치 `feat/speech-recognition-redesign` 의 커밋 `66ac2824a`(`develop` 아님) | 브랜치 `dev` 의 커밋 `acb669d` |
 | 킷 판 | 1.0.7, v1 lock(TSV) | 없음(손으로 만든 하네스) |
 
