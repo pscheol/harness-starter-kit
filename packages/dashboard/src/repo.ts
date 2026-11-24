@@ -139,9 +139,9 @@ export function lstatChain(root: string, rel: string): "file" | "dir" | "missing
 
 /**
  * 이슈 문서를 쓸 체크아웃(06 §3.6 의사 코드, DB-R9). key 의 이슈 브랜치가 둘 이상이면 409 ambiguous_branch,
- * 하나인데 체크아웃이 없으면 409 branch_not_checked_out, 브랜치가 없으면 메인 폴더가 base 이고 문서가 있을 때 메인 폴더.
+ * 하나인데 체크아웃이 없으면 409 branch_not_checked_out(병합 뒤 done 승인 opts.merged 이고 메인 폴더가 base 면 메인 폴더), 브랜치가 없으면 메인 폴더가 base 이고 문서가 있을 때 메인 폴더.
  */
-export async function resolveIssueCheckout(p: Project, key: string, docRel: string | null, prefixes = /^[a-z]+$/): Promise<Checkout> {
+export async function resolveIssueCheckout(p: Project, key: string, docRel: string | null, prefixes = /^[a-z]+$/, opts: { merged?: boolean } = {}): Promise<Checkout> {
   const all = await branches(p);
   const mine = all.filter((b) => {
     const i = b.indexOf("/");
@@ -152,6 +152,9 @@ export async function resolveIssueCheckout(p: Project, key: string, docRel: stri
   if (mine.length === 1) {
     const co = cos.find((c) => c.branch === mine[0]);
     if (co) return co;
+    // 병합 뒤 done 승인(opts.merged — 게이트 앞 조건이 base 의 mr 승인을 이미 봤다)은 base 인 메인 폴더에 쓴다. 지우지 않은 로컬 이슈 브랜치 때문에 막지 않는다(HK-22b)
+    const main = cos[0] as Checkout;
+    if (opts.merged && main.branch === p.base()) return main;
     throw new ApiError(409, "branch_not_checked_out", `${mine[0]} 가 어느 폴더에도 체크아웃돼 있지 않습니다. wt new ${key} 뒤 다시 저장합니다`, { branch: mine[0] });
   }
   const main = cos[0] as Checkout;

@@ -483,7 +483,8 @@ def widen_untested(root, unit, sources, planned):
 
 
 def deleted_from_git(path):
-    """작업 트리에 없고 그 파일이 속한 저장소의 HEAD 에는 있는가(submodule 안 파일도 그 저장소에서 본다)."""
+    """작업 트리에 없고, 그 파일이 속한 저장소가 아는 파일인가(submodule 안 파일도 그 저장소에서 본다).
+    HEAD 에 있으면 커밋 전에 지운 것, HEAD 에 없어도 기록에 있으면 base..HEAD 사이에 커밋으로 지운 것이다(HK-22b — 모듈 remove 가 지운 훅 스크립트)."""
     folder = next((parent for parent in path.parents if parent.is_dir()), None)
     if folder is None:
         return False
@@ -494,8 +495,12 @@ def deleted_from_git(path):
     relative = os.path.relpath(path, toplevel)
     if relative.startswith(".."):
         relative = os.path.relpath(path.resolve(), toplevel.resolve())
-    found = subprocess.run(["git", "-C", str(toplevel), "cat-file", "-e", f"HEAD:{Path(relative).as_posix()}"], capture_output=True, check=False)
-    return found.returncode == 0
+    rel = Path(relative).as_posix()
+    found = subprocess.run(["git", "-C", str(toplevel), "cat-file", "-e", f"HEAD:{rel}"], capture_output=True, check=False)
+    if found.returncode == 0:
+        return True
+    history = subprocess.run(["git", "-C", str(toplevel), "rev-list", "-1", "HEAD", "--", rel], capture_output=True, text=True, check=False)
+    return history.returncode == 0 and bool(history.stdout.strip())
 
 
 def verification_plan(root, relative_files, explicit_tests, units, scope_files=None):

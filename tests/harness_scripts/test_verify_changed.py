@@ -165,6 +165,17 @@ class VerifyChangedTest(unittest.TestCase):
         self.assertEqual([], plan["incomplete"])
         self.assertTrue(any("tool/tests/test_removed.py" in item and "deleted test" in item for item in plan["recommendations"]), plan["recommendations"])
 
+    def test_source_deleted_by_a_commit_is_known_not_missing(self):
+        # 모듈 remove 가 훅 스크립트를 지우고 커밋하면 base..HEAD 의 바뀐 파일에 든다 — 경로를 모르는 파일(미완료)로 보지 않는다(HK-22b)
+        self.mixed_tool_project()
+        self.write("tool/gone.sh", "echo gone\n")
+        self.commit_all()
+        (self.root / "tool/gone.sh").unlink()
+        identity = ["-c", "user.email=harness@example.invalid", "-c", "user.name=harness"]
+        subprocess.run(["git", "-C", str(self.root), *identity, "commit", "-q", "-am", "remove"], check=True, capture_output=True)
+        plan = self.plan("--files", "tool/gone.sh")
+        self.assertFalse([item for item in plan["incomplete"] if "unknown to git" in item], plan["incomplete"])
+
     def test_test_path_that_git_never_had_is_not_treated_as_deleted(self):
         self.mixed_tool_project()
         self.commit_all()

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// knots-sync 2.0.0-alpha.0 · src-sha256 0fec52ebd0c9c94f3783f8555d7a6e39a6c1820b266168b050ddd8cd7b17e185 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// knots-sync 2.0.0-alpha.0 · src-sha256 b34eeb418d120f2074e8a0a03bc033f7f68ad867bf7ff871ac392ff2ee3205a1 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -8671,7 +8671,7 @@ function lstatChain(root, rel2) {
   }
   return "missing";
 }
-async function resolveIssueCheckout(p, key, docRel, prefixes = /^[a-z]+$/) {
+async function resolveIssueCheckout(p, key, docRel, prefixes = /^[a-z]+$/, opts = {}) {
   const all = await branches(p);
   const mine = all.filter((b) => {
     const i = b.indexOf("/");
@@ -8682,6 +8682,8 @@ async function resolveIssueCheckout(p, key, docRel, prefixes = /^[a-z]+$/) {
   if (mine.length === 1) {
     const co = cos.find((c) => c.branch === mine[0]);
     if (co) return co;
+    const main3 = cos[0];
+    if (opts.merged && main3.branch === p.base()) return main3;
     throw new ApiError(409, "branch_not_checked_out", `${mine[0]} 가 어느 폴더에도 체크아웃돼 있지 않습니다. wt new ${key} 뒤 다시 저장합니다`, { branch: mine[0] });
   }
   const main2 = cos[0];
@@ -11811,7 +11813,7 @@ async function postApproval(p, body, via) {
   if (!ISSUE_GATES.includes(gate)) throw new ApiError(422, "gate_not_in_flow", `모르는 게이트: ${gate}`);
   if (typeof target.issue !== "string") throw bad4("target.issue 가 필요합니다");
   const key = target.issue;
-  const co = await resolveIssueCheckout(p, key, null);
+  const co = await resolveIssueCheckout(p, key, null, void 0, { merged: gate === "done" });
   const folder = issueFolder(co.root, key);
   const approvalsFile = import_node_path52.default.join(co.root, folder, "approvals.md");
   const current4 = import_node_fs47.default.existsSync(approvalsFile) ? import_node_fs47.default.readFileSync(approvalsFile, "utf8") : null;

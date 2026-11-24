@@ -146,7 +146,7 @@ export async function postApproval(p: Project, body: unknown, via: Via): Promise
   if (!ISSUE_GATES.includes(gate)) throw new ApiError(422, "gate_not_in_flow", `모르는 게이트: ${gate}`);
   if (typeof target.issue !== "string") throw bad("target.issue 가 필요합니다");
   const key = target.issue;
-  const co = await resolveIssueCheckout(p, key, null);
+  const co = await resolveIssueCheckout(p, key, null, undefined, { merged: gate === "done" });
   const folder = issueFolder(co.root, key);
   const approvalsFile = path.join(co.root, folder, "approvals.md");
   const current = fs.existsSync(approvalsFile) ? fs.readFileSync(approvalsFile, "utf8") : null;

@@ -120,6 +120,16 @@ describe("POST /approvals", () => {
     expect([mr.status, mr.json.error.code]).toEqual([422, "gate_precondition"]);
   });
 
+  it("병합 뒤 done 승인은 지우지 않은 로컬 이슈 브랜치가 있어도 base 메인 폴더로 간다. 다른 게이트는 여전히 그 브랜치를 요구한다(HK-22b)", async () => {
+    const repo = repoWithIssue();
+    git(repo.root, "branch", "feat/DEMO-1-upload-cleanup");
+    const srv = await serve(repo);
+    const done = await call(srv, "POST", "/api/v1/approvals", { body: { target: { issue: "DEMO-1" }, gate: "done", decision: "approved", phrase: "병합 확인", pin: srv.pin } });
+    expect([done.status, done.json.error?.code]).toEqual([422, "gate_precondition"]);
+    const req = await call(srv, "POST", "/api/v1/approvals", { body: { target: { issue: "DEMO-1" }, gate: "requirements", decision: "approved", phrase: "x", docSha256: await docSha(srv, REQ), pin: srv.pin } });
+    expect([req.status, req.json.error?.code]).toEqual([409, "branch_not_checked_out"]);
+  });
+
   it("changes-requested 는 기록만 남기고 머리를 바꾸지 않는다", async () => {
     const repo = repoWithIssue();
     const srv = await serve(repo);
