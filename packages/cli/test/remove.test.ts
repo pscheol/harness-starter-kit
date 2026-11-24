@@ -109,11 +109,11 @@ describe("remove — 하네스 · 모듈", () => {
     expect(readTree(target)).toEqual(before);
   });
 
-  it.each(["notion", "bogus"])("%s 는 exit 2", async (name) => {
+  it.each(["bogus"])("%s 는 exit 2", async (name) => {
     const { cli } = await installed("claude,codex");
     const r = await cli([name]);
     expect(r.code).toBe(2);
-    if (name !== "bogus") expect(r.stderr).toContain("HK-20b");
+    expect(r.stderr).toContain(`모르는 이름 ${name}`); // notion 은 이제 모듈 이름이다(켜지 않았으면 할 일 없음)
   });
 });
 

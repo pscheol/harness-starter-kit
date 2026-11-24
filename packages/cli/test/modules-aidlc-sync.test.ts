@@ -155,12 +155,14 @@ describe("sync aidlc", () => {
     expect(fs.existsSync(path.join(t, ".agents/docs/intents"))).toBe(false);
   });
 
-  it("aidlc 모듈이 꺼져 있으면 exit 3, sync units · jira 는 HK-20b 안내(exit 2)", async () => {
+  it("aidlc 모듈이 꺼져 있으면 exit 3, sync units 는 목록이 없으면 exit 3, sync jira 는 모듈이 꺼져 있다고 알린다(exit 0)", async () => {
     const t = await installedRepo();
     expect((await cli(t, ["sync", "aidlc", ...T], null)).code).toBe(3);
-    const later = await cli(t, ["sync", "units", ...T], null);
-    expect(later.code).toBe(2);
-    expect(later.stderr).toContain("HK-20b");
+    const units = await cli(t, ["sync", "units", ...T], null);
+    expect(units.code).toBe(3);
+    expect(units.stderr).toContain("tools/harness/units.json");
+    const jira = await cli(t, ["sync", "jira", ...T], null);
+    expect([jira.code, jira.stdout]).toEqual([0, expect.stringContaining("꺼져 있다")]);
   });
 
   it("AI-DLC 구현 쪽 산출물이 생기면 doctor 가 경고한다", async () => {
