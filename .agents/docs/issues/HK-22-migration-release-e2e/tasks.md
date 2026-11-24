@@ -117,3 +117,14 @@ created: 2026-11-24
 ## 건드린 공유 파일
 
 `packages/dashboard/src/flow.ts` · `packages/dashboard/src/writers/approvals.ts`(intent 게이트가 `intent.json` 을 대상으로 읽는 만큼, 두 곳 약 20줄), 생성물 `plugins/harness-kit/**`(번들 · 매니페스트 버전). 템플릿 파일은 바꾸지 않아 `manifest.md` 수는 그대로다.
+
+### 통합 브랜치에 합친 뒤(2026-11-24)
+
+킷 쪽 바뀐 곳이 문서 두 커밋뿐이라 무거운 묶음(킷 python · 설치본)은 위 결과를 그대로 쓰고, 바뀐 곳에 닿는 시험만 다시 돌렸다.
+
+| 시험 | 결과 |
+|---|---|
+| `node scripts/gen-plugins.mjs --check` | 생성물 일치(477개) |
+| `pnpm -C packages/dashboard test` | 158 중 157 통과 · 1 시간 초과(`projects.test.ts --root`, 부하) — 그 파일만 다시 돌려 4 통과 |
+| `tests.test_release` + `tests.test_generated` | 27 통과 |
+| e2e stub `unittest`(`pnpm test:e2e` 로 새로 묶음 — 킷 `discover -s tests` 는 `tests/e2e` 를 줍지 않는다) | 5 통과 |
