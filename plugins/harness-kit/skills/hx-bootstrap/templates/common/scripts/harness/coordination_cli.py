@@ -14,6 +14,7 @@ from .coordination_leases import (
     require_session,
 )
 from .coordination_notices import acknowledge_notices, inbox_notices, notify_sessions
+from .coordination_prune import prune_state
 from .coordination_paths import (
     find_shared_root,
     normalized_claim_paths,
@@ -32,6 +33,7 @@ MUTATING_COMMANDS = {
     "heartbeat",
     "notify",
     "acknowledge",
+    "prune",
 }
 COMMAND_NAMES = (
     "register",
@@ -44,6 +46,7 @@ COMMAND_NAMES = (
     "acknowledge",
     "changed-files",
     "context",
+    "prune",
 )
 
 
@@ -60,7 +63,7 @@ def positive_ttl(value):
 def add_command_arguments(command, name):
     command.add_argument("--root", default=argparse.SUPPRESS)
     command.add_argument("--json", action="store_true", help="JSON output (default except context)")
-    command.add_argument("--session", required=name not in ("status", "notify", "context"))
+    command.add_argument("--session", required=name not in ("status", "notify", "context", "prune"))
     if name in ("register", "claim", "release"):
         command.add_argument("--files", nargs="+", required=name != "release")
     if name in ("register", "claim"):
@@ -76,6 +79,10 @@ def add_command_arguments(command, name):
         command.add_argument("--include-acknowledged", action="store_true")
     if name == "acknowledge":
         command.add_argument("--notice", nargs="+", required=True)
+    if name == "prune":
+        command.add_argument("--sessions-days", type=float, default=7, help="이보다 오래 heartbeat 가 없는 세션을 지운다(기본 7)")
+        command.add_argument("--notices-days", type=float, default=30, help="이보다 오래된 공지를 지운다(기본 30)")
+        command.add_argument("--dry-run", action="store_true", help="지우지 않고 개수만 낸다")
 
 
 def create_parser():
@@ -127,6 +134,9 @@ def execute_write(root, state, arguments, paths, now):
     elif command == "acknowledge":
         updated = acknowledge_notices(state, session_id, arguments.notice)
         return updated, {"session": session_id, "acknowledged": arguments.notice}
+    elif command == "prune":
+        updated, summary = prune_state(state, now, arguments.sessions_days, arguments.notices_days)
+        return (state if arguments.dry_run else updated), {"dryRun": arguments.dry_run, **summary}
     return updated, {"session": public_session(session, now)}
 
 

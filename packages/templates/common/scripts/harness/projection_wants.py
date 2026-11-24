@@ -38,6 +38,7 @@ from projection_merge import (  # noqa: E402
     MERGERS,
     settings_want,
 )
+from projection_vscode import want as vscode_want  # noqa: E402
 from projection_render import (  # noqa: E402
     parse_policy,
     parse_role,
@@ -308,6 +309,8 @@ def build_wants(root: Path, spec: dict, tokens: dict, agents: list[str]) -> tupl
             coordinator = render_kiro_coordinator(spec, tokens, kiro_cli_hooks(hooks, hm, src.modules))
             wants.append(render(f".kiro/agents/{slug}.json", "kiro", HOOKS_REL, coordinator, src.hooks_data, d_hooks))
     wants.append(Want(".gitattributes", "merge", "core", kind="gitattributes", merge=gitattributes_want(spec, agents)))
+    if wants_vscode(root):
+        wants.append(Want(".vscode/settings.json", "merge", "core", kind="vscode-settings", merge=vscode_want()))
     seen: set[str] = set()
     for w in wants:
         if w.path in seen:
@@ -317,6 +320,12 @@ def build_wants(root: Path, spec: dict, tokens: dict, agents: list[str]) -> tupl
         if w.kind == "dir" and any(o.path.startswith(w.path + "/") for o in wants):
             raise ProjectionError(f"배치 경로가 겹친다: {w.path}")
     return wants, findings
+
+
+def wants_vscode(root: Path) -> bool:
+    """VS Code 를 쓰는 리포인가: `.vscode/` 폴더가 있다(HK-15 design §6). git.ide 기본값(code)만으로는 만들지 않는다."""
+    folder = root / ".vscode"
+    return folder.is_dir() and not folder.is_symlink()
 
 
 def check_spec(spec: dict) -> None:
@@ -368,6 +377,8 @@ def full_merge_want(kind: str, spec: dict, tokens: dict, src: Sources | None) ->
     if kind == "codex-config":
         roles = [{"name": stem(r.source), "description": r.description} for r in (src.roles if src else [])]
         return codex_config_want(spec, roles)
+    if kind == "vscode-settings":
+        return vscode_want()
     return gitattributes_want(spec, list(HARNESSES))
 
 

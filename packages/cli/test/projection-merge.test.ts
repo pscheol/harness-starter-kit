@@ -81,7 +81,7 @@ describe("settings.json(§5.2, 03 §3.5 · §5 #6)", () => {
     const j = JSON.parse(r.text);
     expect(Object.keys(j)).toEqual(["permissions", "hooks"]);
     expect(j.permissions).toEqual({ deny });
-    expect(Object.keys(j.hooks)).toEqual(["SessionStart", "PreToolUse", "PostToolUse", "UserPromptSubmit", "Stop", "SessionEnd"]);
+    expect(Object.keys(j.hooks)).toEqual(["SessionStart", "PreToolUse", "PostToolUse", "UserPromptSubmit", "Stop", "SubagentStop", "SessionEnd", "WorktreeCreate", "WorktreeRemove"]);
     expect(r.keys).toEqual([
       ...deny.map((rule) => `permissions.deny:${rule}`),
       // HK-24: hooks.json 순서. 세션 시작 등록은 harness-session-start 안에서 한다(design §6)
@@ -94,11 +94,17 @@ describe("settings.json(§5.2, 03 §3.5 · §5 #6)", () => {
       "hooks.UserPromptSubmit:harness-session-prompt",
       "hooks.Stop:harness-verify-gate",
       "hooks.Stop:harness-session-idle",
+      "hooks.SubagentStop:harness-subagent-cap",
       "hooks.SessionEnd:harness-session-end",
+      "hooks.WorktreeCreate:harness-worktree-create",
+      "hooks.WorktreeRemove:harness-worktree-remove",
     ]);
     // 모든 킷 훅은 디스패처를 거치고 timeout 을 가진다(R2)
     expect(j.hooks.Stop[0].hooks[0]).toEqual({ type: "command", command: dispatch("harness-verify-gate", "verify-gate.sh"), timeout: 180 });
     expect(j.hooks.PreToolUse.map((g: any) => g.matcher)).toEqual(["Write|Edit|MultiEdit|NotebookEdit", "Bash", "Write|Edit|MultiEdit|NotebookEdit|Bash"]);
+    // HK-15: worktree 훅도 디스패처를 거치고 matcher 가 없다
+    expect(j.hooks.WorktreeCreate[0]).toEqual({ hooks: [{ type: "command", command: dispatch("harness-worktree-create", "worktree-create.sh"), timeout: 60 }] });
+    expect(j.hooks.WorktreeRemove[0].hooks[0].timeout).toBe(60);
     expect(j.hooks.SessionStart[0].hooks[0].command).toBe(`HX_HARNESS=claude ${dispatch("harness-session-start", "session-start.sh")}`);
     expect(r.text).toBe(`${JSON.stringify(j, null, 2)}\n`);
     expect(r.created).toBe(true);
