@@ -14,7 +14,7 @@ import { dashboardDeps } from "./dashboard-deps";
 
 function registryProjects(ctx: Ctx): Projects {
   const home = homeOf(ctx);
-  return new Projects(() => readRegistry(home), { env: ctx.io.env, home, readOnly: true, multi: true, deps: dashboardDeps() });
+  return new Projects(() => readRegistry(home, ctx.io.env), { env: ctx.io.env, home, readOnly: true, multi: true, deps: dashboardDeps() });
 }
 
 function overviewLines(d: Record<string, unknown>): string[] {

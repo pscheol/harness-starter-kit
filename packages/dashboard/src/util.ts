@@ -96,6 +96,12 @@ export function python(cwd: string, env: Env, args: string[], timeout = 60_000):
   return run("python3", ["-B", ...args], { cwd, env, timeout });
 }
 
+/** 이 컴퓨터 설정 폴더(~/.config/harness-kit). `HARNESS_KIT_CONFIG_DIR`(절대 경로)이 있으면 그것 — 시험이 실제 홈을 쓰지 않게 한다. */
+export function kitConfigDir(home: string, env: Env = {}): string {
+  const o = env.HARNESS_KIT_CONFIG_DIR;
+  return o && path.isAbsolute(o) ? o : path.join(home, ".config/harness-kit");
+}
+
 export function readJson(file: string): Record<string, unknown> | null {
   try {
     const v = JSON.parse(fs.readFileSync(file, "utf8")) as unknown;

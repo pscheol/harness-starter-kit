@@ -33,6 +33,7 @@ const INIT: OptSpec = {
   base: { type: "string" },
   adopt: { type: "boolean" },
   force: { type: "boolean" },
+  "no-register": { type: "boolean" },
 };
 
 export const COMMAND_OPTIONS: Record<string, OptSpec> = {

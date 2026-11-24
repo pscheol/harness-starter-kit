@@ -8,7 +8,7 @@ import { ApiError, bad } from "./errors";
 import { overview } from "./model";
 import { Project, type ProjectOptions, projectIdOf } from "./project";
 import { publicSession, readSessions } from "./readers/sessions";
-import { atomicWrite, ensureDir, isObj, readJson } from "./util";
+import { atomicWrite, type Env, ensureDir, isObj, kitConfigDir, readJson } from "./util";
 
 export type ProjectsMode = { kind: "single" } | { kind: "all" } | { kind: "root"; dir: string } | { kind: "workspace"; file: string };
 
@@ -18,31 +18,32 @@ export interface RegistryEntry {
   addedAt: string;
 }
 
-export function configDir(home: string): string {
-  return path.join(home, ".config/harness-kit");
+/** 이 컴퓨터 설정 폴더. `HARNESS_KIT_CONFIG_DIR`(절대 경로)이 있으면 그것 — 시험이 실제 홈을 쓰지 않게 한다. */
+export function configDir(home: string, env: Env = {}): string {
+  return kitConfigDir(home, env);
 }
 
-export function registryFile(home: string): string {
-  return path.join(configDir(home), "projects.json");
+export function registryFile(home: string, env: Env = {}): string {
+  return path.join(configDir(home, env), "projects.json");
 }
 
-export function readRegistry(home: string): RegistryEntry[] {
-  const data = readJson(registryFile(home));
+export function readRegistry(home: string, env: Env = {}): RegistryEntry[] {
+  const data = readJson(registryFile(home, env));
   const list = data && Array.isArray(data.projects) ? data.projects : [];
   return list.filter((x): x is Record<string, unknown> => isObj(x) && typeof x.path === "string").map((x) => ({ path: String(x.path), name: typeof x.name === "string" ? x.name : path.basename(String(x.path)), addedAt: typeof x.addedAt === "string" ? x.addedAt : "" }));
 }
 
-function writeRegistry(home: string, projects: RegistryEntry[]): void {
-  ensureDir(configDir(home), 0o700);
-  atomicWrite(registryFile(home), `${JSON.stringify({ schema: "harness-kit.projects/v1", projects }, null, 2)}\n`, 0o600);
-  fs.chmodSync(registryFile(home), 0o600);
+function writeRegistry(home: string, projects: RegistryEntry[], env: Env = {}): void {
+  ensureDir(configDir(home, env), 0o700);
+  atomicWrite(registryFile(home, env), `${JSON.stringify({ schema: "harness-kit.projects/v1", projects }, null, 2)}\n`, 0o600);
+  fs.chmodSync(registryFile(home, env), 0o600);
 }
 
 export function isHarnessRepo(dir: string): boolean {
   return fs.existsSync(path.join(dir, ".agents/harness-kit.json"));
 }
 
-export function addProject(home: string, dir: string, today: string): { added: boolean; entry: RegistryEntry } {
+export function addProject(home: string, dir: string, today: string, env: Env = {}): { added: boolean; entry: RegistryEntry } {
   let real: string;
   try {
     real = fs.realpathSync(dir);
@@ -50,18 +51,18 @@ export function addProject(home: string, dir: string, today: string): { added: b
     throw new ApiError(404, "not_found", `폴더가 없다: ${dir}`);
   }
   if (!isHarnessRepo(real)) throw new ApiError(422, "not_a_harness_repo", `킷을 설치한 리포가 아니다(.agents/harness-kit.json 없음): ${real}`);
-  const list = readRegistry(home);
+  const list = readRegistry(home, env);
   const found = list.find((e) => e.path === real);
   if (found) return { added: false, entry: found };
   const meta = readJson(path.join(real, ".agents/harness-kit.json")) ?? {};
   const project = isObj(meta.project) ? meta.project : {};
   const entry = { path: real, name: typeof project.name === "string" && project.name ? project.name : path.basename(real), addedAt: today };
-  writeRegistry(home, [...list, entry]);
+  writeRegistry(home, [...list, entry], env);
   return { added: true, entry };
 }
 
-export function removeProject(home: string, nameOrPath: string): { removed: RegistryEntry[] } {
-  const list = readRegistry(home);
+export function removeProject(home: string, nameOrPath: string, env: Env = {}): { removed: RegistryEntry[] } {
+  const list = readRegistry(home, env);
   let real = nameOrPath;
   try {
     real = fs.realpathSync(nameOrPath);
@@ -70,7 +71,7 @@ export function removeProject(home: string, nameOrPath: string): { removed: Regi
   }
   const removed = list.filter((e) => e.name === nameOrPath || e.path === nameOrPath || e.path === real);
   if (removed.length === 0) throw new ApiError(404, "not_found", `등록부에 없다: ${nameOrPath}`);
-  writeRegistry(home, list.filter((e) => !removed.includes(e)));
+  writeRegistry(home, list.filter((e) => !removed.includes(e)), env);
   return { removed };
 }
 
@@ -110,8 +111,8 @@ export function workspaceEntries(file: string): RegistryEntry[] {
   });
 }
 
-export function modeEntries(mode: ProjectsMode, home: string): RegistryEntry[] {
-  if (mode.kind === "all" || mode.kind === "single") return readRegistry(home);
+export function modeEntries(mode: ProjectsMode, home: string, env: Env = {}): RegistryEntry[] {
+  if (mode.kind === "all" || mode.kind === "single") return readRegistry(home, env);
   if (mode.kind === "root") return discover(mode.dir);
   return workspaceEntries(mode.file);
 }

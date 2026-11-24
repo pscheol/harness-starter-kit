@@ -192,7 +192,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     const meta = single.meta();
     if (meta.schema !== "harness-kit/v2") throw new StartError(3, `.agents/harness-kit.json 의 schema 가 harness-kit/v2 가 아니다(${String(meta.schema ?? "없음")})`, "npx harness-kit doctor");
   } else {
-    projects = new Projects(() => modeEntries(mode, home), { ...projectOpts, multi: true });
+    projects = new Projects(() => modeEntries(mode, home, opts.env), { ...projectOpts, multi: true });
   }
   const token = crypto.randomBytes(32).toString("base64url");
   const pin = readOnly ? null : newPin();

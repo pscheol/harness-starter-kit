@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 28d795a175c5e2c7ceabc7ba07f35891ee3ba6fb344d6e1fdca4367990092026 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 e1ee1e70c4393c226c5ff7be66df97eab09a39bb889fbc3d5c8d183630c80345 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -585,7 +585,8 @@ var INIT = {
   "issue-prefix": { type: "string" },
   base: { type: "string" },
   adopt: { type: "boolean" },
-  force: { type: "boolean" }
+  force: { type: "boolean" },
+  "no-register": { type: "boolean" }
 };
 var COMMAND_OPTIONS = {
   init: INIT,
@@ -5797,6 +5798,10 @@ async function gitOut(cwd, env, ...args) {
 function python(cwd, env, args, timeout = 6e4) {
   return run2("python3", ["-B", ...args], { cwd, env, timeout });
 }
+function kitConfigDir(home, env = {}) {
+  const o = env.HARNESS_KIT_CONFIG_DIR;
+  return o && import_node_path25.default.isAbsolute(o) ? o : import_node_path25.default.join(home, ".config/harness-kit");
+}
 function readJson(file) {
   try {
     const v = JSON.parse(import_node_fs23.default.readFileSync(file, "utf8"));
@@ -7033,7 +7038,7 @@ var Project = class _Project {
   }
   /** 이 컴퓨터 설정 ~/.config/harness-kit/config.json(사람이 쓴다, 킷은 읽기만, 06 §3.17). */
   machineConfig() {
-    return readJson(import_node_path30.default.join(this.home, ".config/harness-kit/config.json")) ?? {};
+    return readJson(import_node_path30.default.join(kitConfigDir(this.home, this.env), "config.json")) ?? {};
   }
   async user(root = this.root) {
     return this.cache.get(`user:${root}`, `${fileStamp(import_node_path30.default.join(this.loc.common, "config"))}
@@ -8122,27 +8127,27 @@ async function burnData(p, info, issues, daysText) {
 // ../dashboard/src/projects.ts
 var import_node_fs33 = __toESM(require("node:fs"));
 var import_node_path37 = __toESM(require("node:path"));
-function configDir(home) {
-  return import_node_path37.default.join(home, ".config/harness-kit");
+function configDir(home, env = {}) {
+  return kitConfigDir(home, env);
 }
-function registryFile(home) {
-  return import_node_path37.default.join(configDir(home), "projects.json");
+function registryFile(home, env = {}) {
+  return import_node_path37.default.join(configDir(home, env), "projects.json");
 }
-function readRegistry(home) {
-  const data = readJson(registryFile(home));
+function readRegistry(home, env = {}) {
+  const data = readJson(registryFile(home, env));
   const list3 = data && Array.isArray(data.projects) ? data.projects : [];
   return list3.filter((x) => isObj6(x) && typeof x.path === "string").map((x) => ({ path: String(x.path), name: typeof x.name === "string" ? x.name : import_node_path37.default.basename(String(x.path)), addedAt: typeof x.addedAt === "string" ? x.addedAt : "" }));
 }
-function writeRegistry(home, projects) {
-  ensureDir(configDir(home), 448);
-  atomicWrite(registryFile(home), `${JSON.stringify({ schema: "harness-kit.projects/v1", projects }, null, 2)}
+function writeRegistry(home, projects, env = {}) {
+  ensureDir(configDir(home, env), 448);
+  atomicWrite(registryFile(home, env), `${JSON.stringify({ schema: "harness-kit.projects/v1", projects }, null, 2)}
 `, 384);
-  import_node_fs33.default.chmodSync(registryFile(home), 384);
+  import_node_fs33.default.chmodSync(registryFile(home, env), 384);
 }
 function isHarnessRepo(dir) {
   return import_node_fs33.default.existsSync(import_node_path37.default.join(dir, ".agents/harness-kit.json"));
 }
-function addProject(home, dir, today2) {
+function addProject(home, dir, today2, env = {}) {
   let real2;
   try {
     real2 = import_node_fs33.default.realpathSync(dir);
@@ -8150,17 +8155,17 @@ function addProject(home, dir, today2) {
     throw new ApiError(404, "not_found", `폴더가 없다: ${dir}`);
   }
   if (!isHarnessRepo(real2)) throw new ApiError(422, "not_a_harness_repo", `킷을 설치한 리포가 아니다(.agents/harness-kit.json 없음): ${real2}`);
-  const list3 = readRegistry(home);
+  const list3 = readRegistry(home, env);
   const found = list3.find((e) => e.path === real2);
   if (found) return { added: false, entry: found };
   const meta = readJson(import_node_path37.default.join(real2, ".agents/harness-kit.json")) ?? {};
   const project = isObj6(meta.project) ? meta.project : {};
   const entry = { path: real2, name: typeof project.name === "string" && project.name ? project.name : import_node_path37.default.basename(real2), addedAt: today2 };
-  writeRegistry(home, [...list3, entry]);
+  writeRegistry(home, [...list3, entry], env);
   return { added: true, entry };
 }
-function removeProject(home, nameOrPath) {
-  const list3 = readRegistry(home);
+function removeProject(home, nameOrPath, env = {}) {
+  const list3 = readRegistry(home, env);
   let real2 = nameOrPath;
   try {
     real2 = import_node_fs33.default.realpathSync(nameOrPath);
@@ -8169,7 +8174,7 @@ function removeProject(home, nameOrPath) {
   }
   const removed = list3.filter((e) => e.name === nameOrPath || e.path === nameOrPath || e.path === real2);
   if (removed.length === 0) throw new ApiError(404, "not_found", `등록부에 없다: ${nameOrPath}`);
-  writeRegistry(home, list3.filter((e) => !removed.includes(e)));
+  writeRegistry(home, list3.filter((e) => !removed.includes(e)), env);
   return { removed };
 }
 function discover(dir, depth = 3) {
@@ -8204,8 +8209,8 @@ function workspaceEntries(file) {
     return { path: abs, name: import_node_path37.default.basename(abs), addedAt: "" };
   });
 }
-function modeEntries(mode, home) {
-  if (mode.kind === "all" || mode.kind === "single") return readRegistry(home);
+function modeEntries(mode, home, env = {}) {
+  if (mode.kind === "all" || mode.kind === "single") return readRegistry(home, env);
   if (mode.kind === "root") return discover(mode.dir);
   return workspaceEntries(mode.file);
 }
@@ -10993,7 +10998,7 @@ async function startServer(opts) {
     const meta = single.meta();
     if (meta.schema !== "harness-kit/v2") throw new StartError(3, `.agents/harness-kit.json 의 schema 가 harness-kit/v2 가 아니다(${String(meta.schema ?? "없음")})`, "npx harness-kit doctor");
   } else {
-    projects = new Projects(() => modeEntries(mode, home), { ...projectOpts, multi: true });
+    projects = new Projects(() => modeEntries(mode, home, opts.env), { ...projectOpts, multi: true });
   }
   const token = import_node_crypto7.default.randomBytes(32).toString("base64url");
   const pin = readOnly2 ? null : newPin();
@@ -12166,6 +12171,25 @@ function lockText(plan, source) {
   return serializeLock({ schema: "harness-kit.lock/v2", kit: { version: VERSION, source }, packs: [], entries: mergeEntries(copies, plan.projection) });
 }
 var STATE_LINE = `  상태 파일: ${META_REL} · ${LOCK_REL} · ${MANIFEST_PATH}`;
+function registerAfterInit(ctx, target) {
+  if (bool(ctx.values, "no-register")) return { status: "skipped", reason: "--no-register" };
+  const env = ctx.io.env;
+  const override = env.HARNESS_KIT_CONFIG_DIR;
+  const home = env.HOME ?? "";
+  if (!(override && import_node_path55.default.isAbsolute(override)) && !home) return { status: "skipped", reason: "HOME 이 없다" };
+  try {
+    const r = addProject(home, target, today(ctx.io), env);
+    return { status: r.added ? "added" : "exists", name: r.entry.name, file: registryFile(home, env) };
+  } catch (err) {
+    return { status: "failed", reason: err instanceof Error ? err.message : String(err) };
+  }
+}
+function registryLine(r) {
+  if (r.status === "added") return `  등록부: ${r.name} 를 더했다(${r.file}) — 관리 페이지 --all 에 보인다. 빼려면 harness-kit projects remove ${r.name}`;
+  if (r.status === "exists") return `  등록부: 이미 있다(${r.name})`;
+  if (r.status === "failed") return `  ⚠ 등록부에 더하지 못했다: ${r.reason} — harness-kit projects add . 로 다시 한다`;
+  return `  등록부: 더하지 않았다(${r.reason})`;
+}
 async function runInit(ctx) {
   const command = ctx.command === "plan" || bool(ctx.values, "dry-run") ? "plan" : "init";
   const { io: io2 } = ctx;
@@ -12204,7 +12228,9 @@ async function runInit(ctx) {
     const meta = buildMeta({ version: VERSION, selection, tokens, issue: { source: opts.issueSource, prefix: str(ctx.values, "issue-prefix") }, base: str(ctx.values, "base"), today: today(io2) });
     const result = applyPlan({ plan, metaText: serializeMeta(meta), lockText: lockText(plan, loc.source), env: io2.env });
     data.featureDocs = result.featureDocs;
-    lines3.push(countsLine2(plan), ...shown.map(opLine3), ...projectionShown, STATE_LINE, docsLine(result.featureDocs), "  다음: harness-kit doctor");
+    const registry = registerAfterInit(ctx, target);
+    data.registry = registry;
+    lines3.push(countsLine2(plan), ...shown.map(opLine3), ...projectionShown, STATE_LINE, docsLine(result.featureDocs), registryLine(registry), "  다음: harness-kit doctor");
     return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines: lines3 };
   } finally {
     prompter?.close();
@@ -12721,7 +12747,7 @@ var import_node_fs52 = __toESM(require("node:fs"));
 var import_node_path60 = __toESM(require("node:path"));
 function registryProjects(ctx) {
   const home = homeOf(ctx);
-  return new Projects(() => readRegistry(home), { env: ctx.io.env, home, readOnly: true, multi: true, deps: dashboardDeps() });
+  return new Projects(() => readRegistry(home, ctx.io.env), { env: ctx.io.env, home, readOnly: true, multi: true, deps: dashboardDeps() });
 }
 function overviewLines(d) {
   const todo = d.todo ?? [];
@@ -13310,17 +13336,17 @@ async function runProjects(ctx) {
   const home = homeOf(ctx);
   try {
     if ((sub2 === void 0 || sub2 === "list") && !arg) {
-      const projects = new Projects(() => readRegistry(home), { env: ctx.io.env, home, readOnly: true, multi: true, deps: dashboardDeps() });
+      const projects = new Projects(() => readRegistry(home, ctx.io.env), { env: ctx.io.env, home, readOnly: true, multi: true, deps: dashboardDeps() });
       const data = await projectsList(projects);
       const rows = data.projects;
       return { code: EXIT.OK, data, lines: rows.length ? rows.map((r) => `${r.name.padEnd(24)} ${r.state === "ok" ? "" : `(${r.state}) `}${r.path}`) : ["등록한 프로젝트가 없다"] };
     }
     if (sub2 === "add" && arg && !extra) {
-      const r = addProject(home, import_node_path63.default.resolve(ctx.io.cwd, arg), today(ctx.io));
+      const r = addProject(home, import_node_path63.default.resolve(ctx.io.cwd, arg), today(ctx.io), ctx.io.env);
       return { code: EXIT.OK, data: { added: r.added, project: r.entry }, lines: [r.added ? `등록했다: ${r.entry.name} ${r.entry.path}` : `이미 있다: ${r.entry.name}`] };
     }
     if (sub2 === "remove" && arg && !extra) {
-      const r = removeProject(home, arg);
+      const r = removeProject(home, arg, ctx.io.env);
       return { code: EXIT.OK, data: { removed: r.removed }, lines: r.removed.map((e) => `등록부에서 뺐다: ${e.name} ${e.path}`) };
     }
   } catch (err) {
@@ -13390,7 +13416,7 @@ var USAGE2 = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 킷
 공통 플래그: --cwd <폴더> --dry-run --yes --json --templates <폴더> --quiet --no-color --help
 init · plan: --stack --arch --domain --lang --agents <목록|all> --modules <목록|all|none>
              --name --slug --package-ns --protected-path --token KEY=VALUE --issue-source kit|jira
-             --issue-prefix --base --adopt --force
+             --issue-prefix --base --adopt --force --no-register(등록부에 더하지 않는다)
 add · remove: <이름>…(하네스 claude codex cursor kiro · 모듈 jira-workflow multi-harness)
 dashboard: --port --open --read-only --export <폴더> --all --root <dir> --workspace <file> · 관리 페이지 명령은 harness-kit <명령> --help
 update: --accept-all --prune --forget <경로>(반복) --to <CLI 버전> --packs(메타 packs 의 팩만 받아 깐다) · outdated: --check --source <git 원격>

@@ -7,10 +7,16 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import re
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
+
+# CLI init 은 이 컴퓨터 등록부(~/.config/harness-kit/projects.json)에 리포를 더한다(06 §3.17).
+# 시험은 실제 홈을 쓰지 않는다 — 이 도우미를 부르는 시험과 그 하위 프로세스는 임시 설정 폴더를 쓴다.
+os.environ.setdefault("HARNESS_KIT_CONFIG_DIR", tempfile.mkdtemp(prefix="hk-config-"))
 
 KIT = Path(__file__).resolve().parents[1]
 CLI_DIR = KIT / "packages/cli"

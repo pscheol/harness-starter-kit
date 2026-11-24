@@ -66,7 +66,7 @@
 
 - 서브에이전트는 opus 주간 한도(11-28 03:00 KST 초기화)에 걸렸지만 sonnet 모델로는 돈다. HK-15 · HK-18 을 서브에이전트 2개로 진행한다(2026-11-24).
 - (반영) 에이전트 세션 dispatch 차단(exit 3, list · drop 은 됨) · outdated 기본 원격(`HARNESS_KIT_SOURCE=none` 이면 보지 않음).
-- (할 일) init 등록부 자동 등록(`--no-register`, 시험은 `HARNESS_KIT_CONFIG_DIR` 로 실제 홈을 쓰지 않게) — HK-18 은 합쳤다. HK-20 앞에 한다.
+- (반영) init 등록부 자동 등록 — 설치 끝에 `~/.config/harness-kit/projects.json` 에 더한다. `--no-register` 면 안 한다. 위치는 `HARNESS_KIT_CONFIG_DIR`(절대) 또는 `HOME`, 둘 다 없으면 건너뛴다(실제 홈 추측 없음). 킷 시험(`tests/cli_dist.py`)은 임시 설정 폴더를 쓴다.
 - (사용자 결정 2026-11-24) 관리 페이지 화면 층은 React 19 + Meta astryx 로 바꾼다(HK-26) — 순수 JS 화면의 간격 · 정렬이 깨졌다. 레퍼런스: 사람이 준 분석 대시보드 그림(사이드바 묶음 · KPI 카드 · 큰 그래프 · 점 격자 · 오른쪽 상세 서랍). 색은 더 나은 방향이면 바꿔도 된다(AA 대비 · 색맹 구분 · 색 말고 아이콘 · 글자로도 상태).
 - (HK-26 확인할 것) 스크린숏 S01 · S02(서랍) · S13 · 색 견본, design 승인.
 - (HK-19) 사람 확인: 설계 세션 실제 한 바퀴(/hx-intent → 질문 답 → intent 승인 → /hx-plans → /hx-specify --from-unit), SubagentStop 훅이 긴 위임 결과를 실제로 한 번 돌려보내는지(설계 12 §5 #8, 수동), design.md 승인(in-review).

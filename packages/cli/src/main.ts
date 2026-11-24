@@ -86,7 +86,7 @@ const USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 �
 공통 플래그: --cwd <폴더> --dry-run --yes --json --templates <폴더> --quiet --no-color --help
 init · plan: --stack --arch --domain --lang --agents <목록|all> --modules <목록|all|none>
              --name --slug --package-ns --protected-path --token KEY=VALUE --issue-source kit|jira
-             --issue-prefix --base --adopt --force
+             --issue-prefix --base --adopt --force --no-register(등록부에 더하지 않는다)
 add · remove: <이름>…(하네스 claude codex cursor kiro · 모듈 jira-workflow multi-harness)
 dashboard: --port --open --read-only --export <폴더> --all --root <dir> --workspace <file> · 관리 페이지 명령은 harness-kit <명령> --help
 update: --accept-all --prune --forget <경로>(반복) --to <CLI 버전> --packs(메타 packs 의 팩만 받아 깐다) · outdated: --check --source <git 원격>

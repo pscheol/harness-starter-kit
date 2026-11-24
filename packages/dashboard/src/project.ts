@@ -5,7 +5,7 @@ import path from "node:path";
 import { policyOf, type Policy } from "./approvals";
 import { Cache, fileStamp } from "./cache";
 import { gitUser, locate, type Location } from "./repo";
-import { type Env, isObj, readJson } from "./util";
+import { type Env, isObj, kitConfigDir, readJson } from "./util";
 
 export interface DoctorSummary {
   status: "ok" | "problems" | "unavailable";
@@ -111,7 +111,7 @@ export class Project {
 
   /** 이 컴퓨터 설정 ~/.config/harness-kit/config.json(사람이 쓴다, 킷은 읽기만, 06 §3.17). */
   machineConfig(): Record<string, unknown> {
-    return readJson(path.join(this.home, ".config/harness-kit/config.json")) ?? {};
+    return readJson(path.join(kitConfigDir(this.home, this.env), "config.json")) ?? {};
   }
 
   async user(root: string = this.root): Promise<{ email: string | null; name: string | null }> {

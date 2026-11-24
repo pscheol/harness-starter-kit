@@ -16,6 +16,7 @@ import { locateTemplates } from "../core/templates";
 import { resolveTokens } from "../core/tokens";
 import { VERSION } from "../core/version";
 import { mergeEntries, needsHuman, projectionConflicts, projectionData, projectionLines } from "../projection/flow";
+import { addProject, registryFile } from "../../../dashboard/src/projects";
 
 const TOKEN_FLAGS: Record<string, string> = {
   name: "PROJECT_NAME",
@@ -148,6 +149,32 @@ function lockText(plan: Plan, source: string): string {
 
 const STATE_LINE = `  상태 파일: ${META_REL} · ${LOCK_REL} · ${MANIFEST_PATH}`;
 
+/**
+ * 설치가 끝나면 이 컴퓨터 등록부(~/.config/harness-kit/projects.json)에 리포를 더한다(사용자 결정 2026-11-24, 06 §3.17).
+ * `--no-register` 면 하지 않는다. 등록부 위치를 정할 HOME · HARNESS_KIT_CONFIG_DIR 이 없으면 하지 않는다(실제 홈 추측 금지).
+ * 실패해도 설치는 성공이다 — 사람이 `harness-kit projects add .` 로 다시 한다.
+ */
+function registerAfterInit(ctx: Ctx, target: string): { status: "added" | "exists" | "skipped" | "failed"; reason?: string; name?: string; file?: string } {
+  if (bool(ctx.values, "no-register")) return { status: "skipped", reason: "--no-register" };
+  const env = ctx.io.env;
+  const override = env.HARNESS_KIT_CONFIG_DIR;
+  const home = env.HOME ?? "";
+  if (!(override && path.isAbsolute(override)) && !home) return { status: "skipped", reason: "HOME 이 없다" };
+  try {
+    const r = addProject(home, target, today(ctx.io), env);
+    return { status: r.added ? "added" : "exists", name: r.entry.name, file: registryFile(home, env) };
+  } catch (err) {
+    return { status: "failed", reason: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+function registryLine(r: ReturnType<typeof registerAfterInit>): string {
+  if (r.status === "added") return `  등록부: ${r.name} 를 더했다(${r.file}) — 관리 페이지 --all 에 보인다. 빼려면 harness-kit projects remove ${r.name}`;
+  if (r.status === "exists") return `  등록부: 이미 있다(${r.name})`;
+  if (r.status === "failed") return `  ⚠ 등록부에 더하지 못했다: ${r.reason} — harness-kit projects add . 로 다시 한다`;
+  return `  등록부: 더하지 않았다(${r.reason})`;
+}
+
 export async function runInit(ctx: Ctx): Promise<CommandResult> {
   const command = ctx.command === "plan" || bool(ctx.values, "dry-run") ? "plan" : "init";
   const { io } = ctx;
@@ -186,7 +213,9 @@ export async function runInit(ctx: Ctx): Promise<CommandResult> {
     const meta = buildMeta({ version: VERSION, selection, tokens, issue: { source: opts.issueSource, prefix: str(ctx.values, "issue-prefix") }, base: str(ctx.values, "base"), today: today(io) });
     const result = applyPlan({ plan, metaText: serializeMeta(meta), lockText: lockText(plan, loc.source), env: io.env });
     data.featureDocs = result.featureDocs;
-    lines.push(countsLine(plan), ...shown.map(opLine), ...projectionShown, STATE_LINE, docsLine(result.featureDocs), "  다음: harness-kit doctor");
+    const registry = registerAfterInit(ctx, target);
+    data.registry = registry;
+    lines.push(countsLine(plan), ...shown.map(opLine), ...projectionShown, STATE_LINE, docsLine(result.featureDocs), registryLine(registry), "  다음: harness-kit doctor");
     return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines };
   } finally {
     prompter?.close();

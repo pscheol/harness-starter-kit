@@ -94,17 +94,17 @@ export async function runProjects(ctx: Ctx): Promise<CommandResult> {
   const home = homeOf(ctx);
   try {
     if ((sub === undefined || sub === "list") && !arg) {
-      const projects = new Projects(() => readRegistry(home), { env: ctx.io.env, home, readOnly: true, multi: true, deps: dashboardDeps() });
+      const projects = new Projects(() => readRegistry(home, ctx.io.env), { env: ctx.io.env, home, readOnly: true, multi: true, deps: dashboardDeps() });
       const data = await projectsList(projects);
       const rows = data.projects as { name: string; path: string; state: string }[];
       return { code: EXIT.OK, data, lines: rows.length ? rows.map((r) => `${r.name.padEnd(24)} ${r.state === "ok" ? "" : `(${r.state}) `}${r.path}`) : ["등록한 프로젝트가 없다"] };
     }
     if (sub === "add" && arg && !extra) {
-      const r = addProject(home, path.resolve(ctx.io.cwd, arg), today(ctx.io));
+      const r = addProject(home, path.resolve(ctx.io.cwd, arg), today(ctx.io), ctx.io.env);
       return { code: EXIT.OK, data: { added: r.added, project: r.entry }, lines: [r.added ? `등록했다: ${r.entry.name} ${r.entry.path}` : `이미 있다: ${r.entry.name}`] };
     }
     if (sub === "remove" && arg && !extra) {
-      const r = removeProject(home, arg);
+      const r = removeProject(home, arg, ctx.io.env);
       return { code: EXIT.OK, data: { removed: r.removed }, lines: r.removed.map((e) => `등록부에서 뺐다: ${e.name} ${e.path}`) };
     }
   } catch (err) {
