@@ -142,3 +142,14 @@ DS-R10: `check-sdd-prerequisites.sh --stage design`(=/hx-plan 앞)이 requiremen
 | `intent_check.py` | `intent.py check`(하위 명령) | 키 · 판정 · 검사 · backlog 가 같은 파서를 쓴다 |
 | 접수 출처 jira · notion · ops | HK-20 · HK-21 | 모듈 · 운영 기록이 그 이슈에서 들어온다 |
 | `/hx-specify --from-unit` 전체를 스킬이 | 결정적 1~7단계는 `from_unit.py`, 글 다듬기만 스킬 | 같은 입력 → 같은 결과(시험 가능), 토큰 절약 |
+| 몹 세션 기록은 `questions.md` 머리 `session:`(여러 줄 YAML) | Intent 폴더 `mob.json`(schema `harness-kit.mob/v1`) | 킷의 머리 파서(Python `sdd_frontmatter` · TS `frontmatter.ts`)는 한 줄 `키: 값` 만 읽는다. 여러 줄을 넣으면 질문 파일 읽기가 깨진다. 에이전트 쓰기는 protect_approvals 가 막는다 |
+| `mob end` | `mob close`(`end` 도 받는다) | 이슈 design §10 표기 |
+| codebase · plans 승인 대상이 파일 여럿 | 파일마다 기록 한 줄, `docSha256` 은 묶음 sha(경로 순 `<경로>\t<sha256>` 줄의 sha256), 새 경로 `GET /intents/{key}/gates?gate=` = `status --intent <INT> --gate` | 화면을 연 뒤 파일 하나만 바뀌어도 409. 모든 GET 경로에 같은 결과의 CLI 가 있어야 한다(06 §3.15) |
+| 대상 파일 · 앞 조건 판정 | `intent_gate.py`(codebase 는 `codebase_check.py gate`) — 관리 페이지는 그 결과만 따른다 | 판정 원본 하나(Python) |
+| intent 게이트가 `intent_check.py` 를 부름 | `intent.py check` 를 부른다(전에는 파일이 없어 검사를 건너뛰었다) | 설계대로 검사가 실제로 돈다. HK-17 시험 픽스처를 올바른 Intent 로 고쳤다 |
+| `status --intent` 의 다음 단계를 TS 로도 판정(공용 fixture) | TS 는 `intent.py next --json` 을 부른다 | 판정이 한 곳이면 parity fixture 가 필요 없다 |
+| MR-R6 문장 위치(규칙 파일) | `hx-implement` · `hx-review` 스킬 본문 | 상시 규칙에 두면 세션마다 실린다. 위임은 그 스킬을 쓸 때만 한다 |
+| MR-R11 사용량 기본 꺼짐 | HK-18 `usage.ts` 의 `historyOn` 이 이미 지킨다(`usage.test.ts`). `metrics.tokens: hooks` 측정은 HK-20 | 같은 설정을 두 번 만들지 않는다 |
+| risk high 기계 하한(`risk.highPaths`) | `mr` 판정 때 `git diff <base>...HEAD` 이름이 걸리면 high | 08 §3.15 그대로. design · deploy 는 머리 값만 본다 |
+| 터미널 `approve.py` 의 intent · codebase · plans | `npx harness-kit approve <INT> --gate <게이트>` 로 안내하고 거부 | 관리 페이지와 같은 처리 함수 하나(사용자 결정: 승인 규칙 같게) |
+| design 템플릿 §4.5 | 08 §3.16 표 셋(불변식 · 요소 · 엣지 케이스 질문)을 넣었다 | `invariants.py` 가 읽는다 |
