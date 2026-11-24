@@ -103,3 +103,21 @@ describe("생성 구간(보드)만 다른 킷 파일", () => {
     expect(exists(target, ".agents/docs/specs-index.md")).toBe(false);
   });
 });
+
+describe("표시 줄 없는 v1 lock(v1.0.8)의 hx- 킷 스킬", () => {
+  it("애매한 lock 이어도 hx- 스킬은 사람 파일일 수 없으니, 고치지 않았으면 update 가 지운다(세션에 두 번 실리지 않게)", async () => {
+    const { target, templates, cli } = await installedFixture({ files: FILES });
+    const skill = ".agents/skills/hx-plan/SKILL.md";
+    fs.mkdirSync(path.join(target, ".agents/skills/hx-plan"), { recursive: true });
+    fs.writeFileSync(path.join(target, skill), OLD_SKILL);
+    const lock = readJsonFile(path.join(target, LOCK_FILE));
+    const lines = ["# harness-kit lock v1 — sha256<TAB>layer<TAB>agent<TAB>path"];
+    for (const e of lock.entries as { path: string; sha256: string | null; op: string }[]) if (e.op === "copy" && e.sha256) lines.push(`${e.sha256}\tcommon\tcore\t${e.path}`);
+    lines.push(`${sha256Hex(OLD_SKILL)}\tcommon\tcore\t${skill}`);
+    fs.writeFileSync(path.join(target, LOCK_FILE), `${lines.join("\n")}\n`);
+    const r = await cli("update", ["--json", "--templates", templates]);
+    expect([0, 4]).toContain(r.code);
+    expect(exists(target, skill)).toBe(false);
+    expect(exists(target, ".agents/skills/kns-plan/SKILL.md")).toBe(true);
+  });
+});

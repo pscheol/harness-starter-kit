@@ -9,6 +9,7 @@
 import path from "node:path";
 import { sha256 } from "./hash";
 import { ownerKind, type Installed } from "./installed";
+import { renamedKitPath } from "./legacy-names";
 import type { LockEntry, LockV2 } from "./lock";
 import { existing } from "./plan";
 
@@ -28,6 +29,8 @@ export function resolveLegacyHashes(target: string, entries: LockEntry[], want: 
   const out = entries.map((e) => {
     if (ownerKind(e.owner) !== "kit" || e.op !== "copy" || !e.sha256) return e;
     if (want && want.get(e.path) === e.sha256) return e;
+    // 킷 이름공간(hx-) 스킬 경로는 설치 전부터 있던 사람 파일일 수 없다 — B 를 지킨다. 고치지 않았으면 update 가 지운다(kns- 가 대신한다, HK-22b)
+    if (renamedKitPath(e.path)) return e;
     const cur = existing(path.join(target, ...e.path.split("/")));
     if (cur.kind !== "file" || sha256(cur.bytes) !== e.sha256) return e;
     ambiguous.add(e.path);

@@ -322,7 +322,10 @@ export function runDoctor(ctx: Ctx): CommandResult {
   }
   const only = parseOnly(str(ctx.values, "only"));
   const c = collect(ctx, target, today(ctx.io));
-  const findings = only ? c.findings.filter((f) => only.includes(f.kind)) : c.findings;
+  // 옛 이름(harness-kit) 리포면 상태 파일 항목에 실제 파일 이름을 보인다(HK-22b)
+  const shown = new Map([[META_REL, path.relative(target, metaFile(target)).split(path.sep).join("/")], [LOCK_REL, path.relative(target, lockFile(target)).split(path.sep).join("/")]]);
+  const named = c.findings.map((f) => (f.path && shown.has(f.path) && f.kind !== "legacy-names" ? { ...f, path: shown.get(f.path) as string } : f));
+  const findings = only ? named.filter((f) => only.includes(f.kind)) : named;
   const summary: Record<string, unknown> = summarize(findings, c.ok);
   if (c.projection) summary.projection = c.projection;
   const code = bool(ctx.values, "check") && ((summary.errors as number) ?? 0) > 0 ? EXIT.CHECK : EXIT.OK;

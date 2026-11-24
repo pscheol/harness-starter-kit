@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// knots-sync 2.0.0-alpha.0 · src-sha256 b34eeb418d120f2074e8a0a03bc033f7f68ad867bf7ff871ac392ff2ee3205a1 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// knots-sync 2.0.0-alpha.0 · src-sha256 cecc9d4e577c53cf1c987c6a20f086cb96e992ad912350235f6a9f04ce9d55d7 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -3665,6 +3665,7 @@ function resolveLegacyHashes(target, entries, want) {
   const out = entries.map((e) => {
     if (ownerKind2(e.owner) !== "kit" || e.op !== "copy" || !e.sha256) return e;
     if (want && want.get(e.path) === e.sha256) return e;
+    if (renamedKitPath(e.path)) return e;
     const cur = existing(import_node_path12.default.join(target, ...e.path.split("/")));
     if (cur.kind !== "file" || sha256(cur.bytes) !== e.sha256) return e;
     ambiguous.add(e.path);
@@ -13646,7 +13647,9 @@ function runDoctor(ctx) {
   }
   const only = parseOnly(str(ctx.values, "only"));
   const c = collect(ctx, target, today(ctx.io));
-  const findings = only ? c.findings.filter((f) => only.includes(f.kind)) : c.findings;
+  const shown = /* @__PURE__ */ new Map([[META_REL, import_node_path64.default.relative(target, metaFile(target)).split(import_node_path64.default.sep).join("/")], [LOCK_REL, import_node_path64.default.relative(target, lockFile(target)).split(import_node_path64.default.sep).join("/")]]);
+  const named = c.findings.map((f) => f.path && shown.has(f.path) && f.kind !== "legacy-names" ? { ...f, path: shown.get(f.path) } : f);
+  const findings = only ? named.filter((f) => only.includes(f.kind)) : named;
   const summary = summarize(findings, c.ok);
   if (c.projection) summary.projection = c.projection;
   const code = bool(ctx.values, "check") && (summary.errors ?? 0) > 0 ? EXIT.CHECK : EXIT.OK;
