@@ -102,6 +102,6 @@ created: 2026-11-24
 - "하네스 엔지니어링" 개념 이름: `scripts/harness/`, 훅 id `harness-*`(설치본 settings 병합 키), `harness-lib.sh`.
 - 지난 이슈 기록 `.agents/docs/issues/HK-*`, `docs/analysis` · `docs/harness-next` · `docs/ai-dlc` · `docs/roadmap.md`(역사 · 외부 자료). 이슈 키 `HK-n` 과 임시 파일 표지 `.hk-`.
 
-방법: `/tmp/rename/rename.py`(규칙 표를 순서대로 적용, 다시 돌려도 같다) → 손으로 고친 곳(플러그인 · 마켓플레이스 이름 `kns`, bin 별칭, 옛 이름 호환 코드, Kiro 설치기) → 생성물(`plugins/kns`, 화면 번들)을 다시 만든다.
+방법: 일회성 스크립트(규칙 표를 순서대로 적용, 다시 돌려도 같다 — 저장소에 두지 않는다) → 손으로 고친 곳(플러그인 · 마켓플레이스 이름 `kns`, bin 별칭, 옛 이름 호환 코드, Kiro 설치기) → 생성물(`plugins/kns`, 화면 번들)을 다시 만든다.
 
 같이 넣은 것: `scripts/harness/check_external.py`(설계 11 §3.9 — HK-22a 가 "없다"고 적은 것). lock 의 `external:*` 파일 sha256 을 `--save` 로 적고 `--snapshot` 으로 비교한다. 기록 파일(`*.log`, `logs/`)은 뺀다(§4 발견 3).
