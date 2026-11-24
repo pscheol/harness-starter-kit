@@ -17,6 +17,7 @@ v2 첫 사전 릴리스. 아래는 이 판에 들어 있는 이슈다. 자세한
 - 이전 · 릴리스(HK-22a): `scripts/release.sh`, 두 구성 e2e(`tests/e2e/two_configs.py`), 이전 안내서(`docs/migration-guide.md`)
 - 선택 모듈 jira-workflow v2 · 접수 출처 jira · notion · notion 모듈 · multi-harness `sync units`(HK-20b)
 - **이름 바꾸기(HK-22b)**: 제품 이름 harness-kit → **knots-sync**(약어 `kns`). CLI `knots-sync`(별칭 `kns` · 옛 `harness-kit`), 플러그인 `kns`(스킬 `/kns:bootstrap` …, 옛 `commands/` 세 개는 스킬과 이름이 겹쳐 뺐다), 프로젝트 스킬 `kns-*`, 상태 파일 `.agents/knots-sync.{json,lock}`, 설정 폴더 `~/.config/knots-sync/`, 환경 변수 `KNS_*` · `KNOTS_SYNC_*`, schema `knots-sync.*`. 옛 이름 리포는 `update` 가 상태 파일을 옮기고 고치지 않은 `hx-*` 킷 스킬을 지운다(`doctor` 는 `legacy-names` 로 알린다). Kiro 는 `kns-<명령>` 으로 깔린다
+- 두 구성 e2e 를 사람 터미널에서 끝까지 돌려(stub 107 · real 106 통과) 찾은 킷 버그 5개를 고쳤다: 템플릿 안내문의 `[NEEDS CLARIFICATION` 때문에 새 이슈 문서를 승인하지 못하던 것(표지는 콜론 · 백틱 밖만 센다), 이슈를 만든 뒤 `update` · `uninstall` 이 SDD 보드 구간 때문에 충돌 · 실패하던 것, 병합 뒤 done 승인이 지우지 않은 로컬 이슈 브랜치로 막히던 것, 모듈 `remove` 가 지운 파일 때문에 affected 검증이 incomplete 로 끝나던 것. `scripts/harness/check_external.py`(외부 도구 파일 불변 점검) 추가
 
 ### 세션 적재량(외부 도구 모듈, 실제 도구 e2e 측정)
 
