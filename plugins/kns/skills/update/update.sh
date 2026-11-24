@@ -129,7 +129,7 @@ harness_lock_init "$NEW_LOCK"
 cleanup() { rm -rf "$NEW_LOCK" "$SEEN" "$RENDER" "$PLAN_DIR"; }
 trap cleanup EXIT
 
-n_new=0; n_same=0; n_update=0; n_conflict=0; n_orphan=0; n_merge=0; n_kit=0
+n_new=0; n_same=0; n_update=0; n_conflict=0; n_orphan=0; n_merge=0; n_kit=0; n_renamed=0
 conflicts=""
 v1_merged=""
 
@@ -271,6 +271,20 @@ if [ -f "$LOCK" ]; then
     case "$layer" in mirror|render|merge|merge+) continue ;; esac
     case "$path" in .claude/*|.codex/*|.cursor/*|.kiro/*|CLAUDE.md) continue ;; esac
     grep -qxF "$path" "$SEEN" && continue
+    # 옛 이름(hx-) 킷 스킬은 새 이름(kns-) 스킬이 대신한다. 고치지 않았으면 지운다 — 남기면 배치가 하네스 폴더로 다시 복사해
+    # 같은 스킬이 세션에 두 번 실린다(CLI 와 같은 규칙, HK-22b). 킷 이름공간이라 설치 전부터 있던 사람 파일일 수 없다.
+    case "$path" in .agents/skills/hx-*)
+      if [ -f "$TARGET/$path" ] && [ ! -L "$TARGET/$path" ] && [ "$(harness_sha256 "$TARGET/$path")" = "$sha" ]; then
+        echo "  delete    $path   (옛 이름 hx- 킷 스킬 — kns- 가 대신한다)"
+        n_renamed=$((n_renamed+1))
+        if [ "$DRY_RUN" != 1 ]; then
+          rm -f "$TARGET/$path"
+          rmdir "$(dirname "$TARGET/$path")" 2>/dev/null || true
+          rmdir "$(dirname "$(dirname "$TARGET/$path")")" 2>/dev/null || true
+        fi
+        continue
+      fi ;;
+    esac
     echo "  orphan    $path   (킷에서 빠짐 — 그대로 둔다)"
     n_orphan=$((n_orphan+1))
   done < "$LOCK"
@@ -339,7 +353,7 @@ rebuild_board() {
 rebuild_board
 
 echo ""
-echo "✔ new=$n_new  update=$n_update  same=$n_same  conflict=$n_conflict  orphan=$n_orphan$([ "$n_merge" -gt 0 ] && echo "  merge=$n_merge") $([ $DRY_RUN = 1 ] && echo '(dry-run — 실제 변경 없음)')"
+echo "✔ new=$n_new  update=$n_update  same=$n_same  conflict=$n_conflict  orphan=$n_orphan$([ "$n_renamed" -gt 0 ] && echo "  renamed=$n_renamed")$([ "$n_merge" -gt 0 ] && echo "  merge=$n_merge") $([ $DRY_RUN = 1 ] && echo '(dry-run — 실제 변경 없음)')"
 
 # v1 lock 첫 업데이트 목록(한 번). 킷 판으로 바꾼 파일은 위 줄에 있다 — 여기에는 사람이 볼 병합본만 낸다.
 if [ "$n_merge" -gt 0 ] || [ "$n_kit" -gt 0 ]; then

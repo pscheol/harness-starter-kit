@@ -28,7 +28,7 @@ UPDATE = KIT / "plugins/kns/skills/update/update.sh"
 TEMPLATES = cli_dist.PLUGIN_TEMPLATES
 POINTER_PHRASES = ("를 읽고 그대로 수행한다", "를 읽고 그대로 따른다", "얇은 포인터", "(포인터)")
 EDITED_STEERING = ".kiro/steering/git-workflow.md"
-EDITED_COMMAND = ".claude/commands/kns-plan.md"
+EDITED_COMMAND = ".claude/commands/hx-plan.md"  # v1.0.8 설치본 안의 경로(이름 바꾸기 전)
 
 
 @unittest.skipUnless(shutil.which("node"), "Node 18.3 이상이 필요하다")
