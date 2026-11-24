@@ -81,7 +81,7 @@ describe("settings.json(§5.2, 03 §3.5 · §5 #6)", () => {
     const j = JSON.parse(r.text);
     expect(Object.keys(j)).toEqual(["permissions", "hooks"]);
     expect(j.permissions).toEqual({ deny });
-    expect(Object.keys(j.hooks)).toEqual(["SessionStart", "PreToolUse", "PostToolUse", "UserPromptSubmit", "Stop", "SessionEnd", "WorktreeCreate", "WorktreeRemove"]);
+    expect(Object.keys(j.hooks)).toEqual(["SessionStart", "PreToolUse", "PostToolUse", "UserPromptSubmit", "Stop", "SubagentStop", "SessionEnd", "WorktreeCreate", "WorktreeRemove"]);
     expect(r.keys).toEqual([
       ...deny.map((rule) => `permissions.deny:${rule}`),
       // HK-24: hooks.json 순서. 세션 시작 등록은 harness-session-start 안에서 한다(design §6)
@@ -94,6 +94,7 @@ describe("settings.json(§5.2, 03 §3.5 · §5 #6)", () => {
       "hooks.UserPromptSubmit:harness-session-prompt",
       "hooks.Stop:harness-verify-gate",
       "hooks.Stop:harness-session-idle",
+      "hooks.SubagentStop:harness-subagent-cap",
       "hooks.SessionEnd:harness-session-end",
       "hooks.WorktreeCreate:harness-worktree-create",
       "hooks.WorktreeRemove:harness-worktree-remove",

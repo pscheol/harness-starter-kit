@@ -34,3 +34,5 @@ description: 'MR 리뷰 — 원격 브랜치 diff·SDD 세 문서·규칙·스�
 ```
 
 대상(MR): 이 명령 뒤에 이어서 적은 내용
+
+위임(설계 12 MR-R6): light 분류 역할(explorer 등)이 같은 작업에서 두 번 실패하거나 결과 끝이 `확신: 낮음` 이면 한 등급 위 모델로 한 번만 더 맡긴다(Claude 는 Agent 호출의 `model` 인자, Codex 는 명시 값, Kiro 는 올리지 않고 사람에게 알린다). `deep` 위로는 올리지 않는다. locked 역할(worker · reviewer · designer)에는 `model` 인자를 주지 않는다 — 이 세션의 모델 · effort 는 바꾸지 않는다.

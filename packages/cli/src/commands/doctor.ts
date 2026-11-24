@@ -11,7 +11,7 @@ import { META_REL, readMeta, type MetaV2 } from "../core/meta";
 import { FLOOR_HOOKS, missingFloorGates } from "../core/floor";
 import { isKitNotice, NOTICE_REL, noticeExpired } from "../core/notice";
 import { sourceWarnings } from "../core/packs";
-import { LOCAL_CONFIG, readLocalConfig, SETTINGS_LOCAL } from "../core/local";
+import { LOCAL_CONFIG, LOCAL_MODEL_POLICY, readLocalConfig, readLocalModelPolicy, SETTINGS_LOCAL } from "../core/local";
 import { loadInstalled } from "../core/installed";
 import { overridesLines, overridesReport } from "./doctor-overrides";
 import { isSafeRelPath } from "../core/plan";
@@ -185,6 +185,9 @@ function personalFindings(target: string): Finding[] {
   const conf = readLocalConfig(target);
   if (conf.error) out.push({ kind: "local-invalid", severity: "error", path: LOCAL_CONFIG, hint: conf.error });
   for (const key of conf.ignored) out.push({ kind: "personal-ignored", severity: "warn", path: LOCAL_CONFIG, hint: `${key} — 개인 층은 roles.<역할>.harness · git.ide 만 바꾼다(무시했다)` });
+  const models = readLocalModelPolicy(target);
+  if (models.error) out.push({ kind: "local-invalid", severity: "error", path: LOCAL_MODEL_POLICY, hint: models.error });
+  for (const i of models.ignored) out.push({ kind: "personal-ignored", severity: "warn", path: LOCAL_MODEL_POLICY, hint: `${i.key} — ${i.why}(무시했다, MR-R7)` });
   let local: unknown = null;
   try {
     local = JSON.parse(fs.readFileSync(path.join(target, ...SETTINGS_LOCAL.split("/")), "utf8"));

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; script-src 'unsafe-inline'">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{SCREEN_ID}} {{SCREEN_NAME}} — 와이어프레임</title>
+<style>
+  body { font: 15px/1.5 system-ui, sans-serif; margin: 0; color: #1d2433; background: #f6f7f9; }
+  nav { display: flex; gap: .5rem; padding: .75rem 1rem; background: #fff; border-bottom: 1px solid #d7dbe3; }
+  nav button { border: 1px solid #b9c0cc; background: #fff; padding: .25rem .75rem; border-radius: 4px; cursor: pointer; }
+  nav button[aria-pressed="true"] { background: #1d2433; color: #fff; }
+  main { padding: 1.5rem; }
+  section[data-state] { display: none; }
+  section[data-state].on { display: block; }
+  .box { border: 1px dashed #8a93a3; padding: 1rem; margin: .5rem 0; background: #fff; }
+</style>
+</head>
+<body>
+<!-- 파일 하나 · 200KB 이하 · 외부 src/href/@import/fetch 0건. 상태 넷(default · empty · loading · error), 요소마다 data-el(screens/index.md 요소 표와 같은 ID). -->
+<nav aria-label="화면 상태">
+  <button type="button" data-show="default" aria-pressed="true">기본</button>
+  <button type="button" data-show="empty" aria-pressed="false">빈</button>
+  <button type="button" data-show="loading" aria-pressed="false">로딩</button>
+  <button type="button" data-show="error" aria-pressed="false">오류</button>
+</nav>
+<main>
+  <section data-state="default" class="on"><h1 data-el="EL-1">{{SCREEN_NAME}}</h1><div class="box" data-el="EL-2">(주요 영역)</div></section>
+  <section data-state="empty"><div class="box" data-el="EL-2">(빈 상태 안내)</div></section>
+  <section data-state="loading"><div class="box" data-el="EL-2">(불러오는 중)</div></section>
+  <section data-state="error"><div class="box" data-el="EL-2">(오류와 다시 시도)</div></section>
+</main>
+<script>
+  document.querySelectorAll("nav button").forEach(function (b) {
+    b.addEventListener("click", function () {
+      document.querySelectorAll("section[data-state]").forEach(function (s) { s.classList.toggle("on", s.dataset.state === b.dataset.show); });
+      document.querySelectorAll("nav button").forEach(function (x) { x.setAttribute("aria-pressed", String(x === b)); });
+    });
+  });
+</script>
+</body>
+</html>

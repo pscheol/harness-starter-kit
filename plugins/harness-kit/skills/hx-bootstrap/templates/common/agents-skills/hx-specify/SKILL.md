@@ -12,6 +12,11 @@ SDD 워크플로 원본 `.agents/rules/sdd-workflow.md` 의 `/hx-specify` 절을
 3. 스캐폴딩의 REQUIREMENTS 경로를 **무엇을/왜**만으로 채운다(스택·API·코드 금지): 우선순위 User Story(P1/P2/P3, 독립 테스트 기준), 측정가능·기술중립 Success Criteria, `[NEEDS CLARIFICATION]`(≤3). 경로는 `issues/<키>-<이름>/requirements.md`다.
 4. 품질 자체검증(최대 3회) 후 상태 `in-review`, **사용자 승인** → `/hx-clarify` 또는 `/hx-plan`.
 
+`/hx-specify --from-unit <Intent 키>/<U-n>`(설계 단계에서 넘어올 때):
+1. `python3 scripts/harness/from_unit.py <Intent 키>/<U-n>` — intent 게이트 · 이미 있는 이슈 · 의존 Unit(계약 먼저) · 키를 스크립트가 판정하고, requirements 의 FROM-UNIT 구간 · 머리(`intent` · `unit` · `dependsOn` · `profile` · `risk`)와 units.json 의 `issue` 를 채운다. exit 3 이면 그 이유를 전하고 멈춘다.
+2. 만든 requirements 의 템플릿 절을 FROM-UNIT 구간의 스토리 · AC · NFR · 위험으로 다듬는다. Intent ID(S-n · AC · NFR · RISK · KEEP)는 괄호로 남기고 지우지 않는다.
+3. jira-workflow 모듈이면 Jira 작업 항목을 먼저 만들고 그 키를 `--key` 로 준다.
+
 입력(제품 slug + 기능 설명): 이 명령 뒤에 이어서 적은 내용
 
 경로: 이슈는 `.agents/docs/issues/<키>-<이름>/`. 옛 `<영역>-specs/` 이슈는 읽기만 한다.

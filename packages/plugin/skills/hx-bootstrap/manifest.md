@@ -68,8 +68,8 @@
 
 | 스택군 | core | claude | codex | cursor | kiro | 전부 고를 때 |
 |---|---|---|---|---|---|---|
-| `jvm` · `python` · `go` | 266 | 0 | 1 | 0 | 1 | **268** |
-| `web` · `electron` (`frontend` 도메인 +4 core) | 270 | 0 | 1 | 0 | 1 | **272** |
+| `jvm` · `python` · `go` | 292 | 0 | 1 | 0 | 1 | **294** |
+| `web` · `electron` (`frontend` 도메인 +4 core) | 296 | 0 | 1 | 0 | 1 | **298** |
 
 하네스 폴더 파일은 설치가 `.agents/` 원본에서 만든다(배치 — mirror · render · merge, 모듈 없음 기준):
 
@@ -130,7 +130,7 @@
 
 ## 공통 vs 스택별 (무엇이 어디에 있나)
 
-| 영역 | `templates/common/` (253개) | `templates/domains/frontend/` (8개 · web·electron 만) | `templates/stacks/<stack>/` (변형 무관 14개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
+| 영역 | `templates/common/` (279개) | `templates/domains/frontend/` (8개 · web·electron 만) | `templates/stacks/<stack>/` (변형 무관 14개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
 |---|---|---|---|---|
 | 진입점 | `README.md` | — | `AGENTS.md` · `.gitignore` · `.github/actions/harness-setup/action.yml` | `root/ARCHITECTURE.md` |
 | 규칙 | `agent-harness.md` · `sdd-workflow.md` · `product.md` · `writing-style.md` · `design-principles.md` · `reuse-before-new.md` · `verification-ladder.md` · `pr-review-policy.md` · `git-workflow.md` · `platform-invariants.md` · **`code-maintenance.md`** · **`session-collaboration.md`** · **`approval-vocabulary.md`** | `design-system.md` · `accessibility.md` · `ui-state.md` · `frontend-performance.md` | `code-comments.md` · `api-standards.md` · `security.md` · `reliability.md` · `quality-score.md` · `guardrails.md` | `agents-rules/structure.md` · `agents-rules/tech.md` |
@@ -138,7 +138,7 @@
 | SDD 기록 | `agents-docs/` 전체 — 이슈 폴더 템플릿(requirements 정책·화면 표, design §4.3·§4.4·§7.1~7.3, tasks Polish 문서 반영) | — | — | — |
 | 기능 문서 | `tools/docs/`(생성기 · 시험 · `site.json` · `vendor.lock.json` · `schema-snapshot.sh`) · `docs/features/_src/`(catalog · 단계 원고) | — | `docs/features/_src/docs.config.json`(스택에 맞는 단위·원본 경로) | — |
 | 에이전트 배선 | `codex/` · `kiro-root/` · 훅 원본 `agents-root/hooks.json` · 역할 원본 `agents-root/roles/` · 모델 정책 `agents-root/model-policy.json` · 배치 상수 `scripts/harness/projection.json` | — | — | — |
-| 슬래시 커맨드(`hx-` 13종) | 원본 `agents-skills/hx-*/SKILL.md`(하네스 폴더 사본은 배치가 만든다) | — | — | — |
+| 슬래시 커맨드(`hx-` 15종) | 원본 `agents-skills/hx-*/SKILL.md`(하네스 폴더 사본은 배치가 만든다) | — | — | — |
 
 > 규칙 7종이 스택별인 이유: 주석 표준·보안 위험·신뢰성 패턴·DoD가 언어마다 실제로 다르기 때문이다(주석 규약, 동시성 함정, 커버리지 도구 등).
 > 반대로 **레이어 책임은 변형 무관 원칙으로 중립화**해 `guardrails.md`에 두고, 구체 경로·계약은 `structure.md`·`ARCHITECTURE.md`(변형별)로 위임한다.
@@ -219,6 +219,12 @@
 | `.agents/hooks.json` | **훅 원본** — 킷 훅 id · 이벤트 · 도구 · 스크립트 · 하네스별 환경변수 · 출력 상한. 하네스별 훅 설정은 배치가 여기서 만든다 | — | 인간 |
 | `.agents/hooks.d/<팩>.json` · `project.json` · `.agents/verify-checks.d/…` | 팩(`update --packs` 가 깐다) · 프로젝트(사람이 둔다)의 훅 · 검사. 배치 · 검증이 킷 파일 뒤에 합쳐 읽는다 — 프로젝트는 같은 id 를 덮지만 하한 훅은 덮지 못한다 | — | 팩 · 인간 |
 | `.agents/local/`(gitignore) | 개인 층 — `harness-kit.local.json`(roles · git.ide 만) · 개인 스킬 · 규칙 · 훅. `harness-kit local sync` 가 하네스 폴더에 배치하고 개인 lock · `.git/info/exclude` 에 적는다 | — | 개인 |
+| `scripts/harness/{intent.py,plan_check.py,wireframe_check.py}` · `scripts/new-intent.sh` | 설계 단계(HK-19) — Intent 키 · 새 폴더 · 다음 단계 판정(`next`) · 검사(질문 형식 · units 규칙 · 스토리 배정 · 의존 고리 · 분해 판정, fast 가 부른다) · backlog 생성 구간 · 기획물 필수 제목 · 와이어프레임(외부 참조 0 · 상태 넷) | — | 도구 |
+| `scripts/harness/{codebase_scan.py,codebase_check.py,intent_gate.py}` | 역공학(HK-19) — codebase 모델 정적 행(설정 · import · 마이그레이션 · 엔티티, 그 컴퓨터에 있는 것만) · 출처 칸(DS-R22, fast 실패) · 오래됨(DS-R23, fast 경고 · 승인 422 `model_stale`) · codebase · plans 게이트 대상 파일과 앞 조건(관리 페이지 승인이 부른다) | — | 도구 |
+| `scripts/harness/mob.py` | 몹 정리 세션 start · next · close · status(Intent 폴더 `mob.json`, 참석자 그룹 검사, 회차를 닫아도 세션에 요청하지 않는다, DS-R24 — `harness-kit mob` · `/intents/{key}/mob`) | — | 도구 |
+| `scripts/harness/invariants.py` | 불변식(design §4.5 `INV-n`) · `KEEP-n` 의 근거와 시험 연결, 답 없는 엣지 질문(DS-R27 · R28, `/hx-analyze` 가 옮긴다) | — | 도구 |
+| `scripts/harness/{from_unit.py,intake.py}` | `/hx-specify --from-unit` 의 결정적 부분(intent 게이트 · 계약 Unit 먼저 · requirements FROM-UNIT 구간 · units.json issue) · 요구사항 접수(`harness-kit intake` · `POST /intake` — 신뢰하지 않는 입력 표시 · 비밀값 첨부 저장 안 함 · 크기 상한 · 추출본) | — | 도구 |
+| `.agents/docs/_spec-templates/{intent,codebase,plans}/` · `.agents/roles/designer.md` · `.agents/rules/mob-elaboration.md` | Intent · 질문 · 현재 상태 · 코드 모델 · 기획물 템플릿, 설계 역할, 몹 정리 규칙(Intent 폴더를 다룰 때만 실린다) | — | 인간 |
 | `scripts/harness/floor.py` | 게이트 하한(requirements · design · mr · done)과 하한 훅 — 설정 · 팩 · 개인 층으로 바꿀 수 없다(CLI core/floor.ts 와 같은 값) | — | 도구 |
 | `scripts/hooks/{dispatch.sh,hook_root.py,hook_paths.py}` | 모든 킷 훅의 입구 — 입력 `cwd` 로 하네스 루트(worktree) 판정 · 출력 상한 자르기 · 실행 기록(`.agents/state/hook-output.jsonl`, 내용 없음) · 쓰는 경로 뽑기 | — | 인간 |
 | `scripts/hooks/{sync-projection.sh,protect-generated.sh,protect_generated.py}` | 원본(`.agents/skills · rules · roles · hooks.json`)을 고치면 복사본을 다시 만든다(출력 없음) · 생성 파일 직접 편집을 막고 원본 경로를 알린다 | — | 인간 |
@@ -226,6 +232,7 @@
 | `scripts/hooks/{protect-approvals.sh,protect_approvals.py}` | 승인 기록 · 기준선 · 관리 페이지 토큰 쓰기, 승인 명령 실행, done 승인 없는 `completed`, `status: approved` 변경을 에이전트 도구에서 막는다 | — | 인간 |
 | `scripts/harness/{approve.py,approvals.py,approvals_guard.py,sdd_gates.py}` | 사람 터미널 승인(에이전트 세션 · TTY 아님 거부) · `approvals.md` 파서 · 덧붙이기 전용과 done 승인 검사(pre-commit · fast) · 이슈 게이트 조건 | — | 인간 |
 | `scripts/hooks/{session-register.sh,session-register.py,dispatch-inbox.py}` | 세션 등록(메인 폴더 `.agents/state/sessions/<id>.json`, 출력 0바이트) · 관리 페이지 대기함 소비(자기 세션 요청이 있을 때만 세 줄 · 512바이트 이하) | — | 인간 |
+| `scripts/hooks/{subagent-result-cap.sh,subagent_result_cap.py}` | Claude SubagentStop — 위임 결과가 `limits.subagentResultMaxChars`(6,000자)를 넘으면 끝내기를 한 번 막는다(설계 12 MR-R10, 통과면 0바이트) | — | 인간 |
 | `scripts/harness/dashboard_snapshot.py` | 관리 페이지 읽기 묶음(보드 · 게이트 · 리뷰 판정을 한 번에, 쓰기 없음) | — | 인간 |
 | `scripts/harness/{review.py,review_report.py,review_state.py,mr_comment.py}` | `/hx-review` 의 결정적 부분(입력 모으기 · 지문 · ID · 보고서) · 열린 리뷰 지적 · MR 요약 코멘트 하나(gh · glab) | — | 인간/에이전트 |
 | `scripts/git-hooks/{pre-commit,pre-push,global-hook.sh}` + `scripts/install-git-hooks.sh` | git hook — 커밋·push 때 changed 검증. 전역 `core.hooksPath` 가 있어도 리포 hook 을 부르게 건다 | — | 인간 |

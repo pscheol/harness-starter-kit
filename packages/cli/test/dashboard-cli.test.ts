@@ -84,6 +84,8 @@ const PAIRS: [string, string[]][] = [
   ["/api/v1/issues/DEMO-1", ["status", "--issue", "DEMO-1"]],
   ["/api/v1/intents", ["status", "--intents"]],
   ["/api/v1/intents/INT-7", ["status", "--intent", "INT-7"]],
+  ["/api/v1/intents/INT-7/gates?gate=plans", ["status", "--intent", "INT-7", "--gate", "plans"]],
+  ["/api/v1/intents/INT-7/mob", ["mob", "status", "INT-7"]],
   [`/api/v1/docs?path=${encodeURIComponent(".agents/docs/issues/DEMO-1-upload-cleanup/requirements.md")}`, ["status", "--doc", ".agents/docs/issues/DEMO-1-upload-cleanup/requirements.md"]],
   ["/api/v1/verify", ["status", "--verify"]],
   ["/api/v1/worktrees", ["status", "--worktrees"]],
@@ -231,9 +233,27 @@ describe("쓰기 명령", () => {
     expect(fs.existsSync(path.join(out, "index.html"))).toBe(true);
   });
 
+  it("intake 는 POST /intake 와 같은 처리 — 로컬 첨부 경로 · --text-file · 비밀값은 exit 1", async () => {
+    const repo = fixture();
+    fs.cpSync(path.resolve(CLI_DIR, "../templates/common/agents-docs/_spec-templates"), path.join(repo.root, ".agents/docs/_spec-templates"), { recursive: true });
+    const note = path.join(repo.base, "note.txt");
+    fs.writeFileSync(note, "현장 메모\n");
+    const body = path.join(repo.base, "body.md");
+    fs.writeFileSync(body, "본문 한 줄\n");
+    const r = await cli(["intake", "--title", "알림 개편", "--kind", "change", "--name", "notice-change", "--text-file", body, "--attach", note, "--json"], repo);
+    expect(r.code, r.stdout + r.stderr).toBe(0);
+    expect(r.json.folder).toBe(".agents/docs/intents/INT-8-notice-change");
+    expect(readFile(repo.root, `${r.json.folder}/intake.md`)).toContain("본문 한 줄");
+    expect(readFile(repo.root, `${r.json.folder}/attachments/01-note.txt`)).toBe("현장 메모\n");
+    const bad = await cli(["intake", "--title", "x", "--kind", "change", "--name", "leak", "--text", `${"AK"}${"IA"}${"Q".repeat(16)}`], repo);
+    expect([bad.code, bad.stderr.includes("비밀값")]).toEqual([1, true]);
+    const usage = await cli(["intake", "--kind", "change"], repo);
+    expect(usage.code).toBe(2);
+  });
+
   it("범위 밖 명령은 exit 2 와 제공 이슈", async () => {
     const repo = fixture();
-    for (const [cmd, stage] of [["intake", "HK-19"]] as const) {
+    for (const [cmd, stage] of [["deploy", "P24"]] as const) {
       const r = await cli([cmd], repo);
       expect([cmd, r.code, r.stderr.includes(stage)]).toEqual([cmd, 2, true]);
     }

@@ -41,6 +41,10 @@ export async function runApprove(ctx: Ctx): Promise<CommandResult> {
       const doc = (await callApi(p, "GET", "/docs", { query: { path: `${intent.dir}/intent.md` } })).data as { sha256: string };
       docSha256 = doc.sha256;
       shown = `${intent.dir}/intent.md · sha ${doc.sha256.slice(0, 12)}`;
+    } else if (gate === "codebase" || gate === "plans") {
+      const b = (await callApi(p, "GET", `/intents/${key}/gates`, { query: { gate } })).data as { files: { path: string; approvalSha256: string }[]; sha256: string };
+      docSha256 = b.sha256;
+      shown = b.files.map((f) => `${f.path} · sha ${f.approvalSha256.slice(0, 12)}`).join("\n  ") || "대상 파일 없음";
     } else shown = "브랜치 head";
     const user = await p.user();
     const ok = await confirmKey(ctx, key, [`승인: ${key} · ${gate} · ${decision}`, `- 대상: ${shown}`, `- 승인자: ${user.email ?? "git user.email 없음"}`, `- 문구: "${phrase.replace(/\s+/g, " ").trim()}"`]);
@@ -54,7 +58,7 @@ export async function runApprove(ctx: Ctx): Promise<CommandResult> {
 
 export async function runAnswer(ctx: Ctx): Promise<CommandResult> {
   const [target, qid, extra] = ctx.positionals;
-  if (!target || extra) throw usageError("harness-kit answer <INT 또는 키> --list | <Q-n> --choice <A-D|other> [--text …]");
+  if (!target || extra) throw usageError("harness-kit answer <INT 또는 키> --list | <Q-n> --choice <A-D|other> [--text …] [--by <참석자 email>]");
   if (bool(ctx.values, "list") || !qid) {
     return run(ctx, "GET", "/questions", { query: { target } }, (d) => {
       const qs = (d.questions as { id: string; open: boolean; role: string; text: string; recommended: string | null; answer: string | null }[]) ?? [];
@@ -68,7 +72,7 @@ export async function runAnswer(ctx: Ctx): Promise<CommandResult> {
   try {
     const p = await openProject(ctx);
     const list = (await callApi(p, "GET", "/questions", { query: { target } })).data as { sha256: string | null };
-    return run(ctx, "POST", `/questions/${target}/${qid}/answer`, { project: p, body: { choice, text: str(ctx.values, "text"), baseSha256: list.sha256 } }, (d) => [`${String(d.kind) === "opinion" ? "의견" : "답"}을 남겼다: ${String(d.path)} · 열린 질문 ${String(d.open)}건${d.statusChanged ? ` · ${String(d.statusChanged)}` : ""}`]);
+    return run(ctx, "POST", `/questions/${target}/${qid}/answer`, { project: p, body: { choice, text: str(ctx.values, "text"), baseSha256: list.sha256, ...(str(ctx.values, "by") ? { by: str(ctx.values, "by") } : {}) } }, (d) => [`${String(d.kind) === "opinion" ? "의견" : "답"}을 남겼다: ${String(d.path)} · 열린 질문 ${String(d.open)}건${d.statusChanged ? ` · ${String(d.statusChanged)}` : ""}`]);
   } catch (err) {
     if (err instanceof ApiError) return failure(ctx, err);
     throw err;

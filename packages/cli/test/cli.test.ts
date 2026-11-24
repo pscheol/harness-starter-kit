@@ -61,8 +61,6 @@ describe("진입점", () => {
   });
 
   it.each([
-    ["intake", "HK-19"],
-    ["mob", "P21"],
     ["sync", "P24"],
   ])("예약 명령 %s 는 exit 2 와 제공 단계 %s", async (cmd, stage) => {
     const r = await run([cmd]);

@@ -3,6 +3,8 @@
  * 표의 cli 칸은 같은 결과를 내는 콘솔 명령이다. 이 모듈의 쓰기 처리는 세션에 아무것도 보내지 않는다(DB-R25) —
  * 세션 요청은 POST /dispatch 하나뿐이고 사람이 고를 때만 부른다.
  */
+import fs from "node:fs";
+import path from "node:path";
 import { burnData } from "./burn";
 import { bad, notFound, notImplemented } from "./errors";
 import { findIntent, flowData, intentFolders, intentModel } from "./flow";
@@ -15,11 +17,14 @@ import { readFindings, readReview, readSummary, readVerify, readWorktrees } from
 import { checkouts } from "./repo";
 import { filterInventory, skillsInventory } from "./skills";
 import { historyData, usageData, usageKit, usageNow } from "./usage";
-import { isObj } from "./util";
+import { isObj, python } from "./util";
 import { postAnswer, getQuestions } from "./writers/answers";
 import { issueFolder, postApproval, postReviewDecision, type Via } from "./writers/approvals";
 import { dropQueued, postDispatch } from "./writers/dispatch";
 import { getDoc, putDoc } from "./writers/docs";
+import { postIntake } from "./writers/intake";
+import { getGateBundle } from "./writers/intent-gates";
+import { getMob, postMob } from "./writers/mob";
 import { deleteProposal, postProposal } from "./writers/proposals";
 
 export interface ApiRequest {
@@ -56,6 +61,18 @@ export interface Route {
 }
 
 const ok = (data: unknown, status = 200, meta?: Record<string, unknown>): ApiResult => ({ status, data, ...(meta ? { meta } : {}) });
+
+/** 다음 단계(08 §3.1 · DS-R2): 판정 원본은 intent.py next. 스크립트가 없거나 실패하면 null. */
+async function intentNext(p: Project, abs: string): Promise<Record<string, unknown> | null> {
+  const script = path.join(p.root, "scripts/harness/intent.py");
+  if (!fs.existsSync(script)) return null;
+  const r = await python(p.root, p.env, [script, "next", abs, "--json"], 30_000);
+  try {
+    return r.code === 0 ? (JSON.parse(r.stdout) as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
 const q = (r: ApiRequest, k: string): string | null => r.query.get(k) || null;
 
 async function issueList(p: Project, r: ApiRequest): Promise<ApiResult> {
@@ -95,9 +112,13 @@ export const ROUTES: Route[] = [
     method: "GET", path: "/intents/{key}", cli: "status --intent <키>",
     handler: async (p, r) => {
       const { issues } = await load(p);
-      return ok(intentModel(p, findIntent(p.root, r.params.key as string), issues));
+      const info = findIntent(p.root, r.params.key as string);
+      return ok({ ...intentModel(p, info, issues), next: await intentNext(p, info.abs) });
     },
   },
+  { method: "GET", path: "/intents/{key}/mob", cli: "mob status <INT>", handler: async (p, r) => ok(await getMob(p, r.params.key as string)) },
+  { method: "POST", path: "/intents/{key}/mob", cli: "mob start <INT> --attendees a,b [--timebox 30] | mob next <INT> | mob close <INT>", handler: async (p, r) => ok(await postMob(p, r.params.key as string, r.body)) },
+  { method: "GET", path: "/intents/{key}/gates", cli: "status --intent <INT> --gate codebase|plans", handler: async (p, r) => ok(await getGateBundle(p, r.params.key as string, q(r, "gate") ?? "")) },
   {
     method: "GET", path: "/intents/{key}/burn", cli: "status --flow <INT> --burn [--days n]",
     handler: async (p, r) => {
@@ -191,7 +212,6 @@ export const ROUTES: Route[] = [
   stub("GET", "/checkpoints", "HK-20", "— (entire 모듈, HK-20)", "체크포인트 목록"),
   stub("GET", "/checkpoints/{id}", "HK-20", "— (entire 모듈, HK-20)", "체크포인트 설명"),
   stub("GET", "/ops", "HK-21", "status --ops(HK-21)", "운영 기록"),
-  stub("POST", "/intake", "HK-19", "intake(HK-19)", "요구사항 접수"),
   {
     method: "GET", path: "/flow", cli: "status --flow <INT>",
     handler: async (p, r) => {
@@ -202,6 +222,7 @@ export const ROUTES: Route[] = [
     },
   },
   { method: "GET", path: "/flow/gates", cli: "flow gates", handler: async (p) => ok({ gates: p.gates(), floor: GATE_FLOOR, command: "npx harness-kit flow gates --add <게이트> --after <게이트>" }) },
+  { method: "POST", path: "/intake", cli: "intake --title … --kind … --name … [--text-file | --text] [--attach]… [--link]…", handler: async (p, r) => ok(await postIntake(p, r.body, r.via), 201) },
   { method: "POST", path: "/units/proposals", cli: "units propose <INT> --add-dep U-a:U-b | --remove-dep … | --split … | --merge … | --order …", handler: async (p, r) => ok(await postProposal(p, r.body)) },
   { method: "DELETE", path: "/units/proposals/{intent}", cli: "units discard <INT>", handler: async (p, r) => ok(await deleteProposal(p, r.params.intent as string)) },
   {

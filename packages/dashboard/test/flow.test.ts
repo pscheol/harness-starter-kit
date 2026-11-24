@@ -9,9 +9,15 @@ import { call, commitAll, docSha, makeRepo, readFile, serve, sha256, writeFile, 
 
 const INT = ".agents/docs/intents/INT-7-pay-reform";
 
+const INTENT_MD = [
+  "---", "id: INT-7", "key: INT-7", "title: 결제 개편", "status: in-review", "kind: product", "risk: medium", "---", "",
+  "# Intent — INT-7 결제 개편", "", "## 6. 스토리와 수용 기준", "",
+  "### S-1 결제수단 등록", "- 도메인: payment", "", "### S-2 환불", "- 도메인: payment", "", "### S-3 알림", "- 도메인: billing", "",
+].join("\n");
+
 function intentRepo(): Repo {
   const repo = makeRepo();
-  writeFile(repo.root, `${INT}/intent.md`, "---\nkey: INT-7\ntitle: 결제 개편\nstatus: in-review\n---\n\n# Intent — INT-7 결제 개편\n");
+  writeFile(repo.root, `${INT}/intent.md`, INTENT_MD);
   const units = {
     schema: "harness-kit.units/v1",
     intent: { key: "INT-7", title: "결제 개편", doc: "intent.md" },

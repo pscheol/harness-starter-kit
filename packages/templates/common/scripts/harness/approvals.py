@@ -216,8 +216,12 @@ def allowed(email, gate, policy):
     return False
 
 
-def approval_state(entries, gate, sha256=None, policy=None):
-    """설계 06 §3.3: none · valid(sha 같음) · stale(승인 뒤 바뀜) · invalid(승인자가 approvers 밖)."""
+HIGH_GATES = ("design", "mr", "deploy")
+
+
+def approval_state(entries, gate, sha256=None, policy=None, need=1):
+    """설계 06 §3.3: none · valid(sha 같음) · stale(승인 뒤 바뀜) · invalid(승인자가 approvers 밖) ·
+    partial(risk high 라 서로 다른 승인자 need 명이 필요한데 모자람, 08 DS-R26)."""
     found = [entry for entry in entries if entry["valid"] and entry["gate"] == gate and entry["decision"] == "approved"]
     if not found:
         return "none"
@@ -225,9 +229,27 @@ def approval_state(entries, gate, sha256=None, policy=None):
         found = [entry for entry in found if entry["target"] and entry["target"]["sha256"] == sha256]
         if not found:
             return "stale"
-    if any(allowed(entry["approver"]["email"], gate, policy) for entry in found):
-        return "valid"
-    return "invalid"
+    people = {entry["approver"]["email"].lower() for entry in found if allowed(entry["approver"]["email"], gate, policy)}
+    if not people:
+        return "invalid"
+    return "valid" if len(people) >= max(need, 1) else "partial"
+
+
+def approvers_of(entries, gate, sha256=None):
+    """그 게이트 · 그 내용으로 승인한 사람(email 소문자)."""
+    return {entry["approver"]["email"].lower() for entry in entries if entry["valid"] and entry["gate"] == gate and entry["decision"] == "approved"
+            and (sha256 is None or (entry["target"] and entry["target"]["sha256"] == sha256))}
+
+
+def need_of(meta, risk, gate):
+    """risk high 의 design · mr · deploy 는 risk.highApprovals(기본 2, 줄이지 못한다)명, 그 밖은 1명(08 §3.15 · DS-R26)."""
+    if risk != "high" or gate not in HIGH_GATES:
+        return 1
+    conf = meta.get("risk") if isinstance(meta, dict) and isinstance(meta.get("risk"), dict) else {}
+    try:
+        return max(2, int(conf.get("highApprovals", 2)))
+    except (TypeError, ValueError):
+        return 2
 
 
 def review_decision(entries, finding_id, fingerprint, policy=None):

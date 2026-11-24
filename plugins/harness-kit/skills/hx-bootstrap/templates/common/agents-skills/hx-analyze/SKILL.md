@@ -11,6 +11,7 @@ SDD 워크플로 원본 `.agents/rules/sdd-workflow.md` 의 `/hx-analyze` 절을
 핵심:
 1. REQUIREMENTS·DESIGN·TASKS 출력으로 해석한 한 이슈의 세 문서와 `.agents/rules/*`(헌법)를 읽어 `R#.#`·`SC-###`·설계 컴포넌트·`T### [US#]`를 ID로 색인한다. 다른 이슈나 legacy 경로를 합쳐 읽지 않는다.
 2. 탐지(유형↔심각도): 헌법 충돌(CRITICAL) · 커버리지 갭(요구/역방향) · 모순 · 중복 · 모호(측정 불가·미해결 마커) · 용어 드리프트.
+   불변식 시험 누락: `python3 scripts/harness/invariants.py <키> --json` 의 지적을 그대로 옮긴다(INV · KEEP 시험 연결 없음 · 답 없는 엣지 질문 HIGH, 근거 없는 불변식 MEDIUM).
 3. **읽기 전용 리포트**: `ID·심각도·유형·위치·발견·권고` 표 + 커버리지 매트릭스 요약 + 심각도별 집계. 파일 수정 금지(보완은 사용자 승인 후 `/hx-specify`·`/hx-clarify`·`/hx-plan`·`/hx-tasks`).
 
 > 한 문서의 품질은 `/hx-checklist`, 세 문서 간 정합성은 `/hx-analyze`(이 명령).

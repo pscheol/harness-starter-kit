@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { readLocalConfig } from "../src/core/local";
+import { readLocalConfig, readLocalModelPolicy } from "../src/core/local";
 import { initWith, projectionTemplates } from "./projection-helpers";
 import { json, readTree, writeTree } from "./helpers";
 
@@ -28,6 +28,18 @@ describe("개인 설정", () => {
     expect(f.map((x) => x.hint.split(" — ")[0])).toEqual(["roles.review.model", "git.base", "verify.fullOnlyInCI", "flow.gates"]);
     // 개인 설정은 공유 메타의 하한을 바꾸지 않는다
     expect(json(await t.cli("doctor", ["--json", "--only", "gate-floor,full-allowed"])).findings).toEqual([]);
+  });
+
+  it("개인 모델 등급은 잠기지 않은 classes 만 받는다 — locked · 다른 키 · 틀린 값은 doctor 경고(설계 12 §5 #4 · MR-R7)", async () => {
+    const t = await installed();
+    writeTree(t.target, { ".agents/local/model-policy.local.json": JSON.stringify({ classes: { explore: "standard", implement: "light", summarize: "huge" }, locked: [] }) });
+    const m = readLocalModelPolicy(t.target);
+    expect(m.classes).toEqual({ explore: "standard" });
+    expect(m.ignored.map((i) => i.key)).toEqual(["classes.implement", "classes.summarize", "locked"]);
+    const f = json(await t.cli("doctor", ["--json", "--only", "personal-ignored"])).findings as { path: string; hint: string }[];
+    expect(f.filter((x) => x.path === ".agents/local/model-policy.local.json").map((x) => x.hint.split(" — ")[0])).toEqual(["classes.implement", "classes.summarize", "locked"]);
+    const o = json(await t.cli("doctor", ["--json", "--only", "overrides"])) as { overrides: { target: string; value?: string }[] };
+    expect(o.overrides.find((x) => x.target === "model-policy.classes.explore")?.value).toBe("standard");
   });
 
   it("깨진 개인 설정은 local-invalid, disableAllHooks 는 personal-weakens", async () => {

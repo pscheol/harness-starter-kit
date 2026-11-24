@@ -164,6 +164,35 @@ class ProtectApprovalsTest(unittest.TestCase):
         self.assert_allowed(tool("Edit", file_path=self.path(f"{ISSUE}/requirements.md"), old_string="status: in-review", new_string="status: draft"))
 
     # ── 입력 · 등록 ────────────────────────────────────────────────────────────
+    # ── 질문 답 줄(08 §3.3 · HK-19 T7) ───────────────────────────────────────
+    def test_agent_cannot_write_answer_lines(self):
+        folder = self.root / ".agents/docs/intents/INT-1-pay"
+        folder.mkdir(parents=True)
+        q = folder / "questions.md"
+        head = "---\ntarget: INT-1\nstatus: open\nround: 1\n---\n\n# 질문\n\n"
+        one = "## Q-1 · 범위 · 답할 직무: po · 막는 게이트: intent\n넣는가?\n\n- A. 넣는다 — 영향: 하나\n- B. 뺀다 — 영향: 둘\n- 권장: B — 근거: 없다\n- 답:{}\n"
+        q.write_text(head + one.format(""), encoding="utf-8")
+        rel = ".agents/docs/intents/INT-1-pay/questions.md"
+        self.assert_blocked(tool("Edit", file_path=str(q), old_string="- 답:\n", new_string="- 답: B\n"), "사람만 쓴다")
+        self.assert_blocked(tool("Write", file_path=str(q), content=head + one.format(" A")), "harness-kit answer")
+        self.assert_blocked(tool("apply_patch", command=patch(f"*** Update File: {rel}", "@@", "-- 답:", "+- 답: A")))
+        self.assert_blocked(tool("Bash", command=f"sed -i '' 's/- 답:/- 답: A/' {rel}"))
+        two = one.replace("Q-1", "Q-2").format("")
+        self.assert_allowed(tool("Write", file_path=str(q), content=head + one.format("") + "\n" + two))
+        self.assert_allowed(tool("Edit", file_path=str(q), old_string="넣는가?", new_string="이번에 넣는가?"))
+        q.write_text(head + one.format(" B"), encoding="utf-8")
+        self.assert_blocked(tool("Edit", file_path=str(q), old_string="- 답: B", new_string="- 답: A"))
+        self.assert_blocked(tool("Edit", file_path=str(q), old_string="- 답: B", new_string="- 답:"))
+        self.assert_allowed(tool("Edit", file_path=str(q), old_string="넣는가?", new_string="이번에 넣는가?"))
+
+    def test_agent_cannot_write_mob_session_or_run_mob_commands(self):
+        rel = ".agents/docs/intents/INT-1-pay/mob.json"
+        self.assert_blocked(tool("Write", file_path=self.path(rel), content="{}"))
+        self.assert_blocked(tool("Bash", command=f"echo '{{}}' > {rel}"))
+        for command in ("python3 scripts/harness/mob.py start INT-1 --attendees a@b", "npx harness-kit mob close INT-1"):
+            self.assert_blocked(tool("Bash", command=command))
+        self.assert_allowed(tool("Bash", command="python3 scripts/harness/mob.py status INT-1"))
+
     def test_unrelated_or_unparseable_input_passes_silently(self):
         self.assert_allowed(tool("Bash", command="ls -la"))
         self.assert_allowed(tool("Write", file_path=self.path("README.md"), content="hello"))

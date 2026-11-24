@@ -76,6 +76,7 @@ export const COMMAND_OPTIONS: Record<string, OptSpec> = {
     worktrees: { type: "boolean" },
     harness: { type: "boolean" },
     flow: { type: "string" },
+    gate: { type: "string" },
     all: { type: "boolean" },
     ops: { type: "boolean" },
     burn: { type: "boolean" },
@@ -83,7 +84,8 @@ export const COMMAND_OPTIONS: Record<string, OptSpec> = {
   },
   projects: {},
   approve: { gate: { type: "string" }, phrase: { type: "string" }, "changes-requested": { type: "boolean" }, "rule-candidate": { type: "boolean" } },
-  answer: { list: { type: "boolean" }, choice: { type: "string" }, text: { type: "string" } },
+  answer: { list: { type: "boolean" }, choice: { type: "string" }, text: { type: "string" }, by: { type: "string" } },
+  mob: { attendees: { type: "string" }, timebox: { type: "string" } },
   review: { fix: { type: "boolean" }, "accept-risk": { type: "boolean" }, reason: { type: "string" } },
   sessions: { machine: { type: "boolean" } },
   dispatch: { to: { type: "string" }, kind: { type: "string" }, path: { type: "string", multiple: true }, text: { type: "string" }, via: { type: "string" } },
@@ -112,10 +114,12 @@ export const COMMAND_OPTIONS: Record<string, OptSpec> = {
   // 확장 층(HK-14, 설계 04)
   pack: { dir: { type: "string" }, from: { type: "string", multiple: true }, "kit-range": { type: "string" } },
   local: {},
+  // 설계 단계(HK-19, 설계 08)
+  intake: { title: { type: "string" }, kind: { type: "string" }, name: { type: "string" }, area: { type: "string" }, text: { type: "string" }, "text-file": { type: "string" }, attach: { type: "string", multiple: true }, link: { type: "string", multiple: true } },
 };
 
 /** 위치 인자(이름 · 하위 명령 · 키)를 받는 명령. 나머지는 위치 인자를 거부한다(대상 폴더는 --cwd). */
-const POSITIONAL = new Set(["add", "remove", "projects", "approve", "answer", "review", "dispatch", "units", "flow", "pack", "local"]);
+const POSITIONAL = new Set(["add", "remove", "projects", "approve", "answer", "review", "dispatch", "units", "flow", "pack", "local", "mob"]);
 
 export type Values = Record<string, string | boolean | string[] | undefined>;
 

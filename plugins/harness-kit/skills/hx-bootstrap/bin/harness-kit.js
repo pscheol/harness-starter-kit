@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 49585ad9b1906e1ac523288933718a1870159f7dfa9dd1aa61c6de36f86d86e5 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 ff2f42e26d3e3c9cda39347d3e2721d3920cdab5d45e2fc79c1973e3d131ab14 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -545,6 +545,7 @@ var COMMAND_OPTIONS = {
     worktrees: { type: "boolean" },
     harness: { type: "boolean" },
     flow: { type: "string" },
+    gate: { type: "string" },
     all: { type: "boolean" },
     ops: { type: "boolean" },
     burn: { type: "boolean" },
@@ -552,7 +553,8 @@ var COMMAND_OPTIONS = {
   },
   projects: {},
   approve: { gate: { type: "string" }, phrase: { type: "string" }, "changes-requested": { type: "boolean" }, "rule-candidate": { type: "boolean" } },
-  answer: { list: { type: "boolean" }, choice: { type: "string" }, text: { type: "string" } },
+  answer: { list: { type: "boolean" }, choice: { type: "string" }, text: { type: "string" }, by: { type: "string" } },
+  mob: { attendees: { type: "string" }, timebox: { type: "string" } },
   review: { fix: { type: "boolean" }, "accept-risk": { type: "boolean" }, reason: { type: "string" } },
   sessions: { machine: { type: "boolean" } },
   dispatch: { to: { type: "string" }, kind: { type: "string" }, path: { type: "string", multiple: true }, text: { type: "string" }, via: { type: "string" } },
@@ -580,9 +582,11 @@ var COMMAND_OPTIONS = {
   usage: { days: { type: "string" }, kit: { type: "boolean" }, now: { type: "boolean" }, sources: { type: "boolean" }, harness: { type: "string" } },
   // 확장 층(HK-14, 설계 04)
   pack: { dir: { type: "string" }, from: { type: "string", multiple: true }, "kit-range": { type: "string" } },
-  local: {}
+  local: {},
+  // 설계 단계(HK-19, 설계 08)
+  intake: { title: { type: "string" }, kind: { type: "string" }, name: { type: "string" }, area: { type: "string" }, text: { type: "string" }, "text-file": { type: "string" }, attach: { type: "string", multiple: true }, link: { type: "string", multiple: true } }
 };
-var POSITIONAL = /* @__PURE__ */ new Set(["add", "remove", "projects", "approve", "answer", "review", "dispatch", "units", "flow", "pack", "local"]);
+var POSITIONAL = /* @__PURE__ */ new Set(["add", "remove", "projects", "approve", "answer", "review", "dispatch", "units", "flow", "pack", "local", "mob"]);
 function parseCommandArgs(command, argv) {
   const options = { ...COMMON, ...COMMAND_OPTIONS[command] ?? {} };
   try {
@@ -892,9 +896,9 @@ function v1ProjectionEntry(sha, label, rel2) {
 }
 function parseV1(text2) {
   const seen = /* @__PURE__ */ new Map();
-  const lines2 = text2.split("\n");
-  for (let i = 1; i < lines2.length; i += 1) {
-    const line = lines2[i].replace(/\r$/, "");
+  const lines3 = text2.split("\n");
+  for (let i = 1; i < lines3.length; i += 1) {
+    const line = lines3[i].replace(/\r$/, "");
     if (line === "" || line.startsWith("#")) continue;
     const cols = line.split("	");
     if (cols.length !== 4 || cols.some((c) => c === "")) throw new Error(`v1 lock ${i + 1}번째 줄: 칸이 4개가 아니다`);
@@ -1167,18 +1171,18 @@ function resolveCandidates(layout2, templatesDir, sel, tokens) {
         excludedByHarness += 1;
         continue;
       }
-      const list2 = byDest.get(dest) ?? [];
-      list2.push({ dest, src: `${dir}/${rel2}`, layer: dir, harness });
-      byDest.set(dest, list2);
+      const list3 = byDest.get(dest) ?? [];
+      list3.push({ dest, src: `${dir}/${rel2}`, layer: dir, harness });
+      byDest.set(dest, list3);
     }
   }
   const winners = [];
   const overlaps = [];
   for (const dest of [...byDest.keys()].sort(byteCompare)) {
-    const list2 = byDest.get(dest);
-    const winner = layout2.overlap === "first" ? list2[0] : list2[list2.length - 1];
+    const list3 = byDest.get(dest);
+    const winner = layout2.overlap === "first" ? list3[0] : list3[list3.length - 1];
     winners.push(winner);
-    if (list2.length > 1) overlaps.push({ path: dest, layers: list2.map((c) => c.layer), winner: winner.layer });
+    if (list3.length > 1) overlaps.push({ path: dest, layers: list3.map((c) => c.layer), winner: winner.layer });
   }
   return { winners, overlaps, excludedByHarness };
 }
@@ -1402,10 +1406,10 @@ function scalar(raw) {
 }
 function parseFrontmatter(block2) {
   const out = {};
-  const lines2 = block2.split("\n");
+  const lines3 = block2.split("\n");
   let i = 0;
-  while (i < lines2.length) {
-    const line = lines2[i];
+  while (i < lines3.length) {
+    const line = lines3[i];
     i += 1;
     const m = FM_KEY.exec(line);
     if (!m) continue;
@@ -1413,8 +1417,8 @@ function parseFrontmatter(block2) {
     const raw = strip(m[2]);
     if (raw === "") {
       const items = [];
-      while (i < lines2.length && LIST_ITEM.test(lines2[i])) {
-        items.push(scalar(LIST_ITEM.exec(lines2[i])[1]));
+      while (i < lines3.length && LIST_ITEM.test(lines3[i])) {
+        items.push(scalar(LIST_ITEM.exec(lines3[i])[1]));
         i += 1;
       }
       out[key] = items.length ? items : "";
@@ -1469,10 +1473,10 @@ function parseRule(source, data) {
   return { name: basename(source).slice(0, -".md".length), source, data: bytes, paths: paths.length ? paths : null, body };
 }
 function parseSkill(source, files) {
-  const list2 = Array.isArray(files) ? files : [...files].map(([rel2, f]) => ({ rel: rel2, bytes: f.bytes, executable: f.executable }));
-  const data = list2.find((f) => f.rel === "SKILL.md")?.bytes ?? Buffer.alloc(0);
+  const list3 = Array.isArray(files) ? files : [...files].map(([rel2, f]) => ({ rel: rel2, bytes: f.bytes, executable: f.executable }));
+  const data = list3.find((f) => f.rel === "SKILL.md")?.bytes ?? Buffer.alloc(0);
   const { fm, body } = parsed(decode(data));
-  return { name: fmStr(fm, "name") || basename(source), source, files: list2, description: fmStr(fm, "description"), body, fm };
+  return { name: fmStr(fm, "name") || basename(source), source, files: list3, description: fmStr(fm, "description"), body, fm };
 }
 function parseRole(source, data) {
   const bytes = typeof data === "string" ? Buffer.from(data, "utf8") : data;
@@ -1585,10 +1589,10 @@ function withNewline(text2) {
 `;
 }
 function renderClaudeRole(r, fields) {
-  const lines2 = ["---", `name: ${r.name}`, `description: ${r.description}`, `tools: ${claudeTools(r.tools).join(", ")}`];
-  for (const [k, v] of Object.entries(fields)) lines2.push(`${k}: ${v}`);
-  lines2.push("---", genMd(r.source));
-  return `${lines2.join("\n")}
+  const lines3 = ["---", `name: ${r.name}`, `description: ${r.description}`, `tools: ${claudeTools(r.tools).join(", ")}`];
+  for (const [k, v] of Object.entries(fields)) lines3.push(`${k}: ${v}`);
+  lines3.push("---", genMd(r.source));
+  return `${lines3.join("\n")}
 ${r.body}`;
 }
 function control(ch, keep) {
@@ -1610,12 +1614,12 @@ function tomlMultiline(value2) {
   return out;
 }
 function renderCodexRole(r, fields, spec) {
-  const lines2 = [genToml(r.source), `name = ${tomlString(r.name)}`, `description = ${tomlString(r.description)}`, `sandbox_mode = "${r.mode === "write" ? "workspace-write" : "read-only"}"`];
-  for (const [k, v] of Object.entries(fields)) lines2.push(`${k} = ${tomlString(v)}`);
-  lines2.push("", 'developer_instructions = """');
+  const lines3 = [genToml(r.source), `name = ${tomlString(r.name)}`, `description = ${tomlString(r.description)}`, `sandbox_mode = "${r.mode === "write" ? "workspace-write" : "read-only"}"`];
+  for (const [k, v] of Object.entries(fields)) lines3.push(`${k} = ${tomlString(v)}`);
+  lines3.push("", 'developer_instructions = """');
   const instructions = (r.mode !== "write" ? `${spec.readOnlyLine}
 ` : "") + withNewline(r.body);
-  return `${lines2.join("\n")}
+  return `${lines3.join("\n")}
 ${tomlMultiline(instructions)}"""
 `;
 }
@@ -1820,36 +1824,36 @@ var MERGE_KIND = {
 var fail2 = (reason) => ({ ok: false, reason });
 var isBlank = (l) => l.trim() === "";
 function splitLines(text2) {
-  const lines2 = text2.split("\n");
-  if (lines2.length && lines2[lines2.length - 1] === "") lines2.pop();
-  return lines2;
+  const lines3 = text2.split("\n");
+  if (lines3.length && lines3[lines3.length - 1] === "") lines3.pop();
+  return lines3;
 }
-function joinLines(lines2) {
-  return lines2.length ? `${lines2.join("\n")}
+function joinLines(lines3) {
+  return lines3.length ? `${lines3.join("\n")}
 ` : "";
 }
-function stripTrailingBlank(lines2) {
-  const out = [...lines2];
+function stripTrailingBlank(lines3) {
+  const out = [...lines3];
   while (out.length && isBlank(out[out.length - 1])) out.pop();
   return out;
 }
-function allBlank(lines2, comments = false) {
-  return lines2.every((l) => isBlank(l) || comments && l.trimStart().startsWith("#"));
+function allBlank(lines3, comments = false) {
+  return lines3.every((l) => isBlank(l) || comments && l.trimStart().startsWith("#"));
 }
-function findBlock(lines2, begin, end) {
-  const b = lines2.findIndex((l) => l.startsWith(begin));
+function findBlock(lines3, begin, end) {
+  const b = lines3.findIndex((l) => l.startsWith(begin));
   if (b < 0) return null;
   let e = -1;
-  for (let i = b + 1; i < lines2.length; i += 1) {
-    if (lines2[i].trim() === end) {
+  for (let i = b + 1; i < lines3.length; i += 1) {
+    if (lines3[i].trim() === end) {
       e = i;
       break;
     }
   }
   return e < 0 ? "unclosed" : [b, e];
 }
-function appendBlock(lines2, block2) {
-  const out = [...lines2];
+function appendBlock(lines3, block2) {
+  const out = [...lines3];
   if (out.length && !isBlank(out[out.length - 1])) out.push("");
   return [...out, ...block2];
 }
@@ -1860,39 +1864,39 @@ var claudeMd = {
   merge(cur, want, prev = []) {
     const block2 = want.block;
     if (cur === null) return { ok: true, text: joinLines([AGENTS_LINE, "", ...block2]), keys: ["line:@AGENTS.md", "block:claude"], created: true };
-    let lines2 = splitLines(cur);
-    const found = findBlock(lines2, CLAUDE_BEGIN, CLAUDE_END);
+    let lines3 = splitLines(cur);
+    const found = findBlock(lines3, CLAUDE_BEGIN, CLAUDE_END);
     if (found === "unclosed") return fail2("CLAUDE.md 킷 블록의 끝 표지가 없다");
-    const hasLine = lines2.some((l) => l === AGENTS_LINE);
+    const hasLine = lines3.some((l) => l === AGENTS_LINE);
     const keys = [];
     if (found !== null) {
       const [b, e] = found;
       const insert = hasLine ? [] : [AGENTS_LINE, ""];
-      lines2 = [...lines2.slice(0, b), ...insert, ...block2, ...lines2.slice(e + 1)];
+      lines3 = [...lines3.slice(0, b), ...insert, ...block2, ...lines3.slice(e + 1)];
       if (!hasLine || prev.includes("line:@AGENTS.md")) keys.push("line:@AGENTS.md");
     } else {
       if (!hasLine) {
-        lines2 = appendBlock(lines2, [AGENTS_LINE, ""]);
+        lines3 = appendBlock(lines3, [AGENTS_LINE, ""]);
         keys.push("line:@AGENTS.md");
       } else if (prev.includes("line:@AGENTS.md")) keys.push("line:@AGENTS.md");
-      lines2 = appendBlock(lines2, block2);
+      lines3 = appendBlock(lines3, block2);
     }
     keys.push("block:claude");
-    return { ok: true, text: joinLines(lines2), keys, created: false };
+    return { ok: true, text: joinLines(lines3), keys, created: false };
   },
   unmerge(cur, keys) {
-    let lines2 = splitLines(cur);
-    const found = findBlock(lines2, CLAUDE_BEGIN, CLAUDE_END);
+    let lines3 = splitLines(cur);
+    const found = findBlock(lines3, CLAUDE_BEGIN, CLAUDE_END);
     if (found === "unclosed") return fail2("CLAUDE.md 킷 블록의 끝 표지가 없다");
-    if (found !== null && keys.includes("block:claude")) lines2 = [...lines2.slice(0, found[0]), ...lines2.slice(found[1] + 1)];
-    if (keys.includes("line:@AGENTS.md") && lines2.includes(AGENTS_LINE)) lines2.splice(lines2.indexOf(AGENTS_LINE), 1);
-    lines2 = stripTrailingBlank(lines2);
-    return { ok: true, text: joinLines(lines2), empty: allBlank(lines2) };
+    if (found !== null && keys.includes("block:claude")) lines3 = [...lines3.slice(0, found[0]), ...lines3.slice(found[1] + 1)];
+    if (keys.includes("line:@AGENTS.md") && lines3.includes(AGENTS_LINE)) lines3.splice(lines3.indexOf(AGENTS_LINE), 1);
+    lines3 = stripTrailingBlank(lines3);
+    return { ok: true, text: joinLines(lines3), empty: allBlank(lines3) };
   },
   missing(cur, keys) {
-    const lines2 = splitLines(cur);
-    const found = findBlock(lines2, CLAUDE_BEGIN, CLAUDE_END);
-    return keys.filter((k) => k === "line:@AGENTS.md" && !lines2.includes(AGENTS_LINE) || k === "block:claude" && !Array.isArray(found));
+    const lines3 = splitLines(cur);
+    const found = findBlock(lines3, CLAUDE_BEGIN, CLAUDE_END);
+    return keys.filter((k) => k === "line:@AGENTS.md" && !lines3.includes(AGENTS_LINE) || k === "block:claude" && !Array.isArray(found));
   }
 };
 function gitattributesWant(spec, agents) {
@@ -1903,19 +1907,19 @@ var gitattributes = {
   merge(cur, want) {
     const block2 = want.lines;
     if (cur === null) return { ok: true, text: joinLines(block2), keys: ["block:generated"], created: true };
-    let lines2 = splitLines(cur);
-    const found = findBlock(lines2, GEN_BEGIN, GEN_END);
+    let lines3 = splitLines(cur);
+    const found = findBlock(lines3, GEN_BEGIN, GEN_END);
     if (found === "unclosed") return fail2(".gitattributes 킷 블록의 끝 표지가 없다");
-    lines2 = found === null ? appendBlock(lines2, block2) : [...lines2.slice(0, found[0]), ...block2, ...lines2.slice(found[1] + 1)];
-    return { ok: true, text: joinLines(lines2), keys: ["block:generated"], created: false };
+    lines3 = found === null ? appendBlock(lines3, block2) : [...lines3.slice(0, found[0]), ...block2, ...lines3.slice(found[1] + 1)];
+    return { ok: true, text: joinLines(lines3), keys: ["block:generated"], created: false };
   },
   unmerge(cur) {
-    let lines2 = splitLines(cur);
-    const found = findBlock(lines2, GEN_BEGIN, GEN_END);
+    let lines3 = splitLines(cur);
+    const found = findBlock(lines3, GEN_BEGIN, GEN_END);
     if (found === "unclosed") return fail2(".gitattributes 킷 블록의 끝 표지가 없다");
-    if (Array.isArray(found)) lines2 = [...lines2.slice(0, found[0]), ...lines2.slice(found[1] + 1)];
-    lines2 = stripTrailingBlank(lines2);
-    return { ok: true, text: joinLines(lines2), empty: allBlank(lines2) };
+    if (Array.isArray(found)) lines3 = [...lines3.slice(0, found[0]), ...lines3.slice(found[1] + 1)];
+    lines3 = stripTrailingBlank(lines3);
+    return { ok: true, text: joinLines(lines3), empty: allBlank(lines3) };
   },
   missing(cur, keys) {
     const found = findBlock(splitLines(cur), GEN_BEGIN, GEN_END);
@@ -2143,34 +2147,34 @@ function codexConfigWant(spec, roles, keep = []) {
     keep: [...keep]
   };
 }
-function tables(lines2) {
+function tables(lines3) {
   const heads = [];
-  lines2.forEach((l, i) => {
+  lines3.forEach((l, i) => {
     const m = TABLE_HEADER.exec(l);
     if (m) heads.push([i, m[1]]);
   });
   return heads.map(([i, name], n) => {
-    const j = n + 1 < heads.length ? heads[n + 1][0] : lines2.length;
+    const j = n + 1 < heads.length ? heads[n + 1][0] : lines3.length;
     let last = i;
     for (let k = i + 1; k < j; k += 1) {
-      const s = lines2[k].trim();
+      const s = lines3[k].trim();
       if (s && !s.startsWith("#")) last = k;
     }
     return [name, i, last + 1];
   });
 }
-function findTable(lines2, name) {
-  return tables(lines2).find((t) => t[0] === name) ?? null;
+function findTable(lines3, name) {
+  return tables(lines3).find((t) => t[0] === name) ?? null;
 }
-function keyLine(lines2, t, key) {
+function keyLine(lines3, t, key) {
   const pat = new RegExp(`^\\s*(?:${escapeRe(key)}|"${escapeRe(key)}")\\s*=`);
-  for (let k = t[1] + 1; k < t[2]; k += 1) if (pat.test(lines2[k])) return k;
+  for (let k = t[1] + 1; k < t[2]; k += 1) if (pat.test(lines3[k])) return k;
   return -1;
 }
-function removeTable(lines2, t) {
+function removeTable(lines3, t) {
   let start = t[1];
-  while (start > 0 && isBlank(lines2[start - 1])) start -= 1;
-  return [...lines2.slice(0, start), ...lines2.slice(t[2])];
+  while (start > 0 && isBlank(lines3[start - 1])) start -= 1;
+  return [...lines3.slice(0, start), ...lines3.slice(t[2])];
 }
 function roleTable(r) {
   return [`[agents.${r.name}]`, `description = ${tomlString(r.description)}`, `config_file = ${tomlString(`agents/${r.name}.toml`)}`];
@@ -2180,23 +2184,23 @@ function keyKinds(want) {
 }
 var codexConfig = {
   merge(cur, want, prev = []) {
-    let lines2 = splitLines(cur === null ? joinLines(want.header) : cur);
+    let lines3 = splitLines(cur === null ? joinLines(want.header) : cur);
     const keys = [];
     for (const d of want.defaults) {
       const key = `toml:${d.table}.${d.key}`;
-      const t = findTable(lines2, d.table);
+      const t = findTable(lines3, d.table);
       if (t === null) {
-        lines2 = appendBlock(lines2, [`[${d.table}]`, d.line]);
+        lines3 = appendBlock(lines3, [`[${d.table}]`, d.line]);
         keys.push(key);
-      } else if (keyLine(lines2, t, d.key) < 0) {
-        lines2 = [...lines2.slice(0, t[2]), d.line, ...lines2.slice(t[2])];
+      } else if (keyLine(lines3, t, d.key) < 0) {
+        lines3 = [...lines3.slice(0, t[2]), d.line, ...lines3.slice(t[2])];
         keys.push(key);
       } else if (prev.includes(key)) keys.push(key);
     }
     for (const tb of want.tables) {
       const key = `toml:${tb.table}`;
-      if (findTable(lines2, tb.table) === null) {
-        lines2 = appendBlock(lines2, [`[${tb.table}]`, ...tb.lines]);
+      if (findTable(lines3, tb.table) === null) {
+        lines3 = appendBlock(lines3, [`[${tb.table}]`, ...tb.lines]);
         keys.push(key);
       } else if (prev.includes(key)) keys.push(key);
     }
@@ -2205,23 +2209,23 @@ var codexConfig = {
     const keep = new Set(want.keep.map((n) => `toml:agents.${n}`));
     for (const k of prev) {
       if (k.startsWith("toml:agents.") && !defaults.has(k) && !tableKeys.has(k) && !wanted2.has(k) && !keep.has(k)) {
-        const t = findTable(lines2, k.slice("toml:".length));
-        if (t !== null) lines2 = removeTable(lines2, t);
+        const t = findTable(lines3, k.slice("toml:".length));
+        if (t !== null) lines3 = removeTable(lines3, t);
       }
     }
     for (const k of [...keep].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)))) {
-      if (prev.includes(k) && findTable(lines2, k.slice("toml:".length)) !== null) keys.push(k);
+      if (prev.includes(k) && findTable(lines3, k.slice("toml:".length)) !== null) keys.push(k);
     }
     for (const r of want.roles) {
       const block2 = roleTable(r);
-      const t = findTable(lines2, `agents.${r.name}`);
-      lines2 = t === null ? appendBlock(lines2, block2) : [...lines2.slice(0, t[1]), ...block2, ...lines2.slice(t[2])];
+      const t = findTable(lines3, `agents.${r.name}`);
+      lines3 = t === null ? appendBlock(lines3, block2) : [...lines3.slice(0, t[1]), ...block2, ...lines3.slice(t[2])];
       keys.push(`toml:agents.${r.name}`);
     }
-    return { ok: true, text: joinLines(lines2), keys, created: cur === null };
+    return { ok: true, text: joinLines(lines3), keys, created: cur === null };
   },
   unmerge(cur, keys, want) {
-    let lines2 = splitLines(cur);
+    let lines3 = splitLines(cur);
     const { defaults } = keyKinds(want);
     for (const k of keys) {
       const name = k.slice("toml:".length);
@@ -2229,33 +2233,33 @@ var codexConfig = {
         const dot = name.lastIndexOf(".");
         const table = name.slice(0, dot);
         const key = name.slice(dot + 1);
-        let t = findTable(lines2, table);
+        let t = findTable(lines3, table);
         if (t === null) continue;
-        const at = keyLine(lines2, t, key);
+        const at = keyLine(lines3, t, key);
         if (at >= 0) {
-          lines2 = [...lines2.slice(0, at), ...lines2.slice(at + 1)];
-          t = findTable(lines2, table);
-          if (t !== null && allBlank(lines2.slice(t[1] + 1, t[2]), true)) lines2 = removeTable(lines2, t);
+          lines3 = [...lines3.slice(0, at), ...lines3.slice(at + 1)];
+          t = findTable(lines3, table);
+          if (t !== null && allBlank(lines3.slice(t[1] + 1, t[2]), true)) lines3 = removeTable(lines3, t);
         }
       } else {
-        const t = findTable(lines2, name);
-        if (t !== null) lines2 = removeTable(lines2, t);
+        const t = findTable(lines3, name);
+        if (t !== null) lines3 = removeTable(lines3, t);
       }
     }
-    lines2 = stripTrailingBlank(lines2);
-    return { ok: true, text: joinLines(lines2), empty: allBlank(lines2, true) };
+    lines3 = stripTrailingBlank(lines3);
+    return { ok: true, text: joinLines(lines3), empty: allBlank(lines3, true) };
   },
   missing(cur, keys, want) {
-    const lines2 = splitLines(cur);
+    const lines3 = splitLines(cur);
     const { defaults } = keyKinds(want);
     return keys.filter((k) => {
       const name = k.slice("toml:".length);
       if (defaults.has(k)) {
         const dot = name.lastIndexOf(".");
-        const t = findTable(lines2, name.slice(0, dot));
-        return t === null || keyLine(lines2, t, name.slice(dot + 1)) < 0;
+        const t = findTable(lines3, name.slice(0, dot));
+        return t === null || keyLine(lines3, t, name.slice(dot + 1)) < 0;
       }
-      return findTable(lines2, name) === null;
+      return findTable(lines3, name) === null;
     });
   }
 };
@@ -2369,17 +2373,17 @@ function stem(source) {
   const base = source.slice(source.lastIndexOf("/") + 1);
   return base.endsWith(".md") ? base.slice(0, -".md".length) : base;
 }
-function mirrorDir(path59, harness, skill, deferred) {
+function mirrorDir(path64, harness, skill, deferred) {
   const t = treeSha(skill.files);
-  return { op: "mirror", path: path59, harness, from: skill.source, kind: "dir", files: skill.files, data: Buffer.alloc(0), executable: false, sha256: t, fromSha256: t, deferred: deferred.has(skill.source) };
+  return { op: "mirror", path: path64, harness, from: skill.source, kind: "dir", files: skill.files, data: Buffer.alloc(0), executable: false, sha256: t, fromSha256: t, deferred: deferred.has(skill.source) };
 }
-function mirrorFile(path59, harness, rule, view, deferred) {
+function mirrorFile(path64, harness, rule, view, deferred) {
   const s = sha256(rule.data);
-  return { op: "mirror", path: path59, harness, from: rule.source, kind: "file", files: [], data: rule.data, executable: view.executable(rule.source), sha256: s, fromSha256: s, deferred: deferred.has(rule.source) };
+  return { op: "mirror", path: path64, harness, from: rule.source, kind: "file", files: [], data: rule.data, executable: view.executable(rule.source), sha256: s, fromSha256: s, deferred: deferred.has(rule.source) };
 }
-function renderWant(path59, harness, from, text2, sourceData, deferred) {
+function renderWant(path64, harness, from, text2, sourceData, deferred) {
   const data = Buffer.from(text2, "utf8");
-  return { op: "render", path: path59, harness, from, kind: "file", files: [], data, executable: false, sha256: sha256(data), fromSha256: sha256(sourceData), deferred: deferred.has(from) };
+  return { op: "render", path: path64, harness, from, kind: "file", files: [], data, executable: false, sha256: sha256(data), fromSha256: sha256(sourceData), deferred: deferred.has(from) };
 }
 function skillData(skill) {
   return skill.files.find((f) => f.rel === "SKILL.md")?.bytes ?? Buffer.alloc(0);
@@ -3876,22 +3880,22 @@ function upgradeSections(text2) {
   }
   return out.map((s) => ({ version: s.version, body: trimBlank(s.body) }));
 }
-function trimBlank(lines2) {
+function trimBlank(lines3) {
   let a = 0;
-  let b = lines2.length;
-  while (a < b && lines2[a].trim() === "") a += 1;
-  while (b > a && lines2[b - 1].trim() === "") b -= 1;
-  return lines2.slice(a, b);
+  let b = lines3.length;
+  while (a < b && lines3[a].trim() === "") a += 1;
+  while (b > a && lines3[b - 1].trim() === "") b -= 1;
+  return lines3.slice(a, b);
 }
 function addDays(day, n) {
   const [y, m, d] = day.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 }
 function isKitNotice(text2) {
-  const lines2 = text2.replace(/\r\n/g, "\n").split("\n");
-  if (lines2[0]?.trim() !== "---") return false;
-  const end = lines2.indexOf("---", 1);
-  const head = lines2.slice(1, end < 0 ? 1 : end);
+  const lines3 = text2.replace(/\r\n/g, "\n").split("\n");
+  if (lines3[0]?.trim() !== "---") return false;
+  const end = lines3.indexOf("---", 1);
+  const head = lines3.slice(1, end < 0 ? 1 : end);
   return head.some((l) => l.startsWith("kitFrom:")) && head.some((l) => l.startsWith("kitTo:"));
 }
 function planNotice(args) {
@@ -4309,9 +4313,9 @@ function significant(line) {
 }
 var isBlank2 = (line) => /^[ \t\r]*$/.test(line);
 function splitLines2(text2) {
-  const lines2 = text2.split("\n");
-  if (lines2[lines2.length - 1] === "") return { lines: lines2.slice(0, -1), eol: true };
-  return { lines: lines2, eol: false };
+  const lines3 = text2.split("\n");
+  if (lines3[lines3.length - 1] === "") return { lines: lines3.slice(0, -1), eol: true };
+  return { lines: lines3, eol: false };
 }
 function lcsPairs(a, b) {
   let head = 0;
@@ -4349,9 +4353,9 @@ function lcsPairs(a, b) {
   for (let k = 0; k < tail; k += 1) pairs.push([a.length - tail + k, b.length - tail + k]);
   return pairs;
 }
-function frontmatterEnd(lines2) {
-  if (lines2[0] !== "---") return 0;
-  for (let k = 1; k < lines2.length; k += 1) if (lines2[k] === "---") return k + 1;
+function frontmatterEnd(lines3) {
+  if (lines3[0] !== "---") return 0;
+  for (let k = 1; k < lines3.length; k += 1) if (lines3[k] === "---") return k + 1;
   return 0;
 }
 function mergeLines(current4, kit) {
@@ -4406,7 +4410,7 @@ function parseStrict(text2) {
   const ws = () => {
     while (i < text2.length && (text2[i] === " " || text2[i] === "	" || text2[i] === "\n" || text2[i] === "\r")) i += 1;
   };
-  const str5 = () => {
+  const str6 = () => {
     if (text2[i] !== '"') throw new BadJson("문자열");
     i += 1;
     let out = "";
@@ -4451,7 +4455,7 @@ function parseStrict(text2) {
       }
       for (; ; ) {
         ws();
-        const k = str5();
+        const k = str6();
         if (keys.has(k)) throw new BadJson("같은 키");
         keys.add(k);
         ws();
@@ -4492,7 +4496,7 @@ function parseStrict(text2) {
         throw new BadJson("배열");
       }
     }
-    if (ch === '"') return { t: "str", v: str5() };
+    if (ch === '"') return { t: "str", v: str6() };
     for (const lit of ["true", "false", "null"]) {
       if (text2.startsWith(lit, i)) {
         i += lit.length;
@@ -4636,6 +4640,8 @@ var LOCAL_CONFIG = `${LOCAL_DIR}/harness-kit.local.json`;
 var LOCAL_LOCK = `${LOCAL_DIR}/harness-kit.local.lock`;
 var LOCAL_HOOKS = `${LOCAL_DIR}/hooks.json`;
 var SETTINGS_LOCAL = ".claude/settings.local.json";
+var LOCAL_MODEL_POLICY = `${LOCAL_DIR}/model-policy.local.json`;
+var TIERS = ["light", "standard", "deep"];
 var LOCAL_LOCK_SCHEMA = "harness-kit.local-lock/v1";
 var EXCLUDE_BEGIN = "# harness-kit local begin";
 var EXCLUDE_END = "# harness-kit local end";
@@ -4676,6 +4682,46 @@ function readLocalConfig(target) {
       }
     } else if (isObj5(value2)) for (const k of Object.keys(value2)) out.ignored.push(`${key}.${k}`);
     else out.ignored.push(key);
+  }
+  return out;
+}
+function readLocalModelPolicy(target) {
+  const out = { classes: {}, ignored: [], error: null, present: false };
+  let raw;
+  try {
+    raw = JSON.parse(import_node_fs18.default.readFileSync(import_node_path20.default.join(target, ...LOCAL_MODEL_POLICY.split("/")), "utf8"));
+  } catch (err) {
+    if (err.code !== "ENOENT") {
+      out.present = true;
+      out.error = err instanceof Error ? err.message : String(err);
+    }
+    return out;
+  }
+  out.present = true;
+  if (!isObj5(raw)) {
+    out.error = "최상위가 객체가 아니다";
+    return out;
+  }
+  let policy = {};
+  try {
+    const p = JSON.parse(import_node_fs18.default.readFileSync(import_node_path20.default.join(target, ".agents", "model-policy.json"), "utf8"));
+    policy = isObj5(p) ? p : {};
+  } catch {
+    policy = {};
+  }
+  const locked = Array.isArray(policy.locked) ? policy.locked.filter((x) => typeof x === "string") : [];
+  const known = isObj5(policy.classes) ? Object.keys(policy.classes) : [];
+  for (const [key, value2] of Object.entries(raw)) {
+    if (key !== "classes" || !isObj5(value2)) {
+      out.ignored.push({ key, why: "개인 모델 설정은 classes 만 받는다(locked · 등급 정의 · flow 는 프로젝트가 정한다)" });
+      continue;
+    }
+    for (const [cls, tier] of Object.entries(value2)) {
+      if (locked.includes(cls)) out.ignored.push({ key: `classes.${cls}`, why: "locked 분류(구현 · 설계 · 리뷰)는 바꾸지 못한다" });
+      else if (known.length && !known.includes(cls)) out.ignored.push({ key: `classes.${cls}`, why: "model-policy.json 에 없는 분류다" });
+      else if (typeof tier !== "string" || !TIERS.includes(tier)) out.ignored.push({ key: `classes.${cls}`, why: "값은 light · standard · deep 이다" });
+      else out.classes[cls] = tier;
+    }
   }
   return out;
 }
@@ -4761,10 +4807,10 @@ function writeExclude(target, paths) {
   } catch {
     text2 = "";
   }
-  const lines2 = text2.split("\n");
-  const b = lines2.indexOf(EXCLUDE_BEGIN);
-  const e = lines2.indexOf(EXCLUDE_END);
-  const outside = b >= 0 && e > b ? [...lines2.slice(0, b), ...lines2.slice(e + 1)] : lines2;
+  const lines3 = text2.split("\n");
+  const b = lines3.indexOf(EXCLUDE_BEGIN);
+  const e = lines3.indexOf(EXCLUDE_END);
+  const outside = b >= 0 && e > b ? [...lines3.slice(0, b), ...lines3.slice(e + 1)] : lines3;
   const body = outside.join("\n").replace(/\n+$/, "");
   const block2 = paths.length ? [EXCLUDE_BEGIN, ...paths.map((p) => `/${p}`), EXCLUDE_END] : [];
   const next = `${[body, ...block2.length ? [block2.join("\n")] : []].filter(Boolean).join("\n")}
@@ -4870,13 +4916,13 @@ function localAfter(ctx, target, inst, templatesDir, dryRun) {
   return { result, lines: localLines(result, readLocalConfig(target).ignored, ctx.quiet) };
 }
 function localLines(r, ignored, quiet) {
-  const lines2 = [`  개인 층: 씀 ${r.written.length} · 지움 ${r.removed.length} · 남김(고침) ${r.kept.length} · settings.local.json ${r.settings}`];
+  const lines3 = [`  개인 층: 씀 ${r.written.length} · 지움 ${r.removed.length} · 남김(고침) ${r.kept.length} · settings.local.json ${r.settings}`];
   if (!quiet) {
-    lines2.push(...r.written.map((p) => `    + ${p}`), ...r.removed.map((p) => `    - ${p}`), ...r.kept.map((p) => `    ↷ ${p}  (사람이 고쳤다 — 두었다)`));
-    lines2.push(...r.findings.map((f) => `    ${f.severity === "error" ? "✖" : f.severity === "warn" ? "⚠" : "·"} ${f.kind} ${f.path} — ${f.hint}`));
-    if (ignored.length) lines2.push(`    ⚠ 개인 설정에서 무시한 키: ${ignored.join(" · ")}(개인 층은 roles.<역할>.harness · git.ide 만 바꾼다)`);
+    lines3.push(...r.written.map((p) => `    + ${p}`), ...r.removed.map((p) => `    - ${p}`), ...r.kept.map((p) => `    ↷ ${p}  (사람이 고쳤다 — 두었다)`));
+    lines3.push(...r.findings.map((f) => `    ${f.severity === "error" ? "✖" : f.severity === "warn" ? "⚠" : "·"} ${f.kind} ${f.path} — ${f.hint}`));
+    if (ignored.length) lines3.push(`    ⚠ 개인 설정에서 무시한 키: ${ignored.join(" · ")}(개인 층은 roles.<역할>.harness · git.ide 만 바꾼다)`);
   }
-  return lines2;
+  return lines3;
 }
 function runLocal(ctx) {
   const [sub2, ...rest] = ctx.positionals;
@@ -4890,14 +4936,14 @@ function runLocal(ctx) {
   const dryRun = sub2 === "list" || bool(ctx.values, "dry-run");
   const result = syncLocal(target, plan, dryRun);
   const data = { command: "local", sub: sub2, target, dryRun, config: { roles: config.roles, ide: config.ide, ignored: config.ignored, error: config.error }, plan: plan.wants.map((w) => w.path), ...result };
-  const lines2 = [
+  const lines3 = [
     `harness-kit local ${sub2} — ${target}`,
     `  설정: ${config.present ? config.error ? `✖ ${config.error}` : `roles ${JSON.stringify(config.roles)} · git.ide ${config.ide ?? "-"}` : "없음(.agents/local/harness-kit.local.json)"}`,
     ...localLines(result, config.ignored, ctx.quiet),
     ...dryRun ? ["  (쓰지 않았다)"] : []
   ];
   const bad4 = plan.findings.some((f) => f.severity === "error") || result.settings === "conflict" || Boolean(config.error);
-  return { code: bad4 ? EXIT.HUMAN : EXIT.OK, data, lines: lines2 };
+  return { code: bad4 ? EXIT.HUMAN : EXIT.OK, data, lines: lines3 };
 }
 
 // src/commands/update-packs.ts
@@ -5010,8 +5056,8 @@ function runUpdatePacks(ctx) {
 ${problems.map((p) => `  ${p}`).join("\n")}`, "팩을 고쳐 새 판을 내거나 packs 에서 뺀다");
   const clash = conflictsBetween(plans);
   if (clash.length) {
-    const lines3 = [`✖ 팩 충돌 ${clash.length}건 — 아무것도 쓰지 않았다`, ...clash, "  해결: 한 팩에서 빼고 새 판을 낸다. 또는 프로젝트가 직접 관리한다: harness-kit update --forget <경로>(주인을 user 로)"];
-    return { code: EXIT.HUMAN, data: { command: "update", packs: true, target, conflicts: clash.map((l) => l.trim()) }, lines: lines3 };
+    const lines4 = [`✖ 팩 충돌 ${clash.length}건 — 아무것도 쓰지 않았다`, ...clash, "  해결: 한 팩에서 빼고 새 판을 낸다. 또는 프로젝트가 직접 관리한다: harness-kit update --forget <경로>(주인을 user 로)"];
+    return { code: EXIT.HUMAN, data: { command: "update", packs: true, target, conflicts: clash.map((l) => l.trim()) }, lines: lines4 };
   }
   const byPath = new Map(inst.lock.entries.map((e) => [e.path, e]));
   const live = new Set(fetched.map((p) => `pack:${p.manifest.name}`));
@@ -5043,7 +5089,7 @@ ${problems.map((p) => `  ${p}`).join("\n")}`, "팩을 고쳐 새 판을 내거�
   const conflict = ops.filter((o) => o.action === "conflict");
   const human = conflict.length > 0 || ops.some((o) => o.action === "orphan") || (projection ? needsHuman(projection.plan, projection.findings) : false);
   const shown = ops.filter((o) => o.action !== "same" || o.reason);
-  const lines2 = [
+  const lines3 = [
     `harness-kit update --packs — ${target}`,
     ...records.map((r) => `  팩: ${r.name}@${r.version}  ${r.source}  (${r.resolved.slice(0, 19)})`),
     ...records.length ? [] : ["  packs 가 비었다 — 팩 파일을 뺀다"],
@@ -5063,7 +5109,7 @@ ${problems.map((p) => `  ${p}`).join("\n")}`, "팩을 고쳐 새 판을 내거�
     conflicts: [...conflict.map((o) => ({ path: o.path, new: o.newFile ?? null })), ...projectionConflicts(projection?.plan ?? null)]
   };
   if (projection) data.projection = projectionData(projection.plan, projection.findings);
-  return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines: lines2 };
+  return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines: lines3 };
 }
 
 // src/commands/update.ts
@@ -5166,26 +5212,26 @@ function conflictList(plan) {
 function mergedLines(merged, backupDir) {
   if (merged.length === 0) return [];
   const n = merged.filter((m) => m.kind !== "kit").length;
-  const lines2 = [`  v1 lock 첫 업데이트 — 병합 ${n} · 킷 판 ${merged.length - n}(원본: ${backupDir}/)`];
+  const lines3 = [`  v1 lock 첫 업데이트 — 병합 ${n} · 킷 판 ${merged.length - n}(원본: ${backupDir}/)`];
   for (const m of merged) {
-    if (m.kind !== "kit") lines2.push(`    ${m.kind}  ${m.path}`);
-    else if (m.path === "CLAUDE.md") lines2.push("    kit    CLAUDE.md   (배치가 새 파일로 바꿨다 — 사람이 쓴 내용이면 원본에서 블록 밖으로 옮긴다)");
+    if (m.kind !== "kit") lines3.push(`    ${m.kind}  ${m.path}`);
+    else if (m.path === "CLAUDE.md") lines3.push("    kit    CLAUDE.md   (배치가 새 파일로 바꿨다 — 사람이 쓴 내용이면 원본에서 블록 밖으로 옮긴다)");
   }
-  if (n) lines2.push("    병합본의 '<!-- harness-kit: 설치 전 내용(병합) -->' 묶음을 보고 필요 없으면 지운다");
-  return lines2;
+  if (n) lines3.push("    병합본의 '<!-- harness-kit: 설치 전 내용(병합) -->' 묶음을 보고 필요 없으면 지운다");
+  return lines3;
 }
 function humanLines(ctx, head, plan, shown, conflicts, dryRun, board, merged, backupDir) {
-  const lines2 = [...head, ...shown.map(opLine), countsLine(plan.counts), ...mergedLines(merged, backupDir)];
+  const lines3 = [...head, ...shown.map(opLine), countsLine(plan.counts), ...mergedLines(merged, backupDir)];
   const b = boardLine(board);
-  if (b) lines2.push(b);
+  if (b) lines3.push(b);
   if (conflicts.length) {
-    lines2.push("  충돌 — 고친 파일이라 덮지 않았다. 새 판은 .new 에 있다(리포 폴더에서):");
-    for (const c of conflicts) if (c.diff) lines2.push(`    ${String(c.diff)}`);
-    lines2.push("  병합했으면 .new 를 지운다. 새 판을 그대로 쓰려면 mv 로 덮는다. 전부 새 판으로: harness-kit update --accept-all");
+    lines3.push("  충돌 — 고친 파일이라 덮지 않았다. 새 판은 .new 에 있다(리포 폴더에서):");
+    for (const c of conflicts) if (c.diff) lines3.push(`    ${String(c.diff)}`);
+    lines3.push("  병합했으면 .new 를 지운다. 새 판을 그대로 쓰려면 mv 로 덮는다. 전부 새 판으로: harness-kit update --accept-all");
   }
-  if (plan.ops.some((o) => o.action === "orphan") && !bool(ctx.values, "prune")) lines2.push("  킷에서 빠진 미수정 파일을 지우려면: harness-kit update --prune");
-  lines2.push(dryRun ? "  (dry-run — 쓰지 않았다)" : "  다음: harness-kit doctor");
-  return lines2;
+  if (plan.ops.some((o) => o.action === "orphan") && !bool(ctx.values, "prune")) lines3.push("  킷에서 빠진 미수정 파일을 지우려면: harness-kit update --prune");
+  lines3.push(dryRun ? "  (dry-run — 쓰지 않았다)" : "  다음: harness-kit doctor");
+  return lines3;
 }
 function writtenState(ctx, target, inst, entries, sel, tokens, source, mergeBackups) {
   const lockText2 = serializeLock({ schema: "harness-kit.lock/v2", kit: { version: VERSION, source }, packs: inst.lock.packs, entries });
@@ -5266,17 +5312,17 @@ function runUpdate(ctx) {
     ...retiredModules.map((m) => retiredNote(m, "meta")),
     ...droppedModules.length ? [`  ⚠ 킷에 없는 모듈을 뺀다: ${droppedModules.join(", ")}`] : []
   ];
-  const lines2 = humanLines(ctx, head, plan, shown, conflicts, dryRun, board, merged, `${MERGE_BACKUP_DIR}/${stamp}`);
+  const lines3 = humanLines(ctx, head, plan, shown, conflicts, dryRun, board, merged, `${MERGE_BACKUP_DIR}/${stamp}`);
   const noticeLine = NOTICE_LINES[notice.action];
-  if (noticeLine) lines2.splice(lines2.length - 1, 0, `  ${noticeLine}`);
+  if (noticeLine) lines3.splice(lines3.length - 1, 0, `  ${noticeLine}`);
   const local = localAfter(ctx, target, inst, loc.dir, dryRun);
   if (local) {
     data.local = local.result;
-    lines2.splice(lines2.length - 1, 0, ...local.lines);
+    lines3.splice(lines3.length - 1, 0, ...local.lines);
   }
-  if (projection) lines2.splice(head.length + shown.length + 1, 0, ...projectionLines(projection.plan, projection.findings, ctx.quiet));
-  else if (inst.lock.entries.some((e) => PROJECTION_OPS.has(e.op))) lines2.splice(head.length + shown.length + 1, 0, "  배치: 이 템플릿에 projection.json 이 없다 — 배치 항목은 그대로 둔다");
-  return { code, data, lines: lines2 };
+  if (projection) lines3.splice(head.length + shown.length + 1, 0, ...projectionLines(projection.plan, projection.findings, ctx.quiet));
+  else if (inst.lock.entries.some((e) => PROJECTION_OPS.has(e.op))) lines3.splice(head.length + shown.length + 1, 0, "  배치: 이 템플릿에 projection.json 이 없다 — 배치 항목은 그대로 둔다");
+  return { code, data, lines: lines3 };
 }
 var NOTICE_LINES = {
   write: `업그레이드 공지: ${NOTICE_REL} (세션 시작 때 제목 한 줄이 붙는다, 30일 뒤 만료 — 커밋하면 동료도 받는다)`,
@@ -5490,7 +5536,7 @@ function report(ctx, l, rep) {
   const projection = projectionData(rep.result.projection ?? null, rep.result.projectionFindings ?? []);
   if (projection) data.projection = projection;
   const counts2 = Object.entries(countsOf(rep.result.ops)).filter(([, n]) => n > 0).map(([k, n]) => `${k} ${n}`).join(" · ");
-  const lines2 = [
+  const lines3 = [
     `harness-kit ${rep.command} — ${l.target}`,
     `  하네스 ${l.before.agents.join(",")} → ${rep.after.agents.join(",")} · 모듈 ${l.before.modules.join(",") || "none"} → ${rep.after.modules.join(",") || "none"}`,
     ...rep.notes,
@@ -5500,13 +5546,13 @@ function report(ctx, l, rep) {
     `  파일: ${counts2 || "바꿀 것 없음"}`,
     ...projectionLines(rep.result.projection ?? null, rep.result.projectionFindings ?? [], ctx.quiet)
   ];
-  if (m && m.action !== "same") lines2.push(`  매니페스트 ${MANIFEST_PATH}: ${m.action}${m.newFile ? ` → ${m.newFile}` : ""}`);
+  if (m && m.action !== "same") lines3.push(`  매니페스트 ${MANIFEST_PATH}: ${m.action}${m.newFile ? ` → ${m.newFile}` : ""}`);
   if (conflicts.length) {
-    lines2.push("  충돌 — 고친 파일이라 덮지 않았다. 새 판은 .new 에 있다(리포 폴더에서):");
-    for (const c of conflicts) if (c.diff) lines2.push(`    ${String(c.diff)}`);
+    lines3.push("  충돌 — 고친 파일이라 덮지 않았다. 새 판은 .new 에 있다(리포 폴더에서):");
+    for (const c of conflicts) if (c.diff) lines3.push(`    ${String(c.diff)}`);
   }
-  lines2.push(rep.dryRun ? "  (dry-run — 쓰지 않았다)" : "  다음: harness-kit doctor");
-  return { data, lines: lines2 };
+  lines3.push(rep.dryRun ? "  (dry-run — 쓰지 않았다)" : "  다음: harness-kit doctor");
+  return { data, lines: lines3 };
 }
 var dryRunOf = (ctx) => bool(ctx.values, "dry-run");
 function retiredOnly(ctx, command, names) {
@@ -5579,14 +5625,14 @@ function runAdd(ctx) {
   const dryRun = dryRunOf(ctx);
   const featureDocs = dryRun ? null : applyChange(ctx, l, after, result);
   const notes = [...retiredNotes(names), ...already.length ? [`  · 이미 켜져 있다 — 그 몫에서 빠진 파일만 채운다: ${already.join(", ")}`] : []];
-  const { data, lines: lines2 } = report(ctx, l, { command: "add", names: { ...names, already }, after, result, dryRun, featureDocs, notes });
+  const { data, lines: lines3 } = report(ctx, l, { command: "add", names: { ...names, already }, after, result, dryRun, featureDocs, notes });
   const conflict = result.ops.some((o) => o.action === "conflict") || result.manifest?.action === "conflict" || needsHuman(result.projection ?? null, result.projectionFindings ?? []);
-  return { code: conflict ? EXIT.HUMAN : EXIT.OK, data, lines: lines2 };
+  return { code: conflict ? EXIT.HUMAN : EXIT.OK, data, lines: lines3 };
 }
 
 // src/commands/dashboard.ts
 var import_node_child_process9 = require("node:child_process");
-var import_node_path50 = __toESM(require("node:path"));
+var import_node_path54 = __toESM(require("node:path"));
 
 // ../dashboard/src/export.ts
 var import_node_fs32 = __toESM(require("node:fs"));
@@ -5827,9 +5873,9 @@ function parse(text2) {
   let seen = /* @__PURE__ */ new Set();
   let errors = [];
   let skipping = false;
-  const lines2 = src.split("\n");
-  for (let i = 0; i < lines2.length; i += 1) {
-    const raw = lines2[i];
+  const lines3 = src.split("\n");
+  for (let i = 0; i < lines3.length; i += 1) {
+    const raw = lines3[i];
     const number = i + 1;
     const line = raw.endsWith("\r") ? raw.slice(0, -1) : raw;
     if (line.startsWith("## ")) {
@@ -5889,14 +5935,26 @@ function groupOf(email, gate, policy) {
   }
   return null;
 }
-function approvalState(entries, gate, sha = null, policy = null) {
+var HIGH_GATES = ["design", "mr", "deploy"];
+function needOf(meta, risk, gate) {
+  if (risk !== "high" || !HIGH_GATES.includes(gate)) return 1;
+  const conf = meta.risk && typeof meta.risk === "object" && !Array.isArray(meta.risk) ? meta.risk : {};
+  const n = Number(conf.highApprovals ?? 2);
+  return Number.isFinite(n) ? Math.max(2, Math.trunc(n)) : 2;
+}
+function approversOf(entries, gate, sha = null) {
+  return new Set(entries.filter((e) => e.valid && e.gate === gate && e.decision === "approved" && (sha === null || e.target?.sha256 === sha)).map((e) => (e.approver?.email ?? "").toLowerCase()));
+}
+function approvalState(entries, gate, sha = null, policy = null, need = 1) {
   let found = entries.filter((e) => e.valid && e.gate === gate && e.decision === "approved");
   if (found.length === 0) return "none";
   if (sha !== null && sha !== void 0) {
     found = found.filter((e) => e.target && e.target.sha256 === sha);
     if (found.length === 0) return "stale";
   }
-  return found.some((e) => allowed(e.approver?.email, gate, policy)) ? "valid" : "invalid";
+  const people = new Set(found.filter((e) => allowed(e.approver?.email, gate, policy)).map((e) => (e.approver?.email ?? "").toLowerCase()));
+  if (people.size === 0) return "invalid";
+  return people.size >= Math.max(need, 1) ? "valid" : "partial";
 }
 function splitKeep(data) {
   const out = [];
@@ -5920,17 +5978,17 @@ function bare(line) {
 }
 function approvalSha(input) {
   const data = typeof input === "string" ? Buffer.from(input, "utf8") : Buffer.from(input);
-  const lines2 = splitKeep(data);
-  if (lines2.length === 0 || bare(lines2[0]) !== "---") return sha2562(data);
+  const lines3 = splitKeep(data);
+  if (lines3.length === 0 || bare(lines3[0]) !== "---") return sha2562(data);
   let end = -1;
-  for (let i = 1; i < lines2.length; i += 1) {
-    if (bare(lines2[i]) === "---") {
+  for (let i = 1; i < lines3.length; i += 1) {
+    if (bare(lines3[i]) === "---") {
       end = i;
       break;
     }
   }
   if (end < 0) return sha2562(data);
-  const kept = lines2.filter((l, i) => !(i > 0 && i < end && /^(status|state):/.test(l.toString("latin1"))));
+  const kept = lines3.filter((l, i) => !(i > 0 && i < end && /^(status|state):/.test(l.toString("latin1"))));
   return sha2562(Buffer.concat(kept));
 }
 function newFileText(key) {
@@ -5948,13 +6006,13 @@ function renderEntry(entry) {
   if (t.fingerprint) parts.push(`지문: ${t.fingerprint}`);
   if (t.head) parts.push(`head: ${t.head}`);
   const phrase = String(entry.phrase ?? "").split(/\s+/).filter(Boolean).join(" ");
-  const lines2 = [`## ${entry.at} · ${entry.gate} · ${entry.decision}`, `- 승인자: ${who}`, `- 대상: ${parts.join(" · ")}`];
-  if (phrase) lines2.push(`- 문구: "${phrase}"`);
-  lines2.push(`- 경로: ${entry.path}`);
-  if (entry.ruleCandidate) lines2.push("- 규칙 후보: 예");
-  if (entry.rollbackWaiver) lines2.push(`- 롤백 면제: ${entry.rollbackWaiver}`);
-  lines2.push(`- 기록 ID: ${entry.entryId}`);
-  return `${lines2.join("\n")}
+  const lines3 = [`## ${entry.at} · ${entry.gate} · ${entry.decision}`, `- 승인자: ${who}`, `- 대상: ${parts.join(" · ")}`];
+  if (phrase) lines3.push(`- 문구: "${phrase}"`);
+  lines3.push(`- 경로: ${entry.path}`);
+  if (entry.ruleCandidate) lines3.push("- 규칙 후보: 예");
+  if (entry.rollbackWaiver) lines3.push(`- 롤백 면제: ${entry.rollbackWaiver}`);
+  lines3.push(`- 기록 ID: ${entry.entryId}`);
+  return `${lines3.join("\n")}
 `;
 }
 function appendedText(current4, key, entries) {
@@ -6064,10 +6122,10 @@ var FENCE = "---";
 var FrontmatterError = class extends Error {
 };
 function split(text2) {
-  const lines2 = text2.split("\n");
-  if (lines2.length === 0 || lines2[0].replace(/\r$/, "") !== FENCE) return [null, text2];
-  for (let i = 1; i < lines2.length; i += 1) {
-    if (lines2[i].replace(/\r$/, "") === FENCE) return [lines2.slice(1, i), lines2.slice(i + 1).join("\n")];
+  const lines3 = text2.split("\n");
+  if (lines3.length === 0 || lines3[0].replace(/\r$/, "") !== FENCE) return [null, text2];
+  for (let i = 1; i < lines3.length; i += 1) {
+    if (lines3[i].replace(/\r$/, "") === FENCE) return [lines3.slice(1, i), lines3.slice(i + 1).join("\n")];
   }
   throw new FrontmatterError("frontmatter is not closed with ---");
 }
@@ -6099,11 +6157,11 @@ function parseLoose(text2) {
 }
 function setField2(text2, key, value2) {
   const eol = text2.includes("\r\n") ? "\r\n" : "\n";
-  const lines2 = text2.split("\n");
-  if ((lines2[0] ?? "").replace(/\r$/, "") !== FENCE) return `${FENCE}${eol}${key}: ${value2}${eol}${FENCE}${eol}${text2}`;
+  const lines3 = text2.split("\n");
+  if ((lines3[0] ?? "").replace(/\r$/, "") !== FENCE) return `${FENCE}${eol}${key}: ${value2}${eol}${FENCE}${eol}${text2}`;
   let end = -1;
-  for (let i = 1; i < lines2.length; i += 1) {
-    if (lines2[i].replace(/\r$/, "") === FENCE) {
+  for (let i = 1; i < lines3.length; i += 1) {
+    if (lines3[i].replace(/\r$/, "") === FENCE) {
       end = i;
       break;
     }
@@ -6111,17 +6169,17 @@ function setField2(text2, key, value2) {
   if (end < 0) throw new FrontmatterError("frontmatter is not closed with ---");
   const re = new RegExp(`^${key}:`);
   for (let i = 1; i < end; i += 1) {
-    const line = lines2[i];
+    const line = lines3[i];
     if (re.test(line)) {
       const cr2 = line.endsWith("\r") ? "\r" : "";
       const comment = /(\s+#[^\n]*?)\r?$/.exec(line.replace(/^[^:]*:\s*/, ""))?.[1] ?? "";
-      lines2[i] = `${key}: ${value2}${comment}${cr2}`;
-      return lines2.join("\n");
+      lines3[i] = `${key}: ${value2}${comment}${cr2}`;
+      return lines3.join("\n");
     }
   }
   const cr = eol === "\r\n" ? "\r" : "";
-  lines2.splice(end, 0, `${key}: ${value2}${cr}`);
-  return lines2.join("\n");
+  lines3.splice(end, 0, `${key}: ${value2}${cr}`);
+  return lines3.join("\n");
 }
 
 // ../dashboard/src/questions.ts
@@ -6130,10 +6188,10 @@ var CHOICE = /^- ([A-D])\. (.+?) — 영향: (.+)$/;
 var RECOMMEND = /^- 권장: ([A-D])\b/;
 var ANSWER = /^- 답:\s*(.*)$/;
 function parseQuestions(text2) {
-  const lines2 = text2.split("\n").map((l) => l.replace(/\r$/, ""));
+  const lines3 = text2.split("\n").map((l) => l.replace(/\r$/, ""));
   const questions = [];
   let cur = null;
-  lines2.forEach((line, i) => {
+  lines3.forEach((line, i) => {
     const h = HEAD.exec(line);
     if (h) {
       cur = { id: h[1], category: h[2], role: h[3], blocks: h[4] ?? null, text: "", choices: [], recommended: null, answer: null, open: true, notes: [], opinions: [], line: i + 1 };
@@ -6163,30 +6221,30 @@ function parseQuestions(text2) {
 function writeAnswer(text2, input) {
   const eol = text2.includes("\r\n") ? "\r\n" : "\n";
   const cr = eol === "\r\n" ? "\r" : "";
-  const lines2 = text2.split("\n");
-  const bareOf = (i) => lines2[i].replace(/\r$/, "");
+  const lines3 = text2.split("\n");
+  const bareOf = (i) => lines3[i].replace(/\r$/, "");
   let start = -1;
-  for (let i = 0; i < lines2.length; i += 1) {
+  for (let i = 0; i < lines3.length; i += 1) {
     const h = HEAD.exec(bareOf(i));
     if (h && h[1] === input.qid) start = i;
   }
   if (start < 0) throw new Error(`질문 없음: ${input.qid}`);
-  let end = lines2.length;
-  for (let i = start + 1; i < lines2.length; i += 1) {
+  let end = lines3.length;
+  for (let i = start + 1; i < lines3.length; i += 1) {
     if (bareOf(i).startsWith("## ") || bareOf(i).startsWith("# ")) {
       end = i;
       break;
     }
   }
   const memo = input.text ? input.text.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 500) : "";
-  const block2 = lines2.slice(start, end);
+  const block2 = lines3.slice(start, end);
   if (input.opinion) {
     let at = block2.length;
     while (at > 1 && !block2[at - 1].replace(/\r$/, "").trim()) at -= 1;
     block2.splice(at, 0, `- 의견: ${input.choice} · ${input.email}${memo ? ` — ${memo}` : ""}${cr}`);
   } else {
     const ai = block2.findIndex((l) => ANSWER.test(l.replace(/\r$/, "")));
-    const value2 = `${input.choice} · ${input.email} · ${input.at}`;
+    const value2 = `${input.choice} · ${input.email} · ${input.at}${input.recordedBy ? ` · 기록: ${input.recordedBy}` : ""}`;
     const added = [`- 답: ${value2}${cr}`];
     if (memo) added.push(`- 메모: ${memo}${cr}`);
     if (ai < 0) {
@@ -6201,7 +6259,7 @@ function writeAnswer(text2, input) {
       block2.splice(ai, drop, ...added);
     }
   }
-  let out = [...lines2.slice(0, start), ...block2, ...lines2.slice(end)].join("\n");
+  let out = [...lines3.slice(0, start), ...block2, ...lines3.slice(end)].join("\n");
   const allAnswered = parseQuestions(out).questions.every((q2) => !q2.open);
   let statusChanged = null;
   const before = parseLoose(out)?.status ?? null;
@@ -6256,8 +6314,8 @@ function readUnitsFile(abs) {
   } catch {
     data = null;
   }
-  const list2 = data && Array.isArray(data.units) ? data.units : [];
-  const units = list2.filter((u) => typeof u.id === "string").map((u) => ({
+  const list3 = data && Array.isArray(data.units) ? data.units : [];
+  const units = list3.filter((u) => typeof u.id === "string").map((u) => ({
     ...u,
     id: u.id,
     title: typeof u.title === "string" ? u.title : u.id,
@@ -6350,6 +6408,13 @@ function intentModel(p, info, issues) {
   }
   const intentState = approvalState(entries, "intent", iSha, p.policy());
   const plansState = approvalState(entries, "plans", null, p.policy());
+  let csSha = null;
+  try {
+    csSha = approvalSha(import_node_fs25.default.readFileSync(import_node_path27.default.join(info.abs, "current-state.md")));
+  } catch {
+    csSha = null;
+  }
+  const codebaseState = csSha ? approvalState(entries, "codebase", csSha, p.policy()) : "none";
   const gates = p.gates();
   const stage = gates.includes("intent") && intentState !== "valid" ? "intent" : gates.includes("plans") && plansState !== "valid" ? "plans" : "issues";
   return {
@@ -6365,7 +6430,7 @@ function intentModel(p, info, issues) {
     }),
     questions,
     plans,
-    approvals: { intent: intentState, plans: plansState },
+    approvals: { codebase: codebaseState, intent: intentState, plans: plansState },
     stage,
     proposal: proposalOf(info.abs) !== null
   };
@@ -6427,24 +6492,24 @@ function validChanges(input) {
   });
 }
 function applyChanges(units, changes) {
-  let list2 = units.map((u) => ({ ...u, dependsOn: [...u.dependsOn], stories: [...u.stories] }));
+  let list3 = units.map((u) => ({ ...u, dependsOn: [...u.dependsOn], stories: [...u.stories] }));
   const get = (id) => {
-    const u = list2.find((x) => x.id === id);
+    const u = list3.find((x) => x.id === id);
     if (!u) throw new ApiError(422, "unknown_unit", `없는 Unit: ${id ?? ""}`, { unit: id ?? null });
     return u;
   };
-  let next = Math.max(0, ...list2.map((u) => num(u.id)));
+  let next = Math.max(0, ...list3.map((u) => num(u.id)));
   for (const c of changes) {
     if (c.op === "add-dep" || c.op === "remove-dep") {
       const u = get(c.unit);
       const d = get(c.dependsOn);
       if (u.kind === "contract" && d.kind !== "contract" && c.op === "add-dep") throw new ApiError(422, "contract_dependency", "계약 Unit 은 기능 Unit 에 의존하지 않는다(08 §3.5)");
-      list2 = list2.map((x) => x.id !== u.id ? x : { ...x, dependsOn: c.op === "add-dep" ? [.../* @__PURE__ */ new Set([...x.dependsOn, d.id])] : x.dependsOn.filter((y) => y !== d.id) });
+      list3 = list3.map((x) => x.id !== u.id ? x : { ...x, dependsOn: c.op === "add-dep" ? [.../* @__PURE__ */ new Set([...x.dependsOn, d.id])] : x.dependsOn.filter((y) => y !== d.id) });
     } else if (c.op === "merge") {
       const [a, b] = (c.units ?? []).map((id) => get(id));
       if (!a || !b || a.id === b.id) throw bad3("merge 는 서로 다른 Unit 둘이다");
       if (a.kind === "contract" || b.kind === "contract") throw new ApiError(422, "contract_merge", "계약 Unit 은 합치지 않는다");
-      list2 = list2.map((x) => {
+      list3 = list3.map((x) => {
         if (x.id === a.id) return { ...x, stories: [.../* @__PURE__ */ new Set([...x.stories, ...b.stories])], dependsOn: [.../* @__PURE__ */ new Set([...x.dependsOn, ...b.dependsOn])].filter((y) => y !== a.id && y !== b.id) };
         if (x.id === b.id) return { ...x, planned: false };
         return { ...x, dependsOn: [...new Set(x.dependsOn.map((y) => y === b.id ? a.id : y))].filter((y) => y !== x.id) };
@@ -6455,13 +6520,13 @@ function applyChanges(units, changes) {
       if (titles.length < 2) throw bad3("split 의 into 는 제목 2개 이상이다");
       const made = titles.map((t, i) => ({ ...u, id: `U-${++next}`, title: t, stories: i === 0 ? [...u.stories] : [], issue: null, planned: true }));
       const madeIds = made.map((m) => m.id);
-      list2 = [...list2.map((x) => x.id === u.id ? { ...x, planned: false } : { ...x, dependsOn: x.dependsOn.flatMap((y) => y === u.id ? madeIds : [y]) }), ...made];
+      list3 = [...list3.map((x) => x.id === u.id ? { ...x, planned: false } : { ...x, dependsOn: x.dependsOn.flatMap((y) => y === u.id ? madeIds : [y]) }), ...made];
     } else if (c.op === "order") {
       const ids2 = (c.units ?? []).map((id) => get(id).id);
-      list2 = list2.map((x) => ids2.includes(x.id) ? { ...x, order: ids2.indexOf(x.id) + 1 } : x);
+      list3 = list3.map((x) => ids2.includes(x.id) ? { ...x, order: ids2.indexOf(x.id) + 1 } : x);
     }
   }
-  const live = new Map(list2.filter((u) => u.planned).map((u) => [u.id, u]));
+  const live = new Map(list3.filter((u) => u.planned).map((u) => [u.id, u]));
   const state = /* @__PURE__ */ new Map();
   const cycle = [];
   const visit = (id, trail) => {
@@ -6480,7 +6545,7 @@ function applyChanges(units, changes) {
     const ids2 = c.units ?? [];
     for (const id of ids2) for (const d of live.get(id)?.dependsOn ?? []) if (ids2.includes(d) && ids2.indexOf(d) > ids2.indexOf(id)) throw new ApiError(422, "cycle", `순서가 의존과 어긋난다: ${d} 가 ${id} 보다 먼저다`, { cycle: [d, id] });
   }
-  return list2;
+  return list3;
 }
 function proposalBody(body) {
   if (!isObj6(body) || typeof body.intent !== "string" || typeof body.baseSha256 !== "string") throw bad3("intent · baseSha256 · changes 가 필요하다");
@@ -6548,14 +6613,14 @@ function inline2(text2, opts) {
   s = escapeHtml(s).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/__([^_]+)__/g, "<strong>$1</strong>").replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>").replace(/~~([^~]+)~~/g, "<del>$1</del>");
   return s.replace(/\u0000([CP])(\d+)\u0000/g, (_m, k, i) => k === "C" ? codes[Number(i)] : parts[Number(i)]);
 }
-function stripFrontmatter(lines2) {
-  if (lines2[0] !== "---") return lines2;
-  for (let i = 1; i < lines2.length; i += 1) if (lines2[i] === "---") return lines2.slice(i + 1);
-  return lines2;
+function stripFrontmatter(lines3) {
+  if (lines3[0] !== "---") return lines3;
+  for (let i = 1; i < lines3.length; i += 1) if (lines3[i] === "---") return lines3.slice(i + 1);
+  return lines3;
 }
 var LIST = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/;
-function renderList(lines2, opts) {
-  const items = lines2.map((l) => {
+function renderList(lines3, opts) {
+  const items = lines3.map((l) => {
     const m = LIST.exec(l);
     if (!m) return { indent: 99, ordered: false, text: l.trim() };
     return { indent: m[1].length, ordered: /\d/.test(m[2]), text: m[3] };
@@ -6596,7 +6661,7 @@ function cells(row2) {
   return r.split("|").map((c) => c.trim());
 }
 function renderMarkdown(source, opts) {
-  const lines2 = stripFrontmatter(source.replace(/\u0000/g, "").replace(/\r\n?/g, "\n").split("\n"));
+  const lines3 = stripFrontmatter(source.replace(/\u0000/g, "").replace(/\r\n?/g, "\n").split("\n"));
   const out = [];
   let i = 0;
   const para = [];
@@ -6604,22 +6669,22 @@ function renderMarkdown(source, opts) {
     if (para.length) out.push(`<p>${para.map((l) => inline2(l, opts)).join("<br>")}</p>`);
     para.length = 0;
   };
-  while (i < lines2.length) {
-    const line = lines2[i];
+  while (i < lines3.length) {
+    const line = lines3[i];
     const fence = /^(\s*)(```+|~~~+)(.*)$/.exec(line);
     if (fence) {
       flush();
       const mark = fence[2];
       const body = [];
       i += 1;
-      while (i < lines2.length && !lines2[i].trim().startsWith(mark)) body.push(lines2[i++]);
+      while (i < lines3.length && !lines3[i].trim().startsWith(mark)) body.push(lines3[i++]);
       i += 1;
       out.push(`<pre><code>${escapeHtml(body.join("\n"))}</code></pre>`);
       continue;
     }
     if (/^\s*<!--/.test(line)) {
       flush();
-      while (i < lines2.length && !lines2[i].includes("-->")) i += 1;
+      while (i < lines3.length && !lines3[i].includes("-->")) i += 1;
       i += 1;
       continue;
     }
@@ -6640,16 +6705,16 @@ function renderMarkdown(source, opts) {
     if (/^\s*>/.test(line)) {
       flush();
       const body = [];
-      while (i < lines2.length && /^\s*>/.test(lines2[i])) body.push(lines2[i++].replace(/^\s*>\s?/, ""));
+      while (i < lines3.length && /^\s*>/.test(lines3[i])) body.push(lines3[i++].replace(/^\s*>\s?/, ""));
       out.push(`<blockquote>${renderMarkdown(body.join("\n"), opts)}</blockquote>`);
       continue;
     }
-    if (line.includes("|") && i + 1 < lines2.length && /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(lines2[i + 1])) {
+    if (line.includes("|") && i + 1 < lines3.length && /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(lines3[i + 1])) {
       flush();
       const head = cells(line);
       i += 2;
       const rows = [];
-      while (i < lines2.length && lines2[i].includes("|") && lines2[i].trim()) rows.push(cells(lines2[i++]));
+      while (i < lines3.length && lines3[i].includes("|") && lines3[i].trim()) rows.push(cells(lines3[i++]));
       out.push(
         `<table><thead><tr>${head.map((c) => `<th>${inline2(c, opts)}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${inline2(c, opts)}</td>`).join("")}</tr>`).join("")}</tbody></table>`
       );
@@ -6658,7 +6723,7 @@ function renderMarkdown(source, opts) {
     if (LIST.test(line)) {
       flush();
       const body = [];
-      while (i < lines2.length && (LIST.test(lines2[i]) || /^\s{2,}\S/.test(lines2[i]) && body.length)) body.push(lines2[i++]);
+      while (i < lines3.length && (LIST.test(lines3[i]) || /^\s{2,}\S/.test(lines3[i]) && body.length)) body.push(lines3[i++]);
       out.push(renderList(body, opts));
       continue;
     }
@@ -6735,14 +6800,14 @@ function real(p) {
 async function checkouts(p) {
   return p.cache.get("checkouts", gitStamp(p.loc.common), async () => {
     const out = await gitOut(p.loc.top, p.env, "worktree", "list", "--porcelain");
-    const list2 = [];
+    const list3 = [];
     let cur = {};
     const flush = () => {
       if (cur.path && !cur.bare) {
         const top = real(cur.path);
         const branch = cur.branch ?? null;
         const m = branch ? ISSUE_BRANCH.exec(branch) : null;
-        list2.push({ path: top, root: p.loc.prefix ? import_node_path29.default.join(top, p.loc.prefix) : top, branch, head: cur.head ?? null, main: list2.length === 0, key: m ? m[2] : null });
+        list3.push({ path: top, root: p.loc.prefix ? import_node_path29.default.join(top, p.loc.prefix) : top, branch, head: cur.head ?? null, main: list3.length === 0, key: m ? m[2] : null });
       }
       cur = {};
     };
@@ -6755,8 +6820,8 @@ async function checkouts(p) {
       else if (line === "bare") cur.bare = true;
     }
     flush();
-    if (list2.length === 0) list2.push({ path: p.loc.top, root: p.loc.root, branch: null, head: null, main: true, key: null });
-    return list2;
+    if (list3.length === 0) list3.push({ path: p.loc.top, root: p.loc.root, branch: null, head: null, main: true, key: null });
+    return list3;
   });
 }
 async function branches(p) {
@@ -6918,7 +6983,7 @@ function clarifyCount(text2) {
   return text2.split(CLARIFY).length - 1;
 }
 function bolts(text2) {
-  const lines2 = text2.split(/\r?\n/);
+  const lines3 = text2.split(/\r?\n/);
   let total = 0;
   let done = 0;
   let open = 0;
@@ -6926,7 +6991,7 @@ function bolts(text2) {
   const close = () => {
     if (total > 0 && tasks > 0 && open === 0) done += 1;
   };
-  for (const line of lines2) {
+  for (const line of lines3) {
     if (/^#{2,4}\s+Phase\b/i.test(line)) {
       close();
       total += 1;
@@ -6940,7 +7005,7 @@ function bolts(text2) {
   close();
   return { total, done };
 }
-function docInfo(bytes, gate, entries, p, mtimeMs) {
+function docInfo(bytes, gate, entries, p, mtimeMs, need = 1) {
   const text2 = bytes.toString("utf8");
   const fm = parseLoose(text2) ?? {};
   const aSha = approvalSha(bytes);
@@ -6949,7 +7014,7 @@ function docInfo(bytes, gate, entries, p, mtimeMs) {
     sha256: sha2562(bytes),
     approvalSha256: aSha,
     clarify: clarifyCount(text2),
-    approval: approvalState(entries, gate, gate === "tasks" ? null : aSha, p.policy())
+    approval: approvalState(entries, gate, gate === "tasks" ? null : aSha, p.policy(), need)
   };
   if (mtimeMs !== void 0) info.mtimeMs = mtimeMs;
   if (gate === "tasks") {
@@ -7083,10 +7148,15 @@ function readFolder(root, folderRel, name) {
   }
   return { folder: folderRel, name, files, mtimes, entries: readEntries(import_node_path31.default.join(root, folderRel, "approvals.md")) };
 }
+function riskOf(files) {
+  const values = Object.values(files).map((b) => b ? (parseLoose(b.toString("utf8")) ?? {}).risk : void 0);
+  return values.includes("high") ? "high" : values.includes("medium") ? "medium" : "low";
+}
 function docsOf(p, f) {
+  const risk = riskOf(f.files);
   const info = (gate) => {
     const b = f.files[gate];
-    return b ? docInfo(b, gate, f.entries, p, f.mtimes[gate]) : null;
+    return b ? docInfo(b, gate, f.entries, p, f.mtimes[gate], needOf(p.meta(), risk, gate)) : null;
   };
   return { requirements: info("requirements"), design: info("design"), tasks: info("tasks") };
 }
@@ -7506,12 +7576,12 @@ async function readSummary(p) {
   return p.cache.get("summary", [gateFile, findingsFile, metricsFile].map(fileStamp).join("\n"), () => {
     const gate = readJson(gateFile);
     const f = readJson(findingsFile);
-    const list2 = f && Array.isArray(f.findings) ? f.findings : [];
-    const bySeverity = Object.fromEntries(SEVERITIES.map((s) => [s, list2.filter((x) => x.severity === s).length]));
-    const newBySeverity = Object.fromEntries(SEVERITIES.map((s) => [s, list2.filter((x) => x.severity === s && x.new === true).length]));
+    const list3 = f && Array.isArray(f.findings) ? f.findings : [];
+    const bySeverity = Object.fromEntries(SEVERITIES.map((s) => [s, list3.filter((x) => x.severity === s).length]));
+    const newBySeverity = Object.fromEntries(SEVERITIES.map((s) => [s, list3.filter((x) => x.severity === s && x.new === true).length]));
     return {
       gate: gate ? { status: gate.status ?? null, level: gate.level ?? null, head: gate.head ?? null, base: gate.base ?? null, mode: gate.mode ?? null, checks: gate.checks ?? [], incomplete: gate.incomplete ?? [] } : null,
-      findings: f ? { at: f.at ?? null, head: f.head ?? null, level: f.level ?? null, total: list2.length, bySeverity, new: newBySeverity, truncated: f.truncated === true, analyzers: f.analyzers ?? {} } : null,
+      findings: f ? { at: f.at ?? null, head: f.head ?? null, level: f.level ?? null, total: list3.length, bySeverity, new: newBySeverity, truncated: f.truncated === true, analyzers: f.analyzers ?? {} } : null,
       metrics: readJson(metricsFile)
     };
   });
@@ -7519,14 +7589,14 @@ async function readSummary(p) {
 async function readFindings(p, q2) {
   const file = import_node_path33.default.join(reportsDir(p), "findings-latest.json");
   const f = await p.cache.get("findings", fileStamp(file), () => readJson(file));
-  let list2 = f && Array.isArray(f.findings) ? f.findings : [];
-  if (q2.severity) list2 = list2.filter((x) => x.severity === q2.severity);
-  if (q2.onlyNew) list2 = list2.filter((x) => x.new === true);
+  let list3 = f && Array.isArray(f.findings) ? f.findings : [];
+  if (q2.severity) list3 = list3.filter((x) => x.severity === q2.severity);
+  if (q2.onlyNew) list3 = list3.filter((x) => x.new === true);
   if (q2.issue) {
     const branch = f && typeof f.branch === "string" ? f.branch : "";
-    if (!branch.includes(`/${q2.issue}-`)) list2 = [];
+    if (!branch.includes(`/${q2.issue}-`)) list3 = [];
   }
-  return { head: f?.head ?? null, branch: f?.branch ?? null, at: f?.at ?? null, findings: list2 };
+  return { head: f?.head ?? null, branch: f?.branch ?? null, at: f?.at ?? null, findings: list3 };
 }
 async function readReview(p, root, folderRel) {
   const script = import_node_fs30.default.existsSync(import_node_path33.default.join(root, "scripts/harness/review_state.py")) ? import_node_path33.default.join(root, "scripts/harness/review_state.py") : import_node_path33.default.join(p.root, "scripts/harness/review_state.py");
@@ -7835,10 +7905,10 @@ function check2(out, p, home) {
 
 // ../dashboard/src/server.ts
 var import_node_crypto7 = __toESM(require("node:crypto"));
-var import_node_fs41 = __toESM(require("node:fs"));
+var import_node_fs45 = __toESM(require("node:fs"));
 var import_node_http = __toESM(require("node:http"));
-var import_node_os2 = __toESM(require("node:os"));
-var import_node_path45 = __toESM(require("node:path"));
+var import_node_os3 = __toESM(require("node:os"));
+var import_node_path49 = __toESM(require("node:path"));
 
 // ../dashboard/src/agent.ts
 var import_node_child_process7 = require("node:child_process");
@@ -7892,6 +7962,10 @@ function parentMarker(start = process.ppid) {
 function agentSession(env) {
   return envMarker(env) ?? parentMarker();
 }
+
+// ../dashboard/src/api.ts
+var import_node_fs44 = __toESM(require("node:fs"));
+var import_node_path48 = __toESM(require("node:path"));
 
 // ../dashboard/src/burn.ts
 var DAY2 = 864e5;
@@ -7973,8 +8047,8 @@ function registryFile(home) {
 }
 function readRegistry(home) {
   const data = readJson(registryFile(home));
-  const list2 = data && Array.isArray(data.projects) ? data.projects : [];
-  return list2.filter((x) => isObj6(x) && typeof x.path === "string").map((x) => ({ path: String(x.path), name: typeof x.name === "string" ? x.name : import_node_path37.default.basename(String(x.path)), addedAt: typeof x.addedAt === "string" ? x.addedAt : "" }));
+  const list3 = data && Array.isArray(data.projects) ? data.projects : [];
+  return list3.filter((x) => isObj6(x) && typeof x.path === "string").map((x) => ({ path: String(x.path), name: typeof x.name === "string" ? x.name : import_node_path37.default.basename(String(x.path)), addedAt: typeof x.addedAt === "string" ? x.addedAt : "" }));
 }
 function writeRegistry(home, projects) {
   ensureDir(configDir(home), 448);
@@ -7993,26 +8067,26 @@ function addProject(home, dir, today2) {
     throw new ApiError(404, "not_found", `폴더가 없다: ${dir}`);
   }
   if (!isHarnessRepo(real2)) throw new ApiError(422, "not_a_harness_repo", `킷을 설치한 리포가 아니다(.agents/harness-kit.json 없음): ${real2}`);
-  const list2 = readRegistry(home);
-  const found = list2.find((e) => e.path === real2);
+  const list3 = readRegistry(home);
+  const found = list3.find((e) => e.path === real2);
   if (found) return { added: false, entry: found };
   const meta = readJson(import_node_path37.default.join(real2, ".agents/harness-kit.json")) ?? {};
   const project = isObj6(meta.project) ? meta.project : {};
   const entry = { path: real2, name: typeof project.name === "string" && project.name ? project.name : import_node_path37.default.basename(real2), addedAt: today2 };
-  writeRegistry(home, [...list2, entry]);
+  writeRegistry(home, [...list3, entry]);
   return { added: true, entry };
 }
 function removeProject(home, nameOrPath) {
-  const list2 = readRegistry(home);
+  const list3 = readRegistry(home);
   let real2 = nameOrPath;
   try {
     real2 = import_node_fs33.default.realpathSync(nameOrPath);
   } catch {
     real2 = import_node_path37.default.resolve(nameOrPath);
   }
-  const removed = list2.filter((e) => e.name === nameOrPath || e.path === nameOrPath || e.path === real2);
+  const removed = list3.filter((e) => e.name === nameOrPath || e.path === nameOrPath || e.path === real2);
   if (removed.length === 0) throw new ApiError(404, "not_found", `등록부에 없다: ${nameOrPath}`);
-  writeRegistry(home, list2.filter((e) => !removed.includes(e)));
+  writeRegistry(home, list3.filter((e) => !removed.includes(e)));
   return { removed };
 }
 function discover(dir, depth = 3) {
@@ -8041,8 +8115,8 @@ function discover(dir, depth = 3) {
 function workspaceEntries(file) {
   const data = readJson(file);
   if (!data) throw bad3(`workspace 파일을 읽지 못했다: ${file}`);
-  const list2 = Array.isArray(data.projects) ? data.projects : [];
-  return list2.map((x) => typeof x === "string" ? x : isObj6(x) && typeof x.path === "string" ? x.path : null).filter((x) => x !== null).map((p) => {
+  const list3 = Array.isArray(data.projects) ? data.projects : [];
+  return list3.map((x) => typeof x === "string" ? x : isObj6(x) && typeof x.path === "string" ? x.path : null).filter((x) => x !== null).map((p) => {
     const abs = import_node_path37.default.resolve(import_node_path37.default.dirname(file), p);
     return { path: abs, name: import_node_path37.default.basename(abs), addedAt: "" };
   });
@@ -8694,18 +8768,18 @@ async function readSkillFile(file) {
       return { sha256: sha2563, fm: null, error: "encoding" };
     }
   }
-  const lines2 = text2.split("\n");
-  if ((lines2[0] ?? "").replace(/\r$/, "") !== "---") return { sha256: sha2563, fm: null, error: "no-frontmatter" };
+  const lines3 = text2.split("\n");
+  if ((lines3[0] ?? "").replace(/\r$/, "") !== "---") return { sha256: sha2563, fm: null, error: "no-frontmatter" };
   let end = -1;
-  for (let i = 1; i < lines2.length; i += 1) {
-    if (lines2[i].replace(/\r$/, "") === "---") {
+  for (let i = 1; i < lines3.length; i += 1) {
+    if (lines3[i].replace(/\r$/, "") === "---") {
       end = i;
       break;
     }
   }
   if (end < 0) return { sha256: sha2563, fm: null, error: "no-frontmatter" };
   try {
-    return { sha256: sha2563, fm: parseYaml(lines2.slice(1, end).join("\n")), error: null };
+    return { sha256: sha2563, fm: parseYaml(lines3.slice(1, end).join("\n")), error: null };
   } catch (e) {
     return { sha256: sha2563, fm: null, error: e instanceof YamlError ? "yaml" : "yaml" };
   }
@@ -8877,8 +8951,8 @@ function statusOf(skill, all, h) {
 }
 function activeHarnesses(p) {
   const a = p.meta().agents;
-  const list2 = Array.isArray(a) ? a.filter((x) => typeof x === "string" && HARNESSES.includes(x)) : [];
-  return list2.length ? list2 : ["claude"];
+  const list3 = Array.isArray(a) ? a.filter((x) => typeof x === "string" && HARNESSES.includes(x)) : [];
+  return list3.length ? list3 : ["claude"];
 }
 async function scan2(p, opts) {
   const repo = p.root;
@@ -8940,18 +9014,18 @@ async function scan2(p, opts) {
     }
   }
   for (const e of pluginErrors) rootsOut.push({ path: e.path, scope: "plugin", count: 0, symlinks: 0, nested: 0, errors: 1, error: e.error });
-  const list2 = [...groups.values()];
+  const list3 = [...groups.values()];
   const { map, prepend } = readSkillMap(repo);
   const excluded = new Set(map?.exclude ?? []);
   const mapStages = /* @__PURE__ */ new Map();
   if (map) for (const [st, slots] of Object.entries(map.stages)) for (const [slot, ids2] of Object.entries(slots)) for (const id of ids2) mapStages.set(id, [...mapStages.get(id) ?? [], { stage: st, slot }]);
   const bySha = /* @__PURE__ */ new Map();
-  for (const g of list2) if (g.sha256) bySha.set(g.sha256, [...bySha.get(g.sha256) ?? [], g]);
-  const skills = list2.map((g) => {
+  for (const g of list3) if (g.sha256) bySha.set(g.sha256, [...bySha.get(g.sha256) ?? [], g]);
+  const skills = list3.map((g) => {
     const harnesses = {};
     const shadowedBy = {};
     for (const h of HARNESSES) {
-      const s = statusOf(g, list2, h);
+      const s = statusOf(g, list3, h);
       harnesses[h] = s.status;
       if (s.by) shadowedBy[h] = s.by;
     }
@@ -8982,7 +9056,7 @@ async function scan2(p, opts) {
   skills.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
   const conflicts = [];
   const byName = /* @__PURE__ */ new Map();
-  for (const g of list2) if (!g.plugin && !g.error && g.sha256) byName.set(g.name, [...byName.get(g.name) ?? [], g]);
+  for (const g of list3) if (!g.plugin && !g.error && g.sha256) byName.set(g.name, [...byName.get(g.name) ?? [], g]);
   for (const [name, gs] of [...byName].sort(([a], [b]) => a < b ? -1 : 1)) {
     const distinct = new Set(gs.map((g) => g.sha256));
     if (distinct.size < 2) continue;
@@ -8992,7 +9066,7 @@ async function scan2(p, opts) {
       const vis = gs.filter((g) => g.roots.some((r) => r.harnesses.includes(h)));
       if (new Set(vis.map((g) => g.sha256)).size < 2) continue;
       any = true;
-      const sts = vis.map((g) => ({ g, s: statusOf(g, list2, h) }));
+      const sts = vis.map((g) => ({ g, s: statusOf(g, list3, h) }));
       const w = sts.find((x) => x.s.status === "loaded");
       winner[h] = w ? w.g.display : "both";
     }
@@ -9546,21 +9620,121 @@ async function historyData(p, q2) {
 }
 
 // ../dashboard/src/writers/answers.ts
+var import_node_fs39 = __toESM(require("node:fs"));
+var import_node_path43 = __toESM(require("node:path"));
+
+// ../dashboard/src/writers/approvals.ts
 var import_node_fs37 = __toESM(require("node:fs"));
 var import_node_path41 = __toESM(require("node:path"));
 
-// ../dashboard/src/writers/approvals.ts
+// ../dashboard/src/writers/intent-gates.ts
 var import_node_fs36 = __toESM(require("node:fs"));
 var import_node_path40 = __toESM(require("node:path"));
+var BUNDLE_GATES = ["codebase", "plans"];
 var CLARIFY2 = "[NEEDS CLARIFICATION";
+var STATUSES = ["draft", "in-review", "approved"];
+async function gateInfo(p, root, key, gate) {
+  const own = import_node_path40.default.join(root, "scripts/harness/intent_gate.py");
+  const script = import_node_fs36.default.existsSync(own) ? own : import_node_path40.default.join(p.root, "scripts/harness/intent_gate.py");
+  const r = await python(root, p.env, [script, key, gate, "--json"], 12e4);
+  try {
+    return JSON.parse(r.stdout);
+  } catch {
+    throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건을 판정하지 못했다`, { reasons: [(r.stderr.trim().split("\n").pop() ?? "").slice(0, 300)] });
+  }
+}
+function headValue(text2, key) {
+  const lines3 = text2.split("\n").map((l) => l.replace(/\r$/, ""));
+  if (lines3[0] !== "---") return null;
+  for (let i = 1; i < lines3.length && lines3[i] !== "---"; i += 1) {
+    const m = new RegExp(`^${key}:\\s*(.*?)\\s*(?:#.*)?$`).exec(lines3[i]);
+    if (m) return m[1].replace(/^["']|["']$/g, "") || null;
+  }
+  return null;
+}
+function bundleSha(files) {
+  const lines3 = [...files].sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0).map((f) => `${f.path}	${f.sha256}
+`);
+  return sha2562(lines3.join(""));
+}
+async function bundleOf(p, key, gate) {
+  const co = await resolveIntentCheckout(p, key);
+  const info = await gateInfo(p, co.root, key, gate);
+  const files = info.files.map((f) => {
+    const bytes = import_node_fs36.default.readFileSync(import_node_path40.default.join(co.root, f.path));
+    return { name: f.name, path: f.path, sha256: sha2562(bytes), approvalSha256: approvalSha(bytes) };
+  });
+  return { co, info, files, sha256: bundleSha(files) };
+}
+async function getGateBundle(p, key, gate) {
+  if (!BUNDLE_GATES.includes(gate)) throw new ApiError(404, "not_found", `묶음 승인 게이트가 아니다: ${gate}(codebase · plans)`);
+  const b = await bundleOf(p, key, gate);
+  return { intent: key, gate, folder: b.info.folder, files: b.files, sha256: b.sha256, reasons: b.info.reasons, stale: b.info.stale };
+}
+async function approveBundle(p, gate, key, decision, phrase, body, via) {
+  if (p.readOnly) throw readOnly();
+  const { co, info, files, sha256: bundle } = await bundleOf(p, key, gate);
+  if (!files.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 대상 파일이 없다`, { reasons: info.reasons });
+  if (body.docSha256 !== bundle) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 대상 파일이 바뀌었다. 다시 읽고 승인한다", { currentSha256: bundle });
+  const approvalsFile = import_node_path40.default.join(co.root, info.folder, "approvals.md");
+  const current4 = import_node_fs36.default.existsSync(approvalsFile) ? import_node_fs36.default.readFileSync(approvalsFile, "utf8") : null;
+  const entries = current4 ? parse(current4).entries : [];
+  const first = files[0];
+  const firstText = import_node_fs36.default.readFileSync(import_node_path40.default.join(co.root, first.path), "utf8");
+  const status = gate === "codebase" ? headValue(firstText, "status") : null;
+  if (gate === "codebase" && !STATUSES.includes(status ?? "")) throw new ApiError(422, "gate_precondition", `current-state.md 머리 status 가 ${status ?? "없음"} 이다`, { reasons: [`status ${status ?? "없음"}`] });
+  if (decision === "approved") {
+    if (files.every((f) => approvalState(entries, gate, f.approvalSha256, p.policy()) === "valid")) throw new ApiError(409, "already_approved", "같은 내용으로 승인한 기록이 있다");
+    const unclear = files.filter((f) => f.path.endsWith(".md") && import_node_fs36.default.readFileSync(import_node_path40.default.join(co.root, f.path), "utf8").includes(CLARIFY2));
+    if (unclear.length) throw new ApiError(422, "needs_clarification", `${unclear.map((f) => f.name).join(", ")} 에 [NEEDS CLARIFICATION 가 남았다`);
+    if (info.stale.length) throw new ApiError(422, "model_stale", "역공학 문서가 오래됐다 — /hx-intent 가 codebase_scan.py 로 갱신한 뒤 승인한다", { stale: info.stale });
+    if (info.reasons.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건이 맞지 않는다`, { reasons: info.reasons });
+  }
+  const who = await approver(p, co, gate);
+  const at = nowText();
+  const made = files.map((f, i) => ({
+    at,
+    gate,
+    decision,
+    approver: who,
+    target: { name: f.name, sha256: f.approvalSha256 },
+    phrase,
+    path: via,
+    entryId: ulid(),
+    ruleCandidate: i === 0 && decision === "changes-requested" && body.ruleCandidate === true
+  }));
+  const writes = [{ file: approvalsFile, data: Buffer.from(appendedText(current4, key, made), "utf8") }];
+  let statusChanged = null;
+  if (gate === "codebase" && decision === "approved" && status !== "approved") {
+    writes.push({ file: import_node_path40.default.join(co.root, first.path), data: Buffer.from(setField2(firstText, "status", "approved"), "utf8") });
+    statusChanged = `${status ?? "없음"}→approved`;
+  }
+  writeAll(writes);
+  for (const e of made) appendLog(co.root, { entryId: e.entryId, target: info.folder, gate, sha256: e.target.sha256 ?? null, at, path: via });
+  return { status: 201, data: { entryId: made[0].entryId, approvals: `${info.folder}/approvals.md`, approver: who.email, group: who.group, statusChanged, files: files.map((f) => f.name), sessions: [] } };
+}
+
+// ../dashboard/src/writers/approvals.ts
+var CLARIFY3 = "[NEEDS CLARIFICATION";
 var LOG = ".agents/state/approvals-log.jsonl";
-var LATER = { codebase: "HK-19", plans: "HK-19", deploy: "HK-21" };
+var LATER = { deploy: "HK-21" };
 var DOC_FILES = { requirements: "requirements.md", design: "design.md", tasks: "tasks.md" };
+function riskOfFolder(abs) {
+  const files = {};
+  for (const name of Object.values(DOC_FILES)) {
+    try {
+      files[name] = import_node_fs37.default.readFileSync(import_node_path41.default.join(abs, name));
+    } catch {
+      files[name] = null;
+    }
+  }
+  return riskOf(files);
+}
 function issueFolder(root, key) {
-  const dir = import_node_path40.default.join(root, ".agents/docs/issues");
+  const dir = import_node_path41.default.join(root, ".agents/docs/issues");
   let names = [];
   try {
-    names = import_node_fs36.default.readdirSync(dir);
+    names = import_node_fs37.default.readdirSync(dir);
   } catch {
     names = [];
   }
@@ -9575,18 +9749,18 @@ function writeAll(writes) {
     for (const w of writes) {
       let before = null;
       try {
-        before = import_node_fs36.default.readFileSync(w.file);
+        before = import_node_fs37.default.readFileSync(w.file);
       } catch {
         before = null;
       }
-      if (w.data === null) import_node_fs36.default.rmSync(w.file, { force: true });
+      if (w.data === null) import_node_fs37.default.rmSync(w.file, { force: true });
       else atomicWrite(w.file, w.data);
       done.push({ file: w.file, before });
     }
   } catch (err) {
     for (const d of done.reverse()) {
       try {
-        if (d.before === null) import_node_fs36.default.rmSync(d.file, { force: true });
+        if (d.before === null) import_node_fs37.default.rmSync(d.file, { force: true });
         else atomicWrite(d.file, d.before);
       } catch {
       }
@@ -9597,11 +9771,11 @@ function writeAll(writes) {
   }
 }
 function appendLog(root, record) {
-  const file = import_node_path40.default.join(root, LOG);
-  ensureDir(import_node_path40.default.dirname(file), 448);
-  const ignore = import_node_path40.default.join(import_node_path40.default.dirname(file), ".gitignore");
-  if (!import_node_fs36.default.existsSync(ignore)) import_node_fs36.default.writeFileSync(ignore, "*\n", { mode: 384 });
-  import_node_fs36.default.appendFileSync(file, `${JSON.stringify(record)}
+  const file = import_node_path41.default.join(root, LOG);
+  ensureDir(import_node_path41.default.dirname(file), 448);
+  const ignore = import_node_path41.default.join(import_node_path41.default.dirname(file), ".gitignore");
+  if (!import_node_fs37.default.existsSync(ignore)) import_node_fs37.default.writeFileSync(ignore, "*\n", { mode: 384 });
+  import_node_fs37.default.appendFileSync(file, `${JSON.stringify(record)}
 `, { mode: 384 });
 }
 async function approver(p, co, gate) {
@@ -9617,8 +9791,8 @@ function phraseOf(body, field = "phrase") {
   return v.replace(/\s+/g, " ").trim().slice(0, 500);
 }
 async function preconditions(p, co, key, gate) {
-  const own = import_node_path40.default.join(co.root, "scripts/harness/sdd_gates.py");
-  const script = import_node_fs36.default.existsSync(own) ? own : import_node_path40.default.join(p.root, "scripts/harness/sdd_gates.py");
+  const own = import_node_path41.default.join(co.root, "scripts/harness/sdd_gates.py");
+  const script = import_node_fs37.default.existsSync(own) ? own : import_node_path41.default.join(p.root, "scripts/harness/sdd_gates.py");
   const r = await python(co.root, p.env, [script, "check", key, "--json", "--root", co.root], 6e4);
   if (r.code !== 0) throw new ApiError(422, "gate_precondition", "게이트 조건을 판정하지 못했다", { reasons: [(r.stderr.trim().split("\n").pop() ?? "").slice(0, 300)] });
   const data = JSON.parse(r.stdout);
@@ -9638,8 +9812,9 @@ async function postApproval(p, body, via) {
   if (Object.hasOwn(LATER, gate)) throw new ApiError(422, "gate_precondition", `${gate} 게이트 승인은 이 판에 없다(${LATER[gate]})`, { later: LATER[gate], reasons: [`${LATER[gate]} 에서 제공한다`] });
   const phrase = phraseOf(body);
   const target = isObj6(body.target) ? body.target : {};
-  if (gate === "intent") {
-    if (typeof target.intent !== "string") throw bad3("intent 게이트는 target.intent 가 필요하다");
+  if (gate === "intent" || BUNDLE_GATES.includes(gate)) {
+    if (typeof target.intent !== "string") throw bad3(`${gate} 게이트는 target.intent 가 필요하다`);
+    if (gate !== "intent") return approveBundle(p, gate, target.intent, decision, phrase, body, via);
     return approveIntent(p, target.intent, decision, phrase, body, via);
   }
   if (!ISSUE_GATES.includes(gate)) throw new ApiError(422, "gate_not_in_flow", `모르는 게이트: ${gate}`);
@@ -9647,23 +9822,27 @@ async function postApproval(p, body, via) {
   const key = target.issue;
   const co = await resolveIssueCheckout(p, key, null);
   const folder = issueFolder(co.root, key);
-  const approvalsFile = import_node_path40.default.join(co.root, folder, "approvals.md");
-  const current4 = import_node_fs36.default.existsSync(approvalsFile) ? import_node_fs36.default.readFileSync(approvalsFile, "utf8") : null;
+  const approvalsFile = import_node_path41.default.join(co.root, folder, "approvals.md");
+  const current4 = import_node_fs37.default.existsSync(approvalsFile) ? import_node_fs37.default.readFileSync(approvalsFile, "utf8") : null;
   const entries = current4 ? parse(current4).entries : [];
   const writes = [];
   let targetRef;
   let statusChanged = null;
   if (Object.hasOwn(DOC_FILES, gate)) {
-    const docFile = import_node_path40.default.join(co.root, folder, DOC_FILES[gate]);
-    if (!import_node_fs36.default.existsSync(docFile)) throw notFound(`${DOC_FILES[gate]} 가 없다`);
-    const bytes = import_node_fs36.default.readFileSync(docFile);
+    const docFile = import_node_path41.default.join(co.root, folder, DOC_FILES[gate]);
+    if (!import_node_fs37.default.existsSync(docFile)) throw notFound(`${DOC_FILES[gate]} 가 없다`);
+    const bytes = import_node_fs37.default.readFileSync(docFile);
     const text2 = bytes.toString("utf8");
     const fm = parseLoose(text2) ?? {};
     const status = fm.status ?? null;
     const aSha = approvalSha(bytes);
     if (gate !== "tasks" && !["draft", "in-review", "approved"].includes(status ?? "")) throw new ApiError(422, "gate_precondition", `${DOC_FILES[gate]} 머리 status 가 ${status ?? "없음"} 이다(draft · in-review 만 승인한다)`, { reasons: [`status ${status ?? "없음"}`] });
-    if (decision === "approved" && approvalState(entries, gate, aSha, p.policy()) === "valid") throw new ApiError(409, "already_approved", `${gate}: 같은 내용(sha ${aSha.slice(0, 12)})으로 승인한 기록이 있다`);
-    if (decision === "approved" && text2.includes(CLARIFY2)) throw new ApiError(422, "needs_clarification", `${DOC_FILES[gate]} 에 [NEEDS CLARIFICATION 가 남았다`);
+    const need = needOf(p.meta(), riskOfFolder(import_node_path41.default.join(co.root, folder)), gate);
+    const state = approvalState(entries, gate, aSha, p.policy(), need);
+    if (decision === "approved" && state === "valid") throw new ApiError(409, "already_approved", `${gate}: 같은 내용(sha ${aSha.slice(0, 12)})으로 승인한 기록이 있다`);
+    const me = ((await gitUser(co.root, p.env)).email ?? "").toLowerCase();
+    if (decision === "approved" && state === "partial" && me && approversOf(entries, gate, aSha).has(me)) throw new ApiError(409, "already_approved", `${gate}: 이미 승인했다 — risk: high 는 다른 승인자 한 명이 더 승인한다(DS-R26)`, { need });
+    if (decision === "approved" && text2.includes(CLARIFY3)) throw new ApiError(422, "needs_clarification", `${DOC_FILES[gate]} 에 [NEEDS CLARIFICATION 가 남았다`);
     if (body.docSha256 !== sha2562(bytes)) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 문서가 바뀌었다. 다시 읽고 승인한다", { currentSha256: sha2562(bytes) });
     targetRef = { name: DOC_FILES[gate], sha256: aSha };
     if (decision === "approved" && status !== "approved" && gate !== "tasks") {
@@ -9691,31 +9870,39 @@ async function postApproval(p, body, via) {
 async function approveIntent(p, key, decision, phrase, body, via) {
   const co = await resolveIntentCheckout(p, key);
   const info = findIntent(co.root, key);
-  const intentFile = import_node_path40.default.join(info.abs, "intent.md");
-  if (!import_node_fs36.default.existsSync(intentFile)) throw notFound("intent.md 가 없다");
-  const bytes = import_node_fs36.default.readFileSync(intentFile);
+  const intentFile = import_node_path41.default.join(info.abs, "intent.md");
+  if (!import_node_fs37.default.existsSync(intentFile)) throw notFound("intent.md 가 없다");
+  const bytes = import_node_fs37.default.readFileSync(intentFile);
   const text2 = bytes.toString("utf8");
   const status = parseLoose(text2)?.status ?? null;
-  const approvalsFile = import_node_path40.default.join(info.abs, "approvals.md");
-  const current4 = import_node_fs36.default.existsSync(approvalsFile) ? import_node_fs36.default.readFileSync(approvalsFile, "utf8") : null;
+  const approvalsFile = import_node_path41.default.join(info.abs, "approvals.md");
+  const current4 = import_node_fs37.default.existsSync(approvalsFile) ? import_node_fs37.default.readFileSync(approvalsFile, "utf8") : null;
   const entries = current4 ? parse(current4).entries : [];
   const aSha = approvalSha(bytes);
   if (!["draft", "in-review", "approved"].includes(status ?? "")) throw new ApiError(422, "gate_precondition", `intent.md 머리 status 가 ${status ?? "없음"} 이다`, { reasons: [`status ${status ?? "없음"}`] });
   if (decision === "approved" && approvalState(entries, "intent", aSha, p.policy()) === "valid" && !proposalOf(info.abs)) throw new ApiError(409, "already_approved", "같은 내용으로 승인한 기록이 있다");
-  if (decision === "approved" && text2.includes(CLARIFY2)) throw new ApiError(422, "needs_clarification", "intent.md 에 [NEEDS CLARIFICATION 가 남았다");
+  if (decision === "approved" && text2.includes(CLARIFY3)) throw new ApiError(422, "needs_clarification", "intent.md 에 [NEEDS CLARIFICATION 가 남았다");
   if (body.docSha256 !== sha2562(bytes)) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 intent.md 가 바뀌었다", { currentSha256: sha2562(bytes) });
   if (decision === "approved") {
     const reasons = [];
     try {
-      const q2 = parseQuestions(import_node_fs36.default.readFileSync(import_node_path40.default.join(info.abs, "questions.md"), "utf8"));
+      const q2 = parseQuestions(import_node_fs37.default.readFileSync(import_node_path41.default.join(info.abs, "questions.md"), "utf8"));
       const open = q2.questions.filter((x) => x.open && x.blocks === "intent");
       if (open.length) reasons.push(`막는 게이트가 intent 인 열린 질문 ${open.length}건(${open.map((x) => x.id).join(", ")})`);
     } catch {
     }
-    const check3 = import_node_path40.default.join(co.root, "scripts/harness/intent_check.py");
-    if (import_node_fs36.default.existsSync(check3)) {
-      const r = await python(co.root, p.env, [check3, info.abs], 6e4);
-      if (r.code !== 0) reasons.push(`intent_check.py 실패: ${(r.stderr.trim().split("\n").pop() ?? "").slice(0, 200)}`);
+    const check3 = import_node_path41.default.join(co.root, "scripts/harness/intent.py");
+    if (import_node_fs37.default.existsSync(check3)) {
+      const r = await python(co.root, p.env, [check3, "check", info.abs, "--json"], 6e4);
+      if (r.code !== 0) {
+        let problems = [];
+        try {
+          problems = (JSON.parse(r.stdout).problems ?? []).slice(0, 10);
+        } catch {
+          problems = [(r.stderr.trim().split("\n").pop() ?? "intent.py check 실패").slice(0, 200)];
+        }
+        reasons.push(...problems.map((x) => `intent.py check: ${x}`));
+      }
     }
     if (reasons.length) throw new ApiError(422, "gate_precondition", "intent 게이트 조건이 맞지 않는다", { reasons });
   }
@@ -9727,8 +9914,8 @@ async function approveIntent(p, key, decision, phrase, body, via) {
   if (decision === "approved" && proposal) {
     if (!units.raw || !units.data || proposal.baseSha256 !== sha2562(units.raw)) throw new ApiError(409, "proposal_stale", "제안을 만든 뒤 units.json 이 바뀌었다. 제안을 다시 저장하거나 버린다");
     unitsBytes = appliedUnitsBytes(units.raw, units.data, units.units, proposal.changes ?? []);
-    writes.push({ file: import_node_path40.default.join(info.abs, "units.json"), data: unitsBytes });
-    writes.push({ file: import_node_path40.default.join(info.abs, "units.proposed.json"), data: null });
+    writes.push({ file: import_node_path41.default.join(info.abs, "units.json"), data: unitsBytes });
+    writes.push({ file: import_node_path41.default.join(info.abs, "units.proposed.json"), data: null });
   }
   let statusChanged = null;
   if (decision === "approved" && status !== "approved") {
@@ -9746,9 +9933,9 @@ async function approveIntent(p, key, decision, phrase, body, via) {
 async function reviewFinding(p, key, findingId) {
   const co = await resolveIssueCheckout(p, key, null);
   const folder = issueFolder(co.root, key);
-  const own = import_node_path40.default.join(co.root, "scripts/harness/review_state.py");
-  const script = import_node_fs36.default.existsSync(own) ? own : import_node_path40.default.join(p.root, "scripts/harness/review_state.py");
-  const r = await python(co.root, p.env, [script, import_node_path40.default.join(co.root, folder), "--json"], 3e4);
+  const own = import_node_path41.default.join(co.root, "scripts/harness/review_state.py");
+  const script = import_node_fs37.default.existsSync(own) ? own : import_node_path41.default.join(p.root, "scripts/harness/review_state.py");
+  const r = await python(co.root, p.env, [script, import_node_path41.default.join(co.root, folder), "--json"], 3e4);
   if (r.code === 2) throw notFound(`리뷰 보고서가 없다(.agents/reports/review/${key}.md)`);
   const data = JSON.parse(r.stdout);
   const item = data.findings.find((f) => f.id === findingId);
@@ -9764,42 +9951,86 @@ async function postReviewDecision(p, key, findingId, body, via) {
   const phrase = phraseOf(body);
   const found = await reviewFinding(p, key, findingId);
   const who = await approver(p, found.co, "mr");
-  const approvalsFile = import_node_path40.default.join(found.co.root, found.folder, "approvals.md");
-  const current4 = import_node_fs36.default.existsSync(approvalsFile) ? import_node_fs36.default.readFileSync(approvalsFile, "utf8") : null;
+  const approvalsFile = import_node_path41.default.join(found.co.root, found.folder, "approvals.md");
+  const current4 = import_node_fs37.default.existsSync(approvalsFile) ? import_node_fs37.default.readFileSync(approvalsFile, "utf8") : null;
   const entry = { at: nowText(), gate: `review/${findingId}`, decision, approver: who, target: { name: `.agents/reports/review/${key}.md`, fingerprint: found.fp }, phrase, path: via, entryId: ulid() };
   writeAll([{ file: approvalsFile, data: Buffer.from(appendedText(current4, key, [entry]), "utf8") }]);
   appendLog(found.co.root, { entryId: entry.entryId, target: found.folder, gate: entry.gate, sha256: found.fp, at: entry.at, path: via });
   return { status: 201, data: { entryId: entry.entryId, approvals: `${found.folder}/approvals.md`, approver: who.email, group: who.group, statusChanged: null, sessions: await aliveSessions(p, key) } };
 }
 
+// ../dashboard/src/writers/mob.ts
+var import_node_fs38 = __toESM(require("node:fs"));
+var import_node_path42 = __toESM(require("node:path"));
+var ACTIONS = /* @__PURE__ */ new Set(["start", "next", "close"]);
+var EMAIL = /^[^\s@,]+@[^\s@,]+$/;
+function openMob(intentAbs) {
+  try {
+    const data = JSON.parse(import_node_fs38.default.readFileSync(import_node_path42.default.join(intentAbs, "mob.json"), "utf8"));
+    if (data.schema !== "harness-kit.mob/v1" || data.closedAt) return null;
+    return Array.isArray(data.attendees) ? data : null;
+  } catch {
+    return null;
+  }
+}
+async function runMob(p, key, args) {
+  const co = await resolveIntentCheckout(p, key);
+  findIntent(co.root, key);
+  const own = import_node_path42.default.join(co.root, "scripts/harness/mob.py");
+  const script = import_node_fs38.default.existsSync(own) ? own : import_node_path42.default.join(p.root, "scripts/harness/mob.py");
+  const r = await python(co.root, p.env, [script, ...args, "--json"], 6e4);
+  let out;
+  try {
+    out = JSON.parse(r.stdout);
+  } catch {
+    throw new ApiError(500, "internal", `mob.py 출력이 JSON 이 아니다: ${(r.stderr || r.stdout).slice(0, 200)}`);
+  }
+  if (r.code === 3) throw new ApiError(422, "mob_refused", String(out.error ?? "몹 세션 처리를 거부했다"));
+  if (r.code !== 0) throw new ApiError(500, "internal", String(out.error ?? "mob.py 실패"));
+  return out;
+}
+async function getMob(p, key) {
+  return runMob(p, key, ["status", key]);
+}
+async function postMob(p, key, body) {
+  if (p.readOnly) throw readOnly();
+  if (!isObj6(body) || typeof body.action !== "string" || !ACTIONS.has(body.action)) throw bad3("action 은 start · next · close 다");
+  if (body.action !== "start") return runMob(p, key, [body.action, key]);
+  const attendees = Array.isArray(body.attendees) ? body.attendees.filter((a) => typeof a === "string") : [];
+  if (!attendees.length || attendees.some((a) => !EMAIL.test(a))) throw bad3("attendees 는 email 목록이다");
+  const timebox = typeof body.timeboxMin === "number" && Number.isInteger(body.timeboxMin) && body.timeboxMin > 0 ? body.timeboxMin : 30;
+  return runMob(p, key, ["start", key, "--attendees", attendees.join(","), "--timebox", String(timebox)]);
+}
+
 // ../dashboard/src/writers/answers.ts
 async function locate2(p, target) {
   if (!KEY.test(target)) throw bad3(`대상 키 형식이 아니다: ${target}`);
-  const isIntent = import_node_fs37.default.existsSync(import_node_path41.default.join(p.root, ".agents/docs/intents")) && import_node_fs37.default.readdirSync(import_node_path41.default.join(p.root, ".agents/docs/intents")).some((n) => INTENT_FOLDER.exec(n)?.[1] === target);
+  const isIntent = import_node_fs39.default.existsSync(import_node_path43.default.join(p.root, ".agents/docs/intents")) && import_node_fs39.default.readdirSync(import_node_path43.default.join(p.root, ".agents/docs/intents")).some((n) => INTENT_FOLDER.exec(n)?.[1] === target);
   if (isIntent) {
     const co2 = await resolveIntentCheckout(p, target);
     const info = findIntent(co2.root, target);
-    return { co: co2, rel: `${info.dir}/questions.md`, abs: import_node_path41.default.join(info.abs, "questions.md") };
+    return { co: co2, rel: `${info.dir}/questions.md`, abs: import_node_path43.default.join(info.abs, "questions.md"), intentAbs: info.abs };
   }
   const co = await resolveIssueCheckout(p, target, null);
   const folder = issueFolder(co.root, target);
-  return { co, rel: `${folder}/questions.md`, abs: import_node_path41.default.join(co.root, folder, "questions.md") };
+  return { co, rel: `${folder}/questions.md`, abs: import_node_path43.default.join(co.root, folder, "questions.md") };
 }
 async function getQuestions(p, target) {
   if (!target) throw bad3("target 이 필요하다");
   const { rel: rel2, abs } = await locate2(p, target);
-  if (!import_node_fs37.default.existsSync(abs)) return { target, path: rel2, sha256: null, status: null, questions: [] };
-  const bytes = import_node_fs37.default.readFileSync(abs);
+  if (!import_node_fs39.default.existsSync(abs)) return { target, path: rel2, sha256: null, status: null, questions: [] };
+  const bytes = import_node_fs39.default.readFileSync(abs);
   const doc = parseQuestions(bytes.toString("utf8"));
   return { target, path: rel2, sha256: sha2562(bytes), status: doc.frontmatter.status ?? null, round: doc.frontmatter.round ?? null, questions: doc.questions };
 }
 async function postAnswer(p, target, qid, body) {
   if (p.readOnly) throw readOnly();
   if (!isObj6(body)) throw bad3("본문이 객체가 아니다");
-  const { co, rel: rel2, abs } = await locate2(p, target);
-  if (!import_node_fs37.default.existsSync(abs)) throw notFound(`질문 파일이 없다: ${rel2}`);
+  const { co, rel: rel2, abs, intentAbs } = await locate2(p, target);
+  if (!import_node_fs39.default.existsSync(abs)) throw notFound(`질문 파일이 없다: ${rel2}`);
+  const mob = intentAbs ? openMob(intentAbs) : null;
   return p.withLock(abs, async () => {
-    const bytes = import_node_fs37.default.readFileSync(abs);
+    const bytes = import_node_fs39.default.readFileSync(abs);
     if (body.baseSha256 !== sha2562(bytes)) throw new ApiError(409, "conflict", "다른 곳에서 먼저 저장했다", { currentSha256: sha2562(bytes), currentMarkdown: bytes.toString("utf8") });
     const doc = parseQuestions(bytes.toString("utf8"));
     const q2 = doc.questions.find((x) => x.id === qid);
@@ -9810,10 +10041,18 @@ async function postAnswer(p, target, qid, body) {
     if (choice === "other" && !text2) throw bad3("other 는 text 가 필요하다");
     const u = await gitUser(co.root, p.env);
     if (!u.email) throw new ApiError(403, "not_an_approver", "git config user.email 이 비었다");
+    let who = u.email;
+    if (mob) {
+      const by = typeof body.by === "string" ? body.by.trim() : "";
+      if (!by) throw bad3("몹 세션이 열려 있다 — by(답한 참석자 email)가 필요하다", { attendees: mob.attendees.map((a) => a.email) });
+      if (!mob.attendees.some((a) => a.email.toLowerCase() === by.toLowerCase())) throw bad3(`${by} 는 몹 세션 참석자가 아니다`, { attendees: mob.attendees.map((a) => a.email) });
+      who = by;
+    }
     const groups = p.policy().groups ?? {};
     const members = Object.hasOwn(groups, q2.role) ? groups[q2.role] : void 0;
-    const opinion = members !== void 0 && !members.some((m) => m.toLowerCase() === u.email.toLowerCase());
-    const out = writeAnswer(bytes.toString("utf8"), { qid, choice, text: text2, email: u.email, at: nowText(), opinion });
+    const opinion = members !== void 0 && !members.some((m) => m.toLowerCase() === who.toLowerCase());
+    const recordedBy = who.toLowerCase() === u.email.toLowerCase() ? null : u.email;
+    const out = writeAnswer(bytes.toString("utf8"), { qid, choice, text: text2, email: who, at: nowText(), opinion, recordedBy });
     atomicWrite(abs, out.text);
     const after = parseQuestions(out.text).questions;
     return { sha256: sha2562(Buffer.from(out.text, "utf8")), path: rel2, kind: opinion ? "opinion" : "answer", answered: after.filter((x) => !x.open).length, open: after.filter((x) => x.open).length, statusChanged: out.statusChanged };
@@ -9821,9 +10060,9 @@ async function postAnswer(p, target, qid, body) {
 }
 
 // ../dashboard/src/writers/dispatch.ts
-var import_node_fs38 = __toESM(require("node:fs"));
+var import_node_fs40 = __toESM(require("node:fs"));
 var import_node_net2 = __toESM(require("node:net"));
-var import_node_path42 = __toESM(require("node:path"));
+var import_node_path44 = __toESM(require("node:path"));
 var KINDS = ["doc-changed", "answers-ready", "approved", "changes-requested", "review-findings", "custom"];
 var MAX = 1e3;
 function dispatchBody(body) {
@@ -9919,7 +10158,7 @@ async function postDispatch(p, raw, createdBy) {
     return { status: 202, data: { method: "deeplink", url: deeplink(cwd, text2) } };
   }
   const dir = queueDir(p);
-  ensureDir(import_node_path42.default.dirname(dir), 448);
+  ensureDir(import_node_path44.default.dirname(dir), 448);
   ensureDir(dir, 448);
   const id = ulid();
   const created = /* @__PURE__ */ new Date();
@@ -9934,22 +10173,22 @@ async function postDispatch(p, raw, createdBy) {
     paths: b.paths,
     expiresAt: nowText(new Date(created.getTime() + 7 * 24 * 3600 * 1e3))
   };
-  atomicWrite(import_node_path42.default.join(dir, `${id}.json`), `${JSON.stringify(item, null, 2)}
+  atomicWrite(import_node_path44.default.join(dir, `${id}.json`), `${JSON.stringify(item, null, 2)}
 `, 384);
   return { status: 202, data: { method: "queue", id } };
 }
 function dropQueued(p, id) {
   if (p.readOnly) throw readOnly();
   if (!/^[0-9A-HJKMNP-TV-Z]{26}$/.test(id)) throw bad3("대기함 id 형식이 아니다");
-  const file = import_node_path42.default.join(queueDir(p), `${id}.json`);
-  if (!import_node_fs38.default.existsSync(file)) throw notFound(`대기함 항목이 없다: ${id}`);
-  import_node_fs38.default.unlinkSync(file);
+  const file = import_node_path44.default.join(queueDir(p), `${id}.json`);
+  if (!import_node_fs40.default.existsSync(file)) throw notFound(`대기함 항목이 없다: ${id}`);
+  import_node_fs40.default.unlinkSync(file);
   return { id, dropped: true };
 }
 
 // ../dashboard/src/writers/docs.ts
-var import_node_fs39 = __toESM(require("node:fs"));
-var import_node_path43 = __toESM(require("node:path"));
+var import_node_fs41 = __toESM(require("node:fs"));
+var import_node_path45 = __toESM(require("node:path"));
 
 // ../dashboard/src/paths.ts
 var ISSUE_DOC = /^\.agents\/docs\/issues\/([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5})-[^/]+\/(requirements|design|tasks)\.md$/;
@@ -10017,7 +10256,7 @@ async function locateForRead(p, t) {
   if (t.kind === "issue" && t.key) {
     const cos = await checkouts(p);
     const co2 = cos.find((c) => c.key === t.key);
-    if (co2 && lstatChain(co2.root, t.rel) === "file") return { co: co2, ref: null, bytes: import_node_fs39.default.readFileSync(import_node_path43.default.join(co2.root, t.rel)) };
+    if (co2 && lstatChain(co2.root, t.rel) === "file") return { co: co2, ref: null, bytes: import_node_fs41.default.readFileSync(import_node_path45.default.join(co2.root, t.rel)) };
     const branch = (await branches(p)).find((b) => ISSUE_BRANCH.exec(b)?.[2] === t.key && !cos.some((c) => c.branch === b));
     if (branch) {
       const prefix = p.loc.prefix ? `${p.loc.prefix}/` : "";
@@ -10035,7 +10274,7 @@ async function locateForRead(p, t) {
     }
   }
   if (lstatChain(co.root, t.rel) !== "file") throw notFound(`문서가 없다: ${t.rel}`);
-  return { co, ref: null, bytes: import_node_fs39.default.readFileSync(import_node_path43.default.join(co.root, t.rel)) };
+  return { co, ref: null, bytes: import_node_fs41.default.readFileSync(import_node_path45.default.join(co.root, t.rel)) };
 }
 async function readRaw(p, relPath) {
   const issue = /^\.agents\/docs\/issues\/([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5})-[^/]+\//.exec(relPath);
@@ -10105,8 +10344,8 @@ function changeSummary(before, after) {
     for (let i = s; i < ea; i += 1) removedIdx.push(i);
     for (let j = s; j < eb; j += 1) addedIdx.push(j);
   }
-  const headingAt = (lines2, idx) => {
-    for (let k = idx; k >= 0; k -= 1) if (/^#{1,6}\s/.test(lines2[k])) return lines2[k];
+  const headingAt = (lines3, idx) => {
+    for (let k = idx; k >= 0; k -= 1) if (/^#{1,6}\s/.test(lines3[k])) return lines3[k];
     return null;
   };
   const headings = /* @__PURE__ */ new Set();
@@ -10134,9 +10373,9 @@ async function putDoc(p, body) {
   const co = await writeCheckout(p, t);
   const kind = lstatChain(co.root, t.rel);
   if (kind !== "file" && !(kind === "missing" && t.creatable)) throw kind === "missing" ? notFound(`문서가 없다: ${t.rel}`) : forbiddenPath(t.rel);
-  const abs = import_node_path43.default.join(co.root, t.rel);
+  const abs = import_node_path45.default.join(co.root, t.rel);
   return p.withLock(abs, async () => {
-    const current4 = kind === "file" ? import_node_fs39.default.readFileSync(abs) : Buffer.alloc(0);
+    const current4 = kind === "file" ? import_node_fs41.default.readFileSync(abs) : Buffer.alloc(0);
     if (current4.length > LIMIT) throw bad3("1 MiB 를 넘는 문서다");
     const currentText = current4.toString("utf8");
     if (sha2562(current4) !== b.baseSha256) throw new ApiError(409, "conflict", "다른 곳에서 먼저 저장했다", { currentSha256: sha2562(current4), currentMarkdown: currentText });
@@ -10179,20 +10418,92 @@ async function leaseHolder(p, co, relPath) {
   return null;
 }
 
+// ../dashboard/src/writers/intake.ts
+var import_node_fs42 = __toESM(require("node:fs"));
+var import_node_os2 = __toESM(require("node:os"));
+var import_node_path46 = __toESM(require("node:path"));
+var KINDS2 = /* @__PURE__ */ new Set(["product", "feature", "change", "refactor", "bug"]);
+var NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+var FILE_NAME = /^[^/\\\0]{1,120}$/;
+var MAX_FILES = 20;
+function strings(v, field) {
+  if (v === void 0) return [];
+  if (!Array.isArray(v) || !v.every((x) => typeof x === "string")) throw bad3(`${field} 는 문자열 목록이다`);
+  return v;
+}
+function intakeBody(body, via) {
+  if (!isObj6(body)) throw bad3("본문은 JSON 객체다");
+  const { title, kind, name, area, text: text2 } = body;
+  if (typeof title !== "string" || !title.trim() || title.length > 200) throw bad3("title 은 1~200자 문자열이다");
+  if (typeof kind !== "string" || !KINDS2.has(kind)) throw bad3(`kind 는 ${[...KINDS2].join(" · ")}`);
+  if (typeof name !== "string" || !NAME.test(name) || name.length > 60) throw bad3("name 은 영문 소문자 · 숫자 kebab-case(60자 이하)다");
+  if (area !== void 0 && area !== null && (typeof area !== "string" || !NAME.test(area))) throw bad3("area 는 kebab-case 다");
+  if (text2 !== void 0 && typeof text2 !== "string") throw bad3("text 는 문자열이다");
+  const links = strings(body.links, "links");
+  if (links.some((l) => !/^https?:\/\/\S+$/.test(l))) throw bad3("링크는 http(s):// 로 시작한다");
+  const paths = strings(body.paths, "paths");
+  if (paths.length && via !== "terminal") throw bad3("로컬 경로(paths)는 터미널(CLI)에서만 받는다 — 화면은 files(base64)로 보낸다");
+  const raw = body.files === void 0 ? [] : body.files;
+  if (!Array.isArray(raw)) throw bad3("files 는 [{name, base64}] 목록이다");
+  if (raw.length + paths.length > MAX_FILES) throw bad3(`첨부는 ${MAX_FILES}개까지다`);
+  const files = raw.map((f, i) => {
+    if (!isObj6(f) || typeof f.name !== "string" || !FILE_NAME.test(f.name) || f.name === "." || f.name === ".." || typeof f.base64 !== "string") {
+      throw bad3(`files[${i}] 는 {name: 파일 이름, base64: 내용} 이다`);
+    }
+    return { name: f.name, data: Buffer.from(f.base64, "base64") };
+  });
+  return { title, kind, name, area: typeof area === "string" ? area : null, text: typeof text2 === "string" ? text2 : "", links, files, paths };
+}
+function rejected(out) {
+  const message2 = out.trim().split("\n").filter(Boolean).pop() ?? "접수하지 못했다";
+  return new ApiError(422, "intake_rejected", message2.slice(0, 500));
+}
+async function postIntake(p, body, via) {
+  if (p.readOnly) throw readOnly();
+  const b = intakeBody(body, via);
+  const tmp = import_node_fs42.default.mkdtempSync(import_node_path46.default.join(import_node_os2.default.tmpdir(), "hk-intake-"));
+  try {
+    import_node_fs42.default.chmodSync(tmp, 448);
+    const textFile = import_node_path46.default.join(tmp, "text.md");
+    import_node_fs42.default.writeFileSync(textFile, b.text, { mode: 384 });
+    const attach = b.files.map((f, i) => {
+      const dir = import_node_path46.default.join(tmp, String(i));
+      import_node_fs42.default.mkdirSync(dir, { mode: 448 });
+      const file = import_node_path46.default.join(dir, import_node_path46.default.basename(f.name));
+      import_node_fs42.default.writeFileSync(file, f.data, { mode: 384 });
+      return file;
+    });
+    const files = [...b.paths.map((x) => import_node_path46.default.resolve(p.root, x)), ...attach];
+    const args = ["scripts/harness/intake.py", "new", "--json", "--title", b.title, "--kind", b.kind, "--name", b.name, "--text-file", textFile];
+    if (b.area) args.push("--area", b.area);
+    for (const f of files) args.push("--attach", f);
+    for (const l of b.links) args.push("--link", l);
+    const r = await python(p.root, p.env, args, 3e5);
+    if (r.code !== 0) throw rejected(r.stderr || r.stdout);
+    try {
+      return JSON.parse(r.stdout);
+    } catch {
+      throw new ApiError(500, "internal", `intake.py 출력이 JSON 이 아니다: ${r.stdout.slice(0, 200)}`);
+    }
+  } finally {
+    import_node_fs42.default.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
 // ../dashboard/src/writers/proposals.ts
-var import_node_fs40 = __toESM(require("node:fs"));
-var import_node_path44 = __toESM(require("node:path"));
+var import_node_fs43 = __toESM(require("node:fs"));
+var import_node_path47 = __toESM(require("node:path"));
 async function postProposal(p, body) {
   if (p.readOnly) throw readOnly();
   const b = proposalBody(body);
   const co = await resolveIntentCheckout(p, b.intent);
   const info = findIntent(co.root, b.intent);
-  return p.withLock(import_node_path44.default.join(info.abs, "units.proposed.json"), async () => {
+  return p.withLock(import_node_path47.default.join(info.abs, "units.proposed.json"), async () => {
     const units = readUnitsFile(info.abs);
     if (!units.raw) throw notFound("units.json 이 없다");
     if (sha2562(units.raw) !== b.baseSha256) throw new ApiError(409, "conflict", "units.json 이 바뀌었다. 다시 읽고 제안한다", { currentSha256: sha2562(units.raw) });
-    const file = import_node_path44.default.join(info.abs, "units.proposed.json");
-    if (b.proposalSha256 && import_node_fs40.default.existsSync(file) && sha2562(import_node_fs40.default.readFileSync(file)) !== b.proposalSha256) throw new ApiError(409, "conflict", "다른 곳에서 제안을 먼저 저장했다");
+    const file = import_node_path47.default.join(info.abs, "units.proposed.json");
+    if (b.proposalSha256 && import_node_fs43.default.existsSync(file) && sha2562(import_node_fs43.default.readFileSync(file)) !== b.proposalSha256) throw new ApiError(409, "conflict", "다른 곳에서 제안을 먼저 저장했다");
     applyChanges(units.units, b.changes);
     const u = await gitUser(co.root, p.env);
     const proposal = { schema: "harness-kit.units-proposal/v1", intent: b.intent, baseSha256: b.baseSha256, createdBy: u.email, createdAt: nowText(), changes: b.changes };
@@ -10207,20 +10518,30 @@ async function deleteProposal(p, intent) {
   const co = await resolveIntentCheckout(p, intent);
   const info = findIntent(co.root, intent);
   if (!proposalOf(info.abs)) throw notFound("변경 제안이 없다");
-  import_node_fs40.default.unlinkSync(import_node_path44.default.join(info.abs, "units.proposed.json"));
+  import_node_fs43.default.unlinkSync(import_node_path47.default.join(info.abs, "units.proposed.json"));
   return { intent, discarded: true };
 }
 
 // ../dashboard/src/api.ts
 var ok = (data, status = 200, meta) => ({ status, data, ...meta ? { meta } : {} });
+async function intentNext(p, abs) {
+  const script = import_node_path48.default.join(p.root, "scripts/harness/intent.py");
+  if (!import_node_fs44.default.existsSync(script)) return null;
+  const r = await python(p.root, p.env, [script, "next", abs, "--json"], 3e4);
+  try {
+    return r.code === 0 ? JSON.parse(r.stdout) : null;
+  } catch {
+    return null;
+  }
+}
 var q = (r, k) => r.query.get(k) || null;
 async function issueList(p, r) {
   const { issues, errors } = await load(p);
   const area = q(r, "area");
   const stage = q(r, "stage");
   const intent = q(r, "intent");
-  const list2 = issues.filter((i) => (!area || i.area === area) && (!stage || i.stage === stage) && (!intent || i.intent === intent));
-  return ok({ issues: list2.map(publicIssue), errors });
+  const list3 = issues.filter((i) => (!area || i.area === area) && (!stage || i.stage === stage) && (!intent || i.intent === intent));
+  return ok({ issues: list3.map(publicIssue), errors });
 }
 async function oneIssue(p, key) {
   const { issues } = await load(p);
@@ -10228,9 +10549,9 @@ async function oneIssue(p, key) {
   if (!i) throw notFound(`이슈가 없다: ${key}`);
   return i;
 }
-var stub = (method, path59, stage, cli, what) => ({
+var stub = (method, path64, stage, cli, what) => ({
   method,
-  path: path59,
+  path: path64,
   stub: stage,
   cli,
   handler: async () => {
@@ -10255,9 +10576,13 @@ var ROUTES = [
     cli: "status --intent <키>",
     handler: async (p, r) => {
       const { issues } = await load(p);
-      return ok(intentModel(p, findIntent(p.root, r.params.key), issues));
+      const info = findIntent(p.root, r.params.key);
+      return ok({ ...intentModel(p, info, issues), next: await intentNext(p, info.abs) });
     }
   },
+  { method: "GET", path: "/intents/{key}/mob", cli: "mob status <INT>", handler: async (p, r) => ok(await getMob(p, r.params.key)) },
+  { method: "POST", path: "/intents/{key}/mob", cli: "mob start <INT> --attendees a,b [--timebox 30] | mob next <INT> | mob close <INT>", handler: async (p, r) => ok(await postMob(p, r.params.key, r.body)) },
+  { method: "GET", path: "/intents/{key}/gates", cli: "status --intent <INT> --gate codebase|plans", handler: async (p, r) => ok(await getGateBundle(p, r.params.key, q(r, "gate") ?? "")) },
   {
     method: "GET",
     path: "/intents/{key}/burn",
@@ -10322,9 +10647,9 @@ var ROUTES = [
     cli: "sessions [--machine]",
     handler: async (p, r) => {
       if (q(r, "scope") === "machine") {
-        const list2 = r.projects ? (await r.projects.list()).map((s) => s.project).filter((x) => x !== null) : [p];
-        if (!list2.some((x) => x.id === p.id) && r.mode === "single") list2.unshift(p);
-        return ok(await machineSessions(list2));
+        const list3 = r.projects ? (await r.projects.list()).map((s) => s.project).filter((x) => x !== null) : [p];
+        if (!list3.some((x) => x.id === p.id) && r.mode === "single") list3.unshift(p);
+        return ok(await machineSessions(list3));
       }
       return ok({ sessions: (await readSessions(p)).map(publicSession) });
     }
@@ -10373,7 +10698,6 @@ var ROUTES = [
   stub("GET", "/checkpoints", "HK-20", "— (entire 모듈, HK-20)", "체크포인트 목록"),
   stub("GET", "/checkpoints/{id}", "HK-20", "— (entire 모듈, HK-20)", "체크포인트 설명"),
   stub("GET", "/ops", "HK-21", "status --ops(HK-21)", "운영 기록"),
-  stub("POST", "/intake", "HK-19", "intake(HK-19)", "요구사항 접수"),
   {
     method: "GET",
     path: "/flow",
@@ -10386,6 +10710,7 @@ var ROUTES = [
     }
   },
   { method: "GET", path: "/flow/gates", cli: "flow gates", handler: async (p) => ok({ gates: p.gates(), floor: GATE_FLOOR, command: "npx harness-kit flow gates --add <게이트> --after <게이트>" }) },
+  { method: "POST", path: "/intake", cli: "intake --title … --kind … --name … [--text-file | --text] [--attach]… [--link]…", handler: async (p, r) => ok(await postIntake(p, r.body, r.via), 201) },
   { method: "POST", path: "/units/proposals", cli: "units propose <INT> --add-dep U-a:U-b | --remove-dep … | --split … | --merge … | --order …", handler: async (p, r) => ok(await postProposal(p, r.body)) },
   { method: "DELETE", path: "/units/proposals/{intent}", cli: "units discard <INT>", handler: async (p, r) => ok(await deleteProposal(p, r.params.intent)) },
   {
@@ -10429,10 +10754,10 @@ var COMPILED = ROUTES.map((route) => {
   })}$`);
   return { route, re, names };
 });
-function match(method, path59) {
+function match(method, path64) {
   const methods = [];
   for (const c of COMPILED) {
-    const m = c.re.exec(path59);
+    const m = c.re.exec(path64);
     if (!m) continue;
     if (c.route.method !== method) {
       methods.push(c.route.method);
@@ -10446,9 +10771,9 @@ function match(method, path59) {
   }
   return methods.length ? { methods } : null;
 }
-async function callApi(p, method, path59, opts = {}) {
-  const m = match(method, path59);
-  if (!m || !("route" in m)) throw notFound(`경로 없음: ${method} ${path59}`);
+async function callApi(p, method, path64, opts = {}) {
+  const m = match(method, path64);
+  if (!m || !("route" in m)) throw notFound(`경로 없음: ${method} ${path64}`);
   return m.route.handler(p, { method, params: m.params, query: new URLSearchParams(opts.query ?? {}), body: opts.body, via: opts.via ?? "terminal", mode: opts.mode ?? "single", ...opts.projects ? { projects: opts.projects } : {} });
 }
 
@@ -10481,22 +10806,22 @@ function same(a, b) {
   return x.length === y.length && import_node_crypto7.default.timingSafeEqual(x, y);
 }
 function stateFiles(root) {
-  const dir = import_node_path45.default.join(root, ".agents/state");
-  return { dir, token: import_node_path45.default.join(dir, "dashboard.token"), info: import_node_path45.default.join(dir, "dashboard.json") };
+  const dir = import_node_path49.default.join(root, ".agents/state");
+  return { dir, token: import_node_path49.default.join(dir, "dashboard.token"), info: import_node_path49.default.join(dir, "dashboard.json") };
 }
 function writeSecret(file, text2) {
   try {
-    const st = import_node_fs41.default.lstatSync(file);
-    if (st.isSymbolicLink() || st.isFile()) import_node_fs41.default.unlinkSync(file);
+    const st = import_node_fs45.default.lstatSync(file);
+    if (st.isSymbolicLink() || st.isFile()) import_node_fs45.default.unlinkSync(file);
   } catch {
   }
-  const fd = import_node_fs41.default.openSync(file, import_node_fs41.default.constants.O_WRONLY | import_node_fs41.default.constants.O_CREAT | import_node_fs41.default.constants.O_EXCL | (import_node_fs41.default.constants.O_NOFOLLOW ?? 0), 384);
+  const fd = import_node_fs45.default.openSync(file, import_node_fs45.default.constants.O_WRONLY | import_node_fs45.default.constants.O_CREAT | import_node_fs45.default.constants.O_EXCL | (import_node_fs45.default.constants.O_NOFOLLOW ?? 0), 384);
   try {
-    import_node_fs41.default.writeSync(fd, text2);
+    import_node_fs45.default.writeSync(fd, text2);
   } finally {
-    import_node_fs41.default.closeSync(fd);
+    import_node_fs45.default.closeSync(fd);
   }
-  import_node_fs41.default.chmodSync(file, 384);
+  import_node_fs45.default.chmodSync(file, 384);
 }
 function pidAlive(pid) {
   try {
@@ -10523,7 +10848,7 @@ function healthz(port) {
 async function findRunning(cwd, env, agent = () => agentSession(env)) {
   let root;
   try {
-    root = (await Project.open(cwd, { env, home: env.HOME ?? import_node_os2.default.homedir(), readOnly: true, multi: true, deps: {} })).root;
+    root = (await Project.open(cwd, { env, home: env.HOME ?? import_node_os3.default.homedir(), readOnly: true, multi: true, deps: {} })).root;
   } catch {
     return null;
   }
@@ -10535,7 +10860,7 @@ async function findRunning(cwd, env, agent = () => agentSession(env)) {
   if (agent()) return { url: base, port: info.port };
   let token = "";
   try {
-    token = import_node_fs41.default.readFileSync(files.token, "utf8").trim();
+    token = import_node_fs45.default.readFileSync(files.token, "utf8").trim();
   } catch {
     token = "";
   }
@@ -10567,7 +10892,7 @@ function readBody(req) {
 }
 async function startServer(opts) {
   const mode = opts.mode ?? { kind: "single" };
-  const home = opts.home ?? opts.env.HOME ?? import_node_os2.default.homedir();
+  const home = opts.home ?? opts.env.HOME ?? import_node_os3.default.homedir();
   const marker = (opts.agentSession ?? (() => agentSession(opts.env)))();
   const readOnly2 = opts.readOnly === true || marker !== null;
   const readOnlyReason = marker ?? (opts.readOnly ? "--read-only" : null);
@@ -10592,8 +10917,8 @@ async function startServer(opts) {
   let failures = 0;
   const files = single ? stateFiles(single.root) : null;
   if (files) {
-    import_node_fs41.default.mkdirSync(files.dir, { recursive: true, mode: 448 });
-    import_node_fs41.default.chmodSync(files.dir, 448);
+    import_node_fs45.default.mkdirSync(files.dir, { recursive: true, mode: 448 });
+    import_node_fs45.default.chmodSync(files.dir, 448);
     writeSecret(files.token, `${token}
 `);
   }
@@ -10786,26 +11111,26 @@ ${exp}`).digest("hex");
         server.closeAllConnections?.();
       });
       if (files) {
-        for (const f of [files.token, files.info]) import_node_fs41.default.rmSync(f, { force: true });
+        for (const f of [files.token, files.info]) import_node_fs45.default.rmSync(f, { force: true });
       }
     }
   };
 }
 
 // src/commands/api-call.ts
-var import_node_os3 = __toESM(require("node:os"));
+var import_node_os4 = __toESM(require("node:os"));
 
 // src/commands/doctor.ts
-var import_node_fs44 = __toESM(require("node:fs"));
-var import_node_path48 = __toESM(require("node:path"));
+var import_node_fs48 = __toESM(require("node:fs"));
+var import_node_path52 = __toESM(require("node:path"));
 
 // src/commands/doctor-overrides.ts
-var import_node_fs42 = __toESM(require("node:fs"));
-var import_node_path46 = __toESM(require("node:path"));
+var import_node_fs46 = __toESM(require("node:fs"));
+var import_node_path50 = __toESM(require("node:path"));
 var isObj7 = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 function readJson2(target, rel2) {
   try {
-    return JSON.parse(import_node_fs42.default.readFileSync(import_node_path46.default.join(target, ...rel2.split("/")), "utf8"));
+    return JSON.parse(import_node_fs46.default.readFileSync(import_node_path50.default.join(target, ...rel2.split("/")), "utf8"));
   } catch {
     return null;
   }
@@ -10832,11 +11157,11 @@ function overridesReport(ctx, target, inst) {
     if (e.op !== "copy" && e.op !== "none") continue;
     const kitHas = kit?.has(e.path) ?? false;
     if (e.owner.startsWith("pack:") && kitHas) out.push({ target: e.path, winner: e.layer && e.layer.startsWith("pack:") ? e.layer : e.owner, losers: [kitVer], declared: true });
-    else if (e.owner === "user" && kitHas) out.push({ target: e.path, winner: "user", losers: [kitVer], note: import_node_fs42.default.existsSync(import_node_path46.default.join(target, ...`${e.path}.new`.split("/"))) ? ".new 있음" : ".new 없음" });
+    else if (e.owner === "user" && kitHas) out.push({ target: e.path, winner: "user", losers: [kitVer], note: import_node_fs46.default.existsSync(import_node_path50.default.join(target, ...`${e.path}.new`.split("/"))) ? ".new 있음" : ".new 없음" });
     else if (e.owner === "kit" && e.op === "copy" && typeof e.sha256 === "string") {
       let cur = null;
       try {
-        cur = sha256(import_node_fs42.default.readFileSync(import_node_path46.default.join(target, ...e.path.split("/"))));
+        cur = sha256(import_node_fs46.default.readFileSync(import_node_path50.default.join(target, ...e.path.split("/"))));
       } catch {
         cur = null;
       }
@@ -10865,7 +11190,10 @@ function overridesReport(ctx, target, inst) {
     for (const id of FLOOR_HOOKS) if (!kitHooks.includes(id)) floorViolations.push({ kind: "floor-hook-missing", target: `.agents/hooks.json#${id}` });
   }
   for (const id of ids(readJson2(target, ".agents/hooks.d/project.json"), "hooks")) if (FLOOR_HOOKS.includes(id)) floorViolations.push({ kind: "floor-override", target: `.agents/hooks.d/project.json#${id}` });
-  return { overrides: out.sort((a, b) => a.target < b.target ? -1 : a.target > b.target ? 1 : 0), ignoredPersonal: local.ignored.map((key) => ({ key, file: LOCAL_CONFIG })), floorViolations };
+  const models = readLocalModelPolicy(target);
+  for (const [cls, tier] of Object.entries(models.classes)) out.push({ target: `model-policy.classes.${cls}`, winner: "local", value: tier, losers: [] });
+  const ignoredPersonal = [...local.ignored.map((key) => ({ key, file: LOCAL_CONFIG })), ...models.ignored.map((i) => ({ key: i.key, file: LOCAL_MODEL_POLICY }))];
+  return { overrides: out.sort((a, b) => a.target < b.target ? -1 : a.target > b.target ? 1 : 0), ignoredPersonal, floorViolations };
 }
 function overridesLines(r) {
   const loser = (l) => typeof l === "string" ? l : `${l.layer}(${l.value})`;
@@ -10874,21 +11202,21 @@ function overridesLines(r) {
     `덮어쓴 것 ${r.overrides.length}건 (이긴 층 ← 진 층)`,
     ...r.overrides.map((o) => `  ${o.target.padEnd(width)}  ${o.winner}${o.value ? `(${o.value})` : ""} ← ${o.losers.map(loser).join(", ") || "-"}${o.declared ? "  (overrides 선언)" : ""}${o.note ? `  (${o.note})` : ""}`),
     `무시한 개인 설정 ${r.ignoredPersonal.length}건`,
-    ...r.ignoredPersonal.map((i) => `  ${i.file} ${i.key} — 개인 층은 roles · git.ide 만 바꾼다`),
+    ...r.ignoredPersonal.map((i) => `  ${i.file} ${i.key} — ${i.file === LOCAL_MODEL_POLICY ? "개인 모델 설정은 잠기지 않은 classes 만 바꾼다" : "개인 층은 roles · git.ide 만 바꾼다"}`),
     `하한 ${r.floorViolations.length}건 위반`,
     ...r.floorViolations.map((v) => `  ✖ ${v.kind} ${v.target}`)
   ];
 }
 
 // src/projection/check.ts
-var import_node_fs43 = __toESM(require("node:fs"));
-var import_node_path47 = __toESM(require("node:path"));
+var import_node_fs47 = __toESM(require("node:fs"));
+var import_node_path51 = __toESM(require("node:path"));
 var PROJECTION_KINDS = ["stale", "symlink-found", "merge-missing", "relative-ref", "skill-model-field", "role-model-locked", "pending-new", "steering-size", "layout-conflict"];
 var LIMIT3 = 24 * 1024;
 var SOURCE_DIRS = [".agents/rules/", ".agents/skills/", ".agents/roles/"];
 function lstat2(p) {
   try {
-    return import_node_fs43.default.lstatSync(p);
+    return import_node_fs47.default.lstatSync(p);
   } catch {
     return null;
   }
@@ -10897,14 +11225,14 @@ function currentSha(p, isDir2) {
   const st = lstat2(p);
   if (!st || st.isSymbolicLink()) return null;
   if (isDir2) return st.isDirectory() ? treeSha(walkView(new FsView(p), "")) : null;
-  return st.isFile() ? sha256(import_node_fs43.default.readFileSync(p)) : null;
+  return st.isFile() ? sha256(import_node_fs47.default.readFileSync(p)) : null;
 }
 function linksInside(p, prefix = "") {
   const st = lstat2(p);
   if (!st?.isDirectory() || st.isSymbolicLink()) return [];
   const out = [];
-  for (const name of import_node_fs43.default.readdirSync(p).sort()) {
-    const q2 = import_node_path47.default.join(p, name);
+  for (const name of import_node_fs47.default.readdirSync(p).sort()) {
+    const q2 = import_node_path51.default.join(p, name);
     const s = lstat2(q2);
     const rel2 = prefix ? `${prefix}/${name}` : name;
     if (s?.isSymbolicLink()) out.push(rel2);
@@ -10917,38 +11245,38 @@ function hasRelativeRef(text2) {
   return /\[[^\]]*\]\((\.\.\/[^)\s]*)\)/.test(stripped);
 }
 function fmOf(file) {
-  const { block: block2 } = splitFrontmatter(import_node_fs43.default.readFileSync(file, "utf8"));
+  const { block: block2 } = splitFrontmatter(import_node_fs47.default.readFileSync(file, "utf8"));
   return block2 === null ? {} : parseFrontmatter(block2);
 }
 function kiroAlwaysBytes(target) {
-  const dir = import_node_path47.default.join(target, ".kiro/steering");
-  if (!import_node_fs43.default.existsSync(dir)) return 0;
+  const dir = import_node_path51.default.join(target, ".kiro/steering");
+  if (!import_node_fs47.default.existsSync(dir)) return 0;
   let total = 0;
-  for (const name of import_node_fs43.default.readdirSync(dir).filter((n) => n.endsWith(".md"))) {
-    const p = import_node_path47.default.join(dir, name);
+  for (const name of import_node_fs47.default.readdirSync(dir).filter((n) => n.endsWith(".md"))) {
+    const p = import_node_path51.default.join(dir, name);
     if (!lstat2(p)?.isFile()) continue;
     const inc = fmOf(p).inclusion;
-    if ((typeof inc === "string" && inc || "always") === "always") total += import_node_fs43.default.statSync(p).size;
+    if ((typeof inc === "string" && inc || "always") === "always") total += import_node_fs47.default.statSync(p).size;
   }
   return total;
 }
 function specAt(target) {
-  const file = import_node_path47.default.join(target, "scripts/harness/projection.json");
-  return import_node_fs43.default.existsSync(file) ? parseSpec(import_node_fs43.default.readFileSync(file, "utf8")) : null;
+  const file = import_node_path51.default.join(target, "scripts/harness/projection.json");
+  return import_node_fs47.default.existsSync(file) ? parseSpec(import_node_fs47.default.readFileSync(file, "utf8")) : null;
 }
 function layoutFindings(target, entries) {
   const out = [];
-  const meta = readMeta(import_node_path47.default.join(target, META_REL));
+  const meta = readMeta(import_node_path51.default.join(target, META_REL));
   const tokens = meta.status === "ok" ? meta.meta.tokens : {};
   const agents = meta.status === "ok" ? meta.meta.agents : [];
   let spec;
   for (const e of entries) {
     if (e.owner !== "kit") continue;
-    const p = import_node_path47.default.join(target, ...e.path.split("/"));
+    const p = import_node_path51.default.join(target, ...e.path.split("/"));
     const from = typeof e.from === "string" ? e.from : null;
     if (e.op === "mirror" || e.op === "render") {
       const st = lstat2(p);
-      const isDir2 = e.op === "mirror" && (Boolean(st?.isDirectory()) && !st?.isSymbolicLink() || Boolean(from && lstat2(import_node_path47.default.join(target, ...from.split("/")))?.isDirectory()));
+      const isDir2 = e.op === "mirror" && (Boolean(st?.isDirectory()) && !st?.isSymbolicLink() || Boolean(from && lstat2(import_node_path51.default.join(target, ...from.split("/")))?.isDirectory()));
       if (st?.isSymbolicLink()) {
         out.push({ kind: "symlink-found", severity: "error", path: e.path, hint: "링크 대신 실제 파일을 둔다 → npx harness-kit repair" });
         continue;
@@ -10964,7 +11292,7 @@ function layoutFindings(target, entries) {
         continue;
       }
       if (from && typeof e.fromSha256 === "string") {
-        const sp = import_node_path47.default.join(target, ...from.split("/"));
+        const sp = import_node_path51.default.join(target, ...from.split("/"));
         const now = from === HOOKS_REL ? hooksBundleSha(new FsView(target)) : currentSha(sp, Boolean(lstat2(sp)?.isDirectory()));
         if (now === null) out.push({ kind: "stale", severity: "error", path: e.path, hint: `원본 ${from} 이 없다 → npx harness-kit update` });
         else if (now !== e.fromSha256) out.push({ kind: "stale", severity: "error", path: e.path, hint: `원본 ${from} 가 바뀌었다 → npx harness-kit repair` });
@@ -10975,21 +11303,21 @@ function layoutFindings(target, entries) {
       if (spec === void 0) spec = specAt(target);
       if (!spec) continue;
       const st = lstat2(p);
-      const cur = st?.isFile() ? import_node_fs43.default.readFileSync(p, "utf8") : null;
+      const cur = st?.isFile() ? import_node_fs47.default.readFileSync(p, "utf8") : null;
       const keys = e.keys;
       const lost = cur === null ? keys : missingWith(kind, cur, keys, fullMergeWant(kind, spec, tokens, loadSources(new FsView(target))));
       if (lost.length) out.push({ kind: "merge-missing", severity: "error", path: e.path, hint: `킷 키 ${lost.slice(0, 3).join(", ")}${lost.length > 3 ? " …" : ""} 가 없다 → npx harness-kit repair` });
     } else if (e.op === "copy") {
       const st = lstat2(p);
       if (!st?.isFile()) continue;
-      if (SOURCE_DIRS.some((d) => e.path.startsWith(d)) && e.path.endsWith(".md") && hasRelativeRef(import_node_fs43.default.readFileSync(p, "utf8"))) {
+      if (SOURCE_DIRS.some((d) => e.path.startsWith(d)) && e.path.endsWith(".md") && hasRelativeRef(import_node_fs47.default.readFileSync(p, "utf8"))) {
         out.push({ kind: "relative-ref", severity: "error", path: e.path, hint: "킷 원본은 `../` 대신 리포 기준 경로(.agents/…)를 쓴다(복사본에서 깨진다)" });
       }
     }
   }
   for (const e of entries) {
     for (const side of [`${e.path}.new`, `${e.path}.bak`]) {
-      if (lstat2(import_node_path47.default.join(target, ...side.split("/")))) out.push({ kind: "pending-new", severity: "warn", path: side, hint: `병합하거나 지운다(diff -u ${e.path} ${side})` });
+      if (lstat2(import_node_path51.default.join(target, ...side.split("/")))) out.push({ kind: "pending-new", severity: "warn", path: side, hint: `병합하거나 지운다(diff -u ${e.path} ${side})` });
     }
   }
   try {
@@ -11057,7 +11385,7 @@ function copyFindings(target, lock) {
       continue;
     }
     if (e.op !== "copy" || e.owner !== "kit") continue;
-    const state = fileState(import_node_path48.default.join(target, ...e.path.split("/")), e.sha256);
+    const state = fileState(import_node_path52.default.join(target, ...e.path.split("/")), e.sha256);
     if (state === "ok") ok2 += 1;
     else if (state === "missing") {
       findings.push({ kind: "missing", severity: "error", path: e.path, owner: e.owner, hint: "킷 파일이 없다. harness-kit repair 로 되살린다" });
@@ -11073,15 +11401,15 @@ function copyFindings(target, lock) {
   return { ok: ok2, findings };
 }
 function gitignoreFinding(target) {
-  let lines2 = [];
+  let lines3 = [];
   try {
-    lines2 = import_node_fs44.default.readFileSync(import_node_path48.default.join(target, ".gitignore"), "utf8").split(/\r?\n/).map((l) => l.trim());
+    lines3 = import_node_fs48.default.readFileSync(import_node_path52.default.join(target, ".gitignore"), "utf8").split(/\r?\n/).map((l) => l.trim());
   } catch {
-    lines2 = [];
+    lines3 = [];
   }
   const has = (want) => {
     const bare2 = want.replace(/\/$/, "");
-    return [want, bare2, `/${want}`, `/${bare2}`].some((v) => lines2.includes(v));
+    return [want, bare2, `/${want}`, `/${bare2}`].some((v) => lines3.includes(v));
   };
   const missing = GITIGNORE_NEEDS.filter((w) => !has(w));
   if (missing.length === 0) return null;
@@ -11090,7 +11418,7 @@ function gitignoreFinding(target) {
 function entrySizeFinding(target) {
   let bytes = 0;
   for (const f of ENTRY_FILES) {
-    const st = lstatOrNull(import_node_path48.default.join(target, f));
+    const st = lstatOrNull(import_node_path52.default.join(target, f));
     if (st?.isFile()) bytes += st.size;
   }
   if (bytes <= ENTRY_LIMIT) return null;
@@ -11111,7 +11439,7 @@ function parseOnly(raw) {
   return only;
 }
 var isObjAny = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
-var EMAIL = /^[^@\s]+@[^@\s]+$/;
+var EMAIL2 = /^[^@\s]+@[^@\s]+$/;
 function floorFindings(target, raw) {
   const out = [];
   const flow2 = raw && isObjAny(raw.flow) ? raw.flow : null;
@@ -11119,7 +11447,7 @@ function floorFindings(target, raw) {
   if (missingGates.length) out.push({ kind: "gate-floor", severity: "error", path: META_REL, hint: `flow.gates 에 하한 게이트 ${missingGates.join(" · ")} 가 없다. 하한은 빼지 못한다(check-sdd-prerequisites 는 설정과 상관없이 검사한다)`, detail: { missing: missingGates } });
   let hooks = null;
   try {
-    hooks = JSON.parse(import_node_fs44.default.readFileSync(import_node_path48.default.join(target, ".agents/hooks.json"), "utf8"));
+    hooks = JSON.parse(import_node_fs48.default.readFileSync(import_node_path52.default.join(target, ".agents/hooks.json"), "utf8"));
   } catch {
     hooks = null;
   }
@@ -11141,9 +11469,12 @@ function personalFindings(target) {
   const conf = readLocalConfig(target);
   if (conf.error) out.push({ kind: "local-invalid", severity: "error", path: LOCAL_CONFIG, hint: conf.error });
   for (const key of conf.ignored) out.push({ kind: "personal-ignored", severity: "warn", path: LOCAL_CONFIG, hint: `${key} — 개인 층은 roles.<역할>.harness · git.ide 만 바꾼다(무시했다)` });
+  const models = readLocalModelPolicy(target);
+  if (models.error) out.push({ kind: "local-invalid", severity: "error", path: LOCAL_MODEL_POLICY, hint: models.error });
+  for (const i of models.ignored) out.push({ kind: "personal-ignored", severity: "warn", path: LOCAL_MODEL_POLICY, hint: `${i.key} — ${i.why}(무시했다, MR-R7)` });
   let local = null;
   try {
-    local = JSON.parse(import_node_fs44.default.readFileSync(import_node_path48.default.join(target, ...SETTINGS_LOCAL.split("/")), "utf8"));
+    local = JSON.parse(import_node_fs48.default.readFileSync(import_node_path52.default.join(target, ...SETTINGS_LOCAL.split("/")), "utf8"));
   } catch {
     local = null;
   }
@@ -11158,7 +11489,7 @@ function approverFindings(raw) {
   else
     for (const [gate, names] of Object.entries(raw.approvers)) {
       if (!Array.isArray(names) || names.some((n) => typeof n !== "string")) bad4.push(`approvers.${gate} 는 문자열 목록이다`);
-      else for (const n of names) if (!EMAIL.test(n) && !Object.hasOwn(groups, n)) bad4.push(`approvers.${gate}: 그룹 '${n}' 이 groups 에 없다`);
+      else for (const n of names) if (!EMAIL2.test(n) && !Object.hasOwn(groups, n)) bad4.push(`approvers.${gate}: 그룹 '${n}' 이 groups 에 없다`);
     }
   for (const [name, members] of Object.entries(groups)) if (!Array.isArray(members) || members.some((m) => typeof m !== "string")) bad4.push(`groups.${name} 는 이메일 목록이다`);
   return bad4.length ? [{ kind: "approvers", severity: "warn", path: META_REL, hint: bad4.join(" · "), detail: { problems: bad4 } }] : [];
@@ -11166,7 +11497,7 @@ function approverFindings(raw) {
 function noticeFinding(target, day) {
   let text2;
   try {
-    text2 = import_node_fs44.default.readFileSync(import_node_path48.default.join(target, ...NOTICE_REL.split("/")), "utf8");
+    text2 = import_node_fs48.default.readFileSync(import_node_path52.default.join(target, ...NOTICE_REL.split("/")), "utf8");
   } catch {
     return null;
   }
@@ -11174,14 +11505,14 @@ function noticeFinding(target, day) {
   return { kind: "upgrade-notice-expired", severity: "info", path: NOTICE_REL, hint: "만료된 업그레이드 공지다. 다음 update 가 지운다(지금 지워도 된다)" };
 }
 function collect(target, day) {
-  const metaRead = readMeta(import_node_path48.default.join(target, META_REL));
+  const metaRead = readMeta(import_node_path52.default.join(target, META_REL));
   if (metaRead.status === "missing") {
     throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 harness-kit init");
   }
   const findings = [];
   const meta = metaRead.status === "ok" ? metaRead.meta : null;
   if (metaRead.status === "invalid") findings.push({ kind: "meta-invalid", severity: "error", path: META_REL, hint: metaRead.error });
-  const lockRead = readLock(import_node_path48.default.join(target, LOCK_REL));
+  const lockRead = readLock(import_node_path52.default.join(target, LOCK_REL));
   const lock = lockRead.status === "ok" ? lockRead.lock : null;
   if (lockRead.status === "ok" && lockRead.format === "v1") {
     findings.push({ kind: "lock-v1", severity: "info", path: LOCK_REL, hint: "v1(TSV) lock 이다. update 가 v2 로 바꾼다" });
@@ -11229,7 +11560,7 @@ function runDoctor(ctx) {
   if (c.projection) summary.projection = c.projection;
   const code = bool(ctx.values, "check") && (summary.errors ?? 0) > 0 ? EXIT.CHECK : EXIT.OK;
   const kit = { installed: c.meta?.kit.version ?? null, lock: c.lock?.kit.version ?? null, cli: VERSION };
-  const lines2 = [
+  const lines3 = [
     `harness-kit doctor — ${target}`,
     `  킷: 설치 ${kit.installed ?? "?"} · lock ${kit.lock ?? "?"} · CLI ${kit.cli}`,
     `  copy 항목: ok ${summary.ok} · drifted ${summary.drifted} · missing ${summary.missing}`,
@@ -11237,11 +11568,11 @@ function runDoctor(ctx) {
     `  오류 ${summary.errors} · 경고 ${summary.warnings} · 정보 ${summary.infos}`,
     ...ctx.quiet ? [] : findings.map(findingLine)
   ];
-  return { code, data: { command: "doctor", target, kit, summary, findings }, lines: lines2 };
+  return { code, data: { command: "doctor", target, kit, summary, findings }, lines: lines3 };
 }
 
 // src/commands/outdated.ts
-var import_node_path49 = __toESM(require("node:path"));
+var import_node_path53 = __toESM(require("node:path"));
 
 // src/core/git.ts
 var import_node_child_process8 = require("node:child_process");
@@ -11295,7 +11626,7 @@ function fromKitSource(raw, env) {
   return null;
 }
 function sourceOf(ctx, target) {
-  const lock = readLock(import_node_path49.default.join(target, LOCK_REL));
+  const lock = readLock(import_node_path53.default.join(target, LOCK_REL));
   return pickSource(str(ctx.values, "source"), ctx.io.env, lock.status === "ok" ? lock.lock.kit.source : null);
 }
 function pickSource(flag, envVars, lockSource) {
@@ -11314,7 +11645,7 @@ var isPre = (v) => /^\d+\.\d+\.\d+-/.test(v);
 var newer = (a, b) => (compareSemver(a, b) ?? 0) > 0;
 function runOutdated(ctx) {
   const target = targetOf(ctx);
-  const m = readMeta(import_node_path49.default.join(target, META_REL));
+  const m = readMeta(import_node_path53.default.join(target, META_REL));
   if (m.status === "missing") throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 harness-kit init");
   if (m.status === "invalid") throw new CliError(EXIT.STATE, `메타를 해석하지 못했다: ${m.error}`, "harness-kit doctor 로 상태를 본다");
   const installed = m.meta.kit.version;
@@ -11337,14 +11668,14 @@ function runOutdated(ctx) {
   const upgrade = !isNewer ? null : newest === VERSION ? "harness-kit update" : `npx harness-kit@${newest} update`;
   const data = { command: "outdated", target, installed, cli: VERSION, latest, newest, newer: isNewer, upgrade, packs: m.meta.packs };
   const latestText = latest.status === "ok" ? `${String(latest.version ?? "없음")} (${String(latest.source)})` : `확인 못 함 — ${String(latest.reason)}`;
-  const lines2 = [
+  const lines3 = [
     `harness-kit outdated — ${target}`,
     `  설치 ${installed} · CLI ${VERSION} · 최신 태그 ${latestText}`,
     isNewer ? `  → 새 판 ${newest} 이 있다: ${String(upgrade)}` : "  최신이다",
     ...newer(installed, VERSION) ? [`  ⚠ 설치된 킷(${installed})이 이 CLI 보다 새것이다. 새 CLI 를 쓴다`] : []
   ];
   const code = bool(ctx.values, "check") && isNewer ? EXIT.CHECK : EXIT.OK;
-  return { code, data, lines: lines2 };
+  return { code, data, lines: lines3 };
 }
 
 // src/commands/dashboard-deps.ts
@@ -11376,7 +11707,7 @@ function dashboardDeps() {
 
 // src/commands/api-call.ts
 function homeOf(ctx) {
-  return ctx.io.env.HOME ?? import_node_os3.default.homedir();
+  return ctx.io.env.HOME ?? import_node_os4.default.homedir();
 }
 async function openProject(ctx) {
   try {
@@ -11406,10 +11737,10 @@ function humanTerminal(ctx) {
   if (!ctx.io.isTTY) return new ApiError(403, "read_only", "TTY 가 아니다 — 사람이 터미널에서 직접 실행한다");
   return null;
 }
-async function run3(ctx, method, path59, opts, human) {
+async function run3(ctx, method, path64, opts, human) {
   try {
     const p = opts.project ?? await openProject(ctx);
-    const r = await callApi(p, method, path59, { ...opts.query ? { query: opts.query } : {}, body: opts.body, via: "terminal", mode: opts.mode ?? "single", ...opts.projects ? { projects: opts.projects } : {} });
+    const r = await callApi(p, method, path64, { ...opts.query ? { query: opts.query } : {}, body: opts.body, via: "terminal", mode: opts.mode ?? "single", ...opts.projects ? { projects: opts.projects } : {} });
     const data = r.data;
     return { code: EXIT.OK, data, lines: human(data) };
   } catch (err) {
@@ -11462,8 +11793,8 @@ function modeOf(ctx) {
   const ws = str(v, "workspace");
   if ([all, root !== void 0, ws !== void 0].filter(Boolean).length > 1) throw usageError("--all · --root · --workspace 는 하나만 준다");
   if (all) return { kind: "all" };
-  if (root !== void 0) return { kind: "root", dir: import_node_path50.default.resolve(ctx.io.cwd, root) };
-  if (ws !== void 0) return { kind: "workspace", file: import_node_path50.default.resolve(ctx.io.cwd, ws) };
+  if (root !== void 0) return { kind: "root", dir: import_node_path54.default.resolve(ctx.io.cwd, root) };
+  if (ws !== void 0) return { kind: "workspace", file: import_node_path54.default.resolve(ctx.io.cwd, ws) };
   return { kind: "single" };
 }
 function openBrowser(url) {
@@ -11475,7 +11806,7 @@ function openBrowser(url) {
 }
 async function runExport(ctx, out) {
   try {
-    const r = await exportStatic({ cwd: targetOf(ctx), env: ctx.io.env, out: import_node_path50.default.resolve(ctx.io.cwd, out) });
+    const r = await exportStatic({ cwd: targetOf(ctx), env: ctx.io.env, out: import_node_path54.default.resolve(ctx.io.cwd, out) });
     return { code: EXIT.OK, data: { command: "dashboard", export: r.out, files: r.files }, lines: [`정적 내보내기: ${r.out} (파일 ${r.files.length}개, 스크립트 · 버튼 없음)`] };
   } catch (err) {
     if (err instanceof ExportLeakError) throw new CliError(EXIT.CHECK, `${err.message} — 출력 폴더를 지웠다`, err.hits.slice(0, 5).join(" · "));
@@ -11556,6 +11887,10 @@ async function runApprove(ctx) {
       const doc = (await callApi(p, "GET", "/docs", { query: { path: `${intent.dir}/intent.md` } })).data;
       docSha256 = doc.sha256;
       shown = `${intent.dir}/intent.md · sha ${doc.sha256.slice(0, 12)}`;
+    } else if (gate === "codebase" || gate === "plans") {
+      const b = (await callApi(p, "GET", `/intents/${key}/gates`, { query: { gate } })).data;
+      docSha256 = b.sha256;
+      shown = b.files.map((f) => `${f.path} · sha ${f.approvalSha256.slice(0, 12)}`).join("\n  ") || "대상 파일 없음";
     } else shown = "브랜치 head";
     const user = await p.user();
     const ok2 = await confirmKey(ctx, key, [`승인: ${key} · ${gate} · ${decision}`, `- 대상: ${shown}`, `- 승인자: ${user.email ?? "git user.email 없음"}`, `- 문구: "${phrase.replace(/\s+/g, " ").trim()}"`]);
@@ -11568,7 +11903,7 @@ async function runApprove(ctx) {
 }
 async function runAnswer(ctx) {
   const [target, qid, extra] = ctx.positionals;
-  if (!target || extra) throw usageError("harness-kit answer <INT 또는 키> --list | <Q-n> --choice <A-D|other> [--text …]");
+  if (!target || extra) throw usageError("harness-kit answer <INT 또는 키> --list | <Q-n> --choice <A-D|other> [--text …] [--by <참석자 email>]");
   if (bool(ctx.values, "list") || !qid) {
     return run3(ctx, "GET", "/questions", { query: { target } }, (d) => {
       const qs = d.questions ?? [];
@@ -11581,8 +11916,8 @@ async function runAnswer(ctx) {
   if (refused) return failure(ctx, refused);
   try {
     const p = await openProject(ctx);
-    const list2 = (await callApi(p, "GET", "/questions", { query: { target } })).data;
-    return run3(ctx, "POST", `/questions/${target}/${qid}/answer`, { project: p, body: { choice, text: str(ctx.values, "text"), baseSha256: list2.sha256 } }, (d) => [`${String(d.kind) === "opinion" ? "의견" : "답"}을 남겼다: ${String(d.path)} · 열린 질문 ${String(d.open)}건${d.statusChanged ? ` · ${String(d.statusChanged)}` : ""}`]);
+    const list3 = (await callApi(p, "GET", "/questions", { query: { target } })).data;
+    return run3(ctx, "POST", `/questions/${target}/${qid}/answer`, { project: p, body: { choice, text: str(ctx.values, "text"), baseSha256: list3.sha256, ...str(ctx.values, "by") ? { by: str(ctx.values, "by") } : {} } }, (d) => [`${String(d.kind) === "opinion" ? "의견" : "답"}을 남겼다: ${String(d.path)} · 열린 질문 ${String(d.open)}건${d.statusChanged ? ` · ${String(d.statusChanged)}` : ""}`]);
   } catch (err) {
     if (err instanceof ApiError) return failure(ctx, err);
     throw err;
@@ -11611,16 +11946,16 @@ async function runReview(ctx) {
 }
 
 // src/commands/init.ts
-var import_node_fs45 = __toESM(require("node:fs"));
-var import_node_path51 = __toESM(require("node:path"));
+var import_node_fs49 = __toESM(require("node:fs"));
+var import_node_path55 = __toESM(require("node:path"));
 
 // src/cli/prompt.ts
 var import_node_readline = __toESM(require("node:readline"));
 function createPrompter(input, write) {
   const rl = import_node_readline.default.createInterface({ input, terminal: false });
-  const lines2 = rl[Symbol.asyncIterator]();
+  const lines3 = rl[Symbol.asyncIterator]();
   const next = async () => {
-    const r = await lines2.next();
+    const r = await lines3.next();
     return r.done ? null : String(r.value);
   };
   return {
@@ -11715,11 +12050,11 @@ function readOptions(ctx, layout2) {
 }
 function assertInstallable(target) {
   const st = lstatOrNull(target);
-  if (st && !(st.isDirectory() || st.isSymbolicLink() && import_node_fs45.default.statSync(target).isDirectory())) {
+  if (st && !(st.isDirectory() || st.isSymbolicLink() && import_node_fs49.default.statSync(target).isDirectory())) {
     throw new CliError(EXIT.STATE, `대상이 폴더가 아니다: ${target}`);
   }
-  if (import_node_fs45.default.existsSync(import_node_path51.default.join(target, META_REL))) {
-    throw new CliError(EXIT.STATE, `이미 설치된 리포다: ${import_node_path51.default.join(target, META_REL)}`, "킷 갱신은 harness-kit update, 하네스 · 모듈 추가는 harness-kit add 다. 지금 상태는 harness-kit doctor");
+  if (import_node_fs49.default.existsSync(import_node_path55.default.join(target, META_REL))) {
+    throw new CliError(EXIT.STATE, `이미 설치된 리포다: ${import_node_path55.default.join(target, META_REL)}`, "킷 갱신은 harness-kit update, 하네스 · 모듈 추가는 harness-kit add 다. 지금 상태는 harness-kit doctor");
   }
 }
 function selectionInput(ctx) {
@@ -11761,7 +12096,7 @@ async function runInit(ctx) {
   try {
     const input = prompter ? await askMissing(prompter, selectionInput(ctx), layout2, loc.dir) : selectionInput(ctx);
     const selection = resolveSelection(layout2, loc.dir, input, { target, env: io2.env });
-    const tokens = resolveTokens(layout2, selection, { flags: opts.flags, env: io2.env, targetBasename: import_node_path51.default.basename(target) });
+    const tokens = resolveTokens(layout2, selection, { flags: opts.flags, env: io2.env, targetBasename: import_node_path55.default.basename(target) });
     checkSlug(tokens.PROJECT_SLUG ?? "");
     const plan = buildPlan({ layout: layout2, templatesDir: loc.dir, target, selection, tokens, mode: { force: opts.force, adopt: opts.adopt } });
     const shown = command === "plan" && !ctx.quiet ? plan.ops : plan.ops.filter(needsAttention);
@@ -11771,12 +12106,12 @@ async function runInit(ctx) {
     const human = needsHuman(plan.projection, plan.projectionFindings);
     const conflicts = projectionConflicts(plan.projection);
     if (conflicts.length) data.conflicts = conflicts;
-    const lines2 = [`harness-kit ${command} — ${target}`, selectionLine2(selection), ...(selection.retiredModules ?? []).map((m) => retiredNote(m, "flag"))];
+    const lines3 = [`harness-kit ${command} — ${target}`, selectionLine2(selection), ...(selection.retiredModules ?? []).map((m) => retiredNote(m, "flag"))];
     if (selection.retiredModules) data.retiredModules = selection.retiredModules;
     const projectionShown = projectionLines(plan.projection, plan.projectionFindings, ctx.quiet, command === "plan" && !ctx.quiet, /* @__PURE__ */ new Set(["create"]));
     if (command === "plan") {
-      lines2.push(...shown.map(opLine3), countsLine2(plan), ...projectionShown, STATE_LINE, "  (plan — 쓰지 않았다)");
-      return { code: EXIT.OK, data, lines: lines2 };
+      lines3.push(...shown.map(opLine3), countsLine2(plan), ...projectionShown, STATE_LINE, "  (plan — 쓰지 않았다)");
+      return { code: EXIT.OK, data, lines: lines3 };
     }
     if (prompter) {
       io2.stderr(`${countsLine2(plan)}
@@ -11786,15 +12121,87 @@ async function runInit(ctx) {
     const meta = buildMeta({ version: VERSION, selection, tokens, issue: { source: opts.issueSource, prefix: str(ctx.values, "issue-prefix") }, base: str(ctx.values, "base"), today: today(io2) });
     const result = applyPlan({ plan, metaText: serializeMeta(meta), lockText: lockText(plan, loc.source), env: io2.env });
     data.featureDocs = result.featureDocs;
-    lines2.push(countsLine2(plan), ...shown.map(opLine3), ...projectionShown, STATE_LINE, docsLine(result.featureDocs), "  다음: harness-kit doctor");
-    return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines: lines2 };
+    lines3.push(countsLine2(plan), ...shown.map(opLine3), ...projectionShown, STATE_LINE, docsLine(result.featureDocs), "  다음: harness-kit doctor");
+    return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines: lines3 };
   } finally {
     prompter?.close();
   }
 }
 
+// src/commands/intake.ts
+var import_node_fs50 = __toESM(require("node:fs"));
+var import_node_path56 = __toESM(require("node:path"));
+var str5 = (ctx, k) => typeof ctx.values[k] === "string" ? ctx.values[k] : void 0;
+var list2 = (ctx, k) => Array.isArray(ctx.values[k]) ? ctx.values[k] : [];
+async function readStdin(ctx) {
+  const input = ctx.io.stdin;
+  if (!input) return "";
+  const chunks = [];
+  for await (const c of input) chunks.push(typeof c === "string" ? Buffer.from(c) : c);
+  return Buffer.concat(chunks).toString("utf8");
+}
+async function runIntake(ctx) {
+  const title = str5(ctx, "title");
+  const kind = str5(ctx, "kind");
+  const name = str5(ctx, "name");
+  if (!title || !kind || !name) throw usageError("harness-kit intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]…");
+  const textArg = str5(ctx, "text");
+  const textFile = str5(ctx, "text-file");
+  if (textArg !== void 0 && textFile !== void 0) throw usageError("--text 와 --text-file 은 하나만 쓴다");
+  const cwd = targetOf(ctx);
+  let text2 = textArg === "-" ? await readStdin(ctx) : textArg ?? "";
+  if (textFile !== void 0) {
+    const file = import_node_path56.default.resolve(ctx.io.cwd, textFile);
+    if (!import_node_fs50.default.existsSync(file)) throw usageError(`--text-file 이 없다: ${textFile}`);
+    text2 = import_node_fs50.default.readFileSync(file, "utf8");
+  }
+  const paths = list2(ctx, "attach").map((a) => import_node_path56.default.resolve(ctx.io.cwd, a));
+  const missing = paths.find((a) => !import_node_fs50.default.statSync(a, { throwIfNoEntry: false })?.isFile());
+  if (missing) throw usageError(`첨부가 없다: ${import_node_path56.default.relative(cwd, missing) || missing}`);
+  const area = str5(ctx, "area");
+  const body = { title, kind, name, text: text2, links: list2(ctx, "link"), paths, ...area ? { area } : {} };
+  return run3(ctx, "POST", "/intake", { body }, (d) => {
+    const warnings = Array.isArray(d.warnings) ? d.warnings : [];
+    return [`✔ 접수: ${String(d.folder)}`, ...warnings.map((w) => `⚠ ${w}`), `다음: ${String(d.next)} (세션 요청은 사람이 고를 때만)`];
+  });
+}
+
+// src/commands/mob.ts
+var USAGE = "harness-kit mob start <INT> --attendees a@x,b@y [--timebox 30] | mob next <INT> | mob close <INT> | mob status <INT>";
+function lines2(d) {
+  const out = [];
+  if (d.action === "start") out.push(`✔ 몹 세션을 열었다: ${String(d.path)}`);
+  else if (d.action === "next" || d.action === "close") {
+    out.push(`✔ 회차 ${String(d.ended)} 을 닫았다${d.action === "close" ? " · 세션을 닫았다" : ""}`);
+    out.push(`설계 세션에 답 반영을 요청하려면 사람이 고른다: ${String(d.suggest)}`);
+  } else return jsonLines(d);
+  for (const w of d.warnings ?? []) out.push(`⚠ ${w}`);
+  return out;
+}
+async function runMob2(ctx) {
+  const [sub2, key, extra] = ctx.positionals;
+  if (!sub2 || !key || extra) throw usageError(USAGE);
+  if (sub2 === "status") return run3(ctx, "GET", `/intents/${encodeURIComponent(key)}/mob`, {}, jsonLines);
+  const action = sub2 === "end" ? "close" : sub2;
+  if (!["start", "next", "close"].includes(action)) throw usageError(USAGE);
+  const marker = (ctx.io.agentSession ?? (() => agentSession(ctx.io.env)))();
+  if (marker) return failure(ctx, new ApiError(403, "read_only", `에이전트 세션에서는 몹 세션을 열고 닫지 않는다(판정: ${marker}). 진행자가 자기 터미널에서 실행한다`));
+  const body = { action };
+  if (action === "start") {
+    const attendees = typeof ctx.values.attendees === "string" ? ctx.values.attendees.split(",").map((a) => a.trim()).filter(Boolean) : [];
+    if (!attendees.length) throw usageError("--attendees a@x,b@y 가 필요하다");
+    body.attendees = attendees;
+    if (typeof ctx.values.timebox === "string") {
+      const n = Number(ctx.values.timebox);
+      if (!Number.isInteger(n) || n <= 0) throw usageError("--timebox 는 양의 정수(분)다");
+      body.timeboxMin = n;
+    }
+  }
+  return run3(ctx, "POST", `/intents/${encodeURIComponent(key)}/mob`, { body }, lines2);
+}
+
 // src/commands/list.ts
-var import_node_path52 = __toESM(require("node:path"));
+var import_node_path57 = __toESM(require("node:path"));
 function tally(values) {
   const out = /* @__PURE__ */ new Map();
   for (const v of values) out.set(v, (out.get(v) ?? 0) + 1);
@@ -11802,7 +12209,7 @@ function tally(values) {
 }
 function runList(ctx) {
   const target = targetOf(ctx);
-  const read = readMeta(import_node_path52.default.join(target, META_REL));
+  const read = readMeta(import_node_path57.default.join(target, META_REL));
   if (read.status === "missing") throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 harness-kit init");
   if (read.status === "invalid") throw new CliError(EXIT.STATE, `메타를 해석하지 못했다: ${read.error}`, "harness-kit doctor 로 상태를 본다");
   const m = read.meta;
@@ -11823,7 +12230,7 @@ function runList(ctx) {
     installedAt: m.installedAt,
     updatedAt: m.updatedAt
   };
-  const lines2 = [
+  const lines3 = [
     `harness-kit list — ${target}`,
     `  킷 ${m.kit.version} (메타 ${read.schema}) · 설치 ${m.installedAt || "?"} · 갱신 ${m.updatedAt || "?"}`,
     `  ${m.project.name} (${m.project.slug}) · 스택 ${m.stack} · 변형 ${m.arch} · 도메인 ${m.domain || "없음"}`,
@@ -11831,7 +12238,7 @@ function runList(ctx) {
     `  이슈 키 ${m.issueKey.source}:${m.issueKey.prefix} · base ${m.git.base}`
   ];
   if (bool(ctx.values, "files")) {
-    const lr = readLock(import_node_path52.default.join(target, LOCK_REL));
+    const lr = readLock(import_node_path57.default.join(target, LOCK_REL));
     if (lr.status !== "ok") {
       throw new CliError(EXIT.STATE, `lock 을 읽지 못했다: ${lr.status === "missing" ? "없음" : lr.error}`, "harness-kit doctor 로 상태를 본다");
     }
@@ -11839,14 +12246,14 @@ function runList(ctx) {
     const files = { format: lr.format, total: entries.length, byOwner: tally(entries.map((e) => e.owner)), byOp: tally(entries.map((e) => e.op)), entries };
     data.files = files;
     const own = Object.entries(files.byOwner).map(([k, n]) => `${k} ${n}`).join(" · ");
-    lines2.push(`  파일 ${files.total} (${own}) · lock ${lr.format}`);
-    if (!ctx.quiet) for (const e of entries) lines2.push(`  ${`${e.owner}/${e.op}`.padEnd(10)} ${e.path}${e.layer ? `  [${e.layer}]` : ""}`);
+    lines3.push(`  파일 ${files.total} (${own}) · lock ${lr.format}`);
+    if (!ctx.quiet) for (const e of entries) lines3.push(`  ${`${e.owner}/${e.op}`.padEnd(10)} ${e.path}${e.layer ? `  [${e.layer}]` : ""}`);
   }
-  return { code: EXIT.OK, data, lines: lines2 };
+  return { code: EXIT.OK, data, lines: lines3 };
 }
 
 // src/commands/remove.ts
-var import_node_path53 = __toESM(require("node:path"));
+var import_node_path58 = __toESM(require("node:path"));
 function keepAction(e) {
   const owner = ownerKind2(e.owner);
   if (owner === "external") return "skip-external";
@@ -11861,7 +12268,7 @@ function judgeDrop(l, p, e, cur, ambiguous) {
   if (cur.kind === "none") return { op: { path: p, owner: e.owner, layer, action: "absent" }, entry: void 0 };
   if (cur.kind === "file" && e.sha256 && cur.sha === e.sha256) {
     const neu = `${p}.new`;
-    const alsoNew = existing(import_node_path53.default.join(l.target, ...neu.split("/"))).kind === "file" ? { alsoNew: neu } : {};
+    const alsoNew = existing(import_node_path58.default.join(l.target, ...neu.split("/"))).kind === "file" ? { alsoNew: neu } : {};
     return { op: { path: p, owner: e.owner, layer, action: "delete", ...alsoNew }, entry: void 0 };
   }
   const reason = cur.kind === "other" ? cur.what : ambiguous.has(p) ? AMBIGUOUS_REASON : e.sha256 ? "사람이 고친 파일이다" : "lock 에 기준 해시가 없다(고친 파일로 본다)";
@@ -11877,7 +12284,7 @@ function judgeRelayer(l, p, w, e, cur) {
   if (cur.sha === w.sha256) return { op: { path: p, owner: "kit", layer: w.layer, action: "same" }, entry: kit };
   if (e.sha256 && cur.sha === e.sha256) return { op: { path: p, ...withD3, action: "update" }, entry: kit };
   const neu = `${p}.new`;
-  const newFile = existing(import_node_path53.default.join(l.target, ...neu.split("/"))).kind === "other" ? {} : { newFile: neu };
+  const newFile = existing(import_node_path58.default.join(l.target, ...neu.split("/"))).kind === "other" ? {} : { newFile: neu };
   return { op: { path: p, ...withD3, action: "conflict", ...newFile }, entry: { ...e, layer: w.layer } };
 }
 function planRemove(l, after) {
@@ -11929,18 +12336,18 @@ function runRemove(ctx) {
   const featureDocs = dryRun || nothing ? null : applyChange(ctx, l, after, result);
   const notes = [...retiredNotes(asked), ...notOn.length ? [`  · 켜져 있지 않다 — 건너뛴다: ${notOn.join(", ")}`] : []];
   const keep = [...result.ops.filter((o) => o.action === "keep-modified").map((o) => o.path), ...(result.projection?.ops ?? []).filter((o) => o.action === "keep-modified").map((o) => o.path)];
-  const { data, lines: lines2 } = report(ctx, l, { command: "remove", names: { ...names, notOn }, after, result, dryRun, featureDocs, notes, extra: { keep } });
-  if (keep.length) lines2.splice(lines2.length - 1, 0, "  고친 파일은 남겼다(lock 은 owner user). 필요 없으면 직접 지운다");
+  const { data, lines: lines3 } = report(ctx, l, { command: "remove", names: { ...names, notOn }, after, result, dryRun, featureDocs, notes, extra: { keep } });
+  if (keep.length) lines3.splice(lines3.length - 1, 0, "  고친 파일은 남겼다(lock 은 owner user). 필요 없으면 직접 지운다");
   const human = keep.length > 0 || result.ops.some((o) => o.action === "conflict") || result.manifest?.action === "conflict" || needsHuman(result.projection ?? null, result.projectionFindings ?? []);
-  return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines: lines2 };
+  return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines: lines3 };
 }
 
 // src/commands/repair.ts
-var import_node_fs46 = __toESM(require("node:fs"));
-var import_node_path54 = __toESM(require("node:path"));
+var import_node_fs51 = __toESM(require("node:fs"));
+var import_node_path59 = __toESM(require("node:path"));
 var REPAIR_KINDS = ["missing", "drifted", "stale", "merge"];
 function full9(target, rel2) {
-  return import_node_path54.default.join(target, ...rel2.split("/"));
+  return import_node_path59.default.join(target, ...rel2.split("/"));
 }
 function parseOnly2(raw) {
   if (raw === void 0) return [...REPAIR_KINDS];
@@ -11950,7 +12357,7 @@ function parseOnly2(raw) {
   return only;
 }
 function survey(target, inst) {
-  const ancestors = new AncestorCheck(target, import_node_fs46.default.realpathSync(target));
+  const ancestors = new AncestorCheck(target, import_node_fs51.default.realpathSync(target));
   const out = { ok: 0, drifted: 0, skipped: 0, missing: [] };
   for (const e of inst.lock.entries) {
     if (ownerKind2(e.owner) !== "kit" || entryKind(e) !== "copy") {
@@ -12040,7 +12447,7 @@ function repairProjection(ctx, target, inst, only) {
 }
 function repairMerge(target, w, e, only) {
   const p = full9(target, w.path);
-  const cur = import_node_fs46.default.existsSync(p) && import_node_fs46.default.lstatSync(p).isFile() ? import_node_fs46.default.readFileSync(p, "utf8") : null;
+  const cur = import_node_fs51.default.existsSync(p) && import_node_fs51.default.lstatSync(p).isFile() ? import_node_fs51.default.readFileSync(p, "utf8") : null;
   const keys = e && Array.isArray(e.keys) ? e.keys : void 0;
   const lost = cur === null ? ["(파일 없음)"] : keys ? missingWith(w.kind, cur, keys, w.want) : [];
   if (lost.length === 0 && e || !chosen(only, cur === null ? "missing" : "merge")) return null;
@@ -12102,7 +12509,7 @@ function runRepair(ctx) {
   const data = { command: "repair", target, dryRun, kit: { lock: lockVersion, cli: VERSION }, only, counts: counts2, ops: opsJson, hints };
   if (projection) data.projection = { counts: projCounts(projection.ops), ops: projection.ops.map(projOpJson), findings: projection.findings };
   if (source) data.templates = source.templates;
-  const lines2 = [
+  const lines3 = [
     `harness-kit repair — ${target}`,
     `  킷: lock ${lockVersion ?? "?(v1)"} · CLI ${VERSION}`,
     ...ops.map((o) => `  ${o.action.padEnd(13)} ${o.path}${o.reason ? `  ${o.reason}` : ""}`),
@@ -12116,15 +12523,13 @@ function runRepair(ctx) {
   const local = localAfter(ctx, target, inst, tpl, dryRun);
   if (local) {
     data.local = local.result;
-    lines2.splice(lines2.length - (dryRun ? 1 : 0), 0, ...local.lines);
+    lines3.splice(lines3.length - (dryRun ? 1 : 0), 0, ...local.lines);
   }
-  return { code, data, lines: lines2 };
+  return { code, data, lines: lines3 };
 }
 
 // src/commands/reserved.ts
 var RESERVED = {
-  intake: "P21 · HK-19(요구사항 접수, 설계 08)",
-  mob: "P21 · HK-19(설계 단계, 설계 08)",
   deploy: "P24(배포 · 운영, 설계 14)",
   ops: "P24(배포 · 운영, 설계 14)",
   metrics: "P24(배포 · 운영, 설계 14)",
@@ -12141,26 +12546,26 @@ function skillLines(d, stage) {
   const skills = d.skills ?? [];
   const harnesses = d.harnesses ?? [];
   const conflicts = d.conflicts ?? [];
-  const lines2 = [];
+  const lines3 = [];
   if (stage === void 0) {
-    lines2.push("위치별 개수", ...roots.map((r) => `  ${pad(r.path, 44)} ${pad(r.scope, 16)} ${String(r.count).padStart(4)}${r.error ? ` (읽지 못함: ${r.error})` : ""}`));
+    lines3.push("위치별 개수", ...roots.map((r) => `  ${pad(r.path, 44)} ${pad(r.scope, 16)} ${String(r.count).padStart(4)}${r.error ? ` (읽지 못함: ${r.error})` : ""}`));
     const map = d.map;
-    lines2.push(map.present ? "지도 칸별 해석" : "스킬 지도 없음(.agents/skill-map.json) — 단계는 설명 낱말로 추정한다");
-    for (const r of map.resolved) lines2.push(`  ${pad(r.command, 18)} ${pad(r.slot, 22)} ${pad(r.harness, 8)} ${r.skill ?? `— (${r.fallback})`}`);
+    lines3.push(map.present ? "지도 칸별 해석" : "스킬 지도 없음(.agents/skill-map.json) — 단계는 설명 낱말로 추정한다");
+    for (const r of map.resolved) lines3.push(`  ${pad(r.command, 18)} ${pad(r.slot, 22)} ${pad(r.harness, 8)} ${r.skill ?? `— (${r.fallback})`}`);
   }
-  lines2.push(`스킬 ${String(d.shown ?? skills.length)}개(전체 ${String(d.total ?? skills.length)}) — 하네스: ${harnesses.join(" · ")}`);
+  lines3.push(`스킬 ${String(d.shown ?? skills.length)}개(전체 ${String(d.total ?? skills.length)}) — 하네스: ${harnesses.join(" · ")}`);
   if (skills.length) {
-    lines2.push(`${pad("이름", 34)} ${pad("단계", 12)} ${pad("출처", 8)} ${harnesses.map((h) => pad(h, 8)).join("")}위치`);
+    lines3.push(`${pad("이름", 34)} ${pad("단계", 12)} ${pad("출처", 8)} ${harnesses.map((h) => pad(h, 8)).join("")}위치`);
     for (const s of skills) {
       const want = stage ? STAGE_ALIAS[stage] ?? stage : null;
       const st = want ? s.stages.find((x) => x.stage === want) : s.stages[0];
       const stText = st ? `${STAGE_KO[st.stage] ?? st.stage}${st.slot ? `/${st.slot}` : ""}` : "미분류";
       const overlap = conflicts.some((c) => c.name === s.id) ? " (이름 겹침)" : "";
-      lines2.push(`${pad(s.id, 34)} ${pad(stText, 12)} ${pad(SOURCE_KO[st?.source ?? ""] ?? "-", 8)} ${harnesses.map((h) => pad(s.harnesses[h] ?? "no", 8)).join("")}${s.locations[0]?.path ?? ""}${overlap}${s.error ? ` [오류: ${s.error}]` : ""}`);
+      lines3.push(`${pad(s.id, 34)} ${pad(stText, 12)} ${pad(SOURCE_KO[st?.source ?? ""] ?? "-", 8)} ${harnesses.map((h) => pad(s.harnesses[h] ?? "no", 8)).join("")}${s.locations[0]?.path ?? ""}${overlap}${s.error ? ` [오류: ${s.error}]` : ""}`);
     }
   }
-  if (conflicts.length) lines2.push("이름 겹침", ...conflicts.map((c) => `  ${c.name}: ${c.candidates.join(" · ")}`));
-  return lines2;
+  if (conflicts.length) lines3.push("이름 겹침", ...conflicts.map((c) => `  ${c.name}: ${c.candidates.join(" · ")}`));
+  return lines3;
 }
 async function runSkills(ctx) {
   const v = ctx.values;
@@ -12223,14 +12628,14 @@ async function runHistory(ctx) {
   const query = {};
   for (const k of ["q", "session", "role"]) if (str(ctx.values, k)) query[k] = str(ctx.values, k);
   return run3(ctx, "GET", "/history", { query }, (d) => {
-    const list2 = d.prompts ?? [];
-    return list2.length ? [`프롬프트 ${String(d.total)}건 중 ${list2.length}건`, ...list2.map((x) => `${x.at.slice(0, 16).replace("T", " ")} ${pad(x.harness, 7)} ${pad(x.issue ?? "-", 12)} ${x.text.replace(/\s+/g, " ").slice(0, 100)}`)] : ["프롬프트 기록이 없다"];
+    const list3 = d.prompts ?? [];
+    return list3.length ? [`프롬프트 ${String(d.total)}건 중 ${list3.length}건`, ...list3.map((x) => `${x.at.slice(0, 16).replace("T", " ")} ${pad(x.harness, 7)} ${pad(x.issue ?? "-", 12)} ${x.text.replace(/\s+/g, " ").slice(0, 100)}`)] : ["프롬프트 기록이 없다"];
   });
 }
 
 // src/commands/status.ts
-var import_node_fs47 = __toESM(require("node:fs"));
-var import_node_path55 = __toESM(require("node:path"));
+var import_node_fs52 = __toESM(require("node:fs"));
+var import_node_path60 = __toESM(require("node:path"));
 function registryProjects(ctx) {
   const home = homeOf(ctx);
   return new Projects(() => readRegistry(home), { env: ctx.io.env, home, readOnly: true, multi: true, deps: dashboardDeps() });
@@ -12247,8 +12652,8 @@ function overviewLines(d) {
   ];
 }
 function issueLines(d) {
-  const list2 = d.issues ?? [];
-  return list2.length ? list2.map((i) => `${i.key.padEnd(12)} ${i.stage.padEnd(13)} ${(i.area ?? "").padEnd(12)} ${i.source.padEnd(8)} ${i.name}`) : ["이슈 없음"];
+  const list3 = d.issues ?? [];
+  return list3.length ? list3.map((i) => `${i.key.padEnd(12)} ${i.stage.padEnd(13)} ${(i.area ?? "").padEnd(12)} ${i.source.padEnd(8)} ${i.name}`) : ["이슈 없음"];
 }
 async function runStatus(ctx) {
   const v = ctx.values;
@@ -12272,20 +12677,21 @@ async function runStatus(ctx) {
   }
   if (str(v, "issue") !== void 0) return run3(ctx, "GET", `/issues/${encodeURIComponent(str(v, "issue"))}`, {}, jsonLines);
   if (bool(v, "intents")) return run3(ctx, "GET", "/intents", {}, jsonLines);
+  if (str(v, "intent") !== void 0 && str(v, "gate") !== void 0) return run3(ctx, "GET", `/intents/${encodeURIComponent(str(v, "intent"))}/gates`, { query: { gate: str(v, "gate") } }, jsonLines);
   if (str(v, "intent") !== void 0) return run3(ctx, "GET", `/intents/${encodeURIComponent(str(v, "intent"))}`, {}, jsonLines);
   return run3(ctx, "GET", "/overview", {}, overviewLines);
 }
 async function runSessions(ctx) {
   if (bool(ctx.values, "machine")) {
     const p = await openProject(ctx).catch(() => null);
-    const list2 = (await registryProjects(ctx).list()).map((s) => s.project).filter((x) => x !== null);
-    if (p && !list2.some((x) => x.id === p.id)) list2.unshift(p);
-    const data = await machineSessions(list2);
+    const list3 = (await registryProjects(ctx).list()).map((s) => s.project).filter((x) => x !== null);
+    if (p && !list3.some((x) => x.id === p.id)) list3.unshift(p);
+    const data = await machineSessions(list3);
     return { code: EXIT.OK, data, lines: jsonLines(data) };
   }
   return run3(ctx, "GET", "/sessions", {}, (d) => {
-    const list2 = d.sessions ?? [];
-    return list2.length ? list2.map((s) => `${s.id.padEnd(20)} ${String(s.harness).padEnd(7)} ${String(s.role).padEnd(10)} ${String(s.issue ?? "—").padEnd(12)} ${s.state.padEnd(15)} ${String(s.turn)}${s.permissionMode === "bypassPermissions" ? " · bypassPermissions(요청이 사람 승인 없이 돈다)" : ""}`) : ["등록된 세션이 없다"];
+    const list3 = d.sessions ?? [];
+    return list3.length ? list3.map((s) => `${s.id.padEnd(20)} ${String(s.harness).padEnd(7)} ${String(s.role).padEnd(10)} ${String(s.issue ?? "—").padEnd(12)} ${s.state.padEnd(15)} ${String(s.turn)}${s.permissionMode === "bypassPermissions" ? " · bypassPermissions(요청이 사람 승인 없이 돈다)" : ""}`) : ["등록된 세션이 없다"];
   });
 }
 async function runQuality(ctx) {
@@ -12306,8 +12712,8 @@ async function runFlow(ctx) {
   const remove = str(ctx.values, "remove");
   if (add === void 0 && remove === void 0) return run3(ctx, "GET", "/flow/gates", {}, (d) => [`게이트: ${d.gates.join(" → ")}`, `바닥(줄일 수 없음): ${d.floor.join(" · ")}`]);
   const p = await openProject(ctx);
-  const file = import_node_path55.default.join(p.root, ".agents/harness-kit.json");
-  const meta = JSON.parse(import_node_fs47.default.readFileSync(file, "utf8"));
+  const file = import_node_path60.default.join(p.root, ".agents/harness-kit.json");
+  const meta = JSON.parse(import_node_fs52.default.readFileSync(file, "utf8"));
   const flow2 = meta.flow && typeof meta.flow === "object" ? meta.flow : {};
   let gates = p.gates();
   if (remove !== void 0) {
@@ -12323,16 +12729,16 @@ async function runFlow(ctx) {
   }
   const next = { ...meta, flow: { ...flow2, gates } };
   const tmp = `${file}.${process.pid}.tmp`;
-  import_node_fs47.default.writeFileSync(tmp, formatJson(next));
-  import_node_fs47.default.renameSync(tmp, file);
+  import_node_fs52.default.writeFileSync(tmp, formatJson(next));
+  import_node_fs52.default.renameSync(tmp, file);
   return { code: EXIT.OK, data: { gates, floor: GATE_FLOOR, file: ".agents/harness-kit.json" }, lines: [`flow.gates: ${gates.join(" → ")}`, "팀 설정이다. MR 로 올린다"] };
 }
 
 // src/commands/uninstall.ts
 var import_node_child_process10 = require("node:child_process");
-var import_node_fs48 = __toESM(require("node:fs"));
-var import_node_path56 = __toESM(require("node:path"));
-var ACTIONS = ["delete", "keep-modified", "absent", "keep-user", "keep-external", "keep-pack", "unmerge"];
+var import_node_fs53 = __toESM(require("node:fs"));
+var import_node_path61 = __toESM(require("node:path"));
+var ACTIONS2 = ["delete", "keep-modified", "absent", "keep-user", "keep-external", "keep-pack", "unmerge"];
 var COUNT_ONLY = /* @__PURE__ */ new Set(["absent", "keep-user", "keep-external", "keep-pack"]);
 var HOOKS_PATH = "scripts/git-hooks";
 function planMergeEntry(p, e) {
@@ -12372,7 +12778,7 @@ function planProjectionEntry(p, e) {
   if (!dir && cur.kind !== "other" && current3(p, `${e.path}.new`).kind === "file") p.ops.push({ path: `${e.path}.new`, owner: e.owner, action: "delete", reason: "update 가 둔 .new" });
 }
 function full10(target, rel2) {
-  return import_node_path56.default.join(target, ...rel2.split("/"));
+  return import_node_path61.default.join(target, ...rel2.split("/"));
 }
 function current3(p, rel2) {
   if (p.ancestors.state(rel2) === "blocked") return { kind: "other", what: BLOCKED };
@@ -12415,9 +12821,9 @@ function planManifest(p, inst) {
   else p.ops.push({ path: MANIFEST_PATH, owner: "kit", action: "keep-modified", reason: "킷 판과 다르다" });
 }
 function uninstallSpec(ctx, target) {
-  const installed = import_node_path56.default.join(target, "scripts/harness/projection.json");
+  const installed = import_node_path61.default.join(target, "scripts/harness/projection.json");
   try {
-    if (import_node_fs48.default.existsSync(installed)) return parseSpec(import_node_fs48.default.readFileSync(installed, "utf8"));
+    if (import_node_fs53.default.existsSync(installed)) return parseSpec(import_node_fs53.default.readFileSync(installed, "utf8"));
     const { io: io2 } = ctx;
     return loadSpecOrNull(locateTemplates({ flag: str(ctx.values, "templates"), env: io2.env, cliFile: io2.cliFile, cwd: io2.cwd, version: VERSION }).dir);
   } catch (err) {
@@ -12426,10 +12832,10 @@ function uninstallSpec(ctx, target) {
   }
 }
 function planNotice2(p) {
-  const file = import_node_path56.default.join(p.target, ...NOTICE_REL.split("/"));
+  const file = import_node_path61.default.join(p.target, ...NOTICE_REL.split("/"));
   let text2;
   try {
-    text2 = import_node_fs48.default.readFileSync(file, "utf8");
+    text2 = import_node_fs53.default.readFileSync(file, "utf8");
   } catch {
     return;
   }
@@ -12437,7 +12843,7 @@ function planNotice2(p) {
 }
 function buildUninstall(ctx, target, inst, keepPacks, keepState, ambiguous) {
   const spec = inst.lock.entries.some((e) => e.op === "merge") ? uninstallSpec(ctx, target) : null;
-  const p = { target, ancestors: new AncestorCheck(target, import_node_fs48.default.realpathSync(target)), keepPacks, ops: [], ambiguous, spec, tokens: inst.meta.tokens };
+  const p = { target, ancestors: new AncestorCheck(target, import_node_fs53.default.realpathSync(target)), keepPacks, ops: [], ambiguous, spec, tokens: inst.meta.tokens };
   for (const e of inst.lock.entries) planEntry(p, e);
   planManifest(p, inst);
   planNotice2(p);
@@ -12451,11 +12857,11 @@ function unhookGit(target, env, dryRun) {
   if (top.status !== 0) return { status: "none" };
   let topReal;
   try {
-    topReal = import_node_fs48.default.realpathSync(top.stdout.trim());
+    topReal = import_node_fs53.default.realpathSync(top.stdout.trim());
   } catch {
     return { status: "none" };
   }
-  if (topReal !== import_node_fs48.default.realpathSync(target)) return { status: "none" };
+  if (topReal !== import_node_fs53.default.realpathSync(target)) return { status: "none" };
   const get = git3("config", "--local", "--get", "core.hooksPath");
   if (get.status !== 0) return { status: "none" };
   const value2 = get.stdout.trim();
@@ -12469,7 +12875,7 @@ function applyUninstall(target, inst, ops, unhook) {
   try {
     for (const o of ops) {
       current4 = o.path;
-      if (o.action === "unmerge" && o.text !== void 0) writeFileAtomic(import_node_path56.default.join(target, ...o.path.split("/")), Buffer.from(o.text, "utf8"), false);
+      if (o.action === "unmerge" && o.text !== void 0) writeFileAtomic(import_node_path61.default.join(target, ...o.path.split("/")), Buffer.from(o.text, "utf8"), false);
       if (o.action !== "delete" || state.has(o.path)) continue;
       if (o.dir) removeTarget(target, o.path, true);
       else removeFile(target, o.path);
@@ -12488,7 +12894,7 @@ function applyUninstall(target, inst, ops, unhook) {
   }
 }
 function counts(ops) {
-  const c = Object.fromEntries(ACTIONS.map((a) => [a, 0]));
+  const c = Object.fromEntries(ACTIONS2.map((a) => [a, 0]));
   for (const o of ops) c[o.action] += 1;
   return c;
 }
@@ -12555,7 +12961,7 @@ async function runUninstall(ctx) {
     gitHooks,
     keepState
   };
-  const lines2 = [
+  const lines3 = [
     `harness-kit uninstall — ${target}`,
     ...listed.map(opLine4),
     `  지움 ${c.delete} · 남김(사람이 고침) ${c["keep-modified"]} · 이미 없음 ${c.absent} · 사람 · 외부 · 팩 파일 ${c["keep-user"] + c["keep-external"] + c["keep-pack"]}`,
@@ -12564,12 +12970,12 @@ async function runUninstall(ctx) {
     ...keep.length ? ["  고친 파일은 남겼다. 필요 없으면 직접 지운다"] : [],
     ...dryRun ? ["  (dry-run — 지우지 않았다)"] : []
   ];
-  return { code: keep.length ? EXIT.HUMAN : EXIT.OK, data, lines: lines2 };
+  return { code: keep.length ? EXIT.HUMAN : EXIT.OK, data, lines: lines3 };
 }
 
 // src/commands/pack.ts
-var import_node_fs49 = __toESM(require("node:fs"));
-var import_node_path57 = __toESM(require("node:path"));
+var import_node_fs54 = __toESM(require("node:fs"));
+var import_node_path62 = __toESM(require("node:path"));
 var TEST_PY = `"""팩 자체 검사(설계 04 §3.2 검증) — 이 폴더에서 python3 -m unittest tests.test_pack 으로 돈다. 팩과 함께 설치하지 않는다."""
 
 import json
@@ -12633,16 +13039,16 @@ function classify(dest, provides, name) {
   return true;
 }
 function filesUnder(target, rel2) {
-  const abs = import_node_path57.default.join(target, ...rel2.split("/"));
-  const st = import_node_fs49.default.lstatSync(abs);
+  const abs = import_node_path62.default.join(target, ...rel2.split("/"));
+  const st = import_node_fs54.default.lstatSync(abs);
   if (st.isSymbolicLink()) throw usageError(`--from 은 링크를 받지 않는다: ${rel2}`);
   if (st.isFile()) return [rel2];
-  return import_node_fs49.default.readdirSync(abs).sort(byteCompare).flatMap((n) => filesUnder(target, `${rel2}/${n}`));
+  return import_node_fs54.default.readdirSync(abs).sort(byteCompare).flatMap((n) => filesUnder(target, `${rel2}/${n}`));
 }
 function pickItem(target, rel2, id, key) {
   let doc;
   try {
-    doc = JSON.parse(import_node_fs49.default.readFileSync(import_node_path57.default.join(target, ...rel2.split("/")), "utf8"));
+    doc = JSON.parse(import_node_fs54.default.readFileSync(import_node_path62.default.join(target, ...rel2.split("/")), "utf8"));
   } catch (err) {
     throw usageError(`--from ${rel2}#${id}: 읽을 수 없다(${err instanceof Error ? err.message : String(err)})`);
   }
@@ -12659,10 +13065,10 @@ function runPack(ctx) {
   const dirFlag = str(ctx.values, "dir");
   if (!dirFlag) throw usageError("pack new 는 --dir <경로> 가 필요하다(빈 폴더나 없는 경로)");
   const target = targetOf(ctx);
-  const dir = import_node_path57.default.resolve(ctx.io.cwd, dirFlag);
-  const relToRepo = import_node_path57.default.relative(import_node_path57.default.join(target, ".agents"), dir);
-  if (!relToRepo.startsWith("..") && !import_node_path57.default.isAbsolute(relToRepo)) throw usageError(`--dir 은 리포 .agents/ 안일 수 없다: ${dir}`);
-  if (import_node_fs49.default.existsSync(dir) && (!import_node_fs49.default.statSync(dir).isDirectory() || import_node_fs49.default.readdirSync(dir).length)) throw usageError(`--dir 은 빈 폴더나 없는 경로다: ${dir}`);
+  const dir = import_node_path62.default.resolve(ctx.io.cwd, dirFlag);
+  const relToRepo = import_node_path62.default.relative(import_node_path62.default.join(target, ".agents"), dir);
+  if (!relToRepo.startsWith("..") && !import_node_path62.default.isAbsolute(relToRepo)) throw usageError(`--dir 은 리포 .agents/ 안일 수 없다: ${dir}`);
+  if (import_node_fs54.default.existsSync(dir) && (!import_node_fs54.default.statSync(dir).isDirectory() || import_node_fs54.default.readdirSync(dir).length)) throw usageError(`--dir 은 빈 폴더나 없는 경로다: ${dir}`);
   const inst = loadInstalled(target, "pack new");
   const loc = locateTemplates({ flag: str(ctx.values, "templates"), env: ctx.io.env, cliFile: ctx.io.cliFile, cwd: ctx.io.cwd, version: VERSION });
   const layout2 = loadLayout(loc.dir);
@@ -12696,7 +13102,7 @@ function runPack(ctx) {
       } else throw usageError(`--from <파일>#<id> 는 .agents/hooks.json · hooks.d · verify-checks.json · verify-checks.d 에만 쓴다: ${raw}`);
       continue;
     }
-    if (!import_node_fs49.default.existsSync(import_node_path57.default.join(target, ...rel2.split("/")))) throw usageError(`--from 파일이 없다: ${rel2}`);
+    if (!import_node_fs54.default.existsSync(import_node_path62.default.join(target, ...rel2.split("/")))) throw usageError(`--from 파일이 없다: ${rel2}`);
     for (const f of filesUnder(target, rel2)) {
       const packPath = reverseMap(layout2, f);
       if (!packPath) throw usageError(`팩이 가질 수 없는 경로다(하네스 파일 · 루트 문서): ${f}`, "원본(.agents/ · scripts/)을 준다");
@@ -12704,8 +13110,8 @@ function runPack(ctx) {
         overrides.push(f);
         warnings.push(`${f} 는 킷 경로다 — overrides 에 넣었다(킷 판을 덮는다)`);
       } else if (!classify(f, provides, name)) throw usageError(`provides 로 나눌 수 없는 경로다: ${f}`, "규칙 · 스킬 · 역할 · 가드 · scripts · _spec-templates · tools/<팩>/ 만 옮긴다");
-      const abs = import_node_path57.default.join(target, ...f.split("/"));
-      files.set(packPath, { data: import_node_fs49.default.readFileSync(abs), executable: (import_node_fs49.default.statSync(abs).mode & 73) !== 0 });
+      const abs = import_node_path62.default.join(target, ...f.split("/"));
+      files.set(packPath, { data: import_node_fs54.default.readFileSync(abs), executable: (import_node_fs54.default.statSync(abs).mode & 73) !== 0 });
     }
   }
   const range = str(ctx.values, "kit-range") ?? defaultRange();
@@ -12727,12 +13133,12 @@ function runPack(ctx) {
     ...files
   ]);
   try {
-    import_node_fs49.default.mkdirSync(import_node_path57.default.join(dir, "common"), { recursive: true });
-    for (const [rel2, f] of out) writeFileAtomic(import_node_path57.default.join(dir, ...rel2.split("/")), f.data, f.executable);
+    import_node_fs54.default.mkdirSync(import_node_path62.default.join(dir, "common"), { recursive: true });
+    for (const [rel2, f] of out) writeFileAtomic(import_node_path62.default.join(dir, ...rel2.split("/")), f.data, f.executable);
   } catch (err) {
     throw new CliError(EXIT.ENV, `팩 골격을 쓰지 못했다: ${err instanceof Error ? err.message : String(err)}`);
   }
-  const lines2 = [
+  const lines3 = [
     `harness-kit pack new ${name} — ${dir}`,
     ...[...out.keys()].sort(byteCompare).map((p) => `  + ${p}`),
     ...warnings.map((w) => `  ⚠ ${w}`),
@@ -12741,12 +13147,12 @@ function runPack(ctx) {
     `    프로젝트 .agents/harness-kit.json packs 에 "git:<host>/<path>#v0.1.0" 을 더한다(MR)`,
     "    npx harness-kit update --packs"
   ];
-  return { code: EXIT.OK, data: { command: "pack", sub: "new", name, dir, files: [...out.keys()].sort(byteCompare), manifest, warnings }, lines: lines2 };
+  return { code: EXIT.OK, data: { command: "pack", sub: "new", name, dir, files: [...out.keys()].sort(byteCompare), manifest, warnings }, lines: lines3 };
 }
 
 // src/commands/work.ts
-var import_node_fs50 = __toESM(require("node:fs"));
-var import_node_path58 = __toESM(require("node:path"));
+var import_node_fs55 = __toESM(require("node:fs"));
+var import_node_path63 = __toESM(require("node:path"));
 var ISSUE_ROLE = /^([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5}):([a-z][a-z0-9-]*)$/;
 async function runDispatch(ctx) {
   const [sub2, id, extra] = ctx.positionals;
@@ -12766,7 +13172,7 @@ async function runDispatch(ctx) {
   const kind = str(ctx.values, "kind") ?? (text2 ? "custom" : "doc-changed");
   const m = ISSUE_ROLE.exec(to);
   const p = await openProject(ctx);
-  const isSession = import_node_fs50.default.existsSync(import_node_path58.default.join(p.root, ".agents/state/sessions", `${to}.json`));
+  const isSession = import_node_fs55.default.existsSync(import_node_path63.default.join(p.root, ".agents/state/sessions", `${to}.json`));
   const target = m ? { issue: m[1], role: m[2] } : isSession ? { sessionId: to } : { name: to };
   const via = str(ctx.values, "via");
   return run3(
@@ -12827,7 +13233,7 @@ async function runProjects(ctx) {
       return { code: EXIT.OK, data, lines: rows.length ? rows.map((r) => `${r.name.padEnd(24)} ${r.state === "ok" ? "" : `(${r.state}) `}${r.path}`) : ["등록한 프로젝트가 없다"] };
     }
     if (sub2 === "add" && arg && !extra) {
-      const r = addProject(home, import_node_path58.default.resolve(ctx.io.cwd, arg), today(ctx.io));
+      const r = addProject(home, import_node_path63.default.resolve(ctx.io.cwd, arg), today(ctx.io));
       return { code: EXIT.OK, data: { added: r.added, project: r.entry }, lines: [r.added ? `등록했다: ${r.entry.name} ${r.entry.path}` : `이미 있다: ${r.entry.name}`] };
     }
     if (sub2 === "remove" && arg && !extra) {
@@ -12868,9 +13274,11 @@ var COMMANDS = {
   skills: runSkills,
   usage: runUsage,
   pack: runPack,
-  local: runLocal
+  local: runLocal,
+  intake: runIntake,
+  mob: runMob2
 };
-var USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 킷
+var USAGE2 = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 킷
 
 사용법: harness-kit <명령> [플래그]
 
@@ -12893,6 +13301,8 @@ var USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 킷
   skills     이 컴퓨터 · 리포의 스킬 목록(단계 · 하네스 · 이름 겹침). usage 토큰 사용량 · 킷이 덧붙인 양 · history 프롬프트 기록
   pack       pack new <이름> --dir <경로> --from <파일>… — 프로젝트 파일로 회사 팩 골격을 만든다
   local      local sync | list — 개인 층(.agents/local/)을 하네스 폴더에 배치한다(공유 lock 밖)
+  mob        몹 정리 세션 start | next | close | status(진행자 터미널, 회차를 닫아도 세션에 요청하지 않는다)
+  intake     요구사항 접수 — 글 · 첨부를 Intent 폴더(bug 는 이슈 폴더)로 받는다(신뢰하지 않는 입력으로 표시)
 
 공통 플래그: --cwd <폴더> --dry-run --yes --json --templates <폴더> --quiet --no-color --help
 init · plan: --stack --arch --domain --lang --agents <목록|all> --modules <목록|all|none>
@@ -12916,10 +13326,11 @@ var COMMAND_HELP = {
   repair: "harness-kit repair [--dry-run] [--only missing,drifted,stale,merge] [--json] — 되살리지 못한 missing 이 있으면 exit 4\n",
   uninstall: "harness-kit uninstall [--dry-run] [--yes] [--keep-state] [--keep-packs] [--json] — 고친 파일을 남기면 exit 4. TTY 가 아니면 --yes\n",
   dashboard: "harness-kit dashboard [--port <n>] [--open] [--read-only] [--export <폴더>] [--all | --root <dir> | --workspace <file>] — 127.0.0.1 에만 연다. 주소는 stdout, 승인 PIN 은 stderr\n",
-  status: "harness-kit status [--session | --intents | --intent <INT> | --issues [--area --stage --intent] | --issue <키> | --doc <경로> | --verify [--issue] | --worktrees | --harness | --flow <INT> [--burn [--days n]] | --all] [--json]\n",
+  status: "harness-kit status [--session | --intents | --intent <INT> [--gate codebase|plans] | --issues [--area --stage --intent] | --issue <키> | --doc <경로> | --verify [--issue] | --worktrees | --harness | --flow <INT> [--burn [--days n]] | --all] [--json]\n",
   projects: "harness-kit projects list | add <폴더> | remove <이름|경로> [--json] — 등록부 ~/.config/harness-kit/projects.json\n",
   approve: 'harness-kit approve <키> --gate <게이트> --phrase "<문구>" [--changes-requested [--rule-candidate]] [--json] — 사람 터미널에서만(에이전트 세션 · TTY 아님은 exit 3)\n',
-  answer: "harness-kit answer <INT|키> --list | <Q-n> --choice <A-D|other> [--text …] [--json] — 사람 터미널에서만\n",
+  answer: "harness-kit answer <INT|키> --list | <Q-n> --choice <A-D|other> [--text …] [--by <참석자 email>] [--json] — 사람 터미널에서만. 몹 세션이 열려 있으면 --by 필요\n",
+  mob: "harness-kit mob start <INT> --attendees a@x,b@y [--timebox 30] | mob next <INT> | mob close <INT> | mob status <INT> [--json] — 진행자 터미널(에이전트 세션은 exit 3)\n",
   review: "harness-kit review show <키> | review decide <키> <F-n> --fix|--accept-risk --reason … [--json] — decide 는 사람 터미널에서만\n",
   sessions: "harness-kit sessions [--machine] [--json]\n",
   dispatch: "harness-kit dispatch --to <세션 id|키:역할|이름> --kind <종류> --path <파일>… [--text …] [--via socket|deeplink|queue] | dispatch list | dispatch drop <id>\n",
@@ -12930,6 +13341,7 @@ var COMMAND_HELP = {
   skills: "harness-kit skills [--stage <단계>] [--harness <h>] [--conflicts] [--errors] [--all] [--no-user] [--refresh] [--json] — 읽기만 한다. 단계는 설계 · 구현 · 검증 · 반영 · 운영(영어도 된다)\n",
   usage: "harness-kit usage [--days n] [--harness h] [--sources] | usage --now | usage --kit [--json] — 대화 기록 읽기가 꺼져 있으면(기본) 킷이 덧붙인 양(--kit)만 보인다\n",
   pack: 'harness-kit pack new <이름> --dir <경로> [--from <파일|폴더>[#훅·검사 id]]… [--kit-range ">=2.0.0 <3.0.0"] [--json] — --dir 은 빈 폴더나 없는 경로\n',
+  intake: "harness-kit intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--area <영역>] [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]… [--json] — 비밀값이 든 글은 접수하지 않는다(exit 1)\n",
   local: "harness-kit local sync [--dry-run] | local list [--json] — 개인 스킬 · Kiro 규칙 · 개인 훅(.claude/settings.local.json · .kiro/hooks/local-*). 공유 원본과 이름이 같으면 배치하지 않는다\n"
 };
 function emitError(io2, command, err, json) {
@@ -12946,7 +13358,7 @@ function emitError(io2, command, err, json) {
   return err.code;
 }
 function commandOf2(argv, first, command) {
-  if (argv.length === 0) throw usageError("명령이 없다", USAGE.trimEnd());
+  if (argv.length === 0) throw usageError("명령이 없다", USAGE2.trimEnd());
   if (command === "") throw usageError(`명령이 먼저 온다: ${first}`, "harness-kit --help");
   if (Object.hasOwn(RESERVED, command)) {
     throw usageError(`'${command}' 는 아직 없다 — ${RESERVED[command]}에서 제공한다`, `지금 있는 명령: ${Object.keys(COMMANDS).join(" · ")}`);
@@ -12967,14 +13379,14 @@ async function main(argv, io2) {
     return EXIT.OK;
   }
   if (first === "--help" || first === "-h") {
-    io2.stdout(USAGE);
+    io2.stdout(USAGE2);
     return EXIT.OK;
   }
   try {
     const run4 = commandOf2(argv, first, command);
     const { values, positionals } = parseCommandArgs(command, argv.slice(1));
     if (bool(values, "help")) {
-      io2.stdout(Object.hasOwn(COMMAND_HELP, command) ? COMMAND_HELP[command] : USAGE);
+      io2.stdout(Object.hasOwn(COMMAND_HELP, command) ? COMMAND_HELP[command] : USAGE2);
       return EXIT.OK;
     }
     const ctx = { io: io2, command, values, positionals, json, quiet: bool(values, "quiet") };

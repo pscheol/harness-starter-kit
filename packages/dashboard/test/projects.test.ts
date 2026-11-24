@@ -110,8 +110,8 @@ describe("대화 기록은 기본 꺼짐(DB-R28)", () => {
 
   it("범위 밖 API 는 501 과 제공 이슈를 낸다", async () => {
     const srv = await serve(makeRepo());
-    for (const [route, stage, method] of [["ops", "HK-21", "GET"], ["checkpoints", "HK-20", "GET"], ["intake", "HK-19", "POST"]] as const) {
-      const r = await call(srv, method, `/api/v1/${route}`, method === "POST" ? { body: {} } : {});
+    for (const [route, stage, method] of [["ops", "HK-21", "GET"], ["checkpoints", "HK-20", "GET"]] as const) {
+      const r = await call(srv, method, `/api/v1/${route}`);
       expect([route, r.status, r.json.error.code, r.json.error.details.stage]).toEqual([route, 501, "not_implemented", stage]);
     }
   });

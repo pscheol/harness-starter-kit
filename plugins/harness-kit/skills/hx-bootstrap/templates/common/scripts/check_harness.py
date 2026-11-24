@@ -19,6 +19,8 @@ sys.dont_write_bytecode = True
 
 from harness.approvals_guard import base_errors as approval_errors
 from harness.sdd_issues import plan_errors
+from harness.codebase_check import run_check as codebase_check
+from harness.intent import FOLDER as INTENT_FOLDER, INTENTS, check as intent_check
 from harness.sdd_keys import issue_key_errors, legacy_frozen_errors
 from harness.sdd_layout import sdd_lock
 
@@ -328,6 +330,25 @@ def unit_errors(root):
         sys.path.remove(str(path.parent))
 
 
+def intent_errors(root):
+    """Intent 폴더마다 질문 형식 · units 규칙 · 스토리 배정 · 의존 고리(설계 08 §3.5, DS-R3 · R5~R8)."""
+    base = root / INTENTS
+    out = []
+    if base.is_dir():
+        for folder in sorted(base.iterdir()):
+            if folder.is_dir() and INTENT_FOLDER.match(folder.name):
+                out += [f"{INTENTS}/{folder.name}: {problem}" for problem in intent_check(folder)["problems"]]
+    return out
+
+
+def codebase_errors(root):
+    """codebase 모델 출처 칸(DS-R22)은 실패, 오래됨(DS-R23)은 경고만(stderr)."""
+    result = codebase_check(root, [])
+    for warning in result["warnings"]:
+        print(f"⚠ {warning}", file=sys.stderr)
+    return result["problems"]
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--plans-only", action="store_true")
@@ -340,6 +361,7 @@ def main():
         errors += issue_key_errors(ROOT) + legacy_frozen_errors(ROOT)
         # 승인 기록 덧붙이기 전용(VQ-R14) · 새 기록 형식 · done 승인 없는 completed(VQ-R13), base merge-base 대비(설계 09 §3.8).
         errors += approval_errors(ROOT)
+        errors += intent_errors(ROOT) + codebase_errors(ROOT)
     if errors:
         print("\n".join(errors), file=sys.stderr)
         return 1

@@ -27,7 +27,8 @@ from harness.sdd_issues import find_issue  # noqa: E402
 REVIEW = re.compile(r"^review/(F-\d+)$")
 BRANCH_KEY = re.compile(r"(?:^|/)([A-Z][A-Z0-9]{1,9}-[0-9]+)-")
 LOG = ".agents/state/approvals-log.jsonl"
-LATER = {"codebase": "HK-19", "intent": "HK-19", "plans": "HK-19", "deploy": "HK-21"}
+LATER = {"deploy": "HK-21"}
+INTENT_GATES = ("intent", "codebase", "plans")
 
 
 class Refusal(Exception):
@@ -101,12 +102,14 @@ def locate(key):
 def check_gate(issue, gate):
     if REVIEW.match(gate) or gate in sdd_gates.ISSUE_GATES:
         return
+    if gate in INTENT_GATES:
+        raise Refusal(f"{gate} 는 Intent 폴더 게이트다 — npx harness-kit approve <INT> --gate {gate} 로 한다(관리 페이지와 같은 처리)", 2)
     if gate in LATER:
         raise Refusal(f"{gate} 게이트 승인은 이 판에 없다({LATER[gate]})", 2)
     raise Refusal(f"모르는 게이트: {gate} (requirements · design · tasks · mr · done · review/F-n)", 2)
 
 
-def document_target(issue, gate, decision):
+def document_target(issue, gate, decision, email=None):
     path, fields, data = issue.doc(gate)
     if fields is None:
         raise Refusal(f"{path.name} 가 없다", 1)
@@ -114,9 +117,11 @@ def document_target(issue, gate, decision):
         raise Refusal(f"{path.name} 머리(---)를 읽지 못했다", 1)
     sha = approvals.approval_sha(data)
     status = fields.get("status")
-    state = approvals.approval_state(issue.entries, gate, sha, issue.policy)
+    state = approvals.approval_state(issue.entries, gate, sha, issue.policy, issue.need(gate))
     if decision == "approved" and state == "valid":
         raise Refusal(f"{gate}: 이미 같은 내용(sha {sha[:12]})으로 승인한 기록이 있다", 1)
+    if decision == "approved" and state == "partial" and email and email.lower() in approvals.approvers_of(issue.entries, gate, sha):
+        raise Refusal(f"{gate}: 이미 승인했다 — risk: high 는 다른 승인자 한 명이 더 승인한다(DS-R26)", 1)
     if gate != "tasks" and status not in ("draft", "in-review", "approved"):
         raise Refusal(f"{path.name} 머리 status 가 {status or '없음'} 이다(draft · in-review 만 승인한다)", 1)
     if decision == "approved" and sdd_gates.CLARIFY in data.decode("utf-8", "replace"):
@@ -198,7 +203,8 @@ def run(options):
     check_gate(issue, options.gate)
     doc_path, item = None, None
     if options.gate in sdd_gates.DOC_FILES:
-        target, doc_path = document_target(issue, options.gate, options.decision)
+        email = (git(root, "config", "user.email") or "").strip() or None
+        target, doc_path = document_target(issue, options.gate, options.decision, email)
     elif REVIEW.match(options.gate):
         target, item = review_target(root, issue, options.gate)
     else:

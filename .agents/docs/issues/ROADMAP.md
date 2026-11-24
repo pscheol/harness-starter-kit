@@ -43,20 +43,22 @@
 | HK-24 | P18 | 훅: hooks.json 생성 · dispatch · hook_root(worktree) · 동기화 · 보호 훅 · 업그레이드 공지 · 세션 시작 예산 | 03 §3.4 · §3.10~§3.12 | HK-13 | 끝 |
 | HK-25 | P17 보강 | v1 첫 업데이트 병합(문서 줄 병합 · JSON 키 병합 · 코드 .new) · platform-guards 모듈 삭제 | 사용자 결정 | HK-13 | 끝 |
 | HK-14 | P18 | 확장 층(회사 팩 · 개인 층 · 게이트 하한) | 04 | HK-13 | 끝 |
-| HK-15 | P19 | worktree 운영 | 05 | HK-13 | 진행 |
+| HK-15 | P19 | worktree 운영 | 05 | HK-13 | 끝 |
 | HK-16 | P23 | 정적 분석 · SARIF · 새 문제만 막는 게이트 · CI 템플릿 · 지표 | 09 §3.2~§3.7 · §3.9 | HK-8 | 끝 |
 | HK-23 | P23 | 자체 리뷰 에이전트(/hx-review) · 승인 규칙 강제(approve.py · approvals.md 덧붙이기 전용 · done 승인) | 09 §3.1 · §3.8 | HK-16 | 끝 |
 | HK-17 | P20 | 관리 페이지 서버(REST · 읽기 · 쓰기 규칙 · 승인 · 질문 · 세션 · 작업 요청 · 내보내기) | 06 §3.1~§3.15 | HK-13 | 끝 |
-| HK-18 | P20 | 관리 페이지 화면 · 흐름 보기(React Flow) · 전체 프로젝트 · 기록 · 사용량 · 스킬 목록 | 06 §3.16~§3.19 · 07 · screens | HK-17 | 진행 |
-| HK-19 | P21 | 킷 설계 단계: 접수(intake) · /hx-intent · Unit 목록 · 질문 · 기획물 · 역할 | 08 · 12 | HK-17 | 대기 |
+| HK-18 | P20 | 관리 페이지 화면 · 흐름 보기(React Flow) · 전체 프로젝트 · 기록 · 사용량 · 스킬 목록 | 06 §3.16~§3.19 · 07 · screens | HK-17 | 끝(화면 층은 HK-26 이 바꾼다) |
+| HK-19 | P21 | 킷 설계 단계: 접수(intake) · /hx-intent · Unit 목록 · 질문 · 기획물 · 역할 | 08 · 12 | HK-17 | 끝 |
+| HK-26 | P20 보강 | 관리 페이지 화면 층을 React 19 + astryx 로(서버 · API · CLI 그대로, 릴리스 때 정적 번들) | 사용자 결정 · 06 | HK-18 | 진행 |
 | HK-20 | P22 | 선택 모듈: module.json · aidlc · entire(실제 설치 시험) · jira-workflow 개편 · notion · 모듈 토큰 측정 | 10 | HK-12 · HK-19 | 대기 |
 | HK-21 | P24 | 배포 · 운영 기록 · 전달 지표 · 규칙 후보 | 14 | HK-16 · HK-19 | 대기 |
 | HK-22 | 전 단계 | v1 → v2 이전 도구 · 릴리스 스크립트 · 두 구성 e2e(킷만 / 모두 켬) · knots · hdr 복사본 실측 | 11 · 13 | 전부 | 대기 |
 
 ## 진행 방식
 
-- 슬롯 A: HK-11(끝) → HK-16(끝) → HK-23(끝) → HK-17(끝) → HK-18 → HK-19 → HK-21
-- 슬롯 B: HK-9/10(끝) → HK-12(끝) → HK-13(끝) → HK-25(끝) → HK-24(끝) → HK-14(끝) → HK-15 → HK-20 → HK-22
+- 슬롯 A: HK-11(끝) → HK-16(끝) → HK-23(끝) → HK-17(끝) → HK-18(끝) → HK-19(끝) → HK-21
+- 슬롯 C: HK-26(관리 페이지 화면 astryx 전환, 서브에이전트)
+- 슬롯 B: HK-9/10(끝) → HK-12(끝) → HK-13(끝) → HK-25(끝) → HK-24(끝) → HK-14(끝) → HK-15(끝) → HK-20 → HK-22
 - HK-12는 HK-9 · HK-10과 같은 파일(플러그인 문서 · setup.sh · CLI 겹침)을 건드려서 HK-9/10을 합친 뒤에 띄운다. 합친 뒤 HK-11 update 동일성 시험이 HK-9의 update.sh 보드 재생성 · HK-10 겹침 순서를 따라가는지 HK-12에서 맞춘다.
 - 합칠 때마다 깨끗한 worktree에서 시험 전체(`pnpm -C packages/cli test` · `node scripts/gen-plugins.mjs --check` · `python3 -m unittest discover -s tests -p "test_*.py"`)를 돌린다.
 
@@ -64,7 +66,12 @@
 
 - 서브에이전트는 opus 주간 한도(11-28 03:00 KST 초기화)에 걸렸지만 sonnet 모델로는 돈다. HK-15 · HK-18 을 서브에이전트 2개로 진행한다(2026-11-24).
 - (반영) 에이전트 세션 dispatch 차단(exit 3, list · drop 은 됨) · outdated 기본 원격(`HARNESS_KIT_SOURCE=none` 이면 보지 않음).
-- (할 일) init 등록부 자동 등록(`--no-register`, 시험은 `HARNESS_KIT_CONFIG_DIR` 로 실제 홈을 쓰지 않게) — HK-18 을 합친 뒤.
+- (할 일) init 등록부 자동 등록(`--no-register`, 시험은 `HARNESS_KIT_CONFIG_DIR` 로 실제 홈을 쓰지 않게) — HK-18 은 합쳤다. HK-20 앞에 한다.
+- (사용자 결정 2026-11-24) 관리 페이지 화면 층은 React 19 + Meta astryx 로 바꾼다(HK-26) — 순수 JS 화면의 간격 · 정렬이 깨졌다. 레퍼런스: 사람이 준 분석 대시보드 그림(사이드바 묶음 · KPI 카드 · 큰 그래프 · 점 격자 · 오른쪽 상세 서랍). 색은 더 나은 방향이면 바꿔도 된다(AA 대비 · 색맹 구분 · 색 말고 아이콘 · 글자로도 상태).
+- (HK-26 확인할 것) 스크린숏 S01 · S02(서랍) · S13 · 색 견본, design 승인.
+- (HK-19) 사람 확인: 설계 세션 실제 한 바퀴(/hx-intent → 질문 답 → intent 승인 → /hx-plans → /hx-specify --from-unit), SubagentStop 훅이 긴 위임 결과를 실제로 한 번 돌려보내는지(설계 12 §5 #8, 수동), design.md 승인(in-review).
+- (HK-20 기본값) Jira · Notion 은 이 세션 Atlassian 인증이 없어 흉내 응답 시험만 하고 실제 연결은 사람 확인으로 둔다 — 시험용 프로젝트 · 페이지를 주면 실제로 시험한다.
+- (HK-15) 사람 확인: 살아 있는 Claude Code `claude -w` · 하위 에이전트 훅 입력, IntelliJ · VS Code worktree 표시, knots 사본 prune 실측, `git.worktreeRoot`(예: ~/knots-work) 결정. design in-review.
 - (정함) CLI 기본 이슈 키 접두 버그(ACME-NOTES)는 고쳤다(`82aa3db`). 킷이 쓴 잘못된 값은 읽을 때 고친다.
 - (HK-24) 살아 있는 세션에서 디스패처 명령 · Codex/Kiro 훅 입력의 `cwd` 확인(수동). update.sh(plugin.json 1.0.8)와 CLI(2.0.0-alpha.0)의 판 값이 달라 공지 내용이 다르다 — 릴리스 스크립트(HK-22)가 맞춘다.
 - (HK-17) 살아 있는 Claude 세션에 소켓 요청 전달 · deep link · Codex 대기함 표시는 수동 확인이 남았다. `harness-kit dispatch` 를 에이전트 세션이 부를 때 막을지는 HK-24 훅 정리에서 정한다.

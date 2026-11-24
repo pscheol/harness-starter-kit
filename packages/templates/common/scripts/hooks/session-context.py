@@ -14,6 +14,7 @@ sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import hook_paths  # noqa: E402
+import hook_root  # noqa: E402
 
 SESSION_PATTERN = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\Z")
 
@@ -147,11 +148,73 @@ def fit(candidates, budget):
     return out
 
 
-def session_start_lines(checkout_root, state, session_id, inbox, budget, today):
+def read_json(path):
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def design_harness(harness_root, main):
+    """roles.design.harness — 개인 층(.agents/local/harness-kit.local.json)이 있으면 그것(설계 04 §3.6)."""
+    for base in (harness_root, main):
+        local = read_json(base / ".agents/local/harness-kit.local.json") or {}
+        role = (local.get("roles") or {}).get("design") if isinstance(local.get("roles"), dict) else None
+        if isinstance(role, dict) and isinstance(role.get("harness"), str):
+            return role["harness"]
+    meta = read_json(harness_root / ".agents/harness-kit.json") or read_json(main / ".agents/harness-kit.json") or {}
+    role = (meta.get("roles") or {}).get("design") if isinstance(meta.get("roles"), dict) else None
+    return role.get("harness") if isinstance(role, dict) and isinstance(role.get("harness"), str) else None
+
+
+def design_lines(harness_root, session_id):
+    """설계 세션 안내(08 §3.9, DS-R19): 역할이 design 이면 한 줄, 하네스가 roles.design.harness 와 다르면 경고 한 줄(막지 않는다)."""
+    _, main = hook_root.main_root_of(harness_root)
+    record = read_json(main / ".agents/state/sessions" / f"{session_id}.json") if session_id else None
+    role = os.environ.get("HX_ROLE") or (record or {}).get("role")
+    if role != "design":
+        return []
+    lines = [("설계 세션: Intent 폴더 · codebase/ 만 쓴다. 승인 · 답 줄은 쓰지 않는다. 할 일은 intent.py next <키> 가 정한다",)]
+    harness = os.environ.get("HX_HARNESS") or (record or {}).get("harness")
+    want = design_harness(harness_root, main)
+    if want and harness and harness != want:
+        lines.append((f"⚠ 이 세션 하네스 {harness} ≠ roles.design.harness {want} — 설계는 {want} 로 하기로 정했다(막지 않는다)",))
+    return lines
+
+
+TIERS = ("light", "standard", "deep")
+
+
+def personal_model_lines(harness_root, harness):
+    """개인 모델 등급(설계 12 §3.7 · MR-R7): 잠기지 않은 분류만 한 줄로 알린다. 역할 파일은 바꾸지 않는다(호출별 인자로 쓴다)."""
+    local = read_json(harness_root / ".agents/local/model-policy.local.json") or {}
+    policy = read_json(harness_root / ".agents/model-policy.json")
+    if not policy:
+        return []
+    classes = local.get("classes") if isinstance(local.get("classes"), dict) else {}
+    locked = set(policy.get("locked") or [])
+    tiers = policy.get("tiers") if isinstance(policy.get("tiers"), dict) else {}
+    parts = []
+    for cls, tier in sorted(classes.items()):
+        if cls in locked or tier not in TIERS:
+            continue
+        conf = (tiers.get(tier) or {}).get(harness or "claude") or {}
+        if harness == "kiro":
+            continue
+        how = f"model: {conf['model']}" if conf.get("model") else (f"effort {conf['model_reasoning_effort']}" if conf.get("model_reasoning_effort") else "")
+        parts.append(f"{cls} → {tier}" + (f"({how})" if how else ""))
+    if not parts:
+        return []
+    return [(f"개인 설정: {' · '.join(parts)} — 위임 호출 때 이 값을 인자로 준다. locked 역할(worker · reviewer · designer)은 그대로",)]
+
+
+def session_start_lines(checkout_root, state, session_id, inbox, budget, today, design=()):
     """세션 시작 상태(HK-24 design §6): 대기함 → 점유 → 세션 공지 → 공지 제목 → 미등록 안내 → 공지 본문, 합계 budget 바이트."""
     sessions = state.get("sessions", [])
     notices = state.get("notices") or []
     candidates = [(line,) for line in inbox.splitlines() if line.strip()]
+    candidates += list(design)
     if sessions:
         candidates.append(("명시적 파일 점유: " + json.dumps(sessions, ensure_ascii=False),
                            f"명시적 파일 점유 {len(sessions)}건 · 확인: {COORDINATION} context"))
@@ -234,7 +297,8 @@ def main():
             return 2
     if arguments.event == "session-start":
         today = os.environ.get("HARNESS_KIT_TODAY") or datetime.now().astimezone().date().isoformat()
-        lines = session_start_lines(checkout_root, state, session_id, arguments.inbox, max(arguments.budget, 0), today)
+        extra = design_lines(harness_root, session_id) + personal_model_lines(harness_root, os.environ.get("HX_HARNESS"))
+        lines = session_start_lines(checkout_root, state, session_id, arguments.inbox, max(arguments.budget, 0), today, extra)
     else:
         lines = context_lines(state, session_id)
     if lines:

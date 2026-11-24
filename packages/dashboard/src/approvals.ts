@@ -258,17 +258,33 @@ export function groupOf(email: string, gate: string, policy: Policy | null | und
   return null;
 }
 
-export type ApprovalState = "none" | "valid" | "stale" | "invalid";
+export type ApprovalState = "none" | "valid" | "stale" | "invalid" | "partial";
+export const HIGH_GATES: readonly string[] = ["design", "mr", "deploy"];
+
+/** risk high 의 design · mr · deploy 는 risk.highApprovals(기본 2, 줄이지 못한다)명, 그 밖은 1명(08 §3.15 · DS-R26, approvals.py need_of 와 같다). */
+export function needOf(meta: Record<string, unknown>, risk: string | null | undefined, gate: string): number {
+  if (risk !== "high" || !HIGH_GATES.includes(gate)) return 1;
+  const conf = meta.risk && typeof meta.risk === "object" && !Array.isArray(meta.risk) ? (meta.risk as Record<string, unknown>) : {};
+  const n = Number(conf.highApprovals ?? 2);
+  return Number.isFinite(n) ? Math.max(2, Math.trunc(n)) : 2;
+}
+
+/** 그 게이트 · 그 내용으로 승인한 사람(email 소문자). */
+export function approversOf(entries: Entry[], gate: string, sha: string | null = null): Set<string> {
+  return new Set(entries.filter((e) => e.valid && e.gate === gate && e.decision === "approved" && (sha === null || e.target?.sha256 === sha)).map((e) => (e.approver?.email ?? "").toLowerCase()));
+}
 
 /** 설계 06 §3.3: none · valid(sha 같음) · stale(승인 뒤 바뀜) · invalid(승인자가 approvers 밖). */
-export function approvalState(entries: Entry[], gate: string, sha: string | null = null, policy: Policy | null = null): ApprovalState {
+export function approvalState(entries: Entry[], gate: string, sha: string | null = null, policy: Policy | null = null, need = 1): ApprovalState {
   let found = entries.filter((e) => e.valid && e.gate === gate && e.decision === "approved");
   if (found.length === 0) return "none";
   if (sha !== null && sha !== undefined) {
     found = found.filter((e) => e.target && e.target.sha256 === sha);
     if (found.length === 0) return "stale";
   }
-  return found.some((e) => allowed(e.approver?.email, gate, policy)) ? "valid" : "invalid";
+  const people = new Set(found.filter((e) => allowed(e.approver?.email, gate, policy)).map((e) => (e.approver?.email ?? "").toLowerCase()));
+  if (people.size === 0) return "invalid";
+  return people.size >= Math.max(need, 1) ? "valid" : "partial";
 }
 
 /** 리뷰 지적 하나의 마지막 유효 판단(risk-accepted · fix-required). 승인자는 approvers.mr 로 본다. */
