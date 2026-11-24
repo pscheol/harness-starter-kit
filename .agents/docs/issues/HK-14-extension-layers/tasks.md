@@ -52,7 +52,7 @@ created: 2026-11-24
 - `pnpm -C packages/cli test`: 401개 통과(파일 32개, 새 파일 `floor` · `packs` · `pack-new` · `local` · `doctor-overrides`).
 - 킷 Python: `test_layer_files`(3) · `test_projection_hooks` · `test_template_wording` 통과.
 - 설치본: `test_issue_sdd` 하한 시험 · `test_block_full_verify` 개인 층 시험 통과.
-- 전체 시험: (아래 줄)
+- 전체 시험(merge 커밋 `99fa2ae`): CLI 401 · 대시보드 94 통과, 킷 `python3 -m unittest discover -s tests -p "test_*.py"` 117개 OK(1,493초), 설치본(setup.sh python) 494개 OK(772초).
 
 ### 토큰
 
