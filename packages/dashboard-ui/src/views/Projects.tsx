@@ -57,7 +57,7 @@ export default function Projects({ route: _route }: { route: Route }) {
   );
   const [group, setGroup] = useState("project");
   const [only, setOnly] = useState("all");
-  const sub = "이 컴퓨터에 등록한 킷 리포 · 쓰기는 들어간 리포 안에서만 된다";
+  const sub = "이 컴퓨터에 등록한 킷 리포 · 쓰기는 들어간 리포 안에서만 됩니다";
   const crumbs = [{ label: "프로젝트" }, { label: "전체 프로젝트" }];
   const tools = <Tag icon="eye" label="쓰기 없음 · 쓰기는 프로젝트 안에서" />;
 
@@ -72,7 +72,7 @@ export default function Projects({ route: _route }: { route: Route }) {
   if (!multi) {
     return (
       <Page title="전체 프로젝트" sub={sub} crumbs={crumbs} tools={tools}>
-        <Notice kind="info" title="지금은 한 리포만 연 서버다. ">여러 리포를 한 화면에서 보려면 등록부(~/.config/harness-kit/projects.json)나 폴더를 가리켜 서버를 다시 연다.</Notice>
+        <Notice kind="info" title="지금은 한 리포만 연 서버입니다. ">여러 리포를 한 화면에서 보려면 등록부(~/.config/harness-kit/projects.json)나 폴더를 가리켜 서버를 다시 엽니다.</Notice>
         <VStack gap={2}>
           <CommandBox cmd="npx harness-kit dashboard --all" label="--all 복사" />
           <CommandBox cmd="npx harness-kit dashboard --root ~/work" label="--root 복사" />
@@ -86,7 +86,7 @@ export default function Projects({ route: _route }: { route: Route }) {
   if (!projects.length) {
     return (
       <Page title="전체 프로젝트" sub={sub} crumbs={crumbs} tools={tools}>
-        <Empty title="등록된 프로젝트가 없다" text="킷을 설치한 리포를 등록하면 여기서 한꺼번에 본다." actions={<CommandBox cmd="npx harness-kit projects add <폴더>" label="명령 복사" />} />
+        <Empty title="등록된 프로젝트가 없습니다" text="킷을 설치한 리포를 등록하면 여기서 한꺼번에 봅니다." actions={<CommandBox cmd="npx harness-kit projects add <폴더>" label="명령 복사" />} />
       </Page>
     );
   }
@@ -119,7 +119,7 @@ export default function Projects({ route: _route }: { route: Route }) {
 
   return (
     <Page title="전체 프로젝트" sub={sub} crumbs={crumbs} tools={tools} search={false}>
-      <IconNote icon="folder" size="xsm">{`등록된 프로젝트 ${projects.length} · ~/.config/harness-kit/projects.json · 경로 · 이름 · 더한 날만 둔다. 리포 안 파일은 그 리포에서 읽는다.`}</IconNote>
+      <IconNote icon="folder" size="xsm">{`등록된 프로젝트 ${projects.length} · ~/.config/harness-kit/projects.json · 경로 · 이름 · 더한 날만 둡니다. 리포 안 파일은 그 리포에서 읽습니다.`}</IconNote>
       <TwoCol
         main={
           <Panel title="처리할 일" aside={<><Badge variant="red" label={String(total)} /><Muted size="xsm">{`프로젝트 ${okOver.length}곳 · 각 체크아웃의 git 사용자 기준`}</Muted></>}>
@@ -127,9 +127,9 @@ export default function Projects({ route: _route }: { route: Route }) {
               <Seg label="묶기" items={[{ id: "project", label: "프로젝트별" }, { id: "kind", label: "종류별" }]} value={group} onChange={setGroup} />
               <Selector label="프로젝트" isLabelHidden size="sm" value={only} onChange={(v) => v && setOnly(v)} options={[{ value: "all", label: `모두 ${total}` }, ...okOver.map((o) => ({ value: o.id as string, label: `${o.name} ${o.total}` }))]} />
             </HStack>
-            {state.data[1] === null ? <Notice kind="err" title="처리할 일을 모으지 못했다." /> : null}
+            {state.data[1] === null ? <Notice kind="err" title="처리할 일을 모으지 못했습니다." /> : null}
             <VStack gap={4} aria-live="polite">
-              {todoList.length ? todoList : <Empty title="처리할 일이 없다" text="등록한 프로젝트 모두 조용하다." />}
+              {todoList.length ? todoList : <Empty title="처리할 일이 없습니다" text="등록한 프로젝트 모두 조용합니다." />}
             </VStack>
           </Panel>
         }
@@ -144,7 +144,7 @@ export default function Projects({ route: _route }: { route: Route }) {
                       <VStack gap={2}>
                         <HStack gap={2} align="center" wrap="wrap"><Ico name="folder" /><Text weight="semibold">{p.name}</Text><Tag label={p.state === "missing" ? "없음" : "킷 리포 아님"} /></HStack>
                         <Muted size="xsm">{p.path}</Muted>
-                        <Muted>폴더가 없다. 옮겼거나 지웠다. 등록부에서 저절로 지우지 않는다.</Muted>
+                        <Muted>폴더가 없습니다. 옮겼거나 지웠습니다. 등록부에서 저절로 지우지 않습니다.</Muted>
                         <CommandBox cmd={p.remove ?? `npx harness-kit projects remove ${p.name}`} label="복사" />
                       </VStack>
                     </Card>
@@ -164,7 +164,7 @@ export default function Projects({ route: _route }: { route: Route }) {
                           <HStack gap={4} wrap="wrap"><Muted size="xsm">{`이슈 ${o.issues}`}</Muted><Muted size="xsm">{`킷 ${p.version ?? "?"}`}</Muted><Muted size="xsm">{`세션 ${o.sessions?.alive ?? 0}개`}</Muted></HStack>
                         </VStack>
                       ) : (
-                        <Text color="secondary">{o?.error ?? "읽지 못했다"}</Text>
+                        <Text color="secondary">{o?.error ?? "읽지 못했습니다"}</Text>
                       )}
                       {(o?.children ?? []).length ? (
                         <Collapsible defaultIsOpen={false} trigger={<Text size="sm">{`하위 리포 ${o.children.length}개`}</Text>}>
@@ -184,7 +184,7 @@ export default function Projects({ route: _route }: { route: Route }) {
                   ))}
                 </List>
               ) : (
-                <VStack padding={4}><Muted>켜 둔 세션이 없다</Muted></VStack>
+                <VStack padding={4}><Muted>켜 둔 세션이 없습니다</Muted></VStack>
               )}
             </Panel>
           </>

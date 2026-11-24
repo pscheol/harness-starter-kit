@@ -21,7 +21,7 @@ import { Page, Stat, TwoCol } from "../ui/Page";
 
 function SourcesNotice({ u }: { u: Loose }) {
   return (
-    <Notice kind={u.enabled ? "info" : "warn"} title={u.enabled ? "읽기만 한다. 이 컴퓨터에서만 보인다. " : "대화 기록 읽기는 꺼져 있다(기본). "}>
+    <Notice kind={u.enabled ? "info" : "warn"} title={u.enabled ? "읽기만 합니다. 이 컴퓨터에서만 보입니다. " : "대화 기록 읽기는 꺼져 있습니다(기본). "}>
       <VStack gap={1}>
         {(u.sources as Loose[]).map((s) => (
           <HStack key={s.label} gap={2} wrap="wrap" align="center">
@@ -31,7 +31,7 @@ function SourcesNotice({ u }: { u: Loose }) {
           </HStack>
         ))}
         <Text size="sm">
-          복사본을 남기지 않고 내보내기(--export) · 커밋 · 세션 요청에 넣지 않는다. 켜는 곳: <Code>~/.config/harness-kit/config.json</Code> 의 <Code>&quot;history&quot;: &quot;on&quot;</Code>
+          복사본을 남기지 않고 내보내기(--export) · 커밋 · 세션 요청에 넣지 않습니다. 켜는 곳: <Code>~/.config/harness-kit/config.json</Code> 의 <Code>&quot;history&quot;: &quot;on&quot;</Code>
           {u.enabled ? " — 지금 켜짐" : " — 지금 꺼짐"}
         </Text>
       </VStack>
@@ -41,16 +41,16 @@ function SourcesNotice({ u }: { u: Loose }) {
 
 function NowPanel({ n }: { n: Loose | null }) {
   const s = n?.session as Loose | undefined;
-  if (!n || !n.enabled) return <Panel title="지금 세션"><Empty title="대화 기록 읽기가 꺼져 있다" text="켜면 이 리포의 가장 최근 세션 컨텍스트 사용률을 본다." /></Panel>;
-  if (!s) return <Panel title="지금 세션"><Empty title="최근 세션 기록이 없다" text="이 리포에서 연 세션의 대화 기록이 아직 없다." /></Panel>;
+  if (!n || !n.enabled) return <Panel title="지금 세션"><Empty title="대화 기록 읽기가 꺼져 있습니다" text="켜면 이 리포의 가장 최근 세션 컨텍스트 사용률을 봅니다." /></Panel>;
+  if (!s) return <Panel title="지금 세션"><Empty title="최근 세션 기록이 없습니다" text="이 리포에서 연 세션의 대화 기록이 아직 없습니다." /></Panel>;
   return (
     <Panel title="지금 세션" lift aside={<HStack gap={1} align="center"><HarnessBadge name={s.harness} />{s.role ? <Muted>{s.role}</Muted> : null}</HStack>}>
       <HStack gap={2} align="end" wrap="wrap">
         <Text size="3xl" weight="bold" hasTabularNumbers>{s.ratio === null ? "—" : pct(s.ratio)}</Text>
-        <Muted>{s.window ? `컨텍스트 ${fmtTokens(s.used)} / ${fmtTokens(s.window)}` : `컨텍스트 ${fmtTokens(s.used)} · 창 크기: 기록에 없다`}</Muted>
+        <Muted>{s.window ? `컨텍스트 ${fmtTokens(s.used)} / ${fmtTokens(s.window)}` : `컨텍스트 ${fmtTokens(s.used)} · 창 크기: 기록에 없습니다`}</Muted>
       </HStack>
-      {s.ratio !== null ? <ProgressBar label={`컨텍스트 ${pct(s.ratio)}, 알림 기준 ${pct(s.warnAt)}${s.warn ? " — 넘었다" : ""}`} isLabelHidden value={Math.min(100, Math.round(s.ratio * 100))} variant={s.warn ? "warning" : "accent"} marks={[{ value: Math.round(s.warnAt * 100), label: "알림 기준" }]} /> : null}
-      {s.warn ? <Notice kind="warn" title="자동 압축이 가깝다. ">알림 기준은 설정(usage.warnAt)이다.</Notice> : null}
+      {s.ratio !== null ? <ProgressBar label={`컨텍스트 ${pct(s.ratio)}, 알림 기준 ${pct(s.warnAt)}${s.warn ? " — 넘었습니다" : ""}`} isLabelHidden value={Math.min(100, Math.round(s.ratio * 100))} variant={s.warn ? "warning" : "accent"} marks={[{ value: Math.round(s.warnAt * 100), label: "알림 기준" }]} /> : null}
+      {s.warn ? <Notice kind="warn" title="자동 압축이 가깝습니다. ">알림 기준은 설정(usage.warnAt)입니다.</Notice> : null}
       <VStack gap={1}>
         <HStack justify="between" gap={3}><Muted>마지막 요청</Muted><Text size="sm">{`${clock(s.at)} · 입력 ${fmtTokens(s.last.input)} + 캐시 읽기 ${fmtTokens(s.last.cacheRead)} + 캐시 쓰기 ${fmtTokens(s.last.cacheWrite)}`}</Text></HStack>
         <HStack justify="between" gap={3}><Muted>모델</Muted><Code>{s.model ?? "모름"}</Code></HStack>
@@ -89,10 +89,10 @@ function KitPanel({ k }: { k: Loose }) {
           ]}
         />
       ) : (
-        <Muted>아직 훅 실행 기록이 없다(.agents/state/hook-output.jsonl).</Muted>
+        <Muted>아직 훅 실행 기록이 없습니다(.agents/state/hook-output.jsonl).</Muted>
       )}
       {(k.modules as Loose[]).length ? <Muted>{`소유자별 세션마다 실리는 파일: ${(k.modules as Loose[]).map((m) => `${m.owner} ${m.files}개 ${fmtBytes(m.bytes)}${Object.keys(m.hooks).length ? ` · 훅 ${(Object.values(m.hooks) as number[]).reduce((a, b) => a + b, 0)}` : ""}`).join(" · ")}`}</Muted> : null}
-      <Muted size="xsm">관리 페이지 · 저장 · 승인 · 답은 세션에 아무것도 덧붙이지 않는다(모델 호출 0).</Muted>
+      <Muted size="xsm">관리 페이지 · 저장 · 승인 · 답은 세션에 아무것도 덧붙이지 않습니다(모델 호출 0).</Muted>
     </Panel>
   );
 }
@@ -118,9 +118,9 @@ function UsageTab({ nowData, kitData }: { nowData: Loose | null; kitData: Loose 
   if (state.status === "error" || !u) return <VStack gap={4}>{filters}<ErrorBlock error={state.status === "error" ? state.error : null} retry={reload} /></VStack>;
   const t = u.totals as Loose;
   const peak = daily.reduce((a, d) => (d.sum > a.sum ? d : a), daily[0] ?? { sum: 0, date: "", byRole: {} });
-  const summary = `하루 토큰 ${daily.length}일 합 ${fmtTokens(t.sum)}. ${peak.sum ? `가장 많은 날 ${dayLabel(peak.date).text} ${fmtTokens(peak.sum)}.` : "기록이 없다."}`;
+  const summary = `하루 토큰 ${daily.length}일 합 ${fmtTokens(t.sum)}. ${peak.sum ? `가장 많은 날 ${dayLabel(peak.date).text} ${fmtTokens(peak.sum)}.` : "기록이 없습니다."}`;
   const cacheVals = (u.cache.daily as Loose[]).map((d) => (d.ratio === null ? null : Math.round(d.ratio * 1000) / 10));
-  const cacheSummary = cacheVals.some((v) => v !== null) ? `캐시 읽기 비율 평균 ${pct(u.cache.average)}. ${(u.cache.daily as Loose[]).map((d) => `${dayLabel(d.date).short} ${d.ratio === null ? "-" : pct(d.ratio)}`).join(", ")}` : "캐시 읽기 기록이 없다";
+  const cacheSummary = cacheVals.some((v) => v !== null) ? `캐시 읽기 비율 평균 ${pct(u.cache.average)}. ${(u.cache.daily as Loose[]).map((d) => `${dayLabel(d.date).short} ${d.ratio === null ? "-" : pct(d.ratio)}`).join(", ")}` : "캐시 읽기 기록이 없습니다";
 
   return (
     <VStack gap={5}>
@@ -133,7 +133,7 @@ function UsageTab({ nowData, kitData }: { nowData: Loose | null; kitData: Loose 
         <TwoCol
           main={
             <>
-              <Empty title="토큰 사용량은 대화 기록 읽기를 켜면 보인다" text="꺼진 동안 이 컴퓨터의 ~/.claude · ~/.codex 를 열지 않는다. 킷이 덧붙인 양은 늘 보인다." />
+              <Empty title="토큰 사용량은 대화 기록 읽기를 켜면 보입니다" text="꺼진 동안 이 컴퓨터의 ~/.claude · ~/.codex 를 열지 않습니다. 킷이 덧붙인 양은 늘 보입니다." />
               <CommandBox cmd={`echo '{ "history": "on" }' > ~/.config/harness-kit/config.json`} label="켜는 명령 복사(사람이 직접)" />
             </>
           }
@@ -145,7 +145,7 @@ function UsageTab({ nowData, kitData }: { nowData: Loose | null; kitData: Loose 
             <Stat label="토큰 합계" value={fmtTokens(t.sum)} hint={days === "1" ? "오늘" : `${days}일`} />
             <Stat label="요청" value={t.requests ?? 0} unit="회" />
             <Stat label="캐시 읽기 평균" value={pct(u.cache.average)} />
-            <Stat label="추정 비용" value={u.cost ? u.cost.estimate : "-"} hint={u.cost ? "청구 금액이 아니다" : "usage.pricing 이 있을 때만"} />
+            <Stat label="추정 비용" value={u.cost ? u.cost.estimate : "-"} hint={u.cost ? "청구 금액이 아닙니다" : "usage.pricing 이 있을 때만"} />
           </Grid>
           <TwoCol
             main={
@@ -167,18 +167,18 @@ function UsageTab({ nowData, kitData }: { nowData: Loose | null; kitData: Loose 
                       </Collapsible>
                     </VStack>
                   ) : (
-                    <Empty title="이 기간 기록이 없다" text="이 리포의 세션이 이 기간에 없었다." />
+                    <Empty title="이 기간 기록이 없습니다" text="이 리포의 세션이 이 기간에 없었습니다." />
                   )}
                 </Panel>
                 {u.cost ? <Muted size="xsm">{u.cost.note}</Muted> : null}
                 <Grid columns={{ minWidth: 320, max: 2, repeat: "fit" }} gap={5}>
                   <Panel title="이슈별 토큰" aside={<Muted size="xsm">{days === "1" ? "오늘" : `${days}일`}</Muted>}>
-                    {byIssue.length ? <HBars label="이슈별 토큰" fmt={fmtTokens} rows={byIssue.slice(0, 10).map((x) => ({ id: x.issue as string, label: <Key>{x.issue}</Key>, v: x.sum as number }))} /> : <Muted>기록이 없다</Muted>}
-                    <Muted size="xsm">이슈는 세션 등록과 기록의 gitBranch 에서 찾는다.</Muted>
+                    {byIssue.length ? <HBars label="이슈별 토큰" fmt={fmtTokens} rows={byIssue.slice(0, 10).map((x) => ({ id: x.issue as string, label: <Key>{x.issue}</Key>, v: x.sum as number }))} /> : <Muted>기록이 없습니다</Muted>}
+                    <Muted size="xsm">이슈는 세션 등록과 기록의 gitBranch 에서 찾습니다.</Muted>
                   </Panel>
                   <Panel title="캐시 읽기 비율" aside={<Muted size="xsm">{`평균 ${pct(u.cache.average)}`}</Muted>}>
-                    {cacheVals.some((v) => v !== null) ? <LineChart labels={(u.cache.daily as Loose[]).map((d) => dayLabel(d.date).short)} series={[{ name: "캐시 읽기", kind: "main", values: cacheVals }]} yMin={0} yMax={100} height={150} fmt={(v) => `${v}%`} summary={cacheSummary} /> : <Muted>기록이 없다</Muted>}
-                    <Muted size="xsm">캐시 읽기 ÷ (입력 + 캐시 읽기 + 캐시 쓰기). 높을수록 같은 앞부분을 다시 쓴다.</Muted>
+                    {cacheVals.some((v) => v !== null) ? <LineChart labels={(u.cache.daily as Loose[]).map((d) => dayLabel(d.date).short)} series={[{ name: "캐시 읽기", kind: "main", values: cacheVals }]} yMin={0} yMax={100} height={150} fmt={(v) => `${v}%`} summary={cacheSummary} /> : <Muted>기록이 없습니다</Muted>}
+                    <Muted size="xsm">캐시 읽기 ÷ (입력 + 캐시 읽기 + 캐시 쓰기). 높을수록 같은 앞부분을 다시 씁니다.</Muted>
                   </Panel>
                 </Grid>
               </>
@@ -188,7 +188,7 @@ function UsageTab({ nowData, kitData }: { nowData: Loose | null; kitData: Loose 
                 <NowPanel n={nowData} />
                 {kit}
                 {activity.some((d) => d.v > 0) ? (
-                  <Panel title="하루 활동" aside={<Muted size="xsm">토큰 합계가 큰 날일수록 진하다</Muted>}>
+                  <Panel title="하루 활동" aside={<Muted size="xsm">토큰 합계가 큰 날일수록 진합니다</Muted>}>
                     <DotMatrix days={activity} summary={`하루 활동 ${activity.length}일. 가장 많은 날 ${peak.date ? dayLabel(peak.date).text : "-"}`} />
                   </Panel>
                 ) : null}
@@ -216,7 +216,7 @@ function HistoryTab() {
   if (state.status === "loading") return <VStack gap={4}>{filters}<Loading rows={3} /></VStack>;
   if (state.status === "error") return <VStack gap={4}>{filters}<ErrorBlock error={state.error} retry={reload} /></VStack>;
   const d = state.data[0] as Loose | null;
-  if (!d) return <Notice kind="warn" title="대화 기록 읽기가 꺼져 있다. ">프롬프트 기록은 이 컴퓨터 설정(<Code>&quot;history&quot;: &quot;on&quot;</Code>)을 켠 사람만 본다.</Notice>;
+  if (!d) return <Notice kind="warn" title="대화 기록 읽기가 꺼져 있습니다. ">프롬프트 기록은 이 컴퓨터 설정(<Code>&quot;history&quot;: &quot;on&quot;</Code>)을 켠 사람만 봅니다.</Notice>;
   return (
     <VStack gap={4}>
       {filters}
@@ -230,7 +230,7 @@ function HistoryTab() {
           </List>
         </Panel>
       ) : (
-        <Empty title="프롬프트 기록이 없다" text={q ? "찾는 말을 바꾼다." : "이 리포에서 보낸 프롬프트가 없다."} />
+        <Empty title="프롬프트 기록이 없습니다" text={q ? "찾는 말을 바꿉니다." : "이 리포에서 보낸 프롬프트가 없습니다."} />
       )}
     </VStack>
   );
@@ -239,7 +239,7 @@ function HistoryTab() {
 export default function Usage({ route }: { route: Route }) {
   const [tab, setTab] = useState(route.query.tab === "history" ? "history" : "usage");
   const { state, reload } = useLoad<[Loose, Loose]>(() => [get("/usage/kit"), get("/usage/now")], [], { tolerate: ["not_found"] });
-  const sub = "이 컴퓨터의 대화 기록을 읽어 보여 준다 · 관리 페이지는 모델을 부르지 않는다";
+  const sub = "이 컴퓨터의 대화 기록을 읽어 보여 줍니다 · 관리 페이지는 모델을 부르지 않습니다";
   const crumbs = [{ label: "운영" }, { label: "기록 · 사용량" }];
   if (state.status === "loading") return <Page title="기록 · 사용량" sub={sub} crumbs={crumbs}><Loading rows={6} /></Page>;
   if (state.status === "error") return <Page title="기록 · 사용량" sub={sub} crumbs={crumbs}><ErrorBlock error={state.error} retry={reload} /></Page>;

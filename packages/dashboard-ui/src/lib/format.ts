@@ -122,7 +122,7 @@ export const TODO_GROUPS: TodoGroup[] = [
   { id: "mine", title: "승인 대기", hint: "내 git 사용자가 승인자인 것", match: (t: Loose) => t.rank === 2 },
   { id: "questions", title: "답할 질문", hint: "[NEEDS CLARIFICATION] 이 남은 문서 · 열린 질문", match: (t: Loose) => t.rank === 3 },
   { id: "verify", title: "검증 · 다시 승인", hint: "마지막 검증이 통과가 아닌 것 · 승인 뒤 바뀐 문서", match: (t: Loose) => t.rank === 4 || t.rank === 5 },
-  { id: "others", title: "다른 사람 승인 대기", hint: "approvers 에 내 git 사용자가 없다", match: (t: Loose) => t.rank === 6 },
+  { id: "others", title: "다른 사람 승인 대기", hint: "approvers 에 내 git 사용자가 없습니다", match: (t: Loose) => t.rank === 6 },
   { id: "cleanup", title: "정리 · 점검", hint: "끝난 worktree · 하네스 점검 · 오래된 대기함", match: (t: Loose) => t.rank >= 7 },
 ];
 
@@ -155,12 +155,12 @@ export function menuOf(route: Route): string {
 }
 
 export const PROMPT_KINDS: Array<[string, string]> = [
-  ["doc-changed", "문서를 고쳤다"],
-  ["answers-ready", "답이 모였다"],
-  ["approved", "승인했다"],
-  ["changes-requested", "수정을 요청한다"],
-  ["review-findings", "리뷰 지적을 처리한다"],
-  ["custom", "직접 쓴다"],
+  ["doc-changed", "문서를 고쳤습니다"],
+  ["answers-ready", "답이 모였습니다"],
+  ["approved", "승인했습니다"],
+  ["changes-requested", "수정을 요청합니다"],
+  ["review-findings", "리뷰 지적을 처리합니다"],
+  ["custom", "직접 씁니다"],
 ];
 
 /** 사용량 차트용: byRole 를 역할 순서대로 쌓는 조각 */

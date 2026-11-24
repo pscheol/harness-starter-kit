@@ -39,7 +39,7 @@ export default function Workspace({ route: _route }: { route: Route }) {
 
   return (
     <Page title="작업 공간" sub={sub} crumbs={crumbs}>
-      {wt.over ? <Notice kind="warn" title={`worktree ${wt.count}개 — 리포당 상한 ${wt.maxPerRepo}개를 넘었다. `}>끝난 것부터 정리한다.</Notice> : null}
+      {wt.over ? <Notice kind="warn" title={`worktree ${wt.count}개 — 리포당 상한 ${wt.maxPerRepo}개를 넘었습니다. `}>끝난 것부터 정리합니다.</Notice> : null}
       <Panel title="worktree" aside={<Muted>{`${wt.count}개 / 상한 ${wt.maxPerRepo}`}</Muted>} flush>
         <Table
           data={wt.worktrees as Loose[]}
@@ -58,7 +58,7 @@ export default function Workspace({ route: _route }: { route: Route }) {
         />
         <VStack padding={4}>
           <Muted>
-            끝의 정의 = 변경 없음 + push 안 된 커밋 0 + 브랜치 병합됨. 화면은 아무것도 지우지 않는다. 사람이 터미널에서: <Code>{wt.gc}</Code>
+            끝의 정의 = 변경 없음 + push 안 된 커밋 0 + 브랜치 병합됨. 화면은 아무것도 지우지 않습니다. 사람이 터미널에서: <Code>{wt.gc}</Code>
           </Muted>
         </VStack>
       </Panel>
@@ -79,7 +79,7 @@ export default function Workspace({ route: _route }: { route: Route }) {
                 ))}
               </List>
             ) : (
-              <Empty title="등록된 세션이 없다" text="세션 시작 훅이 등록한다." />
+              <Empty title="등록된 세션이 없습니다" text="세션 시작 훅이 등록합니다." />
             )}
           </Panel>
         }
@@ -91,7 +91,7 @@ export default function Workspace({ route: _route }: { route: Route }) {
                   <ListItem
                     key={x.id}
                     label={String(x.message).slice(0, 160)}
-                    description={`${x.kind ?? ""} · ${x.createdBy ?? ""} · ${ago(x.createdAt)}${x.stale ? " · 24시간 넘게 가져가지 않았다" : ""} · ${x.id}`}
+                    description={`${x.kind ?? ""} · ${x.createdBy ?? ""} · ${ago(x.createdAt)}${x.stale ? " · 24시간 넘게 가져가지 않았습니다" : ""} · ${x.id}`}
                     endContent={
                       <HStack gap={1} align="center">
                         {x.stale ? <Tag tone="build" label="오래됨" /> : null}
@@ -109,7 +109,7 @@ export default function Workspace({ route: _route }: { route: Route }) {
                                 return;
                               }
                               setGone((g) => [...g, x.id]);
-                              notify("대기함 항목을 버렸다");
+                              notify("대기함 항목을 버렸습니다");
                             })();
                           }}
                         />
@@ -119,7 +119,7 @@ export default function Workspace({ route: _route }: { route: Route }) {
                 ))}
               </List>
             ) : (
-              <Empty title="대기함이 비었다" text="Codex · Kiro 세션이나 사람이 대기함을 고른 요청이 여기 쌓인다. 훅이 다음 세션 시작 때 건수와 첫 요청 한 줄만 보여 준다." />
+              <Empty title="대기함이 비었습니다" text="Codex · Kiro 세션이나 사람이 대기함을 고른 요청이 여기 쌓입니다. 훅이 다음 세션 시작 때 건수와 첫 요청 한 줄만 보여 줍니다." />
             )}
           </Panel>
         }

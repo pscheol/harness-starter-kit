@@ -32,26 +32,26 @@ export default function Intake({ route }: { route: Route }) {
 
   async function submit(): Promise<void> {
     if (!title.trim() || !body.trim()) {
-      setOut({ kind: "warn", title: "제목과 본문이 필요하다." });
+      setOut({ kind: "warn", title: "제목과 본문이 필요합니다." });
       return;
     }
     setOut({ kind: "info", title: "접수하는 중…" });
     const attachments = [...(files.current?.files ?? [])].map((f) => ({ name: f.name, size: f.size }));
     const r = await post("/intake", { kind, title: title.trim(), body, attachments });
     if (r.ok) {
-      setOut({ kind: "ok", title: "접수했다. ", text: "설계 세션에 넘기려면 사람이 세션에 요청한다(접수만으로는 세션에 아무것도 가지 않는다)." });
+      setOut({ kind: "ok", title: "접수했습니다. ", text: "설계 세션에 넘기려면 사람이 세션에 요청합니다(접수만으로는 세션에 아무것도 가지 않습니다)." });
       return;
     }
     if (r.error.code === "not_implemented") {
       const stage = ((r.error.details as Loose)?.stage as string | undefined) ?? "HK-19";
-      setOut({ kind: "info", title: "접수 기능은 아직 제공하지 않는다. ", text: `이 서버의 POST /intake 는 ${stage}(설계 08 §3.8.1)에서 만든다. 쓴 글은 어디에도 저장되지 않았다 — 아래 단추로 본문을 복사해 둔다.`, cmd: `npx harness-kit intake --kind ${kind} --title "${title.trim().replace(/"/g, "'")}" --body-file req.md` });
+      setOut({ kind: "info", title: "접수 기능은 아직 제공하지 않습니다. ", text: `이 서버의 POST /intake 는 ${stage}(설계 08 §3.8.1)에서 만듭니다. 쓴 글은 어디에도 저장되지 않았습니다 — 아래 단추로 본문을 복사해 둡니다.`, cmd: `npx harness-kit intake --kind ${kind} --title "${title.trim().replace(/"/g, "'")}" --body-file req.md` });
       return;
     }
     setOut({ kind: "err", title: `${r.error.code}: `, text: errorText(r.error) });
   }
 
   return (
-    <Page title="새 요구사항" sub="글로 적거나 Jira · Notion 에서 가져와 Intent 로 접수한다. 접수는 승인이 아니다" crumbs={[{ label: "작업" }, { label: "새 요구사항" }]} search={false} width={760}>
+    <Page title="새 요구사항" sub="글로 적거나 Jira · Notion 에서 가져와 Intent 로 접수합니다. 접수는 승인이 아닙니다" crumbs={[{ label: "작업" }, { label: "새 요구사항" }]} search={false} width={760}>
       <VStack gap={4}>
         <TabList value={tab} onChange={setTab} hasDivider aria-label="접수 방법">
           <Tab value="write" label="직접 작성" />
@@ -59,21 +59,21 @@ export default function Intake({ route }: { route: Route }) {
         </TabList>
         {tab === "import" ? (
           <VStack gap={2}>
-            <Notice kind="info" title="가져오기는 선택 모듈이다. ">Jira · Notion 에서 가져오는 기능은 jira-workflow 모듈과 HK-19 · 설계 10 §3.6 이 만든다. 모듈을 켜지 않았거나 아직 제공하지 않아 이 탭은 비어 있다.</Notice>
-            <Muted>지금은 글로 적어 접수하는 탭을 쓴다.</Muted>
+            <Notice kind="info" title="가져오기는 선택 모듈입니다. ">Jira · Notion 에서 가져오는 기능은 jira-workflow 모듈과 HK-19 · 설계 10 §3.6 이 만듭니다. 모듈을 켜지 않았거나 아직 제공하지 않아 이 탭은 비어 있습니다.</Notice>
+            <Muted>지금은 글로 적어 접수하는 탭을 씁니다.</Muted>
           </VStack>
         ) : (
           <VStack gap={4} className="hk-form">
-            {readOnly ? <Notice kind="warn" title="읽기 전용. ">에이전트 세션에서 연 서버는 접수하지 않는다.</Notice> : null}
+            {readOnly ? <Notice kind="warn" title="읽기 전용. ">에이전트 세션에서 연 서버는 접수하지 않습니다.</Notice> : null}
             <TextInput label="제목" value={title} onChange={setTitle} isDisabled={readOnly} />
             <Selector label="종류" value={kind} onChange={(v) => v && setKind(v)} options={KINDS} isDisabled={readOnly} />
-            <TextArea label="본문" value={body} onChange={setBody} rows={10} isDisabled={readOnly} placeholder="무엇을 왜 바꾸는가. 사용자 · 규칙 · 범위 밖을 적는다" />
+            <TextArea label="본문" value={body} onChange={setBody} rows={10} isDisabled={readOnly} placeholder="무엇을 왜 바꾸는가. 사용자 · 규칙 · 범위 밖을 적습니다" />
             <VStack gap={1}>
               <label htmlFor="in-files">
                 <Ico name="paperclip" size={14} /> 첨부
               </label>
               <input ref={files} type="file" id="in-files" multiple disabled={readOnly} aria-describedby="in-files-h" />
-              <Muted size="xsm">파일 20MB · 합계 100MB 까지, 비밀값이 나오면 거부한다. 이미지 설명은 만들지 않는다(모델을 부르지 않는다).</Muted>
+              <Muted size="xsm">파일 20MB · 합계 100MB 까지, 비밀값이 나오면 거부합니다. 이미지 설명은 만들지 않습니다(모델을 부르지 않습니다).</Muted>
             </VStack>
             <HStack gap={1} align="center">
               <Ico name="commit" size={14} />
@@ -81,7 +81,7 @@ export default function Intake({ route }: { route: Route }) {
             </HStack>
             <HStack gap={2} align="center" wrap="wrap">
               <Button label="접수" variant="primary" icon={<Ico name="send" />} isDisabled={readOnly} onClick={() => void submit()} />
-              <Tag label="PIN 없음 · 접수는 승인이 아니다" />
+              <Tag label="PIN 없음 · 접수는 승인이 아닙니다" />
             </HStack>
             <VStack gap={2} aria-live="polite">
               {out ? <Notice kind={out.kind} title={out.title}>{out.text}</Notice> : null}

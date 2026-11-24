@@ -104,7 +104,7 @@ export async function request<T = Loose>(method: string, path: string, opts: Req
     res = await fetch(url, { method, headers, body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined, cache: "no-store", ...(opts.signal ? { signal: opts.signal } : {}) });
   } catch (err) {
     if (err instanceof Error && err.name === "AbortError") return { ok: false, status: 0, error: { code: "aborted", message: "취소됨" } };
-    return { ok: false, status: 0, error: { code: "network", message: "서버에 닿지 못했다. 서버를 연 터미널이 켜져 있는지 본다" } };
+    return { ok: false, status: 0, error: { code: "network", message: "서버에 닿지 못했습니다. 서버를 연 터미널이 켜져 있는지 봅니다" } };
   }
   if (res.status === 304 && cached) return { ...(cached.result as ApiResult<T>), notModified: true } as ApiResult<T>;
   let json: Loose = null;
@@ -129,14 +129,14 @@ export const put = <T = Loose>(path: string, body?: unknown, opts?: RequestOptio
 export const del = <T = Loose>(path: string, opts?: RequestOptions): Promise<ApiResult<T>> => request<T>("DELETE", path, opts);
 
 const ERROR_HINT: Record<string, string> = {
-  unauthorized: "접속 토큰이 없거나 틀렸다. 서버를 연 터미널에 나온 주소로 다시 연다",
-  read_only: "읽기 전용 모드다(에이전트 세션에서 연 서버이거나 --read-only). 사람이 자기 터미널에서 서버를 연다",
-  pin_required: "승인 PIN 이 틀렸거나 비었다. 서버를 연 터미널에 나온 PIN 을 넣는다",
-  pin_locked: "PIN 을 5번 틀려 잠겼다. 서버를 다시 연다",
-  conflict: "다른 곳에서 먼저 저장했다",
-  history_off: "대화 기록 읽기가 꺼져 있다",
-  not_implemented: "이 기능은 다른 이슈에서 제공한다",
-  network: "서버에 닿지 못했다",
+  unauthorized: "접속 토큰이 없거나 틀렸습니다. 서버를 연 터미널에 나온 주소로 다시 엽니다",
+  read_only: "읽기 전용 모드입니다(에이전트 세션에서 연 서버이거나 --read-only). 사람이 자기 터미널에서 서버를 엽니다",
+  pin_required: "승인 PIN 이 틀렸거나 비었습니다. 서버를 연 터미널에 나온 PIN 을 넣습니다",
+  pin_locked: "PIN 을 5번 틀려 잠겼습니다. 서버를 다시 엽니다",
+  conflict: "다른 곳에서 먼저 저장했습니다",
+  history_off: "대화 기록 읽기가 꺼져 있습니다",
+  not_implemented: "이 기능은 다른 이슈에서 제공합니다",
+  network: "서버에 닿지 못했습니다",
 };
 
 /** 사람이 읽는 오류 한 줄: 코드별 안내 */

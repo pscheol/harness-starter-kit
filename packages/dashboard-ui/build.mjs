@@ -55,12 +55,12 @@ fs.writeFileSync(
 <meta name="referrer" content="no-referrer">
 <meta name="color-scheme" content="light">
 <link rel="icon" href="data:,">
-<title>harness-kit 관리 페이지</title>
+<title>harnessync 관리 페이지</title>
 <link rel="stylesheet" href="/app/main.css">
 </head>
 <body>
-<div id="root"><p>관리 페이지를 불러오는 중…</p></div>
-<noscript><p>이 화면은 JavaScript 가 필요하다. 같은 기능은 콘솔 명령으로도 된다: <code>npx harness-kit status</code></p></noscript>
+<div id="root"><p>관리 페이지를 불러오는 중입니다…</p></div>
+<noscript><p>이 화면은 JavaScript 가 필요합니다. 같은 기능은 콘솔 명령으로도 됩니다: <code>npx harness-kit status</code></p></noscript>
 <script type="module" src="/app/main.js"></script>
 </body>
 </html>

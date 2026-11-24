@@ -25,15 +25,15 @@ function QuestionCard({ q, target, sha, reload, onAllAnswered }: { q: Loose; tar
   const [picked, setPicked] = useState("");
   const [memo, setMemo] = useState("");
   const [out, setOut] = useState<{ kind: NoticeKind; title: string; text?: string } | null>(null);
-  const choices = [...(q.choices as Loose[]), { id: "other", text: "다른 답", impact: "메모에 쓴다" }];
+  const choices = [...(q.choices as Loose[]), { id: "other", text: "다른 답", impact: "메모에 씁니다" }];
 
   async function answer(): Promise<void> {
     if (!picked) {
-      setOut({ kind: "warn", title: "선택지를 고른다." });
+      setOut({ kind: "warn", title: "선택지를 고릅니다." });
       return;
     }
     if (picked === "other" && !memo.trim()) {
-      setOut({ kind: "warn", title: "'다른 답' 은 메모가 필요하다." });
+      setOut({ kind: "warn", title: "'다른 답' 은 메모가 필요합니다." });
       return;
     }
     const res = await withPin((pin) => post(`/questions/${encodeURIComponent(target)}/${encodeURIComponent(q.id)}/answer`, { choice: picked, ...(memo.trim() ? { text: memo.trim() } : {}), baseSha256: sha, pin }));
@@ -42,7 +42,7 @@ function QuestionCard({ q, target, sha, reload, onAllAnswered }: { q: Loose; tar
       if (res.error.code === "conflict") reload();
       return;
     }
-    notify(res.data.kind === "opinion" ? "의견으로 남겼다(질문은 열려 있다)" : "답을 저장했다");
+    notify(res.data.kind === "opinion" ? "의견으로 남겼습니다(질문은 열려 있습니다)" : "답을 저장했습니다");
     reload();
     if (res.data.open === 0) onAllAnswered();
   }
@@ -114,7 +114,7 @@ function Detail({ target }: { target: string }) {
   const { state, reload } = useLoad<[Loose]>(() => [get("/questions", { query: { target } })], [target]);
   const [done, setDone] = useState(false);
   const crumbs = [{ label: "작업" }, { label: "문서", path: "/docs" }, { label: `질문 ${target}` }];
-  const sub = "권장안을 보고 선택지를 고른다. 답이 모이면 설계 세션에 사람이 요청한다";
+  const sub = "권장안을 보고 선택지를 고릅니다. 답이 모이면 설계 세션에 사람이 요청합니다";
   if (state.status === "loading") return <Page title={`질문 · ${target}`} sub={sub} crumbs={crumbs}><Loading rows={5} /></Page>;
   if (state.status === "error") return <Page title={`질문 · ${target}`} sub={sub} crumbs={crumbs}><ErrorBlock error={state.error} retry={reload} /></Page>;
   const doc = state.data[0];
@@ -130,9 +130,9 @@ function Detail({ target }: { target: string }) {
         {readOnly ? <ReadOnlyNote /> : <Button label="세션에 요청" icon={<Ico name="send" />} onClick={() => dispatch({ issue: /^[A-Z]+-\d+$/.test(target) && !target.startsWith("INT-") ? target : undefined, paths: [doc.path], kind: "answers-ready", title: "설계 세션에 요청" })} />}
       </HStack>
       <VStack gap={4} aria-live="polite">
-        {done ? <Notice kind="ok" title="모든 질문에 답이 찼다. ">세션에는 아무것도 보내지 않았다. 설계 세션에 알리려면 위의 '세션에 요청'을 누른다.</Notice> : null}
-        {readOnly ? <Notice kind="warn" title="읽기 전용. ">에이전트 세션에서 연 서버는 답을 받지 않는다. 사람이 자기 터미널에서 연 서버에서 한다.</Notice> : null}
-        {!(doc.questions as Loose[]).length ? <Empty title="질문이 없다" text={doc.sha256 ? "questions.md 에 질문이 없다." : "아직 questions.md 가 없다."} /> : null}
+        {done ? <Notice kind="ok" title="모든 질문에 답이 찼습니다. ">세션에는 아무것도 보내지 않았습니다. 설계 세션에 알리려면 위의 '세션에 요청'을 누릅니다.</Notice> : null}
+        {readOnly ? <Notice kind="warn" title="읽기 전용. ">에이전트 세션에서 연 서버는 답을 받지 않습니다. 사람이 자기 터미널에서 연 서버에서 합니다.</Notice> : null}
+        {!(doc.questions as Loose[]).length ? <Empty title="질문이 없습니다" text={doc.sha256 ? "questions.md 에 질문이 없습니다." : "아직 questions.md 가 없습니다."} /> : null}
         {(doc.questions as Loose[]).map((q) => (
           <QuestionCard key={q.id} q={q} target={target} sha={doc.sha256} reload={reload} onAllAnswered={() => setDone(true)} />
         ))}
@@ -144,7 +144,7 @@ function Detail({ target }: { target: string }) {
 function Index() {
   const { state, reload } = useLoad<[Loose]>(() => [get("/intents")], []);
   const crumbs = [{ label: "작업" }, { label: "문서", path: "/docs" }, { label: "질문" }];
-  const sub = "권장안을 보고 선택지를 고른다. 답이 모이면 설계 세션에 사람이 요청한다";
+  const sub = "권장안을 보고 선택지를 고릅니다. 답이 모이면 설계 세션에 사람이 요청합니다";
   if (state.status === "loading") return <Page title="질문 답하기" sub={sub} crumbs={crumbs}><Loading rows={4} /></Page>;
   if (state.status === "error") return <Page title="질문 답하기" sub={sub} crumbs={crumbs}><ErrorBlock error={state.error} retry={reload} /></Page>;
   const open = (state.data[0].intents as Loose[]).filter((i) => i.questions.total > 0);
@@ -159,7 +159,7 @@ function Index() {
           </List>
         </Panel>
       ) : (
-        <Empty title="질문이 없다" text="설계 세션이 질문을 만들면 여기 나온다." />
+        <Empty title="질문이 없습니다" text="설계 세션이 질문을 만들면 여기 나옵니다." />
       )}
     </Page>
   );

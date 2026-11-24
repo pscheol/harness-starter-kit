@@ -147,7 +147,7 @@ export default function Progress({ route }: { route: Route }) {
   const shown = sections.reduce((n, s) => n + s.linked.length + s.planned.length, 0) + loose.length;
 
   return (
-    <Page title={only ? `${only} 진행` : "진행"} sub="Intent → Unit → 이슈 · 단계는 board.sh 와 같은 원본이다" crumbs={[{ label: "작업" }, { label: "진행" }]} tools={<ViewSwitch active="board" intent={only} />}>
+    <Page title={only ? `${only} 진행` : "진행"} sub="Intent → Unit → 이슈 · 단계는 board.sh 와 같은 원본입니다" crumbs={[{ label: "작업" }, { label: "진행" }]} tools={<ViewSwitch active="board" intent={only} />}>
       {state.status === "loading" ? <Loading rows={6} /> : null}
       {state.status === "error" ? <ErrorBlock error={state.error} retry={reload} /> : null}
       {data ? (
@@ -198,7 +198,7 @@ export default function Progress({ route }: { route: Route }) {
                 <IssueTable rows={loose} gates={gates} sessions={sessions} onOpen={setOpen} />
               </Panel>
             ) : null}
-            {!shown ? <Empty title={issues.length || intents.length ? "조건에 맞는 이슈가 없다" : "이슈가 아직 없다"} text={issues.length || intents.length ? "영역 · 상태 거름을 '모두'로 돌린다." : "새 요구사항을 접수하거나 이슈 폴더(.agents/docs/issues/)를 만들면 여기 나온다."} actions={<Link href="/intake">새 요구사항</Link>} /> : null}
+            {!shown ? <Empty title={issues.length || intents.length ? "조건에 맞는 이슈가 없습니다" : "이슈가 아직 없습니다"} text={issues.length || intents.length ? "영역 · 상태 거름을 '모두'로 돌립니다." : "새 요구사항을 접수하거나 이슈 폴더(.agents/docs/issues/)를 만들면 여기 나옵니다."} actions={<Link href="/intake">새 요구사항</Link>} /> : null}
           </VStack>
         </VStack>
       ) : null}

@@ -100,7 +100,7 @@ function Rail({ route }: { route: Route }) {
                 </HStack>
                 <ProgressBar label="지금 세션 컨텍스트 사용률" isLabelHidden value={usage && usage.ratio !== null ? Math.round(usage.ratio * 100) : 0} variant={usage?.warn ? "warning" : "accent"} />
                 <Text size="xsm" color="secondary">
-                  {app.usageNow && !app.usageNow.enabled ? "대화 기록 읽기가 꺼져 있다" : usage?.warn ? "자동 압축이 가깝다" : "기록 · 사용량에서 자세히"}
+                  {app.usageNow && !app.usageNow.enabled ? "대화 기록 읽기가 꺼져 있습니다" : usage?.warn ? "자동 압축이 가깝습니다" : "기록 · 사용량에서 자세히"}
                 </Text>
               </VStack>
             </Card>
@@ -176,7 +176,7 @@ function Body({ route }: { route: Route }) {
   }
   if (app.loadError && !app.session && app.mode !== "multi-root") {
     return (
-      <Page title="관리 페이지" sub="연결하지 못했다" search={false}>
+      <Page title="관리 페이지" sub="연결하지 못했습니다" search={false}>
         <ErrorBlock error={app.loadError} retry={() => location.reload()} />
       </Page>
     );
@@ -185,8 +185,8 @@ function Body({ route }: { route: Route }) {
   const View = VIEWS[key];
   if (!View) {
     return (
-      <Page title="찾을 수 없다">
-        <Muted>{`${route.params.path ?? ""} 는 관리 페이지의 화면이 아니다.`}</Muted>
+      <Page title="찾을 수 없습니다">
+        <Muted>{`${route.params.path ?? ""} 는 관리 페이지의 화면이 아닙니다.`}</Muted>
       </Page>
     );
   }
@@ -236,7 +236,7 @@ export function App() {
         <DispatchProvider>
           <AppShell sideNav={<Rail route={route} />} height="fill" contentPadding={0}>
             {app.loadError && app.ready && app.session ? (
-              <Page title="연결이 끊겼다" sub="서버를 연 터미널이 켜져 있는지 본다" search={false}>
+              <Page title="연결이 끊겼습니다" sub="서버를 연 터미널이 켜져 있는지 봅니다" search={false}>
                 <ErrorBlock error={app.loadError} retry={() => void refreshOverview()} />
               </Page>
             ) : (

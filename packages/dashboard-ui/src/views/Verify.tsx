@@ -37,7 +37,7 @@ function GatePanel({ g }: { g: Loose | null }) {
   if (!g) {
     return (
       <Panel title="품질 게이트">
-        <Notice kind="info" title="품질 게이트 결과가 아직 없다. ">게이트가 돌면 .agents/reports/quality-gate-last.json 이 생긴다.</Notice>
+        <Notice kind="info" title="품질 게이트 결과가 아직 없습니다. ">게이트가 돌면 .agents/reports/quality-gate-last.json 이 생깁니다.</Notice>
         <CommandBox cmd="npx harness-kit quality" />
       </Panel>
     );
@@ -74,12 +74,12 @@ function GatePanel({ g }: { g: Loose | null }) {
 }
 
 function VerifyPanel({ c }: { c: Loose | undefined }) {
-  if (!c) return <Panel title="마지막 검증"><Empty title="체크아웃이 없다" /></Panel>;
+  if (!c) return <Panel title="마지막 검증"><Empty title="체크아웃이 없습니다" /></Panel>;
   const r = c.record;
   if (!r) {
     return (
       <Panel title="마지막 검증">
-        <Empty title="검증 기록이 없다" text="bash scripts/verify.sh 를 돌리면 이 브랜치의 .agents/state/verify-last.json 이 생긴다." />
+        <Empty title="검증 기록이 없습니다" text="bash scripts/verify.sh 를 돌리면 이 브랜치의 .agents/state/verify-last.json 이 생깁니다." />
         <CommandBox cmd="bash scripts/verify.sh --summary" />
       </Panel>
     );
@@ -95,9 +95,9 @@ function VerifyPanel({ c }: { c: Loose | undefined }) {
       {steps.length ? (
         <HBars label="검증 단계별 시간" fmt={(v) => fmtMs(v)} rows={steps.map((s, i) => ({ id: `${s.label}${i}`, label: <HStack gap={2} align="center"><Text size="sm">{s.label}</Text><StatusTag s={s.status} /></HStack>, v: s.durationMs ?? 0 }))} />
       ) : (
-        <Muted>단계 기록이 없다</Muted>
+        <Muted>단계 기록이 없습니다</Muted>
       )}
-      <IconNote icon="lock" size="xsm">full 은 CI 에서만 돈다. 에이전트의 --full 은 훅이 막는다.</IconNote>
+      <IconNote icon="lock" size="xsm">full 은 CI 에서만 돕니다. 에이전트의 --full 은 훅이 막습니다.</IconNote>
     </Panel>
   );
 }
@@ -106,7 +106,7 @@ export default function Verify({ route: _route }: { route: Route }) {
   const { state, reload } = useLoad<[Loose, Loose, Loose, Loose]>(() => [get("/verify"), get("/reports/summary"), get("/reports/findings"), get("/issues")], []);
   const [sel, setSel] = useState("0");
   const [onlyNew, setOnlyNew] = useState(false);
-  const sub = "마지막 검증 · 품질 게이트 · 정적 분석. 결과는 .agents/reports · .agents/state 에서 읽는다";
+  const sub = "마지막 검증 · 품질 게이트 · 정적 분석. 결과는 .agents/reports · .agents/state 에서 읽습니다";
   const crumbs = [{ label: "품질" }, { label: "검증" }];
   if (state.status === "loading") return <Page title="검증" sub={sub} crumbs={crumbs}><Loading rows={6} /></Page>;
   if (state.status === "error") return <Page title="검증" sub={sub} crumbs={crumbs}><ErrorBlock error={state.error} retry={reload} /></Page>;
@@ -144,7 +144,7 @@ export default function Verify({ route: _route }: { route: Route }) {
                   ))}
                 </List>
               ) : (
-                <Empty title="열린 리뷰 지적이 없다" text="리뷰 보고서가 생기면 지적과 판단이 여기 모인다." />
+                <Empty title="열린 리뷰 지적이 없습니다" text="리뷰 보고서가 생기면 지적과 판단이 여기 모입니다." />
               )}
             </Panel>
           </>
@@ -172,13 +172,13 @@ export default function Verify({ route: _route }: { route: Route }) {
                       ))}
                     </List>
                   ) : (
-                    <Muted>보여 줄 발견이 없다</Muted>
+                    <Muted>보여 줄 발견이 없습니다</Muted>
                   )}
-                  {f.truncated ? <Muted size="xsm">발견이 많아 앞부분만 저장됐다.</Muted> : null}
+                  {f.truncated ? <Muted size="xsm">발견이 많아 앞부분만 저장됐습니다.</Muted> : null}
                 </VStack>
               ) : (
                 <>
-                  <Empty title="정적 분석 결과가 없다" text="분석기가 돌면 .agents/reports/findings-latest.json 이 생긴다." />
+                  <Empty title="정적 분석 결과가 없습니다" text="분석기가 돌면 .agents/reports/findings-latest.json 이 생깁니다." />
                   <CommandBox cmd="npx harness-kit quality --findings" />
                 </>
               )}
@@ -200,7 +200,7 @@ export default function Verify({ route: _route }: { route: Route }) {
           </>
         }
       />
-      <Muted size="xsm">체크포인트(entire 모듈)는 HK-20 에서 제공한다. 검증 시간 추이는 날마다의 기록을 따로 저장하지 않아 보이지 않는다.</Muted>
+      <Muted size="xsm">체크포인트(entire 모듈)는 HK-20 에서 제공합니다. 검증 시간 추이는 날마다의 기록을 따로 저장하지 않아 보이지 않습니다.</Muted>
     </Page>
   );
 }

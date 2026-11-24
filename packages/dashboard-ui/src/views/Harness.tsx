@@ -21,7 +21,7 @@ export default function Harness({ route: _route }: { route: Route }) {
   const s = app.session;
   const { state, reload } = useLoad<[Loose, Loose]>(() => [get("/harness"), get("/usage/kit")], []);
   const [out, setOut] = useState<{ kind: NoticeKind; title: string; text?: string } | null>(null);
-  const sub = "doctor · 층 · 역할 · 승인 권한 · 버전. 설정은 읽기만 한다";
+  const sub = "doctor · 층 · 역할 · 승인 권한 · 버전. 설정은 읽기만 합니다";
   const crumbs = [{ label: "품질" }, { label: "하네스" }];
   if (state.status === "loading") return <Page title="하네스" sub={sub} crumbs={crumbs}><Loading rows={6} /></Page>;
   if (state.status === "error") return <Page title="하네스" sub={sub} crumbs={crumbs}><ErrorBlock error={state.error} retry={reload} /></Page>;
@@ -31,14 +31,14 @@ export default function Harness({ route: _route }: { route: Route }) {
   const approvers: Record<string, string[]> = s?.approvers ?? {};
 
   async function outdated(): Promise<void> {
-    setOut({ kind: "info", title: "최신 판을 조회하는 중…(네트워크를 쓴다)" });
+    setOut({ kind: "info", title: "최신 판을 조회하는 중…(네트워크를 씁니다)" });
     const r = await post("/harness/outdated", {});
     if (!r.ok) {
       setOut({ kind: "warn", title: errorText(r.error) });
       return;
     }
     const o = r.data;
-    setOut({ kind: o.outdated || o.newer ? "warn" : "ok", title: "조회했다. ", text: typeof o.message === "string" ? o.message : JSON.stringify(o).slice(0, 300) });
+    setOut({ kind: o.outdated || o.newer ? "warn" : "ok", title: "조회했습니다. ", text: typeof o.message === "string" ? o.message : JSON.stringify(o).slice(0, 300) });
   }
 
   return (
@@ -58,10 +58,10 @@ export default function Harness({ route: _route }: { route: Route }) {
                     ))}
                   </VStack>
                 ) : (
-                  <Text size="sm">{d.status === "unavailable" ? "이 서버에서는 doctor 를 부를 수 없다. 터미널에서 돌린다." : "설치 상태에 문제가 없다."}</Text>
+                  <Text size="sm">{d.status === "unavailable" ? "이 서버에서는 doctor 를 부를 수 없습니다. 터미널에서 돌립니다." : "설치 상태에 문제가 없습니다."}</Text>
                 )
               ) : (
-                <Muted>doctor 결과가 없다.</Muted>
+                <Muted>doctor 결과가 없습니다.</Muted>
               )}
               {d?.counts && Object.keys(d.counts).length ? <Muted>{Object.entries(d.counts as Record<string, number>).map(([k, n]) => `${k} ${n}`).join(" · ")}</Muted> : null}
               <CommandBox cmd="npx harness-kit doctor" />
@@ -73,12 +73,12 @@ export default function Harness({ route: _route }: { route: Route }) {
                 density="compact"
                 columns={[
                   { key: "g", header: "게이트", renderCell: (r: Loose) => <Tag tone={(hr.floor as string[]).includes(r.g) ? "design" : "line"} label={GATE_KO[r.g] ?? r.g} /> },
-                  { key: "kind", header: "구분", renderCell: (r: Loose) => <Text>{(hr.floor as string[]).includes(r.g) ? "바닥(줄일 수 없다)" : "팀 설정"}</Text> },
+                  { key: "kind", header: "구분", renderCell: (r: Loose) => <Text>{(hr.floor as string[]).includes(r.g) ? "바닥(줄일 수 없습니다)" : "팀 설정"}</Text> },
                   { key: "who", header: "승인자", renderCell: (r: Loose) => (approvers[r.g]?.length ? <HStack gap={1} wrap="wrap">{(approvers[r.g] as string[]).map((a) => <Key key={a}>{a}</Key>)}</HStack> : <Muted>비어 있음 → git 사용자 누구나</Muted>) },
                 ]}
               />
               <VStack gap={3} padding={4}>
-                <Muted>approvers 는 선택이다. 게이트가 비어 있으면 이 리포의 git 사용자 누구나 승인한다. 신원은 이 체크아웃의 git user.email 이다.</Muted>
+                <Muted>approvers 는 선택입니다. 게이트가 비어 있으면 이 리포의 git 사용자 누구나 승인합니다. 신원은 이 체크아웃의 git user.email 입니다.</Muted>
                 <HStack gap={1} align="center" wrap="wrap">
                   <Ico name="commit" size={14} />
                   <Text size="sm">지금 <b>{s?.user?.email ?? "git user.email 없음"}</b>{s?.user?.groups?.length ? ` · 그룹 ${(s.user.groups as string[]).join(", ")}` : ""}</Text>
@@ -99,7 +99,7 @@ export default function Harness({ route: _route }: { route: Route }) {
               </VStack>
               <HStack gap={2} align="center" wrap="wrap">
                 <Button label="최신 판 조회" icon={<Ico name="refresh" />} onClick={() => void outdated()} />
-                <Muted size="xsm">버튼을 눌렀을 때만 네트워크를 쓴다</Muted>
+                <Muted size="xsm">버튼을 눌렀을 때만 네트워크를 씁니다</Muted>
               </HStack>
               {out ? <Notice kind={out.kind} title={out.title}>{out.text}</Notice> : null}
               <CommandBox cmd="npx harness-kit outdated" />
@@ -112,7 +112,7 @@ export default function Harness({ route: _route }: { route: Route }) {
                   ))}
                 </List>
               ) : (
-                <Empty title="역할 배정이 없다" text="harness-kit.json 의 roles 가 비었다." />
+                <Empty title="역할 배정이 없습니다" text="harness-kit.json 의 roles 가 비었습니다." />
               )}
             </Panel>
             <Panel title="킷이 덧붙인 토큰" aside={<Link href="/usage">자세히</Link>}>

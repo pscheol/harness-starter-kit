@@ -100,11 +100,11 @@ export default function Home({ route: _route }: { route: Route }) {
   );
 
   return (
-    <Page title="홈" sub={`${s?.repo ?? ""}${app.readAt ? ` · ${clock(app.readAt.toISOString())}에 다시 읽었다` : ""}`} tools={tools}>
+    <Page title="홈" sub={`${s?.repo ?? ""}${app.readAt ? ` · ${clock(app.readAt.toISOString())}에 다시 읽었습니다` : ""}`} tools={tools}>
       {s?.readOnly ? (
         <HStack gap={2} align="center" wrap="wrap">
           <ReadOnlyNote text="읽기 전용(에이전트 세션에서 연 서버)" />
-          <Muted>보기만 된다. 승인 · 답 · 저장은 사람이 자기 터미널에서 연 서버에서 한다.</Muted>
+          <Muted>보기만 됩니다. 승인 · 답 · 저장은 사람이 자기 터미널에서 연 서버에서 합니다.</Muted>
         </HStack>
       ) : null}
       <Grid columns={{ minWidth: 220, max: 4, repeat: "fit" }} gap={4}>
@@ -141,11 +141,11 @@ export default function Home({ route: _route }: { route: Route }) {
                     </VStack>
                   </Panel>
                 ))}
-                {Object.keys(o.more ?? {}).length ? <Muted>{`50건을 넘어 건수만 보인다: ${Object.entries(o.more as Record<string, number>).map(([r, n]) => `rank ${r} ${n}건`).join(" · ")}`}</Muted> : null}
-                {o.errors?.length ? <Notice kind="warn" title="일부를 읽지 못했다: ">{(o.errors as string[]).slice(0, 3).join(" · ")}</Notice> : null}
+                {Object.keys(o.more ?? {}).length ? <Muted>{`50건을 넘어 건수만 보입니다: ${Object.entries(o.more as Record<string, number>).map(([r, n]) => `rank ${r} ${n}건`).join(" · ")}`}</Muted> : null}
+                {o.errors?.length ? <Notice kind="warn" title="일부를 읽지 못했습니다: ">{(o.errors as string[]).slice(0, 3).join(" · ")}</Notice> : null}
               </VStack>
             ) : (
-              <Empty title={onlyMine ? "내가 할 것이 없다" : "처리할 일이 없다"} text={onlyMine ? "'모두'에서 다른 사람이 할 것을 볼 수 있다." : "승인 · 질문 · 정리할 것이 없다. 새 요구사항을 접수하거나 진행 화면에서 이슈를 본다."} actions={<Button label="진행 보기" href="/progress" />} />
+              <Empty title={onlyMine ? "내가 할 것이 없습니다" : "처리할 일이 없습니다"} text={onlyMine ? "'모두'에서 다른 사람이 할 것을 볼 수 있습니다." : "승인 · 질문 · 정리할 것이 없습니다. 새 요구사항을 접수하거나 진행 화면에서 이슈를 봅니다."} actions={<Button label="진행 보기" href="/progress" />} />
             )}
           </Section>
         }
@@ -167,7 +167,7 @@ export default function Home({ route: _route }: { route: Route }) {
                   ))}
                 </List>
               ) : (
-                <Empty title="켜 둔 세션이 없다" text="세션이 시작되면 훅이 이 목록에 등록한다." />
+                <Empty title="켜 둔 세션이 없습니다" text="세션이 시작되면 훅이 이 목록에 등록합니다." />
               )}
             </Panel>
             <Panel title="진행 중 Intent" aside={<Button label="흐름" size="sm" href="/progress?view=flow" />} flush>
@@ -186,7 +186,7 @@ export default function Home({ route: _route }: { route: Route }) {
                   ))}
                 </List>
               ) : (
-                <Empty title="Intent 가 없다" text="새 요구사항을 접수하면 Intent 가 생긴다." />
+                <Empty title="Intent 가 없습니다" text="새 요구사항을 접수하면 Intent 가 생깁니다." />
               )}
             </Panel>
             {bar.length ? (
@@ -197,7 +197,7 @@ export default function Home({ route: _route }: { route: Route }) {
           </>
         }
       />
-      {app.loadError ? <Notice kind="err" title="서버와 연결이 끊겼다.">서버를 연 터미널이 켜져 있는지 본다.</Notice> : null}
+      {app.loadError ? <Notice kind="err" title="서버와 연결이 끊겼습니다.">서버를 연 터미널이 켜져 있는지 봅니다.</Notice> : null}
     </Page>
   );
 }

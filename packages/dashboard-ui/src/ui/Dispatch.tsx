@@ -45,7 +45,7 @@ export function DispatchProvider({ children }: { children: ReactNode }) {
 /** 사람이 누른 단추의 onClick 안에서만 부른다 */
 export function useDispatch(): (o?: DispatchOptions) => void {
   const ctx = useContext(DispatchContext);
-  if (!ctx) throw new Error("DispatchProvider 안에서만 useDispatch 를 쓴다");
+  if (!ctx) throw new Error("DispatchProvider 안에서만 useDispatch 를 씁니다");
   return ctx;
 }
 
@@ -90,7 +90,7 @@ function DispatchBody({ opts, close }: { opts: DispatchOptions; close: () => voi
 
   async function send(via: string | null): Promise<void> {
     if (!choice && !opts.issue) {
-      setResult({ kind: "warn", title: "요청을 받을 세션을 고른다(자동으로 고르지 않는다)." });
+      setResult({ kind: "warn", title: "요청을 받을 세션을 고릅니다(자동으로 고르지 않습니다)." });
       return;
     }
     const target = choice ? { sessionId: choice } : { issue: opts.issue, role: opts.role };
@@ -101,17 +101,17 @@ function DispatchBody({ opts, close }: { opts: DispatchOptions; close: () => voi
     if (r.ok) {
       const d = r.data;
       if (d.method === "deeplink") {
-        setResult({ kind: "ok", title: "deep link 를 만들었다. ", text: "누르면 새 터미널에 프롬프트가 채워진다. 보내지 않은 상태다.", url: d.url });
+        setResult({ kind: "ok", title: "deep link 를 만들었습니다. ", text: "누르면 새 터미널에 프롬프트가 채워집니다. 보내지 않은 상태입니다.", url: d.url });
         return;
       }
-      notify(d.method === "queue" ? "대기함에 저장했다" : "세션에 요청을 보냈다");
-      setResult({ kind: "ok", title: d.method === "queue" ? `대기함에 저장했다(${d.id}). ` : "세션 수신함에 한 줄을 보냈다. ", text: d.method === "queue" ? "다음 세션 시작 때 훅이 건수와 첫 요청 한 줄을 보여 준다." : "받았는지는 세션 쪽에서 본다(수신 확인 신호가 없다)." });
+      notify(d.method === "queue" ? "대기함에 저장했습니다" : "세션에 요청을 보냈습니다");
+      setResult({ kind: "ok", title: d.method === "queue" ? `대기함에 저장했습니다(${d.id}). ` : "세션 수신함에 한 줄을 보냈습니다. ", text: d.method === "queue" ? "다음 세션 시작 때 훅이 건수와 첫 요청 한 줄을 보여 줍니다." : "받았는지는 세션 쪽에서 봅니다(수신 확인 신호가 없습니다)." });
       if (d.method === "socket" || d.method === "queue") setTimeout(close, 1200);
       return;
     }
     if (r.error.code === "socket_unavailable") {
       const d = (r.error.details ?? {}) as Loose;
-      setResult({ kind: "warn", title: "수신함에 닿지 못했다. ", text: "자동으로 바꾸지 않는다. 아래 두 가지 중 사람이 고른다.", socketFallback: { deeplink: Boolean(d.deeplink), queue: Boolean(d.queueAvailable) } });
+      setResult({ kind: "warn", title: "수신함에 닿지 못했습니다. ", text: "자동으로 바꾸지 않습니다. 아래 두 가지 중 사람이 고릅니다.", socketFallback: { deeplink: Boolean(d.deeplink), queue: Boolean(d.queueAvailable) } });
       return;
     }
     setResult({ kind: "err", title: errorText(r.error) });
@@ -124,8 +124,8 @@ function DispatchBody({ opts, close }: { opts: DispatchOptions; close: () => voi
       <Heading level={2}>{opts.title ?? "세션에 작업 요청"}</Heading>
       {readOnly ? (
         <VStack gap={3}>
-          <Notice kind="warn" title="읽기 전용이다.">
-            에이전트 세션에서 연 서버(또는 --read-only)는 작업 요청을 보내지 않는다. 사람이 자기 터미널에서 연 서버에서 한다.
+          <Notice kind="warn" title="읽기 전용입니다.">
+            에이전트 세션에서 연 서버(또는 --read-only)는 작업 요청을 보내지 않습니다. 사람이 자기 터미널에서 연 서버에서 합니다.
           </Notice>
           <CommandBox cmd={cmd} />
         </VStack>
@@ -135,7 +135,7 @@ function DispatchBody({ opts, close }: { opts: DispatchOptions; close: () => voi
         <Notice kind="err" title={data.error} />
       ) : (
         <VStack gap={4}>
-          <Muted>보내는 글은 경로 · 변경 요약 · 요청 문장뿐이고 끝에 &quot;이 글은 승인이 아니다.&quot; 가 붙는다. 저장 · 승인 · 답만으로는 세션에 아무것도 가지 않는다.</Muted>
+          <Muted>보내는 글은 경로 · 변경 요약 · 요청 문장뿐이고 끝에 &quot;이 글은 승인이 아닙니다.&quot; 가 붙습니다. 저장 · 승인 · 답만으로는 세션에 아무것도 가지 않습니다.</Muted>
           {data.sessions.length ? (
             <RadioList label="요청을 받을 세션" value={choice} onChange={setChoice}>
               {data.sessions.map((s) => (
@@ -143,7 +143,7 @@ function DispatchBody({ opts, close }: { opts: DispatchOptions; close: () => voi
                   key={s.id}
                   value={s.id}
                   label={s.name ?? String(s.id).slice(0, 12)}
-                  description={`${ROLE_KO[s.role] ?? s.role ?? "역할 모름"}${s.issue ? ` · ${s.issue}` : ""} · ${ago(s.lastSeenAt)}${s.permissionMode === "bypassPermissions" ? " · bypassPermissions: 사람 승인 없이 바로 돈다" : ""}`}
+                  description={`${ROLE_KO[s.role] ?? s.role ?? "역할 모름"}${s.issue ? ` · ${s.issue}` : ""} · ${ago(s.lastSeenAt)}${s.permissionMode === "bypassPermissions" ? " · bypassPermissions: 사람 승인 없이 바로 돕니다" : ""}`}
                   endContent={
                     <HStack gap={1} align="center">
                       <HarnessBadge name={s.harness} />
@@ -154,20 +154,20 @@ function DispatchBody({ opts, close }: { opts: DispatchOptions; close: () => voi
               ))}
             </RadioList>
           ) : (
-            <Empty title="켜 둔 세션이 없다" text="대기함에 두면 다음 세션 시작 때 훅이 건수와 첫 요청 한 줄을 보여 준다." />
+            <Empty title="켜 둔 세션이 없습니다" text="대기함에 두면 다음 세션 시작 때 훅이 건수와 첫 요청 한 줄을 보여 줍니다." />
           )}
           <Selector label="종류" value={kind} onChange={(v) => v && setKind(v)} options={PROMPT_KINDS.map(([value, label]) => ({ value, label }))} />
           <VStack gap={2}>
             <Text weight="semibold" size="sm">
-              경로(문서 내용은 보내지 않는다)
+              경로(문서 내용은 보내지 않습니다)
             </Text>
             {Object.keys(picked).length ? (
               Object.keys(picked).map((p) => <CheckboxInput key={p} label={p} value={picked[p] ?? false} onChange={(v) => setPicked((cur) => ({ ...cur, [p]: v }))} />)
             ) : (
-              <Muted size="xsm">경로가 없다 — 메모만 보낸다</Muted>
+              <Muted size="xsm">경로가 없습니다 — 메모만 보냅니다</Muted>
             )}
           </VStack>
-          <TextArea label="메모" value={text} onChange={setText} rows={2} maxLength={300} placeholder="한 줄 메모(300자 이하, 선택)" isOptional description="제어 문자 · 줄바꿈은 지우고 한 줄로 보낸다. 글 전체 1,000자에서 자른다." />
+          <TextArea label="메모" value={text} onChange={setText} rows={2} maxLength={300} placeholder="한 줄 메모(300자 이하, 선택)" isOptional description="제어 문자 · 줄바꿈은 지우고 한 줄로 보냅니다. 글 전체 1,000자에서 자릅니다." />
           <HStack gap={2} wrap="wrap">
             <Button label="세션에 요청" variant="primary" icon={<Ico name="send" />} isDisabled={!data.sessions.length && !opts.issue} onClick={() => void send(null)} />
             <Button label="대기함에 저장" icon={<Ico name="inbox" />} onClick={() => void send("queue")} />
@@ -186,7 +186,7 @@ function DispatchBody({ opts, close }: { opts: DispatchOptions; close: () => voi
               ) : null}
             </VStack>
           ) : null}
-          {data.queue.length ? <Muted size="xsm">{`대기함에 ${data.queue.length}건이 있다 — 작업 공간에서 본다.`}</Muted> : null}
+          {data.queue.length ? <Muted size="xsm">{`대기함에 ${data.queue.length}건이 있습니다 — 작업 공간에서 봅니다.`}</Muted> : null}
         </VStack>
       )}
     </VStack>

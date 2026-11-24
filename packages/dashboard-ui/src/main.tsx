@@ -10,7 +10,7 @@ import { harnessTheme } from "./themes/harness/harness";
 takeTokenFromHash();
 
 const root = document.getElementById("root");
-if (!root) throw new Error("#root 가 없다");
+if (!root) throw new Error("#root 가 없습니다");
 createRoot(root).render(
   <StrictMode>
     <Theme theme={harnessTheme} mode="light">

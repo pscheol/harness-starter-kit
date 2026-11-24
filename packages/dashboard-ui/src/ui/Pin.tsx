@@ -14,7 +14,7 @@ type WithPin = <T = Loose>(fn: (pin: string) => Promise<ApiResult<T>>) => Promis
 
 const PinContext = createContext<WithPin | null>(null);
 
-const CANCELLED = { ok: false as const, status: 0, error: { code: "cancelled", message: "PIN 입력을 취소했다" } };
+const CANCELLED = { ok: false as const, status: 0, error: { code: "cancelled", message: "PIN 입력을 취소했습니다" } };
 
 export function PinProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -67,14 +67,14 @@ export function PinProvider({ children }: { children: ReactNode }) {
       {children}
       <Dialog isOpen={open} onOpenChange={(o) => !o && finish(null)} purpose="form" width={420}>
         <VStack gap={4} padding={5}>
-          <Heading level={2}>승인 PIN 이 필요하다</Heading>
-          <TextInput label="승인 PIN" value={value} onChange={setValue} onEnter={submit} description="서버를 연 터미널(표준 오류)에만 나온 값이다. 이 탭에서 한 번만 묻는다. 파일 · 화면에 저장하지 않는다." />
+          <Heading level={2}>승인 PIN 이 필요합니다</Heading>
+          <TextInput label="승인 PIN" value={value} onChange={setValue} onEnter={submit} description="서버를 연 터미널(표준 오류)에만 나온 값입니다. 이 탭에서 한 번만 묻습니다. 파일 · 화면에 저장하지 않습니다." />
           <HStack gap={2} justify="end">
             <Button label="취소" onClick={() => finish(null)} />
             <Button label="확인" variant="primary" onClick={submit} />
           </HStack>
           <Text color="secondary" size="xsm">
-            PIN 을 5번 틀리면 서버를 다시 열어야 한다.
+            PIN 을 5번 틀리면 서버를 다시 열어야 합니다.
           </Text>
         </VStack>
       </Dialog>
@@ -84,6 +84,6 @@ export function PinProvider({ children }: { children: ReactNode }) {
 
 export function usePin(): WithPin {
   const ctx = useContext(PinContext);
-  if (!ctx) throw new Error("PinProvider 안에서만 usePin 을 쓴다");
+  if (!ctx) throw new Error("PinProvider 안에서만 usePin 을 씁니다");
   return ctx;
 }

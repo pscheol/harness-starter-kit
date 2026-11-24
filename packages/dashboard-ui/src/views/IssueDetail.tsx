@@ -138,7 +138,7 @@ function Body({ issue, sessions, tab, setTab, variant, reload, gates }: { issue:
           <Ico name="branch" size={14} />
           <Code>{issue.branch ?? "브랜치 없음"}</Code>
           <Muted size="xsm">
-            {issue.checkout ? `· ${issue.checkout.kind === "main" ? "메인 폴더" : "worktree"}${issue.checkout.dirty ? " · 커밋 안 된 변경" : ""}` : "· 체크아웃 안 됨(git 객체로 읽는다)"} · 출처 {issue.source}
+            {issue.checkout ? `· ${issue.checkout.kind === "main" ? "메인 폴더" : "worktree"}${issue.checkout.dirty ? " · 커밋 안 된 변경" : ""}` : "· 체크아웃 안 됨(git 객체로 읽습니다)"} · 출처 {issue.source}
           </Muted>
         </HStack>
       </VStack>
@@ -173,7 +173,7 @@ function ApprovalsPanel({ issue, onDoc }: { issue: Loose; onDoc: (d: Loose | nul
   if (state.status === "loading") return <Loading rows={4} />;
   if (state.status === "error") return <ErrorBlock error={state.error} retry={reload} />;
   const d = state.data[0];
-  if (!d) return <Muted>아직 승인 기록이 없다. 게이트를 승인하면 approvals.md 가 생긴다.</Muted>;
+  if (!d) return <Muted>아직 승인 기록이 없습니다. 게이트를 승인하면 approvals.md 가 생깁니다.</Muted>;
   return (
     <VStack gap={2}>
       <Code>{d.path}</Code>
@@ -191,7 +191,7 @@ function ReviewPanel({ issue, reload, onDoc }: { issue: Loose; reload: () => voi
   const open = r.open ?? {};
   return (
     <VStack gap={3}>
-      <Muted>{`리뷰 보고서 ${r.report ?? "없음"}${r.head ? ` · head ${String(r.head).slice(0, 7)}` : ""}${r.stale ? " · 보고서가 오래됐다(head 가 바뀜)" : ""}`}</Muted>
+      <Muted>{`리뷰 보고서 ${r.report ?? "없음"}${r.head ? ` · head ${String(r.head).slice(0, 7)}` : ""}${r.stale ? " · 보고서가 오래됐습니다(head 가 바뀜)" : ""}`}</Muted>
       <HStack gap={2} wrap="wrap">
         {["CRITICAL", "HIGH", "MEDIUM", "LOW"].map((sv) => (
           <Tag key={sv} tone={sv === "CRITICAL" || sv === "HIGH" ? ((open[sv] ?? 0) > 0 ? "gate" : "line") : sv === "MEDIUM" ? "build" : "line"} label={`${sv} ${open[sv] ?? 0}`} />
@@ -218,7 +218,7 @@ function DocPanel({ issue, name, onDoc, reload }: { issue: Loose; name: string; 
 
   if (state.status === "loading") return <Loading rows={5} />;
   if (state.status === "error") return <ErrorBlock error={state.error} retry={again} />;
-  if (!d) return <Empty title={`${name}.md 가 아직 없다`} text="이 문서는 설계 · 구현 세션이 만든다. 화면은 새 문서를 만들지 않는다(plans · decisions · ops 기록만 새 파일이 된다)." />;
+  if (!d) return <Empty title={`${name}.md 가 아직 없습니다`} text="이 문서는 설계 · 구현 세션이 만듭니다. 화면은 새 문서를 만들지 않습니다(plans · decisions · ops 기록만 새 파일이 됩니다)." />;
 
   const readOnly = Boolean(app.session?.readOnly);
   const writable = Boolean(d.writable) && !readOnly;
@@ -230,16 +230,16 @@ function DocPanel({ issue, name, onDoc, reload }: { issue: Loose; name: string; 
     setForce(false);
     if (!r.ok) {
       const e = r.error;
-      if (e.code === "conflict") setOut({ kind: "err", title: "충돌: 다른 곳에서 먼저 저장했다. ", text: "아래가 지금 저장된 내용이다. 내 내용과 비교해 고른다.", conflict: e.details });
-      else if (e.code === "lease_held") setOut({ kind: "warn", title: "다른 세션이 이 파일을 점유 중이다. ", text: errorText(e), lease: true });
+      if (e.code === "conflict") setOut({ kind: "err", title: "충돌: 다른 곳에서 먼저 저장했습니다. ", text: "아래가 지금 저장된 내용입니다. 내 내용과 비교해 고릅니다.", conflict: e.details });
+      else if (e.code === "lease_held") setOut({ kind: "warn", title: "다른 세션이 이 파일을 점유 중입니다. ", text: errorText(e), lease: true });
       else setOut({ kind: "err", title: `${e.code}: `, text: errorText(e), code: e.code });
       return;
     }
     const s = r.data;
-    notify("저장했다");
+    notify("저장했습니다");
     setBase(s.sha256);
     const summary = s.changeSummary ? { ...s.changeSummary, sha256: s.sha256 } : null;
-    setOut({ kind: "ok", title: "저장했다. ", text: `${s.savedTo ?? "메인 폴더"}의 ${s.branch ?? ""}에 썼다${s.statusChanged ? ` · status ${s.statusChanged}(승인된 문서를 고쳐 검토 중으로 돌아갔다)` : ""}. 커밋은 그 이슈의 세션이 한다. 세션에는 아무것도 보내지 않았다.`, saved: s });
+    setOut({ kind: "ok", title: "저장했습니다. ", text: `${s.savedTo ?? "메인 폴더"}의 ${s.branch ?? ""}에 썼습니다${s.statusChanged ? ` · status ${s.statusChanged}(승인된 문서를 고쳐 검토 중으로 돌아갔습니다)` : ""}. 커밋은 그 이슈의 세션이 합니다. 세션에는 아무것도 보내지 않았습니다.`, saved: s });
     if (then) dispatch({ issue: issue.key, paths: [d?.path as string], kind: "doc-changed", changeSummary: summary });
   }
 
@@ -250,7 +250,7 @@ function DocPanel({ issue, name, onDoc, reload }: { issue: Loose; name: string; 
         <HStack gap={2} align="center" wrap="wrap">
           <Ico name="pencil" size={14} />
           <Code>{d.path}</Code>
-          <Muted size="xsm">status 를 approved 로 바꾸는 저장은 서버가 거부한다</Muted>
+          <Muted size="xsm">status 를 approved 로 바꾸는 저장은 서버가 거부합니다</Muted>
         </HStack>
         <TextArea label={`${name}.md 원문`} isLabelHidden value={text} onChange={setText} rows={22} />
         <HStack gap={2} wrap="wrap">
@@ -269,8 +269,8 @@ function DocPanel({ issue, name, onDoc, reload }: { issue: Loose; name: string; 
               </HStack>
             </VStack>
           ) : null}
-          {out?.lease ? <Button label="그래도 저장(요청은 보내지 않는다)" variant="destructive" onClick={() => { setForce(true); void save(false); }} /> : null}
-          {out?.code === "branch_not_checked_out" ? <Muted>worktree 가 없다. 터미널에서 <Code>{`python3 scripts/harness/worktree.py new ${issue.key}`}</Code> 뒤 다시 저장한다.</Muted> : null}
+          {out?.lease ? <Button label="그래도 저장(요청은 보내지 않습니다)" variant="destructive" onClick={() => { setForce(true); void save(false); }} /> : null}
+          {out?.code === "branch_not_checked_out" ? <Muted>worktree 가 없습니다. 터미널에서 <Code>{`python3 scripts/harness/worktree.py new ${issue.key}`}</Code> 뒤 다시 저장합니다.</Muted> : null}
           {out?.saved ? (
             <HStack gap={2} wrap="wrap">
               <Button label="세션에 요청" variant="primary" icon={<Ico name="send" />} isDisabled={readOnly} onClick={() => dispatch({ issue: issue.key, paths: [d.path], kind: "doc-changed", changeSummary: out.saved?.changeSummary ? { ...out.saved.changeSummary, sha256: out.saved.sha256 } : null })} />
@@ -305,7 +305,7 @@ function DocPanel({ issue, name, onDoc, reload }: { issue: Loose; name: string; 
         </HStack>
         {d.checkout?.branch ? (
           <Muted size="xsm">
-            저장하면 {d.checkout.kind === "branch" ? "(체크아웃 없음 — 저장할 수 없다)" : `${!d.checkout.path || d.checkout.path === "." ? "메인 폴더" : d.checkout.path} 의`} <Code>{d.checkout.branch}</Code> 에 쓴다. 커밋은 그 이슈의 세션이 한다.
+            저장하면 {d.checkout.kind === "branch" ? "(체크아웃 없음 — 저장할 수 없습니다)" : `${!d.checkout.path || d.checkout.path === "." ? "메인 폴더" : d.checkout.path} 의`} <Code>{d.checkout.branch}</Code> 에 씁니다. 커밋은 그 이슈의 세션이 합니다.
           </Muted>
         ) : null}
         <ServerHtml html={d.html} />

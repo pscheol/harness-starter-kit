@@ -81,7 +81,7 @@ export function Empty({ title, text, actions }: { title: string; text?: string; 
 export function ErrorBlock({ error, retry }: { error: ApiError | null | undefined; retry?: () => void }) {
   return (
     <EmptyState
-      title={error?.code === "unauthorized" ? "접속 토큰을 확인하지 못했다" : "불러오지 못했다"}
+      title={error?.code === "unauthorized" ? "접속 토큰을 확인하지 못했습니다" : "불러오지 못했습니다"}
       description={`${errorText(error)}${error?.code ? ` (${error.code})` : ""}`}
       icon={<Ico name="alert" size={24} />}
       isCompact
@@ -90,7 +90,7 @@ export function ErrorBlock({ error, retry }: { error: ApiError | null | undefine
   );
 }
 
-export function ReadOnlyNote({ text = "읽기 전용 — 저장 · 승인 · 답 · 작업 요청을 끈다" }: { text?: string }) {
+export function ReadOnlyNote({ text = "읽기 전용 — 저장 · 승인 · 답 · 작업 요청을 끕니다" }: { text?: string }) {
   return <Tag tone="line" icon="lock" label={text} />;
 }
 
@@ -173,7 +173,7 @@ export async function copyText(text: string): Promise<boolean> {
 
 export function CopyButton({ text, label = "복사" }: { text: string; label?: string }) {
   const notify = useNotify();
-  return <Button label={label} size="sm" icon={<Ico name="copy" />} onClick={() => void copyText(text).then((ok) => notify(ok ? "복사했다" : "복사하지 못했다 — 글을 직접 고른다"))} />;
+  return <Button label={label} size="sm" icon={<Ico name="copy" />} onClick={() => void copyText(text).then((ok) => notify(ok ? "복사했습니다" : "복사하지 못했습니다 — 글을 직접 고릅니다"))} />;
 }
 
 /** 명령 한 줄 + 복사. 화면은 셸 명령을 실행하지 않고 보여 주기만 한다. */

@@ -17,7 +17,7 @@ const DOCS = ["requirements", "design", "tasks"];
 
 export default function Docs({ route }: { route: Route }) {
   const { state, reload } = useLoad<[Loose, Loose]>(() => [get("/issues"), get("/intents")], []);
-  const sub = "이슈 문서 · 승인 상태 · 질문. 찾기는 이슈 키나 문서 경로를 받는다";
+  const sub = "이슈 문서 · 승인 상태 · 질문. 찾기는 이슈 키나 문서 경로를 받습니다";
   const crumbs = [{ label: "작업" }, { label: "문서" }];
   if (state.status === "loading") return <Page title="문서" sub={sub} crumbs={crumbs}><Loading rows={6} /></Page>;
   if (state.status === "error") return <Page title="문서" sub={sub} crumbs={crumbs}><ErrorBlock error={state.error} retry={reload} /></Page>;
@@ -57,7 +57,7 @@ export default function Docs({ route }: { route: Route }) {
             ]}
           />
         ) : (
-          <Empty title="이슈 문서가 없다" text={q ? "찾는 말을 바꿔 본다." : "이슈를 만들면 requirements · design · tasks 가 여기 나온다."} />
+          <Empty title="이슈 문서가 없습니다" text={q ? "찾는 말을 바꿔 봅니다." : "이슈를 만들면 requirements · design · tasks 가 여기 나옵니다."} />
         )}
       </Panel>
       <Panel title="Intent · 질문" aside={<Muted>{`${intents.length}개`}</Muted>} flush>
@@ -78,7 +78,7 @@ export default function Docs({ route }: { route: Route }) {
             ))}
           </List>
         ) : (
-          <Empty title="Intent 가 없다" text="새 요구사항을 접수하면 만들어진다." />
+          <Empty title="Intent 가 없습니다" text="새 요구사항을 접수하면 만들어집니다." />
         )}
       </Panel>
     </Page>

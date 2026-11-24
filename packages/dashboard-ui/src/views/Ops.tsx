@@ -18,8 +18,8 @@ export default function Ops({ route: _route }: { route: Route }) {
   if (data === null) {
     return (
       <Page title="운영" sub={sub} crumbs={crumbs}>
-        <Notice kind="info" title="운영 기록은 아직 제공하지 않는다. ">이 화면의 데이터(배포 기록 · 운영 기록 · 장애 · 다음 요구사항 후보 · 전달 지표 · 자동 검증 배포 · 규칙 후보)는 HK-21(설계 14)이 만든다.</Notice>
-        <Empty title="제공 예정" text="운영 기록이 생기면 이 화면에서 읽는다. 읽기만 하고, 접수는 새 요구사항(S11)에서 한다." actions={<IconNote icon="terminal" size="xsm">콘솔: npx harness-kit status --ops (같은 이슈에서 제공)</IconNote>} />
+        <Notice kind="info" title="운영 기록은 아직 제공하지 않습니다. ">이 화면의 데이터(배포 기록 · 운영 기록 · 장애 · 다음 요구사항 후보 · 전달 지표 · 자동 검증 배포 · 규칙 후보)는 HK-21(설계 14)이 만듭니다.</Notice>
+        <Empty title="제공 예정" text="운영 기록이 생기면 이 화면에서 읽습니다. 읽기만 하고, 접수는 새 요구사항(S11)에서 합니다." actions={<IconNote icon="terminal" size="xsm">콘솔: npx harness-kit status --ops (같은 이슈에서 제공)</IconNote>} />
         <CommandBox cmd="npx harness-kit status --ops" />
       </Page>
     );

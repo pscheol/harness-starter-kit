@@ -59,7 +59,7 @@ export default function Flow({ route }: { route: Route }) {
 
   if (intentsLoad.state.status === "loading") return <Page title="진행" sub={subtitle} crumbs={crumbs} tools={<ViewSwitch active="flow" />}><Loading rows={6} /></Page>;
   if (intentsLoad.state.status === "error") return <Page title="진행" sub={subtitle} crumbs={crumbs}><ErrorBlock error={intentsLoad.state.error} retry={intentsLoad.reload} /></Page>;
-  if (!key) return <Page title="진행" sub={subtitle} crumbs={crumbs} tools={<ViewSwitch active="flow" />}><Empty title="Intent 가 없다" text="새 요구사항을 접수하면 Intent 와 Unit 이 생기고 흐름이 그려진다." actions={<Link href="/intake">새 요구사항</Link>} /></Page>;
+  if (!key) return <Page title="진행" sub={subtitle} crumbs={crumbs} tools={<ViewSwitch active="flow" />}><Empty title="Intent 가 없습니다" text="새 요구사항을 접수하면 Intent 와 Unit 이 생기고 흐름이 그려집니다." actions={<Link href="/intake">새 요구사항</Link>} /></Page>;
   return <FlowBody key={key} intentKey={key} intents={intents} route={route} subtitle={subtitle} crumbs={crumbs} />;
 }
 
@@ -160,7 +160,7 @@ function FlowBody({ intentKey: key, intents, route, subtitle, crumbs }: { intent
                     </HStack>
                   </VStack>
                 ) : (
-                  <Muted>Unit 을 고르면(Tab · Enter) 그 Unit 의 할 일과 변경 제안을 쓴다.</Muted>
+                  <Muted>Unit 을 고르면(Tab · Enter) 그 Unit 의 할 일과 변경 제안을 씁니다.</Muted>
                 )}
               </Panel>
               <Panel title="처리할 일" aside={<Muted>{String(todo.length)}</Muted>} flush>
@@ -171,7 +171,7 @@ function FlowBody({ intentKey: key, intents, route, subtitle, crumbs }: { intent
                     ))}
                   </List>
                 ) : (
-                  <VStack padding={4}><Muted>이 Intent 에 처리할 일이 없다.</Muted></VStack>
+                  <VStack padding={4}><Muted>이 Intent 에 처리할 일이 없습니다.</Muted></VStack>
                 )}
               </Panel>
               <Panel title="남은 일" aside={<Muted size="xsm">{`Bolt ${burn.now.remaining} 남음 · 끝난 Unit ${burn.now.units.done}/${burn.now.units.total}`}</Muted>}>
@@ -180,7 +180,7 @@ function FlowBody({ intentKey: key, intents, route, subtitle, crumbs }: { intent
               <Panel title="의존 순서" flush>
                 <List hasDividers>
                   {planned.map((u) => (
-                    <ListItem key={u.id} label={<HStack gap={2}><Key>{u.id}</Key><Text>{u.title}</Text></HStack>} description={u.dependsOn.length ? `${(u.dependsOn as string[]).join(", ")} 뒤` : "먼저 시작할 수 있다"} />
+                    <ListItem key={u.id} label={<HStack gap={2}><Key>{u.id}</Key><Text>{u.title}</Text></HStack>} description={u.dependsOn.length ? `${(u.dependsOn as string[]).join(", ")} 뒤` : "먼저 시작할 수 있습니다"} />
                   ))}
                 </List>
               </Panel>
@@ -240,12 +240,12 @@ function ProposalPanel({ flow, intentKey, planned, selected, readOnly, reload, n
     const r = await post("/units/proposals", { intent: intentKey, baseSha256: flow.unitsSha256, changes: draft });
     if (!r.ok) {
       const e = r.error;
-      const hint = e.code === "cycle" ? "의존이 고리를 만든다" : e.code === "conflict" ? "units.json 이 바뀌었다. 다시 읽고 제안한다" : e.code === "contract_merge" ? "계약 Unit 은 합치지 않는다" : e.code === "unknown_unit" ? "없는 Unit 이다" : "";
+      const hint = e.code === "cycle" ? "의존이 고리를 만듭니다" : e.code === "conflict" ? "units.json 이 바뀌었습니다. 다시 읽고 제안합니다" : e.code === "contract_merge" ? "계약 Unit 은 합치지 않습니다" : e.code === "unknown_unit" ? "없는 Unit 입니다" : "";
       setOut({ kind: "err", title: `${e.code}: `, text: `${errorText(e)}${hint ? ` (${hint})` : ""}`, conflict: e.code === "conflict" });
       return;
     }
-    notify("변경 제안을 저장했다(승인이 아니다)");
-    setOut({ kind: "ok", title: "제안을 저장했다. ", text: "units.json 은 그대로이고 세션에는 아무것도 보내지 않았다. 반영은 intent 게이트 승인 때 한다. 설계 세션에 알리려면 '세션에 요청'을 누른다.", path: r.data.path });
+    notify("변경 제안을 저장했습니다(승인이 아닙니다)");
+    setOut({ kind: "ok", title: "제안을 저장했습니다. ", text: "units.json 은 그대로이고 세션에는 아무것도 보내지 않았습니다. 반영은 intent 게이트 승인 때 합니다. 설계 세션에 알리려면 '세션에 요청'을 누릅니다.", path: r.data.path });
   }
   async function discard(): Promise<void> {
     const r = await del(`/units/proposals/${encodeURIComponent(intentKey)}`);
@@ -253,16 +253,16 @@ function ProposalPanel({ flow, intentKey, planned, selected, readOnly, reload, n
       setOut({ kind: "err", title: errorText(r.error) });
       return;
     }
-    notify("제안을 버렸다");
+    notify("제안을 버렸습니다");
     reload();
   }
 
   return (
     <Panel title="변경 제안" aside={flow.proposal ? <Tag tone="build" label="저장된 제안 있음" /> : <Tag label="없음" />}>
-      <Muted>제안은 승인이 아니다. units.json 은 바뀌지 않고, intent 게이트 승인 때만 반영된다. 팀 흐름 틀(flow.gates)은 여기서 바꾸지 않는다.</Muted>
-      {flow.proposal ? <Notice kind="warn" title={`저장된 제안 ${flow.proposal.changes?.length ?? 0}건 · ${flow.proposal.createdBy ?? ""} · ${clock(flow.proposal.createdAt)}`}>다시 저장하면 바뀐다.</Notice> : null}
+      <Muted>제안은 승인이 아닙니다. units.json 은 바뀌지 않고, intent 게이트 승인 때만 반영됩니다. 팀 흐름 틀(flow.gates)은 여기서 바꾸지 않습니다.</Muted>
+      {flow.proposal ? <Notice kind="warn" title={`저장된 제안 ${flow.proposal.changes?.length ?? 0}건 · ${flow.proposal.createdBy ?? ""} · ${clock(flow.proposal.createdAt)}`}>다시 저장하면 바뀝니다.</Notice> : null}
       {readOnly ? (
-        <Notice kind="warn" title="읽기 전용. ">제안을 저장하지 않는다. 사람이 자기 터미널에서 연 서버나 <code>{`npx harness-kit units propose ${intentKey} …`}</code> 로 한다.</Notice>
+        <Notice kind="warn" title="읽기 전용. ">제안을 저장하지 않습니다. 사람이 자기 터미널에서 연 서버나 <code>{`npx harness-kit units propose ${intentKey} …`}</code> 로 합니다.</Notice>
       ) : (
         <VStack gap={3}>
           <Selector label="종류" value={op} onChange={(v) => v && setOp(v)} options={OPS} />
@@ -287,7 +287,7 @@ function ProposalPanel({ flow, intentKey, planned, selected, readOnly, reload, n
             </HStack>
           ))
         ) : (
-          <Muted>아직 없다</Muted>
+          <Muted>아직 없습니다</Muted>
         )}
       </VStack>
       <VStack gap={2} aria-live="polite">
@@ -296,7 +296,7 @@ function ProposalPanel({ flow, intentKey, planned, selected, readOnly, reload, n
             {out.text}
           </Notice>
         ) : null}
-        {out?.path ? <Button label="세션에 요청" variant="primary" icon={<Ico name="send" />} isDisabled={readOnly} onClick={() => dispatch({ paths: [out.path as string], kind: "custom", text: `${intentKey} Unit 변경 제안을 저장했다`, title: "설계 세션에 요청" })} /> : null}
+        {out?.path ? <Button label="세션에 요청" variant="primary" icon={<Ico name="send" />} isDisabled={readOnly} onClick={() => dispatch({ paths: [out.path as string], kind: "custom", text: `${intentKey} Unit 변경 제안을 저장했습니다`, title: "설계 세션에 요청" })} /> : null}
       </VStack>
       <Button label="흐름 틀 보기" size="sm" variant="ghost" onClick={() => setGatesOpen(true)} />
       <GatesDialog isOpen={gatesOpen} onClose={() => setGatesOpen(false)} />
@@ -320,7 +320,7 @@ function GatesDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
                 <Tag key={x} tone={(g.floor as string[]).includes(x) ? "design" : "line"} label={GATE_KO[x] ?? x} />
               ))}
             </HStack>
-            <Muted>바닥(requirements · design · mr · done)은 줄일 수 없다. 팀 설정이라 터미널에서 바꾸고 MR 로 올린다.</Muted>
+            <Muted>바닥(requirements · design · mr · done)은 줄일 수 없습니다. 팀 설정이라 터미널에서 바꾸고 MR 로 올립니다.</Muted>
             <CommandBox cmd={g.command} />
           </>
         ) : null}

@@ -40,7 +40,7 @@ export default function Skills({ route }: { route: Route }) {
   const [onlyGuess, setOnlyGuess] = useState(false);
   const [page, setPage] = useState(PAGE);
   const inv: Loose | null = state.status === "ready" ? state.data[0] : null;
-  const sub = "이 컴퓨터의 스킬 · 읽기만 한다 · 장비 정보라 커밋하지 않고 내보내기에서 뺀다";
+  const sub = "이 컴퓨터의 스킬 · 읽기만 합니다 · 장비 정보라 커밋하지 않고 내보내기에서 뺍니다";
   const crumbs = [{ label: "품질" }, { label: "스킬" }];
 
   const skills: Loose[] = inv?.skills ?? [];
@@ -75,7 +75,7 @@ export default function Skills({ route }: { route: Route }) {
                   { key: "scope", header: "범위", renderCell: (x: Loose) => <Text>{String(x.scope).startsWith("plugin") ? "플러그인" : x.scope === "user" ? "사용자" : String(x.scope).startsWith("nested") ? "하위 폴더" : "프로젝트"}</Text> },
                   { key: "count", header: "개수", align: "end", renderCell: (x: Loose) => (x.error ? <Text color="secondary">{x.error}</Text> : <Text hasTabularNumbers>{String(x.count)}</Text>) },
                 ]}
-                emptyState={<Muted>스킬 위치가 비어 있다</Muted>}
+                emptyState={<Muted>스킬 위치가 비어 있습니다</Muted>}
               />
             </Panel>
             <Panel title="스킬 목록" aside={<Muted>{`${Math.min(list.length, page)}개 표시 · 전체 ${skills.length}`}</Muted>}>
@@ -112,7 +112,7 @@ export default function Skills({ route }: { route: Route }) {
                     ]}
                   />
                 ) : (
-                  <Empty title="조건에 맞는 스킬이 없다" text="단계 · 하네스 거름을 바꾼다." />
+                  <Empty title="조건에 맞는 스킬이 없습니다" text="단계 · 하네스 거름을 바꿉니다." />
                 )}
                 {list.length > page ? <HStack justify="center"><Button label={`더 보기(${list.length - page}개 남음)`} onClick={() => setPage((p) => p + PAGE)} /></HStack> : null}
               </VStack>
@@ -136,9 +136,9 @@ export default function Skills({ route }: { route: Route }) {
                   </VStack>
                 ))
               ) : (
-                <Empty title="스킬 지도가 없다" text="킷 명령은 .agents/skill-map.json 에서 깔린 스킬을 찾아 쓰고, 없으면 킷 기본 템플릿을 쓴다. 지도가 없으면 단계는 설명 낱말로 추정한다." />
+                <Empty title="스킬 지도가 없습니다" text="킷 명령은 .agents/skill-map.json 에서 깔린 스킬을 찾아 쓰고, 없으면 킷 기본 템플릿을 씁니다. 지도가 없으면 단계는 설명 낱말로 추정합니다." />
               )}
-              <Muted>지도는 팀이 MR 로 고친다. 터미널: <Code>npx harness-kit skills --stage 설계</Code></Muted>
+              <Muted>지도는 팀이 MR 로 고칩니다. 터미널: <Code>npx harness-kit skills --stage 설계</Code></Muted>
             </Panel>
             <Panel title="단계 × 하네스" aside={<Muted>{`단계가 붙은 스킬 ${skills.filter((s) => s.stages.length).length}`}</Muted>} flush>
               <Table
