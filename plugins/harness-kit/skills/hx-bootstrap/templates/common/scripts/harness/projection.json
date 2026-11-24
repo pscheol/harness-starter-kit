@@ -60,6 +60,9 @@
         "kiroIde": "Stop",
         "kiroCli": "stop"
       },
+      "subagent-stop": {
+        "claude": "SubagentStop"
+      },
       "session-end": {
         "claude": "SessionEnd"
       }
