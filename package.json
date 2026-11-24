@@ -11,7 +11,7 @@
     "test:ui": "pnpm -C packages/dashboard-ui test",
     "gen": "pnpm build:ui && pnpm build && node scripts/gen-plugins.mjs",
     "gen:check": "node scripts/gen-plugins.mjs --check",
-    "test": "python3 -m unittest discover -s tests -p \"test_*.py\"",
-    "test:e2e": "python3 -m unittest discover -s tests/e2e -p \"test_*.py\""
+    "test": "python3 tests/run.py",
+    "test:e2e": "python3 tests/run.py tests/e2e"
   }
 }
