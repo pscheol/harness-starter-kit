@@ -10,6 +10,7 @@
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -62,17 +63,26 @@ def main_root_of(root):
     return 1, (main_top / prefix).resolve()
 
 
+def hook_files(root):
+    """킷 hooks.json 뒤에 hooks.d(이름 순, project.json 은 마지막 — 같은 id 는 뒤가 이긴다, HK-14)."""
+    folder = root / ".agents/hooks.d"
+    names = sorted((n for n in os.listdir(folder) if n.endswith(".json")), key=lambda n: (n == "project.json", n)) if folder.is_dir() else []
+    return [root / ".agents/hooks.json", *(folder / n for n in names)]
+
+
 def max_output(root, hook_id):
-    try:
-        data = json.loads((root / ".agents/hooks.json").read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return 0
-    hooks = data.get("hooks") if isinstance(data, dict) else None
-    for hook in hooks if isinstance(hooks, list) else []:
-        if isinstance(hook, dict) and hook.get("id") == hook_id:
-            value = hook.get("maxOutputBytes")
-            return value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else 0
-    return 0
+    found = 0
+    for path in hook_files(root):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        hooks = data.get("hooks") if isinstance(data, dict) else None
+        for hook in hooks if isinstance(hooks, list) else []:
+            if isinstance(hook, dict) and hook.get("id") == hook_id:
+                value = hook.get("maxOutputBytes")
+                found = value if isinstance(value, int) and not isinstance(value, bool) and value > 0 else 0
+    return found
 
 
 def main():

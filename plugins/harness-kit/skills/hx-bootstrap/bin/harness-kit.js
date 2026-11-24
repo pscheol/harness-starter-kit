@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 517daf5a9f91ea0ea04ab21cfcc1abfb0f7e91cc81d0581d1a51853347b91420 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 fbf85b33a716d583eaf5e656e277fa34f21ad899db71b28989a1854d4f2d6500 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -904,6 +904,31 @@ function kitScriptSuffixes(hooks, map) {
   for (const script of names) for (const s of [script, `_ ${script.slice(script.lastIndexOf("/") + 1)}`]) if (!out.includes(s)) out.push(s);
   return out;
 }
+var HOOKS_DIR = ".agents/hooks.d";
+var PROJECT_HOOKS = "project.json";
+function hookDocPaths(names) {
+  const enc = (n) => Buffer.from(n, "utf8");
+  return names.filter((n) => n.endsWith(".json") && !n.startsWith(".")).sort((a, b) => Number(a === PROJECT_HOOKS) - Number(b === PROJECT_HOOKS) || Buffer.compare(enc(a), enc(b))).map((n) => `${HOOKS_DIR}/${n}`);
+}
+function mergeHookDocs(docs, map, floor) {
+  const hooks = [];
+  const findings = [];
+  for (const { rel: rel2, text } of docs) {
+    const items = parseHooks(text, map) ?? [];
+    const project = rel2 === `${HOOKS_DIR}/${PROJECT_HOOKS}`;
+    const index = new Map(hooks.map((h, i) => [h.id, i]));
+    for (const item of items) {
+      if (!project) {
+        if (index.has(item.id)) throw new HooksError(`${rel2}: 훅 id ${item.id} 가 다른 층에도 있다(팩 훅 id 는 harness-<팩>- 로 시작한다)`);
+        hooks.push(item);
+      } else if (floor.includes(item.id)) {
+        findings.push({ kind: "floor-override", severity: "error", path: rel2, hint: `하한 훅 ${item.id} 는 프로젝트가 덮지 못한다 — 이 항목은 쓰지 않았다` });
+      } else if (index.has(item.id)) hooks[index.get(item.id)] = item;
+      else hooks.push(item);
+    }
+  }
+  return { hooks, findings };
+}
 
 // src/projection/frontmatter.ts
 var FM_KEY = /^([A-Za-z0-9_-]+):(.*)$/;
@@ -1693,7 +1718,7 @@ function hasPendingNew(view, rel2) {
   return false;
 }
 function loadSources(view) {
-  const src = { rules: [], skills: [], roles: [], policy: parsePolicy(null), deferred: /* @__PURE__ */ new Set(), hooksText: null, hooksData: Buffer.alloc(0), modules: [] };
+  const src = { rules: [], skills: [], roles: [], policy: parsePolicy(null), deferred: /* @__PURE__ */ new Set(), hooksText: null, hooksData: Buffer.alloc(0), hookDocs: [], modules: [] };
   for (const e of view.list(".agents/rules") ?? []) {
     if (!e.name.endsWith(".md") || ignoredName(e.name) || e.kind !== "file") continue;
     const rel2 = `.agents/rules/${e.name}`;
@@ -1715,12 +1740,27 @@ function loadSources(view) {
   const policy = view.read(".agents/model-policy.json");
   src.policy = parsePolicy(policy === null ? null : policy.toString("utf8"));
   if (view.kind(HOOKS_REL) === "file") {
-    src.hooksData = view.read(HOOKS_REL);
-    src.hooksText = src.hooksData.toString("utf8");
+    const data = view.read(HOOKS_REL);
+    src.hooksText = data.toString("utf8");
+    src.hooksData = Buffer.concat([Buffer.from(`${HOOKS_REL}\0`, "utf8"), data]);
     if (hasPendingNew(view, HOOKS_REL)) src.deferred.add(HOOKS_REL);
+  }
+  if (view.kind(HOOKS_DIR) === "dir") {
+    for (const rel2 of hookDocPaths((view.list(HOOKS_DIR) ?? []).map((e) => e.name))) {
+      if (view.kind(rel2) !== "file") continue;
+      const data = view.read(rel2);
+      src.hookDocs.push({ rel: rel2, text: data.toString("utf8") });
+      src.hooksData = Buffer.concat([src.hooksData, Buffer.from(`
+${rel2}\0`, "utf8"), data]);
+      if (hasPendingNew(view, rel2)) src.deferred.add(HOOKS_REL);
+    }
   }
   src.modules = metaModules(view.read(".agents/harness-kit.json"));
   return src;
+}
+function hooksBundleSha(view) {
+  const src = loadSources(view);
+  return src.hooksText === null ? null : sha256(src.hooksData);
 }
 function metaModules(raw) {
   if (raw === null) return [];
@@ -1866,6 +1906,14 @@ function removeEmptyDirs(target, rels) {
   return removed;
 }
 
+// src/core/floor.ts
+var GATE_FLOOR = ["requirements", "design", "mr", "done"];
+var FLOOR_HOOKS = ["harness-protect-sources", "harness-block-full-verify", "harness-verify-gate", "harness-protect-approvals"];
+function missingFloorGates(gates) {
+  if (!Array.isArray(gates)) return [];
+  return GATE_FLOOR.filter((g) => !gates.includes(g));
+}
+
 // src/projection/view.ts
 var import_node_fs8 = __toESM(require("node:fs"));
 var import_node_path5 = __toESM(require("node:path"));
@@ -1972,9 +2020,13 @@ function buildContext(args) {
     if (!m.ok) findings.push({ kind: "role-model-locked", severity: "error", path: role.source, hint: m.error });
     else roles.push({ role, fields: m.fields });
   }
-  let parsed2;
+  let parsed2 = null;
   try {
-    parsed2 = parseHooks(sources.hooksText, args.spec.hookMap);
+    if (sources.hooksText !== null) {
+      const merged = mergeHookDocs([{ rel: HOOKS_REL, text: sources.hooksText }, ...sources.hookDocs], args.spec.hookMap, FLOOR_HOOKS);
+      parsed2 = merged.hooks;
+      findings.push(...merged.findings);
+    }
   } catch (err) {
     if (err instanceof HooksError) throw new CliError(EXIT.STATE, err.message, "`.agents/hooks.json` 을 고치거나 harness-kit repair 로 킷 판을 되살린다");
     throw err;
@@ -2048,7 +2100,7 @@ function fullMergeWant(kind, spec, tokens, sources) {
   if (kind === "settings" || kind === "codex-hooks") {
     let hooks = [];
     try {
-      hooks = parseHooks(sources?.hooksText ?? null, spec.hookMap) ?? [];
+      hooks = sources?.hooksText != null ? mergeHookDocs([{ rel: HOOKS_REL, text: sources.hooksText }, ...sources.hookDocs], spec.hookMap, FLOOR_HOOKS).hooks : [];
     } catch {
       hooks = [];
     }
@@ -5353,14 +5405,6 @@ async function gitStatus(root, env) {
   return { dirty: s.code === 0 ? s.stdout.trim().length > 0 : false, unpushed: u === null ? null : Number(u) };
 }
 
-// src/core/floor.ts
-var GATE_FLOOR = ["requirements", "design", "mr", "done"];
-var FLOOR_HOOKS = ["harness-protect-sources", "harness-block-full-verify", "harness-verify-gate", "harness-protect-approvals"];
-function missingFloorGates(gates) {
-  if (!Array.isArray(gates)) return [];
-  return GATE_FLOOR.filter((g) => !gates.includes(g));
-}
-
 // ../dashboard/src/project.ts
 var DEFAULT_GATES2 = ["codebase", "intent", "plans", "requirements", "design", "tasks", "mr", "done", "deploy"];
 var ISSUE_GATES = ["requirements", "design", "tasks", "mr", "done"];
@@ -7954,7 +7998,7 @@ function layoutFindings(target, entries) {
       }
       if (from && typeof e.fromSha256 === "string") {
         const sp = import_node_path40.default.join(target, ...from.split("/"));
-        const now = currentSha(sp, Boolean(lstat2(sp)?.isDirectory()));
+        const now = from === HOOKS_REL ? hooksBundleSha(new FsView(target)) : currentSha(sp, Boolean(lstat2(sp)?.isDirectory()));
         if (now === null) out.push({ kind: "stale", severity: "error", path: e.path, hint: `원본 ${from} 이 없다 → npx harness-kit update` });
         else if (now !== e.fromSha256) out.push({ kind: "stale", severity: "error", path: e.path, hint: `원본 ${from} 가 바뀌었다 → npx harness-kit repair` });
       }

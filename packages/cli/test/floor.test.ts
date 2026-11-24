@@ -35,7 +35,7 @@ describe("doctor 하한 검사", () => {
     const meta = path.join(target, META_FILE);
     return { target, cli, meta, edit: (patch: Record<string, unknown>) => writeJsonFile(meta, { ...readJsonFile(meta), ...patch }) };
   }
-  const kinds = (r: { stdout: string }): string[] => json(r).findings.map((f: { kind: string }) => f.kind);
+  const kinds = (r: Parameters<typeof json>[0]): string[] => json(r).findings.map((f: { kind: string }) => f.kind);
 
   it("design 을 뺀 flow.gates 는 gate-floor 오류 · doctor --check exit 1(04 §5 #7)", async () => {
     const t = await installed();

@@ -12,7 +12,8 @@ import { byteCompare, writeFileAtomic } from "../core/fsx";
 import { sha256 } from "../core/hash";
 import type { LockEntry } from "../core/lock";
 import { removeEmptyDirs } from "../core/remove";
-import { HOOKS_REL, HooksError, kitScriptSuffixes, parseHooks, settingsHooks, type HookDef } from "./hooks";
+import { FLOOR_HOOKS } from "../core/floor";
+import { HOOKS_REL, HooksError, kitScriptSuffixes, mergeHookDocs, settingsHooks, type HookDef } from "./hooks";
 import { claudeMdWant, codexConfigWant, codexHooksWant, gitattributesWant, MERGE_KIND, mergeWith, settingsWant, unmergeWith, type MergeKind, type MergeWant } from "./merge";
 import { resolveModel, skillModelProblem } from "./render";
 import { ignoredName, loadSources, treeSha, walkView, type Sources } from "./sources";
@@ -38,9 +39,13 @@ export function buildContext(args: { view: RepoView; spec: ProjectionSpec; token
     if (!m.ok) findings.push({ kind: "role-model-locked", severity: "error", path: role.source, hint: m.error });
     else roles.push({ role, fields: m.fields });
   }
-  let parsed: HookDef[] | null;
+  let parsed: HookDef[] | null = null;
   try {
-    parsed = parseHooks(sources.hooksText, args.spec.hookMap);
+    if (sources.hooksText !== null) {
+      const merged = mergeHookDocs([{ rel: HOOKS_REL, text: sources.hooksText }, ...sources.hookDocs], args.spec.hookMap, FLOOR_HOOKS);
+      parsed = merged.hooks;
+      findings.push(...merged.findings);
+    }
   } catch (err) {
     if (err instanceof HooksError) throw new CliError(EXIT.STATE, err.message, "`.agents/hooks.json` 을 고치거나 harness-kit repair 로 킷 판을 되살린다");
     throw err;
@@ -178,7 +183,7 @@ export function fullMergeWant(kind: MergeKind, spec: ProjectionSpec, tokens: Rec
   if (kind === "settings" || kind === "codex-hooks") {
     let hooks: HookDef[] = [];
     try {
-      hooks = parseHooks(sources?.hooksText ?? null, spec.hookMap) ?? [];
+      hooks = sources?.hooksText != null ? mergeHookDocs([{ rel: HOOKS_REL, text: sources.hooksText }, ...sources.hookDocs], spec.hookMap, FLOOR_HOOKS).hooks : [];
     } catch {
       hooks = [];
     }

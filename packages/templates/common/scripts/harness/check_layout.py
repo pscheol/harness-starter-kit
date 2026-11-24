@@ -25,8 +25,10 @@ sys.path.insert(0, str(HERE))
 from projection_engine import read_lock  # noqa: E402
 from projection_wants import (  # noqa: E402
     HARNESSES,
+    HOOKS_REL,
     ProjectionError,
     build_wants,
+    hooks_bundle_sha,
     full_merge_want,
     load_sources,
     load_spec,
@@ -96,7 +98,7 @@ def projection_findings(root: Path, entries) -> tuple[list[dict], int]:
                 continue
             if e.source and e.from_sha:
                 src = root / e.source
-                now = current_sha(src, src.is_dir())
+                now = hooks_bundle_sha(root) if e.source == HOOKS_REL else current_sha(src, src.is_dir())
                 if now is None:
                     out.append(finding("stale", "error", e.path, f"원본 {e.source} 이 없다 → npx harness-kit update"))
                 elif now != e.from_sha:

@@ -46,28 +46,51 @@ def command(unit, project, kind, arguments, env=None, label=None):
 CHECKS_FILE = ".agents/verify-checks.json"
 
 
-def load_path_checks(root):
-    """하네스 루트 `.agents/verify-checks.json` 의 검사 목록. 파일이 없으면 빈 목록이다.
+CHECKS_DIR = "verify-checks.d"
+PROJECT_CHECKS = "project.json"
 
-    형식: {"checks": [{"id": "...", "paths": ["docs/**"], "command": ["python3", "tools/x.py", "check"], "cwd": ".", "covers": false}]}
-    `covers: true` 면 그 경로의 코드 파일(생성물·리포에 둔 외부 라이브러리)은 관련 시험을 따로 찾지 않고 이 검사가 책임진다.
-    형식이 틀리면 계획을 만들지 않고 실패한다(조용히 건너뛰지 않는다).
-    """
-    path = config_path(root, Path(CHECKS_FILE).name)  # MR 이면 base 판(설계 09 §3.7)
-    if not path.is_file():
-        return []
+
+def read_checks(path, label):
+    """검사 파일 하나. 형식이 틀리면 계획을 만들지 않고 실패한다(조용히 건너뛰지 않는다)."""
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as error:
-        raise ValueError(f"{CHECKS_FILE}: {error}") from error
+        raise ValueError(f"{label}: {error}") from error
     checks = raw.get("checks", [])
     for check in checks:
         paths, arguments = check.get("paths"), check.get("command")
         valid = isinstance(paths, list) and isinstance(arguments, list) and arguments
         if not valid or not all(isinstance(item, str) for item in [*paths, *arguments]):
-            raise ValueError(f"{CHECKS_FILE}: check {check.get('id')!r} needs 'paths' and 'command' string lists")
+            raise ValueError(f"{label}: check {check.get('id')!r} needs 'paths' and 'command' string lists")
         if not isinstance(check.get("covers", False), bool):
-            raise ValueError(f"{CHECKS_FILE}: check {check.get('id')!r} 'covers' must be true or false")
+            raise ValueError(f"{label}: check {check.get('id')!r} 'covers' must be true or false")
+    return checks
+
+
+def load_path_checks(root):
+    """하네스 루트 `.agents/verify-checks.json`(킷) + `.agents/verify-checks.d/*.json`(팩 · 프로젝트, HK-14)의 검사 목록.
+
+    형식: {"checks": [{"id": "...", "paths": ["docs/**"], "command": ["python3", "tools/x.py", "check"], "cwd": ".", "covers": false}]}
+    `covers: true` 면 그 경로의 코드 파일(생성물·리포에 둔 외부 라이브러리)은 관련 시험을 따로 찾지 않고 이 검사가 책임진다.
+    `verify-checks.d` 는 이름 순으로 읽고 `project.json` 이 마지막이다. 팩 파일끼리 · 킷과 같은 id 는 오류, project.json 은 같은 id 를 덮는다.
+    MR 이면 둘 다 base 판이다(설계 09 §3.7).
+    """
+    path = config_path(root, Path(CHECKS_FILE).name)
+    checks = read_checks(path, CHECKS_FILE) if path.is_file() else []
+    folder = config_path(root, CHECKS_DIR)
+    if not folder.is_dir():
+        return checks
+    names = sorted((n for n in os.listdir(folder) if n.endswith(".json") and not n.startswith(".")), key=lambda n: (n == PROJECT_CHECKS, n))
+    for name in names:
+        label = f".agents/{CHECKS_DIR}/{name}"
+        index = {check.get("id"): i for i, check in enumerate(checks)}
+        for check in read_checks(folder / name, label):
+            if name == PROJECT_CHECKS and check.get("id") in index:
+                checks[index[check.get("id")]] = check
+            elif check.get("id") in index:
+                raise ValueError(f"{label}: check {check.get('id')!r} 가 다른 층에도 있다")
+            else:
+                checks.append(check)
     return checks
 
 

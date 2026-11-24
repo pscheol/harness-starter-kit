@@ -123,6 +123,8 @@ def cmd_sync(args) -> int:
     spec = load_spec()
     wants, _ = build_wants(root, spec, tokens, agents)
     changed = [c.rstrip("/") for c in args.changed or []]
+    if any(c == ".agents/hooks.d" or c.startswith(".agents/hooks.d/") for c in changed):
+        changed.append(".agents/hooks.json")   # 팩 · 프로젝트 훅 파일은 훅 원본의 일부다(HK-14)
 
     def chosen(source: str | None) -> bool:
         return not changed or any(source and (c == source or c.startswith(source + "/") or source.startswith(c + "/")) for c in changed)
