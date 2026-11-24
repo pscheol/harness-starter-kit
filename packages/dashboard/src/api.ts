@@ -228,14 +228,14 @@ export const ROUTES: Route[] = [
   {
     method: "GET", path: "/projects", multi: true, cli: "projects list",
     handler: async (_p, r) => {
-      if (!r.projects) throw notFound("전체 프로젝트 모드가 아니다(dashboard --all · --root · --workspace)");
+      if (!r.projects) throw notFound("전체 프로젝트 모드가 아닙니다(dashboard --all · --root · --workspace)");
       return ok(await projectsList(r.projects));
     },
   },
   {
     method: "GET", path: "/projects/overview", multi: true, cli: "status --all",
     handler: async (_p, r) => {
-      if (!r.projects) throw notFound("전체 프로젝트 모드가 아니다");
+      if (!r.projects) throw notFound("전체 프로젝트 모드가 아닙니다");
       return ok(await projectsOverview(r.projects));
     },
   },

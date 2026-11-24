@@ -190,7 +190,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       throw new StartError(3, err instanceof Error ? err.message : String(err), "npx harness-kit doctor");
     }
     const meta = single.meta();
-    if (meta.schema !== "harness-kit/v2") throw new StartError(3, `.agents/harness-kit.json 의 schema 가 harness-kit/v2 가 아니다(${String(meta.schema ?? "없음")})`, "npx harness-kit doctor");
+    if (meta.schema !== "harness-kit/v2") throw new StartError(3, `.agents/harness-kit.json 의 schema 가 harness-kit/v2 가 아닙니다(${String(meta.schema ?? "없음")})`, "npx harness-kit doctor");
   } else {
     projects = new Projects(() => modeEntries(mode, home, opts.env), { ...projectOpts, multi: true });
   }
@@ -230,8 +230,8 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     if (writes) {
       const origin = req.headers.origin ?? "";
       const ct = String(req.headers["content-type"] ?? "").split(";")[0]?.trim().toLowerCase();
-      if (!origins().includes(origin)) throw new ApiError(403, "forbidden_origin", "Origin 이 이 서버가 아니다");
-      if ((method !== "DELETE" || hasBody) && ct !== "application/json") throw new ApiError(403, "forbidden_origin", "Content-Type 이 application/json 이 아니다");
+      if (!origins().includes(origin)) throw new ApiError(403, "forbidden_origin", "Origin 이 이 서버가 아닙니다");
+      if ((method !== "DELETE" || hasBody) && ct !== "application/json") throw new ApiError(403, "forbidden_origin", "Content-Type 이 application/json 이 아닙니다");
     }
     let body: unknown;
     if (writes && hasBody) {
@@ -328,7 +328,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   const server = http.createServer((req, res) => {
     void (async () => {
       try {
-        if (!hosts().includes(String(req.headers.host ?? ""))) throw new ApiError(421, "misdirected", "Host 가 127.0.0.1 · localhost 와 이 포트가 아니다");
+        if (!hosts().includes(String(req.headers.host ?? ""))) throw new ApiError(421, "misdirected", "Host 가 127.0.0.1 · localhost 와 이 포트가 아닙니다");
         const url = new URL(req.url ?? "/", `http://127.0.0.1:${port}`);
         if (url.pathname === "/healthz") {
           sendJson(res, 200, { ok: true });

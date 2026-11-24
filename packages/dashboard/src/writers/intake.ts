@@ -93,7 +93,7 @@ export async function postIntake(p: Project, body: unknown, via: Via): Promise<R
     try {
       return JSON.parse(r.stdout) as Record<string, unknown>;
     } catch {
-      throw new ApiError(500, "internal", `intake.py 출력이 JSON 이 아니다: ${r.stdout.slice(0, 200)}`);
+      throw new ApiError(500, "internal", `intake.py 출력이 JSON 이 아닙니다: ${r.stdout.slice(0, 200)}`);
     }
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });

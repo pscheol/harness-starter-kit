@@ -120,7 +120,7 @@ export async function todos(p: Project, loaded: Loaded): Promise<Todo[]> {
     const rec = v.record as { status?: string; finishedAt?: string } | null;
     if (rec && (rec.status === "failed" || rec.status === "incomplete")) {
       const co = v.checkout as { path: string };
-      out.push({ rank: 4, kind: "verify-failed", target: (v.issue as string | null) ?? co.path, title: `검증 ${rec.status}: ${(v.issue as string | null) ?? (co.path === "." ? "메인 폴더" : co.path)}`, reason: "마지막 검증 기록이 통과가 아니다", since: rec.finishedAt ?? iso(null), link: "/verify", mine: false });
+      out.push({ rank: 4, kind: "verify-failed", target: (v.issue as string | null) ?? co.path, title: `검증 ${rec.status}: ${(v.issue as string | null) ?? (co.path === "." ? "메인 폴더" : co.path)}`, reason: "마지막 검증 기록이 통과가 아닙니다", since: rec.finishedAt ?? iso(null), link: "/verify", mine: false });
     }
   }
   const wt = await readWorktrees(p);

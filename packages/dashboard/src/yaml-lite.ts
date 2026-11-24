@@ -287,7 +287,7 @@ function parseMap(r: Reader, indent: number, depth: number): Record<string, unkn
     if (l.text.startsWith("- ") || l.text === "-") return out;
     const text = stripComment(l.text);
     const m = /^("(?:[^"\\]|\\.)*"|'(?:[^']|'')*'|[^\s:#][^:]*?)\s*:(?:\s+(.*))?$/.exec(text);
-    if (!m) throw new YamlError(`'키: 값' 모양이 아니다(${l.no}째 줄)`);
+    if (!m) throw new YamlError(`'키: 값' 모양이 아닙니다(${l.no}째 줄)`);
     let key = m[1] as string;
     if (key[0] === '"' || key[0] === "'") key = String(value(key, depth));
     else if (/^[&*!]/.test(key)) throw new YamlError("키에 별칭 · 앵커 · 태그를 쓸 수 없습니다");
@@ -358,6 +358,6 @@ export function parseYaml(text: string): Record<string, unknown> {
   if (!first) return {};
   const res = parseBlock(r, first.indent, 0);
   if (r.peek()) throw new YamlError(`읽지 못한 줄이 남았습니다(${(r.peek() as Line).no}째 줄)`);
-  if (res === null || typeof res !== "object" || Array.isArray(res)) throw new YamlError("머리가 맵이 아니다");
+  if (res === null || typeof res !== "object" || Array.isArray(res)) throw new YamlError("머리가 맵이 아닙니다");
   return res as Record<string, unknown>;
 }

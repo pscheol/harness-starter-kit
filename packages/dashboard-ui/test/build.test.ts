@@ -57,7 +57,7 @@ describe("화면 CSP(R4)", () => {
     // 2) react-dom: <style precedence> 요소를 렌더할 때만 쓰는 경로(이 화면은 그 요소를 쓰지 않는다)
     // 3) astryx Theme: 미리 빌드하지 않은(__built 아닌) 테마의 실행 중 주입 경로. 우리 테마는 빌드해서 CSS 파일로 싣는다
     expect(hits.length).toBe(3);
-    expect(hits.filter((h) => /adoptedStyleSheets/.test(h) || /data-precedence|\.ownerDocument/.test(h) || /setAttribute\("[a-z-]*theme/.test(h) || /Ua\(/.test(h)).length).toBe(3);
+    expect(hits.filter((h) => /adoptedStyleSheets/.test(h) || /data-precedence|\.ownerDocument/.test(h) || /setAttribute\((?:"[a-z-]*theme|\w+\("theme)/.test(h)).length).toBe(3);
     expect(fs.readFileSync(path.join(DIR, "src/themes/harness/harness.js"), "utf8")).toContain("__built");
     const all = jsFiles().map((f) => fs.readFileSync(f, "utf8")).join("\n");
     // 슬라이드 규칙 · 스크롤 고정 규칙은 CSSOM(adoptedStyleSheets + replaceSync)으로 간다

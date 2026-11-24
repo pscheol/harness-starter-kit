@@ -234,7 +234,7 @@ export function App() {
     <LinkProvider component={AppAnchor}>
       <PinProvider>
         <DispatchProvider>
-          <AppShell sideNav={<Rail route={route} />} height="fill" contentPadding={0}>
+          <AppShell sideNav={<Rail route={route} />} height="fill" contentPadding={0} variant="surface">
             {app.loadError && app.ready && app.session ? (
               <Page title="연결이 끊겼습니다" sub="서버를 연 터미널이 켜져 있는지 봅니다" search={false}>
                 <ErrorBlock error={app.loadError} retry={() => void refreshOverview()} />

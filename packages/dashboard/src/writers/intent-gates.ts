@@ -73,7 +73,7 @@ async function bundleOf(p: Project, key: string, gate: BundleGate): Promise<{ co
 
 /** GET /intents/{key}/gates/{gate}: 승인 화면 · harness-kit approve 가 먼저 읽는다(대상 파일 · 묶음 sha · 앞 조건). */
 export async function getGateBundle(p: Project, key: string, gate: string): Promise<Record<string, unknown>> {
-  if (!BUNDLE_GATES.includes(gate)) throw new ApiError(404, "not_found", `묶음 승인 게이트가 아니다: ${gate}(codebase · plans)`);
+  if (!BUNDLE_GATES.includes(gate)) throw new ApiError(404, "not_found", `묶음 승인 게이트가 아닙니다: ${gate}(codebase · plans)`);
   const b = await bundleOf(p, key, gate as BundleGate);
   return { intent: key, gate, folder: b.info.folder, files: b.files, sha256: b.sha256, reasons: b.info.reasons, stale: b.info.stale };
 }

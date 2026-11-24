@@ -209,3 +209,132 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* 색 설정(사용자 결정 2026-11-24): html[data-hx-palette] 가 메뉴 · 바탕 색을 정한다. 기본은 쿨 그레이(lib/palette.ts).
+   카드는 늘 흰색이다. 짙은 메뉴(navy · charcoal)는 메뉴 글자색도 바꾸고, 배지와 아래 카드는 그대로 둔다. */
+:root {
+  --hx-nav: #ffffff;
+  --hx-canvas: #f1f3f6;
+  --hx-nav-border: #e2e6ec;
+  --hx-nav-sel: #e8edff;
+  --hx-nav-sel-text: #2b3fbf;
+  --hx-nav-text: #1f2937;
+  --hx-nav-strong: #111827;
+  --hx-nav-muted: #6b7280;
+}
+
+:root[data-hx-palette="warm-gray"] {
+  --hx-nav: #ffffff;
+  --hx-canvas: #f3f1f0;
+  --hx-nav-border: #e7e3e1;
+  --hx-nav-sel: rgb(0 0 0 / 6%);
+  --hx-nav-sel-text: #000000;
+  --hx-nav-text: #1c1917;
+  --hx-nav-strong: #0c0a09;
+  --hx-nav-muted: #78716c;
+}
+
+:root[data-hx-palette="soft"] {
+  --hx-nav: #f6f6f7;
+  --hx-canvas: #ffffff;
+  --hx-nav-border: #e9e9ec;
+  --hx-nav-sel: #e7e7ea;
+  --hx-nav-sel-text: #000000;
+  --hx-nav-text: #202124;
+  --hx-nav-strong: #000000;
+  --hx-nav-muted: #77777e;
+}
+
+:root[data-hx-palette="navy"] {
+  --hx-nav: #14213d;
+  --hx-canvas: #f3f4f7;
+  --hx-nav-border: #14213d;
+  --hx-nav-sel: #2a3c66;
+  --hx-nav-sel-text: #ffffff;
+  --hx-nav-text: #c9d1e3;
+  --hx-nav-strong: #ffffff;
+  --hx-nav-muted: #8f9bb5;
+}
+
+:root[data-hx-palette="charcoal"] {
+  --hx-nav: #1c1c1e;
+  --hx-canvas: #f7f6f4;
+  --hx-nav-border: #1c1c1e;
+  --hx-nav-sel: #323236;
+  --hx-nav-sel-text: #ffffff;
+  --hx-nav-text: #d6d6db;
+  --hx-nav-strong: #ffffff;
+  --hx-nav-muted: #96969d;
+}
+
+.astryx-app-shell-sidenav,
+.astryx-side-nav {
+  background: var(--hx-nav);
+}
+
+.astryx-app-shell-sidenav {
+  border-inline-end: 1px solid var(--hx-nav-border);
+}
+
+.astryx-app-shell-sidenav + div,
+.astryx-app-shell-sidenav + div .astryx-layout-content {
+  background: var(--hx-canvas);
+}
+
+.astryx-side-nav-heading,
+.astryx-side-nav-heading * {
+  color: var(--hx-nav-strong);
+}
+
+.astryx-side-nav-heading span span:not(:first-child) {
+  color: var(--hx-nav-muted);
+}
+
+.astryx-side-nav-section span:not(.astryx-side-nav-item *),
+.astryx-side-nav .astryx-text:not(.astryx-card *),
+.astryx-side-nav svg:not(.astryx-card *, .astryx-side-nav-item *, .astryx-side-nav-heading *) {
+  color: var(--hx-nav-muted);
+}
+
+.astryx-side-nav-item,
+.astryx-side-nav-item :not(.astryx-badge, .astryx-badge *) {
+  color: var(--hx-nav-text);
+}
+
+.astryx-side-nav-item:hover:not([aria-current="page"]) {
+  background: color-mix(in oklab, var(--hx-nav-sel) 55%, transparent);
+}
+
+.astryx-side-nav-item[aria-current="page"] {
+  background: var(--hx-nav-sel);
+}
+
+.astryx-side-nav-item[aria-current="page"],
+.astryx-side-nav-item[aria-current="page"] :not(.astryx-badge, .astryx-badge *) {
+  color: var(--hx-nav-sel-text);
+}
+
+/* 색 설정 메뉴의 견본(메뉴 색 · 바탕 색) */
+.hx-swatch {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.hx-swatch i {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgb(0 0 0 / 15%);
+}
+
+.hx-swatch[data-p="cool-gray"] i:first-child { background: #ffffff; }
+.hx-swatch[data-p="cool-gray"] i:last-child { background: #f1f3f6; }
+.hx-swatch[data-p="warm-gray"] i:first-child { background: #ffffff; }
+.hx-swatch[data-p="warm-gray"] i:last-child { background: #f3f1f0; }
+.hx-swatch[data-p="soft"] i:first-child { background: #f6f6f7; }
+.hx-swatch[data-p="soft"] i:last-child { background: #ffffff; }
+.hx-swatch[data-p="navy"] i:first-child { background: #14213d; }
+.hx-swatch[data-p="navy"] i:last-child { background: #f3f4f7; }
+.hx-swatch[data-p="charcoal"] i:first-child { background: #1c1c1e; }
+.hx-swatch[data-p="charcoal"] i:last-child { background: #f7f6f4; }

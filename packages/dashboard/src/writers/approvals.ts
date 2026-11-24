@@ -127,7 +127,7 @@ export interface ApprovalResult {
 
 export async function postApproval(p: Project, body: unknown, via: Via): Promise<ApprovalResult> {
   if (p.readOnly) throw readOnly();
-  if (!isObj(body)) throw bad("본문이 객체가 아니다");
+  if (!isObj(body)) throw bad("본문이 객체가 아닙니다");
   const gate = typeof body.gate === "string" ? body.gate : "";
   const decision = body.decision === "changes-requested" ? "changes-requested" : body.decision === "approved" ? "approved" : null;
   if (!decision) throw bad("decision 은 approved 또는 changes-requested 다");
@@ -271,7 +271,7 @@ export async function reviewFinding(p: Project, key: string, findingId: string):
 
 export async function postReviewDecision(p: Project, key: string, findingId: string, body: unknown, via: Via): Promise<ApprovalResult> {
   if (p.readOnly) throw readOnly();
-  if (!isObj(body)) throw bad("본문이 객체가 아니다");
+  if (!isObj(body)) throw bad("본문이 객체가 아닙니다");
   if (!/^F-\d+$/.test(findingId)) throw bad("발견 ID 는 F-<n> 입니다");
   const decision = body.decision === "risk-accepted" || body.decision === "fix-required" ? body.decision : null;
   if (!decision) throw bad("decision 은 risk-accepted 또는 fix-required 다");

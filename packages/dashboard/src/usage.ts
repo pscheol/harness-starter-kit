@@ -366,7 +366,7 @@ export async function usageData(p: Project, q: UsageQuery): Promise<Record<strin
     sources, totals, daily: dayList, roles: [...roles].sort(),
     byIssue: [...issues].map(([issue, sum]) => ({ issue, sum })).sort((a, b) => b.sum - a.sum || (a.issue < b.issue ? -1 : 1)),
     cache: { average: ratio(totals), daily: dayList.map((d) => ({ date: d.date, ratio: ratio(d) })) },
-    cost: priced ? { estimate: Math.round(cost * 100) / 100, note: "usage.pricing 으로 센 추정입니다. 청구 금액이 아니다" } : null,
+    cost: priced ? { estimate: Math.round(cost * 100) / 100, note: "usage.pricing 으로 센 추정입니다. 청구 금액이 아닙니다" } : null,
     unreadable,
   };
 }

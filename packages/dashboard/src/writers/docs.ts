@@ -147,7 +147,7 @@ export function changeSummary(before: string, after: string): { headings: string
 
 export async function putDoc(p: Project, body: unknown): Promise<{ data: Record<string, unknown>; meta: Record<string, unknown> }> {
   if (p.readOnly) throw readOnly();
-  if (!body || typeof body !== "object") throw bad("본문이 객체가 아니다");
+  if (!body || typeof body !== "object") throw bad("본문이 객체가 아닙니다");
   const b = body as Record<string, unknown>;
   const t = docTarget(b.path);
   if (typeof b.baseSha256 !== "string" || typeof b.markdown !== "string") throw bad("path · baseSha256 · markdown 이 필요합니다");

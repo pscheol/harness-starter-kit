@@ -219,7 +219,7 @@ function nodeGates(docs: IssueModel["docs"], legacyFlags: Record<string, boolean
     else if (!d) reasons.push(`${gate}.md 가 없습니다`);
     else {
       if (d.clarify) reasons.push(`${gate}.md 에 [NEEDS CLARIFICATION 가 남았습니다`);
-      if (gate !== "tasks" && d.status !== "approved") reasons.push(`${gate}.md 머리 status 가 approved 가 아니다`);
+      if (gate !== "tasks" && d.status !== "approved") reasons.push(`${gate}.md 머리 status 가 approved 가 아닙니다`);
       const valid = d.approval === "valid" || (gate === "tasks" && d.approval === "stale") || legacyFlags[gate] === true;
       if (!valid) reasons.push(`${gate} 승인 기록이 ${d.approval}`);
       passed = reasons.length === 0 && ok;

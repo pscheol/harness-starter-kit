@@ -50,7 +50,7 @@ export function addProject(home: string, dir: string, today: string, env: Env = 
   } catch {
     throw new ApiError(404, "not_found", `폴더가 없습니다: ${dir}`);
   }
-  if (!isHarnessRepo(real)) throw new ApiError(422, "not_a_harness_repo", `킷을 설치한 리포가 아니다(.agents/harness-kit.json 없음): ${real}`);
+  if (!isHarnessRepo(real)) throw new ApiError(422, "not_a_harness_repo", `킷을 설치한 리포가 아닙니다(.agents/harness-kit.json 없음): ${real}`);
   const list = readRegistry(home, env);
   const found = list.find((e) => e.path === real);
   if (found) return { added: false, entry: found };
@@ -198,7 +198,7 @@ export async function projectsOverview(projects: Projects, timeoutMs = 3000): Pr
       const s = slots[i] as ProjectSlot;
       const base = { id: s.id, name: s.entry.name, path: s.entry.path };
       if (!s.project) {
-        rows[i] = { ...base, state: s.state, error: s.state === "missing" ? "폴더 없음" : "킷 리포가 아니다" };
+        rows[i] = { ...base, state: s.state, error: s.state === "missing" ? "폴더 없음" : "킷 리포가 아닙니다" };
         continue;
       }
       try {

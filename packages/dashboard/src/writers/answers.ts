@@ -11,7 +11,7 @@ import { issueFolder } from "./approvals";
 import { openMob } from "./mob";
 
 async function locate(p: Project, target: string): Promise<{ co: Checkout; rel: string; abs: string; intentAbs?: string }> {
-  if (!KEY.test(target)) throw bad(`대상 키 형식이 아니다: ${target}`);
+  if (!KEY.test(target)) throw bad(`대상 키 형식이 아닙니다: ${target}`);
   const isIntent = fs.existsSync(path.join(p.root, ".agents/docs/intents")) && fs.readdirSync(path.join(p.root, ".agents/docs/intents")).some((n) => INTENT_FOLDER.exec(n)?.[1] === target);
   if (isIntent) {
     const co = await resolveIntentCheckout(p, target);
@@ -34,7 +34,7 @@ export async function getQuestions(p: Project, target: string | null): Promise<R
 
 export async function postAnswer(p: Project, target: string, qid: string, body: unknown): Promise<Record<string, unknown>> {
   if (p.readOnly) throw readOnly();
-  if (!isObj(body)) throw bad("본문이 객체가 아니다");
+  if (!isObj(body)) throw bad("본문이 객체가 아닙니다");
   const { co, rel, abs, intentAbs } = await locate(p, target);
   if (!fs.existsSync(abs)) throw notFound(`질문 파일이 없습니다: ${rel}`);
   const mob = intentAbs ? openMob(intentAbs) : null;
@@ -45,7 +45,7 @@ export async function postAnswer(p: Project, target: string, qid: string, body: 
     const q = doc.questions.find((x) => x.id === qid);
     if (!q) throw notFound(`질문이 없습니다: ${qid}`);
     const choice = typeof body.choice === "string" ? body.choice : "";
-    if (choice !== "other" && !q.choices.some((c) => c.id === choice)) throw bad(`선택지가 아니다: ${choice} (${q.choices.map((c) => c.id).join(" · ")} · other)`);
+    if (choice !== "other" && !q.choices.some((c) => c.id === choice)) throw bad(`선택지가 아닙니다: ${choice} (${q.choices.map((c) => c.id).join(" · ")} · other)`);
     const text = typeof body.text === "string" && body.text.trim() ? body.text : null;
     if (choice === "other" && !text) throw bad("other 는 text 가 필요합니다");
     const u = await gitUser(co.root, p.env);
@@ -55,7 +55,7 @@ export async function postAnswer(p: Project, target: string, qid: string, body: 
     if (mob) {
       const by = typeof body.by === "string" ? body.by.trim() : "";
       if (!by) throw bad("몹 세션이 열려 있습니다 — by(답한 참석자 email)가 필요합니다", { attendees: mob.attendees.map((a) => a.email) });
-      if (!mob.attendees.some((a) => a.email.toLowerCase() === by.toLowerCase())) throw bad(`${by} 는 몹 세션 참석자가 아니다`, { attendees: mob.attendees.map((a) => a.email) });
+      if (!mob.attendees.some((a) => a.email.toLowerCase() === by.toLowerCase())) throw bad(`${by} 는 몹 세션 참석자가 아닙니다`, { attendees: mob.attendees.map((a) => a.email) });
       who = by;
     }
     const groups = p.policy().groups ?? {};

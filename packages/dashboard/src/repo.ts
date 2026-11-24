@@ -45,7 +45,7 @@ export async function locate(cwd: string, env: Env): Promise<Location> {
   if (!harness) throw new LocateError(`하네스 루트(.agents/harness-kit.json)를 찾지 못했습니다: ${start}`);
   const top = await gitOut(harness, env, "rev-parse", "--show-toplevel");
   const common = await gitOut(harness, env, "rev-parse", "--path-format=absolute", "--git-common-dir");
-  if (!top || !common) throw new LocateError(`git 저장소가 아니다: ${harness}`);
+  if (!top || !common) throw new LocateError(`git 저장소가 아닙니다: ${harness}`);
   const realTop = fs.realpathSync(top);
   const prefix = path.relative(realTop, harness).split(path.sep).join("/");
   const realCommon = fs.realpathSync(common);

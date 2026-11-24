@@ -40,7 +40,7 @@ async function runMob(p: Project, key: string, args: string[]): Promise<Record<s
   try {
     out = JSON.parse(r.stdout) as Record<string, unknown>;
   } catch {
-    throw new ApiError(500, "internal", `mob.py 출력이 JSON 이 아니다: ${(r.stderr || r.stdout).slice(0, 200)}`);
+    throw new ApiError(500, "internal", `mob.py 출력이 JSON 이 아닙니다: ${(r.stderr || r.stdout).slice(0, 200)}`);
   }
   if (r.code === 3) throw new ApiError(422, "mob_refused", String(out.error ?? "몹 세션 처리를 거부했습니다"));
   if (r.code !== 0) throw new ApiError(500, "internal", String(out.error ?? "mob.py 실패"));

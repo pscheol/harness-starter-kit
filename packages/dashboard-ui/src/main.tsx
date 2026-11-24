@@ -5,9 +5,11 @@ import { createRoot } from "react-dom/client";
 import "./css/main.css";
 import { App } from "./App";
 import { takeTokenFromHash } from "./lib/api";
+import { applyPalette, storedPalette } from "./lib/palette";
 import { harnessTheme } from "./themes/harness/harness";
 
 takeTokenFromHash();
+applyPalette(storedPalette());
 
 const root = document.getElementById("root");
 if (!root) throw new Error("#root 가 없습니다");

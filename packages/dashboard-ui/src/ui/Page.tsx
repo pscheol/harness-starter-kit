@@ -9,6 +9,7 @@ import { Layout, LayoutContent, LayoutHeader } from "@astryxdesign/core/Layout";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { useEffect, type ReactNode } from "react";
+import { PalettePicker } from "./PalettePicker";
 import { SearchBox } from "./SearchBox";
 
 export interface Crumb {
@@ -68,12 +69,11 @@ export function Page({ title, sub, crumbs, tools, search = true, width, children
                   </Text>
                 ) : null}
               </VStack>
-              {tools || search ? (
-                <HStack gap={2} wrap="wrap" align="center">
-                  {tools}
-                  {search ? <SearchBox /> : null}
-                </HStack>
-              ) : null}
+              <HStack gap={2} wrap="wrap" align="center">
+                {tools}
+                {search ? <SearchBox /> : null}
+                <PalettePicker />
+              </HStack>
             </HStack>
           </VStack>
         </LayoutHeader>

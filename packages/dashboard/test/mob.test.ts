@@ -28,7 +28,7 @@ describe("몹 세션", () => {
     const none = await call(srv, "POST", "/api/v1/questions/INT-1/Q-1/answer", { body: { choice: "B", baseSha256: base(), pin: srv.pin } });
     expect([none.status, none.json.error.message]).toEqual([400, expect.stringContaining("by")]);
     const outsider = await call(srv, "POST", "/api/v1/questions/INT-1/Q-1/answer", { body: { choice: "B", by: "park@example.com", baseSha256: base(), pin: srv.pin } });
-    expect([outsider.status, outsider.json.error.message]).toEqual([400, expect.stringContaining("참석자가 아니다")]);
+    expect([outsider.status, outsider.json.error.message]).toEqual([400, expect.stringContaining("참석자가 아닙니다")]);
     const ok = await call(srv, "POST", "/api/v1/questions/INT-1/Q-1/answer", { body: { choice: "B", by: "lee@example.com", baseSha256: base(), pin: srv.pin } });
     expect([ok.status, ok.json.data.kind]).toEqual([200, "answer"]);
     expect(readFile(r.root, `${INT}/questions.md`)).toMatch(/- 답: B · lee@example\.com · \S+ · 기록: kim@example\.com/);
