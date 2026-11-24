@@ -200,7 +200,7 @@ export function intentStamp(root: string): string {
 }
 
 export function flowData(p: Project, info: IntentInfo, issues: IssueModel[], sessions: { id: string; issue: string | null; name: string | null; harness: string | null; state: string }[]): Record<string, unknown> {
-  const { units, data } = readUnitsFile(info.abs);
+  const { units, data, raw } = readUnitsFile(info.abs);
   let fm: Record<string, string> = {};
   try {
     fm = parseLoose(fs.readFileSync(path.join(info.abs, "intent.md"), "utf8")) ?? {};
@@ -236,6 +236,7 @@ export function flowData(p: Project, info: IntentInfo, issues: IssueModel[], ses
     }),
     edges,
     proposal: proposalOf(info.abs),
+    unitsSha256: unitsSha(raw),
     readAt: new Date().toISOString(),
   };
 }

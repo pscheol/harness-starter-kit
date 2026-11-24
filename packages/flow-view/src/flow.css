@@ -1,0 +1,51 @@
+/* 흐름 보기 노드 · 간선. 색은 화면 app.css 의 토큰을 쓰고 없으면 같은 값을 쓴다. 외부 글꼴 · 이미지 없음. */
+.react-flow { --xy-node-border-radius: 7px; font-family: var(--font-text, system-ui, sans-serif); }
+
+.hk-node {
+  width: 240px;
+  padding: 10px 12px 11px;
+  border: 1px solid var(--rule-strong, #aeb9c7);
+  border-radius: 7px;
+  background: var(--raised, #fff);
+  color: var(--ink, #14213d);
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05), 0 4px 14px -6px rgb(0 0 0 / 0.12);
+}
+.hk-node.contract { border-style: dashed; background: var(--sunken, #edf1f6); }
+.hk-node.selected, .react-flow__node:focus-visible .hk-node { outline: 2px solid var(--design, #3046c5); outline-offset: 2px; }
+.react-flow__node:focus-visible { outline: none; }
+
+.hk-node-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.hk-key { font-family: var(--font-code, monospace); font-weight: 700; font-size: 12px; }
+.hk-uid { color: var(--ink-faint, #5f6b80); font-size: 12px; }
+.hk-title { margin-top: 4px; font-size: 14px; font-weight: 700; word-break: keep-all; }
+.hk-sub { margin-top: 2px; color: var(--ink-faint, #5f6b80); font-size: 12px; overflow-wrap: anywhere; }
+.hk-rail { display: flex; gap: 3px; margin-top: 8px; line-height: 0; }
+.hk-gate path { fill: var(--raised, #fff); stroke: var(--rule-strong, #aeb9c7); stroke-width: 1.5; }
+.hk-gate.done.design path, .hk-gate.active.design path { fill: var(--design, #3046c5); stroke: var(--design, #3046c5); }
+.hk-gate.done.build path, .hk-gate.active.build path { fill: var(--build, #c98a12); stroke: var(--build, #c98a12); }
+.hk-gate.done.ops path, .hk-gate.active.ops path { fill: var(--ops, #0b7a5e); stroke: var(--ops, #0b7a5e); }
+.hk-gate.active path { fill: var(--raised, #fff); stroke-width: 2.5; }
+.hk-state { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+.hk-bolts { font-size: 12px; color: var(--ink-soft, #46536b); }
+.hk-flags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 6px; }
+
+.hk-pill { display: inline-block; padding: 0 6px; border-radius: 3px; font-size: 11px; font-weight: 600; line-height: 18px; background: var(--sunken, #edf1f6); color: var(--ink-soft, #46536b); white-space: nowrap; }
+.hk-pill.design { background: var(--design-wash, #e7eafb); color: var(--design-ink, #2a3cab); }
+.hk-pill.build { background: var(--build-wash, #fbf1dc); color: var(--build-ink, #7d5300); }
+.hk-pill.ops { background: var(--ops-wash, #ddf2eb); color: var(--ops-ink, #0a6a52); }
+.hk-pill.gate { background: var(--gate-wash, #fbe6e9); color: var(--gate-ink, #b00e28); }
+.hk-pill.contract { border: 1px solid var(--rule-strong, #aeb9c7); background: transparent; line-height: 16px; }
+
+.hk-edge .react-flow__edge-path { stroke: var(--ink-soft, #46536b); stroke-width: 1.6; }
+.hk-edge-contract .react-flow__edge-path { stroke-dasharray: 6 4; }
+.react-flow__edge-textbg { fill: var(--raised, #fff); }
+.react-flow__edge-text { fill: var(--ink-soft, #46536b); font-size: 11px; }
+.react-flow__handle { opacity: 0; pointer-events: none; }
+.react-flow__controls-button { color: var(--ink, #14213d); }
+.react-flow__controls-button:focus-visible { outline: 2px solid var(--design, #3046c5); outline-offset: -2px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .react-flow__viewport, .react-flow__node { transition: none !important; }
+}
