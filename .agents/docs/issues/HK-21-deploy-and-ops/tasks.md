@@ -46,7 +46,14 @@ created: 2026-11-24
 
 ## 검증 기록
 
-(아래 표는 실행 뒤 채웠다.)
+2026-11-24, 같은 컴퓨터에서 다른 작업의 시험이 함께 돌아 부하가 높았다(load average 8~14). 무거운 시험은 한 번에 하나씩 돌렸다.
 
 | 시험 | 결과 |
 |---|---|
+| `pnpm -C packages/cli test` | 454 통과(38 파일) — 새 시험 `ops-cli.test.ts` 7개 포함 |
+| `pnpm -C packages/dashboard test` | 153 통과. 처음 한 번 `projects.test.ts` 의 `--root` 시험이 부하로 시간 초과였고 그 파일만 다시 돌려 통과 — 새 시험 `deploy-ops.test.ts` 5개 포함 |
+| `pnpm test:ui` | 30 통과(번들 byte 재현 포함). 크기 예산을 520KB → 524KB 로 올렸다(S10 을 채워 532,916 바이트로 시작, 아래 §설계와 다르게) |
+| 설치본 시험(`scripts/tests`, 666개) | 처음 실행에서 실패 1(위험 두 사람 시험 — design 새 템플릿의 §13 앞 조건, 시험을 `배포 없음` 으로 고쳐 통과) · 오류 6(부하로 15 · 30초 제한 초과 — 같은 시험을 따로 돌려 통과, 변경 계획 시험 제한은 60초로 늘렸다). 고친 뒤 해당 시험 전부 통과 |
+| 킷 `python3 -m unittest discover -s tests`(120개) | 119 통과 · 1 시간 초과: `test_harness_scripts_suite_passes_in_install` 이 설치본 시험 묶음을 1200초 제한으로 돌리는데, 부하가 높아 설치본 시험이 1,658초 걸렸다(묶음을 따로 돌린 위 줄이 통과). 시험 제한은 바꾸지 않았다 |
+| `node scripts/gen-plugins.mjs --check` | 생성물 일치(469개) |
+| S10 화면 | `S10-ops-1440.png`(1440px, 시연 fixture). 콘솔 오류 · CSP 위반 0건 |

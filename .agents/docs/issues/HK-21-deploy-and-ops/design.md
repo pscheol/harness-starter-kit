@@ -79,6 +79,8 @@ fast(`check_harness.py` 의 `ops_errors`)는 deploy.json 형식 · 운영 기록
 | 승인 대기 시간 `mr` 열림 시각 | 뺐다(`unavailable`) | glab · gh 호출 비용 · 권한 확인 전(설계 §6) |
 | S03 승인 화면에 "롤백 시험 없이 승인" 칸 | 넣지 않았다 | 이 판은 S10 만 채웠다. API · 터미널 승인은 `waiveRollback`(`--waive-rollback`)으로 된다. 화면 칸은 다음 일 |
 | `ops new` §1 의 NFR 은 이슈 NFR 도 | Intent §3 성공 지표 · §7 NFR 만 | 이슈 requirements 의 NFR 형식이 일정하지 않다 |
+| `pnpm test:ui` 크기 예산 520KB | 524KB 로 올렸다 | 자리만 있던 S10 을 채워 532,916 바이트(예산 532,480 초과 436바이트). 기능 하나 값이다 |
+| 변경 계획 시험의 `--plan` 제한 15초 | 60초 | 시험 fixture 가 `scripts/harness` 를 통째로 새 파일로 보아 스크립트 수에 비례해 느려진다(base 11.7초 → 15.8초). 15초는 이미 한계였다 |
 | 위험 높은 배포 승인 상태를 한 이슈 기록에서 | 모든 포함 이슈가 valid 여야 valid | 같은 기록을 이슈마다 붙이므로 하나라도 빠지면 막는 쪽이 안전하다 |
 
 ## 7. 공유 파일(합칠 때)
