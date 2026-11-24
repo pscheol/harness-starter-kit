@@ -6,6 +6,7 @@ import { fixtureTemplates, FIXTURE_ENV, REAL_TEMPLATES, run, tmpDir, type RunOpt
 
 export const SPEC_REL = "common/scripts/harness/projection.json";
 export const POLICY_REL = "common/agents-root/model-policy.json";
+export const HOOKS_REL = "common/agents-root/hooks.json";
 export const PY_DIR = path.join(REAL_TEMPLATES, "common/scripts/harness");
 export const HARNESS_DIRS = [".claude", ".codex", ".cursor", ".kiro"];
 
@@ -13,7 +14,7 @@ function real(rel: string): string {
   return fs.readFileSync(path.join(REAL_TEMPLATES, ...rel.split("/")), "utf8");
 }
 
-/** 배치 원본이 든 작은 템플릿(설치 경로: .agents/rules · skills · roles · model-policy.json · scripts/harness/projection.json). */
+/** 배치 원본이 든 작은 템플릿(설치 경로: .agents/rules · skills · roles · model-policy.json · hooks.json · scripts/harness/projection.json). */
 export function projectionFiles(extra: Record<string, string> = {}): Record<string, string> {
   return {
     "common/root/AGENTS.md": "# {{PROJECT_NAME}}\n",
@@ -30,8 +31,7 @@ export function projectionFiles(extra: Record<string, string> = {}): Record<stri
       "---\nname: worker\ndescription: 배정 파일을 구현한다.\nmode: write\ntools: [read, search, shell, write]\nclass: implement\n---\n# worker\n\n구현한다.\n",
     [POLICY_REL]: real(POLICY_REL),
     [SPEC_REL]: real(SPEC_REL),
-    "common/kiro-agents/__PROJECT_SLUG__.json": '{"name": "{{PROJECT_SLUG}}"}\n',
-    "common/codex/hooks.json": '{\n  "hooks": {}\n}\n',
+    [HOOKS_REL]: real(HOOKS_REL),
     "stacks/jvm/agents-rules/tech.md": '---\npaths:\n  - "**/*.gradle.kts"\n---\njvm {{BUILD_TOOL}}\n',
     "stacks/jvm/arch/hexagonal/agents-rules/structure.md": '---\npaths:\n  - "src/**"\n---\nhexagonal\n',
     ...extra,

@@ -14,7 +14,7 @@ if grep -Eq -e "$KEY_RE" -e "$PATCH_RE" <<<"$payload"; then
   echo "→ 산출물은 이 하네스의 소스 폴더나 .agents/docs/ 에 쓴다." >&2
   exit 2
 fi
-HARNESS_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+HARNESS_ROOT="${HARNESS_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 if [ -f "$HARNESS_ROOT/scripts/hooks/session-context.py" ]; then
   python3 "$HARNESS_ROOT/scripts/hooks/session-context.py" --root "$HARNESS_ROOT" --event pre-tool <<<"$payload"
   exit $?

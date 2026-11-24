@@ -77,7 +77,7 @@ skills/hx-bootstrap/          ← 스킬 루트 (= SKILL_DIR)
     │   ├── agents-docs/   SDD 기록 (README · specs-index · _spec-templates/{requirements,design,checklists,tasks} · decisions · guides · tech-debt-tracker · generated · references) — issues/<키>-<이름>/ 는 new-feature.sh 가 만든다
     │   ├── agents-root/   roles/(planner·explorer·worker·reviewer·docs-researcher, 머리 mode·tools·class) · model-policy.json · verify-checks.json
     │   ├── agents-skills/ hx-*/SKILL.md 11종 — 커맨드 본문 원본(core, Codex 가 직접 읽는다)
-    │   ├── kiro-agents/ · kiro-hooks/ · kiro-root/   조율 에이전트 · hook 4 · 안내
+    │   ├── kiro-root/   Kiro 안내(조율 에이전트 · IDE 훅은 배치가 .agents/hooks.json 에서 만든다)
     │   ├── codex/         hooks.json · README.md
     │   ├── scripts/       verify-entry · verify-changed · check_harness · new-feature · sdd-layout · board · session-coordination · check-maintenance · check-* · hooks/ · git-hooks/ · guards/ · harness/(projection · check_layout 포함)
     │   ├── tools/docs/    기능 문서 생성기(feature_docs.py · docskit · 시험 · vendor.lock.json · schema-snapshot.sh)

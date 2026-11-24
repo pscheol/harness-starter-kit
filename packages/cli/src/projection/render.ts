@@ -226,7 +226,8 @@ export function renderCodexRole(r: Role, fields: Record<string, string>, spec: P
   return `${lines.join("\n")}\n${tomlMultiline(instructions)}"""\n`;
 }
 
-export function renderKiroRole(r: Role, fields: Record<string, string>, spec: Pick<ProjectionSpec, "kiroWriteHooks">): string {
+/** hooks: 쓰기 역할에 넣는 Kiro CLI 훅(hooks.json 의 subagents 항목, HK-24). */
+export function renderKiroRole(r: Role, fields: Record<string, string>, hooks: Record<string, unknown>): string {
   const obj: Record<string, unknown> = {
     name: r.name,
     description: r.description,
@@ -235,7 +236,7 @@ export function renderKiroRole(r: Role, fields: Record<string, string>, spec: Pi
     allowedTools: r.mode === "write" ? ["read", "write"] : ["read"],
     resources: [...KIRO_RESOURCES],
   };
-  if (r.mode === "write") obj.hooks = spec.kiroWriteHooks;
+  if (r.mode === "write" && Object.keys(hooks).length) obj.hooks = hooks;
   Object.assign(obj, fields);
   return `${JSON.stringify(obj, null, 2)}\n`;
 }

@@ -1,8 +1,12 @@
-// 병합 규칙(HK-13 design §5, 03 §3.5 · §5 #6): CLAUDE.md 블록 · settings.json · config.toml · .gitattributes.
+// 병합 규칙(HK-13 design §5, HK-24, 03 §3.5 · §5 #6): CLAUDE.md 블록 · settings.json · .codex/hooks.json · config.toml · .gitattributes.
+import fs from "node:fs";
+import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { kitScriptSuffixes, parseHooks, settingsHooks } from "../src/projection/hooks";
 import {
   claudeMdWant,
   codexConfigWant,
+  codexHooksWant,
   gitattributesWant,
   MERGERS,
   settingsWant,
@@ -11,6 +15,9 @@ import { loadSpec } from "../src/projection/spec";
 import { REAL_TEMPLATES } from "./helpers";
 
 const spec = loadSpec(REAL_TEMPLATES);
+const kitHooks = parseHooks(fs.readFileSync(path.join(REAL_TEMPLATES, "common/agents-root/hooks.json"), "utf8"), spec.hookMap) ?? [];
+const suffixes = kitScriptSuffixes(kitHooks, spec.hookMap);
+const dispatch = (id: string, script: string): string => `bash "$CLAUDE_PROJECT_DIR"/scripts/hooks/dispatch.sh ${id} scripts/hooks/${script}`;
 const md = MERGERS["claude-md"];
 const settings = MERGERS.settings;
 const codex = MERGERS["codex-config"];
@@ -57,7 +64,7 @@ describe("CLAUDE.md 블록(§5.1, 03 §3.8)", () => {
 });
 
 describe("settings.json(§5.2, 03 §3.5 · §5 #6)", () => {
-  const want = settingsWant(spec, { PROTECTED_PATH: "docs/references" });
+  const want = settingsWant(spec, { PROTECTED_PATH: "docs/references" }, settingsHooks(kitHooks, "claude", spec.hookMap, []), suffixes);
   // HK-23(VQ-R12): 승인 기록 · 기준선 · 관리 페이지 토큰 · 승인 로그
   const approvalDeny = ["Edit(//**/approvals.md)", "Edit(//**/.agents/quality-baseline.json)", "Edit(//**/.agents/state/dashboard.token)", "Edit(//**/.agents/state/approvals-log.jsonl)", "Read(//**/.agents/state/dashboard.token)"];
   const deny = ["Edit(//**/docs/references/**)", ...approvalDeny];
@@ -74,20 +81,25 @@ describe("settings.json(§5.2, 03 §3.5 · §5 #6)", () => {
     const j = JSON.parse(r.text);
     expect(Object.keys(j)).toEqual(["permissions", "hooks"]);
     expect(j.permissions).toEqual({ deny });
-    expect(Object.keys(j.hooks)).toEqual(["SessionStart", "UserPromptSubmit", "PreToolUse", "Stop", "SessionEnd"]);
+    expect(Object.keys(j.hooks)).toEqual(["SessionStart", "PreToolUse", "PostToolUse", "UserPromptSubmit", "Stop", "SessionEnd"]);
     expect(r.keys).toEqual([
       ...deny.map((rule) => `permissions.deny:${rule}`),
+      // HK-24: hooks.json 순서. 세션 시작 등록은 harness-session-start 안에서 한다(design §6)
       "hooks.SessionStart:harness-session-start",
-      // HK-17: 세션 등록 훅(06 §3.9) — 시작 · 프롬프트 제출 · 턴 끝 · 종료
-      "hooks.SessionStart:harness-session-register",
-      "hooks.UserPromptSubmit:harness-session-prompt",
       "hooks.PreToolUse:harness-protect-sources",
+      "hooks.PreToolUse:harness-protect-generated",
       "hooks.PreToolUse:harness-block-full-verify",
       "hooks.PreToolUse:harness-protect-approvals",
+      "hooks.PostToolUse:harness-sync-projection",
+      "hooks.UserPromptSubmit:harness-session-prompt",
       "hooks.Stop:harness-verify-gate",
       "hooks.Stop:harness-session-idle",
       "hooks.SessionEnd:harness-session-end",
     ]);
+    // 모든 킷 훅은 디스패처를 거치고 timeout 을 가진다(R2)
+    expect(j.hooks.Stop[0].hooks[0]).toEqual({ type: "command", command: dispatch("harness-verify-gate", "verify-gate.sh"), timeout: 180 });
+    expect(j.hooks.PreToolUse.map((g: any) => g.matcher)).toEqual(["Write|Edit|MultiEdit|NotebookEdit", "Bash", "Write|Edit|MultiEdit|NotebookEdit|Bash"]);
+    expect(j.hooks.SessionStart[0].hooks[0].command).toBe(`HX_HARNESS=claude ${dispatch("harness-session-start", "session-start.sh")}`);
     expect(r.text).toBe(`${JSON.stringify(j, null, 2)}\n`);
     expect(r.created).toBe(true);
     expect(JSON.stringify(j)).not.toMatch(/defaultMode|enabledPlugins/);
@@ -97,7 +109,7 @@ describe("settings.json(§5.2, 03 §3.5 · §5 #6)", () => {
     const start = `${JSON.stringify(others, null, 2)}\n`;
     const once = ok(settings.merge(start, want));
     const j = JSON.parse(once.text);
-    expect(j.hooks.Stop.map((g: any) => g.hooks[0].command)).toEqual(["other-stop-1", "other-stop-2", 'bash "$CLAUDE_PROJECT_DIR"/scripts/hooks/verify-gate.sh']);
+    expect(j.hooks.Stop.map((g: any) => g.hooks[0].command)).toEqual(["other-stop-1", "other-stop-2", dispatch("harness-verify-gate", "verify-gate.sh")]);
     expect(j.hooks.PreToolUse[0]).toEqual(others.hooks.PreToolUse[0]);
     expect(j.permissions).toEqual({ allow: ["Bash(ls)"], deny });
     expect(ok(settings.merge(once.text, want, once.keys)).text).toBe(once.text);
@@ -122,6 +134,22 @@ describe("settings.json(§5.2, 03 §3.5 · §5 #6)", () => {
     expect(j.hooks.SessionStart).toHaveLength(2);
   });
 
+  it("HK-13 판 킷 명령(스크립트 직접 · HX_HARNESS 접두)도 킷 항목으로 바꾸고, `harness-kit` 낱말이 든 사람 훅은 둔다", () => {
+    const old = {
+      hooks: {
+        SessionStart: [
+          { hooks: [{ type: "command", command: 'HX_HARNESS=claude bash "$CLAUDE_PROJECT_DIR"/scripts/hooks/session-register.sh' }] },
+          { hooks: [{ type: "command", command: "npx harness-kit doctor --quiet" }] },
+        ],
+        PreToolUse: [{ matcher: "Write|Edit|MultiEdit|NotebookEdit|Bash", hooks: [{ type: "command", command: 'bash "$CLAUDE_PROJECT_DIR"/scripts/hooks/protect-approvals.sh' }] }],
+      },
+    };
+    const j = JSON.parse(ok(settings.merge(`${JSON.stringify(old, null, 2)}\n`, want)).text);
+    const commands = Object.values(j.hooks).flatMap((groups: any) => groups.flatMap((g: any) => g.hooks.map((h: any) => h.command)));
+    expect(commands.filter((c: string) => !c.includes("dispatch.sh"))).toEqual(["npx harness-kit doctor --quiet"]);
+    expect(j.hooks.SessionStart.map((g: any) => g.hooks[0].command)).toEqual([`HX_HARNESS=claude ${dispatch("harness-session-start", "session-start.sh")}`, "npx harness-kit doctor --quiet"]);
+  });
+
   it("deny: lock 키에 있는데 이번에 원하지 않으면 뺀다 · 다른 값은 둔다", () => {
     const cur = `${JSON.stringify({ permissions: { deny: ["Edit(//**/old/**)", "Read(.env)"] } }, null, 2)}\n`;
     const r = ok(settings.merge(cur, want, ["permissions.deny:Edit(//**/old/**)"]));
@@ -134,6 +162,47 @@ describe("settings.json(§5.2, 03 §3.5 · §5 #6)", () => {
     expect(settings.missing(r.text, r.keys, want)).toEqual([]);
     expect(settings.missing("{}\n", r.keys, want)).toEqual(r.keys);
     expect(settings.unmerge(r.text, r.keys, want)).toEqual({ ok: true, text: "{}\n", empty: true });
+  });
+});
+
+describe(".codex/hooks.json(HK-24 design §3)", () => {
+  const codexHooks = MERGERS["codex-hooks"];
+  const want = codexHooksWant(settingsHooks(kitHooks, "codex", spec.hookMap, []), suffixes);
+  const v1 = {
+    hooks: {
+      SessionStart: [{ hooks: [{ type: "command", command: "bash -c 'r=\"$PWD\"; …' _ session-start.sh", timeout: 15 }] }],
+      Stop: [{ hooks: [{ type: "command", command: "other-stop" }] }, { hooks: [{ type: "command", command: "bash -c '…' _ verify-gate.sh", timeout: 180 }] }],
+    },
+  };
+
+  it("새 파일: Codex 이벤트 · apply_patch|Bash · 디스패처 명령, user-prompt · session-end 는 없다", () => {
+    const r = ok(codexHooks.merge(null, want));
+    const j = JSON.parse(r.text);
+    expect(Object.keys(j)).toEqual(["hooks"]);
+    expect(Object.keys(j.hooks)).toEqual(["SessionStart", "PreToolUse", "PostToolUse", "Stop"]);
+    expect(j.hooks.PreToolUse.map((g: any) => g.matcher)).toEqual(["apply_patch|Bash", "Bash"]);
+    expect(j.hooks.SessionStart[0].hooks[0].command).toMatch(/^HX_HARNESS=codex bash -c 'r="\$PWD"; .*\.agents\/harness-kit\.json.*dispatch\.sh" "\$1" "\$2"' _ harness-session-start scripts\/hooks\/session-start\.sh$/);
+    expect(r.keys).toContain("hooks.Stop:harness-verify-gate");
+    expect(r.created).toBe(true);
+    expect(codexHooks.missing(r.text, r.keys, want)).toEqual([]);
+    expect(codexHooks.unmerge(r.text, r.keys, want)).toEqual({ ok: true, text: "{}\n", empty: true });
+  });
+
+  it("v1 판(_ <스크립트> 꼬리)은 자리를 지켜 바꾸고 다른 도구 항목 · 순서는 둔다", () => {
+    const start = `${JSON.stringify(v1, null, 2)}\n`;
+    const once = ok(codexHooks.merge(start, want));
+    const j = JSON.parse(once.text);
+    expect(j.hooks.Stop.map((g: any) => g.hooks[0].command)).toEqual(["other-stop", expect.stringContaining(" _ harness-verify-gate scripts/hooks/verify-gate.sh")]);
+    expect(j.hooks.SessionStart).toHaveLength(1);
+    expect(ok(codexHooks.merge(once.text, want, once.keys)).text).toBe(once.text);
+    const back = JSON.parse(ok(codexHooks.unmerge(once.text, once.keys, want)).text);
+    expect(back.hooks.Stop.map((g: any) => g.hooks[0].command)).toEqual(["other-stop"]);
+  });
+
+  it("최상위에 다른 키가 있으면 두고, 해석할 수 없으면 conflict", () => {
+    const r = ok(codexHooks.merge('{\n  "x": 1\n}\n', want));
+    expect(Object.keys(JSON.parse(r.text))).toEqual(["x", "hooks"]);
+    expect(codexHooks.merge("{ 깨짐", want).ok).toBe(false);
   });
 });
 
@@ -178,7 +247,7 @@ describe(".gitattributes(§5.4)", () => {
     expect(r.text).toBe(
       "*.png binary\n\n# harness-kit:begin generated — .agents/ 원본에서 만든 파일이다. 고칠 때는 원본을 고친다\n" +
         ".claude/skills/** linguist-generated=true\n.claude/rules/** linguist-generated=true\n.claude/agents/** linguist-generated=true\n" +
-        ".kiro/skills/** linguist-generated=true\n.kiro/steering/** linguist-generated=true\n.kiro/agents/** linguist-generated=true\n# harness-kit:end generated\n",
+        ".kiro/skills/** linguist-generated=true\n.kiro/steering/** linguist-generated=true\n.kiro/agents/** linguist-generated=true\n.kiro/hooks/harness-* linguist-generated=true\n# harness-kit:end generated\n",
     );
     expect(r.keys).toEqual(["block:generated"]);
     const only = ok(attrs.merge(r.text, gitattributesWant(spec, ["codex"]), r.keys));

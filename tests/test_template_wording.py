@@ -36,7 +36,6 @@ EXEMPT = (
     "agents-rules/verification-ladder.md",
     "scripts/hooks/block_full_verify.py",
     "scripts/hooks/block-full-verify.sh",
-    "kiro-hooks/harness-block-full-verify.json",
     "/ci/",
     ".gitlab-ci",
     ".github/workflows",
@@ -86,6 +85,7 @@ READ_ONLY_EXPLANATIONS = (
     ("templates/common/agents-docs/README.md", "옛 구조(읽기 전용)"),
     ("templates/common/kiro-steering/sdd-workflow.md", "옛 `<영역>-specs/` 는 읽기 전용"),
     ("templates/common/tools/docs/README.md", "옛 구조(읽기 전용)"),
+    ("templates/UPGRADE.md", "옛 `<영역>-specs/` 는 읽기 전용이다"),
 )
 DOC_SUFFIXES = {".md", ".json", ".toml", ".yml", ".yaml", ""}
 

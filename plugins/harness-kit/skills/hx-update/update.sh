@@ -62,7 +62,10 @@ if [ ! -f "$META" ]; then
   exit 1
 fi
 
-FROM_VERSION="$(harness_meta_get "$META" kitVersion || echo unknown)"
+FROM_VERSION="$(harness_meta_get "$META" kitVersion || true)"
+# v2 메타는 kit.version 에 판이 있다.
+[ -n "$FROM_VERSION" ] || FROM_VERSION="$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("kit",{}).get("version",""))' "$META" 2>/dev/null || true)"
+[ -n "$FROM_VERSION" ] || FROM_VERSION=unknown
 TO_VERSION="$(harness_kit_version "$PLUGIN_DIR")"
 STACK="$(harness_meta_get "$META" stack)"
 ARCH="$(harness_meta_get "$META" arch)"
@@ -294,6 +297,21 @@ if [ "$DRY_RUN" != 1 ]; then
   cp "$NEW_LOCK" "$LOCK"
   harness_write_meta "$TARGET" "$TO_VERSION" "$DOMAIN" "$STACK" "$ARCH" "$AGENTS_SEL" "$MODULES_SEL"
   [ -f "$TARGET/.agents/harness.json" ] || harness_write_manifest "$TARGET" "$STACK" "$AGENTS_SEL"
+fi
+
+# 업그레이드 공지(설계 03 §3.11, HK-24): 킷 UPGRADE.md 의 이번 판 절을 모아 .agents/harness-upgrade-notice.md 를 쓴다.
+# CLI update 와 같은 규칙 · 바이트(킷 판 upgrade_notice.py). 사람이 만든 공지는 두고, 만료된 킷 공지는 지운다.
+notice_py="$TEMPLATES/common/scripts/harness/upgrade_notice.py"
+if [ -f "$notice_py" ] && command -v python3 >/dev/null 2>&1; then
+  notice_flags=()
+  [ "$DRY_RUN" = 1 ] && notice_flags+=(--dry-run)
+  notice_action="$(python3 -B "$notice_py" --upgrade-md "$TEMPLATES/UPGRADE.md" --from "$FROM_VERSION" --to "$TO_VERSION" \
+    --today "${HARNESS_KIT_TODAY:-$(date +%F)}" --root "$TARGET" ${notice_flags[@]+"${notice_flags[@]}"} 2>/dev/null || echo none)"
+  case "$notice_action" in
+    write) echo "  ✎ 업그레이드 공지: .agents/harness-upgrade-notice.md (세션 시작 때 제목 한 줄이 붙는다, 30일 뒤 만료 — 커밋하면 동료도 받는다)" ;;
+    delete) echo "  ✎ 만료된 업그레이드 공지를 지웠다: .agents/harness-upgrade-notice.md" ;;
+    keep-human) echo "  · 업그레이드 공지: .agents/harness-upgrade-notice.md 가 사람이 만든 파일이라 쓰지 않았다" ;;
+  esac
 fi
 
 # 보드 형식이 바뀐 킷으로 올렸으면 보드를 한 번 다시 만든다. 그러지 않으면 업데이트 직후 fast 검증이

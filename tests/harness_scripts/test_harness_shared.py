@@ -355,14 +355,14 @@ class SharedHarnessTest(unittest.TestCase):
         self.assertIn("HARNESS_VERIFY_FAIL_EXIT=1", agent["stop"][0]["command"])
         workspace = {
             name: json.loads((self.root / f".kiro/hooks/{name}.json").read_text())["hooks"][0]["action"]["command"]
-            for name in ("harness-session-context", "harness-verify-gate")
+            for name in ("harness-session-start", "harness-verify-gate")
         }
         self.assertIn("HARNESS_VERIFY_FAIL_EXIT=1", workspace["harness-verify-gate"])
         for command in (agent["agentSpawn"][0]["command"], agent["stop"][0]["command"], *workspace.values()):
             self.assertIn('[ ! -f "$r/.agents/harness.json" ]', command)
         nested = self.root / "some/nested/dir"
         nested.mkdir(parents=True)
-        result = self.run_script("sh", "-c", workspace["harness-session-context"], cwd=nested)
+        result = self.run_script("sh", "-c", workspace["harness-session-start"], cwd=nested)
         self.assert_ok(result)
         self.assertIn(json.loads((self.root / ".agents/harness.json").read_text())["title"], result.stdout)
         (self.root / "scripts/verify.sh").write_text("#!/usr/bin/env bash\necho 실패\nexit 1\n")

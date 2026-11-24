@@ -2,12 +2,13 @@
 import fs from "node:fs";
 import path from "node:path";
 import { bool, str } from "../cli/args";
-import { targetOf, type CommandResult, type Ctx } from "../cli/context";
+import { targetOf, today, type CommandResult, type Ctx } from "../cli/context";
 import { CliError, EXIT, usageError } from "../core/errors";
 import { lstatOrNull } from "../core/fsx";
 import { sha256File } from "../core/hash";
 import { LOCK_REL, readLock, type LockV2 } from "../core/lock";
 import { META_REL, readMeta, type MetaV2 } from "../core/meta";
+import { isKitNotice, NOTICE_REL, noticeExpired } from "../core/notice";
 import { isSafeRelPath } from "../core/plan";
 import { compareSemver, VERSION } from "../core/version";
 import { layoutFindings, PROJECTION_KINDS } from "../projection/check";
@@ -141,8 +142,20 @@ interface Collected {
   projection?: { ok: number; errors: number };
 }
 
+/** update 가 쓴 업그레이드 공지가 만료됐다(03 §3.11 5단계). 세션 시작 훅은 이미 붙이지 않는다. */
+function noticeFinding(target: string, day: string): Finding | null {
+  let text: string;
+  try {
+    text = fs.readFileSync(path.join(target, ...NOTICE_REL.split("/")), "utf8");
+  } catch {
+    return null;
+  }
+  if (!isKitNotice(text) || !noticeExpired(text, day)) return null;
+  return { kind: "upgrade-notice-expired", severity: "info", path: NOTICE_REL, hint: "만료된 업그레이드 공지다. 다음 update 가 지운다(지금 지워도 된다)" };
+}
+
 /** 검사 전부. 메타가 없으면(설치 안 됨) exit 3. */
-function collect(target: string): Collected {
+function collect(target: string, day: string): Collected {
   const metaRead = readMeta(path.join(target, META_REL));
   if (metaRead.status === "missing") {
     throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 harness-kit init");
@@ -164,7 +177,7 @@ function collect(target: string): Collected {
   findings.push(...copy.findings);
   const layout = lock ? layoutFindings(target, lock.entries.filter((e) => isSafeRelPath(e.path))) : [];
   findings.push(...layout.map((f) => ({ kind: f.kind, severity: f.severity, path: f.path, hint: f.hint })));
-  for (const f of [gitignoreFinding(target), entrySizeFinding(target)]) if (f) findings.push(f);
+  for (const f of [gitignoreFinding(target), entrySizeFinding(target), noticeFinding(target, day)]) if (f) findings.push(f);
   const projectionTotal = lock ? lock.entries.filter((e) => PROJECTION_OPS.has(e.op) && e.owner === "kit").length : 0;
   const projectionBad = new Set(layout.filter((f) => f.severity === "error" && !f.path.startsWith(".agents/")).map((f) => f.path)).size;
   return { meta, lock, ok: copy.ok, findings, projection: { ok: Math.max(0, projectionTotal - projectionBad), errors: layout.filter((f) => f.severity === "error").length } };
@@ -190,7 +203,7 @@ function findingLine(f: Finding): string {
 export function runDoctor(ctx: Ctx): CommandResult {
   const target = targetOf(ctx);
   const only = parseOnly(str(ctx.values, "only"));
-  const c = collect(target);
+  const c = collect(target, today(ctx.io));
   const findings = only ? c.findings.filter((f) => only.includes(f.kind)) : c.findings;
   const summary: Record<string, unknown> = summarize(findings, c.ok);
   if (c.projection) summary.projection = c.projection;

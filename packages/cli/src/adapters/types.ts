@@ -1,4 +1,5 @@
 /** 하네스 어댑터 인터페이스(HK-13 design §8.1, 03 §3.1). 어댑터는 원하는 작업만 낸다. 쓰기 · lock 은 엔진이 한다. */
+import type { HookDef } from "../projection/hooks";
 import type { MergeKind, MergeWant } from "../projection/merge";
 import type { Role, Rule, Skill, SkillFile } from "../projection/render";
 import type { Sources } from "../projection/sources";
@@ -66,6 +67,10 @@ export interface ProjectionContext {
   /** 배치할 역할과 하네스별 모델 필드(잠긴 역할 오류를 뺀 것) */
   roles: { role: Role; fields: Record<string, Record<string, string>> }[];
   rules: Rule[];
+  /** hooks.json 의 훅(없거나 비면 빈 목록, HK-24) */
+  hooks: HookDef[];
+  /** hooks.json 이 있다(없으면 Kiro 조율 에이전트를 만들지 않는다) */
+  hooksPresent: boolean;
   findings: Finding[];
 }
 

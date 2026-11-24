@@ -20,8 +20,11 @@ function sourcesOnly(target: string, extra: Record<string, string> = {}): string
   return dir;
 }
 
+/** Python 처럼 메타 토큰(PROJECT_SLUG 등 — Kiro 조율 에이전트 경로)에 --token 을 덧씌운다. */
 function tsRecords(dir: string, templates: string): unknown[] {
-  return planRecords(buildContext({ view: new FsView(dir), spec: loadSpec(templates), tokens: { PROTECTED_PATH: "docs/references" }, agents: AGENTS }));
+  const meta = JSON.parse(fs.readFileSync(path.join(dir, ".agents/harness-kit.json"), "utf8")) as { tokens?: Record<string, string> };
+  const tokens = { ...(meta.tokens ?? {}), PROTECTED_PATH: "docs/references" };
+  return planRecords(buildContext({ view: new FsView(dir), spec: loadSpec(templates), tokens, agents: AGENTS }));
 }
 
 function pyRecords(dir: string): unknown[] {

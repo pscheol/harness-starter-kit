@@ -12,7 +12,8 @@ import { byteCompare, writeFileAtomic } from "../core/fsx";
 import { sha256 } from "../core/hash";
 import type { LockEntry } from "../core/lock";
 import { removeEmptyDirs } from "../core/remove";
-import { claudeMdWant, codexConfigWant, gitattributesWant, MERGE_KIND, mergeWith, settingsWant, unmergeWith, type MergeKind, type MergeWant } from "./merge";
+import { HOOKS_REL, HooksError, kitScriptSuffixes, parseHooks, settingsHooks, type HookDef } from "./hooks";
+import { claudeMdWant, codexConfigWant, codexHooksWant, gitattributesWant, MERGE_KIND, mergeWith, settingsWant, unmergeWith, type MergeKind, type MergeWant } from "./merge";
 import { resolveModel, skillModelProblem } from "./render";
 import { ignoredName, loadSources, treeSha, walkView, type Sources } from "./sources";
 import type { ProjectionSpec } from "./spec";
@@ -37,7 +38,15 @@ export function buildContext(args: { view: RepoView; spec: ProjectionSpec; token
     if (!m.ok) findings.push({ kind: "role-model-locked", severity: "error", path: role.source, hint: m.error });
     else roles.push({ role, fields: m.fields });
   }
-  return { ...args, sources, skills, roles, rules: sources.rules, findings };
+  let parsed: HookDef[] | null;
+  try {
+    parsed = parseHooks(sources.hooksText, args.spec.hookMap);
+  } catch (err) {
+    if (err instanceof HooksError) throw new CliError(EXIT.STATE, err.message, "`.agents/hooks.json` 을 고치거나 harness-kit repair 로 킷 판을 되살린다");
+    throw err;
+  }
+  if (parsed === null) findings.unshift({ kind: "hooks-missing", severity: "error", path: HOOKS_REL, hint: "훅 원본이 없어 하네스 훅을 만들지 않는다 — harness-kit repair 로 되살린다" });
+  return { ...args, sources, skills, roles, rules: sources.rules, hooks: parsed ?? [], hooksPresent: parsed !== null, findings };
 }
 
 /** 깐 하네스 어댑터의 작업 + .gitattributes. 같은 배치 경로가 둘이면 exit 3. */
@@ -166,7 +175,18 @@ const userEntry = (p: string, op: string): LockEntry => ({ path: p, op, owner: "
 /** 원하지 않게 된 병합 파일을 뺄 때 쓰는 '킷 전부' 조각. */
 export function fullMergeWant(kind: MergeKind, spec: ProjectionSpec, tokens: Record<string, string>, sources: Sources | null): MergeWant {
   if (kind === "claude-md") return claudeMdWant(spec);
-  if (kind === "settings") return settingsWant(spec, tokens);
+  if (kind === "settings" || kind === "codex-hooks") {
+    let hooks: HookDef[] = [];
+    try {
+      hooks = parseHooks(sources?.hooksText ?? null, spec.hookMap) ?? [];
+    } catch {
+      hooks = [];
+    }
+    const modules = hooks.flatMap((h) => (h.module ? [h.module] : []));
+    const suffixes = kitScriptSuffixes(hooks, spec.hookMap);
+    if (kind === "settings") return settingsWant(spec, tokens, settingsHooks(hooks, "claude", spec.hookMap, modules), suffixes);
+    return codexHooksWant(settingsHooks(hooks, "codex", spec.hookMap, modules), suffixes);
+  }
   if (kind === "codex-config") return codexConfigWant(spec, (sources?.roles ?? []).map((r) => ({ name: r.source.slice(r.source.lastIndexOf("/") + 1, -".md".length), description: r.description })));
   return gitattributesWant(spec, ALL_HARNESSES);
 }

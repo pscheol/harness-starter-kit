@@ -14,6 +14,7 @@ import { AMBIGUOUS_REASON, resolvedLock } from "../core/legacy-lock";
 import { LOCK_REL, type LockEntry } from "../core/lock";
 import { META_REL } from "../core/meta";
 import { AncestorCheck, BLOCKED, existing, MANIFEST_PATH, manifestContent } from "../core/plan";
+import { isKitNotice, NOTICE_REL } from "../core/notice";
 import { removeEmptyDirs, removeFile } from "../core/remove";
 import { locateTemplates } from "../core/templates";
 import { wanted } from "../core/update-plan";
@@ -159,11 +160,24 @@ function uninstallSpec(ctx: Ctx, target: string): ProjectionSpec | null {
   }
 }
 
+/** update 가 쓴 업그레이드 공지(lock 밖, HK-24 design §7). 사람이 만든 공지는 둔다. */
+function planNotice(p: Planner): void {
+  const file = path.join(p.target, ...NOTICE_REL.split("/"));
+  let text: string;
+  try {
+    text = fs.readFileSync(file, "utf8");
+  } catch {
+    return;
+  }
+  if (isKitNotice(text)) p.ops.push({ path: NOTICE_REL, owner: "kit", action: "delete", reason: "업그레이드 공지" });
+}
+
 function buildUninstall(ctx: Ctx, target: string, inst: Installed, keepPacks: boolean, keepState: boolean, ambiguous: Set<string>): UOp[] {
   const spec = inst.lock.entries.some((e) => e.op === "merge") ? uninstallSpec(ctx, target) : null;
   const p: Planner = { target, ancestors: new AncestorCheck(target, fs.realpathSync(target)), keepPacks, ops: [], ambiguous, spec, tokens: inst.meta.tokens };
   for (const e of inst.lock.entries) planEntry(p, e);
   planManifest(p, inst);
+  planNotice(p);
   if (!keepState) for (const rel of [LOCK_REL, META_REL]) p.ops.push({ path: rel, owner: "kit", action: "delete", reason: "상태 파일" });
   return p.ops;
 }

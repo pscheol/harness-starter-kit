@@ -60,16 +60,16 @@
 |---|---|---|
 | `core` | `agents-rules/` · `agents-docs/` · `agents-root/` · `agents-skills/` · `scripts/` · `tools/` · `docs/` · `root/` | 항상 |
 | `claude` | (템플릿 없음 — 배치가 만든다) | 선택 |
-| `codex` | `codex/`(hooks.json · README) | 선택 |
+| `codex` | `codex/`(README — 훅 · 역할 설정은 배치가 만든다) | 선택 |
 | `cursor` | (템플릿 없음 — 배치가 만든다) | 선택 |
-| `kiro` | `kiro-agents/`(조율 에이전트) + `kiro-hooks/` + `kiro-root/` | 선택 |
+| `kiro` | `kiro-root/`(안내 — 조율 에이전트 · IDE 훅 · 역할은 배치가 만든다) | 선택 |
 
 파일 수는 스택군에 달렸다(`--modules` 제외):
 
 | 스택군 | core | claude | codex | cursor | kiro | 전부 고를 때 |
 |---|---|---|---|---|---|---|
-| `jvm` · `python` · `go` | 245 | 0 | 2 | 0 | 7 | **254** |
-| `web` · `electron` (`frontend` 도메인 +4 core) | 249 | 0 | 2 | 0 | 7 | **258** |
+| `jvm` · `python` · `go` | 256 | 0 | 1 | 0 | 1 | **258** |
+| `web` · `electron` (`frontend` 도메인 +4 core) | 260 | 0 | 1 | 0 | 1 | **262** |
 
 하네스 폴더 파일은 설치가 `.agents/` 원본에서 만든다(배치 — mirror · render · merge, 모듈 없음 기준):
 
@@ -119,25 +119,25 @@
 | `<root>/agents-rules/` | `./.agents/rules/` | **공통 규칙 원본 (전 에이전트 공유)** |
 | `<root>/agents-root/` | `./.agents/` | 에이전트 공용 설정 — 역할 원본 `roles/`(planner·explorer·worker·reviewer·docs-researcher) · `verify-checks.json`(경로별 추가 검사) · `issue-tracker.yml` |
 | `<root>/agents-docs/` | `./.agents/docs/` | SDD 기록 시스템 |
-| `<root>/kiro-agents/` · `kiro-hooks/` · `kiro-root/` | `./.kiro/agents/` · `./.kiro/hooks/` · `./.kiro/` | Kiro 조율 에이전트·역할 · hook(보호 경로·세션 컨텍스트·검증 게이트) · 안내 |
+| `<root>/kiro-root/` | `./.kiro/` | Kiro 안내(조율 에이전트 · 역할 · IDE 훅은 `.agents/hooks.json` · 역할 원본에서 배치가 만든다) |
 | `<root>/agents-skills/` | `./.agents/skills/` | **커맨드 본문 원본**. Codex 스킬 탐색 경로이기도 하다(`$<name>` 멘션) |
 | `<root>/scripts/` | `./scripts/` | 검증 게이트·SDD 명령·세션 협업·hook·git hook·가드 |
 | `<root>/tools/` | `./tools/` | 기능 문서 생성기(`tools/docs/`) |
 | `<root>/docs/` | `./docs/` | 기능 문서 원고 골격(`docs/features/_src/` — 설정·catalog·단계 원고) |
-| `<root>/codex/` | `./.codex/` | Codex hook 배선 · 안내 |
+| `<root>/codex/` | `./.codex/` | Codex 안내(`.codex/hooks.json` · `config.toml` 은 배치가 병합한다) |
 
-하네스 폴더의 규칙 · 스킬 · 역할 · `CLAUDE.md` · `.claude/settings.json` · `.codex/config.toml` 은 템플릿이 아니라 배치(`scripts/harness/projection.py` · CLI 어댑터)가 `.agents/` 원본과 `scripts/harness/projection.json` 에서 만든다.
+하네스 폴더의 규칙 · 스킬 · 역할 · 훅 설정 · `CLAUDE.md` · `.claude/settings.json` · `.codex/hooks.json` · `.codex/config.toml` · Kiro 조율 에이전트 · `.kiro/hooks/harness-*.json` 은 템플릿이 아니라 배치(`scripts/harness/projection.py` · CLI 어댑터)가 `.agents/` 원본(훅은 `.agents/hooks.json`)과 `scripts/harness/projection.json` 에서 만든다.
 
 ## 공통 vs 스택별 (무엇이 어디에 있나)
 
-| 영역 | `templates/common/` (239개) | `templates/domains/frontend/` (8개 · web·electron 만) | `templates/stacks/<stack>/` (변형 무관 14개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
+| 영역 | `templates/common/` (243개) | `templates/domains/frontend/` (8개 · web·electron 만) | `templates/stacks/<stack>/` (변형 무관 14개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
 |---|---|---|---|---|
 | 진입점 | `README.md` | — | `AGENTS.md` · `.gitignore` · `.github/actions/harness-setup/action.yml` | `root/ARCHITECTURE.md` |
 | 규칙 | `agent-harness.md` · `sdd-workflow.md` · `product.md` · `writing-style.md` · `design-principles.md` · `reuse-before-new.md` · `verification-ladder.md` · `pr-review-policy.md` · `git-workflow.md` · `platform-invariants.md` · **`code-maintenance.md`** · **`session-collaboration.md`** · **`approval-vocabulary.md`** | `design-system.md` · `accessibility.md` · `ui-state.md` · `frontend-performance.md` | `code-comments.md` · `api-standards.md` · `security.md` · `reliability.md` · `quality-score.md` · `guardrails.md` | `agents-rules/structure.md` · `agents-rules/tech.md` |
 | 스크립트 | `verify-entry.sh`(진입) · `verify-changed.py`(changed 계획) · `check_harness.py` · `new-feature.sh`·`sdd-layout.py`(이슈 SDD) · `check-sdd-prerequisites.sh` · `check-exec-plan-status.sh` · `check-spec-freshness.sh` · `board.sh` · `session-coordination.py` · `check-maintenance.py` · `hooks/` · `git-hooks/` · `guards/` · `harness/`(파이썬 모듈) | — | `verify.sh` (스택 검증 게이트 — 진입 블록이 changed·fast·full 을 가르고 하네스 검사·문서 검사를 부른다) | — |
 | SDD 기록 | `agents-docs/` 전체 — 이슈 폴더 템플릿(requirements 정책·화면 표, design §4.3·§4.4·§7.1~7.3, tasks Polish 문서 반영) | — | — | — |
 | 기능 문서 | `tools/docs/`(생성기 · 시험 · `site.json` · `vendor.lock.json` · `schema-snapshot.sh`) · `docs/features/_src/`(catalog · 단계 원고) | — | `docs/features/_src/docs.config.json`(스택에 맞는 단위·원본 경로) | — |
-| 에이전트 배선 | `codex/` · `kiro-agents/` · `kiro-hooks/` · 역할 원본 `agents-root/roles/` · 모델 정책 `agents-root/model-policy.json` · 배치 상수 `scripts/harness/projection.json` | — | — | — |
+| 에이전트 배선 | `codex/` · `kiro-root/` · 훅 원본 `agents-root/hooks.json` · 역할 원본 `agents-root/roles/` · 모델 정책 `agents-root/model-policy.json` · 배치 상수 `scripts/harness/projection.json` | — | — | — |
 | 슬래시 커맨드(`hx-` 13종) | 원본 `agents-skills/hx-*/SKILL.md`(하네스 폴더 사본은 배치가 만든다) | — | — | — |
 
 > 규칙 7종이 스택별인 이유: 주석 표준·보안 위험·신뢰성 패턴·DoD가 언어마다 실제로 다르기 때문이다(주석 규약, 동시성 함정, 커버리지 도구 등).
@@ -215,7 +215,11 @@
 | `scripts/session-coordination.py` + `scripts/harness/coordination_*.py` | 동시 세션의 파일 점유(register·claim·release)·공지(inbox·acknowledge)·상태 | — | 인간/에이전트 |
 | `scripts/check-maintenance.py` | 코드 유지보수 후보(긴 함수·이름·조건식) 경고. 실패 판정이 아니다 | — | 에이전트 |
 | `scripts/board.sh` | SDD 보드(`specs-index.md`의 영역별 표)를 문서 머리로 다시 만든다. `--check` 는 어긋나면 실패, `--area <영역>` 은 그 표만 | — | 도구 |
-| `scripts/hooks/{session-start.sh,session-context.py,protect-sources.sh,verify-gate.sh}` | 에이전트 공용 hook 본문 — 세션 컨텍스트 주입 · 보호 경로 쓰기 차단 · 턴 끝 changed 검증 | — | 인간 |
+| `scripts/hooks/{session-start.sh,session-context.py,protect-sources.sh,verify-gate.sh}` | 에이전트 공용 hook 본문 — 세션 컨텍스트 주입(2,560바이트 안) · 보호 경로 쓰기 차단 · 턴 끝 changed 검증 | — | 인간 |
+| `.agents/hooks.json` | **훅 원본** — 킷 훅 id · 이벤트 · 도구 · 스크립트 · 하네스별 환경변수 · 출력 상한. 하네스별 훅 설정은 배치가 여기서 만든다 | — | 인간 |
+| `scripts/hooks/{dispatch.sh,hook_root.py,hook_paths.py}` | 모든 킷 훅의 입구 — 입력 `cwd` 로 하네스 루트(worktree) 판정 · 출력 상한 자르기 · 실행 기록(`.agents/state/hook-output.jsonl`, 내용 없음) · 쓰는 경로 뽑기 | — | 인간 |
+| `scripts/hooks/{sync-projection.sh,protect-generated.sh,protect_generated.py}` | 원본(`.agents/skills · rules · roles · hooks.json`)을 고치면 복사본을 다시 만든다(출력 없음) · 생성 파일 직접 편집을 막고 원본 경로를 알린다 | — | 인간 |
+| `scripts/harness/upgrade_notice.py` | 업그레이드 공지 — `update.sh` 가 킷 `UPGRADE.md` 의 이번 판 절로 `.agents/harness-upgrade-notice.md` 를 쓴다(CLI 와 같은 바이트) | — | 도구 |
 | `scripts/hooks/{protect-approvals.sh,protect_approvals.py}` | 승인 기록 · 기준선 · 관리 페이지 토큰 쓰기, 승인 명령 실행, done 승인 없는 `completed`, `status: approved` 변경을 에이전트 도구에서 막는다 | — | 인간 |
 | `scripts/harness/{approve.py,approvals.py,approvals_guard.py,sdd_gates.py}` | 사람 터미널 승인(에이전트 세션 · TTY 아님 거부) · `approvals.md` 파서 · 덧붙이기 전용과 done 승인 검사(pre-commit · fast) · 이슈 게이트 조건 | — | 인간 |
 | `scripts/hooks/{session-register.sh,session-register.py,dispatch-inbox.py}` | 세션 등록(메인 폴더 `.agents/state/sessions/<id>.json`, 출력 0바이트) · 관리 페이지 대기함 소비(자기 세션 요청이 있을 때만 세 줄 · 512바이트 이하) | — | 인간 |
@@ -233,12 +237,12 @@
 | `scripts/new-feature.sh` | 이슈 SDD 단계 문서 스캐폴딩(`_spec-templates/` → `issues/<키>-<이름>/` 에 **그 단계 하나만**). `new-feature.sh <키\|--next> <이름> --area <영역> [--type feat\|fix\|refactor\|perf\|chore\|docs]` · `new-feature.sh <키> --stage=design\|tasks`. 앞 문서 머리가 `status: approved` 가 아니면 거부한다. `--all` · `--legacy` 는 없다 | — | 인간/에이전트 |
 | `scripts/check-sdd-prerequisites.sh` | SDD 단계 선행조건 검사(design/tasks/implement). `--stage` 는 공백·등호 두 표기를 받고 모르는 단계는 거부 | — | 에이전트 |
 | `scripts/check-spec-freshness.sh` | 스펙이 최신인지 확인하는 리포트(읽기 전용·항상 exit 0). `/hx-converge` 근거 | — | 인간/에이전트 |
-| `.claude/settings.json` | 권한(deny: 보호 경로 · 승인 기록 · 기준선 · 토큰) + hook 5개 배선(세션 시작 · 보호 경로 · full 차단 · 승인 보호 · 턴 끝 검증) — 킷 키만 병합한다(merge). 다른 도구 · 사람 항목은 그대로 | — | 배치 + 인간 |
+| `.claude/settings.json` | 권한(deny: 보호 경로 · 승인 기록 · 기준선 · 토큰) + `.agents/hooks.json` 의 훅(디스패처 명령) — 킷 키만 병합한다(merge). 다른 도구 · 사람 항목은 그대로 | — | 배치 + 인간 |
 | `.claude/skills/<스킬>/` · `.claude/rules/*.md` · `.claude/agents/*.md` | 스킬 폴더 · 규칙 복사본(mirror) · 역할 생성물(render, 본문 전체) | — | 배치 |
-| `.codex/hooks.json` · `.codex/config.toml` · `.codex/agents/*.toml` | Codex hook 배선(copy) · 정책과 역할 등록(merge) · 역할 생성물(render) | — | 인간 · 배치 |
+| `.codex/hooks.json` · `.codex/config.toml` · `.codex/agents/*.toml` | Codex 훅(merge, `.agents/hooks.json` 에서) · 정책과 역할 등록(merge) · 역할 생성물(render) | — | 배치 + 인간 |
 | `.cursor/commands/hx-*.md` · `.cursor/rules/*.mdc` | Cursor 명령(SKILL.md 본문 전체) · 규칙(`globs` = `paths`) — 생성물 | — | 배치 |
 | `.kiro/skills/<스킬>/` · `.kiro/steering/*.md` | Kiro CLI 스킬 복사본 · 규칙 steering(`fileMatch`)과 IDE 명령 steering(`inclusion: manual`) 생성물 | — | 배치 |
-| `.kiro/agents/<slug>.json` · `.kiro/agents/<역할>.json` · `.kiro/hooks/*.json` | Kiro 조율 에이전트(copy) · 역할 생성물 · hook 넷(copy) | — | 인간 · 배치 |
+| `.kiro/agents/<slug>.json` · `.kiro/agents/<역할>.json` · `.kiro/hooks/harness-*.json` | Kiro 조율 에이전트 · 역할 · IDE 훅(훅 하나에 파일 하나) — 모두 생성물(render) | — | 배치 |
 | `.gitattributes` | 생성 경로에 `linguist-generated=true`(킷 블록만 병합) | — | 배치 |
 | `.agents/skills/hx-*/SKILL.md` (11종) | **커맨드 본문 원본**. Codex 는 이 경로를 직접 읽는다(`$hx-specify` 로 멘션, `/skills` 로 목록) | — | 인간 |
 | `.agents/harness-kit.json` | 설치 메타 — 킷 버전·스택·변형·에이전트·치환값. `hx-agent-add`·`hx-update` 의 입력 | — | 도구(손편집 금지) |

@@ -131,15 +131,19 @@ flowchart TD
 
 ## 6. hook 과 검증 레벨
 
-세 에이전트 클라이언트와 git 이 같은 스크립트를 부른다. 판정 · 문구 · 게이트 호출은 `scripts/hooks/`와 `scripts/git-hooks/`에 있고, 클라이언트 설정에는 명령 한 줄만 둔다.
+세 에이전트 클라이언트와 git 이 같은 스크립트를 부른다. 훅 원본은 `.agents/hooks.json` 하나이고, 하네스별 설정(Claude `.claude/settings.json` · Codex `.codex/hooks.json` · Kiro CLI `.kiro/agents/<하네스 id>.json` · Kiro IDE `.kiro/hooks/harness-*.json`)은 킷이 그 원본에서 만든다. 설정 파일의 킷 항목은 직접 고치지 않는다 — 원본을 고치면 동기화 훅이 다시 만든다. 다른 도구 · 사람이 넣은 항목과 순서는 그대로 둔다.
 
-| 이벤트 | Claude Code `.claude/settings.json` | Codex `.codex/hooks.json` | Kiro CLI 기본 엔진(V2) `.kiro/agents/<하네스 id>.json` | Kiro CLI V3 · IDE `.kiro/hooks/*.json` | 부르는 것 |
+모든 킷 훅은 `scripts/hooks/dispatch.sh <훅 id> <스크립트>` 를 거친다. 디스패처는 훅 입력의 `cwd` 에서 위로 올라가 `.agents/harness-kit.json` 이나 `.agents/harness.json` 이 있는 첫 폴더를 하네스 루트로 쓴다. 그래서 worktree 에서 연 세션의 훅은 그 worktree 를 검증한다. 세션 시작 출력은 2,560바이트(고정 1,024 · 단위 안내 1,024 · 바뀌는 상태 512) 안에서 자르고, 훅마다 실행 기록(바이트 수만, 내용 없음)을 `.agents/state/hook-output.jsonl` 에 남긴다.
+
+| 이벤트 | Claude Code | Codex | Kiro CLI(조율 에이전트) | Kiro IDE | 부르는 것 |
 |---|---|---|---|---|---|
-| 세션 시작 | SessionStart | SessionStart | `agentSpawn` | SessionStart | `scripts/hooks/session-start.sh` — 하네스 이름과 원본 위치를 출력 |
-| 쓰기 전 | PreToolUse `Write\|Edit\|MultiEdit\|NotebookEdit` + `permissions.deny` `Edit(//**/{{PROTECTED_PATH}}/**)` | PreToolUse `apply_patch\|Bash` | `preToolUse` `write`(조율 에이전트 · `worker`) | PreToolUse 쓰기 도구 일곱(`fs_write` … `smart_relocate`) | `scripts/hooks/protect-sources.sh` — `{{PROTECTED_PATH}}/` 쓰기 차단 |
-| 턴 끝 | Stop(timeout 180초) | Stop | `stop` | Stop | `scripts/hooks/verify-gate.sh` — changed 게이트 |
+| 세션 시작 | SessionStart | SessionStart | `agentSpawn` | SessionStart | `session-start.sh` — 하네스 안내 · 단위 안내 · 세션 등록 · 대기함 · 점유 · 공지 제목 |
+| 쓰기 전 | PreToolUse `Write\|Edit\|MultiEdit\|NotebookEdit` + `permissions.deny` | PreToolUse `apply_patch\|Bash` | `preToolUse` `write` | PreToolUse 쓰기 도구 일곱(`fs_write` … `smart_relocate`) | `protect-sources.sh`(`{{PROTECTED_PATH}}/`) · `protect-generated.sh`(생성 파일) · `protect-approvals.sh`(승인 기록) |
+| 셸 전 | PreToolUse `Bash` | PreToolUse `Bash` | `preToolUse` `shell` | PreToolUse 셸 도구 | `block-full-verify.sh` · `protect-approvals.sh` |
+| 쓰기 뒤 | PostToolUse | PostToolUse | `postToolUse` `write` | PostToolUse | `sync-projection.sh` — `.agents/` 원본을 고쳤으면 복사본을 다시 만든다(출력 없음) |
+| 턴 끝 | Stop(timeout 180초) | Stop | `stop` | Stop | `verify-gate.sh` — changed 게이트 · `session-register.sh`(idle) |
+| 프롬프트 · 세션 끝 | UserPromptSubmit · SessionEnd | — | — | — | `session-register.sh` |
 
-- Codex · Kiro 명령은 세션 작업 디렉터리에서 위로 올라가며 처음 만나는 `.agents/harness.json`의 하네스를 쓴다. Claude 는 세션을 연 폴더(`$CLAUDE_PROJECT_DIR`)다.
 - 보호 판정은 경로 키(Claude `file_path` · `notebook_path`, Kiro `path` · `targetFile`, IDE `smart_relocate`의 `sourcePath` · `destinationPath`)와 Codex 패치 머리줄(`*** Add File:` · `Update File:` · `Delete File:` · `Move to:`)을 본다. 셸 명령으로 쓰는 것(`sed -i`, 리다이렉트)은 범위 밖이다.
 
 | git 이벤트 | 연결 | 부르는 것 | 레벨 |

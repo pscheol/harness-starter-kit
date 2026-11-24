@@ -35,7 +35,10 @@ KIT_PARTS = (".claude-plugin", "skills/hx-bootstrap", "skills/hx-update")
 LOCK = ".agents/harness-kit.lock"
 META = ".agents/harness-kit.json"
 STATE_DIR = ".agents/state"
-SKIP = {LOCK, META}
+# 업그레이드 공지(HK-24 design §7)는 두 경로의 새 판 값이 달라(update.sh = plugin.json 판, CLI = 패키지 판) 내용이 다르다.
+# 공지 함수 동일성은 같은 입력으로 notice.test.ts 가 본다. 릴리스 스크립트(HK-22)가 판을 하나로 맞추면 다시 비교한다.
+NOTICE = ".agents/harness-upgrade-notice.md"
+SKIP = {LOCK, META, NOTICE}
 
 # 옛 킷에만 있는 시험 파일(새 킷에서 뺀다). ONLY 는 혼자 든 폴더라 --prune 이 폴더까지 지운다.
 ONLY = ("common/zz-hk11-old/only.md", "zz-hk11-old/only.md")

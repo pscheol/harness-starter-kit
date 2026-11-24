@@ -4,7 +4,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { formatJson } from "../src/core/json";
 import { parseLockText, serializeLock, v1LabelToLayer, type LockV2 } from "../src/core/lock";
-import { buildMeta, readMeta, serializeMeta } from "../src/core/meta";
+import { buildMeta, derivePrefix, readMeta, serializeMeta } from "../src/core/meta";
 import { tmpDir } from "./helpers";
 
 describe("formatJson", () => {
@@ -54,6 +54,32 @@ const SELECTION = {
   modules: [],
 };
 
+describe("이슈 키 접두(setup.sh · sdd_keys.derive_prefix 와 같다)", () => {
+  it.each([
+    ["acme-notes", "ACMENOTES"],
+    ["9lives_app", "LIVESAPP"],
+    ["very-long-project-name", "VERYLONGPR"],
+    ["x", "ISSUE"],
+    ["", "ISSUE"],
+    ["한글", "ISSUE"],
+  ])("%s → %s", (slug, want) => {
+    expect(derivePrefix(slug)).toBe(want);
+  });
+
+  it("2.0.0-alpha 가 킷 값으로 쓴 ACME-NOTES 는 읽을 때 고치고, 사람이 정한 값은 둔다", () => {
+    const dir = tmpDir();
+    const file = path.join(dir, "harness-kit.json");
+    const write = (issueKey: Record<string, string>): void =>
+      fs.writeFileSync(file, JSON.stringify({ ...buildMeta({ version: "2.0.0-alpha.0", selection: SELECTION, tokens: TOKENS, issue: {}, base: undefined, today: "2026-11-23" }), issueKey }));
+    write({ source: "kit", prefix: "ACME-NOTES" });
+    const fixed = readMeta(file);
+    expect(fixed.status === "ok" && fixed.meta.issueKey).toEqual({ source: "kit", prefix: "ACMENOTES" });
+    write({ source: "jira", prefix: "PROJ" });
+    const kept = readMeta(file);
+    expect(kept.status === "ok" && kept.meta.issueKey).toEqual({ source: "jira", prefix: "PROJ" });
+  });
+});
+
 describe("메타 v2", () => {
   const meta = buildMeta({ version: "2.0.0-alpha.0", selection: SELECTION, tokens: TOKENS, issue: {}, base: undefined, today: "2026-11-23" });
 
@@ -62,7 +88,7 @@ describe("메타 v2", () => {
       schema: "harness-kit/v2",
       kit: { version: "2.0.0-alpha.0" },
       project: { name: "Acme Notes", slug: "acme-notes" },
-      issueKey: { source: "kit", prefix: "ACME-NOTES" },
+      issueKey: { source: "kit", prefix: "ACMENOTES" },
       git: { base: "develop" },
       verify: { fullOnlyInCI: true },
       packs: [],
@@ -113,7 +139,7 @@ describe("메타 v2", () => {
       schema: "harness-kit/v2",
       kit: { version: "1.0.8" },
       project: { name: "Acme Notes", slug: "acme-notes" },
-      issueKey: { source: "kit", prefix: "ACME-NOTES" },
+      issueKey: { source: "kit", prefix: "ACMENOTES" },
       git: { base: "develop" },
       verify: { fullOnlyInCI: true },
       installedAt: "2026-11-01",

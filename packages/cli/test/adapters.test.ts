@@ -9,7 +9,8 @@ import { FsView } from "../src/projection/view";
 import { harnessFiles, initWith, projectionTemplates } from "./projection-helpers";
 
 function plan(target: string, templates: string, id: string): string[] {
-  const ctx = buildContext({ view: new FsView(target), spec: loadSpec(templates), tokens: { PROTECTED_PATH: "docs/references" }, agents: ["claude", "codex", "cursor", "kiro"] });
+  const tokens = { PROTECTED_PATH: "docs/references", PROJECT_SLUG: "acme" };
+  const ctx = buildContext({ view: new FsView(target), spec: loadSpec(templates), tokens, agents: ["claude", "codex", "cursor", "kiro"] });
   const adapter = ADAPTERS.find((a) => a.id === id);
   if (!adapter) throw new Error(id);
   return adapter.plan(ctx).map((w) => `${w.op} ${w.path}${"from" in w && w.from ? ` ← ${w.from}` : ""}`);
@@ -40,6 +41,7 @@ describe("어댑터 작업 목록", () => {
     expect(plan(target, templates, "codex")).toEqual([
       "render .codex/agents/explorer.toml ← .agents/roles/explorer.md",
       "render .codex/agents/worker.toml ← .agents/roles/worker.md",
+      "merge .codex/hooks.json",
       "merge .codex/config.toml",
     ]);
     expect(plan(target, templates, "cursor")).toEqual([
@@ -60,6 +62,11 @@ describe("어댑터 작업 목록", () => {
       "render .kiro/steering/hx-plan.md ← .agents/skills/hx-plan/SKILL.md",
       "render .kiro/agents/explorer.json ← .agents/roles/explorer.md",
       "render .kiro/agents/worker.json ← .agents/roles/worker.md",
+      // HK-24: IDE 훅(훅 하나에 파일 하나) · 조율 에이전트는 hooks.json 에서 만든다
+      ...["session-start", "protect-sources", "protect-generated", "block-full-verify", "protect-approvals", "sync-projection", "verify-gate", "session-idle"].map(
+        (n) => `render .kiro/hooks/harness-${n}.json ← .agents/hooks.json`,
+      ),
+      "render .kiro/agents/acme.json ← .agents/hooks.json",
     ]);
   });
 

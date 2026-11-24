@@ -1,5 +1,5 @@
 /**
- * 배치 병합 규칙 — CLAUDE.md 블록 · settings.json · config.toml · .gitattributes(HK-13 design §5, 03 §3.5).
+ * 배치 병합 규칙 — CLAUDE.md 블록 · settings.json · .codex/hooks.json · config.toml · .gitattributes(HK-13 design §5, HK-24, 03 §3.5).
  * Python `scripts/harness/projection_merge.py` 와 같은 바이트를 낸다(시험이 묶는다).
  */
 import { tomlString } from "./render";
@@ -11,10 +11,15 @@ export type UnmergeResult = { ok: true; text: string; empty: boolean } | { ok: f
 export interface ClaudeMdWant {
   block: string[];
 }
-export interface SettingsWant {
-  deny: string[];
+interface HooksPart {
   hooks: HookSpec[];
+  /** 옛 킷 명령 꼬리(`scripts/hooks/<이름>` · `_ <이름>`) */
+  suffixes: string[];
 }
+export interface SettingsWant extends HooksPart {
+  deny: string[];
+}
+export type CodexHooksWant = HooksPart;
 export interface CodexRoleRef {
   name: string;
   description: string;
@@ -29,7 +34,7 @@ export interface CodexConfigWant {
 export interface GitattributesWant {
   lines: string[];
 }
-export type MergeKind = "claude-md" | "settings" | "codex-config" | "gitattributes";
+export type MergeKind = "claude-md" | "settings" | "codex-hooks" | "codex-config" | "gitattributes";
 
 export interface Merger<W> {
   merge(cur: string | null, want: W, prev?: string[]): MergeResult;
@@ -44,10 +49,15 @@ const GEN_BEGIN_LINE = "# harness-kit:begin generated — .agents/ 원본에서 
 const GEN_END = "# harness-kit:end generated";
 const AGENTS_LINE = "@AGENTS.md";
 export const HARNESS_ORDER = ["claude", "codex", "cursor", "kiro"];
-const TOKEN = /(?:^|\s)harness-[a-z0-9-]+(?:\s|$)/;
 const TABLE_HEADER = /^\s*\[\[?\s*([^[\]]+?)\s*\]\]?\s*(?:#.*)?$/;
 
-export const MERGE_KIND: Record<string, MergeKind> = { "CLAUDE.md": "claude-md", ".claude/settings.json": "settings", ".codex/config.toml": "codex-config", ".gitattributes": "gitattributes" };
+export const MERGE_KIND: Record<string, MergeKind> = {
+  "CLAUDE.md": "claude-md",
+  ".claude/settings.json": "settings",
+  ".codex/hooks.json": "codex-hooks",
+  ".codex/config.toml": "codex-config",
+  ".gitattributes": "gitattributes",
+};
 
 const fail = (reason: string): { ok: false; reason: string } => ({ ok: false, reason });
 const isBlank = (l: string): boolean => l.trim() === "";
@@ -168,11 +178,18 @@ const gitattributes: Merger<GitattributesWant> = {
   },
 };
 
-// ── settings.json ────────────────────────────────────────────────────────────
+// ── settings.json · .codex/hooks.json ────────────────────────────────────────
 
-export function settingsWant(spec: Pick<ProjectionSpec, "claudeSettings">, tokens: Record<string, string>): SettingsWant {
-  const sub = (value: string): string => Object.entries(tokens).reduce((v, [k, x]) => (x ? v.split(`{{${k}}}`).join(x) : v), value);
-  return { deny: spec.claudeSettings.deny.map(sub), hooks: spec.claudeSettings.hooks.map((h) => ({ ...h })) };
+const sub = (value: string, tokens: Record<string, string>): string =>
+  Object.entries(tokens).reduce((v, [k, x]) => (x ? v.split(`{{kit:${k}}}`).join(x).split(`{{${k}}}`).join(x) : v), value);
+
+/** 권한 거부(projection.json) + 훅(hooks.json 에서 만든 것, HK-24). */
+export function settingsWant(spec: Pick<ProjectionSpec, "claudeSettings">, tokens: Record<string, string>, hooks: HookSpec[] = [], suffixes: string[] = []): SettingsWant {
+  return { deny: spec.claudeSettings.deny.map((d) => sub(d, tokens)), hooks: hooks.map((h) => ({ ...h })), suffixes: [...suffixes] };
+}
+
+export function codexHooksWant(hooks: HookSpec[] = [], suffixes: string[] = []): CodexHooksWant {
+  return { hooks: hooks.map((h) => ({ ...h })), suffixes: [...suffixes] };
 }
 
 type Obj = Record<string, unknown>;
@@ -186,21 +203,31 @@ function rstrip(s: string): string {
   return s.replace(/\s+$/, "");
 }
 
-function isKitHook(h: unknown, scripts: string[]): boolean {
-  const cmd = commandOf(h);
-  if (cmd === null) return false;
-  return TOKEN.test(cmd) || scripts.some((s) => rstrip(cmd).endsWith(s));
-}
-
 function escapeRe(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function hasId(cmd: string, id: string): boolean {
+  return new RegExp(`(?:^|\\s)${escapeRe(id)}(?:\\s|$)`).test(cmd);
+}
+
+function scriptSuffixes(script: string | undefined): string[] {
+  return script ? [script, `_ ${script.slice(script.lastIndexOf("/") + 1)}`] : [];
+}
+
+/** 킷 항목: 명령에 킷 훅 id 가 낱말로 있거나, 명령이 킷 스크립트 꼬리로 끝난다(v1 · HK-13 판 명령). */
+function isKitHook(h: unknown, ids: string[], suffixes: string[]): boolean {
+  const cmd = commandOf(h);
+  if (cmd === null) return false;
+  const tail = rstrip(cmd);
+  return ids.some((i) => hasId(cmd, i)) || suffixes.some((s) => tail.endsWith(s));
 }
 
 function hookMatches(h: unknown, id: string, script: string | undefined): boolean {
   const cmd = commandOf(h);
   if (cmd === null) return false;
-  if (new RegExp(`(?:^|\\s)${escapeRe(id)}(?:\\s|$)`).test(cmd)) return true;
-  return Boolean(script) && rstrip(cmd).endsWith(script as string);
+  const tail = rstrip(cmd);
+  return hasId(cmd, id) || scriptSuffixes(script).some((s) => tail.endsWith(s));
 }
 
 function stripHooks(arr: unknown[], isKit: (h: unknown) => boolean): { out: unknown[]; first: number | null } {
@@ -252,6 +279,71 @@ function parseObject(cur: string): Obj | string {
   return isObj(data) ? data : "최상위가 객체가 아니다";
 }
 
+const prevIds = (prev: string[]): string[] => prev.filter((k) => k.startsWith("hooks.") && k.includes(":")).map((k) => k.slice(k.indexOf(":") + 1));
+
+/** data.hooks 의 킷 항목만 바꾼다(03 §3.5). 오류면 이유. */
+function mergeHooks(data: Obj, want: HooksPart, prev: string[]): string | null {
+  const hooks = data.hooks;
+  if (hooks !== undefined && !isObj(hooks)) return "hooks 가 객체가 아니다";
+  const ids = [...want.hooks.map((h) => h.id), ...prevIds(prev)];
+  const suffixes = [...want.suffixes, ...want.hooks.flatMap((h) => scriptSuffixes(h.script))];
+  const desired = desiredGroups(want.hooks);
+  const src = (hooks as Obj | undefined) ?? {};
+  const outHooks: Obj = {};
+  const events = [...Object.keys(src), ...[...desired.keys()].filter((e) => !Object.hasOwn(src, e))];
+  for (const event of events) {
+    const arr = Object.hasOwn(src, event) ? src[event] : [];
+    if (!Array.isArray(arr)) {
+      if (desired.has(event)) return `hooks.${event} 가 배열이 아니다`;
+      outHooks[event] = arr;
+      continue;
+    }
+    const { out, first } = stripHooks(arr, (h) => isKitHook(h, ids, suffixes));
+    const groups = desired.get(event) ?? [];
+    const at = first ?? out.length;
+    const next = [...out.slice(0, at), ...groups, ...out.slice(at)];
+    if (!next.length && arr.length) continue;
+    outHooks[event] = next;
+  }
+  if (hooks !== undefined || Object.keys(outHooks).length) data.hooks = outHooks;
+  return null;
+}
+
+const hookKeys = (want: HooksPart): string[] => want.hooks.map((h) => `hooks.${h.event}:${h.id}`);
+
+function unmergeHooks(data: Obj, keys: string[], want: HooksPart): void {
+  const byId = new Map(want.hooks.map((h) => [h.id, h.script]));
+  const ids = prevIds(keys);
+  const hooks = data.hooks;
+  if (!isObj(hooks)) return;
+  const out: Obj = {};
+  for (const [event, arr] of Object.entries(hooks)) {
+    if (!Array.isArray(arr)) {
+      out[event] = arr;
+      continue;
+    }
+    const next = stripHooks(arr, (h) => ids.some((i) => hookMatches(h, i, byId.get(i)))).out;
+    if (!next.length && arr.length) continue;
+    out[event] = next;
+  }
+  if (Object.keys(out).length || !Object.keys(hooks).length) data.hooks = out;
+  else delete data.hooks;
+}
+
+function missingHooks(data: Obj, keys: string[], want: HooksPart): string[] {
+  const byId = new Map(want.hooks.map((h) => [h.id, h.script]));
+  const hooks = isObj(data.hooks) ? data.hooks : {};
+  return keys.filter((k) => {
+    if (!(k.startsWith("hooks.") && k.includes(":"))) return false;
+    const rest = k.slice("hooks.".length);
+    const event = rest.slice(0, rest.indexOf(":"));
+    const id = rest.slice(rest.indexOf(":") + 1);
+    const arr = hooks[event];
+    const items = Array.isArray(arr) ? arr.flatMap((g) => (isObj(g) && Array.isArray(g.hooks) ? (g.hooks as unknown[]) : [])) : [];
+    return !items.some((h) => hookMatches(h, id, byId.get(id)));
+  });
+}
+
 const settings: Merger<SettingsWant> = {
   merge(cur, want, prev = []) {
     const parsed = cur === null ? {} : parseObject(cur);
@@ -261,56 +353,21 @@ const settings: Merger<SettingsWant> = {
     if (perms !== undefined && !isObj(perms)) return fail("permissions 가 객체가 아니다");
     const deny = isObj(perms) ? perms.deny : undefined;
     if (deny !== undefined && !Array.isArray(deny)) return fail("permissions.deny 가 배열이 아니다");
-    const hooks = data.hooks;
-    if (hooks !== undefined && !isObj(hooks)) return fail("hooks 가 객체가 아니다");
+    if (data.hooks !== undefined && !isObj(data.hooks)) return fail("hooks 가 객체가 아니다");
     const prevDeny = prev.filter((k) => k.startsWith("permissions.deny:")).map((k) => k.slice("permissions.deny:".length));
     const newDeny = ((deny as unknown[] | undefined) ?? []).filter((v) => !(typeof v === "string" && prevDeny.includes(v) && !want.deny.includes(v)));
     for (const v of want.deny) if (!newDeny.includes(v)) newDeny.push(v);
     if (deny !== undefined || newDeny.length) data.permissions = { ...((perms as Obj | undefined) ?? {}), deny: newDeny };
-    const scripts = want.hooks.map((h) => h.script).filter((s): s is string => Boolean(s));
-    const desired = desiredGroups(want.hooks);
-    const src = (hooks as Obj | undefined) ?? {};
-    const outHooks: Obj = {};
-    const events = [...Object.keys(src), ...[...desired.keys()].filter((e) => !Object.hasOwn(src, e))];
-    for (const event of events) {
-      const arr = Object.hasOwn(src, event) ? src[event] : [];
-      if (!Array.isArray(arr)) {
-        if (desired.has(event)) return fail(`hooks.${event} 가 배열이 아니다`);
-        outHooks[event] = arr;
-        continue;
-      }
-      const { out, first } = stripHooks(arr, (h) => isKitHook(h, scripts));
-      const groups = desired.get(event) ?? [];
-      const at = first ?? out.length;
-      const next = [...out.slice(0, at), ...groups, ...out.slice(at)];
-      if (!next.length && arr.length) continue;
-      outHooks[event] = next;
-    }
-    if (hooks !== undefined || Object.keys(outHooks).length) data.hooks = outHooks;
-    const keys = [...want.deny.map((v) => `permissions.deny:${v}`), ...want.hooks.map((h) => `hooks.${h.event}:${h.id}`)];
+    const error = mergeHooks(data, want, prev);
+    if (error) return fail(error);
+    const keys = [...want.deny.map((v) => `permissions.deny:${v}`), ...hookKeys(want)];
     return { ok: true, text: dump(data), keys, created: cur === null };
   },
   unmerge(cur, keys, want) {
     const parsed = parseObject(cur);
     if (typeof parsed === "string") return fail(parsed);
     const data: Obj = { ...parsed };
-    const byId = new Map(want.hooks.map((h) => [h.id, h.script]));
-    const ids = keys.filter((k) => k.startsWith("hooks.") && k.includes(":")).map((k) => k.slice(k.indexOf(":") + 1));
-    const hooks = data.hooks;
-    if (isObj(hooks)) {
-      const out: Obj = {};
-      for (const [event, arr] of Object.entries(hooks)) {
-        if (!Array.isArray(arr)) {
-          out[event] = arr;
-          continue;
-        }
-        const next = stripHooks(arr, (h) => ids.some((i) => hookMatches(h, i, byId.get(i)))).out;
-        if (!next.length && arr.length) continue;
-        out[event] = next;
-      }
-      if (Object.keys(out).length || !Object.keys(hooks).length) data.hooks = out;
-      else delete data.hooks;
-    }
+    unmergeHooks(data, keys, want);
     const denyVals = keys.filter((k) => k.startsWith("permissions.deny:")).map((k) => k.slice("permissions.deny:".length));
     const perms = data.permissions;
     if (isObj(perms) && Array.isArray(perms.deny)) {
@@ -327,21 +384,35 @@ const settings: Merger<SettingsWant> = {
   missing(cur, keys, want) {
     const data = parseObject(cur);
     if (typeof data === "string") return [...keys];
-    const byId = new Map(want.hooks.map((h) => [h.id, h.script]));
     const deny = isObj(data.permissions) ? data.permissions.deny : undefined;
-    const hooks = isObj(data.hooks) ? data.hooks : {};
+    const hookMissing = new Set(missingHooks(data, keys, want));
     return keys.filter((k) => {
       if (k.startsWith("permissions.deny:")) return !Array.isArray(deny) || !deny.includes(k.slice("permissions.deny:".length));
-      if (k.startsWith("hooks.") && k.includes(":")) {
-        const rest = k.slice("hooks.".length);
-        const event = rest.slice(0, rest.indexOf(":"));
-        const id = rest.slice(rest.indexOf(":") + 1);
-        const arr = hooks[event];
-        const items = Array.isArray(arr) ? arr.flatMap((g) => (isObj(g) && Array.isArray(g.hooks) ? (g.hooks as unknown[]) : [])) : [];
-        return !items.some((h) => hookMatches(h, id, byId.get(id)));
-      }
-      return false;
+      return hookMissing.has(k);
     });
+  },
+};
+
+const codexHooks: Merger<CodexHooksWant> = {
+  merge(cur, want, prev = []) {
+    const parsed = cur === null ? {} : parseObject(cur);
+    if (typeof parsed === "string") return fail(parsed);
+    const data: Obj = { ...parsed };
+    const error = mergeHooks(data, want, prev);
+    if (error) return fail(error);
+    return { ok: true, text: dump(data), keys: hookKeys(want), created: cur === null };
+  },
+  unmerge(cur, keys, want) {
+    const parsed = parseObject(cur);
+    if (typeof parsed === "string") return fail(parsed);
+    const data: Obj = { ...parsed };
+    unmergeHooks(data, keys, want);
+    return { ok: true, text: dump(data), empty: Object.keys(data).length === 0 };
+  },
+  missing(cur, keys, want) {
+    const data = parseObject(cur);
+    if (typeof data === "string") return [...keys];
+    return missingHooks(data, keys, want);
   },
 };
 
@@ -487,11 +558,12 @@ const codexConfig: Merger<CodexConfigWant> = {
 export const MERGERS = {
   "claude-md": claudeMd,
   settings,
+  "codex-hooks": codexHooks,
   "codex-config": codexConfig,
   gitattributes,
 } as const;
 
-export type MergeWant = ClaudeMdWant | SettingsWant | CodexConfigWant | GitattributesWant;
+export type MergeWant = ClaudeMdWant | SettingsWant | CodexHooksWant | CodexConfigWant | GitattributesWant;
 
 /** 병합 종류와 조각으로 부르기(engine 용). */
 export function mergeWith(kind: MergeKind, cur: string | null, want: MergeWant, prev?: string[]): MergeResult {

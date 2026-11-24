@@ -1,4 +1,4 @@
-"""배치 병합 규칙 — CLAUDE.md 블록 · settings.json · config.toml · .gitattributes(HK-13 design §5, 03 §3.5).
+"""배치 병합 규칙 — CLAUDE.md 블록 · settings.json · .codex/hooks.json · config.toml · .gitattributes(HK-13 design §5, HK-24, 03 §3.5).
 
 결과: {'ok': True, 'text', 'keys', 'created'} 또는 {'ok': False, 'reason'}. 빼기: {'ok': True, 'text', 'empty'}.
 TS `packages/cli/src/projection/merge.ts` 와 같은 바이트를 낸다(시험이 묶는다). 표준 라이브러리만 쓴다.
@@ -18,7 +18,6 @@ GEN_BEGIN_LINE = "# harness-kit:begin generated — .agents/ 원본에서 만든
 GEN_END = "# harness-kit:end generated"
 AGENTS_LINE = "@AGENTS.md"
 HARNESS_ORDER = ("claude", "codex", "cursor", "kiro")
-TOKEN = re.compile(r"(?:^|\s)harness-[a-z0-9-]+(?:\s|$)")
 TABLE_HEADER = re.compile(r"^\s*\[\[?\s*([^\[\]]+?)\s*\]\]?\s*(?:#.*)?$")
 
 
@@ -163,38 +162,53 @@ def missing_gitattributes(cur: str, keys: list[str], want: dict) -> list[str]:
     return [k for k in keys if k == "block:generated" and not isinstance(found, tuple)]
 
 
-# ── settings.json ────────────────────────────────────────────────────────────
+# ── settings.json · .codex/hooks.json ────────────────────────────────────────
 
 
-def settings_want(spec: dict, tokens: dict) -> dict:
-    def sub(value: str) -> str:
-        for k, v in tokens.items():
-            if v:
-                value = value.replace("{{" + k + "}}", v)
-        return value
+def _sub(value: str, tokens: dict) -> str:
+    for k, v in tokens.items():
+        if v:
+            value = value.replace("{{kit:" + k + "}}", v).replace("{{" + k + "}}", v)
+    return value
 
-    cs = spec["claudeSettings"]
-    return {"deny": [sub(d) for d in cs["deny"]], "hooks": [dict(h) for h in cs["hooks"]]}
+
+def settings_want(spec: dict, tokens: dict, hooks: list[dict] | None = None, suffixes: list[str] | None = None) -> dict:
+    """권한 거부(projection.json) + 훅(hooks.json 에서 만든 것, HK-24)."""
+    return {"deny": [_sub(d, tokens) for d in spec["claudeSettings"]["deny"]], "hooks": [dict(h) for h in hooks or []],
+            "suffixes": list(suffixes or [])}
+
+
+def codex_hooks_want(hooks: list[dict] | None = None, suffixes: list[str] | None = None) -> dict:
+    return {"hooks": [dict(h) for h in hooks or []], "suffixes": list(suffixes or [])}
 
 
 def _command(h: object) -> str | None:
     return h.get("command") if isinstance(h, dict) and isinstance(h.get("command"), str) else None
 
 
-def is_kit_hook(h: object, scripts: list[str]) -> bool:
+def _has_id(cmd: str, hook_id: str) -> bool:
+    return bool(re.search(rf"(?:^|\s){re.escape(hook_id)}(?:\s|$)", cmd))
+
+
+def _script_suffixes(script: str | None) -> list[str]:
+    return [script, "_ " + script.rsplit("/", 1)[-1]] if script else []
+
+
+def is_kit_hook(h: object, ids: list[str], suffixes: list[str]) -> bool:
+    """킷 항목: 명령에 킷 훅 id 가 낱말로 있거나, 명령이 킷 스크립트 꼬리로 끝난다(v1 · HK-13 판 명령)."""
     cmd = _command(h)
     if cmd is None:
         return False
-    return bool(TOKEN.search(cmd)) or any(cmd.rstrip().endswith(s) for s in scripts)
+    tail = cmd.rstrip()
+    return any(_has_id(cmd, i) for i in ids) or any(tail.endswith(s) for s in suffixes)
 
 
 def hook_matches(h: object, hook_id: str, script: str | None) -> bool:
     cmd = _command(h)
     if cmd is None:
         return False
-    if re.search(rf"(?:^|\s){re.escape(hook_id)}(?:\s|$)", cmd):
-        return True
-    return bool(script) and cmd.rstrip().endswith(script)
+    tail = cmd.rstrip()
+    return _has_id(cmd, hook_id) or any(tail.endswith(s) for s in _script_suffixes(script))
 
 
 def _strip(arr: list, is_kit) -> tuple[list, int | None]:
@@ -241,6 +255,43 @@ def _parse_object(cur: str) -> dict | str:
     return data if isinstance(data, dict) else "최상위가 객체가 아니다"
 
 
+def _prev_ids(prev: list[str]) -> list[str]:
+    return [k.split(":", 1)[1] for k in prev if k.startswith("hooks.") and ":" in k]
+
+
+def _merge_hooks(data: dict, want: dict, prev: list[str]) -> str | None:
+    """data["hooks"] 의 킷 항목만 바꾼다(03 §3.5). 오류면 이유."""
+    hooks = data.get("hooks")
+    if hooks is not None and not isinstance(hooks, dict):
+        return "hooks 가 객체가 아니다"
+    ids = [h["id"] for h in want["hooks"]] + _prev_ids(prev)
+    suffixes = list(want.get("suffixes") or []) + [s for h in want["hooks"] for s in _script_suffixes(h.get("script"))]
+    desired = _desired_groups(want["hooks"])
+    src = hooks or {}
+    out_hooks: dict = {}
+    for event in [*src.keys(), *[e for e in desired if e not in src]]:
+        arr = src.get(event, [])
+        if not isinstance(arr, list):
+            if event in desired:
+                return f"hooks.{event} 가 배열이 아니다"
+            out_hooks[event] = arr
+            continue
+        new_arr, first = _strip(arr, lambda h: is_kit_hook(h, ids, suffixes))
+        groups = desired.get(event, [])
+        at = first if first is not None else len(new_arr)
+        new_arr = new_arr[:at] + groups + new_arr[at:]
+        if not new_arr and arr:
+            continue
+        out_hooks[event] = new_arr
+    if hooks is not None or out_hooks:
+        data["hooks"] = out_hooks
+    return None
+
+
+def _hook_keys(want: dict) -> list[str]:
+    return [f"hooks.{h['event']}:{h['id']}" for h in want["hooks"]]
+
+
 def merge_settings(cur: str | None, want: dict, prev: list[str] | None = None) -> dict:
     prev = prev or []
     data = {} if cur is None else _parse_object(cur)
@@ -252,8 +303,7 @@ def merge_settings(cur: str | None, want: dict, prev: list[str] | None = None) -
     deny = (perms or {}).get("deny")
     if deny is not None and not isinstance(deny, list):
         return fail("permissions.deny 가 배열이 아니다")
-    hooks = data.get("hooks")
-    if hooks is not None and not isinstance(hooks, dict):
+    if data.get("hooks") is not None and not isinstance(data.get("hooks"), dict):
         return fail("hooks 가 객체가 아니다")
     prev_deny = [k[len("permissions.deny:"):] for k in prev if k.startswith("permissions.deny:")]
     new_deny = [v for v in (deny or []) if not (v in prev_deny and v not in want["deny"])]
@@ -264,55 +314,53 @@ def merge_settings(cur: str | None, want: dict, prev: list[str] | None = None) -
         perms = dict(perms or {})
         perms["deny"] = new_deny
         data["permissions"] = perms
-    scripts = [h["script"] for h in want["hooks"] if h.get("script")]
-    desired = _desired_groups(want["hooks"])
-    src = hooks or {}
-    out_hooks: dict = {}
-    for event in [*src.keys(), *[e for e in desired if e not in src]]:
-        arr = src.get(event, [])
-        if not isinstance(arr, list):
-            if event in desired:
-                return fail(f"hooks.{event} 가 배열이 아니다")
-            out_hooks[event] = arr
-            continue
-        new_arr, first = _strip(arr, lambda h: is_kit_hook(h, scripts))
-        groups = desired.get(event, [])
-        at = first if first is not None else len(new_arr)
-        new_arr = new_arr[:at] + groups + new_arr[at:]
-        if not new_arr and arr:
-            continue
-        out_hooks[event] = new_arr
-    if hooks is not None or out_hooks:
-        data["hooks"] = out_hooks
-    keys = [f"permissions.deny:{v}" for v in want["deny"]] + [f"hooks.{h['event']}:{h['id']}" for h in want["hooks"]]
+    error = _merge_hooks(data, want, prev)
+    if error:
+        return fail(error)
+    keys = [f"permissions.deny:{v}" for v in want["deny"]] + _hook_keys(want)
     return {"ok": True, "text": _dump(data), "keys": keys, "created": cur is None}
+
+
+def merge_codex_hooks(cur: str | None, want: dict, prev: list[str] | None = None) -> dict:
+    data = {} if cur is None else _parse_object(cur)
+    if isinstance(data, str):
+        return fail(data)
+    error = _merge_hooks(data, want, prev or [])
+    if error:
+        return fail(error)
+    return {"ok": True, "text": _dump(data), "keys": _hook_keys(want), "created": cur is None}
 
 
 def _scripts_by_id(want: dict) -> dict[str, str]:
     return {h["id"]: h.get("script") for h in want["hooks"]}
 
 
+def _unmerge_hooks(data: dict, keys: list[str], want: dict) -> None:
+    by_id = _scripts_by_id(want)
+    ids = [k.split(":", 1)[1] for k in keys if k.startswith("hooks.") and ":" in k]
+    hooks = data.get("hooks")
+    if not isinstance(hooks, dict):
+        return
+    out: dict = {}
+    for event, arr in hooks.items():
+        if not isinstance(arr, list):
+            out[event] = arr
+            continue
+        new_arr, _ = _strip(arr, lambda h: any(hook_matches(h, i, by_id.get(i)) for i in ids))
+        if not new_arr and arr:
+            continue
+        out[event] = new_arr
+    if out or not hooks:
+        data["hooks"] = out
+    else:
+        del data["hooks"]
+
+
 def unmerge_settings(cur: str, keys: list[str], want: dict) -> dict:
     data = _parse_object(cur)
     if isinstance(data, str):
         return fail(data)
-    by_id = _scripts_by_id(want)
-    ids = [k.split(":", 1)[1] for k in keys if k.startswith("hooks.") and ":" in k]
-    hooks = data.get("hooks")
-    if isinstance(hooks, dict):
-        out: dict = {}
-        for event, arr in hooks.items():
-            if not isinstance(arr, list):
-                out[event] = arr
-                continue
-            new_arr, _ = _strip(arr, lambda h: any(hook_matches(h, i, by_id.get(i)) for i in ids))
-            if not new_arr and arr:
-                continue
-            out[event] = new_arr
-        if out or not hooks:
-            data["hooks"] = out
-        else:
-            del data["hooks"]
+    _unmerge_hooks(data, keys, want)
     deny_vals = [k[len("permissions.deny:"):] for k in keys if k.startswith("permissions.deny:")]
     perms = data.get("permissions")
     if isinstance(perms, dict) and isinstance(perms.get("deny"), list):
@@ -330,25 +378,50 @@ def unmerge_settings(cur: str, keys: list[str], want: dict) -> dict:
     return {"ok": True, "text": _dump(data), "empty": data == {}}
 
 
+def unmerge_codex_hooks(cur: str, keys: list[str], want: dict) -> dict:
+    data = _parse_object(cur)
+    if isinstance(data, str):
+        return fail(data)
+    _unmerge_hooks(data, keys, want)
+    return {"ok": True, "text": _dump(data), "empty": data == {}}
+
+
+def _missing_hooks(data: dict, keys: list[str], want: dict) -> list[str]:
+    by_id = _scripts_by_id(want)
+    hooks = data.get("hooks") if isinstance(data.get("hooks"), dict) else {}
+    out = []
+    for k in keys:
+        if not (k.startswith("hooks.") and ":" in k):
+            continue
+        event, hook_id = k[len("hooks."):].split(":", 1)
+        arr = hooks.get(event)
+        items = [h for g in arr if isinstance(g, dict) and isinstance(g.get("hooks"), list) for h in g["hooks"]] if isinstance(arr, list) else []
+        if not any(hook_matches(h, hook_id, by_id.get(hook_id)) for h in items):
+            out.append(k)
+    return out
+
+
 def missing_settings(cur: str, keys: list[str], want: dict) -> list[str]:
     data = _parse_object(cur)
     if isinstance(data, str):
         return list(keys)
-    by_id = _scripts_by_id(want)
     deny = (data.get("permissions") or {}).get("deny") if isinstance(data.get("permissions"), dict) else None
-    hooks = data.get("hooks") if isinstance(data.get("hooks"), dict) else {}
+    hook_missing = set(_missing_hooks(data, keys, want))
     out = []
     for k in keys:
         if k.startswith("permissions.deny:"):
             if not isinstance(deny, list) or k[len("permissions.deny:"):] not in deny:
                 out.append(k)
-        elif k.startswith("hooks.") and ":" in k:
-            event, hook_id = k[len("hooks."):].split(":", 1)
-            arr = hooks.get(event)
-            items = [h for g in arr if isinstance(g, dict) and isinstance(g.get("hooks"), list) for h in g["hooks"]] if isinstance(arr, list) else []
-            if not any(hook_matches(h, hook_id, by_id.get(hook_id)) for h in items):
-                out.append(k)
+        elif k in hook_missing:
+            out.append(k)
     return out
+
+
+def missing_codex_hooks(cur: str, keys: list[str], want: dict) -> list[str]:
+    data = _parse_object(cur)
+    if isinstance(data, str):
+        return list(keys)
+    return _missing_hooks(data, keys, want)
 
 
 # ── config.toml ──────────────────────────────────────────────────────────────
@@ -487,8 +560,10 @@ def missing_codex_config(cur: str, keys: list[str], want: dict) -> list[str]:
 MERGERS = {
     "claude-md": (merge_claude_md, unmerge_claude_md, missing_claude_md),
     "settings": (merge_settings, unmerge_settings, missing_settings),
+    "codex-hooks": (merge_codex_hooks, unmerge_codex_hooks, missing_codex_hooks),
     "codex-config": (merge_codex_config, unmerge_codex_config, missing_codex_config),
     "gitattributes": (merge_gitattributes, unmerge_gitattributes, missing_gitattributes),
 }
 
-MERGE_KIND = {"CLAUDE.md": "claude-md", ".claude/settings.json": "settings", ".codex/config.toml": "codex-config", ".gitattributes": "gitattributes"}
+MERGE_KIND = {"CLAUDE.md": "claude-md", ".claude/settings.json": "settings", ".codex/hooks.json": "codex-hooks", ".codex/config.toml": "codex-config",
+              ".gitattributes": "gitattributes"}

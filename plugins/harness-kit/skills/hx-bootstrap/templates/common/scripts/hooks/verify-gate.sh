@@ -16,7 +16,8 @@ set -uo pipefail
 # 디렉터리가 다르므로(그리고 그것을 보장한다고 문서에 적힌 곳이 없다) 여기서 리포 루트로 맞춘다.
 # 맞추지 않으면 verify.sh 를 못 찾고 아래 `-x` 검사에서 조용히 통과한다 — 검증을 돌리지 않은
 # 상태가 "통과" 로 보고되는 것이 가장 나쁜 결과다.
-cd "$(dirname "$0")/../.." || exit 0
+# 디스패처(dispatch.sh)가 넘긴 HARNESS_ROOT 가 있으면 그 폴더(worktree 세션이면 그 worktree)를 검증한다.
+cd "${HARNESS_ROOT:-$(dirname "$0")/../..}" || exit 0
 HARNESS_ROOT="$(pwd)"
 
 # hook payload(JSON)를 읽어 stdin 을 비운다.
