@@ -20,7 +20,20 @@ async function readStdin(ctx: Ctx): Promise<string> {
   return Buffer.concat(chunks).toString("utf8");
 }
 
+/** 운영 기록의 장애 · 다음 Intent 후보에서 접수한다(설계 14 §3.8 · §3.9, DO-R10 · R11). 같은 후보를 다시 접수하면 기존 경로를 보이고 끝낸다. */
+async function runIntakeFromOps(ctx: Ctx, from: string): Promise<CommandResult> {
+  const kind = str(ctx, "kind");
+  const name = str(ctx, "name");
+  return run(ctx, "POST", "/intake", { body: { from, ...(kind ? { kind } : {}), ...(name ? { name } : {}) } }, (d) => {
+    if (d.existing) return [String(d.message ?? "이미 접수했다")];
+    const warnings = Array.isArray(d.warnings) ? (d.warnings as string[]) : [];
+    return [`✔ 접수: ${String(d.folder)} ← ${String(d.ref ?? from)}`, ...warnings.map((w) => `⚠ ${w}`), `다음: ${String(d.next)} (세션 요청은 사람이 고를 때만)`];
+  });
+}
+
 export async function runIntake(ctx: Ctx): Promise<CommandResult> {
+  const from = str(ctx, "from");
+  if (from !== undefined) return runIntakeFromOps(ctx, from);
   const title = str(ctx, "title");
   const kind = str(ctx, "kind");
   const name = str(ctx, "name");

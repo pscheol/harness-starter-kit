@@ -68,8 +68,33 @@ function rejected(out: string): ApiError {
   return new ApiError(422, "intake_rejected", message.slice(0, 500));
 }
 
+const OPS_REF = /^ops:[^#\s]+#(?:INC|NX)-\d+$/;
+
+/** 운영 기록의 장애(INC-n)나 다음 Intent 후보(NX-n)에서 접수한다(설계 14 §3.8 · §3.9). 처리는 intake.py ops 하나다. */
+async function postIntakeFromOps(p: Project, body: Record<string, unknown>): Promise<Record<string, unknown>> {
+  const ref = body.from;
+  if (typeof ref !== "string" || !OPS_REF.test(ref)) throw bad("from 은 ops:<운영 기록>#INC-<n> 또는 ops:<운영 기록>#NX-<n> 이다");
+  const args = ["scripts/harness/intake.py", "ops", ref, "--json"];
+  if (body.kind !== undefined) {
+    if (typeof body.kind !== "string" || !KINDS.has(body.kind)) throw bad(`kind 는 ${[...KINDS].join(" · ")}`);
+    args.push("--kind", body.kind);
+  }
+  if (body.name !== undefined) {
+    if (typeof body.name !== "string" || !NAME.test(body.name) || body.name.length > 60) throw bad("name 은 영문 소문자 · 숫자 kebab-case(60자 이하)다");
+    args.push("--name", body.name);
+  }
+  const r = await python(p.root, p.env, args, 300_000);
+  if (r.code !== 0) throw rejected(r.stderr || r.stdout);
+  try {
+    return JSON.parse(r.stdout) as Record<string, unknown>;
+  } catch {
+    throw new ApiError(500, "internal", `intake.py 출력이 JSON 이 아니다: ${r.stdout.slice(0, 200)}`);
+  }
+}
+
 export async function postIntake(p: Project, body: unknown, via: Via): Promise<Record<string, unknown>> {
   if (p.readOnly) throw readOnly();
+  if (isObj(body) && body.from !== undefined) return postIntakeFromOps(p, body);
   const b = intakeBody(body, via);
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "hk-intake-"));
   try {

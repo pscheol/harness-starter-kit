@@ -78,6 +78,7 @@ function fixture(): Repo {
 
 const PAIRS: [string, string[]][] = [
   ["/api/v1/session", ["status", "--session"]],
+  ["/api/v1/ops", ["status", "--ops"]],
   ["/api/v1/overview", ["status"]],
   ["/api/v1/issues", ["status", "--issues"]],
   ["/api/v1/issues?area=upload", ["status", "--issues", "--area", "upload"]],
@@ -253,7 +254,7 @@ describe("쓰기 명령", () => {
 
   it("범위 밖 명령은 exit 2 와 제공 이슈", async () => {
     const repo = fixture();
-    for (const [cmd, stage] of [["deploy", "P24"]] as const) {
+    for (const [cmd, stage] of [["sync", "P24"]] as const) {
       const r = await cli([cmd], repo);
       expect([cmd, r.code, r.stderr.includes(stage)]).toEqual([cmd, 2, true]);
     }

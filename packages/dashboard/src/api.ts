@@ -13,6 +13,7 @@ import { GATE_FLOOR, type Project } from "./project";
 import { machineSessions, type Projects, projectsList, projectsOverview } from "./projects";
 import { publicIssue } from "./readers/issues";
 import { publicSession, readQueue, readSessions } from "./readers/sessions";
+import { readOps } from "./readers/ops";
 import { readFindings, readReview, readSummary, readVerify, readWorktrees } from "./readers/state";
 import { checkouts } from "./repo";
 import { filterInventory, skillsInventory } from "./skills";
@@ -211,7 +212,7 @@ export const ROUTES: Route[] = [
   { method: "DELETE", path: "/dispatch/queue/{id}", cli: "dispatch drop <id>", handler: async (p, r) => ok(dropQueued(p, r.params.id as string)) },
   stub("GET", "/checkpoints", "HK-20", "— (entire 모듈, HK-20)", "체크포인트 목록"),
   stub("GET", "/checkpoints/{id}", "HK-20", "— (entire 모듈, HK-20)", "체크포인트 설명"),
-  stub("GET", "/ops", "HK-21", "status --ops(HK-21)", "운영 기록"),
+  { method: "GET", path: "/ops", cli: "status --ops", handler: async (p) => ok(await readOps(p)) },
   {
     method: "GET", path: "/flow", cli: "status --flow <INT>",
     handler: async (p, r) => {

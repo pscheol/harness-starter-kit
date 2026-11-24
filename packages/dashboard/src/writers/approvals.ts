@@ -14,12 +14,12 @@ import { riskOf } from "../readers/issues";
 import { readSessions } from "../readers/sessions";
 import { type Checkout, FOLDER, gitUser, resolveIntentCheckout, resolveIssueCheckout } from "../repo";
 import { atomicWrite, ensureDir, gitOut, isObj, nowText, python, rel, sha256, ulid } from "../util";
+import { approveDeploy } from "./deploy";
 import { approveBundle, BUNDLE_GATES, type BundleGate } from "./intent-gates";
 
 export type Via = "dashboard" | "terminal";
 const CLARIFY = "[NEEDS CLARIFICATION";
 const LOG = ".agents/state/approvals-log.jsonl";
-const LATER: Record<string, string> = { deploy: "HK-21" };
 const DOC_FILES: Record<string, string> = { requirements: "requirements.md", design: "design.md", tasks: "tasks.md" };
 
 /** 이슈 폴더 문서 머리 risk 중 가장 높은 값. */
@@ -132,9 +132,12 @@ export async function postApproval(p: Project, body: unknown, via: Via): Promise
   const decision = body.decision === "changes-requested" ? "changes-requested" : body.decision === "approved" ? "approved" : null;
   if (!decision) throw bad("decision 은 approved 또는 changes-requested 다");
   if (!p.gates().includes(gate)) throw new ApiError(422, "gate_not_in_flow", `${gate} 는 flow.gates 에 없다`, { gates: p.gates() });
-  if (Object.hasOwn(LATER, gate)) throw new ApiError(422, "gate_precondition", `${gate} 게이트 승인은 이 판에 없다(${LATER[gate]})`, { later: LATER[gate], reasons: [`${LATER[gate]} 에서 제공한다`] });
   const phrase = phraseOf(body);
   const target = isObj(body.target) ? body.target : {};
+  if (gate === "deploy") {
+    if (typeof target.deploy !== "string") throw bad("deploy 게이트는 target.deploy(배포 기록 이름)가 필요하다");
+    return approveDeploy(p, target.deploy, decision, phrase, body, via);
+  }
   if (gate === "intent" || BUNDLE_GATES.includes(gate)) {
     if (typeof target.intent !== "string") throw bad(`${gate} 게이트는 target.intent 가 필요하다`);
     if (gate !== "intent") return approveBundle(p, gate as BundleGate, target.intent, decision, phrase, body, via);

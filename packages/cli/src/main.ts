@@ -9,6 +9,7 @@ import { runInit } from "./commands/init";
 import { runIntake } from "./commands/intake";
 import { runMob } from "./commands/mob";
 import { runList } from "./commands/list";
+import { runDeploy, runMetrics, runOps, runRules } from "./commands/ops";
 import { runOutdated } from "./commands/outdated";
 import { runRemove } from "./commands/remove";
 import { runRepair } from "./commands/repair";
@@ -55,6 +56,10 @@ const COMMANDS: Record<string, (ctx: Ctx) => CommandResult | Promise<CommandResu
   local: runLocal,
   intake: runIntake,
   mob: runMob,
+  deploy: runDeploy,
+  ops: runOps,
+  metrics: runMetrics,
+  rules: runRules,
 };
 
 const USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 킷
@@ -81,7 +86,11 @@ const USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 �
   pack       pack new <이름> --dir <경로> --from <파일>… — 프로젝트 파일로 회사 팩 골격을 만든다
   local      local sync | list — 개인 층(.agents/local/)을 하네스 폴더에 배치한다(공유 lock 밖)
   mob        몹 정리 세션 start | next | close | status(진행자 터미널, 회차를 닫아도 세션에 요청하지 않는다)
-  intake     요구사항 접수 — 글 · 첨부를 Intent 폴더(bug 는 이슈 폴더)로 받는다(신뢰하지 않는 입력으로 표시)
+  intake     요구사항 접수 — 글 · 첨부를 Intent 폴더(bug 는 이슈 폴더)로 받는다(신뢰하지 않는 입력으로 표시). --from ops:<운영 기록>#INC-n|NX-n 은 운영 기록에서
+  deploy     배포 기록 plan · check · record · run · result(승인은 approve deploy:<기록> --gate deploy). 킷은 운영 배포 명령을 부를 뿐이다
+  ops        운영 기록 new · check(읽기는 status --ops)
+  metrics    전달 지표 5개(git · 승인 기록 · 배포 기록에서만 계산) · --baseline 기준선 · --verify-baseline
+  rules      규칙 후보 candidates · list · promote · reject(승격 · 거절은 사람 터미널만)
 
 공통 플래그: --cwd <폴더> --dry-run --yes --json --templates <폴더> --quiet --no-color --help
 init · plan: --stack --arch --domain --lang --agents <목록|all> --modules <목록|all|none>
@@ -106,9 +115,9 @@ const COMMAND_HELP: Record<string, string> = {
   repair: "harness-kit repair [--dry-run] [--only missing,drifted,stale,merge] [--json] — 되살리지 못한 missing 이 있으면 exit 4\n",
   uninstall: "harness-kit uninstall [--dry-run] [--yes] [--keep-state] [--keep-packs] [--json] — 고친 파일을 남기면 exit 4. TTY 가 아니면 --yes\n",
   dashboard: "harness-kit dashboard [--port <n>] [--open] [--read-only] [--export <폴더>] [--all | --root <dir> | --workspace <file>] — 127.0.0.1 에만 연다. 주소는 stdout, 승인 PIN 은 stderr\n",
-  status: "harness-kit status [--session | --intents | --intent <INT> [--gate codebase|plans] | --issues [--area --stage --intent] | --issue <키> | --doc <경로> | --verify [--issue] | --worktrees | --harness | --flow <INT> [--burn [--days n]] | --all] [--json]\n",
+  status: "harness-kit status [--ops | --session | --intents | --intent <INT> [--gate codebase|plans] | --issues [--area --stage --intent] | --issue <키> | --doc <경로> | --verify [--issue] | --worktrees | --harness | --flow <INT> [--burn [--days n]] | --all] [--json]\n",
   projects: "harness-kit projects list | add <폴더> | remove <이름|경로> [--json] — 등록부 ~/.config/harness-kit/projects.json\n",
-  approve: 'harness-kit approve <키> --gate <게이트> --phrase "<문구>" [--changes-requested [--rule-candidate]] [--json] — 사람 터미널에서만(에이전트 세션 · TTY 아님은 exit 3)\n',
+  approve: 'harness-kit approve <키> --gate <게이트> --phrase "<문구>" [--changes-requested [--rule-candidate]] [--json] — 사람 터미널에서만(에이전트 세션 · TTY 아님은 exit 3). deploy: harness-kit approve deploy:<배포 기록> --gate deploy --phrase "…" [--waive-rollback "<사유>"]\n',
   answer: "harness-kit answer <INT|키> --list | <Q-n> --choice <A-D|other> [--text …] [--by <참석자 email>] [--json] — 사람 터미널에서만. 몹 세션이 열려 있으면 --by 필요\n",
   mob: "harness-kit mob start <INT> --attendees a@x,b@y [--timebox 30] | mob next <INT> | mob close <INT> | mob status <INT> [--json] — 진행자 터미널(에이전트 세션은 exit 3)\n",
   review: "harness-kit review show <키> | review decide <키> <F-n> --fix|--accept-risk --reason … [--json] — decide 는 사람 터미널에서만\n",
@@ -121,7 +130,11 @@ const COMMAND_HELP: Record<string, string> = {
   skills: "harness-kit skills [--stage <단계>] [--harness <h>] [--conflicts] [--errors] [--all] [--no-user] [--refresh] [--json] — 읽기만 한다. 단계는 설계 · 구현 · 검증 · 반영 · 운영(영어도 된다)\n",
   usage: "harness-kit usage [--days n] [--harness h] [--sources] | usage --now | usage --kit [--json] — 대화 기록 읽기가 꺼져 있으면(기본) 킷이 덧붙인 양(--kit)만 보인다\n",
   pack: "harness-kit pack new <이름> --dir <경로> [--from <파일|폴더>[#훅·검사 id]]… [--kit-range \">=2.0.0 <3.0.0\"] [--json] — --dir 은 빈 폴더나 없는 경로\n",
-  intake: "harness-kit intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--area <영역>] [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]… [--json] — 비밀값이 든 글은 접수하지 않는다(exit 1)\n",
+  deploy: "harness-kit deploy plan <키…> [--env production] [--tag v2.3.0] | check <기록> [--require-approved] [--waive <사유>] | record <기록> --from-ci <URL|파일|폴더> | run --env <이름> [--record <기록>] [--rollback-test] [--to-sha <sha>] | result <기록> --from <파일> [--json]\n",
+  ops: "harness-kit ops new --topic <영문-kebab 2~5단어> [--from YYYY-MM-DD] [--to YYYY-MM-DD] | ops check [--json] — 읽기는 harness-kit status --ops [--json]\n",
+  metrics: "harness-kit metrics [--baseline [--force] [--adopted-at <날짜|커밋>]] [--verify-baseline] [--from YYYY-MM-DD --to YYYY-MM-DD] [--fill <운영 기록>] [--json] — 기준선 재계산 값이 다르면 exit 1\n",
+  rules: "harness-kit rules candidates [--since 30d] | list | promote RC-<n> | reject RC-<n> --reason \"…\" [--json] — promote · reject 는 사람 터미널에서만(exit 3)\n",
+  intake: "harness-kit intake --from ops:<운영 기록>#INC-<n>|NX-<n> [--kind bug] [--name <영문-kebab>] | intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--area <영역>] [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]… [--json] — 비밀값이 든 글은 접수하지 않는다(exit 1)\n",
   local: "harness-kit local sync [--dry-run] | local list [--json] — 개인 스킬 · Kiro 규칙 · 개인 훅(.claude/settings.local.json · .kiro/hooks/local-*). 공유 원본과 이름이 같으면 배치하지 않는다\n",
 };
 
