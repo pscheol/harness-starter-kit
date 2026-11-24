@@ -4,12 +4,13 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { allowed, appendedText, approvalSha, approvalState, groupOf, type NewEntry, parse as parseApprovals } from "../approvals";
+import { allowed, appendedText, approvalSha, approvalState, approversOf, groupOf, needOf, type NewEntry, parse as parseApprovals } from "../approvals";
 import { ApiError, bad, notFound, readOnly } from "../errors";
 import { appliedUnitsBytes, findIntent, proposalOf, readUnitsFile, type Change } from "../flow";
 import { parseLoose, setField } from "../frontmatter";
 import { ISSUE_GATES, type Project } from "../project";
 import { parseQuestions } from "../questions";
+import { riskOf } from "../readers/issues";
 import { readSessions } from "../readers/sessions";
 import { type Checkout, FOLDER, gitUser, resolveIntentCheckout, resolveIssueCheckout } from "../repo";
 import { atomicWrite, ensureDir, gitOut, isObj, nowText, python, rel, sha256, ulid } from "../util";
@@ -20,6 +21,19 @@ const CLARIFY = "[NEEDS CLARIFICATION";
 const LOG = ".agents/state/approvals-log.jsonl";
 const LATER: Record<string, string> = { deploy: "HK-21" };
 const DOC_FILES: Record<string, string> = { requirements: "requirements.md", design: "design.md", tasks: "tasks.md" };
+
+/** 이슈 폴더 문서 머리 risk 중 가장 높은 값. */
+function riskOfFolder(abs: string): string {
+  const files: Record<string, Buffer | null> = {};
+  for (const name of Object.values(DOC_FILES)) {
+    try {
+      files[name] = fs.readFileSync(path.join(abs, name));
+    } catch {
+      files[name] = null;
+    }
+  }
+  return riskOf(files);
+}
 
 export function issueFolder(root: string, key: string): string {
   const dir = path.join(root, ".agents/docs/issues");
@@ -146,7 +160,11 @@ export async function postApproval(p: Project, body: unknown, via: Via): Promise
     const status = fm.status ?? null;
     const aSha = approvalSha(bytes);
     if (gate !== "tasks" && !["draft", "in-review", "approved"].includes(status ?? "")) throw new ApiError(422, "gate_precondition", `${DOC_FILES[gate]} 머리 status 가 ${status ?? "없음"} 이다(draft · in-review 만 승인한다)`, { reasons: [`status ${status ?? "없음"}`] });
-    if (decision === "approved" && approvalState(entries, gate, aSha, p.policy()) === "valid") throw new ApiError(409, "already_approved", `${gate}: 같은 내용(sha ${aSha.slice(0, 12)})으로 승인한 기록이 있다`);
+    const need = needOf(p.meta(), riskOfFolder(path.join(co.root, folder)), gate);
+    const state = approvalState(entries, gate, aSha, p.policy(), need);
+    if (decision === "approved" && state === "valid") throw new ApiError(409, "already_approved", `${gate}: 같은 내용(sha ${aSha.slice(0, 12)})으로 승인한 기록이 있다`);
+    const me = ((await gitUser(co.root, p.env)).email ?? "").toLowerCase();
+    if (decision === "approved" && state === "partial" && me && approversOf(entries, gate, aSha).has(me)) throw new ApiError(409, "already_approved", `${gate}: 이미 승인했다 — risk: high 는 다른 승인자 한 명이 더 승인한다(DS-R26)`, { need });
     if (decision === "approved" && text.includes(CLARIFY)) throw new ApiError(422, "needs_clarification", `${DOC_FILES[gate]} 에 [NEEDS CLARIFICATION 가 남았다`);
     if (body.docSha256 !== sha256(bytes)) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 문서가 바뀌었다. 다시 읽고 승인한다", { currentSha256: sha256(bytes) });
     targetRef = { name: DOC_FILES[gate] as string, sha256: aSha };

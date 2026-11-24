@@ -109,7 +109,7 @@ def check_gate(issue, gate):
     raise Refusal(f"모르는 게이트: {gate} (requirements · design · tasks · mr · done · review/F-n)", 2)
 
 
-def document_target(issue, gate, decision):
+def document_target(issue, gate, decision, email=None):
     path, fields, data = issue.doc(gate)
     if fields is None:
         raise Refusal(f"{path.name} 가 없다", 1)
@@ -117,9 +117,11 @@ def document_target(issue, gate, decision):
         raise Refusal(f"{path.name} 머리(---)를 읽지 못했다", 1)
     sha = approvals.approval_sha(data)
     status = fields.get("status")
-    state = approvals.approval_state(issue.entries, gate, sha, issue.policy)
+    state = approvals.approval_state(issue.entries, gate, sha, issue.policy, issue.need(gate))
     if decision == "approved" and state == "valid":
         raise Refusal(f"{gate}: 이미 같은 내용(sha {sha[:12]})으로 승인한 기록이 있다", 1)
+    if decision == "approved" and state == "partial" and email and email.lower() in approvals.approvers_of(issue.entries, gate, sha):
+        raise Refusal(f"{gate}: 이미 승인했다 — risk: high 는 다른 승인자 한 명이 더 승인한다(DS-R26)", 1)
     if gate != "tasks" and status not in ("draft", "in-review", "approved"):
         raise Refusal(f"{path.name} 머리 status 가 {status or '없음'} 이다(draft · in-review 만 승인한다)", 1)
     if decision == "approved" and sdd_gates.CLARIFY in data.decode("utf-8", "replace"):
@@ -201,7 +203,8 @@ def run(options):
     check_gate(issue, options.gate)
     doc_path, item = None, None
     if options.gate in sdd_gates.DOC_FILES:
-        target, doc_path = document_target(issue, options.gate, options.decision)
+        email = (git(root, "config", "user.email") or "").strip() or None
+        target, doc_path = document_target(issue, options.gate, options.decision, email)
     elif REVIEW.match(options.gate):
         target, item = review_target(root, issue, options.gate)
     else:

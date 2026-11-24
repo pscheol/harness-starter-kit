@@ -5,7 +5,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
-import { approvalSha, approvalState, parse as parseApprovals, type ApprovalState, type Entry } from "../approvals";
+import { approvalSha, approvalState, needOf, parse as parseApprovals, type ApprovalState, type Entry } from "../approvals";
 import { fileStamp, treeStamp } from "../cache";
 import { parseLoose } from "../frontmatter";
 import { ISSUE_GATES, type Project } from "../project";
@@ -125,7 +125,7 @@ export function bolts(text: string): { total: number; done: number } {
   return { total, done };
 }
 
-export function docInfo(bytes: Buffer, gate: string, entries: Entry[], p: Project, mtimeMs?: number): DocInfo {
+export function docInfo(bytes: Buffer, gate: string, entries: Entry[], p: Project, mtimeMs?: number, need = 1): DocInfo {
   const text = bytes.toString("utf8");
   const fm = parseLoose(text) ?? {};
   const aSha = approvalSha(bytes);
@@ -134,7 +134,7 @@ export function docInfo(bytes: Buffer, gate: string, entries: Entry[], p: Projec
     sha256: sha256(bytes),
     approvalSha256: aSha,
     clarify: clarifyCount(text),
-    approval: approvalState(entries, gate, gate === "tasks" ? null : aSha, p.policy()),
+    approval: approvalState(entries, gate, gate === "tasks" ? null : aSha, p.policy(), need),
   };
   if (mtimeMs !== undefined) info.mtimeMs = mtimeMs;
   if (gate === "tasks") {
@@ -287,10 +287,17 @@ function readFolder(root: string, folderRel: string, name: string): FolderDocs {
   return { folder: folderRel, name, files, mtimes, entries: readEntries(path.join(root, folderRel, "approvals.md")) };
 }
 
+/** 문서 머리 risk 중 가장 높은 값(이슈는 올릴 수만 있다, 08 §3.15). */
+export function riskOf(files: Record<string, Buffer | null>): string {
+  const values = Object.values(files).map((b) => (b ? (parseLoose(b.toString("utf8")) ?? {}).risk : undefined));
+  return values.includes("high") ? "high" : values.includes("medium") ? "medium" : "low";
+}
+
 function docsOf(p: Project, f: FolderDocs): IssueModel["docs"] {
+  const risk = riskOf(f.files);
   const info = (gate: string): DocInfo | null => {
     const b = f.files[gate];
-    return b ? docInfo(b, gate, f.entries, p, f.mtimes[gate]) : null;
+    return b ? docInfo(b, gate, f.entries, p, f.mtimes[gate], needOf(p.meta(), risk, gate)) : null;
   };
   return { requirements: info("requirements"), design: info("design"), tasks: info("tasks") };
 }

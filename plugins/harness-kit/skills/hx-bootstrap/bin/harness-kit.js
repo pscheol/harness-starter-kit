@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 10f5915512ec0cede4e5de2288db990c64608c4b6e4c337155feb8363cff9b5e · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 5e5f88cd443428743868ee62fa1609fe28bb3b31de3cc7e06905686e52970200 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -5299,14 +5299,26 @@ function groupOf(email, gate, policy) {
   }
   return null;
 }
-function approvalState(entries, gate, sha = null, policy = null) {
+var HIGH_GATES = ["design", "mr", "deploy"];
+function needOf(meta, risk, gate) {
+  if (risk !== "high" || !HIGH_GATES.includes(gate)) return 1;
+  const conf = meta.risk && typeof meta.risk === "object" && !Array.isArray(meta.risk) ? meta.risk : {};
+  const n = Number(conf.highApprovals ?? 2);
+  return Number.isFinite(n) ? Math.max(2, Math.trunc(n)) : 2;
+}
+function approversOf(entries, gate, sha = null) {
+  return new Set(entries.filter((e) => e.valid && e.gate === gate && e.decision === "approved" && (sha === null || e.target?.sha256 === sha)).map((e) => (e.approver?.email ?? "").toLowerCase()));
+}
+function approvalState(entries, gate, sha = null, policy = null, need = 1) {
   let found = entries.filter((e) => e.valid && e.gate === gate && e.decision === "approved");
   if (found.length === 0) return "none";
   if (sha !== null && sha !== void 0) {
     found = found.filter((e) => e.target && e.target.sha256 === sha);
     if (found.length === 0) return "stale";
   }
-  return found.some((e) => allowed(e.approver?.email, gate, policy)) ? "valid" : "invalid";
+  const people = new Set(found.filter((e) => allowed(e.approver?.email, gate, policy)).map((e) => (e.approver?.email ?? "").toLowerCase()));
+  if (people.size === 0) return "invalid";
+  return people.size >= Math.max(need, 1) ? "valid" : "partial";
 }
 function splitKeep(data) {
   const out = [];
@@ -6348,7 +6360,7 @@ function bolts(text2) {
   close();
   return { total, done };
 }
-function docInfo(bytes, gate, entries, p, mtimeMs) {
+function docInfo(bytes, gate, entries, p, mtimeMs, need = 1) {
   const text2 = bytes.toString("utf8");
   const fm = parseLoose(text2) ?? {};
   const aSha = approvalSha(bytes);
@@ -6357,7 +6369,7 @@ function docInfo(bytes, gate, entries, p, mtimeMs) {
     sha256: sha2562(bytes),
     approvalSha256: aSha,
     clarify: clarifyCount(text2),
-    approval: approvalState(entries, gate, gate === "tasks" ? null : aSha, p.policy())
+    approval: approvalState(entries, gate, gate === "tasks" ? null : aSha, p.policy(), need)
   };
   if (mtimeMs !== void 0) info.mtimeMs = mtimeMs;
   if (gate === "tasks") {
@@ -6491,10 +6503,15 @@ function readFolder(root, folderRel, name) {
   }
   return { folder: folderRel, name, files, mtimes, entries: readEntries(import_node_path31.default.join(root, folderRel, "approvals.md")) };
 }
+function riskOf(files) {
+  const values = Object.values(files).map((b) => b ? (parseLoose(b.toString("utf8")) ?? {}).risk : void 0);
+  return values.includes("high") ? "high" : values.includes("medium") ? "medium" : "low";
+}
 function docsOf(p, f) {
+  const risk = riskOf(f.files);
   const info = (gate) => {
     const b = f.files[gate];
-    return b ? docInfo(b, gate, f.entries, p, f.mtimes[gate]) : null;
+    return b ? docInfo(b, gate, f.entries, p, f.mtimes[gate], needOf(p.meta(), risk, gate)) : null;
   };
   return { requirements: info("requirements"), design: info("design"), tasks: info("tasks") };
 }
@@ -7591,6 +7608,17 @@ var CLARIFY3 = "[NEEDS CLARIFICATION";
 var LOG = ".agents/state/approvals-log.jsonl";
 var LATER = { deploy: "HK-21" };
 var DOC_FILES = { requirements: "requirements.md", design: "design.md", tasks: "tasks.md" };
+function riskOfFolder(abs) {
+  const files = {};
+  for (const name of Object.values(DOC_FILES)) {
+    try {
+      files[name] = import_node_fs35.default.readFileSync(import_node_path39.default.join(abs, name));
+    } catch {
+      files[name] = null;
+    }
+  }
+  return riskOf(files);
+}
 function issueFolder(root, key) {
   const dir = import_node_path39.default.join(root, ".agents/docs/issues");
   let names = [];
@@ -7698,7 +7726,11 @@ async function postApproval(p, body, via) {
     const status = fm.status ?? null;
     const aSha = approvalSha(bytes);
     if (gate !== "tasks" && !["draft", "in-review", "approved"].includes(status ?? "")) throw new ApiError(422, "gate_precondition", `${DOC_FILES[gate]} 머리 status 가 ${status ?? "없음"} 이다(draft · in-review 만 승인한다)`, { reasons: [`status ${status ?? "없음"}`] });
-    if (decision === "approved" && approvalState(entries, gate, aSha, p.policy()) === "valid") throw new ApiError(409, "already_approved", `${gate}: 같은 내용(sha ${aSha.slice(0, 12)})으로 승인한 기록이 있다`);
+    const need = needOf(p.meta(), riskOfFolder(import_node_path39.default.join(co.root, folder)), gate);
+    const state = approvalState(entries, gate, aSha, p.policy(), need);
+    if (decision === "approved" && state === "valid") throw new ApiError(409, "already_approved", `${gate}: 같은 내용(sha ${aSha.slice(0, 12)})으로 승인한 기록이 있다`);
+    const me = ((await gitUser(co.root, p.env)).email ?? "").toLowerCase();
+    if (decision === "approved" && state === "partial" && me && approversOf(entries, gate, aSha).has(me)) throw new ApiError(409, "already_approved", `${gate}: 이미 승인했다 — risk: high 는 다른 승인자 한 명이 더 승인한다(DS-R26)`, { need });
     if (decision === "approved" && text2.includes(CLARIFY3)) throw new ApiError(422, "needs_clarification", `${DOC_FILES[gate]} 에 [NEEDS CLARIFICATION 가 남았다`);
     if (body.docSha256 !== sha2562(bytes)) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 문서가 바뀌었다. 다시 읽고 승인한다", { currentSha256: sha2562(bytes) });
     targetRef = { name: DOC_FILES[gate], sha256: aSha };

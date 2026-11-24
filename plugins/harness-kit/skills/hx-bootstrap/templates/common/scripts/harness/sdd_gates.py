@@ -4,11 +4,12 @@
     python3 scripts/harness/sdd_gates.py check <이슈키> [--json]     게이트마다 통과 · 안 된 이유 · 앞 조건
     python3 scripts/harness/sdd_gates.py check --all                 이슈 폴더 전부(JSON, 관리 페이지)
 
-codebase · intent · plans · deploy 게이트와 위험 프로필(승인자 2명)은 이 판에 없다. 머리에 `legacy` 가 있는 문서(옮긴 옛 이슈)는
+codebase · intent · plans 게이트는 intent_gate.py, deploy 는 이 판에 없다. risk: high 이슈의 design · mr 은 서로 다른 승인자 2명(DS-R26). 머리에 `legacy` 가 있는 문서(옮긴 옛 이슈)는
 기록 없이 머리 값으로 통과한다. 승인 sha 는 approvals.approval_sha(머리 status · state 줄을 뺀 sha256)다.
 """
 
 import argparse
+import fnmatch
 import json
 import subprocess
 import sys
@@ -65,6 +66,29 @@ class Issue:
         self.policy = approvals.policy_of(self.meta)
         self.entries = approvals.read_entries(self.folder / "approvals.md")
         self.memo = {}
+        self._risk = None
+
+    @property
+    def risk(self):
+        """문서 머리 risk 중 가장 높은 값(이슈는 올릴 수만 있다). mr 은 diff 가 risk.highPaths 에 걸리면 high(08 §3.15 기계 하한)."""
+        if self._risk is None:
+            values = [(self.doc(gate)[1] or {}).get("risk") for gate in DOC_FILES]
+            self._risk = "high" if "high" in values else "medium" if "medium" in values else "low"
+        return self._risk
+
+    def need(self, gate):
+        risk = self.risk
+        if gate == "mr" and risk != "high" and self.touches_high_paths():
+            risk = "high"
+        return approvals.need_of(self.meta, risk, gate)
+
+    def touches_high_paths(self):
+        conf = self.meta.get("risk") if isinstance(self.meta.get("risk"), dict) else {}
+        patterns = [p for p in conf.get("highPaths") or [] if isinstance(p, str)]
+        if not patterns:
+            return False
+        names = (git(self.root, "diff", "--name-only", f"{self.base}...HEAD") or "").splitlines()
+        return any(fnmatch.fnmatch(name, pattern) for name in names for pattern in patterns)
 
     @property
     def base(self):
@@ -102,7 +126,7 @@ def doc_reasons(issue, gate, own):
     if gate != "tasks" and fields.get("status") != "approved":
         reasons.append(f"{DOC_FILES[gate]} 머리 status 가 approved 가 아니다({fields.get('status') or '없음'})")
     sha = approvals.approval_sha(data)
-    state = approvals.approval_state(issue.entries, gate, sha, issue.policy)
+    state = approvals.approval_state(issue.entries, gate, sha, issue.policy, issue.need(gate))
     if gate == "tasks" and state == "stale":
         state = "valid"
     if state != "valid":
@@ -110,7 +134,8 @@ def doc_reasons(issue, gate, own):
     return reasons
 
 
-STATE_WORDS = {"none": "없다", "stale": "지금 내용과 다르다(stale)", "invalid": "승인자 목록 밖이다(invalid)"}
+STATE_WORDS = {"none": "없다", "stale": "지금 내용과 다르다(stale)", "invalid": "승인자 목록 밖이다(invalid)",
+               "partial": "서로 다른 승인자가 모자란다(risk: high 는 2명, DS-R26)"}
 
 
 def passed(issue, gate):
@@ -171,7 +196,7 @@ def preconditions(issue, gate):
     reasons = []
     before = previous_gate(gate)
     if gate == "done":
-        state = approvals.approval_state(issue.entries, "mr", None, issue.policy)
+        state = approvals.approval_state(issue.entries, "mr", None, issue.policy, issue.need("mr"))
         if state != "valid":
             reasons.append(f"mr 승인 기록이 {STATE_WORDS[state]}")
         return reasons + merged_reasons(issue)
@@ -188,7 +213,7 @@ def preconditions(issue, gate):
 def own_reasons(issue, gate):
     if gate in DOC_FILES:
         return [reason for reason in doc_reasons(issue, gate, own=True) if CLARIFY not in reason]
-    state = approvals.approval_state(issue.entries, gate, None, issue.policy)
+    state = approvals.approval_state(issue.entries, gate, None, issue.policy, issue.need(gate))
     return [] if state == "valid" else [f"{gate} 승인 기록이 {STATE_WORDS[state]}"]
 
 
@@ -199,8 +224,8 @@ def evaluate(issue, gate):
     if gate in DOC_FILES:
         data = issue.doc(gate)[2]
         sha = approvals.approval_sha(data) if data is not None else None
-    state = approvals.approval_state(issue.entries, gate, sha if gate != "tasks" else None, issue.policy)
-    return {"gate": gate, "passed": not reasons, "reasons": reasons, "preconditions": before, "approval": state}
+    state = approvals.approval_state(issue.entries, gate, sha if gate != "tasks" else None, issue.policy, issue.need(gate))
+    return {"gate": gate, "passed": not reasons, "reasons": reasons, "preconditions": before, "approval": state, "need": issue.need(gate)}
 
 
 def all_results(root):
