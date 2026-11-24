@@ -139,7 +139,7 @@ created: 2026-11-24
 | T-B4 | Kiro 설치기 `kns-<명령>` · 옛 설치 치우기, 플러그인 `commands/` 빼기 | design §7 | done |
 | T-B5 | `check_external.py` | 설계 11 §3.9 | done |
 | T-B6 | README · CHANGELOG · 이전 안내서 1.1 · ROADMAP | — | done |
-| T-B7 | 전체 시험 | — | 진행 |
+| T-B7 | 전체 시험 | — | done |
 
 새 시험: `packages/cli/test/legacy-names.test.ts`(5개 — doctor 는 옮기지 않음 · update 가 옮김 · init 은 옛 메타를 설치로 봄 · hx- 스킬 지움/남김), `tests/test_install.py::test_update_moves_legacy_state_names`(update.sh), `tests/harness_scripts/test_check_external.py`(3개).
 
@@ -176,3 +176,18 @@ e2e 로 찾은 킷 버그 5개(위 굵은 글씨)는 각각 시험을 더하고 
 | 옛 `hx-*` | 처음엔 24개가 '킷에서 빠짐'으로 남았다(애매한 lock 이라 기준 해시를 비웠다) → 고침: 킷 이름공간(hx-) 경로는 기준 해시를 지킨다. 지움 22 · retire 11(옛 `.claude/commands/hx-*.md`) · 남음 0 |
 | `update` 뒤 | `.agents/knots-sync.{json,lock}` 만 있다, `hx-` 파일 0, `kns-*` 스킬 15, `doctor` 오류 0(경고 29 = .new 병합 안내 등) |
 | 세션 적재량 | claude 3,169 → 10,210 B, codex 7,582 → 8,384 B(v2 킷 자체 증가 — 이전 MR 에 적는다) |
+
+## 최종 검증(2026-11-25, `d88f324`)
+
+| 시험 | 결과 |
+|---|---|
+| `pnpm -C packages/cli test` | 523 통과 |
+| `pnpm -C packages/dashboard test` | 166 통과 |
+| `pnpm test:ui` | 33 통과 |
+| `pnpm test:e2e`(stub, 에이전트 세션 — 승인 앞까지) | 통과 |
+| 두 구성 e2e(사람 터미널) | stub 107 · real 106 통과 · 실패 0 |
+| 설치본 시험(`ecddf39`) | 678 통과 |
+| `tests.test_cli_parity` + `tests.test_cli_update_parity` | 25 통과 |
+| 킷 python 전체 | 푸시 전 검사(pre-push `pnpm test`)가 최종 커밋으로 돈다 — 설치본 묶음 시험 제한을 3000초로 올렸다(묶음 678개, 따로 1,300~1,600초) |
+| `claude plugin validate`(마켓플레이스 · 플러그인) | 통과 |
+| 실제 v1.0.8 설치본 이전 · Kiro 설치기(임시 홈) | 확인(위 절) |

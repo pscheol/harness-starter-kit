@@ -52,13 +52,13 @@
 | HK-26 | P20 보강 | 관리 페이지 화면 층을 React 19 + astryx 로(서버 · API · CLI 그대로, 릴리스 때 정적 번들) | 사용자 결정 · 06 | HK-18 | 끝(사람 확인 남음) |
 | HK-20 | P22 | 선택 모듈: module.json · aidlc · entire(실제 설치 시험) · jira-workflow 개편 · notion · 모듈 토큰 측정 | 10 | HK-12 · HK-19 | 끝(사람 확인 남음 — 실제 Jira · Notion) |
 | HK-21 | P24 | 배포 · 운영 기록 · 전달 지표 · 규칙 후보 | 14 | HK-16 · HK-19 | 끝 |
-| HK-22 | 전 단계 | v1 → v2 이전 도구 · 릴리스 스크립트 · 두 구성 e2e(킷만 / 모두 켬) · knots · hdr 복사본 실측 | 11 · 13 | 전부 | 진행(HK-22a 끝 · HK-22b 이름 바꾸기 검증 중) |
+| HK-22 | 전 단계 | v1 → v2 이전 도구 · 릴리스 스크립트 · 두 구성 e2e(킷만 / 모두 켬) · knots · hdr 복사본 실측 | 11 · 13 | 전부 | 끝(HK-22a · HK-22b, 사람 확인 남음) |
 
 ## 진행 방식
 
 - 슬롯 A: HK-11(끝) → HK-16(끝) → HK-23(끝) → HK-17(끝) → HK-18(끝) → HK-19(끝) → HK-21(끝)
 - 슬롯 C: HK-26(끝, 관리 페이지 화면 astryx 전환)
-- 슬롯 B: HK-9/10(끝) → HK-12(끝) → HK-13(끝) → HK-25(끝) → HK-24(끝) → HK-14(끝) → HK-15(끝) → HK-20a(끝) → HK-20b(끝) · HK-22a(끝) → HK-22b(이름 바꾸기)
+- 슬롯 B: HK-9/10(끝) → HK-12(끝) → HK-13(끝) → HK-25(끝) → HK-24(끝) → HK-14(끝) → HK-15(끝) → HK-20a(끝) → HK-20b(끝) · HK-22a(끝) → HK-22b(끝, 이름 바꾸기 · 사용 안내서)
 - HK-12는 HK-9 · HK-10과 같은 파일(플러그인 문서 · setup.sh · CLI 겹침)을 건드려서 HK-9/10을 합친 뒤에 띄운다. 합친 뒤 HK-11 update 동일성 시험이 HK-9의 update.sh 보드 재생성 · HK-10 겹침 순서를 따라가는지 HK-12에서 맞춘다.
 - 합칠 때마다 깨끗한 worktree에서 시험 전체(`pnpm -C packages/cli test` · `node scripts/gen-plugins.mjs --check` · `python3 -m unittest discover -s tests -p "test_*.py"`)를 돌린다.
 
@@ -87,3 +87,4 @@
 - (HK-13) 확인 필요: Kiro `fileMatchPattern` 배열, Cursor `globs` 쉼표 목록, Claude `paths`가 Read로 연 파일에도 걸리는지(수동).
 - (HK-23) GitHub 비공개 시험 저장소 `harness-kit-e2e-sandbox` PR #1로 MR 요약 코멘트가 하나만 남는 것을 확인했다(남겨 둠). GitLab은 가짜 glab으로만 시험.
 - (HK-23) 승인 sha는 status/state 줄을 빼고 계산한다. tasks 게이트는 오래된(stale) done 기록도 받는다. 관리 페이지도 같게 할지.
+- (HK-22b, 2026-11-25) 사람 확인: 공개 저장소의 옛 커밋 두 개(`2ab1349` · `4202e82`)에 회사 이름이 든 경로 · 패키지 예시가 남아 있다(지금 파일에서는 뺐다). 기록에서도 지우려면 기록을 다시 써야 한다. 안내서 홈 스크린숏의 운영 문구 몇 줄은 합니다체로 바꾸기 전 판이다. v1 → v2 이전 뒤 세션 적재량이 claude 3.2KB → 10.2KB 로 는다(v2 킷 자체) — 이전 MR 에 적는다.
