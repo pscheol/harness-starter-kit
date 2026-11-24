@@ -10,6 +10,7 @@ import { LOCK_REL, readLock, type LockV2 } from "../core/lock";
 import { META_REL, readMeta, type MetaV2 } from "../core/meta";
 import { FLOOR_HOOKS, missingFloorGates } from "../core/floor";
 import { isKitNotice, NOTICE_REL, noticeExpired } from "../core/notice";
+import { sourceWarnings } from "../core/packs";
 import { isSafeRelPath } from "../core/plan";
 import { compareSemver, VERSION } from "../core/version";
 import { layoutFindings, PROJECTION_KINDS } from "../projection/check";
@@ -27,7 +28,8 @@ export interface Finding {
 }
 
 export const FLOOR_KINDS = ["gate-floor", "floor-hook-missing", "floor-override", "full-allowed", "approvers"];
-export const DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "version-mismatch", "missing", "drifted", "gitignore", "entry-size", "upgrade-notice-expired", ...FLOOR_KINDS, ...PROJECTION_KINDS];
+export const PACK_KINDS = ["pack-unpinned", "pack-local-path"];
+export const DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "version-mismatch", "missing", "drifted", "gitignore", "entry-size", "upgrade-notice-expired", ...FLOOR_KINDS, ...PACK_KINDS, ...PROJECTION_KINDS];
 export const GITIGNORE_NEEDS = [".agents/state/", ".agents/local/", ".agents/reports/"];
 export const ENTRY_FILES = ["AGENTS.md", "CLAUDE.md"];
 export const ENTRY_LIMIT = 24 * 1024;
@@ -167,6 +169,8 @@ function floorFindings(target: string, raw: Record<string, unknown> | null): Fin
   const verify = raw && isObjAny(raw.verify) ? raw.verify : null;
   if (verify?.fullOnlyInCI === false) out.push({ kind: "full-allowed", severity: "warn", path: META_REL, hint: "verify.fullOnlyInCI 가 false 다. 에이전트 세션의 full 차단은 그대로지만 사람 · git hook 의 full 이 열린다(팀 결정이면 MR 로 남긴다)" });
   out.push(...approverFindings(raw));
+  const packs = raw && Array.isArray(raw.packs) ? raw.packs.filter((x): x is string => typeof x === "string") : [];
+  for (const src of packs) for (const w of sourceWarnings(target, src)) out.push({ kind: w.kind, severity: "warn", path: META_REL, hint: w.hint });
   return out;
 }
 

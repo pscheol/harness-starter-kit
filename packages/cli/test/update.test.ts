@@ -369,11 +369,8 @@ describe("update — 상태 · 버전 · 플래그", () => {
     expect(fs.existsSync(path.join(path.dirname(target), "outside.md"))).toBe(false);
   });
 
-  it("--packs · --tools 는 exit 2 와 제공 단계", async () => {
+  it("--tools 는 exit 2 와 제공 단계(--packs 는 HK-14 에서 들어왔다 — packs.test.ts)", async () => {
     const { templates, cli } = await installedFixture();
-    const packs = await cli("update", ["--packs", "--templates", templates]);
-    expect(packs.code).toBe(2);
-    expect(packs.stderr).toContain("P18");
     const tools = await cli("update", ["--tools", "--templates", templates]);
     expect(tools.code).toBe(2);
     expect(tools.stderr).toContain("P22");
