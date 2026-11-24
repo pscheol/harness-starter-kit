@@ -73,6 +73,26 @@
           "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/dispatch.sh harness-h-end scripts/hooks/h.sh",
           "timeout": 15
         }
+      },
+      {
+        "id": "harness-i-wt-create",
+        "event": "WorktreeCreate",
+        "script": "scripts/hooks/i.sh",
+        "hook": {
+          "type": "command",
+          "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/dispatch.sh harness-i-wt-create scripts/hooks/i.sh",
+          "timeout": 60
+        }
+      },
+      {
+        "id": "harness-j-wt-remove",
+        "event": "WorktreeRemove",
+        "script": "scripts/hooks/j.sh",
+        "hook": {
+          "type": "command",
+          "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/dispatch.sh harness-j-wt-remove scripts/hooks/j.sh",
+          "timeout": 60
+        }
       }
     ],
     "codex": [
@@ -287,6 +307,26 @@
           "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/dispatch.sh harness-h-end scripts/hooks/h.sh",
           "timeout": 15
         }
+      },
+      {
+        "id": "harness-i-wt-create",
+        "event": "WorktreeCreate",
+        "script": "scripts/hooks/i.sh",
+        "hook": {
+          "type": "command",
+          "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/dispatch.sh harness-i-wt-create scripts/hooks/i.sh",
+          "timeout": 60
+        }
+      },
+      {
+        "id": "harness-j-wt-remove",
+        "event": "WorktreeRemove",
+        "script": "scripts/hooks/j.sh",
+        "hook": {
+          "type": "command",
+          "command": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/dispatch.sh harness-j-wt-remove scripts/hooks/j.sh",
+          "timeout": 60
+        }
       }
     ],
     "codex": [
@@ -452,6 +492,10 @@
     "_ g.sh",
     "scripts/hooks/h.sh",
     "_ h.sh",
+    "scripts/hooks/i.sh",
+    "_ i.sh",
+    "scripts/hooks/j.sh",
+    "_ j.sh",
     "scripts/hooks/session-start.sh",
     "_ session-start.sh",
     "scripts/hooks/session-register.sh",

@@ -279,6 +279,29 @@ class NewTest(WorktreeCase):
         self.assertIn("pnpm install --frozen-lockfile --prefer-offline", result.stdout)
         self.assertIn("uv sync --frozen", result.stdout)
 
+    def test_deps_flag_runs_the_install_command_in_the_unit_folder(self):
+        write(self.main / "web/pnpm-lock.yaml", "lockfileVersion: 9\n")
+        git(self.main, "add", "-A")
+        git(self.main, "commit", "-q", "-m", "pnpm")
+        git(self.main, "push", "-q", "origin", "develop")
+        bin_dir = self.base / "bin"
+        bin_dir.mkdir()
+        fake = bin_dir / "pnpm"
+        fake.write_text('#!/bin/sh\necho "$@" > pnpm-ran.txt\n', encoding="utf-8")
+        fake.chmod(0o755)
+        path = Path(self.new("ACME-1", "--deps", PATH=f"{bin_dir}:{os.environ['PATH']}")["path"])
+        self.assertEqual("install --frozen-lockfile --prefer-offline", (path / "web/pnpm-ran.txt").read_text(encoding="utf-8").strip())
+
+    def test_open_flag_launches_the_ide_after_creating(self):
+        bin_dir = self.base / "bin"
+        bin_dir.mkdir()
+        log = self.base / "code.log"
+        fake = bin_dir / "code"
+        fake.write_text(f'#!/bin/sh\necho "$@" >> "{log}"\n', encoding="utf-8")
+        fake.chmod(0o755)
+        path = self.new("ACME-1", "--open", PATH=f"{bin_dir}:{os.environ['PATH']}")["path"]
+        self.assertEqual(f"-n {path}", log.read_text(encoding="utf-8").strip())
+
     def test_npm_node_modules_is_cloned_when_lock_is_identical(self):
         if sys.platform != "darwin":
             self.skipTest("APFS 복제는 macOS 만")
