@@ -117,15 +117,28 @@ def verify_changed(sb: Sandbox, config: str, report: Report, tag: str) -> None:
         report.add(config, f"S7.verify-changed{tag}", "fail", out[-400:])
 
 
+def verify_note(sb: Sandbox, r) -> str:
+    """실패한 검증의 이유 — verify-last.json 의 상태 · 미완료 · 실패한 단계(출력은 JSON 이라 끝 줄만으로는 알 수 없다)."""
+    try:
+        last = json.loads(sb.read(".agents/state/verify-last.json"))
+    except (OSError, ValueError):
+        return (r.stdout + r.stderr)[-300:]
+    failed = [str(s.get("label")) for s in last.get("steps", []) if s.get("status") not in ("passed", "skipped")]
+    return f"status {last.get('status')} · 미완료 {last.get('incomplete') or []} · 실패 단계 {failed}"[:400]
+
+
 def merge_and_done(sb: Sandbox, config: str, report: Report, issue: dict, tag: str) -> None:
     """S8 MR 승인 → 병합 → done 승인."""
     key = issue["key"]
+    # S7 문서 반영(/kns-docs 몫): 이슈가 생기면 기능 문서의 백로그 쪽이 바뀐다 — 다시 만들어 커밋해야 affected 의 기능 문서 검사가 통과한다
+    docs = sb.run("python3", "tools/docs/feature_docs.py", "build", check=False, timeout=600)
+    report.add(config, f"S7.feature-docs{tag}", "pass" if docs.returncode == 0 else "fail", "" if docs.returncode == 0 else (docs.stdout + docs.stderr)[-300:])
+    if sb.git("status", "--porcelain"):
+        sb.commit(f"docs: {key} 기능 문서")
     # mr 앞 조건: 같은 HEAD · 깨끗한 트리의 affected 검증 통과 기록(sdd_gates verify_reasons)
     r = sb.run("bash", "scripts/verify.sh", "--affected", check=False, timeout=900)
     if r.returncode != 0:
-        out = (r.stdout + r.stderr).strip()
-        tools = re.search(r"설치되지 않|not found|없다", out)
-        report.add(config, f"S8.verify-affected{tag}", "skip" if tools else "fail", out.splitlines()[-1][:200] if out else f"exit {r.returncode}")
+        report.add(config, f"S8.verify-affected{tag}", "fail", verify_note(sb, r))
         raise Skip("affected 검증을 통과하지 못해 mr 앞 조건을 채울 수 없다")
     report.add(config, f"S8.verify-affected{tag}", "pass")
     status, body = sb.approve({"issue": key}, "mr", "MR 확인")

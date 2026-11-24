@@ -46,6 +46,11 @@ def remove_modules(sb: Sandbox, config: str, report: Report, baseline: dict) -> 
 
 def lifecycle(sb: Sandbox, config: str, report: Report, aidlc: bool, tag: str) -> None:
     """S1~S9. 승인 API 가 닫힌 환경(에이전트 세션)에서는 승인 앞까지만 돌고 건너뜀으로 적는다."""
+    # 앞 바퀴가 이슈 브랜치에서 멈췄을 수 있다 — 관리 페이지는 메인 폴더가 base(develop)일 때만 문서를 저장한다
+    if sb.git("rev-parse", "--abbrev-ref", "HEAD") != "develop":
+        if sb.git("status", "--porcelain"):
+            sb.commit("chore: 앞 바퀴 정리")
+        sb.git("switch", "-q", "develop")
     key = scenario.design(sb, config, report, aidlc, tag)
     sb.start_dashboard()
     try:
