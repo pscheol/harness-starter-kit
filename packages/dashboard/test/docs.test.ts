@@ -40,7 +40,7 @@ describe("허용 목록 밖 경로 저장은 403 이고 파일이 그대로다(�
       ".agents/docs/intents/INT-1-pay-reform/questions.md",
       ".agents/docs/intents/INT-1-pay-reform/plans/screens/a.html",
       ".agents/rules/guardrails.md",
-      ".agents/harness-kit.json",
+      ".agents/knots-sync.json",
       "scripts/verify.sh",
       "docs/features/upload.md",
     ];

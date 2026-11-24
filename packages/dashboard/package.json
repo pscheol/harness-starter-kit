@@ -1,5 +1,5 @@
 {
-  "name": "@harness-kit/dashboard",
+  "name": "@knots-sync/dashboard",
   "version": "2.0.0-alpha.0",
   "private": true,
   "description": "관리 페이지 서버 — CLI 번들(packages/cli/dist/cli.js)에 묶인다. 런타임 의존성 0",

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""/hx-review 의 결정적 부분(설계 09 §3.1). 리뷰 판단은 사람이 연 리뷰 세션이 하고, 이 스크립트는 모델을 부르지 않는다.
+"""/kns-review 의 결정적 부분(설계 09 §3.1). 리뷰 판단은 사람이 연 리뷰 세션이 하고, 이 스크립트는 모델을 부르지 않는다.
 
     python3 scripts/harness/review.py collect <!123|#45|브랜치> [--platform github|gitlab]   입력 모으기(체크아웃하지 않는다)
     python3 scripts/harness/review.py publish <이슈키> [--no-comment]                       findings.json → 보고서 · 요약 코멘트
@@ -58,7 +58,7 @@ def git_text(root, *arguments):
 def harness_root():
     root = review_state.harness_root(Path.cwd())
     if root is None:
-        raise Usage("하네스 루트(.agents/harness-kit.json)를 찾지 못했다")
+        raise Usage("하네스 루트(.agents/knots-sync.json)를 찾지 못했다")
     return root
 
 
@@ -284,7 +284,7 @@ def open_counts(directory, data, root):
     """리뷰 시점의 열린 수: MR head 의 review.md · approvals.md(collect 가 받은 것)로 계산한다."""
     entries = approvals.parse((directory / "sdd/approvals.md").read_bytes())["entries"] if (directory / "sdd/approvals.md").is_file() else []
     rows = review_state.review_rows((directory / "sdd/review.md").read_text(encoding="utf-8")) if (directory / "sdd/review.md").is_file() else {}
-    policy = approvals.policy_of(review_state.read_json(root / ".agents/harness-kit.json"))
+    policy = approvals.policy_of(review_state.read_json(root / ".agents/knots-sync.json"))
     return review_state.classify(data["findings"], rows, entries, policy)[1]
 
 
@@ -328,7 +328,7 @@ def comment(options):
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description="/hx-review 의 결정적 부분")
+    parser = argparse.ArgumentParser(description="/kns-review 의 결정적 부분")
     commands = parser.add_subparsers(dest="command", required=True)
     first = commands.add_parser("collect")
     first.add_argument("mr")

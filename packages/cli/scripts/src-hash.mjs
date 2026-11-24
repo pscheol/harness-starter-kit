@@ -48,7 +48,7 @@ export function srcHash(cliDir) {
   return crypto.createHash("sha256").update(lines.join("")).digest("hex");
 }
 
-const BANNER_RE = /^\/\/ harness-kit \S+ · src-sha256 ([0-9a-f]{64})/m;
+const BANNER_RE = /^\/\/ knots-sync \S+ · src-sha256 ([0-9a-f]{64})/m;
 
 /** 번들 파일 머리에서 소스 해시를 읽는다. 없으면 null. */
 export function bannerHash(bundleFile) {

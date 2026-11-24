@@ -31,7 +31,7 @@ await build({
   logLevel: "warning",
   define: { __HK_VERSION__: JSON.stringify(pkg.version), __HK_STATIC__: JSON.stringify(staticMap()) },
   banner: {
-    js: `#!/usr/bin/env node\n// harness-kit ${pkg.version} · src-sha256 ${hash} · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다`,
+    js: `#!/usr/bin/env node\n// knots-sync ${pkg.version} · src-sha256 ${hash} · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다`,
   },
 });
 fs.chmodSync(OUT, 0o755);

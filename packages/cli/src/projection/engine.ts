@@ -30,7 +30,7 @@ export function buildContext(args: { view: RepoView; spec: ProjectionSpec; token
   const findings: Finding[] = [];
   const skills = sources.skills.filter((s) => {
     if (!skillModelProblem(s)) return true;
-    const kit = s.source.slice(s.source.lastIndexOf("/") + 1).startsWith("hx-");
+    const kit = s.source.slice(s.source.lastIndexOf("/") + 1).startsWith("kns-");
     findings.push({ kind: "skill-model-field", severity: kit ? "error" : "warn", path: `${s.source}/SKILL.md`, hint: "context: fork 가 아닌 스킬에 model · effort 를 두지 않는다(그 턴의 사람 세션 모델이 바뀐다)" });
     return !kit;
   });
@@ -48,10 +48,10 @@ export function buildContext(args: { view: RepoView; spec: ProjectionSpec; token
       findings.push(...merged.findings);
     }
   } catch (err) {
-    if (err instanceof HooksError) throw new CliError(EXIT.STATE, err.message, "`.agents/hooks.json` 을 고치거나 harness-kit repair 로 킷 판을 되살린다");
+    if (err instanceof HooksError) throw new CliError(EXIT.STATE, err.message, "`.agents/hooks.json` 을 고치거나 knots-sync repair 로 킷 판을 되살린다");
     throw err;
   }
-  if (parsed === null) findings.unshift({ kind: "hooks-missing", severity: "error", path: HOOKS_REL, hint: "훅 원본이 없어 하네스 훅을 만들지 않는다 — harness-kit repair 로 되살린다" });
+  if (parsed === null) findings.unshift({ kind: "hooks-missing", severity: "error", path: HOOKS_REL, hint: "훅 원본이 없어 하네스 훅을 만들지 않는다 — knots-sync repair 로 되살린다" });
   return { ...args, sources, skills, roles, rules: sources.rules, hooks: parsed ?? [], hooksPresent: parsed !== null, findings };
 }
 
@@ -242,7 +242,7 @@ export class Engine {
     if (v1 && cur !== null) {
       const unmodified = shaOf(v1) !== null && sha256(cur) === shaOf(v1);
       if (w.kind === "claude-md") {
-        const hasBlock = cur.split("\n").some((l) => l.startsWith("<!-- harness-kit:begin claude"));
+        const hasBlock = cur.split("\n").some((l) => l.startsWith("<!-- knots-sync:begin claude"));
         if (unmodified) {
           cur = null;
           created = true;

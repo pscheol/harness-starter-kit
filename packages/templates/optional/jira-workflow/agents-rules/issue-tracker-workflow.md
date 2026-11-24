@@ -76,8 +76,8 @@ paths:
 `issue-tracker.yml` 의 `statusMap` 은 킷 단계 여덟 개(백로그 · 요구사항 작성 · 요구사항 승인 대기 · 설계 · 구현 중 · 검증 · 완료 · 배포됨)를 Jira 상태 ID 에 맞춘다.
 
 - 에이전트 몫 전이: 백로그 · 요구사항 작성 · 요구사항 승인 대기 · 검증. 나머지 넷(설계 · 구현 중 · 완료 · 배포됨)은 사람이 승인 전이로 옮긴다.
-- `npx harness-kit sync jira` — 킷 단계에 맞춰 에이전트 몫 전이만 하고 원격 링크(SDD 폴더 · MR)를 더한다. 설명은 고치지 않는다. 승인 전이를 요청받으면 거부한다.
-- `npx harness-kit sync jira --approvals` — 사람이 한 승인 전이를 REST changelog 로 읽어 `approvals.md`(경로 `jira`, 근거 `changelog <id>`)에 덧붙인다. 같은 기록은 한 번만, 승인자 목록 밖은 경고만 한다. 채팅의 "승인" 은 승인이 아니다.
+- `npx knots-sync sync jira` — 킷 단계에 맞춰 에이전트 몫 전이만 하고 원격 링크(SDD 폴더 · MR)를 더한다. 설명은 고치지 않는다. 승인 전이를 요청받으면 거부한다.
+- `npx knots-sync sync jira --approvals` — 사람이 한 승인 전이를 REST changelog 로 읽어 `approvals.md`(경로 `jira`, 근거 `changelog <id>`)에 덧붙인다. 같은 기록은 한 번만, 승인자 목록 밖은 경고만 한다. 채팅의 "승인" 은 승인이 아니다.
 - `sync.method: none` 이거나 모듈이 꺼져 있으면 아무것도 하지 않는다. 보드는 킷 단계에서 계산한 같은 여덟 상태로 돈다.
 
 ## 6. 코멘트 규약
@@ -140,7 +140,7 @@ paths:
 - 티켓에 없어 추측해야 하는 것은 `[NEEDS CLARIFICATION]` 으로 남긴다. 티켓에 없다고 지어내지 않는다.
 - **requirements 상단에 티켓 키를 남긴다.** 나중에 이 기능이 왜 있는지 되짚는 유일한 실마리다.
 - 리뷰 요청(⑥)에서 **티켓 전이와 tasks `state` 변경을 함께** 한다. 하나만 하면 그 순간부터 보드가 거짓말한다.
-- 이 흐름을 한 번에 도는 명령이 `/hx-ticket` 이다. 트래커만 만지려면 `/hx-issue`.
+- 이 흐름을 한 번에 도는 명령이 `/kns-ticket` 이다. 트래커만 만지려면 `/kns-issue`.
 
 ## 11. 안티-규칙
 

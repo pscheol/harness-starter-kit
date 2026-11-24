@@ -1,0 +1,4 @@
+interface:
+  display_name: "kns-clarify"
+  short_description: "요구사항 모호성 해소"
+  default_prompt: "$kns-clarify 스킬로 요청한 작업을 진행해 주세요."

@@ -29,6 +29,7 @@ import { callHandler } from "./handlers";
 import { designHarness, fillPlaceholders, implementHarness, toolHarnessName } from "./roles";
 import { Rollback } from "./rollback";
 import { checkTool, decideInstall, displayCmd, installOffer, platformOf, rangeOf, runCmd, type ToolState } from "./tools";
+import { lockFile } from "../core/legacy-names";
 
 export function isExternalModule(templatesDir: string, id: string): boolean {
   return loadModuleOrNull(templatesDir, id)?.kind === "external";
@@ -67,7 +68,7 @@ function measureOf(l: Loaded, root: string, templatesDir: string, harness: strin
 
 function readEntries(root: string): LockEntry[] | null {
   try {
-    const j = JSON.parse(fs.readFileSync(path.join(root, LOCK_REL), "utf8")) as { entries?: LockEntry[] };
+    const j = JSON.parse(fs.readFileSync(lockFile(root), "utf8")) as { entries?: LockEntry[] };
     return Array.isArray(j.entries) ? j.entries : null;
   } catch {
     return null;
@@ -83,9 +84,9 @@ function checkKitRange(decl: ModuleDecl): void {
 function checkRequires(l: Loaded, decl: ModuleDecl): void {
   const on = l.before.modules;
   const hit = decl.conflicts.filter((c) => on.includes(c));
-  if (hit.length) throw new CliError(EXIT.STATE, `${decl.id} 모듈은 ${hit.join(", ")} 와 같이 켤 수 없다(충돌)`, `먼저 harness-kit remove ${hit.join(" ")}`);
+  if (hit.length) throw new CliError(EXIT.STATE, `${decl.id} 모듈은 ${hit.join(", ")} 와 같이 켤 수 없다(충돌)`, `먼저 knots-sync remove ${hit.join(" ")}`);
   const missing = decl.requires.modules.filter((r) => !on.includes(r));
-  if (missing.length) throw new CliError(EXIT.STATE, `${decl.id} 모듈은 먼저 ${missing.join(", ")} 를 켜야 한다`, missing.map((m) => `harness-kit add ${m}`).join(" · "));
+  if (missing.length) throw new CliError(EXIT.STATE, `${decl.id} 모듈은 먼저 ${missing.join(", ")} 를 켜야 한다`, missing.map((m) => `knots-sync add ${m}`).join(" · "));
 }
 
 interface ToolOutcome {
@@ -212,7 +213,7 @@ export async function addExternal(ctx: Ctx, kit: ReturnType<typeof kitOf>, id: s
   const meta0 = asRecord(l0.inst.meta);
   const tool = decl.requires.tools[0] ?? null;
   const prompter = prompterOf(ctx);
-  const lines: string[] = [`harness-kit add ${id} — ${l0.target}`];
+  const lines: string[] = [`knots-sync add ${id} — ${l0.target}`];
   const log: StepLog[] = [];
   try {
     // 3. 도구
@@ -318,8 +319,8 @@ export async function addExternal(ctx: Ctx, kit: ReturnType<typeof kitOf>, id: s
         data.reverted = true;
         return { code: EXIT.HUMAN, lines, data };
       }
-    } else if (added > THRESHOLD_BYTES) lines.push(`  ⚠ 늘어난 양이 ${THRESHOLD_BYTES.toLocaleString("en-US")}바이트를 넘는다 — 되돌리려면 harness-kit remove ${id}`);
-    lines.push("  다음: harness-kit doctor");
+    } else if (added > THRESHOLD_BYTES) lines.push(`  ⚠ 늘어난 양이 ${THRESHOLD_BYTES.toLocaleString("en-US")}바이트를 넘는다 — 되돌리려면 knots-sync remove ${id}`);
+    lines.push("  다음: knots-sync doctor");
     return { code: kitCode, lines, data };
   } finally {
     prompter?.close();
@@ -357,7 +358,7 @@ export async function removeExternal(ctx: Ctx, kit: ReturnType<typeof kitOf>, id
   const dryRun = dryRunOf(ctx);
   const decl = loadModule(kit.loc.dir, id);
   const l = loadForChange(ctx, "remove", kit);
-  const lines: string[] = [`harness-kit remove ${id} — ${l.target}`];
+  const lines: string[] = [`knots-sync remove ${id} — ${l.target}`];
   if (!l.before.modules.includes(id)) {
     lines.push(`  · 켜져 있지 않다 — 건너뛴다: ${id}`);
     return { code: EXIT.OK, lines, data: { command: "remove", module: id, target: l.target, dryRun, notOn: true } };
@@ -395,7 +396,7 @@ export async function removeExternal(ctx: Ctx, kit: ReturnType<typeof kitOf>, id
     data.measure = { harness, before: compactMeasure(before), after: compactMeasure(after) };
     const left = doctorFor(ctx, kit, id).filter((f) => f.kind === "external-hooks-left");
     for (const f of left) lines.push(`  · ${f.hint}`);
-    lines.push("  다음: harness-kit doctor");
+    lines.push("  다음: knots-sync doctor");
   } else lines.push("  (dry-run — 쓰지 않았다)");
   return { code, lines, data };
 }

@@ -19,6 +19,7 @@ import { mergeEntries, needsHuman, projectionConflicts, projectionData, projecti
 import { addProject, registryFile } from "../../../dashboard/src/projects";
 import { addExternal } from "../modules/engine";
 import { kitOf } from "./change";
+import { metaFile } from "../core/legacy-names";
 
 const TOKEN_FLAGS: Record<string, string> = {
   name: "PROJECT_NAME",
@@ -114,8 +115,8 @@ function assertInstallable(target: string): void {
   if (st && !(st.isDirectory() || (st.isSymbolicLink() && fs.statSync(target).isDirectory()))) {
     throw new CliError(EXIT.STATE, `대상이 폴더가 아니다: ${target}`);
   }
-  if (fs.existsSync(path.join(target, META_REL))) {
-    throw new CliError(EXIT.STATE, `이미 설치된 리포다: ${path.join(target, META_REL)}`, "킷 갱신은 harness-kit update, 하네스 · 모듈 추가는 harness-kit add 다. 지금 상태는 harness-kit doctor");
+  if (fs.existsSync(metaFile(target))) {
+    throw new CliError(EXIT.STATE, `이미 설치된 리포다: ${metaFile(target)}`, "킷 갱신은 knots-sync update, 하네스 · 모듈 추가는 knots-sync add 다. 지금 상태는 knots-sync doctor");
   }
 }
 
@@ -156,20 +157,20 @@ function lockText(plan: Plan, source: string): string {
       ? { path: o.path, op: "copy", owner: "kit", sha256: o.sha256, layer: o.layer }
       : { path: o.path, op: "copy", owner: "user", sha256: null, layer: o.layer },
   );
-  return serializeLock({ schema: "harness-kit.lock/v2", kit: { version: VERSION, source }, packs: [], entries: mergeEntries(copies, plan.projection) });
+  return serializeLock({ schema: "knots-sync.lock/v2", kit: { version: VERSION, source }, packs: [], entries: mergeEntries(copies, plan.projection) });
 }
 
 const STATE_LINE = `  상태 파일: ${META_REL} · ${LOCK_REL} · ${MANIFEST_PATH}`;
 
 /**
- * 설치가 끝나면 이 컴퓨터 등록부(~/.config/harness-kit/projects.json)에 리포를 더한다(사용자 결정 2026-11-24, 06 §3.17).
- * `--no-register` 면 하지 않는다. 등록부 위치를 정할 HOME · HARNESS_KIT_CONFIG_DIR 이 없으면 하지 않는다(실제 홈 추측 금지).
- * 실패해도 설치는 성공이다 — 사람이 `harness-kit projects add .` 로 다시 한다.
+ * 설치가 끝나면 이 컴퓨터 등록부(~/.config/knots-sync/projects.json)에 리포를 더한다(사용자 결정 2026-11-24, 06 §3.17).
+ * `--no-register` 면 하지 않는다. 등록부 위치를 정할 HOME · KNOTS_SYNC_CONFIG_DIR 이 없으면 하지 않는다(실제 홈 추측 금지).
+ * 실패해도 설치는 성공이다 — 사람이 `knots-sync projects add .` 로 다시 한다.
  */
 function registerAfterInit(ctx: Ctx, target: string): { status: "added" | "exists" | "skipped" | "failed"; reason?: string; name?: string; file?: string } {
   if (bool(ctx.values, "no-register")) return { status: "skipped", reason: "--no-register" };
   const env = ctx.io.env;
-  const override = env.HARNESS_KIT_CONFIG_DIR;
+  const override = env.KNOTS_SYNC_CONFIG_DIR;
   const home = env.HOME ?? "";
   if (!(override && path.isAbsolute(override)) && !home) return { status: "skipped", reason: "HOME 이 없다" };
   try {
@@ -181,9 +182,9 @@ function registerAfterInit(ctx: Ctx, target: string): { status: "added" | "exist
 }
 
 function registryLine(r: ReturnType<typeof registerAfterInit>): string {
-  if (r.status === "added") return `  등록부: ${r.name} 를 더했다(${r.file}) — 관리 페이지 --all 에 보인다. 빼려면 harness-kit projects remove ${r.name}`;
+  if (r.status === "added") return `  등록부: ${r.name} 를 더했다(${r.file}) — 관리 페이지 --all 에 보인다. 빼려면 knots-sync projects remove ${r.name}`;
   if (r.status === "exists") return `  등록부: 이미 있다(${r.name})`;
-  if (r.status === "failed") return `  ⚠ 등록부에 더하지 못했다: ${r.reason} — harness-kit projects add . 로 다시 한다`;
+  if (r.status === "failed") return `  ⚠ 등록부에 더하지 못했다: ${r.reason} — knots-sync projects add . 로 다시 한다`;
   return `  등록부: 더하지 않았다(${r.reason})`;
 }
 
@@ -213,12 +214,12 @@ export async function runInit(ctx: Ctx): Promise<CommandResult> {
     const human = needsHuman(plan.projection, plan.projectionFindings);
     const conflicts = projectionConflicts(plan.projection);
     if (conflicts.length) data.conflicts = conflicts;
-    const lines = [`harness-kit ${command} — ${target}`, selectionLine(selection), ...(selection.retiredModules ?? []).map((m) => retiredNote(m, "flag"))];
+    const lines = [`knots-sync ${command} — ${target}`, selectionLine(selection), ...(selection.retiredModules ?? []).map((m) => retiredNote(m, "flag"))];
     if (selection.retiredModules) data.retiredModules = selection.retiredModules;
     const projectionShown = projectionLines(plan.projection, plan.projectionFindings, ctx.quiet, command === "plan" && !ctx.quiet, new Set(["create"]));
     if (command === "plan") {
       lines.push(...shown.map(opLine), countsLine(plan), ...projectionShown, STATE_LINE);
-      if (externals.length) lines.push(`  외부 도구 모듈 ${externals.join(", ")}: init 뒤 add 단계로 켠다(도구 확인 · 설치 안내 · 외부 명령 · 측정 — harness-kit add ${externals.join(" ")} --dry-run 으로 계획을 본다)`);
+      if (externals.length) lines.push(`  외부 도구 모듈 ${externals.join(", ")}: init 뒤 add 단계로 켠다(도구 확인 · 설치 안내 · 외부 명령 · 측정 — knots-sync add ${externals.join(" ")} --dry-run 으로 계획을 본다)`);
       lines.push("  (plan — 쓰지 않았다)");
       data.externalModules = externals;
       return { code: EXIT.OK, data, lines };
@@ -246,14 +247,14 @@ export async function runInit(ctx: Ctx): Promise<CommandResult> {
           if (o.code !== EXIT.OK) code = Math.max(code, o.code);
         } catch (err) {
           if (!(err instanceof CliError)) throw err;
-          lines.push(`  ✖ ${id}: ${err.message}`, ...(err.hint ? err.hint.split("\n").map((h) => `    ${h}`) : []), `  init 은 끝났다. 모듈은 도구를 준비한 뒤 harness-kit add ${id} 로 켠다`);
+          lines.push(`  ✖ ${id}: ${err.message}`, ...(err.hint ? err.hint.split("\n").map((h) => `    ${h}`) : []), `  init 은 끝났다. 모듈은 도구를 준비한 뒤 knots-sync add ${id} 로 켠다`);
           results.push({ module: id, error: { code: err.code, message: err.message } });
           code = Math.max(code, err.code);
         }
       }
       data.modulesResult = results;
     }
-    lines.push("  다음: harness-kit doctor");
+    lines.push("  다음: knots-sync doctor");
     return { code, data, lines };
   } finally {
     prompter?.close();

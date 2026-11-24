@@ -1,5 +1,5 @@
 /**
- * harness-kit intake(설계 08 §3.11, HK-19 design §4) — 관리 페이지 POST /intake 와 같은 처리 함수를 HTTP 없이 부른다.
+ * knots-sync intake(설계 08 §3.11, HK-19 design §4) — 관리 페이지 POST /intake 와 같은 처리 함수를 HTTP 없이 부른다.
  * 터미널은 첨부를 로컬 경로로 넘긴다(크기 상한은 intake.py 의 meta intake.maxFileMB · maxTotalMB). 세션에는 아무것도 보내지 않는다.
  */
 import fs from "node:fs";
@@ -42,7 +42,7 @@ export async function runIntake(ctx: Ctx): Promise<CommandResult> {
   const title = str(ctx, "title");
   const kind = str(ctx, "kind");
   const name = str(ctx, "name");
-  if (!title || !kind || !name) throw usageError("harness-kit intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--key 키] [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]… | --from jira:<키>|notion:<페이지> --name <영문-kebab> [--depth n] [--yes]");
+  if (!title || !kind || !name) throw usageError("knots-sync intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--key 키] [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]… | --from jira:<키>|notion:<페이지> --name <영문-kebab> [--depth n] [--yes]");
   const textArg = str(ctx, "text");
   const textFile = str(ctx, "text-file");
   if (textArg !== undefined && textFile !== undefined) throw usageError("--text 와 --text-file 은 하나만 쓴다");

@@ -1,4 +1,4 @@
-/** harness-kit CLI 진입점: Node 버전 확인 → 명령 → 출력 → 종료 코드(HK-8 design §7). */
+/** knots-sync CLI 진입점: Node 버전 확인 → 명령 → 출력 → 종료 코드(HK-8 design §7). */
 import { bool, parseCommandArgs } from "./cli/args";
 import type { CommandResult, Ctx, Io } from "./cli/context";
 import { runAdd } from "./commands/add";
@@ -66,9 +66,9 @@ const COMMANDS: Record<string, (ctx: Ctx) => CommandResult | Promise<CommandResu
   rules: runRules,
 };
 
-const USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 킷
+const USAGE = `knots-sync ${VERSION} — 하네스 엔지니어링 스타터 킷
 
-사용법: harness-kit <명령> [플래그]
+사용법: knots-sync <명령> [플래그]
 
 명령:
   init       킷을 리포에 설치한다(질문 또는 플래그)
@@ -104,47 +104,47 @@ init · plan: --stack --arch --domain --lang --agents <목록|all> --modules <�
              --issue-prefix --base --adopt --force --no-register(등록부에 더하지 않는다) --install-tools --allow-unverified(외부 도구 모듈 aidlc · entire 는 이름을 줄 때만 켠다)
 add · remove: <이름>…(하네스 claude codex cursor kiro · 모듈 jira-workflow multi-harness aidlc entire notion)
              add: --install-tools(도구가 없을 때 사람 터미널에서만 설치) --allow-unverified(검증 범위 밖 도구 버전을 허용)
-dashboard: --port --open --read-only --export <폴더> --all --root <dir> --workspace <file> · 관리 페이지 명령은 harness-kit <명령> --help
+dashboard: --port --open --read-only --export <폴더> --all --root <dir> --workspace <file> · 관리 페이지 명령은 knots-sync <명령> --help
 update: --accept-all --prune --forget <경로>(반복) --to <CLI 버전> --packs(메타 packs 의 팩만 받아 깐다) --tools(켠 외부 도구의 지금 · 최신 버전을 보이고 사람이 고른 것만 올린다 · --allow-unverified) · outdated: --check --source <git 원격>
 repair: --only missing,drifted,stale,merge · uninstall: --keep-state --keep-packs
 종료 코드: 0 성공 · 1 검사 문제 · 2 사용법 · 3 리포 상태 · 4 사람 판단 필요 · 5 실행 환경 · 130 중단
 `;
 
 const COMMAND_HELP: Record<string, string> = {
-  init: "harness-kit init [--stack S] [--arch A] [--agents claude,codex|all] [--modules m1,m2|all|none] [--yes] [--dry-run] [--json]\n",
-  plan: "harness-kit plan [init 과 같은 플래그] — 작업 목록만 출력한다\n",
-  doctor: "harness-kit doctor [--check] [--only 종류,…] [--json] — 종류: meta-invalid lock-invalid lock-v1 version-mismatch missing drifted gitignore entry-size\n",
-  list: "harness-kit list [--files] [--json]\n",
-  add: "harness-kit add <하네스|모듈>… [--dry-run] [--yes] [--install-tools] [--allow-unverified] [--json] — 그 몫만 깐다. 외부 도구 모듈(aidlc · entire)은 도구 확인 · 설치 안내 · 외부 명령 · 측정까지 한다. 도구가 없으면 exit 5, 검증 범위 밖이면 exit 4. 사람이 고친 매니페스트는 .new 로 받고 exit 4\n",
-  remove: "harness-kit remove <하네스|모듈>… [--dry-run] [--json] — 고치지 않은 그 몫만 지운다. 고친 파일을 남기면 exit 4\n",
-  outdated: "harness-kit outdated [--check] [--source <git 원격|경로>] [--json] — 소스: --source > HARNESS_KIT_SOURCE > lock kit.source. 닿지 못하면 '확인 못 함' 과 exit 0\n",
-  update: "harness-kit update [--dry-run] [--accept-all] [--prune] [--forget 경로]… [--to 버전] [--templates 폴더] [--json] — conflict 가 있으면 exit 4. update --packs 는 팩만(검사 실패 exit 3 · 팩 충돌 exit 4)\n",
-  repair: "harness-kit repair [--dry-run] [--only missing,drifted,stale,merge] [--json] — 되살리지 못한 missing 이 있으면 exit 4\n",
-  uninstall: "harness-kit uninstall [--dry-run] [--yes] [--keep-state] [--keep-packs] [--json] — 고친 파일을 남기면 exit 4. TTY 가 아니면 --yes\n",
-  dashboard: "harness-kit dashboard [--port <n>] [--open] [--read-only] [--export <폴더>] [--all | --root <dir> | --workspace <file>] — 127.0.0.1 에만 연다. 주소는 stdout, 승인 PIN 은 stderr\n",
-  status: "harness-kit status [--ops | --session | --intents | --intent <INT> [--gate codebase|plans] | --issues [--area --stage --intent] | --issue <키> | --doc <경로> | --verify [--issue] | --worktrees | --harness | --flow <INT> [--burn [--days n]] | --all] [--json]\n",
-  projects: "harness-kit projects list | add <폴더> | remove <이름|경로> [--json] — 등록부 ~/.config/harness-kit/projects.json\n",
-  approve: 'harness-kit approve <키> --gate <게이트> --phrase "<문구>" [--changes-requested [--rule-candidate]] [--json] — 사람 터미널에서만(에이전트 세션 · TTY 아님은 exit 3). deploy: harness-kit approve deploy:<배포 기록> --gate deploy --phrase "…" [--waive-rollback "<사유>"]\n',
-  answer: "harness-kit answer <INT|키> --list | <Q-n> --choice <A-D|other> [--text …] [--by <참석자 email>] [--json] — 사람 터미널에서만. 몹 세션이 열려 있으면 --by 필요\n",
-  mob: "harness-kit mob start <INT> --attendees a@x,b@y [--timebox 30] | mob next <INT> | mob close <INT> | mob status <INT> [--json] — 진행자 터미널(에이전트 세션은 exit 3)\n",
-  review: "harness-kit review show <키> | review decide <키> <F-n> --fix|--accept-risk --reason … [--json] — decide 는 사람 터미널에서만\n",
-  sessions: "harness-kit sessions [--machine] [--json]\n",
-  dispatch: "harness-kit dispatch --to <세션 id|키:역할|이름> --kind <종류> --path <파일>… [--text …] [--via socket|deeplink|queue] | dispatch list | dispatch drop <id>\n",
-  units: "harness-kit units propose <INT> --add-dep U-a:U-b | --remove-dep U-a:U-b | --split U-n=제목1|제목2 | --merge U-a,U-b | --order U-a,U-b [--reason …] | units discard <INT>\n",
-  flow: "harness-kit flow gates [--add <게이트> --after <게이트> | --remove <게이트>] [--json]\n",
-  quality: "harness-kit quality [--findings [--issue <키>] [--severity S] [--new]] [--json]\n",
-  history: "harness-kit history [--q …] [--session <id>] [--role <역할>] [--json] — ~/.config/harness-kit/config.json 의 history 가 on 일 때만. 꺼져 있으면 exit 1(history_off)\n",
-  skills: "harness-kit skills [--stage <단계>] [--harness <h>] [--conflicts] [--errors] [--all] [--no-user] [--refresh] [--json] — 읽기만 한다. 단계는 설계 · 구현 · 검증 · 반영 · 운영(영어도 된다)\n",
-  usage: "harness-kit usage [--days n] [--harness h] [--sources] | usage --now | usage --kit [--json] — 대화 기록 읽기가 꺼져 있으면(기본) 킷이 덧붙인 양(--kit)만 보인다\n",
-  pack: "harness-kit pack new <이름> --dir <경로> [--from <파일|폴더>[#훅·검사 id]]… [--kit-range \">=2.0.0 <3.0.0\"] [--json] — --dir 은 빈 폴더나 없는 경로\n",
-  sync: "harness-kit sync aidlc [--intent <AI-DLC Intent 폴더>] [--key <Intent 키>] [--check] [--json] — AI-DLC 산출물을 intent.json · units.json 으로 옮긴다. 같은 입력이면 쓰지 않는다. --check 는 쓰지 않고 차이가 있으면 exit 1. sync jira [--approvals | --verify] [--issue <키> --to <상태>] [--dry-run] — Jira 와 맞춘다(jira-workflow 모듈, 에이전트 몫 전이만 · 승인 전이는 하지 않는다. --approvals 는 사람이 한 승인 전이를 approvals.md 로 가져온다. 모듈이 꺼져 있으면 exit 0). sync units [--check] [--unit <id>] [--adopt] — 배포 단위(tools/harness/units.json)에 공통 하네스를 복사한다. --check 줄 형식은 tools/harness/sync.py 와 같다\n",
-  intake: "harness-kit intake --from ops:<운영 기록>#INC-<n>|NX-<n> [--kind bug] [--name <영문-kebab>] — 운영 기록의 장애 · 다음 Intent 후보에서 접수한다\n  harness-kit intake --from jira:<키>|notion:<페이지 URL|id> --name <영문-kebab> [--kind …] [--key <Intent 키>] [--depth n] [--yes] — 외부 출처를 같은 형식 · 제한 · 비밀값 검사로 가져온다. 이미 가져온 출처면 diff 만 보이고(exit 4) --yes 로 반영한다. 토큰은 환경 변수(JIRA_API_TOKEN · JIRA_USER_EMAIL · NOTION_TOKEN)만 읽는다\n  harness-kit intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--area <영역>] [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]… [--json] — 비밀값이 든 글은 접수하지 않는다(exit 1)\n",
-  checkpoints: "harness-kit checkpoints [--issue <키>] [--json] | checkpoints <체크포인트 id> [--json] — Entire 체크포인트 목록(이슈 브랜치 커밋의 Entire-Checkpoint 트레일러) · 설명(entire checkpoint explain, 10초 제한)\n",
-  deploy: "harness-kit deploy plan <키…> [--env production] [--tag v2.3.0] | check <기록> [--require-approved] [--waive <사유>] | record <기록> --from-ci <URL|파일|폴더> | run --env <이름> [--record <기록>] [--rollback-test] [--to-sha <sha>] | result <기록> --from <파일> [--json]\n",
-  ops: "harness-kit ops new --topic <영문-kebab 2~5단어> [--from YYYY-MM-DD] [--to YYYY-MM-DD] | ops check [--json] — 읽기는 harness-kit status --ops [--json]\n",
-  metrics: "harness-kit metrics [--baseline [--force] [--adopted-at <날짜|커밋>]] [--verify-baseline] [--from YYYY-MM-DD --to YYYY-MM-DD] [--fill <운영 기록>] [--json] — 기준선 재계산 값이 다르면 exit 1\n",
-  rules: "harness-kit rules candidates [--since 30d] | list | promote RC-<n> | reject RC-<n> --reason \"…\" [--json] — promote · reject 는 사람 터미널에서만(exit 3)\n",
-  local: "harness-kit local sync [--dry-run] | local list [--json] — 개인 스킬 · Kiro 규칙 · 개인 훅(.claude/settings.local.json · .kiro/hooks/local-*). 공유 원본과 이름이 같으면 배치하지 않는다\n",
+  init: "knots-sync init [--stack S] [--arch A] [--agents claude,codex|all] [--modules m1,m2|all|none] [--yes] [--dry-run] [--json]\n",
+  plan: "knots-sync plan [init 과 같은 플래그] — 작업 목록만 출력한다\n",
+  doctor: "knots-sync doctor [--check] [--only 종류,…] [--json] — 종류: meta-invalid lock-invalid lock-v1 legacy-names version-mismatch missing drifted gitignore entry-size\n",
+  list: "knots-sync list [--files] [--json]\n",
+  add: "knots-sync add <하네스|모듈>… [--dry-run] [--yes] [--install-tools] [--allow-unverified] [--json] — 그 몫만 깐다. 외부 도구 모듈(aidlc · entire)은 도구 확인 · 설치 안내 · 외부 명령 · 측정까지 한다. 도구가 없으면 exit 5, 검증 범위 밖이면 exit 4. 사람이 고친 매니페스트는 .new 로 받고 exit 4\n",
+  remove: "knots-sync remove <하네스|모듈>… [--dry-run] [--json] — 고치지 않은 그 몫만 지운다. 고친 파일을 남기면 exit 4\n",
+  outdated: "knots-sync outdated [--check] [--source <git 원격|경로>] [--json] — 소스: --source > KNOTS_SYNC_SOURCE > lock kit.source. 닿지 못하면 '확인 못 함' 과 exit 0\n",
+  update: "knots-sync update [--dry-run] [--accept-all] [--prune] [--forget 경로]… [--to 버전] [--templates 폴더] [--json] — conflict 가 있으면 exit 4. update --packs 는 팩만(검사 실패 exit 3 · 팩 충돌 exit 4)\n",
+  repair: "knots-sync repair [--dry-run] [--only missing,drifted,stale,merge] [--json] — 되살리지 못한 missing 이 있으면 exit 4\n",
+  uninstall: "knots-sync uninstall [--dry-run] [--yes] [--keep-state] [--keep-packs] [--json] — 고친 파일을 남기면 exit 4. TTY 가 아니면 --yes\n",
+  dashboard: "knots-sync dashboard [--port <n>] [--open] [--read-only] [--export <폴더>] [--all | --root <dir> | --workspace <file>] — 127.0.0.1 에만 연다. 주소는 stdout, 승인 PIN 은 stderr\n",
+  status: "knots-sync status [--ops | --session | --intents | --intent <INT> [--gate codebase|plans] | --issues [--area --stage --intent] | --issue <키> | --doc <경로> | --verify [--issue] | --worktrees | --harness | --flow <INT> [--burn [--days n]] | --all] [--json]\n",
+  projects: "knots-sync projects list | add <폴더> | remove <이름|경로> [--json] — 등록부 ~/.config/knots-sync/projects.json\n",
+  approve: 'knots-sync approve <키> --gate <게이트> --phrase "<문구>" [--changes-requested [--rule-candidate]] [--json] — 사람 터미널에서만(에이전트 세션 · TTY 아님은 exit 3). deploy: knots-sync approve deploy:<배포 기록> --gate deploy --phrase "…" [--waive-rollback "<사유>"]\n',
+  answer: "knots-sync answer <INT|키> --list | <Q-n> --choice <A-D|other> [--text …] [--by <참석자 email>] [--json] — 사람 터미널에서만. 몹 세션이 열려 있으면 --by 필요\n",
+  mob: "knots-sync mob start <INT> --attendees a@x,b@y [--timebox 30] | mob next <INT> | mob close <INT> | mob status <INT> [--json] — 진행자 터미널(에이전트 세션은 exit 3)\n",
+  review: "knots-sync review show <키> | review decide <키> <F-n> --fix|--accept-risk --reason … [--json] — decide 는 사람 터미널에서만\n",
+  sessions: "knots-sync sessions [--machine] [--json]\n",
+  dispatch: "knots-sync dispatch --to <세션 id|키:역할|이름> --kind <종류> --path <파일>… [--text …] [--via socket|deeplink|queue] | dispatch list | dispatch drop <id>\n",
+  units: "knots-sync units propose <INT> --add-dep U-a:U-b | --remove-dep U-a:U-b | --split U-n=제목1|제목2 | --merge U-a,U-b | --order U-a,U-b [--reason …] | units discard <INT>\n",
+  flow: "knots-sync flow gates [--add <게이트> --after <게이트> | --remove <게이트>] [--json]\n",
+  quality: "knots-sync quality [--findings [--issue <키>] [--severity S] [--new]] [--json]\n",
+  history: "knots-sync history [--q …] [--session <id>] [--role <역할>] [--json] — ~/.config/knots-sync/config.json 의 history 가 on 일 때만. 꺼져 있으면 exit 1(history_off)\n",
+  skills: "knots-sync skills [--stage <단계>] [--harness <h>] [--conflicts] [--errors] [--all] [--no-user] [--refresh] [--json] — 읽기만 한다. 단계는 설계 · 구현 · 검증 · 반영 · 운영(영어도 된다)\n",
+  usage: "knots-sync usage [--days n] [--harness h] [--sources] | usage --now | usage --kit [--json] — 대화 기록 읽기가 꺼져 있으면(기본) 킷이 덧붙인 양(--kit)만 보인다\n",
+  pack: "knots-sync pack new <이름> --dir <경로> [--from <파일|폴더>[#훅·검사 id]]… [--kit-range \">=2.0.0 <3.0.0\"] [--json] — --dir 은 빈 폴더나 없는 경로\n",
+  sync: "knots-sync sync aidlc [--intent <AI-DLC Intent 폴더>] [--key <Intent 키>] [--check] [--json] — AI-DLC 산출물을 intent.json · units.json 으로 옮긴다. 같은 입력이면 쓰지 않는다. --check 는 쓰지 않고 차이가 있으면 exit 1. sync jira [--approvals | --verify] [--issue <키> --to <상태>] [--dry-run] — Jira 와 맞춘다(jira-workflow 모듈, 에이전트 몫 전이만 · 승인 전이는 하지 않는다. --approvals 는 사람이 한 승인 전이를 approvals.md 로 가져온다. 모듈이 꺼져 있으면 exit 0). sync units [--check] [--unit <id>] [--adopt] — 배포 단위(tools/harness/units.json)에 공통 하네스를 복사한다. --check 줄 형식은 tools/harness/sync.py 와 같다\n",
+  intake: "knots-sync intake --from ops:<운영 기록>#INC-<n>|NX-<n> [--kind bug] [--name <영문-kebab>] — 운영 기록의 장애 · 다음 Intent 후보에서 접수한다\n  knots-sync intake --from jira:<키>|notion:<페이지 URL|id> --name <영문-kebab> [--kind …] [--key <Intent 키>] [--depth n] [--yes] — 외부 출처를 같은 형식 · 제한 · 비밀값 검사로 가져온다. 이미 가져온 출처면 diff 만 보이고(exit 4) --yes 로 반영한다. 토큰은 환경 변수(JIRA_API_TOKEN · JIRA_USER_EMAIL · NOTION_TOKEN)만 읽는다\n  knots-sync intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--area <영역>] [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]… [--json] — 비밀값이 든 글은 접수하지 않는다(exit 1)\n",
+  checkpoints: "knots-sync checkpoints [--issue <키>] [--json] | checkpoints <체크포인트 id> [--json] — Entire 체크포인트 목록(이슈 브랜치 커밋의 Entire-Checkpoint 트레일러) · 설명(entire checkpoint explain, 10초 제한)\n",
+  deploy: "knots-sync deploy plan <키…> [--env production] [--tag v2.3.0] | check <기록> [--require-approved] [--waive <사유>] | record <기록> --from-ci <URL|파일|폴더> | run --env <이름> [--record <기록>] [--rollback-test] [--to-sha <sha>] | result <기록> --from <파일> [--json]\n",
+  ops: "knots-sync ops new --topic <영문-kebab 2~5단어> [--from YYYY-MM-DD] [--to YYYY-MM-DD] | ops check [--json] — 읽기는 knots-sync status --ops [--json]\n",
+  metrics: "knots-sync metrics [--baseline [--force] [--adopted-at <날짜|커밋>]] [--verify-baseline] [--from YYYY-MM-DD --to YYYY-MM-DD] [--fill <운영 기록>] [--json] — 기준선 재계산 값이 다르면 exit 1\n",
+  rules: "knots-sync rules candidates [--since 30d] | list | promote RC-<n> | reject RC-<n> --reason \"…\" [--json] — promote · reject 는 사람 터미널에서만(exit 3)\n",
+  local: "knots-sync local sync [--dry-run] | local list [--json] — 개인 스킬 · Kiro 규칙 · 개인 훅(.claude/settings.local.json · .kiro/hooks/local-*). 공유 원본과 이름이 같으면 배치하지 않는다\n",
 };
 
 function emitError(io: Io, command: string, err: CliError, json: boolean): number {
@@ -162,11 +162,11 @@ function emitError(io: Io, command: string, err: CliError, json: boolean): numbe
 /** 명령 이름 → 실행 함수. 없는 이름 · 예약 이름은 exit 2. 프로토타입 키(constructor 등)는 모르는 명령이다. */
 function commandOf(argv: string[], first: string, command: string): (ctx: Ctx) => CommandResult | Promise<CommandResult> {
   if (argv.length === 0) throw usageError("명령이 없다", USAGE.trimEnd());
-  if (command === "") throw usageError(`명령이 먼저 온다: ${first}`, "harness-kit --help");
+  if (command === "") throw usageError(`명령이 먼저 온다: ${first}`, "knots-sync --help");
   if (Object.hasOwn(RESERVED, command)) {
     throw usageError(`'${command}' 는 아직 없다 — ${RESERVED[command]}에서 제공한다`, `지금 있는 명령: ${Object.keys(COMMANDS).join(" · ")}`);
   }
-  if (!Object.hasOwn(COMMANDS, command)) throw usageError(`모르는 명령: ${command}`, "harness-kit --help");
+  if (!Object.hasOwn(COMMANDS, command)) throw usageError(`모르는 명령: ${command}`, "knots-sync --help");
   return COMMANDS[command] as (ctx: Ctx) => CommandResult | Promise<CommandResult>;
 }
 

@@ -13,7 +13,7 @@ class PackTest(unittest.TestCase):
         self.pack = json.loads((ROOT / "pack.json").read_text(encoding="utf-8"))
 
     def test_manifest(self):
-        self.assertEqual("harness-kit.pack/v1", self.pack["schema"])
+        self.assertEqual("knots-sync.pack/v1", self.pack["schema"])
         self.assertRegex(self.pack["name"], r"^[a-z][a-z0-9-]{1,30}$")
         self.assertRegex(self.pack["version"], r"^\d+\.\d+\.\d+")
         self.assertTrue(self.pack["requires"]["kit"])

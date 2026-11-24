@@ -12,7 +12,7 @@ from quality_fixture import QualityFixture
 from verify_fixture import IDENTITY
 
 AGENT_MARKERS = ("CLAUDECODE", "CLAUDE_CODE_MESSAGING_SOCKET", "CURSOR_AGENT")
-MARKER = "<!-- harness-kit:mr-summary -->"
+MARKER = "<!-- knots-sync:mr-summary -->"
 FAKE_CLI = r'''#!/usr/bin/env python3
 """가짜 {name}: PR(MR) 보기와 코멘트 API 만 흉내 낸다. 상태는 {state!r}."""
 import json, re, sys

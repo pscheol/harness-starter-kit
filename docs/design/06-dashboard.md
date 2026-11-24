@@ -10,7 +10,7 @@
 
 범위에 넣는 것:
 
-- `npx harness-kit dashboard` 서버(Node 표준 `http`), 접속 제한, 토큰, 요청 검사.
+- `npx knots-sync dashboard` 서버(Node 표준 `http`), 접속 제한, 토큰, 요청 검사.
 - 읽기 모듈과 캐시, 데이터 모델, REST API 전체.
 - 쓰기 규칙(허용 경로, 이슈 브랜치를 가진 폴더 찾기, 낙관적 동시성), 승인·질문 답 기록.
 - 세션 등록(`.agents/state/sessions/`), 작업 요청(소켓 · deep link · 대기함), 정적 내보내기.
@@ -50,7 +50,7 @@
 | DB-R25 | 문서 저장 · 승인 · 수정 요청 · 질문 답 · 변경 제안 저장은 세션에 아무것도 보내지 않는다. 세션 요청은 사람이 "저장하고 세션에 요청" · "세션에 요청" · `dispatch`를 고를 때만 간다. |
 | DB-R26 | 관리 페이지 서버와 CLI는 모델 API를 부르지 않고 모델 SDK를 의존성에 두지 않는다. |
 | DB-R27 | 전체 프로젝트 보기는 아무 파일도 쓰지 않는다. 쓰기는 들어간 리포 안에서 그 리포의 쓰기 검사로만 된다. |
-| DB-R28 | 이 컴퓨터 설정 `~/.config/harness-kit/config.json`의 `history`가 `"on"`이 아니면 서버와 CLI는 대화 기록(`~/.claude` · `~/.codex`)을 열지 않는다. 켜져 있어도 복사본을 남기지 않고 내보내기 · 커밋 · 세션 요청에 넣지 않는다. |
+| DB-R28 | 이 컴퓨터 설정 `~/.config/knots-sync/config.json`의 `history`가 `"on"`이 아니면 서버와 CLI는 대화 기록(`~/.claude` · `~/.codex`)을 열지 않는다. 켜져 있어도 복사본을 남기지 않고 내보내기 · 커밋 · 세션 요청에 넣지 않는다. |
 | DB-R29 | Unit 변경 제안을 저장해도 `units.json`은 바뀌지 않는다. 제안은 intent 게이트 승인 처리만 `units.json`에 옮긴다. |
 
 ## 3. 설계
@@ -58,7 +58,7 @@
 ### 3.1 구성
 
 ```text
-npx harness-kit dashboard [--port <n>] [--open] [--read-only] [--export <폴더>] [--all | --root <dir> | --workspace <file>]
+npx knots-sync dashboard [--port <n>] [--open] [--read-only] [--export <폴더>] [--all | --root <dir> | --workspace <file>]
 packages/dashboard/src/
 ├── server.ts        http.createServer, 127.0.0.1 바인드, 라우팅, ETag
 ├── guard.ts         Host · Origin · 토큰 · PIN · 크기 제한
@@ -74,7 +74,7 @@ packages/dashboard/src/
 시작 순서:
 
 1. 리포 해석: `git rev-parse --show-toplevel`과 `--git-common-dir`로 메인 폴더를 찾는다. worktree 안에서 실행해도 메인 폴더 기준으로 연다.
-2. `.agents/harness-kit.json`을 읽는다. 없거나 `schema`가 `harness-kit/v2`가 아니면 exit 3(02 §3.2 리포 상태 오류)과 `npx harness-kit doctor` 안내를 출력한다.
+2. `.agents/knots-sync.json`을 읽는다. 없거나 `schema`가 `knots-sync/v2`가 아니면 exit 3(02 §3.2 리포 상태 오류)과 `npx knots-sync doctor` 안내를 출력한다.
 3. `.agents/state/dashboard.json`이 있고 그 pid가 살아 있고 포트가 응답하면 그 주소를 출력하고 exit 0(DB-R23).
 4. 에이전트 세션 판정(§3.11). 해당하면 읽기 전용 모드.
 5. 토큰 32바이트(`crypto.randomBytes`, base64url)를 만들어 `.agents/state/dashboard.token`에 `O_CREAT|O_EXCL|O_NOFOLLOW`, 0600으로 쓴다. `.agents/state/`는 0700으로 만든다.
@@ -91,7 +91,7 @@ packages/dashboard/src/
 
 | 읽기 모듈 | 원본 | stamp | 비싼 계산 |
 |---|---|---|---|
-| config | `harness-kit.json` · `local/harness-kit.local.json` · `harness-kit.lock` | 세 파일의 `(mtimeMs, size, ino)` | — |
+| config | `knots-sync.json` · `local/knots-sync.local.json` · `knots-sync.lock` | 세 파일의 `(mtimeMs, size, ino)` | — |
 | intents | `.agents/docs/intents/*/` 의 `intent.md` · `intent.json` · `units.json` · `questions.md` · `approvals.md` · `plans/**` | 폴더 목록 + 파일 stat | — |
 | issues | 체크아웃마다 `.agents/docs/issues/*/`, 체크아웃 안 된 이슈 브랜치는 git 객체 | 체크아웃: 파일 stat · 브랜치: tip SHA | `bash scripts/board.sh --json --root <체크아웃>` |
 | verify | 체크아웃마다 `.agents/state/verify-last.json`(형식은 01) | 파일 stat | — |
@@ -341,7 +341,7 @@ Intent 문서는 설계 세션이 쓰는 폴더다. Intent 키를 담은 브랜�
 ```
 
 - 제목 줄 정규식: `^## (\S+) · ([a-z]+(?:/F-\d+)?) · (approved|changes-requested|risk-accepted|fix-required)$`.
-- `경로`: `dashboard` · `terminal`(사람 터미널의 `npx harness-kit approve` · `approve.py`) · `jira`(10 §3.4, `근거: changelog <id>` 줄을 더한다) · `aidlc`(AI-DLC 사람 입력 확인 훅이 받은 승인을 `sync aidlc`가 옮긴 것. 기록에 승인자가 있을 때만이고 `- source: aidlc` · `- 근거: <AI-DLC 기록 파일 경로>` 줄을 더한다, 10 §3.2). 이 넷 밖의 승인은 없다. 채팅에서 한 말과 AI-DLC 세션의 그 밖의 대화는 승인 기록이 되지 않는다(09 §3.8).
+- `경로`: `dashboard` · `terminal`(사람 터미널의 `npx knots-sync approve` · `approve.py`) · `jira`(10 §3.4, `근거: changelog <id>` 줄을 더한다) · `aidlc`(AI-DLC 사람 입력 확인 훅이 받은 승인을 `sync aidlc`가 옮긴 것. 기록에 승인자가 있을 때만이고 `- source: aidlc` · `- 근거: <AI-DLC 기록 파일 경로>` 줄을 더한다, 10 §3.2). 이 넷 밖의 승인은 없다. 채팅에서 한 말과 AI-DLC 세션의 그 밖의 대화는 승인 기록이 되지 않는다(09 §3.8).
 - `문구`는 승인하는 사람이 승인 화면 · 명령에 넣은 말이다. 기록으로 남을 뿐 승인 여부를 정하지 않는다.
 - 선택 줄: `- 규칙 후보: 예`(`changes-requested`에만, 14 §3.11), `- 롤백 면제: <사유>`(`deploy`에만, 14 §3.4). 둘 다 승인하는 사람이 넣는다.
 - 이 형식을 바꾸면 Node(대시보드)와 Python(`approve.py` · `sdd_gates.py`) 파서 둘을 같이 고친다. 두 구현은 `tests/fixtures/approvals/`의 같은 입력·기대값으로 시험한다.
@@ -394,7 +394,7 @@ POST /approvals {target, gate, decision, phrase, docSha256, pin}
 - 응답: `{ "intent": "INT-8", "path": "…", "files": [{ "name", "size", "sha256", "extracted": true|false }], "warnings": [] }`.
 - 제한: 파일 20MB, 합계 100MB. 넘으면 413이고, 비밀값이 나오면 422로 거부한다.
 - `kind = bug`면 Intent 대신 이슈 폴더를 만든다(`issues/<키>-<이름>/requirements.md` 초안 + `attachments/`).
-- 접수 뒤 화면은 설계 역할 세션에 `/hx-intent <INT>`를 요청할지 묻는다. 사람이 고를 때만 보낸다(§3.10, DB-R25).
+- 접수 뒤 화면은 설계 역할 세션에 `/kns-intent <INT>`를 요청할지 묻는다. 사람이 고를 때만 보낸다(§3.10, DB-R25).
 - 접수는 모델을 부르지 않는다. 첨부 추출은 킷 스크립트와 설치된 변환기만 쓰고, 이미지 설명은 기본으로 만들지 않는다(08 §3.11).
 - 쓰기 허용 경로에 `intents/*/intake.md`와 `intents/*/attachments/**`, `issues/*/attachments/**`를 더한다(§3.6).
 
@@ -404,7 +404,7 @@ POST /approvals {target, gate, decision, phrase, docSha256, pin}
 
 ```json
 {
-  "schema": "harness-kit.session/v1",
+  "schema": "knots-sync.session/v1",
   "id": "4f0c2d1e-…",
   "harness": "claude", "harnessVersion": "2.1.230",
   "name": "api-worker",
@@ -421,8 +421,8 @@ POST /approvals {target, gate, decision, phrase, docSha256, pin}
 ```
 
 - `id`: 훅 입력의 `session_id`(없으면 기존 `session-context.py`의 후보 순서). 정규식 `[A-Za-z0-9][A-Za-z0-9_.-]{0,63}`.
-- `role`: `HX_ROLE` 환경 변수 → 이슈 브랜치 체크아웃이면 `implement` → `--docs` worktree면 `docs` → `roles`에서 그 하네스가 맡은 역할이 하나뿐이면 그것 → `unknown`. `roleSource`에 근거를 적는다.
-- `issue`: `HX_ISSUE` → 브랜치 이름의 키 → `null`.
+- `role`: `KNS_ROLE` 환경 변수 → 이슈 브랜치 체크아웃이면 `implement` → `--docs` worktree면 `docs` → `roles`에서 그 하네스가 맡은 역할이 하나뿐이면 그것 → `unknown`. `roleSource`에 근거를 적는다.
+- `issue`: `KNS_ISSUE` → 브랜치 이름의 키 → `null`.
 - `pid`: 훅 프로세스에서 부모를 따라 올라가 하네스 실행 파일(`claude` · `codex` · `kiro-cli`)을 찾는다. `pidStartedAt`은 `ps -o lstart=`로 pid 재사용을 가린다.
 - `inbox`: `CLAUDE_CODE_MESSAGING_SOCKET`이 있을 때만. `CLAUDE_CODE_MESSAGING_TOKEN`은 저장하지 않는다(macOS·Linux는 인증 줄이 선택이다. Windows는 v2.2에서 소켓 요청을 쓰지 않는다).
 - `turn`·`lastSeenAt`: 프롬프트 제출 훅이 `working`, Stop 훅이 `idle`로 고친다.
@@ -434,10 +434,10 @@ POST /approvals {target, gate, decision, phrase, docSha256, pin}
 
 요청 종류: `doc-changed` · `answers-ready` · `approved` · `changes-requested` · `review-findings` · `custom`(사람이 쓴 글 300자 이하). 글은 한 줄, 1,000자 이하이고 문서 내용을 넣지 않는다.
 
-요청은 사람이 고를 때만 만든다(DB-R25). 저장 · 승인 · 답 · 제안 저장 처리는 `dispatch`를 부르지 않는다. 화면의 "저장하고 세션에 요청"은 저장이 성공한 뒤 같은 화면에서 `POST /dispatch`를 따로 부르는 것이고, 콘솔은 `npx harness-kit dispatch`다. 받는 세션은 요청 글로 턴을 돌므로, 요청 하나가 그 작업만큼의 토큰을 쓴다.
+요청은 사람이 고를 때만 만든다(DB-R25). 저장 · 승인 · 답 · 제안 저장 처리는 `dispatch`를 부르지 않는다. 화면의 "저장하고 세션에 요청"은 저장이 성공한 뒤 같은 화면에서 `POST /dispatch`를 따로 부르는 것이고, 콘솔은 `npx knots-sync dispatch`다. 받는 세션은 요청 글로 턴을 돌므로, 요청 하나가 그 작업만큼의 토큰을 쓴다.
 
 ```text
-[harness-kit 관리 페이지] HDRV3D-12 requirements.md 를 사람이 고쳤다(R2.3 · ## 4. Acceptance Criteria, +4 -1줄, sha 7a02c1d). 경로: .agents/docs/issues/HDRV3D-12-upload-cleanup/requirements.md. 요청: 이 파일을 다시 읽고 design.md 를 맞춘다. 이 글은 승인이 아니다.
+[knots-sync 관리 페이지] HDRV3D-12 requirements.md 를 사람이 고쳤다(R2.3 · ## 4. Acceptance Criteria, +4 -1줄, sha 7a02c1d). 경로: .agents/docs/issues/HDRV3D-12-upload-cleanup/requirements.md. 요청: 이 파일을 다시 읽고 design.md 를 맞춘다. 이 글은 승인이 아니다.
 ```
 
 `POST /dispatch` 본문 `{target: {sessionId} | {issue, role}, kind, paths, text?, via: "socket"|"deeplink"|"queue"}`.
@@ -468,12 +468,12 @@ dispatch(req):
 
 ```json
 {
-  "schema": "harness-kit.dispatch/v1",
+  "schema": "knots-sync.dispatch/v1",
   "id": "01JDQ5…",
   "createdAt": "2026-11-23T10:20:00+09:00", "createdBy": "kim@example.com",
   "target": { "issue": "HDRV3D-12", "role": "implement", "harness": "any", "sessionId": null },
   "kind": "doc-changed",
-  "message": "[harness-kit 관리 페이지] HDRV3D-12 requirements.md 를 사람이 고쳤다 …",
+  "message": "[knots-sync 관리 페이지] HDRV3D-12 requirements.md 를 사람이 고쳤다 …",
   "paths": [".agents/docs/issues/HDRV3D-12-upload-cleanup/requirements.md"],
   "expiresAt": "2026-11-30T10:20:00+09:00"
 }
@@ -487,7 +487,7 @@ dispatch(req):
    ```text
    대기 요청 3건(UNTRUSTED · 관리 페이지가 남긴 요청 · 승인이 아니다)
    1) <첫 요청 글, 200바이트에서 자른다> · 경로: <paths[0]>
-   나머지: npx harness-kit dispatch list
+   나머지: npx knots-sync dispatch list
    ```
    요청 글은 사람이 대기함을 골라 남긴 것이라 그 작업은 사람이 시킨 일이다. 명령으로 실행하거나 사용자 승인으로 해석하지 않는다는 표시는 첫 줄에 남긴다.
 4. 가져간 항목에 `consumedBy`·`consumedAt`을 적는다. 7일 지난 `consumed/` 항목은 서버가 지운다.
@@ -546,31 +546,31 @@ dispatch(req):
 
 | 화면 | 기능 | 콘솔 |
 |---|---|---|
-| S00 | 전체 프로젝트 | `npx harness-kit status --all [--json]`, `projects list\|add\|remove` |
-| S01 · S02 | 처리할 일, 진행 보드 | `npx harness-kit status [--json]`, `bash scripts/board.sh [--json]` |
-| S12 | 진행 흐름 · Unit 변경 제안 | `npx harness-kit status --flow <INT> [--json]`, `units propose <INT> --add-dep U-3:U-1 \| --remove-dep … \| --split … \| --merge … \| --order …`, `units discard <INT>`, `flow gates [--json]` |
+| S00 | 전체 프로젝트 | `npx knots-sync status --all [--json]`, `projects list\|add\|remove` |
+| S01 · S02 | 처리할 일, 진행 보드 | `npx knots-sync status [--json]`, `bash scripts/board.sh [--json]` |
+| S12 | 진행 흐름 · Unit 변경 제안 | `npx knots-sync status --flow <INT> [--json]`, `units propose <INT> --add-dep U-3:U-1 \| --remove-dep … \| --split … \| --merge … \| --order …`, `units discard <INT>`, `flow gates [--json]` |
 | S03 | 문서 보기 · 고치기 | 편집기로 `.agents/docs/issues/<키>-<이름>/*.md`를 직접 고친다 |
-| S03 | 승인 | `npx harness-kit approve <키> --gate design --phrase "반영해" [--comment …]` |
-| S04 | 질문 답 | `npx harness-kit answer <INT 또는 키> Q-2 --choice B [--text …]` 또는 `questions.md` 직접 편집 |
-| S05 | 세션에 작업 요청 | `npx harness-kit sessions`, `npx harness-kit dispatch --to design-desk --path <파일> [--text …]` |
-| S06 | 검증 · 품질 · 리뷰 판단 | `bash scripts/verify.sh --summary`, `npx harness-kit quality [--json]`, `npx harness-kit review decide <키> <발견 ID> --fix|--accept-risk --reason …` |
+| S03 | 승인 | `npx knots-sync approve <키> --gate design --phrase "반영해" [--comment …]` |
+| S04 | 질문 답 | `npx knots-sync answer <INT 또는 키> Q-2 --choice B [--text …]` 또는 `questions.md` 직접 편집 |
+| S05 | 세션에 작업 요청 | `npx knots-sync sessions`, `npx knots-sync dispatch --to design-desk --path <파일> [--text …]` |
+| S06 | 검증 · 품질 · 리뷰 판단 | `bash scripts/verify.sh --summary`, `npx knots-sync quality [--json]`, `npx knots-sync review decide <키> <발견 ID> --fix|--accept-risk --reason …` |
 | S07 | 작업 공간 | `python3 scripts/harness/worktree.py list|open|done|gc` |
-| S08 | 스킬 | `npx harness-kit skills [--stage 설계]` |
-| S09 | 하네스 | `npx harness-kit doctor`, `outdated`, `list` |
-| S10 | 운영 기록 | `npx harness-kit status --ops [--json]`, `ops new`, `metrics`, `deploy plan\|check\|record`, `rules candidates\|promote\|reject`(14) |
-| S11 | 요구사항 접수 | `npx harness-kit intake --kind feature --title … --body-file req.md --attach 기획서.pdf 화면.png`, 세션에서 `/hx-intent --new <파일…>` |
-| S13 | 기록 · 사용량 | `npx harness-kit usage [--days 7] [--kit] [--sources] [--json]`, `history [--q …] [--json]` |
-| S05 | 대기함 | `npx harness-kit dispatch list [--json]` · `dispatch drop <id>` |
+| S08 | 스킬 | `npx knots-sync skills [--stage 설계]` |
+| S09 | 하네스 | `npx knots-sync doctor`, `outdated`, `list` |
+| S10 | 운영 기록 | `npx knots-sync status --ops [--json]`, `ops new`, `metrics`, `deploy plan\|check\|record`, `rules candidates\|promote\|reject`(14) |
+| S11 | 요구사항 접수 | `npx knots-sync intake --kind feature --title … --body-file req.md --attach 기획서.pdf 화면.png`, 세션에서 `/kns-intent --new <파일…>` |
+| S13 | 기록 · 사용량 | `npx knots-sync usage [--days 7] [--kit] [--sources] [--json]`, `history [--q …] [--json]` |
+| S05 | 대기함 | `npx knots-sync dispatch list [--json]` · `dispatch drop <id>` |
 
-- 승인·답·리뷰 판단 명령은 사람 터미널에서만 된다. §3.11의 에이전트 세션 판정에 걸리면 `read_only`로 거부한다. PreToolUse 훅도 에이전트의 셸 명령 중 `harness-kit approve|answer|review decide`를 막는다. 화면의 PIN은 웹 요청이 사람에게서 왔는지 확인하는 장치라 콘솔에는 없다.
+- 승인·답·리뷰 판단 명령은 사람 터미널에서만 된다. §3.11의 에이전트 세션 판정에 걸리면 `read_only`로 거부한다. PreToolUse 훅도 에이전트의 셸 명령 중 `knots-sync approve|answer|review decide`를 막는다. 화면의 PIN은 웹 요청이 사람에게서 왔는지 확인하는 장치라 콘솔에는 없다.
 - 콘솔 명령의 출력은 사람용 표가 기본이고, `--json`은 화면 API 응답과 같은 형식이다.
 - 완료 기준에 대응 시험을 둔다. REST API 엔드포인트마다 같은 결과를 내는 CLI 명령이 있어야 하고, 둘의 `--json` 출력이 같아야 한다.
 
 ### 3.16 흐름 보기(S12)
 
-Intent 하나의 Unit을 의존 순서대로 캔버스에 그린다. S02 보드와 같은 데이터를 다른 모양으로 보이고, 화면 머리의 "보드 · 흐름"으로 오간다(`/progress?view=flow`). 단계: 보기는 P20, 변경 제안은 P21(`/hx-intent`와 같이).
+Intent 하나의 Unit을 의존 순서대로 캔버스에 그린다. S02 보드와 같은 데이터를 다른 모양으로 보이고, 화면 머리의 "보드 · 흐름"으로 오간다(`/progress?view=flow`). 단계: 보기는 P20, 변경 제안은 P21(`/kns-intent`와 같이).
 
-데이터(`GET /api/v1/flow?intent=INT-7`, 콘솔 `npx harness-kit status --flow INT-7 --json`):
+데이터(`GET /api/v1/flow?intent=INT-7`, 콘솔 `npx knots-sync status --flow INT-7 --json`):
 
 ```json
 { "intent": { "key": "INT-7", "title": "결제 개편", "approved": { "at": "2026-11-20", "by": "김지윤" } },
@@ -594,7 +594,7 @@ Intent 하나의 Unit을 의존 순서대로 캔버스에 그린다. S02 보드�
 Unit 변경 제안:
 
 ```json
-{ "schema": "harness-kit.units-proposal/v1", "intent": "INT-7",
+{ "schema": "knots-sync.units-proposal/v1", "intent": "INT-7",
   "baseSha256": "<units.json sha256>", "createdBy": "kim@example.com", "createdAt": "2026-11-23T10:40:00+09:00",
   "changes": [ { "op": "add-dep", "unit": "U-3", "dependsOn": "U-1", "reason": "실패 코드를 결제수단 등록에서 받는다" },
                { "op": "remove-dep", "unit": "U-3", "dependsOn": "U-2", "reason": "…" } ] }
@@ -606,16 +606,16 @@ Unit 변경 제안:
 - 반영: intent 게이트 승인 처리만 한다(§3.7 3 · 9단계, DB-R29). 승인 화면은 제안을 반영한 Unit 목록과 제안자(`createdBy`)를 보인다. 그 사이 `units.json`이 바뀌었으면 승인은 409 `proposal_stale`이고, 사람이 제안을 다시 저장하거나 버린다(`DELETE /api/v1/units/proposals/INT-7`, 콘솔 `units discard`).
 - 저장해도 세션에 보내지 않는다(DB-R25). 설계 세션에 알리려면 사람이 "세션에 요청"을 누른다.
 
-흐름 틀(`flow.gates`)은 팀 설정이라 관리 페이지가 쓰지 않는다. S12의 "흐름 틀" 링크는 지금 게이트와 바닥 4개(requirements · design · mr · done)를 보이고, 바꾸는 명령을 복사하게 한다. 사람 터미널에서 `npx harness-kit flow gates --add <게이트> --after <게이트>`가 `harness-kit.json`을 고치고 MR로 올린다. 바닥 아래로 줄이는 명령은 exit 1이다(04 §3.8).
+흐름 틀(`flow.gates`)은 팀 설정이라 관리 페이지가 쓰지 않는다. S12의 "흐름 틀" 링크는 지금 게이트와 바닥 4개(requirements · design · mr · done)를 보이고, 바꾸는 명령을 복사하게 한다. 사람 터미널에서 `npx knots-sync flow gates --add <게이트> --after <게이트>`가 `knots-sync.json`을 고치고 MR로 올린다. 바닥 아래로 줄이는 명령은 exit 1이다(04 §3.8).
 
 ### 3.17 전체 프로젝트(S00)
 
-이 컴퓨터에 등록한 킷 리포 여러 개를 한 화면에서 본다. 화면 주소는 `/projects`, 콘솔은 `npx harness-kit status --all [--json]`이다.
+이 컴퓨터에 등록한 킷 리포 여러 개를 한 화면에서 본다. 화면 주소는 `/projects`, 콘솔은 `npx knots-sync status --all [--json]`이다.
 
-등록부 `~/.config/harness-kit/projects.json`:
+등록부 `~/.config/knots-sync/projects.json`:
 
 ```json
-{ "schema": "harness-kit.projects/v1",
+{ "schema": "knots-sync.projects/v1",
   "projects": [ { "path": "/Users/me/work/knots-platform", "name": "knots-platform", "addedAt": "2026-11-02" } ] }
 ```
 
@@ -630,7 +630,7 @@ Unit 변경 제안:
 |---|---|---|
 | 리포 안에서 `dashboard` | 그 리포 하나(지금까지의 동작) | 그 리포 `.agents/state/` |
 | `dashboard --all` | 등록부 | 없음(DB-R27) |
-| `dashboard --root <dir>` | `<dir>` 아래 깊이 3까지 `.agents/harness-kit.json`이 있는 폴더. 등록부에 더하지 않는다 | 없음 |
+| `dashboard --root <dir>` | `<dir>` 아래 깊이 3까지 `.agents/knots-sync.json`이 있는 폴더. 등록부에 더하지 않는다 | 없음 |
 | `dashboard --workspace <file>` | 파일에 적은 경로 목록 | 없음 |
 
 - 여러 프로젝트 모드에서 리포별 API는 `/api/v1/p/{projectId}/…`(projectId = 실제 경로 sha256의 앞 12자)이고, 화면은 `/p/{projectId}/`부터 지금의 단일 리포 화면(S01~)을 그대로 쓴다. 쓰기는 들어간 리포 안에서 그 리포의 허용 경로 · `baseSha256` · approvers(그 체크아웃의 git 사용자) · PIN 검사를 따로 거친다.
@@ -651,7 +651,7 @@ Unit 변경 제안:
 | 모듈이 덧붙인 양 | 늘 켜짐 | lock의 `owner`별 정적 합계(세션마다 실리는 파일 · 이벤트별 훅 수, 10 §3.7). 대화 기록 읽기를 켜면 외부 훅이 실제로 붙인 글도 owner별로 센다 | 없음 |
 | 대화 기록 | 꺼짐(DB-R28, README 원칙 7, 12 MR-R11) | Claude Code `~/.claude/projects/<경로>/*.jsonl`(응답의 `usage` · `model` · `sessionId` · `cwd` · `gitBranch`) · `~/.claude/history.jsonl`(프롬프트 글 · 시각 · 프로젝트), Codex `~/.codex/sessions/**`. Kiro는 기록 위치 확인 전까지 "자료 없음" | 없음. 복사본 · 집계 파일을 남기지 않는다 |
 
-- 켜기: 사람이 `~/.config/harness-kit/config.json`에 `"history": "on"`을 쓴다. 꺼져 있으면 S13은 무엇을 읽는지와 켜는 곳을 보이고, 킷이 덧붙인 양은 그대로 보인다.
+- 켜기: 사람이 `~/.config/knots-sync/config.json`에 `"history": "on"`을 쓴다. 꺼져 있으면 S13은 무엇을 읽는지와 켜는 곳을 보이고, 킷이 덧붙인 양은 그대로 보인다.
 - 대화 기록 형식은 공식 형식이 아니다. 하네스 버전별 파서를 두고 모르는 필드는 무시한다. 못 읽은 파일은 수를 세어 "읽지 못함"으로 보인다. 12의 `metrics.tokens: "otel"`이 켜져 있으면 그 값을 먼저 쓴다.
 - 프로젝트 거르기: 기록의 `cwd`가 그 리포나 그 리포의 worktree 폴더(`<리포>.worktrees/`) 안인 것.
 - 역할 · 이슈: 세션 등록(§3.9)의 `sessionId` → `role` · `issue`, 없으면 `gitBranch`의 이슈 키, 그것도 없으면 "이슈 없음".
@@ -659,7 +659,7 @@ Unit 변경 제안:
 - 비용: `config.json`의 `usage.pricing`이 있을 때만 추정한다. 킷은 가격표를 두지 않고 청구 금액이 아니라고 적는다.
 - 읽기: 파일마다 `(mtimeMs, size)` stamp와 읽은 바이트 위치를 메모리에만 두고 덧붙은 부분만 더 읽는다. 요청한 기간 안에 바뀐 파일만 연다. 레일의 "지금 세션" 줄은 화면이 열려 있을 때 15초마다 `usage/now`를 묻는다.
 - 프롬프트 기록 탭은 글을 보여 주기만 한다. 내보내기 · 커밋 · 세션 요청에 넣지 않는다(§3.12).
-- 콘솔: `npx harness-kit usage [--days 7] [--kit] [--sources] [--json]` · `history [--q …] [--json]`.
+- 콘솔: `npx knots-sync usage [--days 7] [--kit] [--sources] [--json]` · `history [--q …] [--json]`.
 
 ### 3.19 토큰 영향(README 원칙 10)
 
@@ -719,7 +719,7 @@ Unit 변경 제안:
 13. 시험: 문서 저장 · 승인 · 수정 요청 · 질문 답 · 변경 제안 저장을 각 20회 한 뒤 살아 있는 시험 세션 소켓이 받은 글 0건, 대기함 항목 0건(DB-R25).
 14. 시험: 대기함에 요청 5건을 넣고 세션 시작 훅을 돌리면 출력이 512바이트 이하이고 첫 요청 하나만 `consumed/`로 옮겨진다. 맞는 항목이 없으면 출력 0바이트.
 15. 시험: CLI 패키지 의존성 트리에 모델 SDK 0개, 시험 중 외부 주소로 나가는 연결 0건(`outdated` 제외, DB-R26).
-16. 시험: 등록 프로젝트 3개로 `dashboard --all`을 열고 모든 읽기 API를 부른 뒤 세 리포와 `~/.config/harness-kit/`의 파일 수 · mtime이 그대로다(DB-R27).
+16. 시험: 등록 프로젝트 3개로 `dashboard --all`을 열고 모든 읽기 API를 부른 뒤 세 리포와 `~/.config/knots-sync/`의 파일 수 · mtime이 그대로다(DB-R27).
 17. 시험: `history`가 없거나 `"off"`이면 `~/.claude` · `~/.codex` 아래 파일 열기 0건(fs 모의 객체), `/history`는 404 `history_off`. 켜도 리포 · `~/.config` 아래 새 파일 0건(DB-R28).
 18. 시험: 제안 저장 뒤 `units.json` 바이트가 그대로이고, intent 승인 뒤 `units.json`이 제안 반영 결과와 같고 승인 기록의 sha가 그 파일과 같다. `dependsOn` 고리 제안은 422(DB-R29).
 19. 측정: 같은 fixture에서 v1.0.8과 v2의 세션 시작 출력 바이트를 재 v2가 2,560바이트 이하이고 v1.0.8 이하다. 값을 릴리스 노트에 적는다.

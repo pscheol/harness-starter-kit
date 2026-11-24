@@ -27,7 +27,7 @@ BASE = {"event": "stop", "script": "scripts/hooks/x.sh", "timeoutSec": 5, "owner
 
 
 def doc(hooks):
-    return json.dumps({"schema": "harness-kit.hooks/v1", "hooks": hooks})
+    return json.dumps({"schema": "knots-sync.hooks/v1", "hooks": hooks})
 
 
 class HookDocsTest(unittest.TestCase):

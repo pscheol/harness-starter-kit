@@ -58,9 +58,9 @@ class SharedFixtureTest(unittest.TestCase):
         for hook in bad:
             with self.subTest(hook=hook):
                 with self.assertRaises(HooksError):
-                    parse_hooks(json.dumps({"schema": "harness-kit.hooks/v1", "hooks": [hook]}), HM)
+                    parse_hooks(json.dumps({"schema": "knots-sync.hooks/v1", "hooks": [hook]}), HM)
         with self.assertRaises(HooksError):
-            parse_hooks(json.dumps({"schema": "harness-kit.hooks/v1", "hooks": [base, base]}), HM)
+            parse_hooks(json.dumps({"schema": "knots-sync.hooks/v1", "hooks": [base, base]}), HM)
         self.assertIsNone(parse_hooks(None, HM))
 
 

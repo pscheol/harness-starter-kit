@@ -23,7 +23,7 @@
 | Kiro | `.kiro/steering/*.md` | `.agents/rules` 원본에서 만든 생성물 + 이 기록 시스템 참조 |
 
 규칙을 바꿀 때는 `.agents/rules/`(규칙)나 `.agents/docs/`(기록)를 먼저 고치고,
-그다음 진입 파일을 맞춘다. steering 등 하네스 폴더 생성물은 `npx harness-kit repair`가 다시 만든다.
+그다음 진입 파일을 맞춘다. steering 등 하네스 폴더 생성물은 `npx knots-sync repair`가 다시 만든다.
 
 ## 구조 (제품 단위 SDD)
 
@@ -60,14 +60,14 @@ AGENTS.md / CLAUDE.md / ARCHITECTURE.md    진입·아키텍처 원본
 
 | 단계 | 위치 | 명령 | 파일이 생기는 시점 |
 |---|---|---|---|
-| requirements | `issues/<키>-<이름>/requirements.md` | `/hx-specify` (+ `/hx-clarify`) | `new-feature.sh <키\|--next> <이름> --area <영역>` |
-| design | `issues/<키>-<이름>/design.md` | `/hx-plan` | `new-feature.sh <키> --stage=design` |
-| tasks | `issues/<키>-<이름>/tasks.md`(`state`: active → check → completed) | `/hx-tasks` → `/hx-implement` | `new-feature.sh <키> --stage=tasks` |
+| requirements | `issues/<키>-<이름>/requirements.md` | `/kns-specify` (+ `/kns-clarify`) | `new-feature.sh <키\|--next> <이름> --area <영역>` |
+| design | `issues/<키>-<이름>/design.md` | `/kns-plan` | `new-feature.sh <키> --stage=design` |
+| tasks | `issues/<키>-<이름>/tasks.md`(`state`: active → check → completed) | `/kns-tasks` → `/kns-implement` | `new-feature.sh <키> --stage=tasks` |
 
 단계 템플릿은 `_spec-templates/` 한 곳에만 두고 이슈 폴더로 복사하지 않는다.
 **단계 문서도 그 단계에 들어갈 때 하나씩 만든다** — 빈 design·tasks 를 미리 깔면 보드가 곧장
 구현으로 뛰고 단계 게이트가 항상 통과한다. `--all` 은 지원하지 않는다.
-정합성 점검은 `/hx-analyze`로 하며 읽기 전용이다. 각 단계는 사용자 승인을 받고 다음으로 넘어간다.
+정합성 점검은 `/kns-analyze`로 하며 읽기 전용이다. 각 단계는 사용자 승인을 받고 다음으로 넘어간다.
 영역별 이슈 보드는 `specs-index.md`, 이슈를 가로지르는 결정은 `decisions/`에 있다.
 
 ## 문서를 최신으로 유지하기

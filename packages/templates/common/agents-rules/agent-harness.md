@@ -56,7 +56,7 @@ paths:
 | 파일 | 무엇 |
 |---|---|
 | [`agent-harness.md`](./agent-harness.md) | 이 파일. 하네스 규약·완료 게이트·강제 레이어·규칙 변경 절차 |
-| [`sdd-workflow.md`](./sdd-workflow.md) | SDD 워크플로·SDLC 단계(S1~S8)·이슈 폴더·`/hx-docs` |
+| [`sdd-workflow.md`](./sdd-workflow.md) | SDD 워크플로·SDLC 단계(S1~S8)·이슈 폴더·`/kns-docs` |
 | [`session-collaboration.md`](./session-collaboration.md) | 공동 세션 — 소유 경로 등록·공지·충돌 |
 | [`code-maintenance.md`](./code-maintenance.md) | 패키지 책임·이름·판단 함수·mapper·API 문서·변경 시험 |
 | [`git-workflow.md`](./git-workflow.md) | 브랜치·커밋·PR |
@@ -89,7 +89,7 @@ paths:
 
 이슈 문서는 바뀐 이유와 과정이고, 기능 문서는 구현된 기능의 현재 모습이다. `tools/docs/feature_docs.py` 가 코드·OpenAPI·DB 카탈로그에서 API·테이블·인덱스·캐시·잠금·시험·화면을 뽑고, `docs/features/_src` 원고(요구·정책·흐름·시퀀스·상태·변경 영향)와 합쳐 HTML 을 만든다.
 
-- 이슈를 check 로 옮기기 전에 `/hx-docs` 로 원고·배정을 고치고 `build` 뒤 `check` 를 통과시킨다.
+- 이슈를 check 로 옮기기 전에 `/kns-docs` 로 원고·배정을 고치고 `build` 뒤 `check` 를 통과시킨다.
 - 새 API·테이블·캐시·화면이 어느 기능에도 배정되지 않으면 검사가 실패한다. 사용법은 `tools/docs/README.md`.
 
 ## exec-plan 완료 게이트 (사용자 검증 필수)
@@ -143,7 +143,7 @@ Claude·Codex·Kiro hook 은 로직 없이 `scripts/hooks/*`(세션 안내 · �
 규칙이나 지식이 바뀌면 순서를 지킨다.
 
 1. `.agents/rules/`의 원본을 먼저 고친다. 규칙은 여기가 유일한 출처다.
-2. `AGENTS.md` 목차를 원본에 맞춘다. 하네스 폴더(`.claude/` `.cursor/` `.kiro/` …)의 복사본 · 생성물은 `npx harness-kit repair`(Node 가 없으면 `python3 scripts/harness/projection.py sync`)가 다시 만든다. 직접 고치지 않는다.
+2. `AGENTS.md` 목차를 원본에 맞춘다. 하네스 폴더(`.claude/` `.cursor/` `.kiro/` …)의 복사본 · 생성물은 `npx knots-sync repair`(Node 가 없으면 `python3 scripts/harness/projection.py sync`)가 다시 만든다. 직접 고치지 않는다.
 3. 진입 파일은 계속 짧게 유지한다. 거대한 지침 파일 하나를 만들지 않는다.
 4. 규칙이 아니라 특정 기능의 설계나 계획이면 `.agents/rules/`가 아니라 `.agents/docs/`에 기록한다.
 

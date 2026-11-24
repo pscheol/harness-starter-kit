@@ -1,12 +1,12 @@
 /**
  * 표시 줄 없는 v1 lock(v1.0.8)의 첫 update — 구별 불가 파일(sha(C) = B ≠ sha(D))의 병합(HK-25 R1, design §2.2~§2.4).
- * update.sh 는 같은 규칙을 hx-update/v1_merge.py 로 쓴다. test/fixtures/v1-merge 가 두 구현의 바이트를 묶는다.
+ * update.sh 는 같은 규칙을 update/v1_merge.py 로 쓴다. test/fixtures/v1-merge 가 두 구현의 바이트를 묶는다.
  */
 
 export type V1Kind = "kit" | "lines" | "keys" | "new";
 
-export const MERGE_BEGIN = "<!-- harness-kit: 설치 전 내용(병합) -->";
-export const MERGE_END = "<!-- /harness-kit -->";
+export const MERGE_BEGIN = "<!-- knots-sync: 설치 전 내용(병합) -->";
+export const MERGE_END = "<!-- /knots-sync -->";
 export const MERGE_BACKUP_DIR = ".agents/state/merge-backup";
 const KIT_HEADER = "HARNESS STARTER KIT";
 const KIT_FOLDERS = [".agents/rules/", ".agents/skills/", ".agents/roles/"];

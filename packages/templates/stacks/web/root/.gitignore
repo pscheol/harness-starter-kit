@@ -54,7 +54,7 @@ pnpm-debug.log*
 .agents/state/
 .agents/local/
 .agents/reports/
-# harness-update 산출물(병합용 임시본) — 상태 파일 harness-kit.json·lock 은 커밋한다
+# harness-update 산출물(병합용 임시본) — 상태 파일 knots-sync.json·lock 은 커밋한다
 *.new
 *.bak
 

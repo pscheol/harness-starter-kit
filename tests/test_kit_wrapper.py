@@ -1,9 +1,9 @@
-"""플러그인 스킬의 CLI 호출 갈래 시험 — skills/hx-bootstrap/kit.sh(HK-12 R12.4, design §6).
+"""플러그인 스킬의 CLI 호출 갈래 시험 — skills/bootstrap/kit.sh(HK-12 R12.4, design §6).
 
     python3 -m unittest tests.test_kit_wrapper
 
-Node 18.3 이상이면 bin/harness-kit.js(CLI)를, 없거나 낮으면 setup.sh · update.sh · add-agent.sh 를 부른다.
-Node 버전은 HARNESS_KIT_NODE 로 가짜 node 를 넣어 바꾼다. 두 갈래가 같은 트리를 만드는지 본다. 네트워크를 쓰지 않는다.
+Node 18.3 이상이면 bin/knots-sync.js(CLI)를, 없거나 낮으면 setup.sh · update.sh · add-agent.sh 를 부른다.
+Node 버전은 KNOTS_SYNC_NODE 로 가짜 node 를 넣어 바꾼다. 두 갈래가 같은 트리를 만드는지 본다. 네트워크를 쓰지 않는다.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ import cli_dist  # noqa: E402
 from test_cli_parity import base_env  # noqa: E402
 from test_cli_update_parity import snapshot  # noqa: E402
 
-KIT_SH = cli_dist.KIT / "plugins/harness-kit/skills/hx-bootstrap/kit.sh"
+KIT_SH = cli_dist.KIT / "plugins/kns/skills/bootstrap/kit.sh"
 REAL_NODE = shutil.which("node")
 INIT_FLAGS = ("--stack", "go", "--arch", "flat", "--agents", "codex,kiro", "--modules", "jira-workflow",
               "--name", "Acme Notes", "--slug", "acme-notes", "--package-ns=github.com/acme/notes", "--token", "SERVICE_NAME=notes-api")
@@ -44,13 +44,13 @@ class KitWrapperTest(unittest.TestCase):
     def kit(self, *args: str, node: str | None = None) -> subprocess.CompletedProcess:
         env = base_env({})
         if node is not None:
-            env["HARNESS_KIT_NODE"] = node
+            env["KNOTS_SYNC_NODE"] = node
         return subprocess.run(["bash", str(KIT_SH), *args], env=env, capture_output=True, text=True, timeout=300)
 
     def test_kit_sh_is_executable_bash_3_2_script(self):
         self.assertTrue(os.access(KIT_SH, os.X_OK))
         self.assertTrue(KIT_SH.read_text(encoding="utf-8").startswith("#!/usr/bin/env bash\n"))
-        self.assertTrue((KIT_SH.parent / "bin/harness-kit.js").is_file())
+        self.assertTrue((KIT_SH.parent / "bin/knots-sync.js").is_file())
 
     def test_which_picks_cli_only_from_node_18_3(self):
         cases = {str(self.tmp / "no-node"): "legacy", self.fake_node("16.20.2"): "legacy", self.fake_node("18.2.1"): "legacy",
@@ -79,7 +79,7 @@ class KitWrapperTest(unittest.TestCase):
         a, b = snapshot(cl), snapshot(sh)
         self.assertEqual(sorted(set(a[0]) ^ set(b[0])), [])
         self.assertEqual(sorted(r for r in a[0] if a[0][r] != b[0][r]), [])
-        meta = json.loads((sh / ".agents/harness-kit.json").read_text(encoding="utf-8"))
+        meta = json.loads((sh / ".agents/knots-sync.json").read_text(encoding="utf-8"))
         self.assertEqual((meta["stack"], meta["arch"], meta["agents"], meta["modules"]), ("go", "flat", ["codex", "kiro"], ["jira-workflow"]))
         self.assertEqual(meta["tokens"]["SERVICE_NAME"], "notes-api")
 
@@ -102,7 +102,7 @@ class KitWrapperTest(unittest.TestCase):
         self.assertEqual(add.returncode, 0, add.stdout[-2000:] + add.stderr[-2000:])
         self.assertIn("add-agent.sh", add.stdout.splitlines()[0])
         self.assertIn("platform-guards 모듈은 공통 층에 포함됨", add.stdout)
-        meta = json.loads((target / ".agents/harness-kit.json").read_text(encoding="utf-8"))
+        meta = json.loads((target / ".agents/knots-sync.json").read_text(encoding="utf-8"))
         self.assertEqual((meta["agents"], meta["modules"]), (["claude", "cursor"], []))
         cli = self.kit("add", "cursor", "platform-guards", "--cwd", str(twin), "--json")
         self.assertEqual(cli.returncode, 0, cli.stdout[-2000:])

@@ -1,5 +1,5 @@
 /**
- * `harness-kit intake --from jira:<키> | notion:<페이지>`(설계 10 §3.6, 08 §3.11). 외부 출처 → intake.py 한 곳으로 저장한다.
+ * `knots-sync intake --from jira:<키> | notion:<페이지>`(설계 10 §3.6, 08 §3.11). 외부 출처 → intake.py 한 곳으로 저장한다.
  * 가져온 글 · 첨부는 신뢰하지 않는 입력이다: 형식 · 제한 · 비밀값 검사 · 제어 문자 제거 · `trust: untrusted` 는 intake.py 가 한다.
  * 같은 출처를 다시 가져오면 바뀐 부분을 diff 로 보이고, 사람이 `--yes` 로 고르기 전에는 덮어쓰지 않는다(exit 4).
  * 토큰은 환경 변수에서만 읽고 임시 폴더 · 리포 · 자식 프로세스 환경에 넣지 않는다.
@@ -32,7 +32,7 @@ export function parseFrom(raw: string): { type: "jira" | "notion"; ref: string }
 
 function metaOf(root: string): Record<string, unknown> {
   try {
-    return JSON.parse(fs.readFileSync(path.join(root, ".agents/harness-kit.json"), "utf8")) as Record<string, unknown>;
+    return JSON.parse(fs.readFileSync(path.join(root, ".agents/knots-sync.json"), "utf8")) as Record<string, unknown>;
   } catch {
     return {};
   }
@@ -44,9 +44,9 @@ function maxBytesOf(meta: Record<string, unknown>): number {
 }
 
 async function fromJira(ctx: Ctx, root: string, key: string, maxBytes: number, kind: string | undefined): Promise<Imported> {
-  if (!moduleEnabled(root, "jira-workflow")) throw new CliError(EXIT.STATE, "jira-workflow 모듈이 꺼져 있다 — Jira 에서 가져오려면 켠다", "harness-kit add jira-workflow");
+  if (!moduleEnabled(root, "jira-workflow")) throw new CliError(EXIT.STATE, "jira-workflow 모듈이 꺼져 있다 — Jira 에서 가져오려면 켠다", "knots-sync add jira-workflow");
   const cfg = readTracker(root);
-  if (!cfg?.baseUrl) throw new CliError(EXIT.STATE, "연결 설정이 비었다: .agents/issue-tracker.yml 의 baseUrl 이 TBD 다", "hx-jira-setup 스킬로 채운다");
+  if (!cfg?.baseUrl) throw new CliError(EXIT.STATE, "연결 설정이 비었다: .agents/issue-tracker.yml 의 baseUrl 이 TBD 다", "kns:jira-setup 스킬로 채운다");
   const client: JiraClient = makeJiraClient(cfg.baseUrl, jiraCredentials(cfg, ctx.io.env));
   const epic = await client.issue(key);
   const children = await client.children(key);
@@ -98,7 +98,7 @@ export async function runIntakeFrom(ctx: Ctx, from: string): Promise<CommandResu
   if (type === "jira") {
     imported = await fromJira(ctx, root, ref, maxBytes, kindFlag);
   } else {
-    if (!moduleEnabled(root, "notion")) throw new CliError(EXIT.STATE, "notion 모듈이 꺼져 있다 — Notion 에서 가져오려면 켠다", "harness-kit add notion");
+    if (!moduleEnabled(root, "notion")) throw new CliError(EXIT.STATE, "notion 모듈이 꺼져 있다 — Notion 에서 가져오려면 켠다", "knots-sync add notion");
     const api = makeNotionApi(notionToken(ctx.io.env), ctx.io.env);
     const got = await fetchNotion(api, ref, { config: cfg, depth, maxBytes, ...(kindFlag ? { kind: kindFlag } : {}) });
     imported = got;

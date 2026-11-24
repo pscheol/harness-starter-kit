@@ -13,7 +13,7 @@ const sha = (b: Buffer | string): string => crypto.createHash("sha256").update(b
 const T = ["--templates", REAL_TEMPLATES];
 const tools = (): Record<string, string> => ({ aidlc: FAKE_AIDLC, entire: FAKE_ENTIRE, gh: FAKE_GH });
 const read = (t: string, rel: string): string => fs.readFileSync(path.join(t, ...rel.split("/")), "utf8");
-const meta = (t: string): Record<string, any> => readJsonFile(path.join(t, ".agents/harness-kit.json"));
+const meta = (t: string): Record<string, any> => readJsonFile(path.join(t, ".agents/knots-sync.json"));
 
 /** 외부 소유 파일의 sha256 + 설정 파일 속 외부 훅 항목의 sha256 */
 function externalHashes(t: string, hookMarks: string[]): Record<string, string> {
@@ -141,10 +141,10 @@ describe("add aidlc · remove aidlc(MD-R2 · R5~R7 · R9)", () => {
   it("충돌하는 모듈이 켜져 있으면 add 는 거부하고(MD-R8) 먼저 켜야 하는 모듈이 없으면 exit 3 이다", async () => {
     const files = {
       ...BASIC_FILES,
-      "optional/zz-ext/module.json": JSON.stringify({ schema: "harness-kit.module/v1", id: "zz-ext", title: "x", summary: "x", kind: "external", requires: { modules: ["jira-workflow"], tools: [] }, conflicts: ["multi-harness"], files: "layer", steps: { add: [{ applyKit: true }], remove: [{ removeKit: true }] } }),
+      "optional/zz-ext/module.json": JSON.stringify({ schema: "knots-sync.module/v1", id: "zz-ext", title: "x", summary: "x", kind: "external", requires: { modules: ["jira-workflow"], tools: [] }, conflicts: ["multi-harness"], files: "layer", steps: { add: [{ applyKit: true }], remove: [{ removeKit: true }] } }),
       "optional/zz-ext/agents-rules/zz.md": "zz\n",
-      "optional/jira-workflow/module.json": JSON.stringify({ schema: "harness-kit.module/v1", id: "jira-workflow", title: "j", summary: "j", kind: "kit", files: "layer", steps: { add: [{ applyKit: true }], remove: [{ removeKit: true }] } }),
-      "optional/multi-harness/module.json": JSON.stringify({ schema: "harness-kit.module/v1", id: "multi-harness", title: "m", summary: "m", kind: "kit", files: "layer", steps: { add: [{ applyKit: true }], remove: [{ removeKit: true }] } }),
+      "optional/jira-workflow/module.json": JSON.stringify({ schema: "knots-sync.module/v1", id: "jira-workflow", title: "j", summary: "j", kind: "kit", files: "layer", steps: { add: [{ applyKit: true }], remove: [{ removeKit: true }] } }),
+      "optional/multi-harness/module.json": JSON.stringify({ schema: "knots-sync.module/v1", id: "multi-harness", title: "m", summary: "m", kind: "kit", files: "layer", steps: { add: [{ applyKit: true }], remove: [{ removeKit: true }] } }),
     };
     const templates = fixtureTemplates(files, { externalModules: ["zz-ext"] });
     const target = path.join(tmpDir(), "acme");
@@ -210,7 +210,7 @@ describe("도구 설치(MD-R3, 완료 기준 10)", () => {
     const files = {
       ...BASIC_FILES,
       "optional/zz-sudo/module.json": JSON.stringify({
-        schema: "harness-kit.module/v1", id: "zz-sudo", title: "x", summary: "x", kind: "external",
+        schema: "knots-sync.module/v1", id: "zz-sudo", title: "x", summary: "x", kind: "external",
         requires: { modules: [], tools: [{ name: "zzsudo", versionCmd: ["zzsudo", "--version"], range: ">=1.0", install: { darwin: ["sudo", "apt", "install", "zzsudo"], doc: "x" } }] },
         files: "layer", steps: { add: [{ applyKit: true }], remove: [{ removeKit: true }] },
       }),
@@ -286,7 +286,7 @@ describe("add entire(MD-R12 · R13, 완료 기준 5 · 6)", () => {
   it("구현 하네스가 Entire 가 지원하지 않는 kiro 면 쓰기 전에 exit 3 이다", async () => {
     const t = await installedRepo("claude,kiro");
     const m = meta(t);
-    fs.writeFileSync(path.join(t, ".agents/harness-kit.json"), JSON.stringify({ ...m, roles: { implement: { harness: "kiro" } } }, null, 2));
+    fs.writeFileSync(path.join(t, ".agents/knots-sync.json"), JSON.stringify({ ...m, roles: { implement: { harness: "kiro" } } }, null, 2));
     const bin = makeBin(tools(), { FAKE_VIS: "PRIVATE" });
     const r = await cli(t, ["add", "entire", "--yes", ...T], bin);
     expect(r.code).toBe(3);
@@ -318,7 +318,7 @@ describe("되돌리기(MD-R1 · 설계 10 §3.1 6 이후 실패)", () => {
     const files = {
       ...BASIC_FILES,
       "optional/zz-rb/module.json": JSON.stringify({
-        schema: "harness-kit.module/v1", id: "zz-rb", title: "x", summary: "x", kind: "external",
+        schema: "knots-sync.module/v1", id: "zz-rb", title: "x", summary: "x", kind: "external",
         requires: { modules: [], tools: [{ name: "zzrb", versionCmd: ["zzrb", "--version"], range: ">=1.0" }] },
         files: "layer", externalPaths: ["zzrb/**"], config: { set: { "project.name.x": 1 }, unset: {} },
         steps: { add: [{ run: ["zzrb", "make"] }, { registerExternal: true }, { applyKit: true }, { setConfig: true }], remove: [{ removeKit: true }] },
@@ -347,7 +347,7 @@ describe("측정(MD-R16, 완료 기준 11)", () => {
     const files = {
       ...BASIC_FILES,
       "optional/zz-m/module.json": JSON.stringify({
-        schema: "harness-kit.module/v1", id: "zz-m", title: "x", summary: "x", kind: "external",
+        schema: "knots-sync.module/v1", id: "zz-m", title: "x", summary: "x", kind: "external",
         requires: { modules: [], tools: [{ name: "zzm", versionCmd: ["zzm", "--version"], range: ">=1.0" }] },
         files: "layer", externalPaths: [".claude/rules/zzm-*", ".claude/skills/zzm-*/**"], externalHooks: ["zzm hook"],
         steps: { add: [{ run: ["zzm", "make"] }, { registerExternal: true }, { applyKit: true }], remove: [{ removeKit: true }] },
@@ -389,7 +389,7 @@ describe("측정 확인(MD-R16)", () => {
     const files = {
       ...BASIC_FILES,
       "optional/zz-big/module.json": JSON.stringify({
-        schema: "harness-kit.module/v1", id: "zz-big", title: "x", summary: "x", kind: "external",
+        schema: "knots-sync.module/v1", id: "zz-big", title: "x", summary: "x", kind: "external",
         requires: { modules: [], tools: [{ name: "zzbig", versionCmd: ["zzbig", "--version"], range: ">=1.0" }] },
         files: "layer", externalPaths: [".claude/rules/zzbig-*"], config: { set: { "flow.record": "big" }, unset: { "flow.record": "none" } },
         steps: { add: [{ run: ["zzbig", "make"], confirm: true }, { registerExternal: true }, { applyKit: true }, { setConfig: true }], remove: [{ removeKit: true }, { unsetConfig: true }] },

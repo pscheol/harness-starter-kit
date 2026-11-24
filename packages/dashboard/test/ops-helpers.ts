@@ -62,7 +62,7 @@ export function ready(repo: Repo, record: string, test = true): void {
   let text = readFile(repo.root, record).replace("- full: none", `- full: passed · sha ${sha} · https://ci/1`).replace("- quality-gate: none", `- quality-gate: passed · sha ${sha}`);
   if (test) text = text.replace("- 시험: none", "- 시험: passed · env verify · https://ci/2 · 2026-11-30T16:20:00+09:00");
   writeFile(repo.root, record, text);
-  const cfg = { schema: "harness-kit.deploy/v1", envs: { verify: { kind: "verification" }, production: { kind: "production" } }, commands: {}, autoVerify: { enabled: false } };
+  const cfg = { schema: "knots-sync.deploy/v1", envs: { verify: { kind: "verification" }, production: { kind: "production" } }, commands: {}, autoVerify: { enabled: false } };
   writeFile(repo.root, ".agents/deploy.json", JSON.stringify(cfg));
 }
 

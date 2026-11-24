@@ -40,14 +40,14 @@ describe("repair", () => {
   it("lock kit.version 이 CLI 와 다르면 되살리지 않고 update 를 안내, exit 4", async () => {
     const { target, templates, cli } = await installedFixture();
     const file = path.join(target, LOCK_FILE);
-    writeJsonFile(file, { ...readJsonFile(file), kit: { version: "1.0.8", source: "plugin:harness-kit@1.0.8" } });
+    writeJsonFile(file, { ...readJsonFile(file), kit: { version: "1.0.8", source: "plugin:knots-sync@1.0.8" } });
     fs.rmSync(path.join(target, A));
     const before = readTree(target);
     const r = await cli("repair", ["--json", "--templates", templates]);
     expect(r.code).toBe(4);
     const j = json(r);
     expect(opOf(j, A)).toMatchObject({ action: "needs-update" });
-    expect(JSON.stringify(j)).toContain("harness-kit update");
+    expect(JSON.stringify(j)).toContain("knots-sync update");
     expect(readTree(target)).toEqual(before);
     const human = await cli("repair", ["--templates", templates]);
     expect(human.code).toBe(4);

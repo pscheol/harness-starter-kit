@@ -12,7 +12,7 @@ import { applyPalette, PALETTES, storedPalette } from "../lib/palette";
 
 function Swatch({ id }: { id: string }) {
   return (
-    <span className="hx-swatch" data-p={id} aria-hidden="true">
+    <span className="kns-swatch" data-p={id} aria-hidden="true">
       <i />
       <i />
     </span>

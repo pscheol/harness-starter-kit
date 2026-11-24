@@ -209,7 +209,7 @@ created: {{CREATED}}
 | ID | 지표 | 목표 | 실측 | 판정 | 출처 |
 |---|---|---|---|---|---|
 ## 2. 전달 지표
-<!-- METRICS:BEGIN — harness-kit metrics 가 쓴다. 손으로 고치지 않는다 -->
+<!-- METRICS:BEGIN — knots-sync metrics 가 쓴다. 손으로 고치지 않는다 -->
 | 지표 | 기준선 | 이 기간 | 계산 방법 |
 |---|---|---|---|
 <!-- METRICS:END -->
@@ -255,7 +255,7 @@ def main(argv=None):
         print(f"✖ {error}", file=sys.stderr)
         return 1
     relative = path.relative_to(root).as_posix()
-    print(json.dumps({"record": relative}, ensure_ascii=False) if args.json else f"✔ 운영 기록: {relative}\n실측 · 판정 · 출처는 사람이나 에이전트 세션이 채운다. 전달 지표 구간은 harness-kit metrics --fill 이 쓴다")
+    print(json.dumps({"record": relative}, ensure_ascii=False) if args.json else f"✔ 운영 기록: {relative}\n실측 · 판정 · 출처는 사람이나 에이전트 세션이 채운다. 전달 지표 구간은 knots-sync metrics --fill 이 쓴다")
     return 0
 
 

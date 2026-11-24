@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""`/hx-specify --from-unit` 의 결정적 부분(설계 08 §3.7 · DS-R9~R13, HK-19 design §6).
+"""`/kns-specify --from-unit` 의 결정적 부분(설계 08 §3.7 · DS-R9~R13, HK-19 design §6).
 
     python3 scripts/harness/from_unit.py <Intent 키>/<U-n> [--key <작업 항목 키>] [--dry-run]
 
@@ -86,7 +86,7 @@ def issue_root(root: Path, unit: dict, notes: list[str]) -> Path:
         raise Stop(f"Unit repo {repo} 가 {REGISTRY} 에 없거나 쓸 수 없는 경로다")
     target = root / path
     if not (target / "scripts/new-feature.sh").is_file():
-        raise Stop(f"{path}/scripts/new-feature.sh 가 없다 — 도메인 리포에 하네스를 먼저 배포한다(harness-kit sync units)")
+        raise Stop(f"{path}/scripts/new-feature.sh 가 없다 — 도메인 리포에 하네스를 먼저 배포한다(knots-sync sync units)")
     notes.append(f"Unit repo {repo} — 이슈를 {path} 에 만든다")
     return target
 
@@ -107,7 +107,7 @@ def block(folder: Path, intent_text: str, unit: dict, units: dict[str, dict], ke
         titles = {s["id"]: s.get("title") or "" for s in link.get("stories") or [] if isinstance(s, dict) and isinstance(s.get("id"), str)}
     ikey = intents.FOLDER.match(folder.name)[1]
     stories = story_blocks(intent_text)
-    lines = [f"{BEGIN} — /hx-specify --from-unit 가 {ikey}/{unit['id']} 에서 옮겼다. 다듬은 뒤에도 ID 는 지우지 않는다 -->", "",
+    lines = [f"{BEGIN} — /kns-specify --from-unit 가 {ikey}/{unit['id']} 에서 옮겼다. 다듬은 뒤에도 ID 는 지우지 않는다 -->", "",
              "## Intent 에서 옮긴 것", "",
              f"- Intent: {ikey} {head.get('title', '')} · `{folder.name}` · Unit: {unit['id']} {unit.get('title') or unit.get('name')} · kind {unit.get('kind')} · area {unit.get('area')}", ""]
     goal = [l for l in intents.sections(intent_text).get("1", []) if l.strip() and not l.startswith("(")]
@@ -148,7 +148,7 @@ def block(folder: Path, intent_text: str, unit: dict, units: dict[str, dict], ke
     if keeps:
         lines += ["### 바뀌면 안 되는 동작(current-state §3)", "", "| ID | 동작 | 근거 | 지금 있는 시험 |", "|---|---|---|---|", *keeps, ""]
     if unit.get("kind") == "contract":
-        lines += ["> 계약 Unit — design 의 §6 계약 절이 필수다. 이 계약을 쓰는 Unit 의 /hx-plan 은 이 이슈 design 승인 뒤에 한다.", ""]
+        lines += ["> 계약 Unit — design 의 §6 계약 절이 필수다. 이 계약을 쓰는 Unit 의 /kns-plan 은 이 이슈 design 승인 뒤에 한다.", ""]
     lines.append(END)
     return "\n".join(lines)
 
@@ -164,12 +164,12 @@ def run_from_unit(root: Path, target: str, key: str | None, dry_run: bool) -> di
     if "intent" in gates:
         target_doc = folder / "intent.md" if (folder / "intent.md").is_file() else folder / "intent.json"
         if intents.gate_state(folder, "intent", target_doc, meta) != "valid":
-            raise Stop(f"{ikey} 의 intent 게이트 승인이 없다(또는 승인 뒤 바뀌었다) — 사람이 관리 페이지 · harness-kit approve 로 승인한 뒤 다시(DS-R9)")
+            raise Stop(f"{ikey} 의 intent 게이트 승인이 없다(또는 승인 뒤 바뀌었다) — 사람이 관리 페이지 · knots-sync approve 로 승인한 뒤 다시(DS-R9)")
     else:
         notes.append("intent 게이트 없음 — 승인 검사를 건너뛴다")
     data = intents.read_json(folder / "units.json")
     if not isinstance(data, dict):
-        raise Stop("units.json 이 없다 — /hx-intent 로 분해를 먼저 한다")
+        raise Stop("units.json 이 없다 — /kns-intent 로 분해를 먼저 한다")
     units = {u["id"]: u for u in data.get("units") or [] if isinstance(u, dict) and isinstance(u.get("id"), str)}
     unit = units.get(uid)
     if not unit or unit.get("planned", True) is False:

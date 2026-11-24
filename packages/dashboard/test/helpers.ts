@@ -80,7 +80,7 @@ const DEFAULT_GATES = ["codebase", "intent", "plans", "requirements", "design", 
 
 export function meta(opts: RepoOptions = {}, name = "demo"): Record<string, unknown> {
   const m: Record<string, unknown> = {
-    schema: "harness-kit/v2",
+    schema: "knots-sync/v2",
     kit: { version: "2.0.0-alpha.0" },
     project: { name, slug: name },
     stack: "python",
@@ -112,7 +112,7 @@ export function makeRepo(opts: RepoOptions = {}, name = "demo", parent?: string)
     recursive: true,
     filter: (src) => !src.includes("__pycache__") && !src.endsWith(".pyc"),
   });
-  writeFile(root, ".agents/harness-kit.json", `${JSON.stringify(meta(opts, name), null, 2)}\n`);
+  writeFile(root, ".agents/knots-sync.json", `${JSON.stringify(meta(opts, name), null, 2)}\n`);
   writeFile(root, ".agents/harness.json", `${JSON.stringify({ unit: name, title: name, stack: "python", agents: ["claude", "codex"], shared: [] }, null, 2)}\n`);
   writeFile(root, ".gitignore", ".agents/state/\n.agents/reports/\n.agents/local/\n");
   writeFile(root, "README.md", "# demo\n");

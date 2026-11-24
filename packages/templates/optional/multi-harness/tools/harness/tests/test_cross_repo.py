@@ -51,7 +51,7 @@ class CrossRepoTest(unittest.TestCase):
             self.git(self.root, 'submodule', 'add', '-q', '-b', 'develop', str(remote), path)
         (self.root / 'tools/harness').mkdir(parents=True)
         shutil.copy2(TOOL / 'gates.py', self.root / 'tools/harness/gates.py')
-        (self.root / 'tools/harness/units.json').write_text(json.dumps({'schema': 'harness-kit.deploy-units/v1', 'units': [
+        (self.root / 'tools/harness/units.json').write_text(json.dumps({'schema': 'knots-sync.deploy-units/v1', 'units': [
             {'id': 'root', 'path': '.', 'stack': 'monorepo'}, {'id': 'app', 'path': DOMAINS[0], 'stack': 'electron', 'packages': ['@acme/api']}, {'id': 'api', 'path': DOMAINS[1], 'stack': 'jvm'}]}))
         (self.root / '.agents').mkdir()
         (self.root / '.agents/harness.json').write_text(json.dumps({'unit': 'root', 'stack': 'monorepo'}))

@@ -40,7 +40,7 @@ round: 2
 class MobTest(SddCase):
     def setUp(self):
         super().setUp()
-        meta = self.root / ".agents/harness-kit.json"
+        meta = self.root / ".agents/knots-sync.json"
         data = json.loads(meta.read_text())
         meta.write_text(json.dumps({**data, "groups": {"po": ["lee@example.com"], "dev": ["kim@example.com"]}, "approvers": {"intent": ["po"]}}))
         shutil.rmtree(self.root / ".agents/docs/intents", ignore_errors=True)
@@ -73,7 +73,7 @@ class MobTest(SddCase):
         code, out = self.mob("next", "INT-1")
         self.assertEqual((0, 2), (code, out["ended"]))
         self.assertEqual([2, 3], [r["round"] for r in out["session"]["rounds"]])
-        self.assertIn("npx harness-kit dispatch --to INT-1:design --kind answers-ready", out["suggest"])
+        self.assertIn("npx knots-sync dispatch --to INT-1:design --kind answers-ready", out["suggest"])
         self.assertFalse((self.root / ".agents/state/dispatch-queue").exists(), "회차를 닫아도 요청을 보내지 않는다")
         text = (self.folder / "questions.md").read_text(encoding="utf-8").replace("- 답:\n\n## Q-2", "- 답: B · lee@example.com · 2026-11-24T10:00:00+09:00\n\n## Q-2").replace("- 답:\n", "- 답: A · kim@example.com · 2026-11-24T10:01:00+09:00\n")
         (self.folder / "questions.md").write_text(text, encoding="utf-8")

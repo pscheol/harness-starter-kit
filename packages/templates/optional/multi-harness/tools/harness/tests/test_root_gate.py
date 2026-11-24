@@ -130,7 +130,7 @@ class RootFullLoopTest(unittest.TestCase):
             (target / '.agents').mkdir(parents=True, exist_ok=True)
             (target / '.agents/harness.json').write_text(json.dumps({'unit': target.name, 'stack': 'domain'}))
         # 루트만 에이전트 세션 full 을 허용한다. 하위(도메인)는 기본값(막음)이다.
-        (root / '.agents/harness-kit.json').write_text(json.dumps({'verify': {'fullOnlyInCI': False}}))
+        (root / '.agents/knots-sync.json').write_text(json.dumps({'verify': {'fullOnlyInCI': False}}))
         (root / 'domain/scripts/verify.sh').write_text('#!/usr/bin/env bash\nset -uo pipefail\n' + ENTRY + 'echo "domain body ${HARNESS_VERIFY_PARENT:-}"\n')
         (root / 'scripts/verify.sh').write_text('#!/usr/bin/env bash\nset -uo pipefail\n' + ENTRY
                                                  + 'cd "$(dirname "${BASH_SOURCE[0]}")/.." || exit 2\n'

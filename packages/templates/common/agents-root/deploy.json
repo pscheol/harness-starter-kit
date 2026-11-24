@@ -1,5 +1,5 @@
 {
-  "schema": "harness-kit.deploy/v1",
+  "schema": "knots-sync.deploy/v1",
   "envs": {
     "verify": { "kind": "verification", "url": "https://verify.example.internal" },
     "production": { "kind": "production" }

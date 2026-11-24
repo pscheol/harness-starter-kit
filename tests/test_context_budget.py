@@ -21,7 +21,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from projection_kit import CHECK_LAYOUT, KIT, TOKENS, V108_CONTEXT, extract_v108  # noqa: E402
 from test_cli_parity import base_env  # noqa: E402
 
-SETUP = KIT / "plugins/harness-kit/skills/hx-bootstrap/setup.sh"
+SETUP = KIT / "plugins/kns/skills/bootstrap/setup.sh"
 TEMPLATES = KIT / "packages/templates"
 STACKS = ("jvm", "python", "go", "web", "electron")
 

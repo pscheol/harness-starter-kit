@@ -117,7 +117,7 @@ def dependency_errors(root, folder):
     for key in keys:
         status = dependency_design_status(root, key)
         if status != "approved":
-            errors.append(f"의존 계약 {key} 의 design 이 승인되지 않았다(지금 {status or '이슈 없음'}) — 그 이슈 design 승인 뒤에 /hx-plan 한다")
+            errors.append(f"의존 계약 {key} 의 design 이 승인되지 않았다(지금 {status or '이슈 없음'}) — 그 이슈 design 승인 뒤에 /kns-plan 한다")
     return errors
 
 

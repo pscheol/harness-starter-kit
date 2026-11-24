@@ -44,7 +44,7 @@ class IssueSddTest(SddCase):
     def test_weakened_flow_gates_do_not_lift_the_floor(self):
         # 게이트 하한(설계 04 §3.8 · §5 #7): 프로젝트가 flow.gates 에서 design 을 빼도 tasks 는 design 승인 없이 만들지 못한다.
         import json
-        meta = self.root / ".agents/harness-kit.json"
+        meta = self.root / ".agents/knots-sync.json"
         data = json.loads(meta.read_text(encoding="utf-8")) if meta.is_file() else {}
         data["flow"] = {"gates": ["requirements", "tasks", "mr", "done"]}
         meta.write_text(json.dumps(data), encoding="utf-8")

@@ -1,5 +1,5 @@
 /**
- * 작업 요청(설계 06 §3.10, DB-R17 · R18 · R25). 사람이 POST /dispatch · `harness-kit dispatch` 를 부를 때만 간다.
+ * 작업 요청(설계 06 §3.10, DB-R17 · R18 · R25). 사람이 POST /dispatch · `knots-sync dispatch` 를 부를 때만 간다.
  * 글은 한 줄(제어 문자 · 줄바꿈 제거, 1,000자)이고 경로 · 변경 요약 · 요청 문장만 담는다. 문서 내용은 넣지 않는다.
  * 소켓에 닿지 못하면 deep link · 대기함 선택지만 돌려주고 자동으로 바꾸지 않는다.
  */
@@ -56,7 +56,7 @@ export function message(b: DispatchBody, subject: string): string {
     "review-findings": `${subject} 리뷰 지적 판단이 기록됐다.${where} 요청: review 상태를 읽고 처리한다.${extra}`,
     custom: `${subject} ${b.text ?? ""}${where}`,
   };
-  const line = oneLine(`[harness-kit 관리 페이지] ${body[b.kind]} 이 글은 승인이 아니다.`);
+  const line = oneLine(`[knots-sync 관리 페이지] ${body[b.kind]} 이 글은 승인이 아니다.`);
   return [...line].length > MAX ? [...line].slice(0, MAX).join("") : line;
 }
 
@@ -130,7 +130,7 @@ export async function postDispatch(p: Project, raw: unknown, createdBy: string |
   const id = ulid();
   const created = new Date();
   const item = {
-    schema: "harness-kit.dispatch/v1", id, createdAt: nowText(created), createdBy,
+    schema: "knots-sync.dispatch/v1", id, createdAt: nowText(created), createdBy,
     target: { issue: b.target.issue ?? session?.issue ?? null, role: b.target.role ?? null, harness: "any", sessionId: b.target.sessionId ?? (b.target.name ? (session?.id ?? null) : null) },
     kind: b.kind, message: text, paths: b.paths, expiresAt: nowText(new Date(created.getTime() + 7 * 24 * 3600 * 1000)),
   };

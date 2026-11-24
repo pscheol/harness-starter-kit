@@ -19,7 +19,7 @@ import re
 import subprocess
 import sys
 
-META = '.agents/harness-kit.json'
+META = '.agents/knots-sync.json'
 DEFAULT_BASE = 'develop'
 BRANCH = re.compile(r'\w[\w./-]*')
 

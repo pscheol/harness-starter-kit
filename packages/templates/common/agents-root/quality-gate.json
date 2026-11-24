@@ -1,5 +1,5 @@
 {
-  "schema": "harness-kit.quality-gate/v1",
+  "schema": "knots-sync.quality-gate/v1",
   "newIssues": { "CRITICAL": 0, "HIGH": null, "MEDIUM": null, "LOW": null },
   "duplication": { "newCodeMaxPercent": 3.0, "minChangedLines": 50 },
   "complexity": { "functionMaxCcn": 15, "mode": "new-or-worsened" },

@@ -149,14 +149,14 @@ def run(root, env, record_path=None, rollback_test=False, to_sha=None):
     if record is not None:
         write_result(record.path, payload)
     if rollback_test:
-        write_json(root, f"rollback-test-{sha[:7]}.json", {"schema": "harness-kit.rollback-test/v1", "sha": sha, "env": env, "status": (tested or {}).get("status", "skipped"),
+        write_json(root, f"rollback-test-{sha[:7]}.json", {"schema": "knots-sync.rollback-test/v1", "sha": sha, "env": env, "status": (tested or {}).get("status", "skipped"),
                                                           "toSha": (tested or {}).get("toSha"), "pipeline": os.environ.get("CI_PIPELINE_URL") or os.environ.get("GITHUB_RUN_ID"), "finishedAt": payload["finishedAt"]})
     return (0 if state == "succeeded" and (tested or {}).get("status", "passed") != "failed" else 1), payload
 
 
 # ── 자동 검증 배포 ───────────────────────────────────────────────────────────
 def history_from_file(path):
-    """HX_DEPLOY_HISTORY 가 가리키는 JSON 목록(최신 먼저) → 목록. 못 읽으면 None."""
+    """KNS_DEPLOY_HISTORY 가 가리키는 JSON 목록(최신 먼저) → 목록. 못 읽으면 None."""
     try:
         data = json.loads(Path(path).read_text(encoding="utf-8"))
     except (OSError, ValueError):
@@ -180,9 +180,9 @@ def history_from_artifacts(root):
 
 def read_history(root, environ):
     """(목록 또는 None, 출처 이름). 목록 항목: {status: passed|failed|stopped, sha}."""
-    named = environ.get("HX_DEPLOY_HISTORY")
+    named = environ.get("KNS_DEPLOY_HISTORY")
     if named:
-        return history_from_file(named), "HX_DEPLOY_HISTORY"
+        return history_from_file(named), "KNS_DEPLOY_HISTORY"
     written = Path(root) / HISTORY_FILE
     if written.is_file():
         return history_from_file(written), HISTORY_FILE
@@ -228,12 +228,12 @@ def auto_verify(root, environ=None):
     if not auto["enabled"]:
         return 0, {"status": "off", "message": "자동 검증 배포는 꺼져 있다(deploy.json autoVerify.enabled)"}
     sha = git_head(root)
-    resume = environ.get("HX_DEPLOY_RESUME") == "true"
+    resume = environ.get("KNS_DEPLOY_RESUME") == "true"
     started = now_text()
-    base = {"schema": "harness-kit.auto-verify/v1", "sha": sha[:12], "env": auto["env"], "pipeline": environ.get("CI_PIPELINE_URL") or environ.get("HX_PIPELINE_URL"), "startedAt": started}
+    base = {"schema": "knots-sync.auto-verify/v1", "sha": sha[:12], "env": auto["env"], "pipeline": environ.get("CI_PIPELINE_URL") or environ.get("KNS_PIPELINE_URL"), "startedAt": started}
     history, source = read_history(root, environ)
     if history is None:
-        out = {**base, "status": "stopped", "reason": f"직전 실행 결과를 읽지 못했다(실패 수 모름, {source}) — 첫 실행이면 HX_DEPLOY_RESUME=true 로 파이프라인을 수동 실행한다",
+        out = {**base, "status": "stopped", "reason": f"직전 실행 결과를 읽지 못했다(실패 수 모름, {source}) — 첫 실행이면 KNS_DEPLOY_RESUME=true 로 파이프라인을 수동 실행한다",
                "steps": [], "consecutiveFailures": auto["maxConsecutiveFailures"], "lastPassedSha": None, "finishedAt": now_text(), "seq": next_seq(root)}
         if not resume:
             write_json(root, f"auto-verify-{sha[:7]}.json", out)
@@ -242,7 +242,7 @@ def auto_verify(root, environ=None):
     failures = consecutive_failures(history)
     last_passed = history_last_passed(history)
     if failures >= auto["maxConsecutiveFailures"] and not resume:
-        out = {**base, "status": "stopped", "reason": f"연속 {failures}회 실패 — 사람이 HX_DEPLOY_RESUME=true 로 파이프라인을 수동 실행해야 다시 배포한다",
+        out = {**base, "status": "stopped", "reason": f"연속 {failures}회 실패 — 사람이 KNS_DEPLOY_RESUME=true 로 파이프라인을 수동 실행해야 다시 배포한다",
                "steps": [], "consecutiveFailures": failures, "lastPassedSha": last_passed, "finishedAt": now_text(), "seq": next_seq(root)}
         write_json(root, f"auto-verify-{sha[:7]}.json", out)
         return 1, out

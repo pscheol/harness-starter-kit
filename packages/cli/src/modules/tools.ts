@@ -33,7 +33,7 @@ export function runCmd(io: Io, cwd: string, argv: string[], opts: { inherit?: bo
 }
 
 export function platformOf(io: Io): Platform {
-  const p = io.env.HARNESS_KIT_PLATFORM ?? process.platform;
+  const p = io.env.KNOTS_SYNC_PLATFORM ?? process.platform;
   return p === "darwin" || p === "win32" ? p : "linux";
 }
 

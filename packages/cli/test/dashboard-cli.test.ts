@@ -64,15 +64,15 @@ function fixture(): Repo {
   const repo = makeRepo();
   writeIssue(repo.root, "DEMO-1", "upload-cleanup", { requirements: "in-review", design: "draft" });
   writeFile(repo.root, `${INT}/intent.md`, "---\nkey: INT-7\ntitle: 결제 개편\nstatus: in-review\n---\n\n# Intent\n");
-  writeFile(repo.root, `${INT}/units.json`, `${JSON.stringify({ schema: "harness-kit.units/v1", intent: { key: "INT-7", title: "결제 개편", doc: "intent.md" }, source: { kind: "kit" },
+  writeFile(repo.root, `${INT}/units.json`, `${JSON.stringify({ schema: "knots-sync.units/v1", intent: { key: "INT-7", title: "결제 개편", doc: "intent.md" }, source: { kind: "kit" },
     units: [{ id: "U-1", title: "계약", kind: "contract", area: "pay", dependsOn: [], order: 1, issue: null, planned: true },
       { id: "U-2", title: "등록", kind: "feature", area: "pay", dependsOn: ["U-1"], order: 2, issue: "DEMO-1", planned: true },
       { id: "U-3", title: "알림", kind: "feature", area: "pay", dependsOn: ["U-2"], order: 3, issue: null, planned: true }] }, null, 2)}\n`);
   writeFile(repo.root, `${INT}/questions.md`, "---\ntarget: INT-7\nstatus: open\nround: 1\n---\n\n# 질문\n\n## Q-1 · 범위 · 답할 직무: po · 막는 게이트: intent\n넣는가?\n\n- A. 넣는다 — 영향: 하나\n- B. 뺀다 — 영향: 둘\n- 권장: B — 근거: 없다\n- 답:\n");
   commitAll(repo.root);
-  writeFile(repo.home, ".config/harness-kit/config.json", JSON.stringify({ history: "on" }));
+  writeFile(repo.home, ".config/knots-sync/config.json", JSON.stringify({ history: "on" }));
   const data = { issue: "DEMO-1", mr: "#1", head: "abc1234", findings: [{ id: "F-1", severity: "HIGH", check: "RV-EDGE", path: "README.md", line: 1, fp: "cd".repeat(32), title: "빈 입력" }] };
-  writeFile(repo.root, ".agents/reports/review/DEMO-1.md", `---\nissue: DEMO-1\n---\n\n<!-- harness-kit:review-data ${JSON.stringify(data)} -->\n`);
+  writeFile(repo.root, ".agents/reports/review/DEMO-1.md", `---\nissue: DEMO-1\n---\n\n<!-- knots-sync:review-data ${JSON.stringify(data)} -->\n`);
   return repo;
 }
 
@@ -200,7 +200,7 @@ describe("쓰기 명령", () => {
     const repo = fixture();
     const add = await cli(["projects", "add", repo.root, "--json"], repo);
     expect(add.code, add.stdout + add.stderr).toBe(0);
-    const reg = path.join(repo.home, ".config/harness-kit/projects.json");
+    const reg = path.join(repo.home, ".config/knots-sync/projects.json");
     expect(fs.statSync(reg).mode & 0o777).toBe(0o600);
     expect(fs.statSync(path.dirname(reg)).mode & 0o777).toBe(0o700);
     const list = await cli(["projects", "list", "--json"], repo);
@@ -257,10 +257,10 @@ describe("쓰기 명령", () => {
 
   it("history 는 꺼져 있으면 history_off, 켜면 읽는다", async () => {
     const repo = fixture();
-    fs.rmSync(path.join(repo.home, ".config/harness-kit/config.json"));
+    fs.rmSync(path.join(repo.home, ".config/knots-sync/config.json"));
     const off = await cli(["history", "--json"], repo);
     expect([off.code, off.json.error.code]).toEqual([1, "history_off"]);
-    writeFile(repo.home, ".config/harness-kit/config.json", JSON.stringify({ history: "on" }));
+    writeFile(repo.home, ".config/knots-sync/config.json", JSON.stringify({ history: "on" }));
     const on = await cli(["history", "--json"], repo);
     expect([on.code, on.json.enabled, on.json.prompts]).toEqual([0, true, []]);
   });

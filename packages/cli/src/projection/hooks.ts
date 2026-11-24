@@ -5,7 +5,7 @@
 import type { HookSpec, ProjectionSpec } from "./spec";
 
 export const HOOKS_REL = ".agents/hooks.json";
-export const HOOKS_SCHEMA = "harness-kit.hooks/v1";
+export const HOOKS_SCHEMA = "knots-sync.hooks/v1";
 
 export type HookTarget = "claude" | "codex" | "kiroIde" | "kiroCli";
 

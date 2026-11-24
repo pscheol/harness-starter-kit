@@ -58,7 +58,7 @@ class MigrateTest(SddCase):
         before = self.tree_snapshot()
         data = self.dry_run()
         self.assertEqual(before, self.tree_snapshot())
-        self.assertEqual("harness-kit.migrate-map/v1", data["schema"])
+        self.assertEqual("knots-sync.migrate-map/v1", data["schema"])
         self.assertEqual({"source": "kit", "prefix": "DEMO"}, data["issueKey"])
         self.assertEqual({"areas": 2, "items": 4, "legacyItems": 0}, data["counts"])
         keys = [(item["area"], item["oldNumber"], item["key"], item["slug"]) for item in data["items"]]

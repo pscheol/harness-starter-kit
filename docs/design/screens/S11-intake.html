@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>S11 새 요구사항 · harness-kit 관리 페이지</title>
+<title>S11 새 요구사항 · knots-sync 관리 페이지</title>
 <link rel="stylesheet" href="assets/app.css">
 <style>
   [hidden] { display: none !important; }
@@ -164,7 +164,7 @@
                     <label class="kind"><input type="radio" name="kind" value="change"><b>기능 변경</b><span>Intent</span></label>
                     <label class="kind"><input type="radio" name="kind" value="bug"><b>버그</b><span>이슈를 바로 만든다</span></label>
                   </div>
-                  <p class="note" id="productNote"><svg class="i s"><use href="#i-layers"/></svg><span><b>첫 Unit은 걷는 뼈대다.</b> 기능 없이 빌드 · 테스트 · verify · CI만 도는 최소 앱을 먼저 만들고 계약 · 기능 Unit이 뒤따른다. 스택 · 아키텍처는 세션에서 <span class="mono">hx-bootstrap --from-intake</span>로 고른다.</span></p>
+                  <p class="note" id="productNote"><svg class="i s"><use href="#i-layers"/></svg><span><b>첫 Unit은 걷는 뼈대다.</b> 기능 없이 빌드 · 테스트 · verify · CI만 도는 최소 앱을 먼저 만들고 계약 · 기능 Unit이 뒤따른다. 스택 · 아키텍처는 세션에서 <span class="mono">kns:bootstrap --from-intake</span>로 고른다.</span></p>
                   <p class="note" id="bugNote" hidden><svg class="i s"><use href="#i-help"/></svg><span><b>버그는 Intent를 만들지 않는다.</b> 이슈 폴더에 requirements 초안을 쓰고 재현 로그 · 화면 캡처를 <span class="path">attachments/</span>에 둔다.</span></p>
                 </fieldset>
 
@@ -191,7 +191,7 @@
                     <h2>바라는 것</h2>
                     <ul><li>가맹점이 정산 주기별 지급액 · 수수료 · 환불 상계 내역을 본다</li><li>지급 명세를 PDF로 내려받는다</li><li>운영자는 가맹점별 미지급 · 보류 건을 본다</li></ul>
                   </div>
-                  <span class="hint">213자 · 원문은 고치지 않고 남긴다. 범위와 질문은 설계 세션이 <span class="mono">/hx-intent</span>로 정리한다.</span>
+                  <span class="hint">213자 · 원문은 고치지 않고 남긴다. 범위와 질문은 설계 세션이 <span class="mono">/kns-intent</span>로 정리한다.</span>
                 </div>
 
                 <div class="field" data-co="5">
@@ -304,9 +304,9 @@
       <button class="btn primary" type="button" id="submitBtn" data-state-show="default readonly" data-write><svg class="i"><use href="#i-inbox"/></svg>접수</button>
       <button class="btn primary" type="button" disabled data-state-show="error"><svg class="i"><use href="#i-inbox"/></svg>접수</button>
 
-      <div class="done flex" data-state-show="sent"><svg class="i"><use href="#i-ok"/></svg><span><b>INT-8 접수됨</b> · 아직 보내지 않았다 · 설계 세션(<span class="mono">design-desk</span>)에 <span class="mono">/hx-intent INT-8</span> 요청을 보낼까</span></div>
-      <button class="btn push" type="button" data-state-show="sent" data-toast="보내지 않았다 · 나중에 세션에서 /hx-intent INT-8을 부른다">나중에</button>
-      <button class="btn go" type="button" data-state-show="sent" data-toast="design-desk 수신함에 보냈다 · /hx-intent INT-8 · 승인이 아니다"><svg class="i"><use href="#i-send"/></svg>지금 보내기</button>
+      <div class="done flex" data-state-show="sent"><svg class="i"><use href="#i-ok"/></svg><span><b>INT-8 접수됨</b> · 아직 보내지 않았다 · 설계 세션(<span class="mono">design-desk</span>)에 <span class="mono">/kns-intent INT-8</span> 요청을 보낼까</span></div>
+      <button class="btn push" type="button" data-state-show="sent" data-toast="보내지 않았다 · 나중에 세션에서 /kns-intent INT-8을 부른다">나중에</button>
+      <button class="btn go" type="button" data-state-show="sent" data-toast="design-desk 수신함에 보냈다 · /kns-intent INT-8 · 승인이 아니다"><svg class="i"><use href="#i-send"/></svg>지금 보내기</button>
     </footer>
   </div>
 </div>

@@ -34,7 +34,7 @@ export async function runUpdateTools(ctx: Ctx): Promise<CommandResult> {
   const human = !agent && io.isTTY && io.stdin !== undefined && !ctx.json;
   const prompter = human ? createPrompter(io.stdin as NodeJS.ReadableStream, io.stderr) : null;
   const rows: Row[] = [];
-  const lines = [`harness-kit update --tools — ${target}`];
+  const lines = [`knots-sync update --tools — ${target}`];
   try {
     for (const id of inst.meta.modules) {
       const decl = loadModuleOrNull(kit.loc.dir, id);
@@ -46,7 +46,7 @@ export async function runUpdateTools(ctx: Ctx): Promise<CommandResult> {
         const cmd = tool.update[platformOf(io)] ?? null;
         const row: Row = { module: id, tool: tool.name, current: state.version, latest, range, latestInRange: latest ? satisfiesRange(latest, range) : null, update: cmd, action: "listed" };
         const newer = state.installed && latest !== null && state.version !== null && latest !== state.version;
-        lines.push(`  ${tool.name.padEnd(8)} 지금 ${state.installed ? (state.version ?? "?") : "없음"} · 최신 ${latest ?? "알 수 없음"} · 검증 범위 ${range}${state.installed ? "" : "  (설치되어 있지 않다 — harness-kit add " + id + ")"}`);
+        lines.push(`  ${tool.name.padEnd(8)} 지금 ${state.installed ? (state.version ?? "?") : "없음"} · 최신 ${latest ?? "알 수 없음"} · 검증 범위 ${range}${state.installed ? "" : "  (설치되어 있지 않다 — knots-sync add " + id + ")"}`);
         if (!newer) {
           row.action = "none";
           rows.push(row);
@@ -80,6 +80,6 @@ export async function runUpdateTools(ctx: Ctx): Promise<CommandResult> {
   } finally {
     prompter?.close();
   }
-  if (rows.length === 0) lines.push("  켜 둔 외부 도구 모듈이 없다(harness-kit add aidlc · entire)");
+  if (rows.length === 0) lines.push("  켜 둔 외부 도구 모듈이 없다(knots-sync add aidlc · entire)");
   return { code: EXIT.OK, data: { command: "update", tools: rows, target }, lines };
 }

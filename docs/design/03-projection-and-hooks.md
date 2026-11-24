@@ -10,9 +10,9 @@
 
 | v1.0.8 손 유지 파일 | 개수 | v2 |
 |---|---|---|
-| `.claude/commands/hx-*.md` | 11 | 삭제(스킬 복사본으로 대신) |
-| `.cursor/commands/hx-*.md` | 11 | 생성(`render`) |
-| `.kiro/skills/hx-*/SKILL.md` | 11 | 복사(`mirror`) |
+| `.claude/commands/kns-*.md` | 11 | 삭제(스킬 복사본으로 대신) |
+| `.cursor/commands/kns-*.md` | 11 | 생성(`render`) |
+| `.kiro/skills/kns-*/SKILL.md` | 11 | 복사(`mirror`) |
 | `.kiro/steering/*.md`(규칙 17 + 명령 11) | 28 | 생성 |
 | `.claude/rules/code-maintenance.md` | 1 | 복사(`mirror`). 규칙 17개 모두 `.claude/rules/`에 두고 `paths`로 자동 로드(3.2) |
 | `.claude/agents/*.md` · `.codex/agents/*.toml` · `.kiro/agents/*.json` | 5 + 5 + 6 | 생성 |
@@ -85,9 +85,9 @@ export interface RoleRenderer { render(role: RoleFile, ctx: ProjectionContext): 
 |---|---|---|---|---|
 | 진입 | `CLAUDE.md` merge(킷 블록, 3.8) | `AGENTS.md`를 그대로 읽는다 | `AGENTS.md`를 그대로 읽는다 | 규칙 steering(아래) |
 | 스킬 | `.claude/skills/<이름>/` mirror × 11(폴더 통째) | `.agents/skills/`를 그대로 읽는다(작업 없음) | `.cursor/commands/<이름>.md` render × 11(SKILL.md 본문 전체. 원본 포인터만 두지 않는다). `.agents/skills/`를 읽는 버전이 확인되면 작업 없음으로 바꾼다 | `.kiro/skills/<이름>/` mirror × 11 |
-| 옛 명령 포인터 | `.claude/commands/hx-*.md` 삭제(v1 판과 같으면 update가 지운다) | — | — | — |
+| 옛 명령 포인터 | `.claude/commands/kns-*.md` 삭제(v1 판과 같으면 update가 지운다) | — | — | — |
 | 규칙 | `.claude/rules/<규칙>.md` mirror × 17. `paths`가 있으면 그 경로 파일을 다룰 때, 없으면 세션 시작에 Claude Code가 싣는다 | 경로별 자동 로드 기능이 없다. `AGENTS.md` 목차 + 꼭 지킬 것은 훅으로 강제 | `.cursor/rules/<규칙>.mdc` render × 17(`globs` = `paths`, 없으면 `alwaysApply: true`) | `.kiro/steering/<규칙>.md` render × 17(3.7) |
-| 명령 steering | — | — | — | `.kiro/steering/hx-*.md` render × 11(`inclusion: manual`, Kiro IDE용) |
+| 명령 steering | — | — | — | `.kiro/steering/kns-*.md` render × 11(`inclusion: manual`, Kiro IDE용) |
 | 역할 | `.claude/agents/<역할>.md` render | `.codex/agents/<역할>.toml` render + `.codex/config.toml` merge(`[agents.<역할>]`) | 없음 | `.kiro/agents/<역할>.json` render + `.kiro/agents/<slug>.json`(조율 에이전트) render |
 | 훅 | `.claude/settings.json` merge | `.codex/hooks.json` merge | 없음(6장 확인 뒤) | IDE: `.kiro/hooks/<id>.json` render(훅마다 파일 하나). CLI: 조율 에이전트 `.kiro/agents/<slug>.json`의 `hooks` 절(`agentSpawn` · `preToolUse` · `stop`, `timeout_ms`)을 같은 render로 만든다 |
 | 기타 설정 | `.claude/settings.json`의 `permissions.deny` 항목 merge | `.codex/config.toml`의 `[features] multi_agent`, `[shell_environment_policy]` merge | — | — |
@@ -109,7 +109,7 @@ export interface RoleRenderer { render(role: RoleFile, ctx: ProjectionContext): 
 
 ```jsonc
 {
-  "schema": "harness-kit.hooks/v1",
+  "schema": "knots-sync.hooks/v1",
   "hooks": [
     { "id": "harness-session-start", "event": "session-start",
       "script": "scripts/hooks/session-start.sh", "timeoutSec": 15, "owner": "kit",
@@ -172,7 +172,7 @@ v1 템플릿의 Kiro 조율 에이전트(`kiro-agents/__PROJECT_SLUG__.json`)에
 
 ```text
 Claude  bash "$CLAUDE_PROJECT_DIR"/scripts/hooks/dispatch.sh harness-verify-gate scripts/hooks/verify-gate.sh
-Codex   bash -c 'r="$PWD"; while [ "$r" != / ] && [ ! -f "$r/.agents/harness-kit.json" ] && [ ! -f "$r/.agents/harness.json" ]; do r="$(dirname "$r")"; done;
+Codex   bash -c 'r="$PWD"; while [ "$r" != / ] && [ ! -f "$r/.agents/knots-sync.json" ] && [ ! -f "$r/.agents/harness.json" ]; do r="$(dirname "$r")"; done;
         [ -f "$r/scripts/hooks/dispatch.sh" ] || exit 0; exec bash "$r/scripts/hooks/dispatch.sh" "$1" "$2"'
         _ harness-verify-gate scripts/hooks/verify-gate.sh
 Kiro    HARNESS_VERIFY_FAIL_EXIT=1 bash -c '…Codex 와 같다…' _ harness-verify-gate scripts/hooks/verify-gate.sh
@@ -246,7 +246,7 @@ harness:                            # 하네스별 덮어쓰기(선택)
 
 모델·effort: 역할 원본의 `tier`(또는 `model`·`effort`)는 [12](12-model-routing.md)의 정책표로 하네스별 필드가 된다(Claude 에이전트 md의 `model`·`effort`, Codex 역할 toml의 `model`·`model_reasoning_effort`, Kiro는 모델만 — effort 필드가 없다). 잠긴 역할(기본 `implement`·`design`·`review`)은 필드를 쓰지 않고 상속한다. 생성기는 12가 돌려준 필드만 붙이고 그 밖의 모델 관련 키를 쓰지 않는다.
 
-스킬: 킷 스킬(`.agents/skills/hx-*/SKILL.md`)의 frontmatter에는 `context: fork`가 아닌 한 `model`·`effort`를 두지 않는다. Claude Code에서 스킬의 모델·effort는 그 턴이 끝날 때까지 주 세션에 적용되기 때문이다. 어댑터는 링크하기 전에 스킬 frontmatter를 읽어, 킷 스킬이 이를 어기면 오류(`skill-model-field`), 팩·프로젝트 스킬이면 경고를 낸다.
+스킬: 킷 스킬(`.agents/skills/kns-*/SKILL.md`)의 frontmatter에는 `context: fork`가 아닌 한 `model`·`effort`를 두지 않는다. Claude Code에서 스킬의 모델·effort는 그 턴이 끝날 때까지 주 세션에 적용되기 때문이다. 어댑터는 링크하기 전에 스킬 frontmatter를 읽어, 킷 스킬이 이를 어기면 오류(`skill-model-field`), 팩·프로젝트 스킬이면 경고를 낸다.
 
 생성 결과(HK-13: 원본을 읽으라는 지시만 두지 않고 역할 본문 전체를 그 자리에 넣는다 — 아래 예시의 지시문 · `<summary>` 자리가 본문이다. Kiro는 `prompt`에 본문을 넣고 `resources`에서 역할 원본을 뺀다):
 
@@ -257,12 +257,12 @@ name: reviewer
 description: <description>
 tools: Read, Glob, Grep, Bash
 ---
-<!-- harness-kit 생성 · 원본 .agents/roles/reviewer.md · 원본을 고친 뒤 npx harness-kit repair -->
+<!-- knots-sync 생성 · 원본 .agents/roles/reviewer.md · 원본을 고친 뒤 npx knots-sync repair -->
 이 하네스의 `AGENTS.md`를 먼저 읽는다. 그다음 역할 원본 `.agents/roles/reviewer.md`를 읽고 그대로 따른다.
 <summary>
 
 .codex/agents/reviewer.toml
-# harness-kit 생성 · 원본 .agents/roles/reviewer.md
+# knots-sync 생성 · 원본 .agents/roles/reviewer.md
 name = "reviewer"
 description = "<description>"
 sandbox_mode = "read-only"
@@ -297,7 +297,7 @@ developer_instructions = """
 inclusion: fileMatch
 fileMatchPattern: "src/**/*.kt"
 ---
-<!-- harness-kit 생성 · 원본 .agents/rules/code-maintenance.md · 고칠 때는 원본을 고친다 -->
+<!-- knots-sync 생성 · 원본 .agents/rules/code-maintenance.md · 고칠 때는 원본을 고친다 -->
 <원본 본문>
 ```
 
@@ -310,14 +310,14 @@ fileMatchPattern: "src/**/*.kt"
 ```markdown
 @AGENTS.md
 
-<!-- harness-kit:begin claude — 이 블록은 npx harness-kit 이 관리한다. 블록 밖은 프로젝트 몫이다 -->
+<!-- knots-sync:begin claude — 이 블록은 npx knots-sync 이 관리한다. 블록 밖은 프로젝트 몫이다 -->
 ## Claude Code 전용
 
 - 스킬 `.claude/skills/`, 규칙 `.claude/rules/`, 역할 `.claude/agents/`는 `.agents/`에서 만든 복사본 · 생성물이다. 고칠 때는 `.agents/`의 원본을 고친다(훅이 복사본을 다시 만든다).
 - 규칙은 `.claude/rules/`에서 자동으로 실린다. `paths`가 있는 규칙은 그 경로의 파일을 다룰 때 실린다.
 - `claude -w <이슈키>`는 WorktreeCreate 훅이 `../<리포>.worktrees/<이슈키>-<이름>/`에 만든다.
 - 킷 훅은 입력의 `cwd`로 리포를 정한다. worktree 안에서도 `${CLAUDE_PROJECT_DIR}`는 메인 폴더다.
-<!-- harness-kit:end claude -->
+<!-- knots-sync:end claude -->
 ```
 
 - lock: `{path: "CLAUDE.md", op: "merge", owner: "kit", keys: ["block:claude"]}`. 블록 밖 내용은 프로젝트 소유다.
@@ -329,7 +329,7 @@ fileMatchPattern: "src/**/*.kt"
 
 `scripts/harness/check_layout.py [--root <경로>] [--json] [--verbose]`. Python 3.11 표준 라이브러리(`tomllib`)만 쓴다. Node 없이 fast 검증에서 돈다.
 
-1. `.agents/harness-kit.lock`을 읽는다. v1(TSV)이면 `lock v1 — 배치 검사는 v2부터` 한 줄, exit 0.
+1. `.agents/knots-sync.lock`을 읽는다. v1(TSV)이면 `lock v1 — 배치 검사는 v2부터` 한 줄, exit 0.
 2. 항목마다 판정한다(02 §3.11 표와 같은 규칙):
 
 | op | 검사 | 오류 |
@@ -347,8 +347,8 @@ fileMatchPattern: "src/**/*.kt"
 5. 출력(오류 한 줄 = 한 항목):
 
 ```text
-✖ stale        .kiro/steering/git-workflow.md — 원본 .agents/rules/git-workflow.md 가 바뀌었다 → npx harness-kit repair
-✖ drifted      .claude/skills/hx-plan — 복사본을 직접 고쳤다. 원본 .agents/skills/hx-plan 을 고친다 → npx harness-kit repair
+✖ stale        .kiro/steering/git-workflow.md — 원본 .agents/rules/git-workflow.md 가 바뀌었다 → npx knots-sync repair
+✖ drifted      .claude/skills/kns-plan — 복사본을 직접 고쳤다. 원본 .agents/skills/kns-plan 을 고친다 → npx knots-sync repair
 ⚠ entry-size   AGENTS.md + CLAUDE.md = 61,234 bytes (기준 24,576)
 배치 검사: 항목 312개, 오류 2, 경고 1
 ```
@@ -367,7 +367,7 @@ fileMatchPattern: "src/**/*.kt"
 | `session-start.sh` | 스크립트 위치 | 메인 폴더의 공지·세션 정보를 붙인다 |
 | `protect-sources.sh` | 경로 정규식은 위치와 무관, `session-context.py --root`는 스크립트 위치 | 보호 경로 차단은 되지만 세션 협업 판정이 메인 폴더 기준이다 |
 
-v1의 Codex·Kiro 래퍼는 이미 `$PWD`에서 위로 올라가 `.agents/harness.json`을 찾는다. v2는 README §10대로 `.agents/harness-kit.json`도 찾게 바꾼다(위 명령 문자열). Claude 설정만 `$CLAUDE_PROJECT_DIR`로 스크립트를 부른다.
+v1의 Codex·Kiro 래퍼는 이미 `$PWD`에서 위로 올라가 `.agents/harness.json`을 찾는다. v2는 README §10대로 `.agents/knots-sync.json`도 찾게 바꾼다(위 명령 문자열). Claude 설정만 `$CLAUDE_PROJECT_DIR`로 스크립트를 부른다.
 
 바꾼 뒤: 모든 킷 훅은 `scripts/hooks/dispatch.sh <id> <script>`를 거친다.
 
@@ -385,7 +385,7 @@ HARNESS_ROOT="$root" HARNESS_HOOK_ID="$1" exec bash "$script" <<<"$payload"
 `hook_root.py` 판정:
 
 1. 입력 JSON의 `cwd`가 절대경로이고 폴더면 시작점, 아니면 `--fallback`.
-2. 시작점부터 위로 올라가며 `.agents/harness.json`이나 `.agents/harness-kit.json`이 있는 첫 폴더를 루트로 쓴다. 다층 리포에서 단위·도메인 폴더에는 `harness.json`만 있으므로 가장 가까운 단위가 루트가 된다(knots 도메인·단위 폴더에 `harness-kit.json`은 없다).
+2. 시작점부터 위로 올라가며 `.agents/harness.json`이나 `.agents/knots-sync.json`이 있는 첫 폴더를 루트로 쓴다. 다층 리포에서 단위·도메인 폴더에는 `harness.json`만 있으므로 가장 가까운 단위가 루트가 된다(knots 도메인·단위 폴더에 `knots-sync.json`은 없다).
 3. 파일 시스템 루트까지 못 찾으면 `--fallback`을 출력하고 stderr에 `하네스 루트를 못 찾아 메인 폴더를 쓴다: <cwd>`.
 4. 찾은 루트에서 `git rev-parse --git-dir`과 `--git-common-dir`이 다르면 `HARNESS_WORKTREE=1`, `HARNESS_MAIN_ROOT=<common dir의 상위>`를 stdout 둘째·셋째 줄로 낸다. 디스패처가 환경변수로 넘긴다.
 
@@ -424,11 +424,11 @@ expires: 2026-12-31          # date + 30일
 | 동기화 훅 `harness-sync-projection` | 에이전트가 `.agents/skills/**` · `.agents/rules/**` · `.agents/roles/**`를 Write · Edit한 뒤(PostToolUse) | `python3 scripts/harness/projection.py sync --changed <경로>`가 그 원본의 `mirror` · `render` 대상을 다시 만들고 lock의 해시를 고친다. 성공하면 출력 0바이트, 실패하면 한 줄(200바이트 이하) |
 | 보호 훅 `harness-protect-generated` | 에이전트가 `mirror` · `render` 대상을 Write · Edit하려 할 때(PreToolUse) | exit 2와 "생성 파일이다. 원본 `<from>`을 고친다" |
 | 배치 검사 | `verify.sh --fast` · changed · affected(`harness-layout`) | `stale` · `drifted` · `symlink-found`를 오류로 낸다(3.9) |
-| 되돌리기 | 사람이 | `npx harness-kit repair`, Node가 없으면 `python3 scripts/harness/projection.py sync` |
+| 되돌리기 | 사람이 | `npx knots-sync repair`, Node가 없으면 `python3 scripts/harness/projection.py sync` |
 
 - `projection.py`(HK-13, `projection_wants.py` · `projection_engine.py` · `projection_render.py` · `projection_merge.py`)는 Python 표준 라이브러리만 쓴다. `mirror`는 그대로 복사하고, `render`(Cursor `.mdc` · Kiro steering · 역할)는 frontmatter만 바꾸는 규칙이라 TS 어댑터와 같은 결과를 내도록 둘을 같은 fixture로 시험한다(02 §3.15와 같은 방식).
 - 사람이 편집기로 원본을 고치면 훅이 돌지 않는다. 그때는 커밋 전 fast 검증이 `stale`로 알려 주고, 출력에 고칠 명령을 적는다.
-- `.gitattributes`에 생성 경로(`.claude/skills/hx-*/**` · `.claude/rules/**` · `.claude/agents/**` · `.cursor/commands/hx-*` · `.cursor/rules/**` · `.kiro/skills/hx-*/**` · `.kiro/steering/**`)를 `linguist-generated=true`로 적어 MR diff에서 접히게 한다. 킷 몫 줄만 `merge`로 넣는다.
+- `.gitattributes`에 생성 경로(`.claude/skills/kns-*/**` · `.claude/rules/**` · `.claude/agents/**` · `.cursor/commands/kns-*` · `.cursor/rules/**` · `.kiro/skills/kns-*/**` · `.kiro/steering/**`)를 `linguist-generated=true`로 적어 MR diff에서 접히게 한다. 킷 몫 줄만 `merge`로 넣는다.
 - 복사본이 생겨도 세션 토큰은 늘지 않는다. 하네스는 원본이 아니라 복사본 하나만 읽는다.
 
 ## 4. 버린 대안과 이유
@@ -442,7 +442,7 @@ expires: 2026-12-31          # date + 30일
 | 설정 파일을 킷이 통째로 소유 | 다른 도구(AI-DLC 훅 17개 등)와 사람의 항목을 지운다(README 원칙 3) |
 | 훅마다 하네스별 스크립트 | 판정 로직이 세 벌이 된다. 디스패처 하나 + 스크립트 하나로 둔다 |
 | `${CLAUDE_PROJECT_DIR}` 대신 `git rev-parse --show-toplevel`(훅 실행 폴더 기준) | 훅 실행 폴더는 메인 폴더다. worktree를 아는 값은 입력의 `cwd`뿐이다 |
-| 루트 표지를 `.agents/harness-kit.json` 하나로 | 다층 리포의 도메인·단위 폴더에는 그 파일이 없다. 가장 가까운 단위를 못 찾는다 |
+| 루트 표지를 `.agents/knots-sync.json` 하나로 | 다층 리포의 도메인·단위 폴더에는 그 파일이 없다. 가장 가까운 단위를 못 찾는다 |
 | Kiro steering에 원본 전체를 항상 포함 | 규칙 17개를 매 세션 싣는다. `paths`가 있는 규칙은 `fileMatch`로 그 경로 작업 때만 싣는다 |
 | 요약만 싣고 원본 경로를 적는 steering | 요약에 없는 규칙은 모델이 원본을 열어야 지켜진다. 포인터와 같은 문제다 |
 | 역할 파일을 하네스별로 손으로 | 지금 16개를 손으로 맞춘다. 원본 하나 + 생성으로 바꾼다 |
@@ -452,10 +452,10 @@ expires: 2026-12-31          # date + 30일
 [03장 P18 완료 기준](../harness-next/03-plan.html#p18)에 측정 방법을 붙인다.
 
 1. 임시 리포에 `init --agents all` 뒤, `find .claude .codex .cursor .kiro -type f`의 모든 경로(사람·외부 파일 제외)가 lock의 `mirror`·`render`·`merge` 항목이고(시험이 두 집합을 비교한다), `find … -type l`은 0건이다.
-2. `.agents/rules/git-workflow.md` 한 줄 수정 → `bash scripts/verify.sh --fast` exit 1(`stale` 1건) → `npx harness-kit repair` → exit 0.
+2. `.agents/rules/git-workflow.md` 한 줄 수정 → `bash scripts/verify.sh --fast` exit 1(`stale` 1건) → `npx knots-sync repair` → exit 0.
 3. 메인 폴더 + worktree fixture에서 `CLAUDE_PROJECT_DIR=<메인>`, 입력 `cwd=<worktree>`로 디스패처를 부르면: 보호 경로 쓰기 exit 2, Stop 훅의 가짜 `verify.sh`가 기록한 작업 폴더가 worktree다(시험 2건).
-4. 릴리스 점검표 4건: Claude `/hx-plan`, Codex `$hx-plan`, Cursor `/hx-plan`, Kiro CLI 스킬 목록에 `hx-plan`이 보인다(수동, 하네스 버전과 날짜를 적는다).
-5. 동기화: `.agents/skills/hx-plan/SKILL.md`를 Edit한 훅 입력 fixture → `harness-sync-projection` 뒤 `.claude/skills/hx-plan/SKILL.md` · `.kiro/skills/hx-plan/SKILL.md`가 원본과 같은 바이트이고 lock 해시가 바뀌며 훅 출력은 0바이트. `.claude/skills/hx-plan/SKILL.md`를 Edit하는 입력은 exit 2. `core.symlinks=false` fixture에서도 `init` 결과가 같다.
+4. 릴리스 점검표 4건: Claude `/kns-plan`, Codex `$kns-plan`, Cursor `/kns-plan`, Kiro CLI 스킬 목록에 `kns-plan`이 보인다(수동, 하네스 버전과 날짜를 적는다).
+5. 동기화: `.agents/skills/kns-plan/SKILL.md`를 Edit한 훅 입력 fixture → `harness-sync-projection` 뒤 `.claude/skills/kns-plan/SKILL.md` · `.kiro/skills/kns-plan/SKILL.md`가 원본과 같은 바이트이고 lock 해시가 바뀌며 훅 출력은 0바이트. `.claude/skills/kns-plan/SKILL.md`를 Edit하는 입력은 exit 2. `core.symlinks=false` fixture에서도 `init` 결과가 같다.
 10. 규칙 자동 로드: `paths: ["src/**/*.kt"]` 규칙 fixture → `.claude/rules/x.md`에 `paths`가 그대로, `.cursor/rules/x.mdc`에 `globs: src/**/*.kt`, `.kiro/steering/x.md`에 `inclusion: fileMatch`. 수동 점검: Claude 세션에서 `.kt` 파일을 Read한 뒤 그 규칙에만 있는 문장을 물으면 답한다.
 6. Claude 설정에 다른 도구 훅 3개가 있는 fixture에서 `init` → `update` → `uninstall`을 거친 뒤 그 3개의 내용·순서가 처음과 같다.
 7. `update`로 공지를 만든 뒤 세션 시작 훅 출력에 공지 첫 줄이 있다. `expires`를 어제로 바꾸면 없다.
@@ -469,7 +469,7 @@ expires: 2026-12-31          # date + 30일
 | Cursor · Copilot · Gemini CLI가 `.agents/skills/`를 읽는 최소 버전(P18 착수 전 확인) | 각 도구 최신판에서 빈 리포에 `.agents/skills/x/SKILL.md`만 두고 명령 목록을 본다. 공식 문서 URL·버전·날짜를 `docs/analysis/`에 남긴다 |
 | Kiro steering의 `#[[file:…]]` 참조를 IDE와 CLI가 모두 읽는지, `fileMatchPattern`이 여러 glob을 받는 형식(P18 착수 전 확인) | 참조만 든 steering으로 세션을 열고 원본에만 있는 문장을 물어본다. glob 둘을 둔 steering이 두 경로 모두에서 실리는지 본다 |
 | Cursor `.cursor/rules/*.mdc`의 `globs` · `alwaysApply` 형식과 Codex의 경로별 규칙 기능 유무 | 각 도구 최신 문서와 시험 리포. Codex에 생기면 3.2 표의 Codex 칸을 바꾼다 |
-| Claude Code에서 같은 이름의 skill과 command가 함께 있을 때 어느 쪽이 뜨는지(P18 착수 전 확인) | `.claude/commands/hx-x.md`와 `.claude/skills/hx-x/`를 둘 다 두고 `/hx-x`를 실행한다 |
+| Claude Code에서 같은 이름의 skill과 command가 함께 있을 때 어느 쪽이 뜨는지(P18 착수 전 확인) | `.claude/commands/kns-x.md`와 `.claude/skills/kns-x/`를 둘 다 두고 `/kns-x`를 실행한다 |
 | Codex PreToolUse의 셸 도구 matcher와 입력에 `cwd`가 있는지 | 입력을 덤프하는 훅으로 본다 |
 | Kiro 훅의 셸 도구 matcher, 입력 JSON 형식(`cwd` 포함 여부) | 같은 방법. `cwd`가 없으면 hook_root.py는 `$PWD`를 쓴다 |
 | Codex 역할 `.toml`의 `sandbox_mode`가 부모 세션 샌드박스를 덮지 않는지(문서 기준 덮지 않는다) | 부모를 `workspace-write`로 연 세션에서 read-only 역할에 파일 쓰기를 시킨다. 써지면 3.6의 지시문 + `harness-role-readonly` 훅에 기댄다 |
@@ -477,4 +477,4 @@ expires: 2026-12-31          # date + 30일
 | Kiro 에이전트 JSON이 모르는 키를 거부하는지 | 생성 표지 키(`_generated`)를 넣은 파일로 에이전트를 연다. 거부하면 lock만으로 생성 여부를 판단한다(지금 설계) |
 | Cursor 훅(`.cursor/hooks.json`) 지원 버전과 이벤트 이름 | Cursor 문서와 실제 동작. 확인되면 3.2 표의 Cursor 훅 칸을 채운다 |
 | `@AGENTS.md` 가져오기가 `AGENTS.md` 안의 상대 링크를 그대로 두는지 | 링크가 든 `AGENTS.md`로 Claude 세션을 열어 링크 대상 파일을 읽게 한다 |
-| Kiro IDE가 `.kiro/skills/`를 읽어 `hx-*` 명령 steering이 필요 없는지 | IDE에서 스킬 목록을 본다. 읽으면 명령 steering 11개를 뺀다 |
+| Kiro IDE가 `.kiro/skills/`를 읽어 `kns-*` 명령 steering이 필요 없는지 | IDE에서 스킬 목록을 본다. 읽으면 명령 steering 11개를 뺀다 |

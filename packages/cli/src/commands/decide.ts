@@ -22,7 +22,7 @@ function approvedLines(d: Record<string, unknown>): string[] {
 
 /** deploy 게이트(설계 14 §3.4): 배포 기록 계획 구간의 sha 를 승인한다. 롤백 시험 면제는 --waive-rollback 으로 승인하는 사람이 넣는다. */
 async function approveDeploy(ctx: Ctx, id: string, gate: string, phrase: string): Promise<CommandResult> {
-  if (gate !== "deploy" || bool(ctx.values, "changes-requested")) throw usageError('harness-kit approve deploy:<배포 기록> --gate deploy --phrase "<문구>" [--waive-rollback "<사유>"]');
+  if (gate !== "deploy" || bool(ctx.values, "changes-requested")) throw usageError('knots-sync approve deploy:<배포 기록> --gate deploy --phrase "<문구>" [--waive-rollback "<사유>"]');
   const refused = humanTerminal(ctx);
   if (refused) return failure(ctx, refused);
   const waive = str(ctx.values, "waive-rollback");
@@ -50,7 +50,7 @@ export async function runApprove(ctx: Ctx): Promise<CommandResult> {
   const phrase = str(ctx.values, "phrase");
   const deploy = key ? DEPLOY_KEY.exec(key) : null;
   if (deploy && gate && phrase && !extra) return approveDeploy(ctx, deploy[1] as string, gate, phrase);
-  if (!key || extra || !KEY.test(key) || !gate || !phrase) throw usageError('harness-kit approve <키> --gate <게이트> --phrase "<문구>" [--changes-requested [--rule-candidate]]');
+  if (!key || extra || !KEY.test(key) || !gate || !phrase) throw usageError('knots-sync approve <키> --gate <게이트> --phrase "<문구>" [--changes-requested [--rule-candidate]]');
   const refused = humanTerminal(ctx);
   if (refused) return failure(ctx, refused);
   const decision = bool(ctx.values, "changes-requested") ? "changes-requested" : "approved";
@@ -86,7 +86,7 @@ export async function runApprove(ctx: Ctx): Promise<CommandResult> {
 
 export async function runAnswer(ctx: Ctx): Promise<CommandResult> {
   const [target, qid, extra] = ctx.positionals;
-  if (!target || extra) throw usageError("harness-kit answer <INT 또는 키> --list | <Q-n> --choice <A-D|other> [--text …] [--by <참석자 email>]");
+  if (!target || extra) throw usageError("knots-sync answer <INT 또는 키> --list | <Q-n> --choice <A-D|other> [--text …] [--by <참석자 email>]");
   if (bool(ctx.values, "list") || !qid) {
     return run(ctx, "GET", "/questions", { query: { target } }, (d) => {
       const qs = (d.questions as { id: string; open: boolean; role: string; text: string; recommended: string | null; answer: string | null }[]) ?? [];
@@ -110,7 +110,7 @@ export async function runAnswer(ctx: Ctx): Promise<CommandResult> {
 export async function runReview(ctx: Ctx): Promise<CommandResult> {
   const [sub, key, findingId, extra] = ctx.positionals;
   if (sub === "show" && key && !findingId) return run(ctx, "GET", `/reviews/${key}`, {}, jsonLines);
-  if (sub !== "decide" || !key || !findingId || extra) throw usageError("harness-kit review show <키> | review decide <키> <F-n> --fix|--accept-risk --reason …");
+  if (sub !== "decide" || !key || !findingId || extra) throw usageError("knots-sync review show <키> | review decide <키> <F-n> --fix|--accept-risk --reason …");
   const fix = bool(ctx.values, "fix");
   const accept = bool(ctx.values, "accept-risk");
   const reason = str(ctx.values, "reason");

@@ -22,7 +22,7 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-SCHEMA = "harness-kit.verify-last/v1"
+SCHEMA = "knots-sync.verify-last/v1"
 RECORD = ".agents/state/verify-last.json"
 MAX_BYTES = 256 * 1024
 SAMPLE = 20

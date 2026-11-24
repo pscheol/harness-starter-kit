@@ -49,7 +49,7 @@ def issue_docs(root, key, slug, design="approved", type_="feat"):
 
 
 class WorktreeCase(unittest.TestCase):
-    META = {"schema": "harness-kit/v2", "git": {"base": "develop", "maxPerRepo": 3}, "issueKey": {"source": "kit", "prefix": "ACME"},
+    META = {"schema": "knots-sync/v2", "git": {"base": "develop", "maxPerRepo": 3}, "issueKey": {"source": "kit", "prefix": "ACME"},
             "tokens": {"PROJECT_SLUG": "proj"}}
 
     def setUp(self):
@@ -67,7 +67,7 @@ class WorktreeCase(unittest.TestCase):
             if (ROOT / ".agents" / name).is_file():
                 (self.main / ".agents").mkdir(exist_ok=True)
                 shutil.copy2(ROOT / ".agents" / name, self.main / ".agents" / name)
-        write(self.main / ".agents/harness-kit.json", json.dumps(self.META))
+        write(self.main / ".agents/knots-sync.json", json.dumps(self.META))
         write(self.main / ".gitignore", ".env\n.env.local\nlocal.properties\n.agents/state/\n.agents/local/\n.env.worktree\nnode_modules/\n")
         write(self.main / "src/app.py", "print('hi')\n")
         write(self.main / "docs/guide.md", "# guide\n")
@@ -107,7 +107,7 @@ class WorktreeCase(unittest.TestCase):
 
     def session(self, sid, cwd, minutes_ago=0):
         seen = (datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)).astimezone().isoformat(timespec="seconds")
-        write(self.main / ".agents/state/sessions" / f"{sid}.json", json.dumps({"schema": "harness-kit.session/v1", "id": sid, "harness": "claude",
+        write(self.main / ".agents/state/sessions" / f"{sid}.json", json.dumps({"schema": "knots-sync.session/v1", "id": sid, "harness": "claude",
                                                                                 "cwd": str(cwd), "checkout": "worktree", "lastSeenAt": seen}))
 
 
@@ -133,7 +133,7 @@ class NewTest(WorktreeCase):
     def test_state_record_follows_design_14(self):
         self.new("ACME-1")
         rec = self.record("ACME-1-alpha-work")
-        self.assertEqual("harness-kit.worktree/v1", rec["schema"])
+        self.assertEqual("knots-sync.worktree/v1", rec["schema"])
         self.assertEqual(("issue", "ACME-1", "alpha-work", ".", "feat/ACME-1-alpha-work", "origin/develop", "approved", 1, False),
                          (rec["kind"], rec["key"], rec["slug"], rec["repo"], rec["branch"], rec["base"], rec["designCheck"], rec["portIndex"], rec["docsOnly"]))
         self.assertEqual(git(self.main, "rev-parse", "origin/develop"), rec["baseSha"])
@@ -326,13 +326,13 @@ class NewTest(WorktreeCase):
 
     def test_worktree_root_setting_absolute_and_relative(self):
         meta = dict(self.META, git={"base": "develop", "maxPerRepo": 3, "worktreeRoot": str(self.base / "elsewhere")})
-        write(self.main / ".agents/harness-kit.json", json.dumps(meta))
+        write(self.main / ".agents/knots-sync.json", json.dumps(meta))
         path = Path(self.new("ACME-1")["path"])
         self.assertEqual(self.base / "elsewhere" / "ACME-1-alpha-work", path.resolve())
 
     def test_max_per_repo_setting_is_used(self):
         meta = dict(self.META, git={"base": "develop", "maxPerRepo": 1})
-        write(self.main / ".agents/harness-kit.json", json.dumps(meta))
+        write(self.main / ".agents/knots-sync.json", json.dumps(meta))
         self.new("ACME-1")
         self.assertEqual(3, self.wt("new", "ACME-3").returncode)
 
@@ -446,10 +446,10 @@ class OpenTest(WorktreeCase):
         path = self.new("ACME-1")["path"]
         env = {"PATH": f"{idea_bin}:{code_bin}:{os.environ['PATH']}"}
         meta = dict(self.META, git={"base": "develop", "maxPerRepo": 3, "ide": "idea"})
-        write(self.main / ".agents/harness-kit.json", json.dumps(meta))
+        write(self.main / ".agents/knots-sync.json", json.dumps(meta))
         self.assertEqual(0, self.wt("open", "ACME-1", **env).returncode)
         self.assertEqual(path, idea_log.read_text(encoding="utf-8").strip())
-        write(self.main / ".agents/local/harness-kit.local.json", json.dumps({"git": {"ide": "code"}}))
+        write(self.main / ".agents/local/knots-sync.local.json", json.dumps({"git": {"ide": "code"}}))
         self.assertEqual(0, self.wt("open", "ACME-1", **env).returncode)
         self.assertEqual(f"-n {path}", code_log.read_text(encoding="utf-8").strip())
         self.assertEqual(0, self.wt("open", "ACME-1", "--ide", "idea", **env).returncode)
@@ -458,7 +458,7 @@ class OpenTest(WorktreeCase):
     def test_broken_personal_file_is_ignored(self):
         bin_dir, log = self.fake_ide("code")
         self.new("ACME-1")
-        write(self.main / ".agents/local/harness-kit.local.json", "{not json")
+        write(self.main / ".agents/local/knots-sync.local.json", "{not json")
         self.assertEqual(0, self.wt("open", "ACME-1", PATH=f"{bin_dir}:{os.environ['PATH']}").returncode)
         self.assertTrue(log.is_file())
 
@@ -613,7 +613,7 @@ class GcTest(WorktreeCase):
         a = Path(self.new("ACME-1")["path"])
         self.session("old", a, minutes_ago=60 * 24 * 8)
         self.session("new", a, minutes_ago=1)
-        write(self.main / ".agents/state/worktrees/ghost.json", json.dumps({"schema": "harness-kit.worktree/v1", "kind": "issue", "key": "ACME-9",
+        write(self.main / ".agents/state/worktrees/ghost.json", json.dumps({"schema": "knots-sync.worktree/v1", "kind": "issue", "key": "ACME-9",
                                                                               "path": str(self.root / "ghost"), "branch": "feat/x"}))
         listed = json.loads(self.wt("gc", "--json").stdout)
         self.assertEqual(1, listed["staleSessions"])

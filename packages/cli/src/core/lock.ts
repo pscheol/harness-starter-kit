@@ -1,10 +1,11 @@
-/** lock .agents/harness-kit.lock — v2 쓰기, v1(TSV) · v2 읽기(HK-8 design §6.2, README §6, 설계 02 §3.9). */
+/** lock .agents/knots-sync.lock — v2 쓰기, v1(TSV) · v2 읽기(HK-8 design §6.2, README §6, 설계 02 §3.9). */
 import fs from "node:fs";
 import { byteCompare } from "./fsx";
 import { formatJson } from "./json";
+import { LEGACY_LOCK_SCHEMA } from "./legacy-names";
 
-export const LOCK_REL = ".agents/harness-kit.lock";
-export const LOCK_SCHEMA = "harness-kit.lock/v2";
+export const LOCK_REL = ".agents/knots-sync.lock";
+export const LOCK_SCHEMA = "knots-sync.lock/v2";
 const V1_HEADER = "# harness-kit lock v1";
 /**
  * v1 lock 표시 줄(HK-12 R12.6). 이 줄이 있는 lock 은 설치 전부터 있던 파일을 해시 '-'(킷 판과 같으면 그 해시)로 적었다.
@@ -92,7 +93,7 @@ function parseV2(text: string): LockV2 {
   const raw = JSON.parse(text) as unknown;
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) throw new Error("최상위가 객체가 아니다");
   const o = raw as Record<string, unknown>;
-  if (o.schema !== LOCK_SCHEMA) throw new Error(`모르는 schema: ${String(o.schema)}`);
+  if (o.schema !== LOCK_SCHEMA && o.schema !== LEGACY_LOCK_SCHEMA) throw new Error(`모르는 schema: ${String(o.schema)}`);
   if (!Array.isArray(o.entries)) throw new Error("entries 가 배열이 아니다");
   const entries = o.entries.map((e, i): LockEntry => {
     if (e === null || typeof e !== "object") throw new Error(`entries[${i}] 가 객체가 아니다`);

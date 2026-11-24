@@ -26,7 +26,7 @@ from harness.sarif.sarif_io import LEVELS, dumps, write_atomic  # noqa: E402
 
 SEVERITIES = ("CRITICAL", "HIGH", "MEDIUM", "LOW")
 LEVEL_SEVERITY = {"error": "HIGH", "warning": "MEDIUM", "note": "LOW", "none": "LOW"}
-FINGERPRINT_NAME = "harnessKit/v1"
+FINGERPRINT_NAME = "knotsSync/v1"
 SRCROOT = "%SRCROOT%"
 DROPPED_KINDS = {"pass", "notApplicable"}
 MESSAGE_LIMIT = 200
@@ -173,7 +173,7 @@ def basis_of(item, mode, content, message):
 def scalar_properties(properties):
     kept = {}
     for key, value in (properties or {}).items():
-        if key.startswith("harnessKit/") or key == "security-severity":
+        if key.startswith("knotsSync/") or key == "security-severity":
             continue
         short_text = isinstance(value, str) and len(value) <= 100
         if isinstance(value, (bool, int, float)) or short_text:
@@ -242,7 +242,7 @@ def normalize_run(run, entry, resolver, lines):
     assign_fingerprints(findings)
     for normalized, finding in zip(kept, findings):
         normalized.setdefault("partialFingerprints", {})[FINGERPRINT_NAME] = finding["fingerprint"]
-        normalized.setdefault("properties", {})["harnessKit/severity"] = finding["severity"]
+        normalized.setdefault("properties", {})["knotsSync/severity"] = finding["severity"]
     order = sorted(range(len(kept)), key=lambda index: (findings[index]["path"], findings[index]["startLine"], findings[index]["ruleId"]))
     return [kept[index] for index in order], [findings[index] for index in order]
 

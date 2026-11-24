@@ -276,7 +276,7 @@ def scan(root: Path, area: str, paths: list[str] | None, stack: str | None, toda
     else:
         tpl = root / TEMPLATE
         if not tpl.is_file():
-            raise SystemExit(f"템플릿이 없다: {TEMPLATE} — harness-kit repair")
+            raise SystemExit(f"템플릿이 없다: {TEMPLATE} — knots-sync repair")
         text = intents.fill(tpl.read_text(encoding="utf-8"), {"AREA": area, "CREATED": today})
     head = head_of(text)
     paths = paths or [p for p in head.get("paths") or [] if isinstance(p, str)]

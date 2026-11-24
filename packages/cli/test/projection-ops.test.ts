@@ -65,7 +65,7 @@ describe("repair(§6.4)", () => {
     expect(readText(target, ".cursor/rules/always.mdc")).not.toContain("손");
     expect(exists(target, ".kiro/steering/multi.md")).toBe(true);
     expect(fs.lstatSync(path.join(target, ".claude/rules/always.md")).isSymbolicLink()).toBe(false);
-    expect(readText(target, "CLAUDE.md")).toContain("<!-- harness-kit:begin claude");
+    expect(readText(target, "CLAUDE.md")).toContain("<!-- knots-sync:begin claude");
     expect(readText(target, ".claude/rules/new-rule.md")).toBe("# 사람이 더한 규칙\n");
     const d = await cli("doctor", ["--check", "--json"]);
     expect(d.code, d.stdout).toBe(0);
@@ -109,6 +109,6 @@ describe("uninstall(§6.5)", () => {
     const r = await cli("uninstall", ["--yes", "--json"]);
     expect(r.code, r.stdout).toBe(0);
     expect(exists(target, ".claude/settings.json")).toBe(false);
-    expect(exists(target, ".agents/harness-kit.lock")).toBe(false);
+    expect(exists(target, ".agents/knots-sync.lock")).toBe(false);
   });
 });

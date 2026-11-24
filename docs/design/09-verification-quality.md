@@ -8,7 +8,7 @@
 
 MR마다 코드 리뷰 · 보안 스캔 · 품질 지표 · 승인 기록이 남고, 심각한 지적이나 새 CRITICAL이 열려 있거나 승인 기록이 없으면 다음 단계로 가지 못하게 한다. SonarQube 없이 오픈소스 분석기 조합으로 한다(D8).
 
-범위에 넣는 것: `/hx-review`, `/hx-scan`, 분석기 등록 파일 `.agents/analyzers.json`, 검증 레벨별 실행, SARIF 정리와 변환기, 기준선과 새 문제 판정, `quality-gate.json`, CI 템플릿 단계, 게이트 조건표, 승인 강제(훅 · git 훅 · CI), 대시보드용 지표.
+범위에 넣는 것: `/kns-review`, `/kns-scan`, 분석기 등록 파일 `.agents/analyzers.json`, 검증 레벨별 실행, SARIF 정리와 변환기, 기준선과 새 문제 판정, `quality-gate.json`, CI 템플릿 단계, 게이트 조건표, 승인 강제(훅 · git 훅 · CI), 대시보드용 지표.
 
 범위 밖: 분석기 설치(사람·CI 이미지가 한다), Semgrep 규칙 배포, 리뷰 모델 선택(12), 대시보드 화면(06).
 
@@ -16,8 +16,8 @@ MR마다 코드 리뷰 · 보안 스캔 · 품질 지표 · 승인 기록이 남
 
 | ID | 요구사항(EARS) |
 |---|---|
-| VQ-R1 | `/hx-review <MR>`은 기능 브랜치를 체크아웃하지 않고 원격 브랜치의 diff · SDD 세 문서 · 규칙 · 스캔 결과를 읽는다. |
-| VQ-R2 | `/hx-review`는 발견마다 ID · 심각도 · 위치 · 근거 · 권고 · 지문을 `.agents/reports/review/<이슈키>.md`에 쓰고, MR 요약 코멘트 하나를 만들거나 고친다. |
+| VQ-R1 | `/kns-review <MR>`은 기능 브랜치를 체크아웃하지 않고 원격 브랜치의 diff · SDD 세 문서 · 규칙 · 스캔 결과를 읽는다. |
+| VQ-R2 | `/kns-review`는 발견마다 ID · 심각도 · 위치 · 근거 · 권고 · 지문을 `.agents/reports/review/<이슈키>.md`에 쓰고, MR 요약 코멘트 하나를 만들거나 고친다. |
 | VQ-R3 | 리뷰 세션은 이슈 폴더의 `review.md`를 쓰지 않는다. 구현 세션이 지적 처리 결과를 `review.md`에 쓰고 커밋한다. |
 | VQ-R4 | 열린 CRITICAL · HIGH 리뷰 지적이 있으면 `mr` 게이트 승인은 거부되고 `verify.sh --full`은 실패한다. |
 | VQ-R5 | 분석기는 `.agents/analyzers.json`에 등록된 것만 돌고, 검증 레벨이 그 분석기의 `levels`에 있을 때만 돈다. |
@@ -38,14 +38,14 @@ MR마다 코드 리뷰 · 보안 스캔 · 품질 지표 · 승인 기록이 남
 
 ## 3. 설계
 
-### 3.1 `/hx-review`
+### 3.1 `/kns-review`
 
 역할 원본 `.agents/roles/reviewer.md`, 기본 하네스 `roles.review.harness`(D7 추천값 codex). 읽는 세션이라 worktree를 만들지 않는다.
 
 입력 수집:
 
 ```text
-/hx-review <MR>            # GitLab "!123", GitHub "#45", 또는 브랜치 이름
+/kns-review <MR>            # GitLab "!123", GitHub "#45", 또는 브랜치 이름
 1. MR 정보: glab mr view <iid> -F json · gh pr view <n> --json headRefName,baseRefName,headRefOid
 2. git fetch origin <head> <base>
 3. diff = git diff --find-renames origin/<base>...origin/<head>
@@ -92,7 +92,7 @@ counts: { CRITICAL: 0, HIGH: 1, MEDIUM: 2, LOW: 1 }
 - 발견은 7개까지 본문에 쓰고 나머지는 `counts`와 `## 나머지` 목록(위치·한 줄)으로 둔다.
 - 지문 = `sha256(check + "\0" + 경로 + "\0" + 정규화한 해당 줄 ±1줄)`. 정규화는 공백 묶기와 앞뒤 공백 제거다. 다시 리뷰할 때 같은 지문은 같은 ID를 이어 쓴다.
 
-MR 코멘트(VQ-R17): 코멘트 하나에 표시 `<!-- harness-kit:mr-summary -->`를 넣고, 그 안을 `<!-- section:review -->` · `<!-- section:scan -->` 구간으로 나눈다. `/hx-review`는 review 구간만, CI 보고 작업은 scan 구간만 고친다. 코멘트가 없으면 만들고, 있으면 고친다(GitLab `glab api -X PUT projects/:id/merge_requests/:iid/notes/:note_id`, GitHub `gh api -X PATCH repos/{o}/{r}/issues/comments/{id}`). review 구간 내용: 판정, 심각도별 수, 상위 발견 7개의 위치·한 줄, 대시보드 안내.
+MR 코멘트(VQ-R17): 코멘트 하나에 표시 `<!-- knots-sync:mr-summary -->`를 넣고, 그 안을 `<!-- section:review -->` · `<!-- section:scan -->` 구간으로 나눈다. `/kns-review`는 review 구간만, CI 보고 작업은 scan 구간만 고친다. 코멘트가 없으면 만들고, 있으면 고친다(GitLab `glab api -X PUT projects/:id/merge_requests/:iid/notes/:note_id`, GitHub `gh api -X PATCH repos/{o}/{r}/issues/comments/{id}`). review 구간 내용: 판정, 심각도별 수, 상위 발견 7개의 위치·한 줄, 대시보드 안내.
 
 구현 세션의 `review.md`(이슈 폴더, 커밋함):
 
@@ -107,16 +107,16 @@ MR 코멘트(VQ-R17): 코멘트 하나에 표시 `<!-- harness-kit:mr-summary --
 
 지적이 닫히는 조건:
 
-- `수용`: 표의 커밋이 그 브랜치에 있고, 그 뒤 head로 다시 돈 `/hx-review`가 같은 지문을 보고하지 않는다.
+- `수용`: 표의 커밋이 그 브랜치에 있고, 그 뒤 head로 다시 돈 `/kns-review`가 같은 지문을 보고하지 않는다.
 - `거절 제안`: 사람이 관리 페이지에서 `review/F-n · risk-accepted`를 `approvals.md`에 남겼다(06 §3.7). CRITICAL · HIGH의 거절은 이 기록 없이는 닫히지 않는다. MEDIUM · LOW는 `거절 제안`만으로 닫힌다.
 
 `수용`한 지적 중 같은 점검 ID가 30일 안에 이슈 2개 이상에서 나오면 규칙 후보가 된다(14 §3.11).
 
 열린 CRITICAL · HIGH 계산은 `scripts/harness/review_state.py <이슈 폴더> --report <리뷰 보고서>`가 한다. 대시보드(06), `mr` 게이트(§3.8), `verify.sh --full`이 이것을 부른다. 리뷰 보고서가 로컬에 없는 CI에서는 MR 요약 코멘트의 review 구간 수치를 읽는다.
 
-### 3.2 `/hx-scan`
+### 3.2 `/kns-scan`
 
-`/hx-scan`은 판정하지 않는다. 판정은 `verify.sh`다.
+`/kns-scan`은 판정하지 않는다. 판정은 `verify.sh`다.
 
 1. `.agents/reports/findings-latest.json`의 `head`가 현재 HEAD와 다르거나 없으면 `bash scripts/verify.sh --affected`를 부른다(분석기는 그 안에서 돈다).
 2. 새 문제를 심각도 · 분석기 · 경로로 묶고, 같은 규칙이 5건 넘게 반복되면 한 줄로 묶어 보여 준다.
@@ -128,7 +128,7 @@ MR 코멘트(VQ-R17): 코멘트 하나에 표시 `<!-- harness-kit:mr-summary --
 
 ```json
 {
-  "schema": "harness-kit.analyzers/v1",
+  "schema": "knots-sync.analyzers/v1",
   "analyzers": [
     {
       "id": "gitleaks", "layer": "common", "category": "secret", "required": true,
@@ -187,7 +187,7 @@ MR 코멘트(VQ-R17): 코멘트 하나에 표시 `<!-- harness-kit:mr-summary --
 | web · electron | ESLint + 보안 플러그인(SARIF 포매터) · TypeScript strict(`tsc --noEmit` 출력 → 변환) · c8 · istanbul(`json-summary` → 지표) | native · 변환 · `none` |
 | go | golangci-lint(gosec 포함, SARIF 출력) · govulncheck(`-format sarif`) · `go test -coverprofile` → 지표 | native · native · `none` |
 
-Semgrep 규칙(VQ-R18): `rules.bundled`는 항상 `false`다. `semgrep --config p/default`는 실행할 때 레지스트리에서 받는다. 레지스트리 규칙 라이선스 조건이 팀에 맞지 않으면 `alternatives`의 Opengrep과 그 규칙 저장소를 쓴다. doctor는 `semgrep`이 켜져 있고 `harness-kit.json`에 `analyzers.semgrepRulesAcknowledged: true`가 없으면 경고한다.
+Semgrep 규칙(VQ-R18): `rules.bundled`는 항상 `false`다. `semgrep --config p/default`는 실행할 때 레지스트리에서 받는다. 레지스트리 규칙 라이선스 조건이 팀에 맞지 않으면 `alternatives`의 Opengrep과 그 규칙 저장소를 쓴다. doctor는 `semgrep`이 켜져 있고 `knots-sync.json`에 `analyzers.semgrepRulesAcknowledged: true`가 없으면 경고한다.
 
 ### 3.4 검증 레벨별 실행
 
@@ -235,7 +235,7 @@ Semgrep 규칙(VQ-R18): `rules.bundled`는 항상 `false`다. `semgrep --config 
 
 ```json
 {
-  "schema": "harness-kit.quality-baseline/v1",
+  "schema": "knots-sync.quality-baseline/v1",
   "commit": "a1b2c3d", "createdAt": "2026-11-20T02:00:00Z",
   "findings": {
     "semgrep": { "5d1e8a…": { "ruleId": "java.lang.security.audit.sqli", "path": "src/legacy/Report.java", "severity": "HIGH" } },
@@ -262,7 +262,7 @@ Semgrep 규칙(VQ-R18): `rules.bundled`는 항상 `false`다. `semgrep --config 
 
 ```json
 {
-  "schema": "harness-kit.quality-gate/v1",
+  "schema": "knots-sync.quality-gate/v1",
   "newIssues": { "CRITICAL": 0, "HIGH": null, "MEDIUM": null, "LOW": null },
   "duplication": { "newCodeMaxPercent": 3.0, "minChangedLines": 50 },
   "complexity": { "functionMaxCcn": 15, "mode": "new-or-worsened" },
@@ -282,7 +282,7 @@ Semgrep 규칙(VQ-R18): `rules.bundled`는 항상 `false`다. `semgrep --config 
 
 ```json
 {
-  "schema": "harness-kit.quality-gate-result/v1",
+  "schema": "knots-sync.quality-gate-result/v1",
   "level": "affected", "head": "4c1d9e0", "base": "develop", "status": "failed",
   "checks": [
     { "id": "newIssues.CRITICAL", "value": 1, "limit": 0, "status": "failed", "items": ["semgrep:5d1e8a…"] },
@@ -295,16 +295,16 @@ Semgrep 규칙(VQ-R18): `rules.bundled`는 항상 `false`다. `semgrep --config 
 
 ### 3.7 CI 템플릿
 
-세 템플릿의 검증 단계는 `scripts/verify.sh`만 부른다(VQ-R16). base 브랜치 이름은 환경 변수 `HX_BASE_REF`로 넘기고 해석은 01을 따른다.
+세 템플릿의 검증 단계는 `scripts/verify.sh`만 부른다(VQ-R16). base 브랜치 이름은 환경 변수 `KNS_BASE_REF`로 넘기고 해석은 01을 따른다.
 
 MR 파이프라인은 base 판으로 판정한다(VQ-R11):
 
 ```text
-1. git show $HX_BASE_REF:scripts/verify.sh > .agents/state/verify-base.sh
+1. git show $KNS_BASE_REF:scripts/verify.sh > .agents/state/verify-base.sh
    base에 없으면(하네스를 처음 들이는 MR) head 판 scripts/verify.sh --affected로 판정하고 코멘트에 bootstrap을 적는다
-2. bash .agents/state/verify-base.sh --from-base $HX_BASE_REF --affected
+2. bash .agents/state/verify-base.sh --from-base $KNS_BASE_REF --affected
    base 판 verify.sh가 scripts/harness/와 검증 설정 넷(verify-checks · quality-gate · analyzers · deploy)을
-   git archive로 .agents/state/ci-base/에 꺼낸다(base에 없는 경로는 뺀다). HX_TOOLS_DIR · HX_GATE_CONFIG_DIR로
+   git archive로 .agents/state/ci-base/에 꺼낸다(base에 없는 경로는 뺀다). KNS_TOOLS_DIR · KNS_GATE_CONFIG_DIR로
    그 판을 가리킨 채 판정한다. 판정 대상(작업 트리)은 MR head이고, 리포 루트는 현재 폴더에서 찾는다(README §10)
 3. MR이 위 경로를 바꿨으면 정보용 작업 harness:affected-head가 head 판으로 한 번 더 돌린다.
    이 작업은 실패해도 MR을 막지 않고, 두 판의 결과 차이를 요약 코멘트 scan 구간에 적는다
@@ -312,7 +312,7 @@ MR 파이프라인은 base 판으로 판정한다(VQ-R11):
 
 - 브랜치가 검사 단계를 지우거나 `verify.sh`를 `exit 0`으로 바꿔도 그 MR의 판정은 base 판이 한다. 바뀐 판은 병합 뒤 다음 MR부터 적용된다.
 - `full`(야간 · 릴리스)은 base에서 돌기 때문에 꺼내기가 없다.
-- CI 진입 파일(`.github/workflows/harness-verify.yml` · `.gitlab-ci.yml` · `ci/harness-kit.gitlab-ci.yml`)도 MR에서 바뀔 수 있다. 이 파일들과 위 경로는 코드 소유자 규칙(GitHub `CODEOWNERS` + 보호 브랜치의 코드 소유자 승인, GitLab 코드 소유자 승인)으로 `approvers.mr` 그룹의 승인을 요구한다. `doctor`가 규칙 파일에 이 경로들이 있는지 본다.
+- CI 진입 파일(`.github/workflows/harness-verify.yml` · `.gitlab-ci.yml` · `ci/knots-sync.gitlab-ci.yml`)도 MR에서 바뀔 수 있다. 이 파일들과 위 경로는 코드 소유자 규칙(GitHub `CODEOWNERS` + 보호 브랜치의 코드 소유자 승인, GitLab 코드 소유자 승인)으로 `approvers.mr` 그룹의 승인을 요구한다. `doctor`가 규칙 파일에 이 경로들이 있는지 본다.
 
 | 단계 | 언제 | 명령 | 산출물 |
 |---|---|---|---|
@@ -336,11 +336,11 @@ jobs:
         with: { fetch-depth: 0 }
       - run: bash scripts/verify.sh --fast
       - if: github.event_name == 'pull_request'
-        env: { HX_BASE_REF: "origin/${{ github.base_ref }}" }
+        env: { KNS_BASE_REF: "origin/${{ github.base_ref }}" }
         run: |
           mkdir -p .agents/state
-          git show "$HX_BASE_REF:scripts/verify.sh" > .agents/state/verify-base.sh || true
-          if [ -s .agents/state/verify-base.sh ]; then bash .agents/state/verify-base.sh --from-base "$HX_BASE_REF" --affected; else bash scripts/verify.sh --affected --bootstrap; fi
+          git show "$KNS_BASE_REF:scripts/verify.sh" > .agents/state/verify-base.sh || true
+          if [ -s .agents/state/verify-base.sh ]; then bash .agents/state/verify-base.sh --from-base "$KNS_BASE_REF" --affected; else bash scripts/verify.sh --affected --bootstrap; fi
       - if: github.event_name == 'schedule'
         run: bash scripts/verify.sh --full
       - if: always()
@@ -352,8 +352,8 @@ GitLab CI: 리포의 `.gitlab-ci.yml`이 킷 템플릿을 include한다.
 
 ```yaml
 include:
-  - local: ci/harness-kit.gitlab-ci.yml        # 킷이 깐 파일(주인 kit)
-# ci/harness-kit.gitlab-ci.yml
+  - local: ci/knots-sync.gitlab-ci.yml        # 킷이 깐 파일(주인 kit)
+# ci/knots-sync.gitlab-ci.yml
 stages: [fast, affected, full]
 harness:fast:
   stage: fast
@@ -361,11 +361,11 @@ harness:fast:
 harness:affected:
   stage: affected
   rules: [{ if: '$CI_PIPELINE_SOURCE == "merge_request_event"' }]
-  variables: { HX_BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME", GIT_DEPTH: "0" }
+  variables: { KNS_BASE_REF: "origin/$CI_MERGE_REQUEST_TARGET_BRANCH_NAME", GIT_DEPTH: "0" }
   script:
     - mkdir -p .agents/state
-    - git show "$HX_BASE_REF:scripts/verify.sh" > .agents/state/verify-base.sh || true
-    - if [ -s .agents/state/verify-base.sh ]; then bash .agents/state/verify-base.sh --from-base "$HX_BASE_REF" --affected; else bash scripts/verify.sh --affected --bootstrap; fi
+    - git show "$KNS_BASE_REF:scripts/verify.sh" > .agents/state/verify-base.sh || true
+    - if [ -s .agents/state/verify-base.sh ]; then bash .agents/state/verify-base.sh --from-base "$KNS_BASE_REF" --affected; else bash scripts/verify.sh --affected --bootstrap; fi
   artifacts: { when: always, paths: [.agents/reports/], expire_in: 14 days }
 harness:full:
   stage: full
@@ -374,7 +374,7 @@ harness:full:
   artifacts: { when: always, paths: [.agents/reports/], expire_in: 30 days }
 ```
 
-GoCD(`harness.gocd.yaml`): 파이프라인 하나에 stage `fast` → `affected`(MR 브랜치 재료일 때) → `full`(timer), 각 job의 task는 `bash scripts/verify.sh <레벨>` 한 줄, artifact는 `.agents/reports`. GoCD에는 MR 개념이 없어 브랜치 플러그인 재료의 base를 `HX_BASE_REF`로 넘긴다.
+GoCD(`harness.gocd.yaml`): 파이프라인 하나에 stage `fast` → `affected`(MR 브랜치 재료일 때) → `full`(timer), 각 job의 task는 `bash scripts/verify.sh <레벨>` 한 줄, artifact는 `.agents/reports`. GoCD에는 MR 개념이 없어 브랜치 플러그인 재료의 base를 `KNS_BASE_REF`로 넘긴다.
 
 ### 3.8 게이트 조건과 승인 강제
 
@@ -413,7 +413,7 @@ GoCD(`harness.gocd.yaml`): 파이프라인 하나에 stage `fast` → `affected`
 ```text
 python3 scripts/harness/approve.py <이슈키|Intent키|deploy:<배포 기록 이름>> <게이트> [--changes-requested [--rule-candidate]]
         [--waive-rollback "<사유>"] --phrase "<문구>"
-(Node가 있는 리포는 npx harness-kit approve <대상> --gate <게이트> … 로 같은 일을 한다, 06 §3.15. 아래 절차는 둘 다 같다)
+(Node가 있는 리포는 npx knots-sync approve <대상> --gate <게이트> … 로 같은 일을 한다, 06 §3.15. 아래 절차는 둘 다 같다)
 1. 에이전트 세션 판정이 참이면 exit 3 "에이전트 세션에서는 승인하지 못한다"
 2. stdin·stdout이 TTY가 아니면 exit 3
 3. 대상 문서와 sha256, 게이트 조건(위 표), [NEEDS CLARIFICATION] 검사 — 대시보드와 같은 순서(06 §3.7 3~8)
@@ -425,7 +425,7 @@ python3 scripts/harness/approve.py <이슈키|Intent키|deploy:<배포 기록 �
 
 | 경로 | 방법 | `approvals.md`의 `경로` |
 |---|---|---|
-| 사람 터미널 | `npx harness-kit approve`(Node 없는 리포는 `approve.py`) | `terminal` |
+| 사람 터미널 | `npx knots-sync approve`(Node 없는 리포는 `approve.py`) | `terminal` |
 | 관리 페이지 | 승인 버튼(PIN) | `dashboard` |
 | Jira | 사람이 한 승인 전이를 `sync jira --approvals`로 가져온다(10 §3.4) | `jira` |
 | AI-DLC(켰을 때) | AI-DLC 사람 입력 확인 훅이 받은 승인을 `sync aidlc`가 옮긴다. 기록에 승인자가 있을 때만(10 §3.2) | `aidlc` |
@@ -443,7 +443,7 @@ python3 scripts/harness/approve.py <이슈키|Intent키|deploy:<배포 기록 �
 
 ```json
 {
-  "schema": "harness-kit.metrics/v1",
+  "schema": "knots-sync.metrics/v1",
   "at": "2026-11-24T09:30:11+09:00", "level": "affected", "head": "4c1d9e0", "branch": "feat/HDRV3D-12-upload-cleanup",
   "analyzers": {
     "semgrep": { "total": 12, "new": 1, "bySeverity": { "CRITICAL": 0, "HIGH": 1, "MEDIUM": 9, "LOW": 2 }, "seconds": 41.2 },
@@ -477,7 +477,7 @@ python3 scripts/harness/approve.py <이슈키|Intent키|deploy:<배포 기록 �
 ## 5. 완료 기준
 
 1. fixture에 심은 결함 3종(비밀값, 문자열로 조립한 SQL, 알려진 취약 의존성)을 `affected` 실행이 모두 새 CRITICAL·HIGH로 잡고 품질 게이트가 `failed`다.
-2. requirements의 `R2.1` 하나를 구현하지 않은 fixture MR에서 `/hx-review`가 `RV-COV` 발견으로 `R2.1`을 보고한다.
+2. requirements의 `R2.1` 하나를 구현하지 않은 fixture MR에서 `/kns-review`가 `RV-COV` 발견으로 `R2.1`을 보고한다.
 3. 시험: 열린 HIGH 리뷰 지적이 있으면 `verify.sh --full`이 exit 1이고, `approvals.md`에 `review/F-1 · risk-accepted`를 더하면 통과한다.
 4. 시험: 승인 기록 없이 `tasks.md`를 `state: completed`로 바꾸는 Claude Edit 도구 호출을 훅이 막는다. 같은 변경을 git으로 커밋하면 `verify.sh --fast`가 실패한다.
 5. 시험: `approvals.md`의 기존 줄 하나를 바꾼 커밋을 pre-commit이 거부하고, 훅을 건너뛴 커밋은 CI fast가 거부한다.

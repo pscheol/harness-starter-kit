@@ -67,9 +67,9 @@ describe("update — 판정", () => {
     expect(lockEntry(target, A)).toMatchObject({ op: "copy", owner: "kit", sha256: sha256Hex(readText(target, A)), layer: "common" });
     expect(lockEntry(target, ".agents/rules/b.md")).toMatchObject({ owner: "kit", sha256: sha256Hex("새 규칙 Acme\n") });
     const lock = readJsonFile(path.join(target, LOCK_FILE));
-    expect(lock).toMatchObject({ schema: "harness-kit.lock/v2", kit: { version: VERSION } });
+    expect(lock).toMatchObject({ schema: "knots-sync.lock/v2", kit: { version: VERSION } });
     const meta = readJsonFile(path.join(target, META_FILE));
-    expect(meta).toMatchObject({ schema: "harness-kit/v2", kit: { version: VERSION }, installedAt: "2026-11-23", updatedAt: "2026-12-01" });
+    expect(meta).toMatchObject({ schema: "knots-sync/v2", kit: { version: VERSION }, installedAt: "2026-11-23", updatedAt: "2026-12-01" });
     const again = await cli("update", ["--json", "--templates", newKit()]);
     expect(json(again).counts).toMatchObject({ update: 0, new: 0, conflict: 0 });
   });
@@ -253,14 +253,14 @@ describe("update — 판정", () => {
     expect(j.kit.from).toBe("1.0.8");
     expect(j.counts.conflict).toBe(0);
     const lock = readJsonFile(path.join(target, LOCK_FILE));
-    expect(lock.schema).toBe("harness-kit.lock/v2");
+    expect(lock.schema).toBe("knots-sync.lock/v2");
     expect(lock.entries).toHaveLength(v2.length);
     expect(lock.entries.map((e: { layer: string }) => e.layer).sort()).toEqual(v2.map((e) => e.layer).sort());
     expect(lockEntry(target, "AGENTS.md")?.sha256).toBe(sha256Hex("# Acme\n"));
-    expect(fs.readFileSync(path.join(target, ".agents/state/harness-kit.lock.v1.bak"), "utf8")).toBe(v1Text);
+    expect(fs.readFileSync(path.join(target, ".agents/state/knots-sync.lock.v1.bak"), "utf8")).toBe(v1Text);
     const m = readJsonFile(path.join(target, META_FILE));
     expect(m).toMatchObject({
-      schema: "harness-kit/v2",
+      schema: "knots-sync/v2",
       kit: { version: VERSION },
       project: { name: "Acme", slug: "acme" },
       git: { base: "main", worktreeRoot: "../{repo}.worktrees" },

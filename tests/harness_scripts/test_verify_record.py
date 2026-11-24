@@ -32,7 +32,7 @@ def assert_schema(case, record, level):
         "unverified": list, "recommendations": list, "previous": dict,
     }.items():
         case.assertIsInstance(record.get(key), kind, key)
-    case.assertEqual("harness-kit.verify-last/v1", record["schema"])
+    case.assertEqual("knots-sync.verify-last/v1", record["schema"])
     case.assertRegex(record["runId"], r"^\d{8}T\d{6}Z-[0-9a-f]{4}$")
     case.assertEqual(level, record["level"])
     case.assertIn(record["status"], STATUSES)

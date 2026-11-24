@@ -22,6 +22,7 @@ import { PROJECTION_OPS } from "../projection/engine";
 import { measureFor, moduleFindings, MODULE_KINDS } from "../modules/doctor";
 import { HARNESS_LOAD, hookCount, type Measure } from "../core/measure";
 import { locateTemplates } from "../core/templates";
+import { legacyStateFiles, lockFile, metaFile } from "../core/legacy-names";
 
 export type Severity = "error" | "warn" | "info";
 
@@ -37,7 +38,7 @@ export interface Finding {
 export const FLOOR_KINDS = ["gate-floor", "floor-hook-missing", "floor-override", "full-allowed", "approvers"];
 export const PACK_KINDS = ["pack-unpinned", "pack-local-path"];
 export const LOCAL_KINDS = ["personal-ignored", "personal-weakens", "local-invalid"];
-export const DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "version-mismatch", "missing", "drifted", "gitignore", "entry-size", "upgrade-notice-expired", ...FLOOR_KINDS, ...PACK_KINDS, ...LOCAL_KINDS, ...DEPLOY_KINDS, ...PROJECTION_KINDS, ...MODULE_KINDS];
+export const DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "legacy-names", "version-mismatch", "missing", "drifted", "gitignore", "entry-size", "upgrade-notice-expired", ...FLOOR_KINDS, ...PACK_KINDS, ...LOCAL_KINDS, ...DEPLOY_KINDS, ...PROJECTION_KINDS, ...MODULE_KINDS];
 export const GITIGNORE_NEEDS = [".agents/state/", ".agents/local/", ".agents/reports/"];
 export const ENTRY_FILES = ["AGENTS.md", "CLAUDE.md"];
 export const ENTRY_LIMIT = 24 * 1024;
@@ -55,7 +56,7 @@ function versionFindings(meta: MetaV2 | null, lock: LockV2 | null): Finding[] {
         path: META_REL,
         hint: newer
           ? `설치된 킷(${installed})이 이 CLI(${VERSION})보다 새것이다. 새 CLI 로 다시 실행한다`
-          : `설치 ${installed} · CLI ${VERSION}. 킷을 올리려면 harness-kit update`,
+          : `설치 ${installed} · CLI ${VERSION}. 킷을 올리려면 knots-sync update`,
         detail: { installed, cli: VERSION },
       });
     }
@@ -90,7 +91,7 @@ function copyFindings(target: string, lock: LockV2): { ok: number; findings: Fin
     const state = fileState(path.join(target, ...e.path.split("/")), e.sha256);
     if (state === "ok") ok += 1;
     else if (state === "missing") {
-      findings.push({ kind: "missing", severity: "error", path: e.path, owner: e.owner, hint: "킷 파일이 없다. harness-kit repair 로 되살린다" });
+      findings.push({ kind: "missing", severity: "error", path: e.path, owner: e.owner, hint: "킷 파일이 없다. knots-sync repair 로 되살린다" });
     } else if (state === "drifted") {
       findings.push({ kind: "drifted", severity: "info", path: e.path, owner: e.owner, hint: "사람이 고친 파일이다. update 때 .new 로 받는다" });
     } else {
@@ -174,7 +175,7 @@ function floorFindings(target: string, raw: Record<string, unknown> | null): Fin
   if (isObjAny(hooks) && Array.isArray(hooks.hooks)) {
     const ids = new Set(hooks.hooks.map((h) => (isObjAny(h) ? h.id : null)));
     const gone = FLOOR_HOOKS.filter((id) => !ids.has(id));
-    if (gone.length) out.push({ kind: "floor-hook-missing", severity: "error", path: ".agents/hooks.json", hint: `하한 훅 ${gone.join(" · ")} 가 없다. harness-kit repair 로 되살린다`, detail: { missing: gone } });
+    if (gone.length) out.push({ kind: "floor-hook-missing", severity: "error", path: ".agents/hooks.json", hint: `하한 훅 ${gone.join(" · ")} 가 없다. knots-sync repair 로 되살린다`, detail: { missing: gone } });
   }
   const verify = raw && isObjAny(raw.verify) ? raw.verify : null;
   if (verify?.fullOnlyInCI === false) out.push({ kind: "full-allowed", severity: "warn", path: META_REL, hint: "verify.fullOnlyInCI 가 false 다. 에이전트 세션의 full 차단은 그대로지만 사람 · git hook 의 full 이 열린다(팀 결정이면 MR 로 남긴다)" });
@@ -233,16 +234,19 @@ function noticeFinding(target: string, day: string): Finding | null {
 
 /** 검사 전부. 메타가 없으면(설치 안 됨) exit 3. */
 function collect(ctx: Ctx, target: string, day: string): Collected {
-  const metaRead = readMeta(path.join(target, META_REL));
+  const metaRead = readMeta(metaFile(target));
   if (metaRead.status === "missing") {
-    throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 harness-kit init");
+    throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 knots-sync init");
   }
   const findings: Finding[] = [];
   const meta = metaRead.status === "ok" ? metaRead.meta : null;
   if (metaRead.status === "invalid") findings.push({ kind: "meta-invalid", severity: "error", path: META_REL, hint: metaRead.error });
 
-  const lockRead = readLock(path.join(target, LOCK_REL));
+  const lockRead = readLock(lockFile(target));
   const lock = lockRead.status === "ok" ? lockRead.lock : null;
+  for (const old of legacyStateFiles(target)) {
+    findings.push({ kind: "legacy-names", severity: "info", path: old, hint: "옛 이름(harness-kit) 상태 파일이다. knots-sync update 가 새 이름(.agents/knots-sync.*)으로 옮긴다" });
+  }
   if (lockRead.status === "ok" && lockRead.format === "v1") {
     findings.push({ kind: "lock-v1", severity: "info", path: LOCK_REL, hint: "v1(TSV) lock 이다. update 가 v2 로 바꾼다" });
   }
@@ -314,7 +318,7 @@ export function runDoctor(ctx: Ctx): CommandResult {
     // 덮어쓰기 보고(04 §3.10) — 경로 · 항목마다 이긴 층. 하한 위반이 있고 --check 면 exit 1
     const report = overridesReport(ctx, target, loadInstalled(target, "doctor"));
     const code = bool(ctx.values, "check") && report.floorViolations.length ? EXIT.CHECK : EXIT.OK;
-    return { code, data: { command: "doctor", target, only: "overrides", ...report }, lines: [`harness-kit doctor --only overrides — ${target}`, ...overridesLines(report)] };
+    return { code, data: { command: "doctor", target, only: "overrides", ...report }, lines: [`knots-sync doctor --only overrides — ${target}`, ...overridesLines(report)] };
   }
   const only = parseOnly(str(ctx.values, "only"));
   const c = collect(ctx, target, today(ctx.io));
@@ -324,7 +328,7 @@ export function runDoctor(ctx: Ctx): CommandResult {
   const code = bool(ctx.values, "check") && ((summary.errors as number) ?? 0) > 0 ? EXIT.CHECK : EXIT.OK;
   const kit = { installed: c.meta?.kit.version ?? null, lock: c.lock?.kit.version ?? null, cli: VERSION };
   const lines = [
-    `harness-kit doctor — ${target}`,
+    `knots-sync doctor — ${target}`,
     `  킷: 설치 ${kit.installed ?? "?"} · lock ${kit.lock ?? "?"} · CLI ${kit.cli}`,
     `  copy 항목: ok ${summary.ok} · drifted ${summary.drifted} · missing ${summary.missing}`,
     ...(c.projection ? [`  배치 항목: ok ${c.projection.ok} · 오류 ${c.projection.errors}`] : []),

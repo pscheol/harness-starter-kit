@@ -2,11 +2,11 @@
 
 - 단계: P17(v2.0.0-alpha). 계획: [harness-next 03장 P17](../harness-next/03-plan.html#p17).
 - 근거: [02장 설치 엔진과 배치](../harness-next/02-direction.html#engine) · [02장 다른 도구와 같은 리포에서](../harness-next/02-direction.html#coexist) · D3.
-- 설정·lock 형식은 [README §5·§6](README.md#5-agentsharness-kitjson), 명령 이름은 [README §7](README.md#7-명령-이름)을 따른다.
+- 설정·lock 형식은 [README §5·§6](README.md#5-agentsknots-syncjson), 명령 이름은 [README §7](README.md#7-명령-이름)을 따른다.
 
 ## 1. 목적·범위
 
-에이전트 세션 없이 `npx harness-kit` 한 줄로 v1.0.8과 같은 결과를 설치하고, 점검·복구·제거까지 한다.
+에이전트 세션 없이 `npx knots-sync` 한 줄로 v1.0.8과 같은 결과를 설치하고, 점검·복구·제거까지 한다.
 
 | 범위 | 내용 |
 |---|---|
@@ -17,11 +17,11 @@
 
 ## 2. 요구사항
 
-- R1.1 Node 18.3 이상에서 `npx harness-kit <명령>`이 돈다(인자 해석에 쓰는 `node:util` `parseArgs`가 18.3부터 있다). Node가 18.3 미만이면 exit 5와 필요한 버전을 출력한다.
+- R1.1 Node 18.3 이상에서 `npx knots-sync <명령>`이 돈다(인자 해석에 쓰는 `node:util` `parseArgs`가 18.3부터 있다). Node가 18.3 미만이면 exit 5와 필요한 버전을 출력한다.
 - R1.2 `dist/cli.js`는 파일 하나이고, 런타임에 `node_modules`의 패키지를 읽지 않는다. `package.json`의 `dependencies`는 비어 있다.
 - R2.1 `init`은 같은 선택값에서 setup.sh와 같은 파일 목록·내용·실행 권한을 만든다(lock·메타 파일 제외).
 - R2.2 `init`은 쓰기 전에 전체 작업 목록을 만들고, `--dry-run`이면 목록만 출력한다.
-- R2.3 이미 설치된 리포(`.agents/harness-kit.json` 있음)에서 `init`은 exit 3으로 끝나고 `update`·`add`를 안내한다.
+- R2.3 이미 설치된 리포(`.agents/knots-sync.json` 있음)에서 `init`은 exit 3으로 끝나고 `update`·`add`를 안내한다.
 - R3.1 `update`는 킷이 깐 뒤 사람이 고치지 않은 파일만 교체하고, 고친 파일은 `<경로>.new`로 옆에 둔다.
 - R3.2 `update`는 v1 lock을 읽고 v2로 쓴다. v1 메타는 v2 메타로 바꾼다.
 - R3.3 `update`는 주인이 `user`·`external:*`인 파일과 팩 파일(팩 갱신이 아닐 때)을 쓰지 않는다.
@@ -29,7 +29,7 @@
 - R4.2 새 설치 직후 `doctor --check`는 exit 0.
 - R5.1 `repair`는 `missing`·`stale`·생성물의 `drifted`와 병합 키 누락을 되돌리고, 사람이 고친 템플릿 복사 파일(`copy`)은 건드리지 않는다.
 - R6.1 `uninstall`은 킷 소유이면서 고치지 않은 파일을 지우고, 병합한 설정에서 킷 몫만 뺀다. 고친 파일은 남기고 목록을 출력한다.
-- R7.1 플러그인 스킬 `hx-bootstrap`·`hx-update`·`hx-agent-add`는 CLI를 부른다. Node가 없거나 18.3 미만이면 setup.sh·update.sh·add-agent.sh로 내려간다(v2.0 한 버전 동안).
+- R7.1 플러그인 스킬 `kns:bootstrap`·`kns:update`·`kns:agent-add`는 CLI를 부른다. Node가 없거나 18.3 미만이면 setup.sh·update.sh·add-agent.sh로 내려간다(v2.0 한 버전 동안).
 - R8.1 모든 명령은 `--json`을 받고, 사람용 출력과 같은 정보를 JSON 한 개로 stdout에 낸다.
 
 ## 3. 설계
@@ -43,7 +43,7 @@ harness-starter-kit/
 ├── package.json                      private, 워크스페이스 루트. scripts: build · test · release
 ├── pnpm-workspace.yaml               packages/*
 ├── packages/
-│   ├── cli/                          npm "harness-kit", bin { "harness-kit": "dist/cli.js" }, engines { "node": ">=18.3" }
+│   ├── cli/                          npm "knots-sync", bin { "knots-sync": "dist/cli.js" }, engines { "node": ">=18.3" }
 │   │   ├── src/
 │   │   │   ├── main.ts               인자 해석(node:util parseArgs) → 명령 실행 → exit code
 │   │   │   ├── commands/             init.ts plan.ts add.ts remove.ts update.ts outdated.ts doctor.ts
@@ -62,24 +62,24 @@ harness-starter-kit/
 │   │   ├── common/ · domains/ · stacks/ · arch/ · optional/
 │   │   └── …                         리포 스크립트(verify.sh · harness/*.py · hooks/*)도 여기
 │   ├── legacy-setup/<스킬>/          setup.sh · lib/ · update.sh · add-agent.sh. Node 없는 환경용, v2.0 동안만
-│   └── plugin/                       얇은 플러그인의 원본: 매니페스트 · commands/ · skills/hx-*/SKILL.md
-├── plugins/harness-kit/              생성물. 손으로 고치지 않는다(아래)
+│   └── plugin/                       얇은 플러그인의 원본: 매니페스트 · commands/ · skills/kns-*/SKILL.md
+├── plugins/kns/              생성물. 손으로 고치지 않는다(아래)
 │   ├── .claude-plugin/ · .codex-plugin/
-│   ├── commands/ · skills/hx-*/      얇은 스킬: 대화로 값을 받고 CLI를 부른다(3.14)
-│   └── skills/hx-bootstrap/
-│       ├── bin/harness-kit.js        packages/cli/dist/cli.js 사본
+│   ├── commands/ · skills/kns-*/      얇은 스킬: 대화로 값을 받고 CLI를 부른다(3.14)
+│   └── skills/bootstrap/
+│       ├── bin/knots-sync.js        packages/cli/dist/cli.js 사본
 │       ├── templates/                packages/templates 사본(오프라인 설치용)
 │       └── setup.sh · lib/ …         packages/legacy-setup 사본
-├── .claude-plugin/marketplace.json · .agents/plugins/marketplace.json   지금 자리 그대로(./plugins/harness-kit)
+├── .claude-plugin/marketplace.json · .agents/plugins/marketplace.json   지금 자리 그대로(./plugins/kns)
 ├── install-kiro.sh                   생성된 플러그인 스킬 폴더를 복사한다
 ├── scripts/release.sh · gen-plugins.mjs · sync-commands.sh   킷 개발 도구(플러그인에 넣지 않는다)
 ├── tests/                            e2e · test_cli_parity.py(3.15) · test_generated.py(생성물 = 원본)
 └── docs/
 ```
 
-- 원본은 `packages/`다. `plugins/harness-kit/`은 `scripts/gen-plugins.mjs`가 `packages/plugin` → `packages/legacy-setup/<스킬>` → `packages/templates`(→ `skills/hx-bootstrap/templates/`) 순서로 겹쳐 만들고 커밋한다. 같은 경로가 두 층에 있으면 거부한다(HK-1). Claude · Codex 마켓플레이스가 git에서 플러그인 폴더만 받아 가기 때문이다. `tests/test_generated.py`가 생성물과 원본(빌드 결과 포함)이 바이트 단위로 같은지 보고, fast 검증 · CI에서 돈다. 플러그인 폴더를 손으로 고치면 이 시험이 실패한다.
-- 마켓플레이스 경로(`./plugins/harness-kit`)와 플러그인 스킬 이름(`hx-*`)은 그대로다. 사용자는 구조 이동을 알아챌 필요가 없다.
-- 템플릿 자리 찾기: `HARNESS_KIT_TEMPLATES` → `<cli 폴더>/../templates`(플러그인 `bin/` 옆) → `<cli 폴더>/../../templates`(npm 패키지 안). 둘 다 없으면 exit 5. npm 패키지 `files`: `dist/`, `templates/`(빌드 때 `packages/templates`를 패키지 안으로 복사한다).
+- 원본은 `packages/`다. `plugins/kns/`은 `scripts/gen-plugins.mjs`가 `packages/plugin` → `packages/legacy-setup/<스킬>` → `packages/templates`(→ `skills/bootstrap/templates/`) 순서로 겹쳐 만들고 커밋한다. 같은 경로가 두 층에 있으면 거부한다(HK-1). Claude · Codex 마켓플레이스가 git에서 플러그인 폴더만 받아 가기 때문이다. `tests/test_generated.py`가 생성물과 원본(빌드 결과 포함)이 바이트 단위로 같은지 보고, fast 검증 · CI에서 돈다. 플러그인 폴더를 손으로 고치면 이 시험이 실패한다.
+- 마켓플레이스 경로(`./plugins/kns`)와 플러그인 스킬 이름(`kns-*`)은 그대로다. 사용자는 구조 이동을 알아챌 필요가 없다.
+- 템플릿 자리 찾기: `KNOTS_SYNC_TEMPLATES` → `<cli 폴더>/../templates`(플러그인 `bin/` 옆) → `<cli 폴더>/../../templates`(npm 패키지 안). 둘 다 없으면 exit 5. npm 패키지 `files`: `dist/`, `templates/`(빌드 때 `packages/templates`를 패키지 안으로 복사한다).
 - 워크스페이스 도구는 pnpm workspaces만 쓴다. 패키지가 다섯이라 Turborepo · Nx는 두지 않는다. 개발 의존: `typescript`, `esbuild`, `vitest`, `jsonc-parser`(번들에 넣는다, P18의 `.vscode/settings.json` 주석 보존 병합용), flow-view의 `react` · `@xyflow/react`.
 - 버전: `packages/cli/package.json` · 두 마켓플레이스 파일 · 플러그인 Claude · Codex 매니페스트 다섯 곳을 `scripts/release.sh <버전>`이 같이 올리고 `gen-plugins.mjs`를 돌린다.
 - 이동 순서: v1.1 전에 파일만 옮기는 커밋 하나(`git mv`, 동작 같음, `git log --follow`로 이력 유지) → 생성 스크립트 · 생성물 시험 → v1.1. 이 문서와 다른 설계 문서의 킷 저장소 경로는 이동 뒤 기준이다.
@@ -126,7 +126,7 @@ setup.sh·lib의 `harness_remap`·`harness_agent_of`·`harness_is_executable`·`
 
 ```jsonc
 {
-  "schema": "harness-kit.layout/v1",
+  "schema": "knots-sync.layout/v1",
   "ignore": [".DS_Store", "ABOUT", "module.json"],     // 파일 이름. 모듈 설명(ABOUT)·모듈 정의(module.json, 10 문서)는 설치하지 않는다
   "layers": [
     { "id": "common",  "dir": "common" },
@@ -250,7 +250,7 @@ interface PlannedOp {
 }
 ```
 
-### 3.8 메타 `.agents/harness-kit.json`
+### 3.8 메타 `.agents/knots-sync.json`
 
 v2 형식은 README §5. 이 문서가 더하는 키는 `tokens`·`installedAt`·`updatedAt` 세 개다. `tokens`가 없으면 `update`가 `PACKAGE_NS` 같은 값을 다시 치환할 수 없다(README 예시에 없다 — 보고 항목).
 
@@ -273,7 +273,7 @@ v2 형식은 README §5. 이 문서가 더하는 키는 `tokens`·`installedAt`�
 - `sha256`은 킷이 그 파일을 쓸 때의 내용 해시(기준 B)다. 지금 파일의 해시가 아니다. 모르면 `null`이고, `null`은 언제나 "사람이 고쳤다"로 본다.
 - tree-sha256: 폴더 안 파일을 상대 경로 사전순으로 `"<경로>\0<sha256>\n"`을 이어 붙인 문자열의 sha256.
 - `layer` 값: 템플릿 폴더 경로(`common`, `domains/frontend`, `stacks/jvm`, `stacks/jvm/arch/hexagonal`, `optional/jira-workflow`, `packs/acme/common`).
-- `kit.source`: `github:<owner>/harness-starter-kit#v2.0.0` · `npm:harness-kit@2.0.0` · `plugin:harness-kit@2.0.0` · `file:<경로>`(개발).
+- `kit.source`: `github:<owner>/harness-starter-kit#v2.0.0` · `npm:knots-sync@2.0.0` · `plugin:knots-sync@2.0.0` · `file:<경로>`(개발).
 
 v1(TSV) 읽기:
 
@@ -286,7 +286,7 @@ v1(TSV) 읽기:
 2. 줄마다 `{path, op:"copy", owner:"kit", sha256: (값이 "-"면 null), layer: 변환(라벨)}`. 라벨 변환: `common` → `common`, `frontend`·`backend` → `domains/<값>`, `<stack>` → `stacks/<stack>`, `<stack>/<arch>` → `stacks/<stack>/arch/<arch>`, `mod/<m>` → `optional/<m>`.
 3. 세 번째 열은 주인이 아니라 하네스(`core`·`claude`·`codex`·`cursor`·`kiro`)다. v2에서는 버린다. 하네스는 layout.json 세그먼트로 경로에서 다시 구한다.
 4. 같은 경로가 여러 줄이면(3.5의 겹치는 경로) 레이어 순서상 뒤의 줄의 `layer`, 앞 줄의 `sha256`을 쓴다. v1 setup.sh가 실제로 쓴 내용이 앞 레이어 판이기 때문이다.
-5. 쓰기 명령(`update`·`add`·`remove`·`repair`)이 처음 lock을 쓸 때 v2로 쓴다. 옛 파일은 `.agents/state/harness-kit.lock.v1.bak`에 남긴다.
+5. 쓰기 명령(`update`·`add`·`remove`·`repair`)이 처음 lock을 쓸 때 v2로 쓴다. 옛 파일은 `.agents/state/knots-sync.lock.v1.bak`에 남긴다.
 
 ### 3.10 update — 3방향 비교
 
@@ -366,25 +366,25 @@ v1(TSV) 읽기:
 1. 계획: lock 항목마다 — copy·mirror·render는 sha(C) = B면 `delete`, 다르면 `keep-modified`. merge는 `unmerge-keys`(킷 키만 뺀다. 남은 내용이 `{}`이고 lock에 `createdByKit: true`면 파일도 지운다). `pack:*`은 `--keep-packs`가 없으면 킷과 같은 규칙. `user`·`external:*`은 남긴다. 킷이 만든 `.new`는 지운다.
 2. 비게 된 폴더 중 킷이 만든 폴더(lock 항목의 상위 폴더)만 지운다.
 3. `git config --get core.hooksPath`가 `scripts/git-hooks`면 `git config --unset core.hooksPath`.
-4. `--keep-state`가 없으면 마지막으로 `.agents/harness-kit.lock`·`.agents/harness-kit.json`을 지운다. `.agents/state/`는 커밋하지 않는 폴더라 그대로 둔다.
+4. `--keep-state`가 없으면 마지막으로 `.agents/knots-sync.lock`·`.agents/knots-sync.json`을 지운다. `.agents/state/`는 커밋하지 않는 폴더라 그대로 둔다.
 5. `keep-modified`가 하나라도 있으면 목록과 함께 exit 4.
 
 ### 3.14 플러그인 스킬에서 부르기
 
 ```text
-hx-bootstrap SKILL.md 절차
+kns:bootstrap SKILL.md 절차
 1. 대화로 스택·변형·하네스·모듈·토큰·이슈 키를 받는다(지금 SKILL.md 질문 그대로).
-2. Node 18.3 이상이면(갈래는 skills/hx-bootstrap/kit.sh 가 고른다 — HK-12):
-     node "<이 스킬 폴더>/bin/harness-kit.js" plan --cwd "<대상>" --stack … --yes --json
+2. Node 18.3 이상이면(갈래는 skills/bootstrap/kit.sh 가 고른다 — HK-12):
+     node "<이 스킬 폴더>/bin/knots-sync.js" plan --cwd "<대상>" --stack … --yes --json
    계획 요약(파일 수, skip-user 수)을 사람에게 보여 주고 승인을 받는다.
-     node "<이 스킬 폴더>/bin/harness-kit.js" init --cwd "<대상>" --stack … --yes
+     node "<이 스킬 폴더>/bin/knots-sync.js" init --cwd "<대상>" --stack … --yes
 3. Node 가 없거나 18.3 미만이면:
      STACK=… bash "<이 스킬 폴더>/setup.sh" --arch=… --agents=… "<대상>"
    출력 첫 줄에 "Node 18.3 이 없어 setup.sh 로 설치했다. v2.1 부터는 Node 가 필요하다"를 붙인다.
 ```
 
-- `hx-update` → `update --dry-run` 결과를 보여 준 뒤 `update`. 내려가는 경로는 `bash ../hx-bootstrap/../hx-update/update.sh`.
-- `hx-agent-add` → `add <하네스>…`. 내려가는 경로는 `add-agent.sh`.
+- `kns:update` → `update --dry-run` 결과를 보여 준 뒤 `update`. 내려가는 경로는 `bash ../bootstrap/../update/update.sh`.
+- `kns:agent-add` → `add <하네스>…`. 내려가는 경로는 `add-agent.sh`.
 - 스킬이 CLI를 부를 때 `--json`을 쓰고, exit 4면 `.new` 목록을 사람에게 그대로 보여 준다. 에이전트가 `.new`를 병합하지 않는다(사람이 고른다).
 - setup.sh로 깐 리포를 나중에 CLI로 `update`하면 v1 lock 읽기(3.9) 경로로 들어간다.
 
@@ -409,7 +409,7 @@ hx-bootstrap SKILL.md 절차
 
 1. 파일 목록: 양쪽 `find -type f -o -type l` 결과가 같다.
 2. 내용: 파일마다 바이트가 같다. 실행 권한 비트가 같다.
-3. 제외: `.agents/harness-kit.lock`, `.agents/harness-kit.json`(이 둘은 의미 비교: 스택·변형·도메인·하네스·모듈·토큰이 같다), `docs/features/` 생성물의 날짜 문자열(정규식으로 지운 뒤 비교).
+3. 제외: `.agents/knots-sync.lock`, `.agents/knots-sync.json`(이 둘은 의미 비교: 스택·변형·도메인·하네스·모듈·토큰이 같다), `docs/features/` 생성물의 날짜 문자열(정규식으로 지운 뒤 비교).
 4. 시간: 조합 10개 합계 120초 이내(CI 기준). 그보다 길면 `feature_docs.py build`를 조합 1·7에서만 돌린다.
 5. 선행 시험: layout.json 해석 = `harness_remap`·`harness_agent_of`(템플릿 파일 전부).
 
@@ -433,11 +433,11 @@ hx-bootstrap SKILL.md 절차
 [03장 P17 완료 기준](../harness-next/03-plan.html#p17)에 측정 방법을 붙인다.
 
 1. 3.15의 조합 10개에서 setup.sh와 CLI 결과가 lock·메타를 빼고 파일 목록·내용·권한 모두 같다.
-2. 새 설치 직후 `npx harness-kit doctor --check`가 exit 0(조합 10개 모두).
+2. 새 설치 직후 `npx knots-sync doctor --check`가 exit 0(조합 10개 모두).
 3. 킷 파일 하나(`.agents/rules/git-workflow.md`)를 고친 뒤 템플릿을 바꾼 킷으로 `update` → 그 파일 옆에 `.new` 1개, exit 4. 이어서 `uninstall` → 리포에 남은 킷 파일이 고친 그 파일 하나(`.agents/state/` 제외).
 4. v1.0.7 설치 fixture(knots lock 형식)에서 `update`가 v1 lock을 읽어 v2로 쓴다. 이전 lock의 경로 수 = v2 `entries` 수 − 새로 생긴 파일 수.
 5. `npm pack` 결과의 `package.json` `dependencies`가 비어 있고, `node dist/cli.js --version`이 `node_modules` 없는 폴더에서 돈다.
-6. Node 16 환경에서 `npx harness-kit init`이 exit 5와 "Node 18.3 이상"을 출력한다. 같은 환경에서 `hx-bootstrap` 스킬 절차가 setup.sh로 설치를 끝낸다.
+6. Node 16 환경에서 `npx knots-sync init`이 exit 5와 "Node 18.3 이상"을 출력한다. 같은 환경에서 `kns:bootstrap` 스킬 절차가 setup.sh로 설치를 끝낸다.
 7. `doctor`와 `check_layout.py`의 판정 목록이 fixture 5종(정상·수정·누락·오래된 생성·끊어진 링크)에서 같다.
 
 ## 6. 확인 필요

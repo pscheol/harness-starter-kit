@@ -11,7 +11,7 @@ updated: {{CREATED}}
 
 ## Unit·이슈 표
 
-<!-- BACKLOG:BEGIN — /hx-plans backlog 또는 intent.py backlog 가 생성한다. 손으로 고치지 않는다 -->
+<!-- BACKLOG:BEGIN — /kns-plans backlog 또는 intent.py backlog 가 생성한다. 손으로 고치지 않는다 -->
 | 순서 | Unit | 종류 | 이슈 | 단계 | 의존 | 맡은 하네스 |
 |---|---|---|---|---|---|---|
 <!-- BACKLOG:END -->

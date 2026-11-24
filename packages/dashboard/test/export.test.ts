@@ -25,7 +25,7 @@ describe("dashboard --export", () => {
   it("스킬 · 세션 · 대기함 · 토큰 · 홈 절대경로 · 소켓 경로가 0건인 정적 HTML", async () => {
     const repo = makeRepo();
     writeIssue(repo.root, "DEMO-1", "upload-cleanup", { requirements: "in-review", design: "draft" });
-    writeFile(repo.root, ".agents/skills/hx-review/SKILL.md", "---\nname: hx-review\n---\n");
+    writeFile(repo.root, ".agents/skills/kns-review/SKILL.md", "---\nname: kns-review\n---\n");
     const wt = path.join(repo.base, "demo.worktrees", "DEMO-2-upload-cleanup");
     git(repo.root, "worktree", "add", "-q", "-b", "feat/DEMO-2-upload-cleanup", wt);
     writeIssue(wt, "DEMO-2", "upload-cleanup", { requirements: "draft" });
@@ -41,7 +41,7 @@ describe("dashboard --export", () => {
     expect(res.files).toContain("issues/DEMO-1.html");
     expect(res.files).toContain("data/issues.json");
     const text = allText(out);
-    for (const bad of [repo.home, os.homedir(), repo.root, "/tmp/cc-socks-", "uds:", "SECRETTOKENVALUE", "hx-review", "대기 요청 글", "kim@example.com", "~/.claude", "<script"]) {
+    for (const bad of [repo.home, os.homedir(), repo.root, "/tmp/cc-socks-", "uds:", "SECRETTOKENVALUE", "kns-review", "대기 요청 글", "kim@example.com", "~/.claude", "<script"]) {
       expect([bad, text.includes(bad)]).toEqual([bad, false]);
     }
     expect(text).toContain("DEMO-1");

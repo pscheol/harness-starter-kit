@@ -1,5 +1,5 @@
 {
-  "schema": "harness-kit.hooks/v1",
+  "schema": "knots-sync.hooks/v1",
   "hooks": [
     {
       "id": "harness-aidlc-freshness",

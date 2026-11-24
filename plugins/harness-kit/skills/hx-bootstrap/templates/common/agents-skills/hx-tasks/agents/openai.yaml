@@ -1,4 +1,0 @@
-interface:
-  display_name: "hx-tasks"
-  short_description: "작업 분해"
-  default_prompt: "$hx-tasks 스킬로 요청한 작업을 진행해 주세요."

@@ -20,7 +20,7 @@ function claudeLine(o: { id: string; ts: number; cwd: string; session: string; b
 }
 
 function on(home: string, extra: Record<string, unknown> = {}): void {
-  writeFile(home, ".config/harness-kit/config.json", JSON.stringify({ history: "on", ...extra }));
+  writeFile(home, ".config/knots-sync/config.json", JSON.stringify({ history: "on", ...extra }));
 }
 
 describe("GET /usage · /usage/now · /history", () => {
@@ -29,7 +29,7 @@ describe("GET /usage · /usage/now · /history", () => {
     const srv = await serve(repo);
     const u = await call(srv, "GET", "/api/v1/usage");
     expect(u.status).toBe(200);
-    expect(u.json.data).toMatchObject({ enabled: false, config: "~/.config/harness-kit/config.json", totals: null });
+    expect(u.json.data).toMatchObject({ enabled: false, config: "~/.config/knots-sync/config.json", totals: null });
     expect(u.json.data.sources.every((s: { state: string }) => s.state === "off" || s.state === "none")).toBe(true);
     expect((await call(srv, "GET", "/api/v1/usage/now")).json.data).toMatchObject({ enabled: false, session: null });
     expect((await call(srv, "GET", "/api/v1/history")).status).toBe(404);
@@ -92,7 +92,7 @@ describe("GET /usage · /usage/now · /history", () => {
     const u = (await call(srv, "GET", "/api/v1/usage?days=1")).json.data;
     expect(u.cost.estimate).toBeGreaterThanOrEqual(0);
     expect(u.cost.note).toContain("청구");
-    writeFile(repo.home, ".config/harness-kit/config.json", JSON.stringify({ history: "on" }));
+    writeFile(repo.home, ".config/knots-sync/config.json", JSON.stringify({ history: "on" }));
     writeFile(dir, "a.jsonl", `${claudeLine({ id: "m2", ts: noon(0), cwd: repo.root, session: "s1", model: "unknown-model" })}\n`);
     const unk = (await call(srv, "GET", "/api/v1/usage/now")).json.data.session;
     expect([unk.window, unk.ratio, unk.windowNote]).toEqual([null, null, "기록에 없습니다"]);
@@ -152,7 +152,7 @@ describe("GET /usage · /usage/now · /history", () => {
     expect((await call(srv, "GET", "/api/v1/history?session=s-impl")).json.data.prompts).toHaveLength(1);
     expect(snapshotTree(repo.root)).toEqual(before);
     expect(snapshotTree(repo.home, (rel) => rel.startsWith(".claude/"))).toEqual(homeBefore);
-    expect(snapshotTree(repo.home).has(".config/harness-kit/usage.json")).toBe(false);
+    expect(snapshotTree(repo.home).has(".config/knots-sync/usage.json")).toBe(false);
   });
 
   it("days 가 범위 밖이면 400", async () => {
@@ -170,7 +170,7 @@ describe("GET /usage/kit — 킷이 덧붙인 양(늘 켜짐)", () => {
     writeFile(repo.root, ".agents/state/hook-output.jsonl", [rec("SessionStart", "harness-session-start", 2000), rec("SessionStart", "harness-session-start", 2400, true), rec("session-start", "harness-session-register", 100), rec("PreToolUse", "harness-protect-sources", 0), "깨진 줄"].join("\n") + "\n");
     writeFile(repo.root, "CLAUDE.md", "가".repeat(300));
     writeFile(repo.root, ".agents/hooks.json", JSON.stringify({ hooks: [{ id: "harness-a", event: "session-start", owner: "kit" }, { id: "harness-b", event: "pre-tool", owner: "pack:acme" }] }));
-    writeFile(repo.root, ".agents/harness-kit.lock", JSON.stringify({ schema: "harness-kit.lock/v2", kit: { version: "2.0.0", source: null }, packs: [], entries: [{ path: "CLAUDE.md", op: "copy", owner: "kit", sha256: "x" }, { path: "docs/other.md", op: "copy", owner: "pack:acme" }] }));
+    writeFile(repo.root, ".agents/knots-sync.lock", JSON.stringify({ schema: "knots-sync.lock/v2", kit: { version: "2.0.0", source: null }, packs: [], entries: [{ path: "CLAUDE.md", op: "copy", owner: "kit", sha256: "x" }, { path: "docs/other.md", op: "copy", owner: "pack:acme" }] }));
     const srv = await serve(repo);
     const k = (await call(srv, "GET", "/api/v1/usage/kit")).json.data;
     const start = k.hooks.find((h: { hook: string }) => h.hook === "harness-session-start");
@@ -203,7 +203,7 @@ describe("GET /intents/{key}/burn — 남은 Bolt 계단선", () => {
     const repo = makeRepo();
     const INT = ".agents/docs/intents/INT-7-pay";
     writeFile(repo.root, `${INT}/intent.md`, "---\nkey: INT-7\ntitle: 결제\nstatus: in-review\n---\n\n# I\n");
-    writeFile(repo.root, `${INT}/units.json`, `${JSON.stringify({ schema: "harness-kit.units/v1", intent: { key: "INT-7", title: "결제", doc: "intent.md" }, source: { kind: "kit" }, units: [
+    writeFile(repo.root, `${INT}/units.json`, `${JSON.stringify({ schema: "knots-sync.units/v1", intent: { key: "INT-7", title: "결제", doc: "intent.md" }, source: { kind: "kit" }, units: [
       { id: "U-1", title: "등록", kind: "feature", area: "pay", dependsOn: [], order: 1, issue: "DEMO-1", planned: true },
       { id: "U-2", title: "알림", kind: "feature", area: "pay", dependsOn: ["U-1"], order: 2, issue: null, planned: true, stories: ["S-1", "S-2", "S-3", "S-4"] },
       { id: "U-3", title: "뺌", kind: "feature", area: "pay", dependsOn: [], order: 3, issue: null, planned: false },

@@ -1,5 +1,5 @@
 /**
- * `harness-kit sync jira`(설계 10 §3.4, HK-20b).
+ * `knots-sync sync jira`(설계 10 §3.4, HK-20b).
  *   (기본)        리포 → Jira: 에이전트 몫 상태 전이와 원격 링크만. 설명은 고치지 않는다. 승인 전이는 하지 않는다(MD-R14).
  *   --approvals   Jira → 리포: 사람이 한 승인 전이를 REST changelog 로만 approvals.md 에 가져온다.
  *   --verify      경로 jira 기록을 changelog 로 다시 대조한다(CI, 쓰지 않는다).
@@ -63,20 +63,20 @@ function off(why: string, json: Record<string, unknown>): CommandResult {
 export async function runSyncJira(ctx: Ctx): Promise<CommandResult> {
   const root = targetOf(ctx);
   if (!moduleEnabled(root, "jira-workflow")) {
-    return off("jira-workflow 모듈이 꺼져 있다 — 보드는 킷 단계에서 계산한 같은 여덟 상태로 돈다(켜려면 harness-kit add jira-workflow)", {});
+    return off("jira-workflow 모듈이 꺼져 있다 — 보드는 킷 단계에서 계산한 같은 여덟 상태로 돈다(켜려면 knots-sync add jira-workflow)", {});
   }
   const cfg = readTracker(root);
   if (!cfg || cfg.sync.method === "none") {
     return off("jira-workflow 모듈은 켜져 있지만 sync.method 가 none 이다 — 연동하지 않는다. 보드는 킷 단계의 여덟 상태로 돈다", { method: "none" });
   }
-  if (!cfg.baseUrl) throw new CliError(EXIT.STATE, "연결 설정이 비었다: .agents/issue-tracker.yml 의 baseUrl 이 TBD 다", "hx-jira-setup 스킬로 채운다");
+  if (!cfg.baseUrl) throw new CliError(EXIT.STATE, "연결 설정이 비었다: .agents/issue-tracker.yml 의 baseUrl 이 TBD 다", "kns:jira-setup 스킬로 채운다");
   const wantApprovals = bool(ctx.values, "approvals");
   const wantVerify = bool(ctx.values, "verify");
   const issueArg = str(ctx.values, "issue");
   const to = str(ctx.values, "to");
   if ((to && !issueArg) || (issueArg && !to && !str(ctx.values, "mr-url"))) throw usageError("--issue 는 --to <상태> 또는 --mr-url 과 함께 쓴다");
   if (cfg.sync.method === "mcp" && !wantApprovals && !wantVerify) {
-    return off("sync.method 가 mcp 다 — 상태 전이 · 링크는 세션의 /hx-issue 가 서버 도구로 한다. 승인 가져오기(--approvals)만 REST 로 이 명령이 한다", { method: "mcp" });
+    return off("sync.method 가 mcp 다 — 상태 전이 · 링크는 세션의 /kns-issue 가 서버 도구로 한다. 승인 가져오기(--approvals)만 REST 로 이 명령이 한다", { method: "mcp" });
   }
   const client = makeJiraClient(cfg.baseUrl, jiraCredentials(cfg, ctx.io.env));
   const p = await openProject(ctx);
@@ -158,9 +158,9 @@ async function linkActions(p: Project, client: JiraClient, issue: IssueModel, we
   if (webBase && !mrUrl) {
     const branch = issue.branch ?? p.base();
     const sep = /github\.com$/.test(new URL(webBase).hostname) ? "tree" : "-/tree";
-    wanted.push({ globalId: `harness-kit:sdd:${issue.key}`, url: `${webBase}/${sep}/${branch}/${issue.dir}`, title: `SDD ${issue.dir.split("/").pop() ?? issue.key}` });
+    wanted.push({ globalId: `knots-sync:sdd:${issue.key}`, url: `${webBase}/${sep}/${branch}/${issue.dir}`, title: `SDD ${issue.dir.split("/").pop() ?? issue.key}` });
   }
-  if (mrUrl) wanted.push({ globalId: `harness-kit:mr:${issue.key}`, url: mrUrl, title: `MR ${issue.key}` });
+  if (mrUrl) wanted.push({ globalId: `knots-sync:mr:${issue.key}`, url: mrUrl, title: `MR ${issue.key}` });
   if (wanted.length === 0) return [];
   const existing = await client.remoteLinks(issue.key);
   const out: Action[] = [];

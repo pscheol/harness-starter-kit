@@ -1,5 +1,5 @@
 /**
- * 전체 프로젝트(설계 06 §3.17, DB-R27). 등록부 ~/.config/harness-kit/projects.json 은 `projects add|remove` 만 쓴다.
+ * 전체 프로젝트(설계 06 §3.17, DB-R27). 등록부 ~/.config/knots-sync/projects.json 은 `projects add|remove` 만 쓴다.
  * 여러 프로젝트 모드(--all · --root · --workspace)는 아무 파일도 쓰지 않는다.
  */
 import fs from "node:fs";
@@ -18,7 +18,7 @@ export interface RegistryEntry {
   addedAt: string;
 }
 
-/** 이 컴퓨터 설정 폴더. `HARNESS_KIT_CONFIG_DIR`(절대 경로)이 있으면 그것 — 시험이 실제 홈을 쓰지 않게 한다. */
+/** 이 컴퓨터 설정 폴더. `KNOTS_SYNC_CONFIG_DIR`(절대 경로)이 있으면 그것 — 시험이 실제 홈을 쓰지 않게 한다. */
 export function configDir(home: string, env: Env = {}): string {
   return kitConfigDir(home, env);
 }
@@ -35,12 +35,12 @@ export function readRegistry(home: string, env: Env = {}): RegistryEntry[] {
 
 function writeRegistry(home: string, projects: RegistryEntry[], env: Env = {}): void {
   ensureDir(configDir(home, env), 0o700);
-  atomicWrite(registryFile(home, env), `${JSON.stringify({ schema: "harness-kit.projects/v1", projects }, null, 2)}\n`, 0o600);
+  atomicWrite(registryFile(home, env), `${JSON.stringify({ schema: "knots-sync.projects/v1", projects }, null, 2)}\n`, 0o600);
   fs.chmodSync(registryFile(home, env), 0o600);
 }
 
 export function isHarnessRepo(dir: string): boolean {
-  return fs.existsSync(path.join(dir, ".agents/harness-kit.json"));
+  return fs.existsSync(path.join(dir, ".agents/knots-sync.json"));
 }
 
 export function addProject(home: string, dir: string, today: string, env: Env = {}): { added: boolean; entry: RegistryEntry } {
@@ -50,11 +50,11 @@ export function addProject(home: string, dir: string, today: string, env: Env = 
   } catch {
     throw new ApiError(404, "not_found", `폴더가 없습니다: ${dir}`);
   }
-  if (!isHarnessRepo(real)) throw new ApiError(422, "not_a_harness_repo", `킷을 설치한 리포가 아닙니다(.agents/harness-kit.json 없음): ${real}`);
+  if (!isHarnessRepo(real)) throw new ApiError(422, "not_a_harness_repo", `킷을 설치한 리포가 아닙니다(.agents/knots-sync.json 없음): ${real}`);
   const list = readRegistry(home, env);
   const found = list.find((e) => e.path === real);
   if (found) return { added: false, entry: found };
-  const meta = readJson(path.join(real, ".agents/harness-kit.json")) ?? {};
+  const meta = readJson(path.join(real, ".agents/knots-sync.json")) ?? {};
   const project = isObj(meta.project) ? meta.project : {};
   const entry = { path: real, name: typeof project.name === "string" && project.name ? project.name : path.basename(real), addedAt: today };
   writeRegistry(home, [...list, entry], env);
@@ -75,7 +75,7 @@ export function removeProject(home: string, nameOrPath: string, env: Env = {}): 
   return { removed };
 }
 
-/** --root: 깊이 3까지 .agents/harness-kit.json 이 있는 폴더(등록부에 더하지 않는다). */
+/** --root: 깊이 3까지 .agents/knots-sync.json 이 있는 폴더(등록부에 더하지 않는다). */
 export function discover(dir: string, depth = 3): RegistryEntry[] {
   const out: RegistryEntry[] = [];
   const walk = (d: string, left: number): void => {
@@ -166,7 +166,7 @@ export async function projectsList(projects: Projects): Promise<Record<string, u
     projects: (await projects.list()).map((s) => ({
       id: s.id, name: s.entry.name, path: s.entry.path, addedAt: s.entry.addedAt || null, state: s.state,
       version: s.project ? (isObj(s.project.meta().kit) ? ((s.project.meta().kit as Record<string, unknown>).version ?? null) : null) : null,
-      remove: s.state === "ok" ? null : `npx harness-kit projects remove ${s.entry.name}`,
+      remove: s.state === "ok" ? null : `npx knots-sync projects remove ${s.entry.name}`,
     })),
   };
 }

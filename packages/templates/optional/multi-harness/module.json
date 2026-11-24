@@ -1,5 +1,5 @@
 {
-  "schema": "harness-kit.module/v1",
+  "schema": "knots-sync.module/v1",
   "id": "multi-harness",
   "title": "여러 리포(상위 + 도메인 submodule) 하네스",
   "summary": "상위 리포와 도메인 submodule 을 하네스 하나로 다룬다. 단위 동기화 · 게이트 · 안전 검사 스크립트",

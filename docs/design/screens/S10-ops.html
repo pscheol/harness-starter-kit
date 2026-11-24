@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>S10 운영 기록 · harness-kit 관리 페이지</title>
+<title>S10 운영 기록 · knots-sync 관리 페이지</title>
 <link rel="stylesheet" href="assets/app.css">
 <style>
   .og { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 16px; align-items: start; }
@@ -64,7 +64,7 @@
       <section class="panel dm" aria-labelledby="dm-title" data-co="4">
         <div class="panel-head"><h2 id="dm-title">전달 지표</h2><div class="aside"><span id="dmPeriod">최근 30일</span> · 선은 주마다 지난 30일 · 점선 = 기준선(킷 도입 전 90일, git으로 계산) · 다섯 다 낮을수록 좋다</div></div>
         <div class="dm-grid" id="dmGrid"></div>
-        <div class="panel-foot dm-foot"><span><span class="mono">npx harness-kit metrics</span> · <span class="path">.agents/reports/metrics/delivery-11-23.json</span> · 기준선 <span class="path">.agents/docs/ops/metrics-baseline.json</span></span><div id="dmTbl"></div></div>
+        <div class="panel-foot dm-foot"><span><span class="mono">npx knots-sync metrics</span> · <span class="path">.agents/reports/metrics/delivery-11-23.json</span> · 기준선 <span class="path">.agents/docs/ops/metrics-baseline.json</span></span><div id="dmTbl"></div></div>
       </section>
       <div class="og">
         <section class="panel" aria-labelledby="log-title" data-co="1">

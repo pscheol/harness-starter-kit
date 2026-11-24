@@ -2,7 +2,7 @@
  * 배포 단위 동기화 엔진(tools/harness/sync.py 이식, 설계 10 §3.5).
  * 원본 tools/harness/shared/ → 단위마다 파일 복사(링크 아님) · UNIT_* 토큰 치환. `--check` 의 줄 형식은 sync.py 와 같다(MD-R16).
  * Python 과 다른 점: 사람이 고친 단위 파일은 쓰기를 멈추지 않고 `<경로>.new` 로 옆에 둔다(설계 02 update 규칙),
- * 단위마다 `.agents/harness-kit.lock` 에 `layer: unit:<id>` 항목을 남긴다.
+ * 단위마다 `.agents/knots-sync.lock` 에 `layer: unit:<id>` 항목을 남긴다.
  */
 import crypto from "node:crypto";
 import fs from "node:fs";
@@ -15,7 +15,7 @@ export class RegistryError extends Error {}
 export const REGISTRY = "tools/harness/units.json";
 export const SHARED = "tools/harness/shared";
 export const MANIFEST = ".agents/harness.json";
-export const SCHEMA = "harness-kit.deploy-units/v1";
+export const SCHEMA = "knots-sync.deploy-units/v1";
 const IGNORED_PARTS = new Set(["__pycache__", ".DS_Store", ".pytest_cache", ".mypy_cache", ".ruff_cache"]);
 const UNIT_TOKENS = ["UNIT_ID", "UNIT_TITLE", "UNIT_PATH", "UNIT_STACK"] as const;
 const ID_PATTERN = /^[a-z][a-z0-9-]*$/;
@@ -340,10 +340,10 @@ export function applyPlan(repo: string, plan: Plan, adopt: boolean): ApplyResult
   return result;
 }
 
-/** 단위의 `.agents/harness-kit.lock` 에 `layer: unit:<id>` 항목을 쓴다. 이미 있는 다른 항목은 건드리지 않고, 같은 경로의 다른 레이어 항목은 덮지 않는다. */
+/** 단위의 `.agents/knots-sync.lock` 에 `layer: unit:<id>` 항목을 쓴다. 이미 있는 다른 항목은 건드리지 않고, 같은 경로의 다른 레이어 항목은 덮지 않는다. */
 function writeUnitLock(repo: string, plan: Plan, finalState: Map<string, FileState | null>): void {
   const { unit, planned } = plan;
-  const lockRel = path.relative(repo, path.join(unit.root, ".agents/harness-kit.lock")).split(path.sep).join("/");
+  const lockRel = path.relative(repo, path.join(unit.root, ".agents/knots-sync.lock")).split(path.sep).join("/");
   const file = path.join(repo, lockRel);
   const layer = `unit:${unit.id}`;
   let lock: LockV2 = { schema: LOCK_SCHEMA, kit: { version: null, source: null }, packs: [], entries: [] };

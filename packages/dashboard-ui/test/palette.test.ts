@@ -26,17 +26,17 @@ describe("색 설정", () => {
     expect([DEFAULT_PALETTE, storedPalette()]).toEqual(["cool-gray", "cool-gray"]);
   });
 
-  it("고르면 html data-hx-palette 와 저장값이 바뀌고, 모르는 값은 기본으로 돌아간다", () => {
+  it("고르면 html data-kns-palette 와 저장값이 바뀌고, 모르는 값은 기본으로 돌아간다", () => {
     expect(applyPalette("navy")).toBe("navy");
-    expect([dataset.hxPalette, store.get("hx-palette"), storedPalette()]).toEqual(["navy", "navy", "navy"]);
-    store.set("hx-palette", "neon");
+    expect([dataset.knsPalette, store.get("kns-palette"), storedPalette()]).toEqual(["navy", "navy", "navy"]);
+    store.set("kns-palette", "neon");
     expect(storedPalette()).toBe("cool-gray");
     expect(applyPalette("neon")).toBe("cool-gray");
   });
 
   it("CSS 에 다섯 색의 변수와 견본이 있다(기본값은 :root)", () => {
     const css = readFileSync(path.join(__dirname, "../src/css/app.css"), "utf8");
-    for (const p of PALETTES.filter((x) => x.id !== DEFAULT_PALETTE)) expect(css).toContain(`:root[data-hx-palette="${p.id}"]`);
-    for (const p of PALETTES) expect(css).toContain(`.hx-swatch[data-p="${p.id}"]`);
+    for (const p of PALETTES.filter((x) => x.id !== DEFAULT_PALETTE)) expect(css).toContain(`:root[data-kns-palette="${p.id}"]`);
+    for (const p of PALETTES) expect(css).toContain(`.kns-swatch[data-p="${p.id}"]`);
   });
 });

@@ -1,6 +1,6 @@
 """배치(HK-13) 시험 공용: v1.0.8 킷 풀기 · 세션 적재량 기준값 · 하네스 폴더 목록.
 
-v1.0.8 킷은 이 저장소의 커밋 e181b6f(v1.0.8 병합)의 plugins/harness-kit 을 git archive 로 푼다. 커밋이 없으면 None.
+v1.0.8 킷은 이 저장소의 커밋 e181b6f(v1.0.8 병합)의 plugins/kns 을 git archive 로 푼다. 커밋이 없으면 None.
 """
 
 from __future__ import annotations
@@ -27,12 +27,12 @@ V108_CONTEXT = {
 
 def extract_v108(dest: Path) -> Path | None:
     """e181b6f 의 플러그인을 dest 에 푼다. setup.sh 경로(없으면 None)."""
-    r = subprocess.run(["git", "-C", str(KIT), "archive", V108_COMMIT, "plugins/harness-kit"], capture_output=True, timeout=120)
+    r = subprocess.run(["git", "-C", str(KIT), "archive", V108_COMMIT, "plugins/kns"], capture_output=True, timeout=120)
     if r.returncode != 0:
         return None
     with tarfile.open(fileobj=io.BytesIO(r.stdout)) as tar:
         tar.extractall(dest, filter="data")
-    setup = dest / "plugins/harness-kit/skills/hx-bootstrap/setup.sh"
+    setup = dest / "plugins/kns/skills/bootstrap/setup.sh"
     return setup if setup.is_file() else None
 
 

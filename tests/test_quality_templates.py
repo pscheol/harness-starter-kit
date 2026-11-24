@@ -35,7 +35,7 @@ class AnalyzerTemplateTest(unittest.TestCase):
         reference = None
         for stack in STACKS:
             data = registry(stack)
-            self.assertEqual(data["schema"], "harness-kit.analyzers/v1")
+            self.assertEqual(data["schema"], "knots-sync.analyzers/v1")
             common = [entry for entry in data["analyzers"] if entry["layer"] == "common"]
             self.assertEqual([entry["id"] for entry in common], list(COMMON), stack)
             reference = reference or common
@@ -85,7 +85,7 @@ class AnalyzerTemplateTest(unittest.TestCase):
 
     def test_quality_gate_defaults(self):
         gate = json.loads((TEMPLATES / "common/agents-root/quality-gate.json").read_text())
-        self.assertEqual(gate["schema"], "harness-kit.quality-gate/v1")
+        self.assertEqual(gate["schema"], "knots-sync.quality-gate/v1")
         self.assertEqual(gate["newIssues"], {"CRITICAL": 0, "HIGH": None, "MEDIUM": None, "LOW": None})
         self.assertEqual(gate["duplication"], {"newCodeMaxPercent": 3.0, "minChangedLines": 50})
         self.assertEqual(gate["complexity"], {"functionMaxCcn": 15, "mode": "new-or-worsened"})
@@ -96,7 +96,7 @@ class AnalyzerTemplateTest(unittest.TestCase):
 
 class CiTemplateTest(unittest.TestCase):
     def test_ci_files_and_stack_setup_actions(self):
-        for relative in ("common/root/.github/workflows/harness-verify.yml", "common/root/.gitlab-ci.yml", "common/ci/harness-kit.gitlab-ci.yml", "common/ci/harness.gocd.yaml"):
+        for relative in ("common/root/.github/workflows/harness-verify.yml", "common/root/.gitlab-ci.yml", "common/ci/knots-sync.gitlab-ci.yml", "common/ci/harness.gocd.yaml"):
             self.assertTrue((TEMPLATES / relative).is_file(), relative)
         for stack in STACKS:
             root = TEMPLATES / "stacks" / stack / "root/.github"

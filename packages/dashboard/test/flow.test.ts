@@ -19,7 +19,7 @@ function intentRepo(): Repo {
   const repo = makeRepo();
   writeFile(repo.root, `${INT}/intent.md`, INTENT_MD);
   const units = {
-    schema: "harness-kit.units/v1",
+    schema: "knots-sync.units/v1",
     intent: { key: "INT-7", title: "결제 개편", doc: "intent.md" },
     source: { kind: "kit" },
     units: [
@@ -72,7 +72,7 @@ describe("Unit 변경 제안", () => {
     expect(ok.status, ok.text).toBe(200);
     expect(readFile(repo.root, `${INT}/units.json`)).toBe(unitsBefore);
     const proposal = JSON.parse(readFile(repo.root, `${INT}/units.proposed.json`));
-    expect(proposal).toMatchObject({ schema: "harness-kit.units-proposal/v1", intent: "INT-7", baseSha256: base, createdBy: "kim@example.com" });
+    expect(proposal).toMatchObject({ schema: "knots-sync.units-proposal/v1", intent: "INT-7", baseSha256: base, createdBy: "kim@example.com" });
     const flow = await call(srv, "GET", "/api/v1/flow?intent=INT-7");
     expect(flow.json.data.proposal.changes).toHaveLength(1);
     const cycle = await call(srv, "POST", "/api/v1/units/proposals", { body: { intent: "INT-7", baseSha256: base, changes: [{ op: "add-dep", unit: "U-1", dependsOn: "U-3" }] } });

@@ -11,7 +11,7 @@ graph LR
   RENDER["render · 원본에서 생성<br/>.kiro/steering(fileMatch) · .cursor/rules/*.mdc(globs)<br/>.cursor/commands · 역할 파일"]
   MERGE["merge · harness- 키만<br/>CLAUDE.md 블록 · .claude/settings.json<br/>.codex/hooks.json · config.toml"]
   SYNC["동기화 훅 · 보호 훅 · fast 검사<br/>stale · drifted · symlink-found"]
-  LOCK["harness-kit.lock<br/>op · owner · sha256"]
+  LOCK["knots-sync.lock<br/>op · owner · sha256"]
   DOC["doctor --check<br/>check_layout.py · fast 검증"]
   KITL -- "같은 경로면 팩이 이긴다" --> PACK
   PACK -- "프로젝트가 이긴다" --> PROJ

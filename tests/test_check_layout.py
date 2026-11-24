@@ -21,7 +21,7 @@ from projection_kit import TOKENS  # noqa: E402
 from test_cli_parity import base_env  # noqa: E402
 
 KIT = cli_dist.KIT
-SETUP = KIT / "plugins/harness-kit/skills/hx-bootstrap/setup.sh"
+SETUP = KIT / "plugins/kns/skills/bootstrap/setup.sh"
 TEMPLATES = cli_dist.PLUGIN_TEMPLATES
 
 
@@ -77,12 +77,12 @@ class CheckLayoutTest(unittest.TestCase):
 
     def test_python_sync_repairs_without_node(self):
         target = self.cli_install(agents="claude,kiro")
-        with (target / ".agents/skills/hx-plan/SKILL.md").open("a", encoding="utf-8") as f:
+        with (target / ".agents/skills/kns-plan/SKILL.md").open("a", encoding="utf-8") as f:
             f.write("\n한 줄 더\n")
         self.assertEqual(self.check(target).returncode, 1)
         sync = run([sys.executable, "-B", "scripts/harness/projection.py", "sync"], target)
         self.assertEqual((sync.returncode, sync.stdout), (0, ""), sync.stderr)
-        self.assertEqual((target / ".claude/skills/hx-plan/SKILL.md").read_bytes(), (target / ".agents/skills/hx-plan/SKILL.md").read_bytes())
+        self.assertEqual((target / ".claude/skills/kns-plan/SKILL.md").read_bytes(), (target / ".agents/skills/kns-plan/SKILL.md").read_bytes())
         self.assertEqual(self.check(target).returncode, 0)
 
     def test_relative_ref_in_kit_source_is_an_error(self):
@@ -103,7 +103,7 @@ class CheckLayoutTest(unittest.TestCase):
 
     def test_five_hundred_entries_in_a_second(self):
         target = self.cli_install(agents="all", modules="all", stack="web")
-        entries = len(json.loads((target / ".agents/harness-kit.lock").read_text(encoding="utf-8"))["entries"])
+        entries = len(json.loads((target / ".agents/knots-sync.lock").read_text(encoding="utf-8"))["entries"])
         self.assertGreater(entries, 300)
         started = time.monotonic()
         r = self.check(target)

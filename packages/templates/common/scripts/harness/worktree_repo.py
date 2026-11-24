@@ -1,7 +1,7 @@
 """worktree 운영의 리포 · 자리 · 설정 읽기(설계 05 §3.1 · §3.3 · §3.9, HK-15 design §3). 표준 라이브러리만 쓴다.
 
 - 메인 폴더 M · 상위 리포 S · root · 이슈 worktree 자리를 정한다.
-- 설정은 S 의 `.agents/harness-kit.json`(없으면 M)에서 읽고, IDE 만 개인 층 `.agents/local/harness-kit.local.json` 이 앞선다.
+- 설정은 S 의 `.agents/knots-sync.json`(없으면 M)에서 읽고, IDE 만 개인 층 `.agents/local/knots-sync.local.json` 이 앞선다.
 - 모델을 부르지 않는다. git 과 파일 시스템만 쓴다.
 """
 
@@ -18,8 +18,8 @@ DEFAULT_ROOT = "../{repo}.worktrees"
 DEFAULT_BASE = "develop"
 DEFAULT_MAX = 3
 ISSUE_NAME = re.compile(r"^[A-Z][A-Z0-9]{1,9}-[0-9]+(-[a-z0-9-]+)?$")
-LOCAL_CONFIG = ".agents/local/harness-kit.local.json"
-META = ".agents/harness-kit.json"
+LOCAL_CONFIG = ".agents/local/knots-sync.local.json"
+META = ".agents/knots-sync.json"
 AGENTS_DIR = "_agents"
 
 

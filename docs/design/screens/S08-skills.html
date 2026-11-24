@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>S08 스킬 · harness-kit 관리 페이지</title>
+<title>S08 스킬 · knots-sync 관리 페이지</title>
 <link rel="stylesheet" href="assets/app.css">
 <style>
   .sk-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 16px; align-items: start; }
@@ -111,7 +111,7 @@
         <aside class="panel" aria-labelledby="rec-title" data-co="4">
           <div class="panel-head"><h2 id="rec-title">이 단계에서 쓸 내 스킬</h2></div>
           <div class="rec" id="rec"></div>
-          <p class="panel-foot">킷 명령은 <span class="path">.agents/skill-map.json</span>에서 설치된 스킬을 찾아 쓰고, 없으면 킷 기본 템플릿을 쓴다. 지도는 팀이 MR로 고친다. 터미널: <span class="mono">npx harness-kit skills --stage 설계</span></p>
+          <p class="panel-foot">킷 명령은 <span class="path">.agents/skill-map.json</span>에서 설치된 스킬을 찾아 쓰고, 없으면 킷 기본 템플릿을 쓴다. 지도는 팀이 MR로 고친다. 터미널: <span class="mono">npx knots-sync skills --stage 설계</span></p>
         </aside>
 
         <section class="panel" aria-labelledby="mx-title" data-co="5">
@@ -132,30 +132,30 @@
 (function () {
   var H = { cc: ["C", "#b4532a", "Claude Code"], cx: ["X", "#222b3a", "Codex"], kr: ["K", "#6b3fd4", "Kiro"], cu: ["U", "#3a3f4a", "Cursor"] };
   var S = [
-    ["hx-intent", "요구사항을 Intent · 질문 · 스토리 · Unit으로 정리한다", ["cc", "cx", "kr"], "프로젝트", "설계", "map"],
+    ["kns-intent", "요구사항을 Intent · 질문 · 스토리 · Unit으로 정리한다", ["cc", "cx", "kr"], "프로젝트", "설계", "map"],
     ["service-planning-agent", "서비스 기획서 · IA · 화면 정의서 · 스토리보드를 쓴다", ["cc"], "사용자", "설계", "map"],
     ["impeccable", "대시보드 · 앱 화면의 디자인 방향과 다듬기", ["cc", "cx"], "사용자", "설계", "map", 2],
     ["pm-execution:create-prd", "PRD 초안과 범위 · 지표", ["cc"], "플러그인", "설계", "map"],
     ["ui-ux-pro-max", "UI 스타일 · 색 · 글꼴 조합 추천", ["cc"], "사용자", "설계", "est"],
-    ["hx-implement", "tasks의 Bolt를 하나씩 구현하고 changed 검증한다", ["cc", "cx", "kr"], "프로젝트", "구현", "map"],
+    ["kns-implement", "tasks의 Bolt를 하나씩 구현하고 changed 검증한다", ["cc", "cx", "kr"], "프로젝트", "구현", "map"],
     ["superpowers:test-driven-development", "테스트를 먼저 쓰고 구현한다", ["cc"], "플러그인", "구현", "map"],
     ["mattpocock-skills:tdd", "작은 단계로 시험 먼저 쓰고 구현", ["cc"], "플러그인", "구현", "map"],
     ["feature-dev:feature-dev", "기존 코드를 파악한 뒤 기능을 구현", ["cc"], "플러그인", "구현", "est"],
-    ["hx-review", "MR diff를 SDD 문서 · 규칙 기준으로 리뷰한다", ["cx", "cc"], "프로젝트", "검증", "map"],
+    ["kns-review", "MR diff를 SDD 문서 · 규칙 기준으로 리뷰한다", ["cx", "cc"], "프로젝트", "검증", "map"],
     ["security-review", "바뀐 코드의 보안 취약점을 본다", ["cc"], "사용자", "검증", "map"],
     ["code-review:code-review", "PR 단위 코드 리뷰", ["cc"], "플러그인", "검증", "map"],
     ["gstack-review", "병합 전 diff 점검", ["cc"], "사용자", "검증", "est"],
-    ["hx-docs", "병합 뒤 기능 문서와 운영 기록을 갱신한다", ["kr", "cc"], "프로젝트", "반영", "map"],
+    ["kns-docs", "병합 뒤 기능 문서와 운영 기록을 갱신한다", ["kr", "cc"], "프로젝트", "반영", "map"],
     ["claude-md-management:revise-claude-md", "세션에서 배운 것을 CLAUDE.md에 반영", ["cc"], "플러그인", "반영", "map"],
     ["gstack-document-release", "릴리스 뒤 문서 정리", ["cc"], "사용자", "반영", "est"],
     ["gstack-canary", "배포 뒤 오류 · 성능 감시", ["cc"], "사용자", "운영", "map"],
     ["gstack-retro", "주간 회고와 지표 정리", ["cc"], "사용자", "운영", "est"]
   ];
   var REC = {
-    "설계": [["/hx-intent", [["pm-execution:create-prd", 1], ["pm-execution:user-stories", 1]]], ["/hx-screen-plan", [["service-planning-agent", 1], ["ui-ux-pro-max", 1, "추정"]]], ["/hx-design-plan", [["impeccable", 1], ["design-taste-frontend", 1, "추정"]]], ["/hx-backlog", [["없음 · 킷 기본 템플릿", 0]]]],
-    "구현": [["/hx-implement", [["superpowers:test-driven-development", 1], ["mattpocock-skills:tdd", 1], ["feature-dev:feature-dev", 1, "추정"]]]],
-    "검증": [["/hx-review", [["security-review", 1], ["code-review:code-review", 1]]], ["/hx-scan", [["없음 · 킷 스캐너 묶음", 0]]]],
-    "반영": [["/hx-docs", [["gstack-document-release", 1], ["claude-md-management:revise-claude-md", 1, "추정"]]]],
+    "설계": [["/kns-intent", [["pm-execution:create-prd", 1], ["pm-execution:user-stories", 1]]], ["/kns-screen-plan", [["service-planning-agent", 1], ["ui-ux-pro-max", 1, "추정"]]], ["/kns-design-plan", [["impeccable", 1], ["design-taste-frontend", 1, "추정"]]], ["/kns-backlog", [["없음 · 킷 기본 템플릿", 0]]]],
+    "구현": [["/kns-implement", [["superpowers:test-driven-development", 1], ["mattpocock-skills:tdd", 1], ["feature-dev:feature-dev", 1, "추정"]]]],
+    "검증": [["/kns-review", [["security-review", 1], ["code-review:code-review", 1]]], ["/kns-scan", [["없음 · 킷 스캐너 묶음", 0]]]],
+    "반영": [["/kns-docs", [["gstack-document-release", 1], ["claude-md-management:revise-claude-md", 1, "추정"]]]],
     "운영": [["운영 기록", [["gstack-canary", 1], ["gstack-retro", 1, "추정"]]]]
   };
   var CLS = { "설계": "design", "구현": "build", "검증": "build", "반영": "ops", "운영": "ops" };

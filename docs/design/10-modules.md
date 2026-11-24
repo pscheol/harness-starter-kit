@@ -21,7 +21,7 @@
 | MD-R3 | 요구 도구가 없을 때, 사람 터미널(TTY)이면 `init` · `add`는 그 도구의 공식 설치 명령을 먼저 보여 주고 설치할지 묻는다. 사람이 고르면 그 명령을 실행하고 버전을 다시 확인한다. `--install-tools`면 묻지 않고 실행한다. 에이전트 세션(06 §3.11 판정)에서는 `--install-tools`가 있어도 실행하지 않고, 설치 명령을 출력하고 exit 5로 끝낸다. TTY가 아니고 `--install-tools`가 없을 때도 같다. `sudo`가 필요한 명령은 실행하지 않고 출력만 한다. 설치는 그 도구의 설치기가 하고, 킷은 설치기를 부르기만 한다. |
 | MD-R15 | `update --tools`는 켠 모듈의 도구마다 지금 버전과 최신 버전을 보이고, 사람이 고른 도구만 그 도구의 공식 업데이트 명령을 실행한다. 새 버전이 `versions` 범위 밖이면 경고하고 `--allow-unverified` 없이는 올리지 않는다. 에이전트 세션에서는 목록만 보인다. |
 | MD-R16 | `add <모듈>`은 적용 전후로 세션마다 실리는 양을 owner별로 재서 출력하고(§3.7), 늘어난 양이 4,096바이트를 넘으면 TTY에서 한 번 더 확인한다. `doctor`와 관리 페이지 S13은 같은 값을 owner별로 보인다. |
-| MD-R4 | 요구 도구 버전이 `harness-kit.json`의 `versions` 범위 밖이면 `add`·`doctor`는 경고하고, `add`는 `--allow-unverified` 없이는 멈춘다. |
+| MD-R4 | 요구 도구 버전이 `knots-sync.json`의 `versions` 범위 밖이면 `add`·`doctor`는 경고하고, `add`는 `--allow-unverified` 없이는 멈춘다. |
 | MD-R5 | `add`가 외부 명령을 실행한 뒤 생긴 파일 중 `externalPaths`에 맞는 것은 lock에 `op: none`, `owner: external:<도구>`로 기록한다. |
 | MD-R6 | `remove <모듈>`은 lock에서 `layer: optional/<id>`이고 주인이 kit인 항목만 지우거나 빼고, 외부 소유 파일과 산출물은 지우지 않는다. |
 | MD-R7 | 킷 `update`·`uninstall`·`remove` 뒤 외부 소유 파일의 sha256은 그 전과 같다. |
@@ -33,7 +33,7 @@
 | MD-R13 | 원격 저장소 공개 여부를 확인하지 못하면 entire 모듈은 공개로 보고 체크포인트를 올리지 않는 설정을 쓴다. |
 | MD-R14 | jira-workflow 모듈에서 승인에 해당하는 상태 전이는 에이전트가 하지 않는다. 사람이 Jira에서 옮긴 기록만 `approvals.md`로 가져온다. |
 | MD-R15 | Jira가 없거나 연결 설정이 비어 있어도 킷 흐름과 대시보드 보드는 같은 여덟 상태로 돈다. |
-| MD-R16 | `harness-kit sync units --check`는 단위 23곳 fixture에서 `sync.py --check`와 같은 결과를 낸다. |
+| MD-R16 | `knots-sync sync units --check`는 단위 23곳 fixture에서 `sync.py --check`와 같은 결과를 낸다. |
 | MD-R17 | 상위 리포의 커밋은 제공 리포 → 소비 리포 → 상위 포인터 순서를 지키고, 상위 SDD 목록에 도메인별 submodule SHA를 남긴다. |
 
 ## 3. 설계
@@ -44,7 +44,7 @@
 
 ```json
 {
-  "schema": "harness-kit.module/v1",
+  "schema": "knots-sync.module/v1",
   "id": "entire",
   "title": "Entire 대화 기록",
   "summary": "구현 하네스에만 커밋별 체크포인트를 남긴다",
@@ -96,7 +96,7 @@ add <id> [--dry-run] [--yes] [--allow-unverified]
  7 registerExternal: 5의 스냅숏과 지금을 비교해 새로 생긴 externalPaths 파일 → lock op none, owner external:<도구>
    externalPaths 밖에 새로 생긴 파일은 등록하지 않고 목록만 출력("알 수 없는 파일 N개")
  8 applyKit: files 복사, hooks를 .agents/hooks.json에 병합 → 03이 하네스별로 생성, settings 키 병합
- 9 setConfig: harness-kit.json modules[]에 id, config.set 적용
+ 9 setConfig: knots-sync.json modules[]에 id, config.set 적용
 10 doctor 모듈 검사
 11 측정 후: 3a와 비교해 늘어난 양을 출력한다. 4,096바이트를 넘으면 TTY에서 "계속 쓸지"를 한 번 더 묻고, 아니라고 하면 remove 절차로 되돌린다(MD-R16)
  6 이후 실패 → 8·9에서 바꾼 킷 몫만 스냅숏으로 되돌린다. 외부 도구가 만든 파일은 남기고 목록을 출력한다
@@ -120,7 +120,7 @@ add <id> [--dry-run] [--yes] [--allow-unverified]
 
 범위 검사: AI-DLC v2에는 구현 쪽 스테이지가 있다. 설계 단계까지만 돌리는 설정이 있으면 `add`가 그 설정을 쓴다. 없으면 어댑터는 설계 산출물만 읽고, doctor는 AI-DLC 구현 쪽 산출물이 생기면 "구현은 킷 SDD가 맡는다, 두 곳에서 구현하지 않는다"를 경고한다(02 #modes, P22 착수 전 확인).
 
-어댑터 `npx harness-kit sync aidlc [--intent <AI-DLC 폴더>] [--check]`:
+어댑터 `npx knots-sync sync aidlc [--intent <AI-DLC 폴더>] [--check]`:
 
 ```text
 1. 입력 = aidlc/spaces/<space>/intents/<폴더>/ 의 파일 목록(이름 정렬)과 내용 → inputSha256
@@ -184,7 +184,7 @@ entire.io 웹 보기는 GitHub 전용이라 GitLab 리포는 이 목록과 expla
 | Jira 상태 | 킷 단계 | 이 상태로 옮기는 주체 | 조건 |
 |---|---|---|---|
 | 백로그 | Unit 목록에 있음 | 에이전트(이슈 생성 시) | `units.json`에 Unit, 사람 요청으로 생성(`mayCreate`) |
-| 요구사항 작성 | requirements draft | 에이전트 | `/hx-specify --from-unit` 완료 |
+| 요구사항 작성 | requirements draft | 에이전트 | `/kns-specify --from-unit` 완료 |
 | 요구사항 승인 대기 | requirements in-review | 에이전트 | 막는 질문 0 |
 | 설계 | design draft · in-review | 사람(PO) | requirements 승인 — 승인 전이 |
 | 구현 중 | tasks active | 사람(개발자) | design · tasks 승인 — 승인 전이 |
@@ -210,7 +210,7 @@ approvalTransitions:           # 사람만 하는 전이(→ approvals.md 게이
   "10105>10106": done
   "10106>10107": deploy
 issueTypes: { contract: Task, integration: Task, feature: Story, bug: Bug, bolt: Sub-task }
-groupMap: { po: "jira-po", dev: "jira-dev", qa: "jira-qa", ops: "jira-ops" }   # harness-kit groups → Jira 그룹
+groupMap: { po: "jira-po", dev: "jira-dev", qa: "jira-qa", ops: "jira-ops" }   # knots-sync groups → Jira 그룹
 sync:
   method: rest                 # rest | mcp | none
   mcpServer: atlassian         # method=mcp
@@ -222,8 +222,8 @@ sync:
 
 동기화:
 
-- 리포 → Jira(에이전트 세션의 `/hx-issue` 또는 `npx harness-kit sync jira`): 상태(에이전트 몫 전이만), 원격 링크(SDD 폴더 웹 URL · MR URL · 체크포인트 id). 설명은 고치지 않는다.
-- Jira → 리포(승인 가져오기): `npx harness-kit sync jira --approvals` 또는 대시보드 버튼. REST만 쓴다(정해진 입력·출력이 필요하다).
+- 리포 → Jira(에이전트 세션의 `/kns-issue` 또는 `npx knots-sync sync jira`): 상태(에이전트 몫 전이만), 원격 링크(SDD 폴더 웹 URL · MR URL · 체크포인트 id). 설명은 고치지 않는다.
+- Jira → 리포(승인 가져오기): `npx knots-sync sync jira --approvals` 또는 대시보드 버튼. REST만 쓴다(정해진 입력·출력이 필요하다).
 
 ```text
 for 이슈 in Jira 키가 있는 이슈:
@@ -244,9 +244,9 @@ Agentic engineering 템플릿으로 공간 만들기(2026-07-15 공개 템플릿
 1. 조직에 Rovo가 켜져 있는지 본다(꺼져 있으면 템플릿이 보이지 않는다).
 2. 새 공간 → Agentic engineering 템플릿. 만들 때 상태를 고르는 화면에서 위 여덟 상태를 고르고, 없는 것은 더한다(기본 상태 목록은 문서에 없어 만들어 보고 대응한다).
 3. 워크플로 조건: `approvalTransitions`의 네 전이에 "사용자가 그룹에 속함" 조건으로 `groupMap`의 그룹을 건다.
-4. 그룹 `jira-po` · `jira-dev` · `jira-qa` · `jira-ops`를 만들고 `harness-kit.json`의 `groups`와 같은 사람을 넣는다.
+4. 그룹 `jira-po` · `jira-dev` · `jira-qa` · `jira-ops`를 만들고 `knots-sync.json`의 `groups`와 같은 사람을 넣는다.
 5. 작업 유형을 `issueTypes`대로 둔다.
-6. `hx-jira-setup` 스킬로 상태·전이 ID를 REST로 읽어 `issue-tracker.yml`을 채운다. TBD가 남으면 모듈은 읽기만 한다(지금 규칙 유지).
+6. `kns:jira-setup` 스킬로 상태·전이 ID를 REST로 읽어 `issue-tracker.yml`을 채운다. TBD가 남으면 모듈은 읽기만 한다(지금 규칙 유지).
 7. 작업 항목을 Claude Code · Cursor · Copilot에 배정해 생긴 MR도 같은 CI 템플릿(09 §3.7)과 승인 기록 검사를 거친다. 저장소 보호 규칙으로 CI 통과 없이 병합하지 못하게 한다.
 
 Jira 없이(MD-R15): `issueKey.source = "kit"`, 대시보드 보드는 같은 여덟 상태 이름을 킷 단계에서 계산해 보여 준다(README §9). `sync jira`는 "jira-workflow 모듈이 꺼져 있다"를 출력하고 exit 0.
@@ -259,7 +259,7 @@ Jira 없이(MD-R15): `issueKey.source = "kit"`, 대시보드 보드는 같은 �
 
 ```json
 {
-  "schema": "harness-kit.deploy-units/v1",
+  "schema": "knots-sync.deploy-units/v1",
   "units": [
     { "id": "knots-domain-app", "path": "domains/app", "title": "데스크톱 앱", "stack": "electron", "exclude": ["scripts/release/**"] },
     { "id": "knots-domain-api", "path": "domains/api", "title": "API", "stack": "jvm" }
@@ -270,10 +270,10 @@ Jira 없이(MD-R15): `issueKey.source = "kit"`, 대시보드 보드는 같은 �
 - 이 파일의 "단위"는 배포 대상 폴더다. Intent의 Unit(08 `units.json`)과 다른 것이다. 이름이 같아 헷갈리므로 `schema` 값으로 구별하고, 문서에서는 "배포 단위"라고 쓴다.
 - `id` 정규식 `^[a-z][a-z0-9-]*$`, `path`는 리포 안 상대 경로(지금 `load_units` 규칙 유지).
 
-`npx harness-kit sync units [--check] [--unit <id>] [--adopt]`:
+`npx knots-sync sync units [--check] [--unit <id>] [--adopt]`:
 
 - 원본 `tools/harness/shared/` → 단위마다 파일 복사(링크 아님, 단위가 혼자 동작해야 한다), 토큰(`UNIT_ID` · `UNIT_TITLE` · `UNIT_PATH` · `UNIT_STACK`) 치환.
-- 단위마다 `<단위>/.agents/harness-kit.lock`에 항목을 쓴다(`owner: kit`, `layer: unit:<id>`). 단위에서 사람이 고친 파일은 `.new`로 옆에 둔다(02 update 규칙).
+- 단위마다 `<단위>/.agents/knots-sync.lock`에 항목을 쓴다(`owner: kit`, `layer: unit:<id>`). 단위에서 사람이 고친 파일은 `.new`로 옆에 둔다(02 update 규칙).
 - `--check`: 쓰지 않고 차이만, 차이가 있으면 exit 1. 출력 형식은 `sync.py --check`와 같은 줄 형식을 유지한다(MD-R16 비교를 위해).
 - 동시 실행은 지금의 `deployment_lock`과 같은 잠금 파일로 막는다.
 
@@ -308,7 +308,7 @@ Jira 없이(MD-R15): `issueKey.source = "kit"`, 대시보드 보드는 같은 �
 
 도메인 간 경로 가드 `scripts/guards/no-cross-domain-paths.sh`: 도메인 리포 파일이 다른 도메인 경로(`../<다른 도메인>/`, 상위 리포 기준 `domains/<다른 도메인>/`, 다른 도메인 패키지 이름의 import)를 참조하면 위반이다. 예외는 `.agents/guards/cross-domain-allow.txt`(경로·사유). 지금 가드 정책대로 경고(exit 0)로 시작하고 위반이 0건이 되면 강제(exit 1)로 올린다.
 
-Unit과의 연결: Intent `units.json`의 Unit `repo` 값이 배포 단위 `id`다. `/hx-specify --from-unit`은 `repo`가 있으면 그 도메인 리포의 이슈 폴더에 SDD를 만들고, 계약 Unit은 상위 리포에 둔다.
+Unit과의 연결: Intent `units.json`의 Unit `repo` 값이 배포 단위 `id`다. `/kns-specify --from-unit`은 `repo`가 있으면 그 도메인 리포의 이슈 폴더에 SDD를 만들고, 계약 Unit은 상위 리포에 둔다.
 
 
 ### 3.6 접수 출처: jira-workflow · notion 모듈
@@ -335,7 +335,7 @@ Unit과의 연결: Intent `units.json`의 Unit `repo` 값이 배포 단위 `id`�
     "writeBack": false
   }
   ```
-- 연결: 세션에서는 Notion MCP 서버(Notion 공식 MCP 또는 claude.ai Notion 커넥터)를 쓴다. 콘솔에서는 Notion API 통합 토큰을 환경 변수 `NOTION_TOKEN`으로 받는다. 토큰은 리포·`harness-kit.json`에 쓰지 않는다.
+- 연결: 세션에서는 Notion MCP 서버(Notion 공식 MCP 또는 claude.ai Notion 커넥터)를 쓴다. 콘솔에서는 Notion API 통합 토큰을 환경 변수 `NOTION_TOKEN`으로 받는다. 토큰은 리포·`knots-sync.json`에 쓰지 않는다.
 - `status` 대응(`writeBack: true`일 때): Intent 접수 → "접수됨", Unit 분해 승인 → "설계 중", 모든 Unit 완료 → "완료", 배포 승인 → "배포됨". Notion에 없는 상태 이름은 설정에서 고른다.
 
 출처가 없어도 접수는 된다. 두 모듈은 기본 꺼짐이다.
@@ -382,12 +382,12 @@ add aidlc — 세션마다 실리는 양(바이트)
 
 1. 임시 리포에 킷 → AI-DLC → Entire 순서와 그 역순으로 설치한다. 각 순서에서 킷 `update`·`uninstall` 뒤 AI-DLC·Entire 파일과 그 훅 항목의 sha256이 그대로다(MD-R7).
 2. `remove aidlc` · `remove entire` 뒤 두 구성 시험(11 §3.4)의 "킷만" 쪽이 통과하고, 지워진 AI-DLC·Entire 산출물 파일은 0개다.
-3. 같은 요구사항을 킷 설계와 AI-DLC 설계로 각각 돌리면 `units.json` 형식이 같고(`source`·`sourceId` 제외 키 집합 동일), `/hx-specify --from-unit` 결과 requirements 절 구성이 같다.
+3. 같은 요구사항을 킷 설계와 AI-DLC 설계로 각각 돌리면 `units.json` 형식이 같고(`source`·`sourceId` 제외 키 집합 동일), `/kns-specify --from-unit` 결과 requirements 절 구성이 같다.
 4. 어댑터에 같은 입력을 두 번 주면 두 번째는 쓰기 0건이다. Unit 하나를 AI-DLC 쪽에서 지운 뒤 다시 가져오면 그 Unit이 `planned: false`가 되고 다른 Unit의 `issue`가 그대로다.
 5. 체크포인트가 구현 하네스 세션 커밋에만 생긴다. Codex 리뷰 세션에서 만든 커밋의 `Entire-Checkpoint` 트레일러 0건.
 6. 공개 원격 fixture(가짜 `gh` 응답 `PUBLIC`)와 확인 실패 fixture에서 push 정책이 "올리지 않음"이다.
 7. jira fixture(REST 모의 서버): 사람 계정의 승인 전이 3건이 `approvals.md`에 3건 들어가고, 같은 명령을 다시 돌리면 0건 더해진다. approvers 밖 사람의 전이는 기록되지 않고 경고가 나온다. 에이전트 세션에서 `approvalTransitions` 전이를 요청하면 거부된다.
-8. knots 사본에서 `harness-kit sync units --check`와 `sync.py --check`의 출력이 단위 23곳 모두 같다.
+8. knots 사본에서 `knots-sync sync units --check`와 `sync.py --check`의 출력이 단위 23곳 모두 같다.
 9. hdr 형태 fixture(상위 + 도메인 2)에서 계약 → 병렬 → 경계 검증 → 순서 커밋으로 기능 하나를 끝내고, `specs-index.md` SHA 열이 두 도메인 커밋과 같다. 순서를 어긴 커밋(상위 포인터 먼저)을 `check_submodules.py`가 잡는다.
 10. 설치: `entire`가 없는 fixture(가짜 PATH)에서 TTY `add entire`가 설치 명령을 보이고 묻는다. "아니오"면 exit 5이고 실행 0건, `--install-tools`면 가짜 설치기가 한 번 불린다. `CLAUDECODE=1`이면 `--install-tools`가 있어도 실행 0건 · exit 5. `sudo`로 시작하는 설치 명령은 실행하지 않는다.
 11. 측정: 규칙 2개 · 스킬 5개 · SessionStart 훅 2개를 넣는 가짜 모듈 fixture에서 `add` 출력의 `external:<도구>` 증가량이 그 파일들의 바이트 합과 같고, 훅 수가 2 늘어난다.
@@ -400,7 +400,7 @@ add aidlc — 세션마다 실리는 양(바이트)
 | Claude Code 세션 기록에서 훅이 붙인 글(SessionStart · UserPromptSubmit 출력)이 어떤 항목으로 남는지 | 훅 하나를 둔 시험 세션의 기록 파일을 본다. 못 찾으면 §3.7 세 번째 줄은 "자료 없음" |
 | AI-DLC v2 Intent·Unit 산출물의 파일 이름·형식, 스토리·의존이 구조로 들어 있는지 | P22 착수 전 `aidlc` 최신판으로 예시 Intent 하나를 돌려 산출물을 docs/analysis/에 버전·날짜와 남긴다 |
 | `aidlc config --harness`가 받는 하네스 이름(claude-code 등)과 설계 단계까지만 돌리는 설정 | `aidlc config --help`·문서 확인 |
-| AI-DLC 사람 입력 확인 훅이 승인자 신원(이메일)을 기록하는지 | 위 시험 실행에서 기록 파일을 본다. 없으면 옮기지 않고(§3.2 6), 그 게이트는 사람이 관리 페이지 · `harness-kit approve` · Jira로 승인한다 |
+| AI-DLC 사람 입력 확인 훅이 승인자 신원(이메일)을 기록하는지 | 위 시험 실행에서 기록 파일을 본다. 없으면 옮기지 않고(§3.2 6), 그 게이트는 사람이 관리 페이지 · `knots-sync approve` · Jira로 승인한다 |
 | `.entire/settings.json`의 실제 키 이름(커밋 연결·마스킹·push) | `entire` 0.13 문서와 `entire configure --help` |
 | 체크포인트 ref push를 끄는 방법(설정 키인지 refspec인지) | 시험 리포에서 push 뒤 원격 ref 목록을 본다 |
 | `entire agent add`가 받는 하네스 이름 목록 | `entire agent add --help` |

@@ -16,11 +16,11 @@ class: review
 
 | 쓴다 | 쓰지 않는다 |
 |---|---|
-| 코드·설정 변경을 마친 뒤, 커밋 전 | 아직 변경이 없는 설계 단계 → planner 또는 `/hx-analyze` |
+| 코드·설정 변경을 마친 뒤, 커밋 전 | 아직 변경이 없는 설계 단계 → planner 또는 `/kns-analyze` |
 | worker 결과를 받아들이기 전 | 결함을 고치는 일 → worker |
 | 권한·입력 검증·비밀값·되돌릴 수 없는 연산을 건드린 변경 | 포맷·린트·타입·커버리지 임계 — 도구가 잡는다(정책 §1) |
 | 문서의 명령·경로·포트·버전을 코드·설정과 표본 대조할 때 | 코드 위치만 찾을 때 → explorer |
-| MR 리뷰 — 리뷰 세션에서 `/hx-review <MR>`(아래 "MR 리뷰") | 지적 처리 결과 정리(`review.md`) → 구현 세션 |
+| MR 리뷰 — 리뷰 세션에서 `/kns-review <MR>`(아래 "MR 리뷰") | 지적 처리 결과 정리(`review.md`) → 구현 세션 |
 
 ## 입력
 
@@ -41,7 +41,7 @@ class: review
    API 변경은 operation별 권한·DTO·validation·오류·OpenAPI/Swagger와 실제 핸들러를 맞춘다. 요구→수용 시나리오→변경 코드→선택 테스트→문서 대응이 빠졌는지 본다. 변경 검증·fast 통과를 full 통과로 해석하지 않고 full은 요청한 경우에 선택한다.
 6. 같은 원인은 한 건으로 묶고 대표 위치만 든다. 지적은 7개까지(정책 §7).
 
-MR 리뷰(`/hx-review`): 기능 브랜치를 체크아웃하지 않고 원격 브랜치를 읽는다. 점검 ID `RV-COV`(요구 `R#` · `SC-#` 마다 코드 · 시험) · `RV-ADR` · `RV-RULE` · `RV-EDGE` · `RV-TEST` · `RV-SCAN` · `RV-DOC` 로 본다. 발견은 `.agents/state/review/<키>/findings.json` 에 쓰고 `python3 scripts/harness/review.py publish <키>` 가 지문 · ID · 보고서(`.agents/reports/review/<키>.md`) · MR 요약 코멘트를 만든다. 본문 상세는 7개까지, 나머지는 보고서 목록에 간다.
+MR 리뷰(`/kns-review`): 기능 브랜치를 체크아웃하지 않고 원격 브랜치를 읽는다. 점검 ID `RV-COV`(요구 `R#` · `SC-#` 마다 코드 · 시험) · `RV-ADR` · `RV-RULE` · `RV-EDGE` · `RV-TEST` · `RV-SCAN` · `RV-DOC` 로 본다. 발견은 `.agents/state/review/<키>/findings.json` 에 쓰고 `python3 scripts/harness/review.py publish <키>` 가 지문 · ID · 보고서(`.agents/reports/review/<키>.md`) · MR 요약 코멘트를 만든다. 본문 상세는 7개까지, 나머지는 보고서 목록에 간다.
 
 ## 출력
 
@@ -64,7 +64,7 @@ MR 리뷰(`/hx-review`): 기능 브랜치를 체크아웃하지 않고 원격 �
 판정: 수정 필요(HIGH 1)
 ```
 
-MR 리뷰는 findings.json 의 발견 하나가 지적 하나다(`severity` · `check` · `path` · `line` · `title` · `evidence` · `scenario` · `recommendation`). 화면 출력은 스킬 `/hx-review` 의 형식을 따른다.
+MR 리뷰는 findings.json 의 발견 하나가 지적 하나다(`severity` · `check` · `path` · `line` · `title` · `evidence` · `scenario` · `recommendation`). 화면 출력은 스킬 `/kns-review` 의 형식을 따른다.
 
 발견이 없으면 짧게 쓴다.
 

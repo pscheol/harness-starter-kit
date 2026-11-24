@@ -25,6 +25,7 @@ import { MERGE_KIND, mergeWith, unmergeWith, type MergeKind, type MergeWant } fr
 import { loadSources } from "../projection/sources";
 import { loadSpecOrNull, parseSpec, type ProjectionSpec } from "../projection/spec";
 import { FsView } from "../projection/view";
+import { renameLegacyState } from "../core/legacy-names";
 
 type Action = "delete" | "keep-modified" | "absent" | "keep-user" | "keep-external" | "keep-pack" | "unmerge";
 const ACTIONS: Action[] = ["delete", "keep-modified", "absent", "keep-user", "keep-external", "keep-pack", "unmerge"];
@@ -210,6 +211,7 @@ function applyUninstall(target: string, inst: Installed, ops: UOp[], unhook: () 
   const state = new Set([LOCK_REL, META_REL]);
   let current = "";
   try {
+    renameLegacyState(target);
     for (const o of ops) {
       current = o.path;
       if (o.action === "unmerge" && o.text !== undefined) writeFileAtomic(path.join(target, ...o.path.split("/")), Buffer.from(o.text, "utf8"), false);
@@ -283,7 +285,7 @@ export async function runUninstall(ctx: Ctx): Promise<CommandResult> {
   const ops = buildUninstall(ctx, target, { ...inst, lock }, bool(ctx.values, "keep-packs"), keepState, ambiguous);
   const interactive = io.isTTY && !ctx.json && io.stdin !== undefined;
   if (!dryRun && !bool(ctx.values, "yes")) {
-    if (!interactive) throw usageError("uninstall 은 지울 목록을 확인받고 지운다. TTY 가 아니거나 --json 이면 --yes 를 준다", "목록은 harness-kit uninstall --dry-run 으로 먼저 본다");
+    if (!interactive) throw usageError("uninstall 은 지울 목록을 확인받고 지운다. TTY 가 아니거나 --json 이면 --yes 를 준다", "목록은 knots-sync uninstall --dry-run 으로 먼저 본다");
     await confirm(ctx, ops);
   }
   let gitHooks: GitHooks = { status: "none" };
@@ -306,7 +308,7 @@ export async function runUninstall(ctx: Ctx): Promise<CommandResult> {
     keepState,
   };
   const lines = [
-    `harness-kit uninstall — ${target}`,
+    `knots-sync uninstall — ${target}`,
     ...listed.map(opLine),
     `  지움 ${c.delete} · 남김(사람이 고침) ${c["keep-modified"]} · 이미 없음 ${c.absent} · 사람 · 외부 · 팩 파일 ${c["keep-user"] + c["keep-external"] + c["keep-pack"]}`,
     `  git hook 연결(core.hooksPath): ${gitHooks.status}${gitHooks.value ? ` (${gitHooks.value})` : ""}`,

@@ -1,0 +1,4 @@
+interface:
+  display_name: "kns-docs"
+  short_description: "기능 문서 반영"
+  default_prompt: "$kns-docs 스킬로 요청한 작업을 진행해 주세요."

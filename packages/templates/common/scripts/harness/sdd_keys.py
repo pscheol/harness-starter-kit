@@ -101,18 +101,18 @@ def read_json(path):
 
 
 def settings(root):
-    """`.agents/harness-kit.json` 의 issueKey · git.base. 없으면 v1.1 기본값(§3.7.2)."""
-    meta = read_json(root / ".agents/harness-kit.json")
+    """`.agents/knots-sync.json` 의 issueKey · git.base. 없으면 v1.1 기본값(§3.7.2)."""
+    meta = read_json(root / ".agents/knots-sync.json")
     issue = meta.get("issueKey") if isinstance(meta.get("issueKey"), dict) else {}
     source = issue.get("source", "kit")
     if source not in ("kit", "jira"):
-        raise UsageError(f".agents/harness-kit.json issueKey.source 는 kit 또는 jira 다: {source!r}")
+        raise UsageError(f".agents/knots-sync.json issueKey.source 는 kit 또는 jira 다: {source!r}")
     prefix = issue.get("prefix")
     if prefix is None:
         slug = (meta.get("tokens") or {}).get("PROJECT_SLUG") or read_json(root / ".agents/harness.json").get("unit", "")
         prefix = derive_prefix(slug)
     if not PREFIX.fullmatch(str(prefix)):
-        raise UsageError(f".agents/harness-kit.json issueKey.prefix 형식이 아니다: {prefix!r}")
+        raise UsageError(f".agents/knots-sync.json issueKey.prefix 형식이 아니다: {prefix!r}")
     git_section = meta.get("git") if isinstance(meta.get("git"), dict) else {}
     base = str(git_section.get("base") or "develop")
     return Settings(source, prefix, base)
@@ -210,7 +210,7 @@ def next_key(root, config):
         raise UsageError(
             "issueKey.source 가 jira 라서 키를 만들지 않는다. Jira 이슈 키를 넣는다"
             "(예: scripts/new-feature.sh KNOTS-123 desktop-parity --area app).\n"
-            "  Jira 없이 쓰려면 .agents/harness-kit.json 의 issueKey.source 를 kit 로 바꾼다."
+            "  Jira 없이 쓰려면 .agents/knots-sync.json 의 issueKey.source 를 kit 로 바꾼다."
         )
     return f"{config.prefix}-{max(used_numbers(root, config), default=0) + 1}"
 

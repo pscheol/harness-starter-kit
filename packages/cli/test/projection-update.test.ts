@@ -6,7 +6,7 @@ import { exists, lockEntry, patchLock, readText, sha256Hex, writeTree } from "./
 import { initWith, projectionTemplates } from "./projection-helpers";
 
 const KT2 = '---\npaths:\n  - "src/**/*.kt"\n---\n# 코틀린 규칙 v2\n';
-const SKILL2 = "---\nname: hx-plan\ndescription: 설계 — design.md 를 만든다\n---\n\n본문 v2 {{PROJECT_NAME}}\n";
+const SKILL2 = "---\nname: kns-plan\ndescription: 설계 — design.md 를 만든다\n---\n\n본문 v2 {{PROJECT_NAME}}\n";
 
 function opOf(j: Record<string, any>, p: string): Record<string, any> | undefined {
   return (j.projection.ops as Record<string, any>[]).find((o) => o.path === p);
@@ -49,13 +49,13 @@ describe("update 배치 판정", () => {
   });
 
   it("mirror 폴더를 고쳤으면 conflict 이고 다른 파일마다 .new 만 쓴다", async () => {
-    const { target, r, j } = await updated((t) => fs.appendFileSync(path.join(t, ".claude/skills/hx-plan/SKILL.md"), "사람\n"), { "common/agents-skills/hx-plan/SKILL.md": SKILL2 });
+    const { target, r, j } = await updated((t) => fs.appendFileSync(path.join(t, ".claude/skills/kns-plan/SKILL.md"), "사람\n"), { "common/agents-skills/kns-plan/SKILL.md": SKILL2 });
     expect(r.code).toBe(4);
-    expect(opOf(j, ".claude/skills/hx-plan")?.action).toBe("conflict");
-    expect(readText(target, ".claude/skills/hx-plan/SKILL.md")).toContain("사람");
-    expect(readText(target, ".claude/skills/hx-plan/SKILL.md.new")).toContain("본문 v2");
-    expect(exists(target, ".claude/skills/hx-plan/tool.sh.new")).toBe(false);
-    expect(opOf(j, ".kiro/skills/hx-plan")?.action).toBe("update");
+    expect(opOf(j, ".claude/skills/kns-plan")?.action).toBe("conflict");
+    expect(readText(target, ".claude/skills/kns-plan/SKILL.md")).toContain("사람");
+    expect(readText(target, ".claude/skills/kns-plan/SKILL.md.new")).toContain("본문 v2");
+    expect(exists(target, ".claude/skills/kns-plan/tool.sh.new")).toBe(false);
+    expect(opOf(j, ".kiro/skills/kns-plan")?.action).toBe("update");
   });
 
   it("원본을 지우면(--prune) 고치지 않은 생성물도 지운다", async () => {
@@ -82,22 +82,22 @@ describe("update 배치 판정", () => {
 
 describe("v1 포인터 → 복사본 · 생성물(R8)", () => {
   const POINTER = "---\ninclusion: always\n---\n# kt (포인터)\n원본: `.agents/rules/kt.md`\n";
-  const CMD = "---\ndescription: 설계\n---\n\n`.agents/skills/hx-plan/SKILL.md`를 읽고 그대로 수행한다.\n";
-  const KIRO_SKILL = "---\nname: hx-plan\ndescription: 설계\n---\n\n`.agents/skills/hx-plan/SKILL.md`를 읽고 그대로 수행한다.\n";
+  const CMD = "---\ndescription: 설계\n---\n\n`.agents/skills/kns-plan/SKILL.md`를 읽고 그대로 수행한다.\n";
+  const KIRO_SKILL = "---\nname: kns-plan\ndescription: 설계\n---\n\n`.agents/skills/kns-plan/SKILL.md`를 읽고 그대로 수행한다.\n";
 
   /** init 한 리포를 v1 포인터 상태로 되돌린다(lock 은 copy 항목). */
   function toV1(t: string, opts: { editSkill?: boolean } = {}) {
-    fs.rmSync(path.join(t, ".kiro/skills/hx-plan"), { recursive: true });
-    writeTree(t, { ".kiro/steering/kt.md": POINTER, ".claude/commands/hx-plan.md": CMD, ".claude/commands/hx-mine.md": CMD, ".kiro/skills/hx-plan/SKILL.md": KIRO_SKILL });
+    fs.rmSync(path.join(t, ".kiro/skills/kns-plan"), { recursive: true });
+    writeTree(t, { ".kiro/steering/kt.md": POINTER, ".claude/commands/kns-plan.md": CMD, ".claude/commands/kns-mine.md": CMD, ".kiro/skills/kns-plan/SKILL.md": KIRO_SKILL });
     patchLock(t, {
       ".kiro/steering/kt.md": { op: "copy", owner: "kit", sha256: sha256Hex(POINTER), layer: "common", from: undefined, fromSha256: undefined },
-      ".claude/commands/hx-plan.md": { op: "copy", owner: "kit", sha256: sha256Hex(CMD), layer: "common" },
-      ".claude/commands/hx-mine.md": { op: "copy", owner: "kit", sha256: sha256Hex(CMD), layer: "common" },
-      ".kiro/skills/hx-plan": null,
-      ".kiro/skills/hx-plan/SKILL.md": { op: "copy", owner: "kit", sha256: sha256Hex(KIRO_SKILL), layer: "common" },
+      ".claude/commands/kns-plan.md": { op: "copy", owner: "kit", sha256: sha256Hex(CMD), layer: "common" },
+      ".claude/commands/kns-mine.md": { op: "copy", owner: "kit", sha256: sha256Hex(CMD), layer: "common" },
+      ".kiro/skills/kns-plan": null,
+      ".kiro/skills/kns-plan/SKILL.md": { op: "copy", owner: "kit", sha256: sha256Hex(KIRO_SKILL), layer: "common" },
     });
-    fs.appendFileSync(path.join(t, ".claude/commands/hx-mine.md"), "사람이 고친 커맨드\n");
-    if (opts.editSkill) fs.appendFileSync(path.join(t, ".kiro/skills/hx-plan/SKILL.md"), "사람\n");
+    fs.appendFileSync(path.join(t, ".claude/commands/kns-mine.md"), "사람이 고친 커맨드\n");
+    if (opts.editSkill) fs.appendFileSync(path.join(t, ".kiro/skills/kns-plan/SKILL.md"), "사람\n");
   }
 
   it("고치지 않은 포인터는 생성물 · 복사본으로, .claude/commands 포인터는 지운다(retire)", async () => {
@@ -105,22 +105,22 @@ describe("v1 포인터 → 복사본 · 생성물(R8)", () => {
     expect(r.code, r.stdout).toBe(4); // 고친 커맨드 하나를 남긴다
     expect(opOf(j, ".kiro/steering/kt.md")?.action).toBe("update");
     expect(readText(target, ".kiro/steering/kt.md")).toContain("inclusion: fileMatch");
-    expect(opOf(j, ".kiro/skills/hx-plan")?.action).toBe("update");
-    expect(readText(target, ".kiro/skills/hx-plan/SKILL.md")).toBe(readText(target, ".agents/skills/hx-plan/SKILL.md"));
-    expect(exists(target, ".claude/commands/hx-plan.md")).toBe(false);
-    expect(opOf(j, ".claude/commands/hx-plan.md")?.action).toBe("retire");
-    expect(opOf(j, ".claude/commands/hx-mine.md")?.action).toBe("keep-modified");
-    expect(lockEntry(target, ".claude/commands/hx-mine.md")).toMatchObject({ owner: "user", sha256: null });
-    expect(lockEntry(target, ".kiro/skills/hx-plan/SKILL.md")).toBeUndefined();
-    expect(lockEntry(target, ".kiro/skills/hx-plan")).toMatchObject({ op: "mirror", owner: "kit" });
+    expect(opOf(j, ".kiro/skills/kns-plan")?.action).toBe("update");
+    expect(readText(target, ".kiro/skills/kns-plan/SKILL.md")).toBe(readText(target, ".agents/skills/kns-plan/SKILL.md"));
+    expect(exists(target, ".claude/commands/kns-plan.md")).toBe(false);
+    expect(opOf(j, ".claude/commands/kns-plan.md")?.action).toBe("retire");
+    expect(opOf(j, ".claude/commands/kns-mine.md")?.action).toBe("keep-modified");
+    expect(lockEntry(target, ".claude/commands/kns-mine.md")).toMatchObject({ owner: "user", sha256: null });
+    expect(lockEntry(target, ".kiro/skills/kns-plan/SKILL.md")).toBeUndefined();
+    expect(lockEntry(target, ".kiro/skills/kns-plan")).toMatchObject({ op: "mirror", owner: "kit" });
   });
 
   it("사람이 고친 포인터는 그대로 두고 새 판을 .new 로(R8)", async () => {
     const { target, r, j } = await updated((t) => toV1(t, { editSkill: true }));
     expect(r.code).toBe(4);
-    expect(opOf(j, ".kiro/skills/hx-plan")?.action).toBe("conflict");
-    expect(readText(target, ".kiro/skills/hx-plan/SKILL.md")).toContain("사람");
-    expect(readText(target, ".kiro/skills/hx-plan/SKILL.md.new")).toBe(readText(target, ".agents/skills/hx-plan/SKILL.md"));
+    expect(opOf(j, ".kiro/skills/kns-plan")?.action).toBe("conflict");
+    expect(readText(target, ".kiro/skills/kns-plan/SKILL.md")).toContain("사람");
+    expect(readText(target, ".kiro/skills/kns-plan/SKILL.md.new")).toBe(readText(target, ".agents/skills/kns-plan/SKILL.md"));
   });
 
   it("v1 CLAUDE.md: 킷 판 그대로면 @AGENTS.md + 블록으로 바꾸고, 고쳤으면 CLAUDE.md.new(03 §3.8)", async () => {
@@ -131,7 +131,7 @@ describe("v1 포인터 → 복사본 · 생성물(R8)", () => {
     };
     const same = await updated((t) => asV1(t, false), {}, [], "claude");
     expect(same.r.code, same.r.stdout).toBe(0);
-    expect(readText(same.target, "CLAUDE.md").startsWith("@AGENTS.md\n\n<!-- harness-kit:begin claude")).toBe(true);
+    expect(readText(same.target, "CLAUDE.md").startsWith("@AGENTS.md\n\n<!-- knots-sync:begin claude")).toBe(true);
     expect(lockEntry(same.target, "CLAUDE.md")).toMatchObject({ op: "merge", createdByKit: true });
     const mine = await updated((t) => asV1(t, true), {}, [], "claude");
     expect(mine.r.code).toBe(4);

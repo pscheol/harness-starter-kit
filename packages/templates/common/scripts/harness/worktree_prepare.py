@@ -259,6 +259,6 @@ def write_env(place, key, repo_name, index, cargo_dir):
     values["COMPOSE_PROJECT_NAME"] = re.sub(r"[^a-z0-9_-]", "-", f"{repo_name}-{key}".lower())
     if cargo_dir:
         values["CARGO_TARGET_DIR"] = cargo_dir
-    header = f"# harness-kit 생성 — worktree {index}번, 포트 +{offset}. 앱이 .env 다음에 이 파일을 읽어야 한다."
+    header = f"# knots-sync 생성 — worktree {index}번, 포트 +{offset}. 앱이 .env 다음에 이 파일을 읽어야 한다."
     (place / ".env.worktree").write_text("\n".join([header, *[f"{k}={v}" for k, v in values.items()]]) + "\n", encoding="utf-8")
     return values

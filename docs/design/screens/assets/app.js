@@ -1,4 +1,4 @@
-/* harness-kit 관리 페이지 시안 — 공용 스크립트(바닐라 JS, 외부 파일 없음)
+/* knots-sync 관리 페이지 시안 — 공용 스크립트(바닐라 JS, 외부 파일 없음)
  * 1) 아이콘 스프라이트(lucide 선 아이콘)  2) 게이트 레일 그리기
  * 3) 탭·구분 선택  4) ?state= 상태 보기(readonly = 에이전트 세션에서 연 서버)  5) ?co=1 영역 번호  6) 시트·토스트
  * 7) 레일: 프로젝트 고르기(전체 프로젝트 S00) · 바닥의 연결 상태와 지금 세션 사용량 한 줄(S13)
@@ -245,7 +245,7 @@
     ["harness", "S09-harness.html", "harness", "하네스", "2", "warn", "doctor 경고 2건"],
     ["usage", "S13-usage.html", "chart", "기록 · 사용량", "", "", ""]
   ];
-  /* 프로젝트: 전역 등록부 ~/.config/harness-kit/projects.json(경로 · 이름 · 더한 날만). 시안에는 knots-platform 화면만 있다. */
+  /* 프로젝트: 전역 등록부 ~/.config/knots-sync/projects.json(경로 · 이름 · 더한 날만). 시안에는 knots-platform 화면만 있다. */
   var PROJECTS = [
     ["knots-platform", "S01-home.html", "9", "처리할 일 9건"],
     ["hr-vision-3d", "S00-projects.html#p-hr-vision-3d", "3", "처리할 일 3건"],
@@ -271,7 +271,7 @@
       h += '<a href="' + p[1] + '"' + (cur ? ' aria-current="true"' : "") + ">" + icon(cur ? "check" : "folder") +
         '<span class="pm-nm">' + p[0] + "</span>" + count(p[2], "decide", p[3]) + "</a>";
     });
-    return h + '<p class="pm-foot">더하기 · <code>npx harness-kit projects add &lt;dir&gt;</code></p></div>';
+    return h + '<p class="pm-foot">더하기 · <code>npx knots-sync projects add &lt;dir&gt;</code></p></div>';
   }
 
   function switcher(ws) {
@@ -306,7 +306,7 @@
     var ws = cur === "all";
     var h = '<div class="rail-brand"><svg class="mark" viewBox="0 0 18 18" aria-hidden="true">' +
       '<path d="M9 1.5 L16.5 9 L9 16.5 L1.5 9 Z" fill="none" stroke="#fff" stroke-width="1.6"/>' +
-      '<path d="M9 5.5 L12.5 9 L9 12.5 L5.5 9 Z" fill="#e0475f"/></svg><span>harness-kit</span><small>v2.0.0</small></div>' + switcher(ws);
+      '<path d="M9 5.5 L12.5 9 L9 12.5 L5.5 9 Z" fill="#e0475f"/></svg><span>knots-sync</span><small>v2.0.0</small></div>' + switcher(ws);
     if (!ws) {
       var newTitle = ro ? "새 요구사항 · 읽기 전용이라 접수할 수 없다" : "새 요구사항";
       h += ro

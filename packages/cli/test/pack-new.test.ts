@@ -15,20 +15,20 @@ describe("pack new", () => {
     writeTree(src.target, {
       ".agents/rules/acme-security.md": RULE,
       "scripts/guards/acme-license.sh": "#!/usr/bin/env bash\nexit 0\n",
-      ".agents/hooks.d/project.json": `${JSON.stringify({ schema: "harness-kit.hooks/v1", hooks: [{ id: "harness-my-scan", event: "pre-tool", tools: ["write"], script: "scripts/guards/acme-license.sh", timeoutSec: 5, owner: "user" }] })}\n`,
+      ".agents/hooks.d/project.json": `${JSON.stringify({ schema: "knots-sync.hooks/v1", hooks: [{ id: "harness-my-scan", event: "pre-tool", tools: ["write"], script: "scripts/guards/acme-license.sh", timeoutSec: 5, owner: "user" }] })}\n`,
     });
     fs.chmodSync(path.join(src.target, "scripts/guards/acme-license.sh"), 0o755);
     const dir = path.join(tmpDir("hk-packnew-"), "acme-pack");
     const r = await src.cli("pack", [
       "new", "acme", "--dir", dir, "--json", "--templates", templates,
-      "--from", ".agents/rules/acme-security.md", "--from", "scripts/guards/acme-license.sh", "--from", ".agents/skills/hx-plan",
+      "--from", ".agents/rules/acme-security.md", "--from", "scripts/guards/acme-license.sh", "--from", ".agents/skills/kns-plan",
       "--from", ".agents/hooks.d/project.json#harness-my-scan", "--from", ".agents/rules/always.md",
     ]);
     expect(r.code, r.stdout).toBe(0);
     const out = json(r);
-    expect(out.files).toEqual(expect.arrayContaining(["pack.json", "common/agents-rules/acme-security.md", "common/scripts/guards/acme-license.sh", "common/agents-skills/hx-plan/SKILL.md", "fragments/hooks.json", "tests/test_pack.py"]));
+    expect(out.files).toEqual(expect.arrayContaining(["pack.json", "common/agents-rules/acme-security.md", "common/scripts/guards/acme-license.sh", "common/agents-skills/kns-plan/SKILL.md", "fragments/hooks.json", "tests/test_pack.py"]));
     expect(out.manifest.provides).toEqual({ rules: ["acme-security"], guards: ["acme-license"], hooks: ["harness-acme-my-scan"] });
-    expect([...out.manifest.overrides].sort()).toEqual([".agents/rules/always.md", ".agents/skills/hx-plan/SKILL.md", ".agents/skills/hx-plan/agents/openai.yaml", ".agents/skills/hx-plan/tool.sh"]);
+    expect([...out.manifest.overrides].sort()).toEqual([".agents/rules/always.md", ".agents/skills/kns-plan/SKILL.md", ".agents/skills/kns-plan/agents/openai.yaml", ".agents/skills/kns-plan/tool.sh"]);
     expect(out.warnings.join("\n")).toContain("harness-my-scan → harness-acme-my-scan");
     expect(fs.statSync(path.join(dir, "common/scripts/guards/acme-license.sh")).mode & 0o111).not.toBe(0);
     // 팩 자체 시험

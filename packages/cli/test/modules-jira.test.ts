@@ -150,7 +150,7 @@ describe("sync jira — 리포 → Jira(에이전트 몫 전이 · 링크)", () 
     expect(f.srv.seen.filter((s) => s.method === "PUT" || s.method === "PATCH")).toHaveLength(0);
     const mr = await cli(["sync", "jira", "--issue", "DEMO-1", "--mr-url", "https://gitlab.com/acme/demo/-/merge_requests/9"], f.repo, { env: ENV });
     expect(mr.code, mr.stdout + mr.stderr).toBe(0);
-    expect(f.issues["DEMO-1"]?.links.map((l) => l.globalId)).toEqual(["harness-kit:sdd:DEMO-1", "harness-kit:mr:DEMO-1"]);
+    expect(f.issues["DEMO-1"]?.links.map((l) => l.globalId)).toEqual(["knots-sync:sdd:DEMO-1", "knots-sync:mr:DEMO-1"]);
     await f.srv.close();
   });
 

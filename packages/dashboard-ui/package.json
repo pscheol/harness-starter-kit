@@ -1,5 +1,5 @@
 {
-  "name": "@harness-kit/dashboard-ui",
+  "name": "@knots-sync/dashboard-ui",
   "version": "2.0.0-alpha.0",
   "private": true,
   "description": "관리 페이지 화면 층(HK-26) — React + astryx 로 짜고 esbuild 로 미리 묶어 packages/dashboard/static/ 에 쓴다. 전부 devDependency 라 CLI 런타임 의존성은 0이다",

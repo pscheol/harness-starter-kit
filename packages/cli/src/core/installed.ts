@@ -12,6 +12,7 @@ import { isSafeRelPath } from "./plan";
 import { isRetiredModule, listArchs, listStacks, type Selection } from "./selection";
 import { resolveTokens } from "./tokens";
 import { VERSION } from "./version";
+import { lockFile, metaFile } from "./legacy-names";
 
 export interface Installed {
   meta: MetaV2;
@@ -25,18 +26,18 @@ export interface Installed {
 /** lock op(README §6). mirror · render · merge 는 배치 엔진(projection/)이 다룬다. */
 export type EntryKind = "copy" | "none" | "mirror" | "render" | "merge";
 
-const NOT_INSTALLED_HINT = "설치는 harness-kit init";
+const NOT_INSTALLED_HINT = "설치는 knots-sync init";
 
 /** 메타 · lock 을 읽는다. 없거나 깨졌으면 exit 3. 경로 검사 · op 검사까지 끝낸 값을 준다. */
 export function loadInstalled(target: string, command: string): Installed {
-  const m = readMeta(path.join(target, META_REL));
+  const m = readMeta(metaFile(target));
   if (m.status === "missing") throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, NOT_INSTALLED_HINT);
-  if (m.status === "invalid") throw new CliError(EXIT.STATE, `메타를 해석하지 못했다: ${m.error}`, "harness-kit doctor 로 상태를 본다");
-  const l = readLock(path.join(target, LOCK_REL));
+  if (m.status === "invalid") throw new CliError(EXIT.STATE, `메타를 해석하지 못했다: ${m.error}`, "knots-sync doctor 로 상태를 본다");
+  const l = readLock(lockFile(target));
   if (l.status === "missing") {
-    throw new CliError(EXIT.STATE, `lock 이 없다(${LOCK_REL})`, `lock 없이 ${command} 하면 사람 파일과 킷 파일을 가리지 못한다. harness-kit doctor 로 상태를 본다`);
+    throw new CliError(EXIT.STATE, `lock 이 없다(${LOCK_REL})`, `lock 없이 ${command} 하면 사람 파일과 킷 파일을 가리지 못한다. knots-sync doctor 로 상태를 본다`);
   }
-  if (l.status === "invalid") throw new CliError(EXIT.STATE, `lock 을 해석하지 못했다: ${l.error}`, "harness-kit doctor 로 상태를 본다");
+  if (l.status === "invalid") throw new CliError(EXIT.STATE, `lock 을 해석하지 못했다: ${l.error}`, "knots-sync doctor 로 상태를 본다");
   assertLockUsable(l.lock.entries);
   return { meta: m.meta, metaFormat: m.schema, lock: l.lock, lockFormat: l.format, lockAmbiguous: l.ambiguous };
 }
@@ -44,7 +45,7 @@ export function loadInstalled(target: string, command: string): Installed {
 /** lock 경로가 리포 안인지, op 를 이 판이 다루는지 본다. 아무것도 쓰기 전에 부른다. */
 export function assertLockUsable(entries: LockEntry[]): void {
   const unsafe = entries.filter((e) => !isSafeRelPath(e.path)).map((e) => e.path);
-  if (unsafe.length) throw new CliError(EXIT.STATE, `lock 에 리포 밖이나 .git 을 가리키는 항목이 있다: ${unsafe.join(" ")}`, "lock 을 고치거나 harness-kit doctor 로 본다");
+  if (unsafe.length) throw new CliError(EXIT.STATE, `lock 에 리포 밖이나 .git 을 가리키는 항목이 있다: ${unsafe.join(" ")}`, "lock 을 고치거나 knots-sync doctor 로 본다");
   for (const e of entries) entryKind(e);
 }
 

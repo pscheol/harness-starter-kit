@@ -96,7 +96,7 @@ describe("plans 게이트", () => {
     expect(none.files).toEqual([]);
     const r = await call(srv, "POST", "/api/v1/approvals", { body: { target: { intent: "INT-1" }, gate: "plans", decision: "approved", phrase: "기획 확인", docSha256: none.sha256, pin: srv.pin } });
     expect([r.status, r.json.error.code]).toEqual([422, "gate_precondition"]);
-    writeFile(repo.root, `${INT}/plans/design-plan.md`, "---\nintent: INT-1\nkind: design-plan\nstatus: draft\ngeneratedWith: skill:hx-plans\ngeneratedBy: claude\nupdated: 2026-11-24\n---\n\n# 설계 계획\n");
+    writeFile(repo.root, `${INT}/plans/design-plan.md`, "---\nintent: INT-1\nkind: design-plan\nstatus: draft\ngeneratedWith: skill:kns-plans\ngeneratedBy: claude\nupdated: 2026-11-24\n---\n\n# 설계 계획\n");
     const b = await bundle(srv, "plans");
     expect(b.files.map((f: any) => f.name)).toEqual(["plans/design-plan.md"]);
     expect(b.reasons.some((x: string) => x.includes("필수 제목"))).toBe(true);

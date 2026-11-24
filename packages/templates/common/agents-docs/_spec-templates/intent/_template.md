@@ -14,7 +14,7 @@ created: {{CREATED}}
 
 # Intent {{INTENT_KEY}} — {{TITLE}}
 
-<!-- 설계 세션이 채운다(/hx-intent). 승인 · 답 줄은 쓰지 않는다. ID(S-n · S-n.AC-m · NFR-n · RISK-n)는 지우지 않고, 뺀 스토리는 ~~S-4~~ (범위 밖 §2) 로 남긴다. -->
+<!-- 설계 세션이 채운다(/kns-intent). 승인 · 답 줄은 쓰지 않는다. ID(S-n · S-n.AC-m · NFR-n · RISK-n)는 지우지 않고, 뺀 스토리는 ~~S-4~~ (범위 밖 §2) 로 남긴다. -->
 
 ## 1. 목표
 

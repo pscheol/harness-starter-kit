@@ -1,5 +1,5 @@
 {
-  "name": "@harness-kit/flow-view",
+  "name": "@knots-sync/flow-view",
   "version": "2.0.0-alpha.0",
   "private": true,
   "description": "관리 페이지 흐름 보기(S12) 소스 — React Flow 컴포넌트. 번들은 packages/dashboard-ui 가 화면 번들 안의 늦게 받는 조각으로 만든다(React 복사본 하나를 같이 쓴다). react 등은 번들에만 들어가는 devDependency 다",

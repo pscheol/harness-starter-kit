@@ -30,7 +30,7 @@ API·상태·저장소를 바꾸면 명세를 같은 변경에 갱신한다.
 | requirements | `issues/<키>-<이름>/requirements.md` | `bash scripts/new-feature.sh <키\|--next> <이름> --area <영역> [--type …]` |
 | design | `issues/<키>-<이름>/design.md` | `bash scripts/new-feature.sh <키> --stage=design` |
 | tasks | `issues/<키>-<이름>/tasks.md` | `bash scripts/new-feature.sh <키> --stage=tasks` |
-| 품질 체크 | `issues/<키>-<이름>/checklists/<focus>.md` | `hx-checklist` |
+| 품질 체크 | `issues/<키>-<이름>/checklists/<focus>.md` | `kns-checklist` |
 
 `bash scripts/check-sdd-prerequisites.sh <키> --stage=design|tasks|implement`가 실제 경로를 출력한다(옛 구조는 `<slug> <키>`).
 스킬은 출력의 `BASE`, `REQUIREMENTS`, `DESIGN`, `TASKS`를 사용하고 경로를 추측하지 않는다.
@@ -64,20 +64,20 @@ SDD 이슈는 아래 여덟 단계를 지난다. 단계마다 산출물이 있�
 
 | 단계 | 산출(이슈) | 산출(기능 문서) | 스킬 | 게이트 |
 |---|---|---|---|---|
-| S1 분석 | requirements — 스토리·`R#.#`·SC | 원고 §요구사항 초안 | `/hx-specify` · `/hx-clarify` | requirements `approved` |
-| S2 기획 | requirements §정책(`P-#`)·§화면(목업) | 원고 §정책·§화면 · `_src/mockups` | `/hx-specify` · `/hx-checklist` | 같은 승인 |
-| S3 설계 | design — 순서도·시퀀스·상태·DB·인덱스·캐시 키·동시성·API | 원고 §흐름·§시퀀스·§상태 전이 · catalog 배정 | `/hx-plan` · `/hx-analyze` | Constitution Check · design `approved` |
-| S4 계획 | tasks.md(`state: active`) | 백로그 추적(생성) | `/hx-tasks` | — |
-| S5 구현 | 코드·시험·OpenAPI 스냅숏 | — | `/hx-implement` · `/hx-maintain` | changed 검증 |
-| S6 테스트 | tasks `[VERIFICATION]` | 원고 §테스트 시나리오 | `/hx-checklist` · `scripts/verify.sh` | 검증 사다리 레벨 |
-| S7 문서 반영 | tasks Polish 체크 | 원고·배정 갱신 → 생성 → 검사 | `/hx-docs` | 기능 문서 검사 통과 |
-| S8 완료 | `state: check` → 사용자 검수 → `completed` | 원고 §변경 영향 | `/hx-converge` | 사용자 승인 |
+| S1 분석 | requirements — 스토리·`R#.#`·SC | 원고 §요구사항 초안 | `/kns-specify` · `/kns-clarify` | requirements `approved` |
+| S2 기획 | requirements §정책(`P-#`)·§화면(목업) | 원고 §정책·§화면 · `_src/mockups` | `/kns-specify` · `/kns-checklist` | 같은 승인 |
+| S3 설계 | design — 순서도·시퀀스·상태·DB·인덱스·캐시 키·동시성·API | 원고 §흐름·§시퀀스·§상태 전이 · catalog 배정 | `/kns-plan` · `/kns-analyze` | Constitution Check · design `approved` |
+| S4 계획 | tasks.md(`state: active`) | 백로그 추적(생성) | `/kns-tasks` | — |
+| S5 구현 | 코드·시험·OpenAPI 스냅숏 | — | `/kns-implement` · `/kns-maintain` | changed 검증 |
+| S6 테스트 | tasks `[VERIFICATION]` | 원고 §테스트 시나리오 | `/kns-checklist` · `scripts/verify.sh` | 검증 사다리 레벨 |
+| S7 문서 반영 | tasks Polish 체크 | 원고·배정 갱신 → 생성 → 검사 | `/kns-docs` | 기능 문서 검사 통과 |
+| S8 완료 | `state: check` → 사용자 검수 → `completed` | 원고 §변경 영향 | `/kns-converge` | 사용자 승인 |
 
 - S2 는 S1 과 같은 requirements 에 쓴다. 화면이 없는 이슈는 §화면에 "화면 없음"을 쓴다.
 - 기능 문서 생성기가 없는 리포는 S7 을 건너뛰고 이유를 tasks 결과에 적는다.
 - 기존 기능을 처음 문서화할 때도 S7 형식(원고 절 12개·배정 0 미배정)을 따른다.
 
-## /hx-specify — 요구사항
+## /kns-specify — 요구사항
 
 1. 단위·영역(`--area`)·키·범위를 확인하고 requirements 하나만 스캐폴딩한다.
 2. User Story, 우선순위 이유, `R#.#` 수용 기준, 범위, 실패·경계 동작을 적는다.
@@ -86,19 +86,19 @@ SDD 이슈는 아래 여덟 단계를 지난다. 단계마다 산출물이 있�
 5. 정책 표(`| ID | 규칙 | 강제 위치 |`, ID `P-#`)와 화면 표(화면 ID·경로·상태·목업)를 쓴다. 갱신할 기능 문서 ID 를 머리 표에 적는다.
 6. 모호성·측정성·독립 검증·누락을 보완하고 `status: in-review`로 둔다. `approved`는 사람이 `python3 scripts/harness/approve.py <키> requirements` 로 승인하면 그 명령이 바꾼다(채팅의 말은 승인이 아니다, `approval-vocabulary.md`).
 
-## /hx-clarify — 모호성
+## /kns-clarify — 모호성
 
 기능·데이터·UX·통합·엣지·완료 기준을 읽고 필요한 질문만 묻는다.
 답은 requirements의 Clarifications에 날짜·질문·답으로 적고 관련 기준을 갱신한다.
 미해소 고영향 항목을 기술 선택으로 임의 확정하지 않는다.
 
-## /hx-checklist — 요구 문장 품질
+## /kns-checklist — 요구 문장 품질
 
 완결성·명료성·일관성·측정가능성·출처/검증 추적을 판정한다.
 체크리스트는 이슈 폴더의 `checklists/<focus>.md`에 둔다. 옛 구조 이슈에는 새 문서를 만들지 않는다.
 본문 근거·위치·PASS/FAIL/N·A를 적는다. 스펙을 수정하는 작업과 구분한다.
 
-## /hx-plan — 설계
+## /kns-plan — 설계
 
 1. 승인 requirements의 실제 경로를 해석하고 design만 스캐폴딩한다.
 2. 현재 아키텍처·규칙·계약을 읽고 재사용/확장/신규 근거를 적는다.
@@ -110,22 +110,22 @@ SDD 이슈는 아래 여덟 단계를 지난다. 단계마다 산출물이 있�
 6. 요구 추적·마이그레이션·quickstart·대안 비용을 적는다. 미확정 고영향 항목은 clarify로 되돌린다.
 7. Constitution Check 뒤 `status: in-review`로 둔다. `approved`는 사람이 `approve.py <키> design` 으로 승인하면 바뀐다.
 
-## /hx-tasks — 작업
+## /kns-tasks — 작업
 
 승인 design에서 이슈의 `tasks.md`(`state: active`)를 스캐폴딩한다.
 작업 줄은 `- [ ] T001 [P] [US1] 설명 — 정확한 파일/패키지 (R1.1, design 절)`이다.
 Setup → Foundational → User Story → Polish로 나누고 검증을 구현보다 앞에 둔다.
-Polish 에 문서 반영(`/hx-docs`) 작업과 기능 문서 검사 명령을 둔다.
+Polish 에 문서 반영(`/kns-docs`) 작업과 기능 문서 검사 명령을 둔다.
 [P]는 파일이 겹치지 않고 선행 의존이 없는 작업에만 붙인다. 소유권·의존·위험·검증 명령을 적는다.
 승인 범위에서 구현하고 이미 실행 승인이 있으면 근거를 기록한다.
 
-## /hx-analyze — 정합성
+## /kns-analyze — 정합성
 
 요구·설계·작업과 규칙에서 요구/작업 매핑·헌법 충돌·계약·누락·모순·용어를 검토한다.
 읽기 전용 리포트에 심각도·위치·발견·수정 문서를 적는다. CRITICAL/HIGH를 해결한다.
 파일 유무만으로 요구 구현을 판단하지 않는다.
 
-## /hx-implement — 구현
+## /kns-implement — 구현
 
 1. 승인 범위·소유권·공지·재사용 후보를 확인한다.
 2. 기능·버그는 테스트 실패 → 구현 → 통과를 기록한다. 동작 보존 리팩토링은 보존 테스트를 먼저 통과시킨다.
@@ -133,7 +133,7 @@ Polish 에 문서 반영(`/hx-docs`) 작업과 기능 문서 검사 명령을 �
 4. 완료 작업만 체크하고 문서/OpenAPI·호출부·계약 변경을 함께 포함한다.
 5. reviewer의 CRITICAL/HIGH를 해결하고 실행·실패·건너뜀·미확인을 보고한다.
 
-## /hx-docs — 문서 반영(S7)
+## /kns-docs — 문서 반영(S7)
 
 이번 이슈가 바꾼 기능의 원고·배정을 갱신하고 기능 문서를 생성·검사한다. 생성기 사용법은 `tools/docs/README.md`다.
 
@@ -152,7 +152,7 @@ DoD 뒤 `check`로 두고 사용자 검수를 받는다. 사람이 남긴 `done`
 `bash scripts/board.sh --check`와 상태 검사는 읽기 전용이다. 보드 갱신은 `bash scripts/board.sh`, 한 영역은 `--area <영역>`.
 보드는 새 이슈와 옛 구조 이슈(`(옛)`)를 함께 읽으며 자동 구간을 손으로 수정하지 않는다.
 
-## /hx-converge — 잔여 작업
+## /kns-converge — 잔여 작업
 
 검증·리뷰·실패·Deferred에서 남은 일을 찾고 tasks 끝에 새 Phase와 연속 T번호를 추가한다.
 지난 Phase와 완료 이력을 지우지 않는다. 스펙 결함은 specify/clarify/plan으로 되돌린다.

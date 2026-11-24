@@ -1,4 +1,0 @@
-interface:
-  display_name: "hx-specify"
-  short_description: "요구사항 작성"
-  default_prompt: "$hx-specify 스킬로 요청한 작업을 진행해 주세요."

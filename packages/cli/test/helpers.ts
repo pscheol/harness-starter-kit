@@ -9,7 +9,7 @@ import { main, type Io } from "../src/main";
 
 export const CLI_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const REAL_TEMPLATES = path.resolve(CLI_DIR, "../templates");
-export const LEGACY_LIB = path.resolve(CLI_DIR, "../legacy-setup/hx-bootstrap/lib/harness-lib.sh");
+export const LEGACY_LIB = path.resolve(CLI_DIR, "../legacy-setup/bootstrap/lib/harness-lib.sh");
 
 const made: string[] = [];
 afterEach(() => {
@@ -146,8 +146,8 @@ export function json(r: RunResult): Record<string, any> {
   return JSON.parse(r.stdout) as Record<string, any>;
 }
 
-export const LOCK_FILE = ".agents/harness-kit.lock";
-export const META_FILE = ".agents/harness-kit.json";
+export const LOCK_FILE = ".agents/knots-sync.lock";
+export const META_FILE = ".agents/knots-sync.json";
 export const FIXTURE_ENV = { PROJECT_NAME: "Acme", PROJECT_SLUG: "acme" };
 
 export function sha256Hex(data: string | Buffer): string {
@@ -206,7 +206,7 @@ export async function installedFixture(opts: { files?: Record<string, string>; m
   return { target, templates, cli };
 }
 
-const STATE_SKIP = new Set([LOCK_FILE, META_FILE, ".agents/state/harness-kit.lock.v1.bak"]);
+const STATE_SKIP = new Set([LOCK_FILE, META_FILE, ".agents/state/knots-sync.lock.v1.bak"]);
 
 /** lock · 메타 · v1 백업을 뺀 파일 → (내용, 권한). */
 export function filesOf(target: string): Map<string, string> {

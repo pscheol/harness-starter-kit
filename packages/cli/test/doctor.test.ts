@@ -77,12 +77,12 @@ describe("doctor", () => {
   it("설치 안 됨은 exit 3, 메타 · lock 이 깨지면 오류", async () => {
     expect((await run(["doctor", "--cwd", tmpDir()])).code).toBe(3);
     const a = await installed();
-    fs.writeFileSync(path.join(a.target, ".agents/harness-kit.json"), "{ 깨짐");
+    fs.writeFileSync(path.join(a.target, ".agents/knots-sync.json"), "{ 깨짐");
     const ma = await a.doctor("--check", "--json");
     expect(ma.code).toBe(1);
     expect(kinds(json(ma))).toContain("meta-invalid");
     const b = await installed();
-    fs.rmSync(path.join(b.target, ".agents/harness-kit.lock"));
+    fs.rmSync(path.join(b.target, ".agents/knots-sync.lock"));
     const lb = await b.doctor("--check", "--json");
     expect(lb.code).toBe(1);
     expect(kinds(json(lb))).toContain("lock-invalid");
@@ -90,7 +90,7 @@ describe("doctor", () => {
 
   it("lock 의 리포 밖 경로는 따라가지 않고 lock-invalid 로 낸다", async () => {
     const { target, doctor } = await installed();
-    const file = path.join(target, ".agents/harness-kit.lock");
+    const file = path.join(target, ".agents/knots-sync.lock");
     const lock = JSON.parse(fs.readFileSync(file, "utf8"));
     lock.entries.push({ path: "../outside.md", op: "copy", owner: "kit", sha256: null, layer: "common" });
     lock.entries.push({ path: "/etc/hosts", op: "copy", owner: "kit", sha256: null, layer: "common" });
@@ -105,10 +105,10 @@ describe("doctor", () => {
 
   it("v1 lock(setup.sh) 은 lock-v1 정보로 내고 항목을 본다", async () => {
     const { target, doctor } = await installed();
-    const lock = JSON.parse(fs.readFileSync(path.join(target, ".agents/harness-kit.lock"), "utf8"));
+    const lock = JSON.parse(fs.readFileSync(path.join(target, ".agents/knots-sync.lock"), "utf8"));
     const lines = ["# harness-kit lock v1 — sha256<TAB>layer<TAB>agent<TAB>path"];
     for (const e of lock.entries) lines.push(`${e.sha256}\tcommon\tcore\t${e.path}`);
-    fs.writeFileSync(path.join(target, ".agents/harness-kit.lock"), `${lines.join("\n")}\n`);
+    fs.writeFileSync(path.join(target, ".agents/knots-sync.lock"), `${lines.join("\n")}\n`);
     const j = json(await doctor("--json"));
     expect(kinds(j)).toEqual(["lock-v1"]);
     expect(j.summary.ok).toBe(lock.entries.length);
@@ -116,7 +116,7 @@ describe("doctor", () => {
 
   it("버전: 설치가 CLI 보다 새것이면 오류, 옛것이면 경고", async () => {
     const { target, doctor } = await installed();
-    const file = path.join(target, ".agents/harness-kit.json");
+    const file = path.join(target, ".agents/knots-sync.json");
     const meta = JSON.parse(fs.readFileSync(file, "utf8"));
     fs.writeFileSync(file, JSON.stringify({ ...meta, kit: { version: "9.0.0" } }));
     const newer = await doctor("--check", "--json");

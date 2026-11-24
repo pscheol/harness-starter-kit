@@ -7,7 +7,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { CliError, EXIT } from "./errors";
 
-export const LAYOUT_SCHEMA = "harness-kit.layout/v1";
+export const LAYOUT_SCHEMA = "knots-sync.layout/v1";
 
 export interface LayerSpec {
   id: string;

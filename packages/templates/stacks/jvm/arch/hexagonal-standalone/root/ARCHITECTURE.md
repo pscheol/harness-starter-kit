@@ -294,7 +294,7 @@ REFACTOR 중복 제거·의도 드러내기
 2. 컨텍스트 고유 상수·예외는 그 컨텍스트의 `domain`으로 내린다(전역 커널을 잡동사니로 만들지 않는다).
 3. 실행 단위를 하나로 합친다: 전역 `:{{PROJECT_SLUG}}-bootstrap`이 모든 컨텍스트의 `primary`·`infra`를 조립.
 4. 모듈 경로를 `:{{PROJECT_SLUG}}-<ctx>:<layer>`로 바꾸고 `projectDir` 재지정을 제거한다. leaf 이름이 겹치므로 `group` 분리·`archivesName` 유니크화를 추가한다.
-5. `hx-bootstrap`을 `ARCH=hexagonal`로 재실행해 이 문서·`structure.md`·`tech.md`를 교체한다(기존 파일은 `--force` 없이는 보존된다).
+5. `kns:bootstrap`을 `ARCH=hexagonal`로 재실행해 이 문서·`structure.md`·`tech.md`를 교체한다(기존 파일은 `--force` 없이는 보존된다).
 
 ### → `layered-multimodule` (헥사고날을 걷어낸다)
 
@@ -311,7 +311,7 @@ REFACTOR 중복 제거·의도 드러내기
 1. 그 컨텍스트의 7모듈 디렉터리(`<ctx>/`)를 통째로 새 리포로 옮긴다. **모듈 간 의존이 컨텍스트 안에서 닫혀 있으므로 코드 수정이 거의 없다** — 이것이 이 변형을 고른 이유다.
 2. 남은 리포의 `settings.gradle.kts`에서 `context("<ctx>")` 한 줄을 지운다.
 3. `contract` 모듈로 통합했다면 그 부분만 HTTP/이벤트로 바꾼다.
-4. 새 리포에 `hx-bootstrap`을 `ARCH=hexagonal`(컨텍스트 1개)로 설치한다.
+4. 새 리포에 `kns:bootstrap`을 `ARCH=hexagonal`(컨텍스트 1개)로 설치한다.
 
 ## 구성도
 

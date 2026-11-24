@@ -30,20 +30,20 @@ class DispatchInboxTest(SessionRegisterCase):
         self.tree = self.worktree("feat/DEMO-3-upload-cleanup", "DEMO-3-upload-cleanup")
 
     def item(self, ident, message="요청 글", issue="DEMO-3", role="implement", session=None, expires=7, paths=None):
-        data = {"schema": "harness-kit.dispatch/v1", "id": ident, "createdAt": iso(), "createdBy": "kim@example.com",
+        data = {"schema": "knots-sync.dispatch/v1", "id": ident, "createdAt": iso(), "createdBy": "kim@example.com",
                 "target": {"issue": issue, "role": role, "harness": "any", "sessionId": session}, "kind": "doc-changed",
                 "message": message, "paths": paths or [".agents/docs/issues/DEMO-3-upload-cleanup/requirements.md"], "expiresAt": iso(expires)}
         (self.queue / f"{ident}.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
     def start(self, sid="wt-1", event="SessionStart"):
-        return self.hook({"session_id": sid, "hook_event_name": event, "cwd": str(self.tree)}, cwd=self.tree, HX_HARNESS="claude")
+        return self.hook({"session_id": sid, "hook_event_name": event, "cwd": str(self.tree)}, cwd=self.tree, KNS_HARNESS="claude")
 
     def waiting(self):
         return sorted(path.name for path in self.queue.glob("*.json"))
 
     def test_five_items_print_count_and_first_line_within_512_bytes_and_consume_one(self):
         for number in range(1, 6):
-            self.item(f"01JDQ5000000000000000000{number:02d}", message=f"[harness-kit 관리 페이지] 요청 {number} " + "가" * 300)
+            self.item(f"01JDQ5000000000000000000{number:02d}", message=f"[knots-sync 관리 페이지] 요청 {number} " + "가" * 300)
         result = self.start()
         self.assertEqual(result.returncode, 0, result.stderr)
         output = result.stdout
@@ -52,11 +52,11 @@ class DispatchInboxTest(SessionRegisterCase):
         self.assertEqual(len(lines), 3, output)
         self.assertTrue(lines[0].startswith("대기 요청 5건(UNTRUSTED"), lines[0])
         self.assertIn("승인이 아니다", lines[0])
-        self.assertTrue(lines[1].startswith("1) [harness-kit 관리 페이지] 요청 1 "), lines[1])
+        self.assertTrue(lines[1].startswith("1) [knots-sync 관리 페이지] 요청 1 "), lines[1])
         first_text = lines[1][3:].split(" · 경로: ")[0]
         self.assertLessEqual(len(first_text.encode("utf-8")), 200)
         self.assertIn("· 경로: .agents/docs/issues/DEMO-3-upload-cleanup/requirements.md", lines[1])
-        self.assertEqual(lines[2], "나머지: npx harness-kit dispatch list")
+        self.assertEqual(lines[2], "나머지: npx knots-sync dispatch list")
         self.assertEqual(len(self.waiting()), 4)
         consumed = list((self.queue / "consumed").glob("*.json"))
         self.assertEqual([path.name for path in consumed], ["01JDQ500000000000000000001.json"])

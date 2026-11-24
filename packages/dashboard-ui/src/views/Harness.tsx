@@ -64,7 +64,7 @@ export default function Harness({ route: _route }: { route: Route }) {
                 <Muted>doctor 결과가 없습니다.</Muted>
               )}
               {d?.counts && Object.keys(d.counts).length ? <Muted>{Object.entries(d.counts as Record<string, number>).map(([k, n]) => `${k} ${n}`).join(" · ")}</Muted> : null}
-              <CommandBox cmd="npx harness-kit doctor" />
+              <CommandBox cmd="npx knots-sync doctor" />
             </Panel>
             <Panel title="흐름 · 승인 권한" aside={<Muted size="xsm">flow.gates · approvers</Muted>} flush>
               <Table
@@ -83,7 +83,7 @@ export default function Harness({ route: _route }: { route: Route }) {
                   <Ico name="commit" size={14} />
                   <Text size="sm">지금 <b>{s?.user?.email ?? "git user.email 없음"}</b>{s?.user?.groups?.length ? ` · 그룹 ${(s.user.groups as string[]).join(", ")}` : ""}</Text>
                 </HStack>
-                <CommandBox cmd="npx harness-kit flow gates --add <게이트> --after <게이트>" label="흐름 틀 명령 복사" />
+                <CommandBox cmd="npx knots-sync flow gates --add <게이트> --after <게이트>" label="흐름 틀 명령 복사" />
               </VStack>
             </Panel>
           </>
@@ -102,7 +102,7 @@ export default function Harness({ route: _route }: { route: Route }) {
                 <Muted size="xsm">버튼을 눌렀을 때만 네트워크를 씁니다</Muted>
               </HStack>
               {out ? <Notice kind={out.kind} title={out.title}>{out.text}</Notice> : null}
-              <CommandBox cmd="npx harness-kit outdated" />
+              <CommandBox cmd="npx knots-sync outdated" />
             </Panel>
             <Panel title="역할 배정" flush>
               {Object.keys(hr.roles).length ? (
@@ -112,7 +112,7 @@ export default function Harness({ route: _route }: { route: Route }) {
                   ))}
                 </List>
               ) : (
-                <Empty title="역할 배정이 없습니다" text="harness-kit.json 의 roles 가 비었습니다." />
+                <Empty title="역할 배정이 없습니다" text="knots-sync.json 의 roles 가 비었습니다." />
               )}
             </Panel>
             <Panel title="킷이 덧붙인 토큰" aside={<Link href="/usage">자세히</Link>}>

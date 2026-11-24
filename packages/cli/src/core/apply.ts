@@ -8,6 +8,7 @@ import { writeFileAtomic } from "./fsx";
 import { LOCK_REL } from "./lock";
 import { META_REL } from "./meta";
 import type { Plan } from "./plan";
+import { renameLegacyState } from "./legacy-names";
 
 export const FEATURE_DOCS = "tools/docs/feature_docs.py";
 
@@ -60,6 +61,7 @@ export function applyPlan(args: {
   let written = 0;
   let current = "";
   try {
+    renameLegacyState(target);
     current = target;
     fs.mkdirSync(target, { recursive: true });
     for (const op of plan.ops) {

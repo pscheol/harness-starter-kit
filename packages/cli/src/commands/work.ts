@@ -30,7 +30,7 @@ export async function runDispatch(ctx: Ctx): Promise<CommandResult> {
     });
   }
   if (sub === "drop" && id && !extra) return run(ctx, "DELETE", `/dispatch/queue/${id}`, {}, () => [`지웠다: ${id}`]);
-  if (sub !== undefined) throw usageError("harness-kit dispatch --to … --kind … --path … | dispatch list | dispatch drop <id>");
+  if (sub !== undefined) throw usageError("knots-sync dispatch --to … --kind … --path … | dispatch list | dispatch drop <id>");
   // 받는 세션이 턴을 돌려 토큰을 쓴다 — 에이전트 세션은 보내지 않는다(사용자 결정 2026-11-24, README 원칙 10)
   const marker = (ctx.io.agentSession ?? (() => agentSession(ctx.io.env)))();
   if (marker) throw new CliError(EXIT.STATE, `에이전트 세션에서는 다른 세션에 작업 요청을 보내지 않는다(판정: ${marker}) — 받는 세션이 턴을 돌려 토큰을 쓴다`, "사람이 자기 터미널이나 관리 페이지에서 고른다");
@@ -56,7 +56,7 @@ function pair(s: string, flag: string): [string, string] {
 
 export async function runUnits(ctx: Ctx): Promise<CommandResult> {
   const [sub, intent, extra] = ctx.positionals;
-  if (!intent || extra || (sub !== "propose" && sub !== "discard")) throw usageError("harness-kit units propose <INT> --add-dep U-a:U-b … | units discard <INT>");
+  if (!intent || extra || (sub !== "propose" && sub !== "discard")) throw usageError("knots-sync units propose <INT> --add-dep U-a:U-b … | units discard <INT>");
   if (sub === "discard") return run(ctx, "DELETE", `/units/proposals/${intent}`, {}, () => [`제안을 버렸다: ${intent}`]);
   const reason = str(ctx.values, "reason");
   const changes: Record<string, unknown>[] = [];
@@ -111,7 +111,7 @@ export async function runProjects(ctx: Ctx): Promise<CommandResult> {
     if (err instanceof ApiError) return failure(ctx, err);
     throw err;
   }
-  throw usageError("harness-kit projects list | add <폴더> | remove <이름|경로>");
+  throw usageError("knots-sync projects list | add <폴더> | remove <이름|경로>");
 }
 
 export { jsonLines };

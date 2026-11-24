@@ -1,4 +1,4 @@
-"""AI-DLC 를 켠 Intent(intent.json + units.json, 설계 08 §3.10 · 10 §3.2)의 검사와 `/hx-specify --from-unit`(HK-20, 완료 기준 3).
+"""AI-DLC 를 켠 Intent(intent.json + units.json, 설계 08 §3.10 · 10 §3.2)의 검사와 `/kns-specify --from-unit`(HK-20, 완료 기준 3).
 
     python3 -m unittest discover -s scripts/tests -p "test_aidlc_intent.py"
 
@@ -54,7 +54,7 @@ BASE = {"dependsOn": [], "provides": [], "consumes": [], "nfr": [], "risks": [],
 
 def units(doc, source, stories, extra=None):
     row = lambda i, **kw: {**BASE, "id": f"U-{i}", "name": f"u{i}-x", "title": f"유닛 {i}", "kind": "feature", "area": "cli", "order": i, **kw, **(extra or {})}
-    return {"schema": "harness-kit.units/v1", "intent": {"key": "INT-1", "title": "할 일 동기화", "doc": doc}, "source": source,
+    return {"schema": "knots-sync.units/v1", "intent": {"key": "INT-1", "title": "할 일 동기화", "doc": doc}, "source": source,
             "decomposition": {"stories": 2, "domains": 0, "userTypes": 0, "integrations": 0, "split": True, "reasons": ["aidlc"]} if doc == "intent.json" else {"stories": 2, "domains": 1, "userTypes": 1, "integrations": 0, "split": False, "reasons": []},
             "units": [row(1, stories=stories[0]), row(2, stories=stories[1], dependsOn=["U-1"])] if doc == "intent.json" else [row(1, stories=stories[0] + stories[1])],
             "unassigned": []}
@@ -63,7 +63,7 @@ def units(doc, source, stories, extra=None):
 class AidlcIntentTest(SddCase):
     def setUp(self):
         super().setUp()
-        meta = self.root / ".agents/harness-kit.json"
+        meta = self.root / ".agents/knots-sync.json"
         data = json.loads(meta.read_text())
         data["flow"] = {"gates": ["requirements", "design", "tasks", "mr", "done"]}
         meta.write_text(json.dumps(data))
@@ -83,9 +83,9 @@ class AidlcIntentTest(SddCase):
         return r.returncode, r.stdout, r.stderr
 
     def aidlc_folder(self):
-        link = {"schema": "harness-kit.intent-link/v1", "key": "INT-1", "title": "할 일 동기화", "source": "aidlc",
+        link = {"schema": "knots-sync.intent-link/v1", "key": "INT-1", "title": "할 일 동기화", "source": "aidlc",
                 "aidlc": {"space": "default", "intent": "261124-todo-sync", "path": "aidlc/spaces/default/intents/261124-todo-sync/", "version": "2.11.4"},
-                "adapter": {"name": "harness-kit/aidlc", "version": "2.0.0", "inputSha256": "x", "adaptedAt": "2026-11-24T00:00:00Z"},
+                "adapter": {"name": "knots-sync/aidlc", "version": "2.0.0", "inputSha256": "x", "adaptedAt": "2026-11-24T00:00:00Z"},
                 "stories": [{"id": "US1.1", "title": "할 일 추가"}, {"id": "US1.2", "title": "동기화"}]}
         return self.make("INT-1-todo-sync", {"intent.json": link, "units.json": units("intent.json", {"kind": "aidlc", "path": "x/", "inputSha256": "x"}, [["US1.1"], ["US1.2"]])})
 
@@ -104,7 +104,7 @@ class AidlcIntentTest(SddCase):
         self.assertTrue(any("US1.2" in p for p in json.loads(out)["problems"]))
 
     def test_next_step_points_to_aidlc(self):
-        meta = self.root / ".agents/harness-kit.json"
+        meta = self.root / ".agents/knots-sync.json"
         data = json.loads(meta.read_text())
         data["flow"] = {**data["flow"], "design": "aidlc"}
         meta.write_text(json.dumps(data))

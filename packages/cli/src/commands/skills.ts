@@ -77,7 +77,7 @@ export async function runUsage(ctx: Ctx): Promise<CommandResult> {
   }
   if (bool(v, "now")) {
     return run(ctx, "GET", "/usage/now", {}, (d) => {
-      if (d.enabled === false) return ["대화 기록 읽기가 꺼져 있다 — ~/.config/harness-kit/config.json 에 \"history\": \"on\""];
+      if (d.enabled === false) return ["대화 기록 읽기가 꺼져 있다 — ~/.config/knots-sync/config.json 에 \"history\": \"on\""];
       const s = d.session as { id: string; model: string | null; used: number; window: number | null; ratio: number | null; warn: boolean; issue: string | null } | null;
       if (!s) return ["이 리포의 최근 세션 기록이 없다"];
       return [`${s.id} · ${s.model ?? "모델 모름"} · 컨텍스트 ${fmt(s.used)}${s.window ? ` / ${fmt(s.window)} (${Math.round((s.ratio ?? 0) * 100)}%)` : " (창 크기: 기록에 없다)"}${s.warn ? " · 알림 기준을 넘었다" : ""}${s.issue ? ` · ${s.issue}` : ""}`];
@@ -90,7 +90,7 @@ export async function runUsage(ctx: Ctx): Promise<CommandResult> {
     const sources = (d.sources as { label: string; state: string; files: number; sessions: number; unreadable: number; note?: string }[]) ?? [];
     const srcLines = sources.map((s) => `  ${pad(s.label, 36)} ${pad(s.state, 5)} 파일 ${s.files} 세션 ${s.sessions}${s.unreadable ? ` 읽지 못함 ${s.unreadable}` : ""}${s.note ? ` · ${s.note}` : ""}`);
     if (bool(v, "sources")) return ["읽는 곳", ...srcLines];
-    if (d.enabled === false) return ["대화 기록 읽기가 꺼져 있다(기본). 켜려면 사람이 ~/.config/harness-kit/config.json 에 \"history\": \"on\" 을 쓴다", ...srcLines];
+    if (d.enabled === false) return ["대화 기록 읽기가 꺼져 있다(기본). 켜려면 사람이 ~/.config/knots-sync/config.json 에 \"history\": \"on\" 을 쓴다", ...srcLines];
     const t = d.totals as { sum: number; input: number; output: number; cacheRead: number; cacheWrite: number; requests: number };
     const daily = (d.daily as { date: string; sum: number }[]) ?? [];
     const issues = (d.byIssue as { issue: string; sum: number }[]) ?? [];

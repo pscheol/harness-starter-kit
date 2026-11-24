@@ -21,11 +21,11 @@ EFFORT_KEY = {"claude": "effort", "codex": "model_reasoning_effort"}
 
 
 def gen_md(source: str) -> str:
-    return f"<!-- harness-kit 생성 · 원본 {source} · 고칠 때는 원본을 고친다 -->"
+    return f"<!-- knots-sync 생성 · 원본 {source} · 고칠 때는 원본을 고친다 -->"
 
 
 def gen_toml(source: str) -> str:
-    return f"# harness-kit 생성 · 원본 {source} · 고칠 때는 원본을 고친다"
+    return f"# knots-sync 생성 · 원본 {source} · 고칠 때는 원본을 고친다"
 
 
 def jstr(value: str) -> str:

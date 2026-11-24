@@ -72,9 +72,9 @@ export class Project {
     return this.loc.root;
   }
 
-  /** 공유 메타(.agents/harness-kit.json). 개인 층은 roles · git.ide 만 덮을 수 있어 여기서는 읽지 않는다(README §5). */
+  /** 공유 메타(.agents/knots-sync.json). 개인 층은 roles · git.ide 만 덮을 수 있어 여기서는 읽지 않는다(README §5). */
   meta(): Record<string, unknown> {
-    const file = path.join(this.root, ".agents/harness-kit.json");
+    const file = path.join(this.root, ".agents/knots-sync.json");
     const stamp = fileStamp(file);
     const hit = this.metaCache;
     if (hit && hit.stamp === stamp) return hit.value;
@@ -109,7 +109,7 @@ export class Project {
     return Array.isArray(m) ? m.filter((x): x is string => typeof x === "string") : [];
   }
 
-  /** 이 컴퓨터 설정 ~/.config/harness-kit/config.json(사람이 쓴다, 킷은 읽기만, 06 §3.17). */
+  /** 이 컴퓨터 설정 ~/.config/knots-sync/config.json(사람이 쓴다, 킷은 읽기만, 06 §3.17). */
   machineConfig(): Record<string, unknown> {
     return readJson(path.join(kitConfigDir(this.home, this.env), "config.json")) ?? {};
   }

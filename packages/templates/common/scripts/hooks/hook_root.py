@@ -4,7 +4,7 @@
     python3 scripts/hooks/hook_root.py --fallback <디스패처 루트> --hook <훅 id> < 훅 입력
 
 표준 출력 다섯 줄: 루트 · worktree 여부(0 · 1) · 메인 루트 · 그 훅의 maxOutputBytes(없으면 0) · 이벤트 이름(입력 hook_event_name, 없으면 -).
-- cwd 가 절대경로 폴더면 거기서, 아니면 fallback 에서 위로 올라가며 .agents/harness.json 이나 .agents/harness-kit.json 이 있는 첫 폴더.
+- cwd 가 절대경로 폴더면 거기서, 아니면 fallback 에서 위로 올라가며 .agents/harness.json 이나 .agents/knots-sync.json 이 있는 첫 폴더.
 - 못 찾으면 fallback 을 쓰고 stderr 에 한 줄을 남긴다. 모델을 부르지 않는다.
 """
 
@@ -17,7 +17,7 @@ from pathlib import Path
 
 sys.dont_write_bytecode = True
 
-MARKERS = (".agents/harness.json", ".agents/harness-kit.json")
+MARKERS = (".agents/harness.json", ".agents/knots-sync.json")
 
 
 def read_payload():

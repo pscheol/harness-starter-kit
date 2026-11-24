@@ -26,14 +26,14 @@ from harness import approvals, deploy_record, intent as intents, ops_records  # 
 from harness.sdd_issues import issue_folders  # noqa: E402
 from harness.sdd_keys import split_folder  # noqa: E402
 
-SCHEMA = "harness-kit.delivery-metrics/v1"
+SCHEMA = "knots-sync.delivery-metrics/v1"
 BASELINE = ".agents/docs/ops/metrics-baseline.json"
-BASELINE_SCHEMA = "harness-kit.delivery-baseline/v1"
+BASELINE_SCHEMA = "knots-sync.delivery-baseline/v1"
 REPORTS = ".agents/reports/metrics"
 DAY = 86400
 FIX_BRANCH = re.compile(r"(?<![A-Za-z0-9])fix/")
 REWORK_DAYS, FAILURE_DAYS, BASELINE_DAYS = 30, 7, 90
-LOCK = ".agents/harness-kit.lock"
+LOCK = ".agents/knots-sync.lock"
 NAMES = ("leadTimeHours", "changeFailureRate", "mttrHours", "approvalWaitHours", "reworkRate")
 LABELS = {"leadTimeHours": "리드 타임(시간, 중앙값)", "changeFailureRate": "배포 실패율", "mttrHours": "복구 시간(시간, 중앙값)", "approvalWaitHours": "승인 대기 시간(시간, 중앙값)", "reworkRate": "재작업 비율"}
 
@@ -119,7 +119,7 @@ class Repo:
         return set(git(self.root, "diff", "--name-only", f"{sha}^1", sha).split())
 
     def adoption(self):
-        """킷 도입 커밋(harness-kit.lock 을 처음 더한 커밋) 시각. 없으면 None."""
+        """킷 도입 커밋(knots-sync.lock 을 처음 더한 커밋) 시각. 없으면 None."""
         found = git(self.root, "log", "--diff-filter=A", "--format=%ct", self.ref, "--", LOCK).split()
         return int(found[-1]) if found else None
 
@@ -314,7 +314,7 @@ def baseline(root, force=False, adopted=None):
         at = epoch(adopted) if re.match(r"^\d{4}-\d{2}-\d{2}$", adopted) else (int(git(root, "log", "-1", "--format=%ct", adopted).strip() or 0) or None)
     at = at or repo.adoption()
     if at is None:
-        raise ValueError("킷 도입 커밋(harness-kit.lock 을 처음 더한 커밋)을 찾지 못했다 — --adopted-at <날짜|커밋> 을 준다")
+        raise ValueError("킷 도입 커밋(knots-sync.lock 을 처음 더한 커밋)을 찾지 못했다 — --adopted-at <날짜|커밋> 을 준다")
     start, end = at - BASELINE_DAYS * DAY, at
     start_day = datetime.fromtimestamp(start, timezone.utc).strftime("%Y-%m-%d")
     end_day = datetime.fromtimestamp(end - 1, timezone.utc).strftime("%Y-%m-%d")
@@ -379,7 +379,7 @@ def fill_record(path, current, base):
     text = Path(path).read_text(encoding="utf-8")
     begin = re.compile(r"^<!--\s*METRICS:BEGIN\b")
     end = re.compile(r"^<!--\s*METRICS:END\b")
-    updated = deploy_record.replace_between(text, begin, end, table_lines(current, base), ["<!-- METRICS:BEGIN — harness-kit metrics 가 쓴다. 손으로 고치지 않는다 -->", "<!-- METRICS:END -->"])
+    updated = deploy_record.replace_between(text, begin, end, table_lines(current, base), ["<!-- METRICS:BEGIN — knots-sync metrics 가 쓴다. 손으로 고치지 않는다 -->", "<!-- METRICS:END -->"])
     Path(path).write_text(updated if updated.endswith("\n") else updated + "\n", encoding="utf-8")
 
 

@@ -1,5 +1,5 @@
 {
-  "schema": "harness-kit.verify-checks/v2",
+  "schema": "knots-sync.verify-checks/v2",
   "checks": {
     "lint": {"cmd": "new lint", "paths": ["a", "b"]},
     "test": {"cmd": "pytest"}

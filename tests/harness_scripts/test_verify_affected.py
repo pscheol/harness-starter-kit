@@ -258,7 +258,7 @@ class BaseAndScopeTest(VerifyFixture):
         self.assertEqual(self.git("rev-parse", "origin/develop").stdout.strip(), plan["base"]["mergeBase"])
 
     def test_meta_git_base_and_local_branch_fallback(self):
-        self.write(".agents/harness-kit.json", json.dumps({"git": {"base": "main"}}))
+        self.write(".agents/knots-sync.json", json.dumps({"git": {"base": "main"}}))
         self.repository()
         self.git("branch", "main")
         self.git("checkout", "-q", "-b", "feat/HK-5-y")

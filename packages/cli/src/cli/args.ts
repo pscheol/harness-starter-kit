@@ -155,7 +155,7 @@ export function parseCommandArgs(command: string, argv: string[]): ParsedArgs {
     const msg = err instanceof Error ? err.message : String(err);
     const code = (err as { code?: string }).code;
     const name = /'(-[^']*)'/.exec(msg)?.[1] ?? "";
-    if (code === "ERR_PARSE_ARGS_UNKNOWN_OPTION") throw usageError(`${command}: 모르는 플래그 ${name}`, `harness-kit ${command} --help`);
+    if (code === "ERR_PARSE_ARGS_UNKNOWN_OPTION") throw usageError(`${command}: 모르는 플래그 ${name}`, `knots-sync ${command} --help`);
     if (code === "ERR_PARSE_ARGS_UNEXPECTED_POSITIONAL") throw usageError(`${command}: 위치 인자를 받지 않는다 ${name}`, "대상 폴더는 --cwd <폴더> 로 준다");
     if (code === "ERR_PARSE_ARGS_INVALID_OPTION_VALUE") throw usageError(`${command}: 플래그 값이 틀렸다 ${name}`, msg);
     throw usageError(`${command}: ${msg}`);

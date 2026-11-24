@@ -88,7 +88,7 @@ def refuse_agents():
 def locate(key):
     root = sdd_gates.harness_root(Path.cwd())
     if root is None:
-        raise Refusal("하네스 루트(.agents/harness-kit.json)를 찾지 못했다", 2)
+        raise Refusal("하네스 루트(.agents/knots-sync.json)를 찾지 못했다", 2)
     try:
         folder = find_issue(root, key)
     except ValueError as error:
@@ -104,7 +104,7 @@ def check_gate(issue, gate):
     if REVIEW.match(gate) or gate in sdd_gates.ISSUE_GATES:
         return
     if gate in INTENT_GATES:
-        raise Refusal(f"{gate} 는 Intent 폴더 게이트다 — npx harness-kit approve <INT> --gate {gate} 로 한다(관리 페이지와 같은 처리)", 2)
+        raise Refusal(f"{gate} 는 Intent 폴더 게이트다 — npx knots-sync approve <INT> --gate {gate} 로 한다(관리 페이지와 같은 처리)", 2)
     raise Refusal(f"모르는 게이트: {gate} (requirements · design · tasks · mr · done · review/F-n)", 2)
 
 
@@ -124,7 +124,7 @@ def document_target(issue, gate, decision, email=None):
     if gate != "tasks" and status not in ("draft", "in-review", "approved"):
         raise Refusal(f"{path.name} 머리 status 가 {status or '없음'} 이다(draft · in-review 만 승인한다)", 1)
     if decision == "approved" and sdd_gates.CLARIFY in data.decode("utf-8", "replace"):
-        raise Refusal(f"{path.name} 에 {sdd_gates.CLARIFY} 가 남았다 — /hx-clarify 로 먼저 푼다", 1)
+        raise Refusal(f"{path.name} 에 {sdd_gates.CLARIFY} 가 남았다 — /kns-clarify 로 먼저 푼다", 1)
     return {"name": path.name, "sha256": sha, "fingerprint": None, "head": None}, path
 
 
@@ -201,7 +201,7 @@ def run_deploy(options):
         raise Refusal("deploy:<배포 기록> 은 --gate deploy 승인만 받는다", 2)
     root = sdd_gates.harness_root(Path.cwd())
     if root is None:
-        raise Refusal("하네스 루트(.agents/harness-kit.json)를 찾지 못했다", 2)
+        raise Refusal("하네스 루트(.agents/knots-sync.json)를 찾지 못했다", 2)
     try:
         record = deploy_record.load(deploy_record.resolve(root, options.key.split(":", 1)[1]))
     except FileNotFoundError as error:

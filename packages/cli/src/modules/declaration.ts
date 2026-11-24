@@ -8,7 +8,7 @@ import path from "node:path";
 import { CliError, EXIT } from "../core/errors";
 import { isDir } from "../core/fsx";
 
-export const MODULE_SCHEMA = "harness-kit.module/v1";
+export const MODULE_SCHEMA = "knots-sync.module/v1";
 export const MODULE_FILE = "module.json";
 
 export type Platform = "darwin" | "linux" | "win32";

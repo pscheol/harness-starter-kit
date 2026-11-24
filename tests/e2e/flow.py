@@ -37,7 +37,7 @@ def remove_modules(sb: Sandbox, config: str, report: Report, baseline: dict) -> 
     left = scenario.snapshot_external(sb)
     missing = [p for p, h in baseline["files"].items() if (sb.repo / p).is_file() is False or scenario.file_sha(sb.repo / p) != h]
     lock_owned = [i for i in sb.list_files() if str(i.get("owner", "")).startswith("external:")]
-    meta = json.loads(sb.read(".agents/harness-kit.json"))
+    meta = json.loads(sb.read(".agents/knots-sync.json"))
     ok = not missing and not lock_owned and meta["flow"]["design"] == "kit" and meta["flow"]["record"] == "none" and meta["modules"] == []
     report.add(config, "E6.remove-modules", "pass" if ok else "fail", f"지워지거나 바뀐 외부 파일 {len(missing)} · lock 의 external 항목 {len(lock_owned)} · flow {meta['flow'].get('design')}/{meta['flow'].get('record')} · modules {meta['modules']}")
     del left

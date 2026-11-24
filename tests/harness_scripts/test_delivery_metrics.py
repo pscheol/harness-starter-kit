@@ -70,7 +70,7 @@ class GitFixture:
 def build(root):
     fx = GitFixture(root)
     fx.git("init", "-q")
-    fx.write(".agents/harness-kit.json", json.dumps({"git": {"base": "develop"}}))
+    fx.write(".agents/knots-sync.json", json.dumps({"git": {"base": "develop"}}))
     fx.write("README.md", "# demo\n")
     fx.commit("init", datetime(2026, 3, 1, tzinfo=timezone.utc))
     tags = {datetime(2026, 3, 20, 9, tzinfo=timezone.utc): "v1.0.0", datetime(2026, 4, 5, 9, tzinfo=timezone.utc): "v1.1.0", datetime(2026, 4, 20, 9, tzinfo=timezone.utc): "v1.2.0",
@@ -88,8 +88,8 @@ def build(root):
             branch = "hotfix/h1" if item == 17 else "fix/f1" if item == 12 else f"feat/x{item}"
             files = [f"src/m{item}.txt"] + (["src/m11.txt"] if item == 12 else [])
             fx.merge(branch, files, when, 24 + (item % 5) * 12)
-    fx.write(".agents/harness-kit.lock", "{}\n")
-    fx.commit("adopt harness-kit", ADOPTED)
+    fx.write(".agents/knots-sync.lock", "{}\n")
+    fx.commit("adopt knots-sync", ADOPTED)
     return fx
 
 

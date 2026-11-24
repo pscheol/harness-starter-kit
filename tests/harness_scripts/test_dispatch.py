@@ -36,7 +36,7 @@ class DispatchCase(unittest.TestCase):
         shutil.copytree(ROOT / "scripts/hooks", self.main / "scripts/hooks", ignore=shutil.ignore_patterns("__pycache__"))
         shutil.copytree(ROOT / "scripts/harness", self.main / "scripts/harness", ignore=shutil.ignore_patterns("__pycache__"))
         (self.main / ".agents").mkdir()
-        for name in ("hooks.json", "harness-kit.json", "harness.json"):
+        for name in ("hooks.json", "knots-sync.json", "harness.json"):
             if (ROOT / ".agents" / name).is_file():
                 shutil.copy2(ROOT / ".agents" / name, self.main / ".agents" / name)
         (self.main / ".gitignore").write_text(".agents/state/\n", encoding="utf-8")

@@ -1,5 +1,5 @@
 {
-  "schema": "harness-kit.layout/v1",
+  "schema": "knots-sync.layout/v1",
   "ignore": [".DS_Store", "ABOUT", "module.json"],
   "overlap": "last",
   "layers": [

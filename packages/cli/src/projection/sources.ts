@@ -54,7 +54,7 @@ export interface Sources {
   hooksData: Buffer;
   /** `.agents/hooks.d/*.json`(팩 · 프로젝트, HK-14) — 읽는 순서 */
   hookDocs: { rel: string; text: string }[];
-  /** 메타(`.agents/harness-kit.json`)의 modules — 모듈 훅 거르기 */
+  /** 메타(`.agents/knots-sync.json`)의 modules — 모듈 훅 거르기 */
   modules: string[];
 }
 
@@ -95,7 +95,7 @@ export function loadSources(view: RepoView): Sources {
       if (hasPendingNew(view, rel)) src.deferred.add(HOOKS_REL);
     }
   }
-  src.modules = metaModules(view.read(".agents/harness-kit.json"));
+  src.modules = metaModules(view.read(".agents/knots-sync.json"));
   return src;
 }
 

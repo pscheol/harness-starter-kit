@@ -169,7 +169,7 @@ worktree 안의 단위(`.agents/harness.json` 표지, [01 §3.1](01-v1.1-verify-
 4. P에 쓴다(`.gitignore` 템플릿에 `.env.worktree` 추가):
 
 ```text
-# harness-kit 생성 — worktree 2번, 포트 +200. 앱이 .env 다음에 이 파일을 읽어야 한다.
+# knots-sync 생성 — worktree 2번, 포트 +200. 앱이 .env 다음에 이 파일을 읽어야 한다.
 HARNESS_WT_INDEX=2
 HARNESS_WT_KEY=KNOTS-17
 HARNESS_PORT_OFFSET=200
@@ -227,7 +227,7 @@ bold-oak-a3f2  wt/bold-oak-a3f2                 0     0       0.4GB   2026-11-23
 
 ```jsonc
 {
-  "schema": "harness-kit.session/v1",
+  "schema": "knots-sync.session/v1",
   "sessionId": "c0ffee…",
   "harness": "claude",
   "role": "implement",                       // roles 배정에서(P21). 모르면 null
@@ -317,7 +317,7 @@ Claude 기본값과 다른 점: Claude는 `.claude/worktrees/<name>`에 `worktre
 
 ```jsonc
 {
-  "schema": "harness-kit.worktree/v1",
+  "schema": "knots-sync.worktree/v1",
   "kind": "issue",                       // issue | agent
   "key": "KNOTS-17", "slug": "desktop-parity",
   "repo": "knots-domain-app",            // 단일 리포면 "."

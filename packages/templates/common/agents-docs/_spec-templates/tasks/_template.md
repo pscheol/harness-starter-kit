@@ -85,7 +85,7 @@ created: {{CREATED}}
 **목적**: 여러 스토리에 걸친 마무리.
 
 - [ ] TXXX [P] 문서/OpenAPI 갱신 (`.agents/docs/openapi/`)
-- [ ] TXXX 문서 반영(S7, `/hx-docs`) — 기능 원고·catalog 배정·스냅숏 갱신 뒤 `python3 tools/docs/feature_docs.py check` 통과(생성기가 없는 리포는 이유를 결과에 적는다)
+- [ ] TXXX 문서 반영(S7, `/kns-docs`) — 기능 원고·catalog 배정·스냅숏 갱신 뒤 `python3 tools/docs/feature_docs.py check` 통과(생성기가 없는 리포는 이유를 결과에 적는다)
 - [ ] TXXX design §11.1 **Quickstart 검증 시나리오** 실행
 - [ ] TXXX 성능/보안 하드닝, 리팩터링
 
@@ -128,7 +128,7 @@ T008 [P] [US2] 모델 B (파일 b.kt)   # 다른 파일·무의존 → 병렬 �
 - [ ] 인증 필요 시 401/403 케이스, 권한 없는 접근 차단 테스트
 - [ ] `.agents/rules/quality-score.md` 체크리스트 충족
 - [ ] API 변경 시 OpenAPI 스냅숏 갱신(경로는 그 하네스 `api-standards.md`)
-- [ ] 기능 문서 검사 통과(S7 `/hx-docs`, 생성기가 없는 리포는 이유를 결과에 적는다)
+- [ ] 기능 문서 검사 통과(S7 `/kns-docs`, 생성기가 없는 리포는 이유를 결과에 적는다)
 - [ ] design §11.1 Quickstart 시나리오 통과
 
 ## 완료 처리 (사용자 검증 게이트)

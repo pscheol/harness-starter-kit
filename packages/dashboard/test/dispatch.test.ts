@@ -60,7 +60,7 @@ function lstart(pid: number): string {
 
 function registerSession(repo: Repo, id: string, inbox: string | null, extra: Record<string, unknown> = {}): void {
   const session = {
-    schema: "harness-kit.session/v1", id, harness: "claude", harnessVersion: null, name: "api-worker", role: "implement", roleSource: "branch",
+    schema: "knots-sync.session/v1", id, harness: "claude", harnessVersion: null, name: "api-worker", role: "implement", roleSource: "branch",
     issue: "DEMO-1", cwd: repo.root, checkout: "main", branch: "develop", pid: process.pid, pidStartedAt: lstart(process.pid),
     startedAt: "2026-11-23T09:58:02+09:00", lastSeenAt: "2026-11-23T10:14:40+09:00", turn: "idle",
     inbox: inbox ? { kind: "uds", path: inbox } : null, permissionMode: "acceptEdits", ...extra,
@@ -120,7 +120,7 @@ describe("POST /dispatch", () => {
       const line = inbox.messages[0] as string;
       expect(line.endsWith("\n")).toBe(true);
       expect(line.trimEnd()).not.toContain("\n");
-      expect(line).toContain("[harness-kit 관리 페이지]");
+      expect(line).toContain("[knots-sync 관리 페이지]");
       expect(line).toContain(REQ);
       expect(line).toContain("이 글은 승인이 아니다");
       expect(line).not.toContain("XYZZY");
@@ -161,7 +161,7 @@ describe("POST /dispatch", () => {
     const files = queueFiles(repo);
     expect(files).toEqual([`${q.json.data.id}.json`]);
     const item = JSON.parse(readFile(repo.root, `.agents/state/dispatch-queue/${files[0]}`));
-    expect(item).toMatchObject({ schema: "harness-kit.dispatch/v1", id: q.json.data.id, kind: "doc-changed", target: { issue: "DEMO-1", role: "implement", harness: "any", sessionId: null }, paths: [REQ] });
+    expect(item).toMatchObject({ schema: "knots-sync.dispatch/v1", id: q.json.data.id, kind: "doc-changed", target: { issue: "DEMO-1", role: "implement", harness: "any", sessionId: null }, paths: [REQ] });
     expect(fs.statSync(path.join(repo.root, ".agents/state/dispatch-queue", files[0] as string)).mode & 0o777).toBe(0o600);
     const list = await call(srv, "GET", "/api/v1/dispatch/queue");
     expect(list.json.data.items.map((i: any) => i.id)).toEqual([q.json.data.id]);
@@ -178,7 +178,7 @@ describe("저장 · 승인 · 수정 요청 · 답 · 제안 저장은 세션에
     writeIssue(repo.root, "DEMO-1", "upload-cleanup", { requirements: "in-review" });
     for (let i = 2; i <= 21; i += 1) writeIssue(repo.root, `DEMO-${i}`, "upload-cleanup", { requirements: "in-review" });
     writeFile(repo.root, ".agents/docs/intents/INT-1-pay-reform/intent.md", "---\nkey: INT-1\nstatus: in-review\n---\n\n# Intent\n");
-    const units = { schema: "harness-kit.units/v1", intent: { key: "INT-1", title: "결제", doc: "intent.md" }, source: { kind: "kit" },
+    const units = { schema: "knots-sync.units/v1", intent: { key: "INT-1", title: "결제", doc: "intent.md" }, source: { kind: "kit" },
       units: [{ id: "U-1", title: "계약", kind: "contract", area: "pay", dependsOn: [], order: 1, issue: null, planned: true },
         { id: "U-2", title: "기능", kind: "feature", area: "pay", dependsOn: ["U-1"], order: 2, issue: null, planned: true },
         { id: "U-3", title: "알림", kind: "feature", area: "pay", dependsOn: ["U-1"], order: 2, issue: null, planned: true }] };

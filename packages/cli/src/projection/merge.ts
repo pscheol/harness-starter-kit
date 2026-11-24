@@ -43,11 +43,11 @@ export interface Merger<W> {
   missing(cur: string, keys: string[], want: W): string[];
 }
 
-const CLAUDE_BEGIN = "<!-- harness-kit:begin claude";
-const CLAUDE_END = "<!-- harness-kit:end claude -->";
-const GEN_BEGIN = "# harness-kit:begin generated";
-const GEN_BEGIN_LINE = "# harness-kit:begin generated — .agents/ 원본에서 만든 파일이다. 고칠 때는 원본을 고친다";
-const GEN_END = "# harness-kit:end generated";
+const CLAUDE_BEGIN = "<!-- knots-sync:begin claude";
+const CLAUDE_END = "<!-- knots-sync:end claude -->";
+const GEN_BEGIN = "# knots-sync:begin generated";
+const GEN_BEGIN_LINE = "# knots-sync:begin generated — .agents/ 원본에서 만든 파일이다. 고칠 때는 원본을 고친다";
+const GEN_END = "# knots-sync:end generated";
 const AGENTS_LINE = "@AGENTS.md";
 export const HARNESS_ORDER = ["claude", "codex", "cursor", "kiro"];
 const TABLE_HEADER = /^\s*\[\[?\s*([^[\]]+?)\s*\]\]?\s*(?:#.*)?$/;

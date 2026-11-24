@@ -15,15 +15,15 @@ from verify_fixture import GATE_BODY, SOURCE
 
 INSTALL = SOURCE.parent
 GITHUB = INSTALL / ".github/workflows/harness-verify.yml"
-GITLAB = INSTALL / "ci/harness-kit.gitlab-ci.yml"
+GITLAB = INSTALL / "ci/knots-sync.gitlab-ci.yml"
 GITLAB_ENTRY = INSTALL / ".gitlab-ci.yml"
 GOCD = INSTALL / "ci/harness.gocd.yaml"
 PASSING_BODY = GATE_BODY + 'echo "검증 통과"\nexit 0\n'
 ALLOWED = tuple(re.compile(pattern) for pattern in (
     r"bash scripts/verify\.sh(?: --(?:fast|affected|full|bootstrap))+",
-    r'bash \.agents/state/verify-base\.sh --from-base "\$HX_BASE_REF" --affected',
+    r'bash \.agents/state/verify-base\.sh --from-base "\$KNS_BASE_REF" --affected',
     r"mkdir -p \.agents/state",
-    r'git show "\$HX_BASE_REF:scripts/verify(?:-entry)?\.sh" > \.agents/state/verify-(?:base|entry)\.sh',
+    r'git show "\$KNS_BASE_REF:scripts/verify(?:-entry)?\.sh" > \.agents/state/verify-(?:base|entry)\.sh',
     r"git fetch [^|;&]+",
     r"git diff --quiet [^|;&]+",
     r"\[ -s \.agents/state/verify-base\.sh \]",
@@ -113,7 +113,7 @@ class TemplateLintTest(unittest.TestCase):
         joined = "\n".join(commands)
         for level in ("--fast", "--full"):
             self.assertRegex(joined, rf"bash scripts/verify\.sh {level}", f"{name}: {level} 단계가 없다")
-        self.assertIn('bash .agents/state/verify-base.sh --from-base "$HX_BASE_REF" --affected', joined, f"{name}: base 판 affected 가 없다")
+        self.assertIn('bash .agents/state/verify-base.sh --from-base "$KNS_BASE_REF" --affected', joined, f"{name}: base 판 affected 가 없다")
         self.assertIn("bash scripts/verify.sh --affected --bootstrap", joined, f"{name}: bootstrap 경로가 없다")
 
     def test_github_actions_template(self):
@@ -128,8 +128,8 @@ class TemplateLintTest(unittest.TestCase):
     def test_gitlab_template(self):
         jobs = gitlab_jobs(GITLAB.read_text())
         self.assertTrue({"harness:fast", "harness:affected", "harness:affected-head", "harness:full"} <= set(jobs), sorted(jobs))
-        self.assert_only_verify("harness-kit.gitlab-ci.yml", [command for name, commands in jobs.items() if name.startswith("harness:") for command in commands])
-        self.assertIn("local: ci/harness-kit.gitlab-ci.yml", GITLAB_ENTRY.read_text())
+        self.assert_only_verify("knots-sync.gitlab-ci.yml", [command for name, commands in jobs.items() if name.startswith("harness:") for command in commands])
+        self.assertIn("local: ci/knots-sync.gitlab-ci.yml", GITLAB_ENTRY.read_text())
         self.assertEqual(gitlab_jobs(GITLAB_ENTRY.read_text()), {}, ".gitlab-ci.yml 은 include 만 한다")
 
     def test_gocd_template(self):
@@ -159,7 +159,7 @@ class BaseJudgedTest(QualityFixture):
     def mr_pipeline(self):
         """GitLab 템플릿 harness:affected 의 script 를 GitLab 이 하듯 줄마다 돌린다(앞 줄이 실패하면 멈춘다)."""
         script = gitlab_jobs(GITLAB.read_text())["harness:affected"]
-        environment = {**self.env, "CI": "true", "CI_MERGE_REQUEST_TARGET_BRANCH_NAME": "develop", "HX_BASE_REF": "origin/develop"}
+        environment = {**self.env, "CI": "true", "CI_MERGE_REQUEST_TARGET_BRANCH_NAME": "develop", "KNS_BASE_REF": "origin/develop"}
         return subprocess.run(["bash", "-e", "-c", "\n".join(script)], cwd=self.root, env=environment, capture_output=True, text=True, timeout=180, check=False)
 
     def head_verdict(self):
@@ -196,10 +196,10 @@ class BaseJudgedTest(QualityFixture):
 
     def test_bootstrap_is_refused_when_base_has_harness_or_ref_is_missing(self):
         self.commit("head")
-        run = self.run_gate("--affected", "--bootstrap", extra={"CI": "true", "HX_BASE_REF": "origin/develop"})
+        run = self.run_gate("--affected", "--bootstrap", extra={"CI": "true", "KNS_BASE_REF": "origin/develop"})
         self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
         self.assertIn("base 판으로 판정한다", run.stderr)
-        missing = self.run_gate("--affected", "--bootstrap", extra={"CI": "true", "HX_BASE_REF": "origin/no-such-branch"})
+        missing = self.run_gate("--affected", "--bootstrap", extra={"CI": "true", "KNS_BASE_REF": "origin/no-such-branch"})
         self.assertEqual(missing.returncode, 2, missing.stdout + missing.stderr)
         self.assertIn("찾지 못했다", missing.stderr)
 

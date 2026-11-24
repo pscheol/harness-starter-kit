@@ -127,7 +127,7 @@ def unit_row(uid: str, order: int, deps: list[str]) -> dict:
 
 def units_json(key: str) -> str:
     doc = {
-        "schema": "harness-kit.units/v1",
+        "schema": "knots-sync.units/v1",
         "intent": {"key": key, "title": "주문 결제 연동", "doc": "intent.md"},
         "source": {"kind": "kit"},
         "decomposition": {"stories": 6, "domains": 2, "userTypes": 2, "integrations": 1, "split": True, "reasons": ["stories>=5", "domains>=2"]},

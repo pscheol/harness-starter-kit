@@ -1,6 +1,6 @@
 /**
  * dashboard — 관리 페이지 서버(설계 06 §3.1 · §3.12 · §3.17, HK-17 design §2).
- *   harness-kit dashboard [--port <n>] [--open] [--read-only] [--export <폴더>] [--all | --root <dir> | --workspace <file>]
+ *   knots-sync dashboard [--port <n>] [--open] [--read-only] [--export <폴더>] [--all | --root <dir> | --workspace <file>]
  * 같은 리포에 서버가 있으면 그 주소를 내고 끝낸다(DB-R23). 주소는 표준 출력, 승인 PIN 은 표준 오류에만 낸다.
  */
 import { spawn } from "node:child_process";
@@ -44,7 +44,7 @@ async function runExport(ctx: Ctx, out: string): Promise<CommandResult> {
   } catch (err) {
     if (err instanceof ExportLeakError) throw new CliError(EXIT.CHECK, `${err.message} — 출력 폴더를 지웠다`, err.hits.slice(0, 5).join(" · "));
     if (err instanceof ExportError) throw new CliError(EXIT.USAGE, err.message);
-    throw new CliError(EXIT.STATE, err instanceof Error ? err.message : String(err), "npx harness-kit doctor");
+    throw new CliError(EXIT.STATE, err instanceof Error ? err.message : String(err), "npx knots-sync doctor");
   }
 }
 

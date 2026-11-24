@@ -26,7 +26,7 @@ export interface Location {
 
 export class LocateError extends Error {}
 
-/** cwd 에서 위로 `.agents/harness-kit.json` 을 찾고 메인 폴더 기준으로 옮긴다(README §10, 06 §3.1). */
+/** cwd 에서 위로 `.agents/knots-sync.json` 을 찾고 메인 폴더 기준으로 옮긴다(README §10, 06 §3.1). */
 export async function locate(cwd: string, env: Env): Promise<Location> {
   let start: string;
   try {
@@ -36,13 +36,13 @@ export async function locate(cwd: string, env: Env): Promise<Location> {
   }
   let harness: string | null = null;
   for (let cur = start; ; cur = path.dirname(cur)) {
-    if (fs.existsSync(path.join(cur, ".agents/harness-kit.json"))) {
+    if (fs.existsSync(path.join(cur, ".agents/knots-sync.json"))) {
       harness = cur;
       break;
     }
     if (path.dirname(cur) === cur) break;
   }
-  if (!harness) throw new LocateError(`하네스 루트(.agents/harness-kit.json)를 찾지 못했습니다: ${start}`);
+  if (!harness) throw new LocateError(`하네스 루트(.agents/knots-sync.json)를 찾지 못했습니다: ${start}`);
   const top = await gitOut(harness, env, "rev-parse", "--show-toplevel");
   const common = await gitOut(harness, env, "rev-parse", "--path-format=absolute", "--git-common-dir");
   if (!top || !common) throw new LocateError(`git 저장소가 아닙니다: ${harness}`);

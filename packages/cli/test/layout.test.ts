@@ -8,7 +8,7 @@ const slug = { PROJECT_SLUG: "acme" };
 
 describe("layout.json 해석", () => {
   it("실제 layout.json 을 읽는다", () => {
-    expect(layout.schema).toBe("harness-kit.layout/v1");
+    expect(layout.schema).toBe("knots-sync.layout/v1");
     expect(layout.overlap).toBe("last"); // 뒤 레이어가 이긴다(HK-10 R10.1)
     expect(layout.tokens).toHaveLength(9);
   });

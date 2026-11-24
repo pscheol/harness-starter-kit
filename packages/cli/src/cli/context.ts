@@ -40,10 +40,10 @@ export function targetOf(ctx: Ctx): string {
   return path.resolve(ctx.io.cwd, typeof cwd === "string" ? cwd : ".");
 }
 
-/** 오늘(YYYY-MM-DD). 시험은 io.today 나 HARNESS_KIT_TODAY 로 정한다(update.sh 와 같은 이름). */
+/** 오늘(YYYY-MM-DD). 시험은 io.today 나 KNOTS_SYNC_TODAY 로 정한다(update.sh 와 같은 이름). */
 export function today(io: Io): string {
   if (io.today) return io.today;
-  const fixed = io.env.HARNESS_KIT_TODAY;
+  const fixed = io.env.KNOTS_SYNC_TODAY;
   if (fixed && /^\d{4}-\d{2}-\d{2}$/.test(fixed)) return fixed;
   const d = new Date();
   const p = (n: number): string => String(n).padStart(2, "0");

@@ -45,7 +45,7 @@ async function revExists(p: Project, ref: string): Promise<boolean> {
 
 export async function checkpointsList(p: Project, issue: string | null): Promise<Record<string, unknown>> {
   if (issue !== null && !KEY.test(issue)) throw bad(`이슈 키 형식이 아닙니다: ${issue}`);
-  if (!enabled(p)) return { enabled: false, issue, branch: null, checkpoints: [], note: "entire 모듈이 꺼져 있습니다(harness-kit add entire)" };
+  if (!enabled(p)) return { enabled: false, issue, branch: null, checkpoints: [], note: "entire 모듈이 꺼져 있습니다(knots-sync add entire)" };
   let branch: string | null = null;
   if (issue) {
     const all = await branches(p);

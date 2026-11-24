@@ -8,7 +8,7 @@ import re
 from pathlib import Path
 
 CONFIG = ".agents/deploy.json"
-SCHEMA = "harness-kit.deploy/v1"
+SCHEMA = "knots-sync.deploy/v1"
 KINDS = ("verification", "production")
 STEPS = ("deploy", "smoke", "health", "rollback", "e2e")
 PLACEHOLDER = re.compile(r"\{(env|sha|toSha|url)\}")

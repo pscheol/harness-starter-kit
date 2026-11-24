@@ -18,7 +18,7 @@ export const implementHarness = (meta: Record<string, unknown>): string => roleH
 export function toolHarnessName(tool: ToolDecl, harness: string, role: string): string {
   const name = tool.harnessNames[harness];
   if (!name) {
-    throw new CliError(EXIT.STATE, `${tool.name} 는 ${harness} 하네스를 지원하지 않는다(${role} 역할 하네스)`, `지원: ${Object.keys(tool.harnessNames).join(" · ")}. harness-kit.json 의 roles.${role}.harness 를 바꾼 뒤 다시 한다`);
+    throw new CliError(EXIT.STATE, `${tool.name} 는 ${harness} 하네스를 지원하지 않는다(${role} 역할 하네스)`, `지원: ${Object.keys(tool.harnessNames).join(" · ")}. knots-sync.json 의 roles.${role}.harness 를 바꾼 뒤 다시 한다`);
   }
   return name;
 }

@@ -22,7 +22,7 @@ paths:
 
 에이전트가 하지 않는 것(훅 · git 훅 · CI 가 막는다):
 
-- `approvals.md` · `.agents/quality-baseline.json` · `.agents/state/dashboard.token` · `.agents/state/approvals-log.jsonl` 쓰기, 승인 명령(`approve.py` · `harness-kit approve`) 실행.
+- `approvals.md` · `.agents/quality-baseline.json` · `.agents/state/dashboard.token` · `.agents/state/approvals-log.jsonl` 쓰기, 승인 명령(`approve.py` · `knots-sync approve`) 실행.
 - 문서 머리 `status` 를 `approved` 로 바꾸기(승인 명령이 바꾼다), 유효한 `done` 승인 기록 없이 `tasks.md` 를 `state: completed` 로 바꾸기.
 - 사람이 승인해야 하면 게이트 이름과 명령 한 줄(`python3 scripts/harness/approve.py <키> <게이트> --phrase "…"`)을 안내하고 멈춘다. 사람이 남긴 기록(`approvals.md` 덧붙임)은 커밋해도 된다.
 

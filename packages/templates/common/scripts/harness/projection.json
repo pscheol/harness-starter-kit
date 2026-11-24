@@ -1,13 +1,13 @@
 {
-  "schema": "harness-kit.projection/v1",
+  "schema": "knots-sync.projection/v1",
   "claudeBlock": [
-    "<!-- harness-kit:begin claude — 이 블록은 harness-kit 이 관리한다. 블록 밖은 프로젝트 몫이다 -->",
+    "<!-- knots-sync:begin claude — 이 블록은 knots-sync 이 관리한다. 블록 밖은 프로젝트 몫이다 -->",
     "## Claude Code 전용",
     "",
-    "- 스킬 `.claude/skills/`, 규칙 `.claude/rules/`, 역할 `.claude/agents/`는 `.agents/` 원본에서 만든 복사본 · 생성물이다. 고칠 때는 `.agents/`의 원본을 고치고 `npx harness-kit repair`로 다시 만든다(Node가 없으면 `python3 scripts/harness/projection.py sync`).",
+    "- 스킬 `.claude/skills/`, 규칙 `.claude/rules/`, 역할 `.claude/agents/`는 `.agents/` 원본에서 만든 복사본 · 생성물이다. 고칠 때는 `.agents/`의 원본을 고치고 `npx knots-sync repair`로 다시 만든다(Node가 없으면 `python3 scripts/harness/projection.py sync`).",
     "- 규칙은 `.claude/rules/`에서 자동으로 실린다. `paths`가 있는 규칙은 그 경로의 파일을 다룰 때 실린다.",
     "- 복사본이 원본과 어긋나면 `bash scripts/verify.sh --fast`의 배치 검사(`scripts/harness/check_layout.py`)가 알린다.",
-    "<!-- harness-kit:end claude -->"
+    "<!-- knots-sync:end claude -->"
   ],
   "claudeSettings": {
     "deny": [
@@ -89,9 +89,9 @@
     },
     "commands": {
       "claude": "bash \"$CLAUDE_PROJECT_DIR\"/scripts/hooks/dispatch.sh {id} {script}",
-      "codex": "bash -c 'r=\"$PWD\"; while [ \"$r\" != / ] && [ ! -f \"$r/.agents/harness-kit.json\" ] && [ ! -f \"$r/.agents/harness.json\" ]; do r=\"$(dirname \"$r\")\"; done; [ -f \"$r/scripts/hooks/dispatch.sh\" ] || exit 0; exec bash \"$r/scripts/hooks/dispatch.sh\" \"$1\" \"$2\"' _ {id} {script}",
-      "kiroIde": "bash -c 'r=\"$PWD\"; while [ \"$r\" != / ] && [ ! -f \"$r/.agents/harness-kit.json\" ] && [ ! -f \"$r/.agents/harness.json\" ]; do r=\"$(dirname \"$r\")\"; done; [ -f \"$r/scripts/hooks/dispatch.sh\" ] || exit 0; exec bash \"$r/scripts/hooks/dispatch.sh\" \"$1\" \"$2\"' _ {id} {script}",
-      "kiroCli": "bash -c 'r=\"$PWD\"; while [ \"$r\" != / ] && [ ! -f \"$r/.agents/harness-kit.json\" ] && [ ! -f \"$r/.agents/harness.json\" ]; do r=\"$(dirname \"$r\")\"; done; [ -f \"$r/scripts/hooks/dispatch.sh\" ] || exit 0; exec bash \"$r/scripts/hooks/dispatch.sh\" \"$1\" \"$2\"' _ {id} {script}"
+      "codex": "bash -c 'r=\"$PWD\"; while [ \"$r\" != / ] && [ ! -f \"$r/.agents/knots-sync.json\" ] && [ ! -f \"$r/.agents/harness.json\" ]; do r=\"$(dirname \"$r\")\"; done; [ -f \"$r/scripts/hooks/dispatch.sh\" ] || exit 0; exec bash \"$r/scripts/hooks/dispatch.sh\" \"$1\" \"$2\"' _ {id} {script}",
+      "kiroIde": "bash -c 'r=\"$PWD\"; while [ \"$r\" != / ] && [ ! -f \"$r/.agents/knots-sync.json\" ] && [ ! -f \"$r/.agents/harness.json\" ]; do r=\"$(dirname \"$r\")\"; done; [ -f \"$r/scripts/hooks/dispatch.sh\" ] || exit 0; exec bash \"$r/scripts/hooks/dispatch.sh\" \"$1\" \"$2\"' _ {id} {script}",
+      "kiroCli": "bash -c 'r=\"$PWD\"; while [ \"$r\" != / ] && [ ! -f \"$r/.agents/knots-sync.json\" ] && [ ! -f \"$r/.agents/harness.json\" ]; do r=\"$(dirname \"$r\")\"; done; [ -f \"$r/scripts/hooks/dispatch.sh\" ] || exit 0; exec bash \"$r/scripts/hooks/dispatch.sh\" \"$1\" \"$2\"' _ {id} {script}"
     },
     "legacyScripts": [
       "session-start.sh",

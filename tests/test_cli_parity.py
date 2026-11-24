@@ -25,11 +25,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import cli_dist  # noqa: E402
 
 KIT = cli_dist.KIT
-SETUP = KIT / "plugins/harness-kit/skills/hx-bootstrap/setup.sh"
+SETUP = KIT / "plugins/kns/skills/bootstrap/setup.sh"
 TEMPLATES = cli_dist.PLUGIN_TEMPLATES
-STATE = (".agents/harness-kit.lock", ".agents/harness-kit.json")
+STATE = (".agents/knots-sync.lock", ".agents/knots-sync.json")
 TOKEN_VARS = ("PROJECT_NAME", "PROJECT_SLUG", "PACKAGE_NS", "SERVICE_NAME", "PRIMARY_LANGUAGE", "BUILD_TOOL", "TEST_CMD", "DOMAIN_EXAMPLE", "PROTECTED_PATH")
-SELECTION_VARS = ("STACK", "ARCH", "DOMAIN", "JVM_LANG", "HARNESS_AGENTS", "HARNESS_MODULES", "HARNESS_KIT_TEMPLATES")
+SELECTION_VARS = ("STACK", "ARCH", "DOMAIN", "JVM_LANG", "HARNESS_AGENTS", "HARNESS_MODULES", "KNOTS_SYNC_TEMPLATES")
 DEFAULT_TOKENS = {"PROJECT_NAME": "Acme Notes", "PROJECT_SLUG": "acme-notes", "PACKAGE_NS": "com.acme.notes", "SERVICE_NAME": "notes-api"}
 # sed 가 다르게 읽는 문자(& · | · \)가 든 치환값(HK-10 R10.2).
 SPECIAL_TOKENS = {**DEFAULT_TOKENS, "PROJECT_NAME": "A&B | C\\D", "SERVICE_NAME": "notes&api|v2\\x"}
@@ -162,7 +162,7 @@ def lock_hashes(path: Path) -> dict[str, str | None]:
             out.setdefault(rel, sha)
         return out
     lock = json.loads(text)
-    assert lock["schema"] == "harness-kit.lock/v2", lock.get("schema")
+    assert lock["schema"] == "knots-sync.lock/v2", lock.get("schema")
     for e in lock["entries"]:
         out[e["path"]] = e.get("sha256") if e["owner"] == "kit" else None
     return out
@@ -215,13 +215,13 @@ def kit_for(root: Path, c: Case) -> tuple[Path, Path]:
     if not c.patch:
         return SETUP, TEMPLATES
     kit = root / c.name / "kit"
-    shutil.copytree(KIT / "plugins/harness-kit", kit, symlinks=True)
-    templates = kit / "skills/hx-bootstrap/templates"
+    shutil.copytree(KIT / "plugins/kns", kit, symlinks=True)
+    templates = kit / "skills/bootstrap/templates"
     for rel, extra in c.patch.items():
         (templates / rel).parent.mkdir(parents=True, exist_ok=True)
         with (templates / rel).open("a", encoding="utf-8") as handle:
             handle.write(extra)
-    return kit / "skills/hx-bootstrap/setup.sh", templates
+    return kit / "skills/bootstrap/setup.sh", templates
 
 
 def install_pair(cli: Path, root: Path, c: Case) -> Outcome:
@@ -293,7 +293,7 @@ class CliParityTest(unittest.TestCase):
                     self.fail("설치 실패(test_same_files_bytes_and_modes 참고)")
                 self.assertEqual(meta_fields(o.sh / STATE[1]), meta_fields(o.cli / STATE[1]))
                 cli_meta = json.loads((o.cli / STATE[1]).read_text(encoding="utf-8"))
-                self.assertEqual(cli_meta["schema"], "harness-kit/v2")
+                self.assertEqual(cli_meta["schema"], "knots-sync/v2")
                 self.assertTrue(cli_meta["verify"]["fullOnlyInCI"])
                 sh_lock = lock_hashes(o.sh / STATE[0])
                 cl_lock = lock_hashes(o.cli / STATE[0])
@@ -408,8 +408,8 @@ class CliBundleTest(unittest.TestCase):
         pkg = json.loads((cli_dist.CLI_DIR / "package.json").read_text(encoding="utf-8"))
         self.assertEqual(pkg["dependencies"], {})
         self.assertEqual(pkg["engines"]["node"], ">=18.3")  # util.parseArgs 가 18.3 부터 있다
-        self.assertEqual(pkg["bin"], {"harness-kit": "dist/cli.js"})
-        self.assertEqual(pkg["name"], "harness-kit")
+        self.assertEqual(pkg["bin"], {"knots-sync": "dist/cli.js"})
+        self.assertEqual(pkg["name"], "knots-sync")
 
     def test_bundle_requires_only_node_builtins(self):
         import re
@@ -422,7 +422,7 @@ class CliBundleTest(unittest.TestCase):
         self.assertTrue(os.access(self.cli, os.X_OK))
 
     def test_runs_alone_without_node_modules(self):
-        lone = self.tmp / "bin" / "harness-kit.js"
+        lone = self.tmp / "bin" / "knots-sync.js"
         lone.parent.mkdir()
         shutil.copy2(self.cli, lone)
         version = json.loads((cli_dist.CLI_DIR / "package.json").read_text(encoding="utf-8"))["version"]

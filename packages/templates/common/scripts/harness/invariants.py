@@ -10,7 +10,7 @@
 | 근거 없는 불변식 | INV-n 근거 칸이 비었거나 requirements · Intent 에 없는 ID 를 가리킨다 | MEDIUM |
 | 답 없는 엣지 질문 | 엣지 케이스 질문 표의 답 · 출처 칸이 비었다 | HIGH |
 
-/hx-analyze 가 이 결과를 보고서에 옮긴다. 읽기만 한다. 모델을 부르지 않는다. HIGH 나 MEDIUM 이 있으면 exit 1.
+/kns-analyze 가 이 결과를 보고서에 옮긴다. 읽기만 한다. 모델을 부르지 않는다. HIGH 나 MEDIUM 이 있으면 exit 1.
 """
 
 from __future__ import annotations
@@ -129,7 +129,7 @@ def locate(root: Path, target: str) -> Path:
 
 def harness_root(start: Path) -> Path:
     for folder in (start.resolve(), *start.resolve().parents):
-        if (folder / ".agents/harness-kit.json").is_file() or (folder / ".agents/harness.json").is_file():
+        if (folder / ".agents/knots-sync.json").is_file() or (folder / ".agents/harness.json").is_file():
             return folder
     return start.resolve()
 

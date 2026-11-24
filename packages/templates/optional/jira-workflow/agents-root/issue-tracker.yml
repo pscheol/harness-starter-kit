@@ -6,7 +6,7 @@
 #   표시 이름("진행 중")은 번역·워크플로 수정으로 바뀐다. 바뀌면 자동화가 실패하는 게 아니라
 #   **조용히 엉뚱한 상태로 옮긴다.** 그게 이 파일이 존재하는 이유다.
 #
-# ★ TBD 가 하나라도 남아 있으면 /hx-issue 는 **읽기만** 한다(상태를 바꾸지 않는다).
+# ★ TBD 가 하나라도 남아 있으면 /kns-issue 는 **읽기만** 한다(상태를 바꾸지 않는다).
 #   값을 채우기 전에 자동 전이를 켜지 않는다.
 
 tracker: TBD                 # jira | github | linear | …
@@ -19,7 +19,7 @@ issueKeyPattern: TBD         # 예: ABC-[0-9]+
 # ── 트래커에 어떻게 닿는가 ─────────────────────────────────────────────────
 # 이 킷은 규약과 설정만 준다. **실제 호출 수단은 프로젝트가 붙인다.**
 # 여기가 TBD 면 에이전트는 "연동 수단이 없다"고 보고하고 트래커를 부르지 않는다
-# (추측으로 API 를 때리지 않는다). 채우는 절차는 hx-jira-setup 스킬.
+# (추측으로 API 를 때리지 않는다). 채우는 절차는 kns:jira-setup 스킬.
 access:
   method: TBD                # mcp | cli | rest | none
   # method=mcp  — 그 하네스에 붙인 MCP 서버 이름. 도구 이름은 서버가 알려 준다
@@ -48,8 +48,8 @@ transitionIds:
   inProgressToTodo: TBD      # 착수 철회(락 해제와 함께)
 
 # ── v2: 킷 단계 ↔ Jira 상태(설계 10 §3.4) ─────────────────────────────────
-# 킷 단계 여덟 개를 이 프로젝트 워크플로의 상태 ID 에 맞춘다(hx-jira-setup 이 REST 로 읽어 채운다).
-# 위 statusIds · transitionIds 는 /hx-issue 의 v1 단품 조작용으로 그대로 둔다(inReview = verifying).
+# 킷 단계 여덟 개를 이 프로젝트 워크플로의 상태 ID 에 맞춘다(kns:jira-setup 이 REST 로 읽어 채운다).
+# 위 statusIds · transitionIds 는 /kns-issue 의 v1 단품 조작용으로 그대로 둔다(inReview = verifying).
 statusMap:
   backlog: TBD
   requirements-draft: TBD
@@ -61,7 +61,7 @@ statusMap:
   deployed: TBD
 
 # 사람만 하는 전이: "<이전 상태 ID>>이동 상태 ID": 게이트 이름. 이 전이는 에이전트도 `sync jira` 도 하지 않는다(MD-R14).
-# 사람이 Jira 에서 옮긴 기록만 `npx harness-kit sync jira --approvals` 가 approvals.md 로 가져온다.
+# 사람이 Jira 에서 옮긴 기록만 `npx knots-sync sync jira --approvals` 가 approvals.md 로 가져온다.
 approvalTransitions: {}
   # "<requirements-review ID>><design ID>": requirements
   # "<design ID>><implementing ID>": design
@@ -70,7 +70,7 @@ approvalTransitions: {}
 
 issueTypes: { contract: Task, integration: Task, feature: Story, bug: Bug, bolt: Sub-task }
 
-# harness-kit.json 의 groups → Jira 그룹. 워크플로 조건(승인 전이를 그 그룹만)에 쓴다.
+# knots-sync.json 의 groups → Jira 그룹. 워크플로 조건(승인 전이를 그 그룹만)에 쓴다.
 groupMap: { po: jira-po, dev: jira-dev, qa: jira-qa, ops: jira-ops }
 
 # 동기화 수단: rest | mcp | none. none 이면 `sync jira` 는 아무것도 하지 않고, 보드는 킷 단계의 여덟 상태로 돈다(MD-R15).

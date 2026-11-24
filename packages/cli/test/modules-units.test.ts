@@ -32,7 +32,7 @@ function fixture(): string {
     ...(i === 4 ? { exclude: ["scripts/release/**"] } : {}),
   }));
   const files: Record<string, string> = {
-    "tools/harness/units.json": `${JSON.stringify({ schema: "harness-kit.deploy-units/v1", units }, null, 2)}\n`,
+    "tools/harness/units.json": `${JSON.stringify({ schema: "knots-sync.deploy-units/v1", units }, null, 2)}\n`,
     "tools/harness/shared/a/b.md": "a/b {{UNIT_ID}}\n",
     "tools/harness/shared/a-b/c.md": "a-b/c {{UNIT_TITLE}} {{UNIT_STACK}} {{UNIT_PATH}}\n",
     "tools/harness/shared/guide.md": "줄바꿈\r\n테스트 {{UNIT_ID}}\r\n",
@@ -114,7 +114,7 @@ describe("sync units — sync.py 와 같은 결과(MD-R16)", () => {
   it("단위 lock 에 layer unit:<id> 항목을 남기고, 사람이 고친 파일은 .new 로 옆에 둔다", async () => {
     const repo = fixture();
     expect((await ts(repo, [])).code).toBe(0);
-    const lock = JSON.parse(readFile(repo, unitFile(2, ".agents/harness-kit.lock")));
+    const lock = JSON.parse(readFile(repo, unitFile(2, ".agents/knots-sync.lock")));
     const mine = lock.entries.filter((e: { layer: string }) => e.layer === "unit:knots-domain-02");
     expect(mine.map((e: { path: string }) => e.path)).toContain("a/b.md");
     expect(mine.every((e: { owner: string; op: string }) => e.owner === "kit" && e.op === "copy")).toBe(true);

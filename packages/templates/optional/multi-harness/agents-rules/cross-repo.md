@@ -9,7 +9,7 @@ paths:
 
 # 리포 간 조율 — 상위 리포 + 도메인 submodule
 
-기능 하나가 도메인 리포 둘 이상을 건드릴 때의 순서다. 공통 하네스는 `npx harness-kit sync units` 로 단위(배포 대상 폴더, `tools/harness/units.json`)마다 복사한다. 이 단위는 Intent 의 Unit 과 다른 것이다. Intent Unit 의 `repo` 값이 배포 단위 `id` 다.
+기능 하나가 도메인 리포 둘 이상을 건드릴 때의 순서다. 공통 하네스는 `npx knots-sync sync units` 로 단위(배포 대상 폴더, `tools/harness/units.json`)마다 복사한다. 이 단위는 Intent 의 Unit 과 다른 것이다. Intent Unit 의 `repo` 값이 배포 단위 `id` 다.
 
 | 단계 | 하는 일 |
 |---|---|

@@ -161,14 +161,14 @@ def normalized(outcomes, root):
         entry = {"id": outcome["id"], "category": outcome["category"], **outcome.pop("entry", {})}
         outcome["normalized"], found = normalize_document(document, entry, root, mirror=folder)
         for run in outcome["normalized"].get("runs", []):
-            run.setdefault("automationDetails", {"id": f"harness-kit/{outcome['id']}/"})
+            run.setdefault("automationDetails", {"id": f"knots-sync/{outcome['id']}/"})
         outcome["properties"] = {key: value for run in document.get("runs", []) for key, value in (run.get("properties") or {}).items()}
         findings.extend(found)
     return findings
 
 
 def run_analyzers(entries, level, files, root, gate, environ):
-    with tempfile.TemporaryDirectory(prefix="hx-analysis-") as scratch:
+    with tempfile.TemporaryDirectory(prefix="kns-analysis-") as scratch:
         jobs = [Job(entry, level, files, root, Path(scratch), gate, environ) for entry in entries]
         with ThreadPoolExecutor(max_workers=WORKERS) as pool:
             outcomes = list(pool.map(lambda job: job.run(), jobs))

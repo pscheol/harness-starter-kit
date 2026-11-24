@@ -68,7 +68,7 @@ describe("이슈 키 접두(setup.sh · sdd_keys.derive_prefix 와 같다)", () 
 
   it("2.0.0-alpha 가 킷 값으로 쓴 ACME-NOTES 는 읽을 때 고치고, 사람이 정한 값은 둔다", () => {
     const dir = tmpDir();
-    const file = path.join(dir, "harness-kit.json");
+    const file = path.join(dir, "knots-sync.json");
     const write = (issueKey: Record<string, string>): void =>
       fs.writeFileSync(file, JSON.stringify({ ...buildMeta({ version: "2.0.0-alpha.0", selection: SELECTION, tokens: TOKENS, issue: {}, base: undefined, today: "2026-11-23" }), issueKey }));
     write({ source: "kit", prefix: "ACME-NOTES" });
@@ -85,7 +85,7 @@ describe("메타 v2", () => {
 
   it("v1.1 기본값과 README §5 순서", () => {
     expect(meta).toMatchObject({
-      schema: "harness-kit/v2",
+      schema: "knots-sync/v2",
       kit: { version: "2.0.0-alpha.0" },
       project: { name: "Acme Notes", slug: "acme-notes" },
       issueKey: { source: "kit", prefix: "ACMENOTES" },
@@ -122,7 +122,7 @@ describe("메타 v2", () => {
 
   it("읽기: v2 · v1(setup.sh) · 없음 · 깨짐", () => {
     const dir = tmpDir();
-    const file = path.join(dir, "harness-kit.json");
+    const file = path.join(dir, "knots-sync.json");
     expect(readMeta(file).status).toBe("missing");
     fs.writeFileSync(file, serializeMeta(meta));
     const v2 = readMeta(file);
@@ -136,7 +136,7 @@ describe("메타 v2", () => {
     if (v1.status !== "ok") return;
     expect(v1.schema).toBe("v1");
     expect(v1.meta).toMatchObject({
-      schema: "harness-kit/v2",
+      schema: "knots-sync/v2",
       kit: { version: "1.0.8" },
       project: { name: "Acme Notes", slug: "acme-notes" },
       issueKey: { source: "kit", prefix: "ACMENOTES" },
@@ -146,17 +146,17 @@ describe("메타 v2", () => {
     });
     fs.writeFileSync(file, "{ 깨진");
     expect(readMeta(file).status).toBe("invalid");
-    fs.writeFileSync(file, JSON.stringify({ schema: "harness-kit/v9" }));
+    fs.writeFileSync(file, JSON.stringify({ schema: "knots-sync/v9" }));
     expect(readMeta(file).status).toBe("invalid");
-    fs.writeFileSync(file, JSON.stringify({ schema: "harness-kit/v2", stack: 3 }));
+    fs.writeFileSync(file, JSON.stringify({ schema: "knots-sync/v2", stack: 3 }));
     expect(readMeta(file).status).toBe("invalid");
   });
 });
 
 describe("lock", () => {
   const lock: LockV2 = {
-    schema: "harness-kit.lock/v2",
-    kit: { version: "2.0.0", source: "npm:harness-kit@2.0.0" },
+    schema: "knots-sync.lock/v2",
+    kit: { version: "2.0.0", source: "npm:knots-sync@2.0.0" },
     packs: [],
     entries: [
       { path: "b.md", op: "copy", owner: "kit", sha256: "b".repeat(64), layer: "common" },
@@ -207,8 +207,8 @@ describe("lock", () => {
 
   it("해석할 수 없는 lock 은 거부한다", () => {
     expect(() => parseLockText("# harness-kit lock v1\nabc\tcommon\n")).toThrow();
-    expect(() => parseLockText('{"schema": "harness-kit.lock/v9", "entries": []}')).toThrow();
-    expect(() => parseLockText('{"schema": "harness-kit.lock/v2", "entries": [{"op": "copy"}]}')).toThrow();
+    expect(() => parseLockText('{"schema": "knots-sync.lock/v9", "entries": []}')).toThrow();
+    expect(() => parseLockText('{"schema": "knots-sync.lock/v2", "entries": [{"op": "copy"}]}')).toThrow();
     expect(() => parseLockText("")).toThrow();
   });
 });

@@ -49,7 +49,7 @@ round: 1
 class CodebaseTest(SddCase):
     def setUp(self):
         super().setUp()
-        meta = self.root / ".agents/harness-kit.json"
+        meta = self.root / ".agents/knots-sync.json"
         data = json.loads(meta.read_text())
         meta.write_text(json.dumps({**data, "stack": "python"}))
         shutil.rmtree(self.root / ".agents/docs/intents", ignore_errors=True)

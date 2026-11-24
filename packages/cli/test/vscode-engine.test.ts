@@ -25,7 +25,7 @@ describe(".vscode/settings.json 병합", () => {
     const { target, r } = await initWith(projectionTemplates(), "all", { pre });
     expect(r.code, r.stdout).toBe(0);
     expect(readText(target, ".vscode/settings.json")).toBe('{\n  // 팀 규칙\n  "editor.tabSize": 2,\n  "files.eol": "\\n",\n  "git.detectWorktrees": true\n}\n');
-    const lock = JSON.parse(readText(target, ".agents/harness-kit.lock")) as { entries: { path: string; op: string; keys?: string[] }[] };
+    const lock = JSON.parse(readText(target, ".agents/knots-sync.lock")) as { entries: { path: string; op: string; keys?: string[] }[] };
     expect(lock.entries.find((e) => e.path === ".vscode/settings.json")).toMatchObject({ op: "merge", keys: ["jsonc:git.detectWorktrees"] });
   });
 
@@ -40,7 +40,7 @@ describe(".vscode/settings.json 병합", () => {
   it("git.ide 기본값(code)만으로는 .vscode 를 만들지 않는다", async () => {
     const { target, r } = await initWith(projectionTemplates());
     expect(r.code).toBe(0);
-    const meta = JSON.parse(readText(target, ".agents/harness-kit.json")) as { git?: { ide?: string } };
+    const meta = JSON.parse(readText(target, ".agents/knots-sync.json")) as { git?: { ide?: string } };
     expect(meta.git?.ide).toBe("code");
     expect(fs.existsSync(path.join(target, ".vscode"))).toBe(false);
   });
@@ -92,7 +92,7 @@ describe(".vscode/settings.json 병합", () => {
     fs.copyFileSync(path.join(target, "scripts/harness/projection.json"), path.join(dir, "scripts/harness/projection.json"));
     writeTree(dir, { ".vscode/settings.json": '{\n  "a": 1\n}\n' });
     const agents = ["claude", "codex", "cursor", "kiro"];
-    const meta = JSON.parse(fs.readFileSync(path.join(dir, ".agents/harness-kit.json"), "utf8")) as { tokens?: Record<string, string> };
+    const meta = JSON.parse(fs.readFileSync(path.join(dir, ".agents/knots-sync.json"), "utf8")) as { tokens?: Record<string, string> };
     const ts = planRecords(buildContext({ view: new FsView(dir), spec: loadSpec(templates), tokens: { ...(meta.tokens ?? {}), PROTECTED_PATH: "docs/references" }, agents }));
     const py = python([path.join(PY_DIR, "projection.py"), "plan", "--root", dir, "--agents", agents.join(","), "--token", "PROTECTED_PATH=docs/references", "--json"]);
     expect(py.code, py.stdout + py.stderr).toBe(0);
@@ -104,7 +104,7 @@ describe(".vscode/settings.json 병합", () => {
   it("wantsVscode: .vscode 폴더만 본다", () => {
     const dir = tmpDir("hk-vsc-w-");
     expect(wantsVscode({ view: new FsView(dir) })).toBe(false);
-    writeTree(dir, { ".agents/harness-kit.json": JSON.stringify({ git: { ide: "code" } }) });
+    writeTree(dir, { ".agents/knots-sync.json": JSON.stringify({ git: { ide: "code" } }) });
     expect(wantsVscode({ view: new FsView(dir) })).toBe(false);
     writeTree(dir, { ".vscode/x.json": "{}" });
     expect(wantsVscode({ view: new FsView(dir) })).toBe(true);

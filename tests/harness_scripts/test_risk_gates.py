@@ -20,7 +20,7 @@ from harness.sdd_frontmatter import update  # noqa: E402
 class RiskGateTest(SddCase):
     def setUp(self):
         super().setUp()
-        meta = self.root / ".agents/harness-kit.json"
+        meta = self.root / ".agents/knots-sync.json"
         data = json.loads(meta.read_text())
         meta.write_text(json.dumps({**data, "flow": {"gates": ["requirements", "design", "tasks", "mr", "done"]}}))
         self.assert_ok(self.run_script("new-feature.sh", "--next", "card-payment", "--area", "payment"))

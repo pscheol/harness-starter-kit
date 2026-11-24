@@ -16,15 +16,15 @@ import { parseRule, renderKiroRule } from "../projection/render";
 import type { ProjectionSpec } from "../projection/spec";
 
 export const LOCAL_DIR = ".agents/local";
-export const LOCAL_CONFIG = `${LOCAL_DIR}/harness-kit.local.json`;
-export const LOCAL_LOCK = `${LOCAL_DIR}/harness-kit.local.lock`;
+export const LOCAL_CONFIG = `${LOCAL_DIR}/knots-sync.local.json`;
+export const LOCAL_LOCK = `${LOCAL_DIR}/knots-sync.local.lock`;
 export const LOCAL_HOOKS = `${LOCAL_DIR}/hooks.json`;
 export const SETTINGS_LOCAL = ".claude/settings.local.json";
 export const LOCAL_MODEL_POLICY = `${LOCAL_DIR}/model-policy.local.json`;
 const TIERS = ["light", "standard", "deep"];
-const LOCAL_LOCK_SCHEMA = "harness-kit.local-lock/v1";
-const EXCLUDE_BEGIN = "# harness-kit local begin";
-const EXCLUDE_END = "# harness-kit local end";
+const LOCAL_LOCK_SCHEMA = "knots-sync.local-lock/v1";
+const EXCLUDE_BEGIN = "# knots-sync local begin";
+const EXCLUDE_END = "# knots-sync local end";
 
 export interface LocalConfig {
   /** 받은 값: roles.<역할>.harness · git.ide */

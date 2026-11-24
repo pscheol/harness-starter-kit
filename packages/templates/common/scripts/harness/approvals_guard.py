@@ -85,7 +85,7 @@ def logged_ids(root):
 
 def policy(root):
     try:
-        meta = json.loads((Path(root) / ".agents/harness-kit.json").read_text(encoding="utf-8"))
+        meta = json.loads((Path(root) / ".agents/knots-sync.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         meta = {}
     return approvals.policy_of(meta)
@@ -174,13 +174,13 @@ def staged_paths(root, pathspec):
 
 # ── fast(base merge-base → 작업 트리) ────────────────────────────────────────
 def base_reference(root):
-    """(merge-base, 이름) 또는 (None, None). HX_BASE_REF → origin/<git.base>."""
+    """(merge-base, 이름) 또는 (None, None). KNS_BASE_REF → origin/<git.base>."""
     try:
-        meta = json.loads((Path(root) / ".agents/harness-kit.json").read_text(encoding="utf-8"))
+        meta = json.loads((Path(root) / ".agents/knots-sync.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         meta = {}
     base = str(((meta.get("git") or {}) if isinstance(meta.get("git"), dict) else {}).get("base") or "develop")
-    for ref in (os.environ.get("HX_BASE_REF"), f"origin/{base}"):
+    for ref in (os.environ.get("KNS_BASE_REF"), f"origin/{base}"):
         if not ref:
             continue
         merge_base = (git(root, "merge-base", ref, "HEAD") or "").strip()

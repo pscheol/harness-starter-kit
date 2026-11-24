@@ -222,7 +222,7 @@ def board_json(root):
                 "key": key, "name": name, "folder": label(root, spec), "area": area, "type": kind, "requirements": statuses[0],
                 "design": statuses[1], "tasks": state if state in TASK_STATES else None, "state": state, "legacy": True, "number": number,
             })
-    return {"schema": "harness-kit.board/v1", "issues": items}
+    return {"schema": "knots-sync.board/v1", "issues": items}
 
 
 def render_area(root, area):

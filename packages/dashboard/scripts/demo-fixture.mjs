@@ -37,8 +37,8 @@ const git = (...a) => {
 const fm = (o) => `---\n${Object.entries(o).map(([k, v]) => `${k}: ${v}`).join("\n")}\n---\n`;
 
 fs.cpSync(path.join(KIT, "packages/templates/common/scripts"), path.join(root, "scripts"), { recursive: true, filter: (s) => !s.includes("__pycache__") });
-write(root, ".agents/harness-kit.json", {
-  schema: "harness-kit/v2", kit: { version: "2.0.0-alpha.0" }, project: { name: "knots-platform", slug: "knots-platform" }, stack: "python", arch: "layered", domain: "backend",
+write(root, ".agents/knots-sync.json", {
+  schema: "knots-sync/v2", kit: { version: "2.0.0-alpha.0" }, project: { name: "knots-platform", slug: "knots-platform" }, stack: "python", arch: "layered", domain: "backend",
   agents: ["claude", "codex", "kiro"], modules: [], flow: { design: "kit", record: "none", gates: ["intent", "plans", "requirements", "design", "tasks", "mr", "done", "deploy"] },
   roles: { design: { harness: "claude" }, implement: { harness: "claude" }, review: { harness: "codex" }, docs: { harness: "kiro" } },
   approvers: { requirements: ["po"], design: ["dev"], mr: ["dev"] }, groups: { po: ["jiyoon@acme.dev"], dev: ["jiyoon@acme.dev", "junho@acme.dev"] },
@@ -62,7 +62,7 @@ issue("KNOTS-21", "payment-methods", "결제수단 등록", "payment", { require
 issue("KNOTS-19", "old-parity", "데스크톱 동등성", "desktop", { requirements: "approved", design: "approved", tasks: "completed" });
 const INT = ".agents/docs/intents/INT-7-pay-reform";
 write(root, `${INT}/intent.md`, `${fm({ key: "INT-7", title: "결제 개편", status: "approved" })}\n# 결제 개편\n`);
-write(root, `${INT}/units.json`, { schema: "harness-kit.units/v1", intent: { key: "INT-7", title: "결제 개편", doc: "intent.md" }, source: { kind: "kit" }, units: [
+write(root, `${INT}/units.json`, { schema: "knots-sync.units/v1", intent: { key: "INT-7", title: "결제 개편", doc: "intent.md" }, source: { kind: "kit" }, units: [
   { id: "U-4", title: "API 결제 이벤트", kind: "contract", area: "payments", dependsOn: [], order: 1, issue: null, planned: true, provides: ["api:payments.v2"] },
   { id: "U-1", title: "결제수단 등록", kind: "feature", area: "payment", dependsOn: ["U-4"], order: 2, issue: "KNOTS-21", planned: true, stories: ["S-1", "S-2", "S-3", "S-4"] },
   { id: "U-2", title: "정산 주기와 지급", kind: "feature", area: "settlement", dependsOn: ["U-1"], order: 3, issue: null, planned: true, stories: ["S-5", "S-6"] },
@@ -154,9 +154,9 @@ mr: null
 ## 적용하지 않는 경우
 
 `);
-write(root, ".agents/deploy.json", { schema: "harness-kit.deploy/v1", envs: { verify: { kind: "verification", url: "https://verify.example.internal" }, production: { kind: "production" } }, commands: {}, autoVerify: { enabled: true, env: "verify", maxConsecutiveFailures: 2, timeoutSec: 1800 } });
-write(root, ".agents/reports/deploy/auto-verify-4c1d9e0.json", { schema: "harness-kit.auto-verify/v1", sha: "4c1d9e0", env: "verify", status: "stopped", reason: "연속 2회 실패 — 사람이 HX_DEPLOY_RESUME=true 로 파이프라인을 수동 실행해야 다시 배포한다", steps: [], consecutiveFailures: 2, lastPassedSha: "77c0e1a", seq: 3, startedAt: "2026-11-24T09:00:00+09:00", finishedAt: "2026-11-24T09:00:05+09:00" });
-write(root, ".agents/docs/ops/metrics-baseline.json", { schema: "harness-kit.delivery-baseline/v1", range: { from: "2026-08-25", to: "2026-11-23", base: "develop", headSha: "a1b2c3d" }, inputDigest: "sha256:demo", metrics: {
+write(root, ".agents/deploy.json", { schema: "knots-sync.deploy/v1", envs: { verify: { kind: "verification", url: "https://verify.example.internal" }, production: { kind: "production" } }, commands: {}, autoVerify: { enabled: true, env: "verify", maxConsecutiveFailures: 2, timeoutSec: 1800 } });
+write(root, ".agents/reports/deploy/auto-verify-4c1d9e0.json", { schema: "knots-sync.auto-verify/v1", sha: "4c1d9e0", env: "verify", status: "stopped", reason: "연속 2회 실패 — 사람이 KNS_DEPLOY_RESUME=true 로 파이프라인을 수동 실행해야 다시 배포한다", steps: [], consecutiveFailures: 2, lastPassedSha: "77c0e1a", seq: 3, startedAt: "2026-11-24T09:00:00+09:00", finishedAt: "2026-11-24T09:00:05+09:00" });
+write(root, ".agents/docs/ops/metrics-baseline.json", { schema: "knots-sync.delivery-baseline/v1", range: { from: "2026-08-25", to: "2026-11-23", base: "develop", headSha: "a1b2c3d" }, inputDigest: "sha256:demo", metrics: {
   leadTimeHours: { median: 96.5, p85: 210, n: 41, method: "git" }, changeFailureRate: { value: 0.12, n: 17, method: "git" }, mttrHours: { median: 5.2, p85: null, n: 2, method: "git" }, approvalWaitHours: { median: null, p85: null, n: 0, method: "unavailable" }, reworkRate: { value: 0.18, n: 41, method: "git" } }, createdAt: "2026-11-23T12:00:00+09:00" });
 git("init", "-q", "-b", "develop");
 git("config", "user.email", "jiyoon@acme.dev");
@@ -168,7 +168,7 @@ const pidStart = spawnSync("ps", ["-o", "lstart=", "-p", "1"], { encoding: "utf8
 const sessionDir = ".agents/state/sessions";
 write(root, `${sessionDir}/api-worker.json`, { id: "api-worker", name: "api-worker", harness: "claude", role: "implement", issue: "KNOTS-21", pid: 1, pidStartedAt: pidStart, cwd: root, turn: "working", startedAt: new Date().toISOString(), lastSeenAt: new Date().toISOString(), permissionMode: "acceptEdits", inbox: null });
 write(root, `${sessionDir}/design-desk.json`, { id: "design-desk", name: "design-desk", harness: "claude", role: "design", issue: "KNOTS-12", pid: 1, pidStartedAt: pidStart, cwd: root, turn: "idle", startedAt: new Date().toISOString(), lastSeenAt: new Date().toISOString(), inbox: null });
-write(root, ".agents/state/dispatch-queue/01JDEMO0000000000000000001.json", { schema: "harness-kit.dispatch/v1", id: "01JDEMO0000000000000000001", createdAt: new Date().toISOString(), createdBy: "jiyoon@acme.dev", target: { issue: "KNOTS-17", role: "docs", harness: "any" }, kind: "doc-changed", message: "[harness-kit 관리 페이지] KNOTS-17 문서를 사람이 고쳤다. 이 글은 승인이 아니다.", paths: [".agents/docs/issues/KNOTS-17/design.md"], expiresAt: new Date(Date.now() + 7 * 864e5).toISOString() });
+write(root, ".agents/state/dispatch-queue/01JDEMO0000000000000000001.json", { schema: "knots-sync.dispatch/v1", id: "01JDEMO0000000000000000001", createdAt: new Date().toISOString(), createdBy: "jiyoon@acme.dev", target: { issue: "KNOTS-17", role: "docs", harness: "any" }, kind: "doc-changed", message: "[knots-sync 관리 페이지] KNOTS-17 문서를 사람이 고쳤다. 이 글은 승인이 아니다.", paths: [".agents/docs/issues/KNOTS-17/design.md"], expiresAt: new Date(Date.now() + 7 * 864e5).toISOString() });
 write(root, ".agents/state/verify-last.json", { level: "changed", status: "failed", startedAt: new Date(Date.now() - 140000).toISOString(), finishedAt: new Date().toISOString(), durationMs: 134000, exitCode: 1, head: { sha: "abc1234" }, steps: [
   { label: "구조 · SDD 상태", status: "passed", durationMs: 600 }, { label: "배치 검사", status: "passed", durationMs: 500 }, { label: "포맷", status: "passed", durationMs: 3200 }, { label: "컴파일 · payment 모듈", status: "passed", durationMs: 31300 },
   { label: "연결된 테스트 14개", status: "passed", durationMs: 62400 }, { label: "비밀값", status: "failed", durationMs: 1900 }, { label: "품질 · 복잡도", status: "failed", durationMs: 15400 }] });
@@ -178,7 +178,7 @@ write(root, ".agents/reports/quality-gate-last.json", { status: "failed", mode: 
 write(root, ".agents/reports/findings-latest.json", { at: new Date().toISOString(), head: "abc1234", branch: "feat/KNOTS-21-payment-methods", level: "changed", analyzers: { gitleaks: "ran", pmd: "ran" }, findings: [
   { severity: "CRITICAL", check: "secret", title: "PG 시크릿 키가 설정 파일에 있다", path: "payment/src/main/resources/application-local.yml", line: 14, new: true }, { severity: "MEDIUM", check: "complexity", title: "복잡도 18 · PaymentMethodSelector.resolve()", path: "payment/PaymentMethodSelector.kt", line: 52, new: true }, { severity: "LOW", check: "style", title: "긴 줄", path: "payment/PaymentLogger.kt", line: 41, new: false }] });
 const review = { issue: "KNOTS-18", mr: "#231", head: "abc1234", findings: [{ id: "F-1", severity: "HIGH", check: "RV-EDGE", path: "README.md", line: 1, fp: "ab".repeat(32), title: "위험 수용인지 수정인지 정한다" }, { id: "F-2", severity: "MEDIUM", check: "RV-NAME", path: "README.md", line: 2, fp: "cd".repeat(32), title: "이름" }] };
-write(root, ".agents/reports/review/KNOTS-18.md", `---\nissue: KNOTS-18\n---\n\n<!-- harness-kit:review-data ${JSON.stringify(review)} -->\n`);
+write(root, ".agents/reports/review/KNOTS-18.md", `---\nissue: KNOTS-18\n---\n\n<!-- knots-sync:review-data ${JSON.stringify(review)} -->\n`);
 
 // 스킬 · 대화 기록(이 컴퓨터)
 const skill = (rel, name, desc, extra = "") => write(home, `${rel}/${name}/SKILL.md`, `---\nname: ${name}\ndescription: ${desc}\n${extra}---\n\n본문\n`);
@@ -188,12 +188,12 @@ skill(".claude/skills", "impeccable", "대시보드 · 앱 화면의 디자인 �
 skill(".claude/skills", "code-review", "Review code for quality and security");
 skill(".claude/skills", "tdd-guide", "Test-driven development: write tests first");
 skill(".claude/skills", "korea-weather", "Korea weather forecast by region");
-skill(".claude/skills", "hx-demo", "킷 스킬", "metadata:\n  hx-stages: [design]\n");
+skill(".claude/skills", "kns-demo", "킷 스킬", "metadata:\n  kns-stages: [design]\n");
 fs.symlinkSync(path.join(home, ".agents/skills/service-planning-agent"), path.join(home, ".claude/skills/service-planning-agent"));
 skill(".kiro/skills", "docs-keeper", "Update documentation, readme and changelog");
-write(root, ".agents/skill-map.json", { schema: "harness-kit.skill-map/v1", stages: { design: { "screen-plan": ["service-planning-agent", "impeccable"], requirements: ["pm-execution:create-prd"] }, verify: { review: ["code-review"] } }, commands: { "/hx-screen-plan": { slots: ["design.screen-plan"], fallback: "template:plans/screens" }, "/hx-intent": { slots: ["design.requirements"], fallback: "builtin" }, "/hx-review": { slots: ["verify.review"], fallback: "builtin", mode: "advisory" } }, exclude: [] });
-write(home, ".config/harness-kit/config.json", { history: "on", usage: { warnAt: 0.8 } });
-write(home, ".config/harness-kit/projects.json", { schema: "harness-kit.projects/v1", projects: [{ path: root, name: "knots-platform", addedAt: "2026-11-02" }, { path: path.join(realOut, "gone-admin"), name: "old-admin", addedAt: "2026-09-02" }] });
+write(root, ".agents/skill-map.json", { schema: "knots-sync.skill-map/v1", stages: { design: { "screen-plan": ["service-planning-agent", "impeccable"], requirements: ["pm-execution:create-prd"] }, verify: { review: ["code-review"] } }, commands: { "/kns-screen-plan": { slots: ["design.screen-plan"], fallback: "template:plans/screens" }, "/kns-intent": { slots: ["design.requirements"], fallback: "builtin" }, "/kns-review": { slots: ["verify.review"], fallback: "builtin", mode: "advisory" } }, exclude: [] });
+write(home, ".config/knots-sync/config.json", { history: "on", usage: { warnAt: 0.8 } });
+write(home, ".config/knots-sync/projects.json", { schema: "knots-sync.projects/v1", projects: [{ path: root, name: "knots-platform", addedAt: "2026-11-02" }, { path: path.join(realOut, "gone-admin"), name: "old-admin", addedAt: "2026-09-02" }] });
 const enc = (d) => d.replace(/[^A-Za-z0-9]/g, "-");
 const noon = (daysAgo) => {
   const d = new Date();

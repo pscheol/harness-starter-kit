@@ -19,7 +19,7 @@ created: {{CREATED}}
 > 가이드: design은 requirements를 "어떻게" 구현할지 확정한다. 구현자가 추측 없이
 > 코딩할 수 있을 만큼 인터페이스·데이터·오류·테스트를 구체화한다.
 > 선택한 방식과 **버린 대안의 이유**를 함께 적는다. 문체는 `.agents/rules/writing-style.md`.
-> **선행 조건**: requirements에 미해결 `[NEEDS CLARIFICATION]`이 남아 있으면 설계를 시작하지 말고 `/hx-clarify`로 되돌린다.
+> **선행 조건**: requirements에 미해결 `[NEEDS CLARIFICATION]`이 남아 있으면 설계를 시작하지 말고 `/kns-clarify`로 되돌린다.
 > 상태는 문서 머리의 `status` 하나다. 사용자 승인 전에는 `draft` 또는 `in-review`, 승인 후 `approved`로 바꾼다. `approved`만 tasks 생성 게이트를 통과한다.
 
 ## 1. Overview
@@ -242,7 +242,7 @@ stateDiagram-v2
 
 ### 11.1 Quickstart (end-to-end 검증 시나리오 · 필수)
 
-> 이 기능이 완성됐음을 사람이 직접 확인하는 최단 경로. tasks의 Polish 단계와 `/hx-analyze`가 이 시나리오를 참조한다.
+> 이 기능이 완성됐음을 사람이 직접 확인하는 최단 경로. tasks의 Polish 단계와 `/kns-analyze`가 이 시나리오를 참조한다.
 
 - **선행**: (필요한 데이터·계정·환경 — 예: 시드 데이터, 인증된 테스트 계정)
 - **실행**: (순서대로 밟을 명령/요청 — 예: `POST /api/v1/... ` → `GET /api/v1/...`)
@@ -311,7 +311,7 @@ stateDiagram-v2
 
 ## 15. Open Questions
 
-- [ ] (미해결 — 추측 금지. 남으면 `/hx-clarify`로 requirements를 먼저 갱신)
+- [ ] (미해결 — 추측 금지. 남으면 `/kns-clarify`로 requirements를 먼저 갱신)
 
 ## 16. 요구사항 추적 매트릭스
 
@@ -328,7 +328,7 @@ stateDiagram-v2
 - [ ] 보안/접근 제어·오류·테스트 전략이 구체적인가
 - [ ] Quickstart(end-to-end 검증 시나리오)가 정의되었는가
 - [ ] 정확성 속성(PBT)이 정의되었는가
-- [ ] 미해결 `[NEEDS CLARIFICATION]`이 없는가(있으면 `/hx-clarify`로 복귀)
+- [ ] 미해결 `[NEEDS CLARIFICATION]`이 없는가(있으면 `/kns-clarify`로 복귀)
 - [ ] 순서도(§4.3)·상태 전이(§4.4)·쿼리→인덱스(§7.1)·캐시(§7.2)·동시성(§7.3)이 채워졌는가(해당 없음은 이유 한 줄)
 - [ ] §13.1 · §13.2가 채워졌고 롤백 판단 기준이 숫자로 있는가
 - [ ] §13.3 항목마다 체크 또는 해당 없음 이유가 있는가

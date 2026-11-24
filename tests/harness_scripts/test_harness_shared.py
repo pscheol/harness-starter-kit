@@ -270,8 +270,8 @@ class SharedHarnessTest(unittest.TestCase):
         self.assert_fails(self.check(), "orphan")
 
     def test_skill_without_agent_copy_fails(self):
-        shutil.rmtree(self.root / ".claude/skills/hx-plan")
-        self.assert_fails(self.check(), ".claude/skills/hx-plan/SKILL.md: missing skill copy")
+        shutil.rmtree(self.root / ".claude/skills/kns-plan")
+        self.assert_fails(self.check(), ".claude/skills/kns-plan/SKILL.md: missing skill copy")
 
     def test_kiro_resource_cannot_escape(self):
         agent = self.root / ".kiro/agents/worker.json"
@@ -424,7 +424,7 @@ def approve(path):
 
 def issue_prefix(root):
     """설치 메타의 issueKey.prefix. 없으면 new-feature.sh 와 같은 규칙으로 PROJECT_SLUG · 단위 이름에서 만든다."""
-    meta = root / ".agents/harness-kit.json"
+    meta = root / ".agents/knots-sync.json"
     data = json.loads(meta.read_text()) if meta.is_file() else {}
     prefix = data.get("issueKey", {}).get("prefix")
     if prefix:

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """두 구성 e2e 의 바탕: 일회용 HOME · 리포 · 대시보드 서버 · API 호출(설계 11 §3.4).
 
-모든 도구 실행은 일회용 HOME · XDG_CONFIG_HOME · HARNESS_KIT_CONFIG_DIR · GIT_CONFIG_GLOBAL 로 한다.
+모든 도구 실행은 일회용 HOME · XDG_CONFIG_HOME · KNOTS_SYNC_CONFIG_DIR · GIT_CONFIG_GLOBAL 로 한다.
 실제 HOME · 전역 git 설정 · 다른 리포를 건드리지 않는다.
 """
 
@@ -29,7 +29,7 @@ sys.path.insert(0, str(HERE / "fixtures"))
 import make_sample_repo  # noqa: E402
 import scripted  # noqa: E402
 
-CLI = KIT / "plugins/harness-kit/skills/hx-bootstrap/bin/harness-kit.js"
+CLI = KIT / "plugins/kns/skills/bootstrap/bin/knots-sync.js"
 STUBS = HERE / "stubs"
 CONFIGS = ("A", "B-forward", "B-reverse")
 SECRET_ENV = re.compile(r"^(CLAUDE|CODEX_|KIRO_|CURSOR_|GIT_|HARNESS_|HX_|ENTIRE|AIDLC|OPENAI|ANTHROPIC)")
@@ -114,7 +114,7 @@ class Sandbox:
             if target:
                 (self.toolbin / name).symlink_to(target)
         env.update(
-            HOME=str(self.home), XDG_CONFIG_HOME=str(self.home / ".config"), HARNESS_KIT_CONFIG_DIR=str(self.base / "cfg"),
+            HOME=str(self.home), XDG_CONFIG_HOME=str(self.home / ".config"), KNOTS_SYNC_CONFIG_DIR=str(self.base / "cfg"),
             GIT_CONFIG_GLOBAL=str(self.home / ".gitconfig"), GIT_CONFIG_SYSTEM="/dev/null", GIT_TERMINAL_PROMPT="0",
             GIT_AUTHOR_NAME="e2e", GIT_AUTHOR_EMAIL="e2e@example.com", GIT_COMMITTER_NAME="e2e", GIT_COMMITTER_EMAIL="e2e@example.com",
             PATH=f"{self.toolbin}:/usr/bin:/bin", E2E_LOG=str(self.log), PYTHONDONTWRITEBYTECODE="1", NO_COLOR="1",

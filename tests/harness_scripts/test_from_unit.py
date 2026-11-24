@@ -1,4 +1,4 @@
-"""`/hx-specify --from-unit`(설계 08 §3.7 · DS-R9~R13) · 의존 계약 design 승인(DS-R10), HK-19 design §6.
+"""`/kns-specify --from-unit`(설계 08 §3.7 · DS-R9~R13) · 의존 계약 design 승인(DS-R10), HK-19 design §6.
 
     python3 -m unittest discover -s scripts/tests -p "test_from_unit.py"
 """
@@ -57,7 +57,7 @@ created: 2026-11-24
 
 def units():
     base = {"dependsOn": [], "provides": [], "consumes": [], "nfr": [], "risks": [], "issue": None, "planned": True, "repo": None}
-    return {"schema": "harness-kit.units/v1", "intent": {"key": "INT-1", "title": "결제 개편", "doc": "intent.md"}, "source": {"kind": "kit"},
+    return {"schema": "knots-sync.units/v1", "intent": {"key": "INT-1", "title": "결제 개편", "doc": "intent.md"}, "source": {"kind": "kit"},
             "units": [
                 {**base, "id": "U-1", "name": "payment-contract", "title": "결제 API 계약", "kind": "contract", "area": "payment", "stories": ["S-1"], "nfr": ["NFR-1"], "provides": ["api:payments.v2"], "order": 1},
                 {**base, "id": "U-2", "name": "settlement-notice", "title": "정산 알림", "kind": "feature", "area": "billing", "stories": ["S-2"], "dependsOn": ["U-1"], "consumes": ["api:payments.v2"], "order": 2},
@@ -67,7 +67,7 @@ def units():
 class FromUnitTest(SddCase):
     def setUp(self):
         super().setUp()
-        meta = self.root / ".agents/harness-kit.json"
+        meta = self.root / ".agents/knots-sync.json"
         data = json.loads(meta.read_text())
         data["flow"] = {"gates": ["requirements", "design", "tasks", "mr", "done"]}
         meta.write_text(json.dumps(data))
@@ -84,7 +84,7 @@ class FromUnitTest(SddCase):
         return r.returncode, json.loads(r.stdout or "{}") if r.stdout.strip() else {"error": r.stderr}
 
     def test_intent_gate_must_be_approved_when_in_flow(self):
-        meta = self.root / ".agents/harness-kit.json"
+        meta = self.root / ".agents/knots-sync.json"
         data = json.loads(meta.read_text())
         data["flow"] = {"gates": ["intent", "requirements", "design", "mr", "done"]}
         meta.write_text(json.dumps(data))
@@ -132,9 +132,9 @@ class FromUnitTest(SddCase):
         shutil.copytree(self.root / "scripts", domain / "scripts", ignore=shutil.ignore_patterns("tests", "__pycache__"))
         (domain / ".agents/docs").mkdir(parents=True)
         shutil.copytree(self.root / ".agents/docs/_spec-templates", domain / ".agents/docs/_spec-templates")
-        shutil.copy2(self.root / ".agents/harness-kit.json", domain / ".agents/harness-kit.json")
+        shutil.copy2(self.root / ".agents/knots-sync.json", domain / ".agents/knots-sync.json")
         (self.root / "tools/harness").mkdir(parents=True, exist_ok=True)
-        (self.root / "tools/harness/units.json").write_text(json.dumps({"schema": "harness-kit.deploy-units/v1", "units": [{"id": "knots-api", "path": "domains/api", "stack": "jvm"}]}))
+        (self.root / "tools/harness/units.json").write_text(json.dumps({"schema": "knots-sync.deploy-units/v1", "units": [{"id": "knots-api", "path": "domains/api", "stack": "jvm"}]}))
         data = json.loads((self.intent / "units.json").read_text(encoding="utf-8"))
         for unit in data["units"]:
             unit["repo"] = "knots-api"
@@ -158,7 +158,7 @@ class FromUnitTest(SddCase):
         self.assertIn("nope", bad["error"])
 
     def test_jira_module_needs_a_work_item_key(self):
-        meta = self.root / ".agents/harness-kit.json"
+        meta = self.root / ".agents/knots-sync.json"
         data = json.loads(meta.read_text())
         meta.write_text(json.dumps({**data, "modules": ["jira-workflow"]}))
         code, out = self.from_unit("INT-1/U-1")

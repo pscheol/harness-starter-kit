@@ -26,7 +26,7 @@ GENERATED = re.compile(r"^(skill:[\w.:/-]+|template:plans/[\w./-]+)$")
 
 def harness_root(start: Path) -> Path:
     for folder in (start.resolve(), *start.resolve().parents):
-        if (folder / ".agents/harness-kit.json").is_file() or (folder / ".agents/harness.json").is_file():
+        if (folder / ".agents/knots-sync.json").is_file() or (folder / ".agents/harness.json").is_file():
             return folder
     return start.resolve()
 
@@ -57,7 +57,7 @@ def problems(plans: Path) -> list[str]:
             out.append(f"{rel}: generatedWith 는 skill:<이름> 또는 template:plans/<파일>")
         template = root / TEMPLATES / rel
         if not template.is_file():
-            out.append(f"{rel}: 킷 템플릿 {TEMPLATES}/{rel} 이 없다 — harness-kit repair")
+            out.append(f"{rel}: 킷 템플릿 {TEMPLATES}/{rel} 이 없다 — knots-sync repair")
             continue
         have = headings(text)
         for title in headings(template.read_text(encoding="utf-8")):

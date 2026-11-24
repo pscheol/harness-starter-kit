@@ -54,7 +54,7 @@ export async function sessionInfo(p: Project, mode: "single" | "multi"): Promise
 export async function doctorOf(p: Project): Promise<DoctorSummary | null> {
   const doctor = p.deps.doctor;
   if (!doctor) return null;
-  const stamp = [fileStamp(path.join(p.root, ".agents/harness-kit.lock")), fileStamp(path.join(p.root, ".agents/harness-kit.json"))].join("\n");
+  const stamp = [fileStamp(path.join(p.root, ".agents/knots-sync.lock")), fileStamp(path.join(p.root, ".agents/knots-sync.json"))].join("\n");
   try {
     return await p.cache.get("doctor", stamp, () => doctor(p.root, p.env), 60_000);
   } catch {
@@ -85,7 +85,7 @@ const mtime = (f: string): number | null => {
 export async function todos(p: Project, loaded: Loaded): Promise<Todo[]> {
   const out: Todo[] = [];
   /** 시각이 없는 항목의 since: 메타 파일 시각(같은 입력이면 같은 응답, 06 §3.15 CLI 대응) */
-  const fallback = mtime(path.join(p.root, ".agents/harness-kit.json"));
+  const fallback = mtime(path.join(p.root, ".agents/knots-sync.json"));
   const iso = (ms: number | undefined | null): string => isoOf(ms ?? fallback);
   const user = await p.user();
   for (const i of loaded.issues) {

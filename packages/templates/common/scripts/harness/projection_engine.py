@@ -319,7 +319,7 @@ class Engine:
             unmodified = v1.sha is not None and sha256(cur.encode("utf-8")) == v1.sha
             if w.kind == "claude-md":
                 lines = cur.split("\n")
-                has_block = any(line.startswith("<!-- harness-kit:begin claude") for line in lines)
+                has_block = any(line.startswith("<!-- knots-sync:begin claude") for line in lines)
                 if unmodified:
                     cur, created = None, True
                 elif not has_block:

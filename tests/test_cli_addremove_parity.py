@@ -26,9 +26,9 @@ from test_cli_parity import DEFAULT_TOKENS, base_env, lock_hashes  # noqa: E402
 from test_cli_update_parity import LOCK, META, snapshot  # noqa: E402
 
 KIT = cli_dist.KIT
-PLUGIN = KIT / "plugins/harness-kit"
-SETUP = PLUGIN / "skills/hx-bootstrap/setup.sh"
-ADD_AGENT = PLUGIN / "skills/hx-agent-add/add-agent.sh"
+PLUGIN = KIT / "plugins/kns"
+SETUP = PLUGIN / "skills/bootstrap/setup.sh"
+ADD_AGENT = PLUGIN / "skills/agent-add/add-agent.sh"
 TEMPLATES = cli_dist.PLUGIN_TEMPLATES
 HARNESSES = ("claude", "codex", "cursor", "kiro")
 
@@ -49,7 +49,7 @@ class Case:
 ADD_CASES = (
     Case("A1-jvm-add-codex", "jvm", "hexagonal", "claude", "none", ("codex",)),
     Case("A2-python-add-cursor-jira", "python", "layered", "claude,kiro", "none", ("cursor", "jira-workflow"),
-         pre={".cursor/commands/hx-specify.md": "사람이 먼저 둔 커맨드\n"}),
+         pre={".cursor/commands/kns-specify.md": "사람이 먼저 둔 커맨드\n"}),
     Case("A3-web-add-guards-claude", "web", "nextjs-app", "codex", "none", ("platform-guards", "claude")),
     Case("A4-go-add-kiro-multi", "go", "hexagonal", "claude", "jira-workflow", ("kiro", "multi-harness")),
 )
@@ -57,7 +57,7 @@ REMOVE_CASES = (
     # names 를 뺀 선택값(agents · modules 의 남는 것)으로 새로 깐 리포와 비교한다.
     Case("R1-electron-remove-codex-guards", "electron", "main-renderer", "claude,codex,kiro", "jira-workflow,platform-guards", ("codex", "platform-guards")),
     Case("R2-python-remove-cursor-edited", "python", "hexagonal", "claude,cursor", "none", ("cursor",),
-         edit={".cursor/commands/hx-specify.md": "사람이 더한 줄\n"}),
+         edit={".cursor/commands/kns-specify.md": "사람이 더한 줄\n"}),
 )
 
 
@@ -173,7 +173,7 @@ class CliAddRemoveParityTest(unittest.TestCase):
     def assert_lock_means_same(self, o: Outcome, *, user: set[str] = frozenset()) -> None:
         sh = lock_hashes(o.sh / LOCK)
         lock = json.loads((o.cli / LOCK).read_text(encoding="utf-8"))
-        self.assertEqual(lock["schema"], "harness-kit.lock/v2")
+        self.assertEqual(lock["schema"], "knots-sync.lock/v2")
         entries = {e["path"]: e for e in lock["entries"]}
         self.assertEqual(sorted(set(entries) - user), sorted(set(sh) - user), "lock 경로")
         for rel, e in entries.items():
@@ -190,7 +190,7 @@ class CliAddRemoveParityTest(unittest.TestCase):
         cl = json.loads((o.cli / META).read_text(encoding="utf-8"))
         for k in ("stack", "arch", "domain", "agents", "modules", "tokens"):
             self.assertEqual(cl.get(k), sh.get(k), k)
-        self.assertEqual(cl["schema"], "harness-kit/v2")
+        self.assertEqual(cl["schema"], "knots-sync/v2")
 
     def doctor_ok(self, target: Path) -> None:
         d = subprocess.run(["node", str(self.cli), "doctor", "--check", "--json", "--cwd", str(target)], capture_output=True, text=True, timeout=120)
@@ -207,7 +207,7 @@ class CliAddRemoveParityTest(unittest.TestCase):
 
     def test_a2_add_harness_and_module_with_user_file(self):
         o, j = self.ran("A2-python-add-cursor-jira")
-        mine = ".cursor/commands/hx-specify.md"
+        mine = ".cursor/commands/kns-specify.md"
         self.assert_same_tree(o)
         self.assert_lock_means_same(o, user={mine})
         self.assert_meta_means_same(o)
@@ -248,7 +248,7 @@ class CliAddRemoveParityTest(unittest.TestCase):
         self.doctor_ok(o.cli)
 
     def test_r2_remove_keeps_edited_file(self):
-        mine = ".cursor/commands/hx-specify.md"
+        mine = ".cursor/commands/kns-specify.md"
         o, j = self.ran("R2-python-remove-cursor-edited", code=4)
         self.assert_same_tree(o, extra_cli={mine})
         self.assert_lock_means_same(o, user={mine})

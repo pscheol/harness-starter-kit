@@ -157,13 +157,13 @@ def read_json(path):
 
 
 def design_harness(harness_root, main):
-    """roles.design.harness — 개인 층(.agents/local/harness-kit.local.json)이 있으면 그것(설계 04 §3.6)."""
+    """roles.design.harness — 개인 층(.agents/local/knots-sync.local.json)이 있으면 그것(설계 04 §3.6)."""
     for base in (harness_root, main):
-        local = read_json(base / ".agents/local/harness-kit.local.json") or {}
+        local = read_json(base / ".agents/local/knots-sync.local.json") or {}
         role = (local.get("roles") or {}).get("design") if isinstance(local.get("roles"), dict) else None
         if isinstance(role, dict) and isinstance(role.get("harness"), str):
             return role["harness"]
-    meta = read_json(harness_root / ".agents/harness-kit.json") or read_json(main / ".agents/harness-kit.json") or {}
+    meta = read_json(harness_root / ".agents/knots-sync.json") or read_json(main / ".agents/knots-sync.json") or {}
     role = (meta.get("roles") or {}).get("design") if isinstance(meta.get("roles"), dict) else None
     return role.get("harness") if isinstance(role, dict) and isinstance(role.get("harness"), str) else None
 
@@ -172,11 +172,11 @@ def design_lines(harness_root, session_id):
     """설계 세션 안내(08 §3.9, DS-R19): 역할이 design 이면 한 줄, 하네스가 roles.design.harness 와 다르면 경고 한 줄(막지 않는다)."""
     _, main = hook_root.main_root_of(harness_root)
     record = read_json(main / ".agents/state/sessions" / f"{session_id}.json") if session_id else None
-    role = os.environ.get("HX_ROLE") or (record or {}).get("role")
+    role = os.environ.get("KNS_ROLE") or (record or {}).get("role")
     if role != "design":
         return []
     lines = [("설계 세션: Intent 폴더 · codebase/ 만 쓴다. 승인 · 답 줄은 쓰지 않는다. 할 일은 intent.py next <키> 가 정한다",)]
-    harness = os.environ.get("HX_HARNESS") or (record or {}).get("harness")
+    harness = os.environ.get("KNS_HARNESS") or (record or {}).get("harness")
     want = design_harness(harness_root, main)
     if want and harness and harness != want:
         lines.append((f"⚠ 이 세션 하네스 {harness} ≠ roles.design.harness {want} — 설계는 {want} 로 하기로 정했다(막지 않는다)",))
@@ -296,8 +296,8 @@ def main():
             print("차단: 기존 파일 점유를 확인할 수 없다. 등록표를 보존하고 오류를 확인한다.", file=sys.stderr)
             return 2
     if arguments.event == "session-start":
-        today = os.environ.get("HARNESS_KIT_TODAY") or datetime.now().astimezone().date().isoformat()
-        extra = design_lines(harness_root, session_id) + personal_model_lines(harness_root, os.environ.get("HX_HARNESS"))
+        today = os.environ.get("KNOTS_SYNC_TODAY") or datetime.now().astimezone().date().isoformat()
+        extra = design_lines(harness_root, session_id) + personal_model_lines(harness_root, os.environ.get("KNS_HARNESS"))
         lines = session_start_lines(checkout_root, state, session_id, arguments.inbox, max(arguments.budget, 0), today, extra)
     else:
         lines = context_lines(state, session_id)

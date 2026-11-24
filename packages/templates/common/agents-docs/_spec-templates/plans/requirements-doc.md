@@ -9,7 +9,7 @@ updated: {{CREATED}}
 
 # 요구사항 문서 — {{INTENT_KEY}} {{TITLE}}
 
-<!-- 내용 원본은 intent.md 다. FROM-INTENT 구간은 /hx-plans doc 가 다시 만든다. 구간 밖(배경 · 용어집)만 사람이 쓴다. -->
+<!-- 내용 원본은 intent.md 다. FROM-INTENT 구간은 /kns-plans doc 가 다시 만든다. 구간 밖(배경 · 용어집)만 사람이 쓴다. -->
 
 ## 목표
 

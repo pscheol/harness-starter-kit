@@ -72,7 +72,7 @@
 
 ```json
 {
-  "schema": "harness-kit.model-policy/v1",
+  "schema": "knots-sync.model-policy/v1",
   "locked": ["implement", "design", "review"],
   "classes": {
     "explore": "light", "summarize": "light", "skills-summary": "light",
@@ -185,7 +185,7 @@ render(role, harness):
 | 장치 | 내용 | 강제 |
 |---|---|---|
 | 진입 파일 크기 | AGENTS.md + CLAUDE.md 24,576바이트 이하(knots 61KB). 규칙 본문은 `.agents/rules/`에 두고 `paths`로 경로별 자동 로드한다(03 §3.2: Claude `.claude/rules` · Cursor `.mdc` · Kiro `fileMatch`). 진입 파일에는 꼭 지킬 가드레일과 목차만 둔다. 경로별 규칙은 그 파일을 다룰 때만 실려 늘 싣는 양에 들지 않는다 | fast·doctor 경고(MR-R9) |
-| 요약 출력 | `verify.sh`·`/hx-scan`의 화면 출력은 40줄 이하(분석기·단계마다 한 줄, 실패 꼬리 15줄). 전체는 `.agents/state/verify-last.json`·`.agents/reports/`에. Stop 훅은 요약만 넘긴다(지금 `verify_summary.py`의 한도 유지). 계약 §7에 `--summary` 인자를 더할지는 §6 | 시험: 요약 출력 줄 수 |
+| 요약 출력 | `verify.sh`·`/kns-scan`의 화면 출력은 40줄 이하(분석기·단계마다 한 줄, 실패 꼬리 15줄). 전체는 `.agents/state/verify-last.json`·`.agents/reports/`에. Stop 훅은 요약만 넘긴다(지금 `verify_summary.py`의 한도 유지). 계약 §7에 `--summary` 인자를 더할지는 §6 | 시험: 요약 출력 줄 수 |
 | 위임 결과 크기 | 역할 출력 형식에 6,000자 한도. Claude SubagentStop 훅이 마지막 응답 길이를 보고 넘으면 끝내기를 막고(exit 2) "결론·근거만 남겨 6,000자 이하로 다시 끝낸다"를 준다 | 훅(MR-R10). Codex·Kiro는 규칙 문장만 |
 | 상시 컨텍스트 경고 | doctor가 세션마다 실리는 양(진입 파일 + `paths` 없는 규칙 + 세션 시작 출력 + 스킬 설명 합계)을 바이트로 보여 주고 40,960을 넘으면 경고. 합계는 lock의 `owner`별(킷 · 팩 · 사람 · `external:aidlc` · `external:entire` …)로 나눠 보인다(10 §3.7) | doctor |
 | 세션 시작 출력 | 합계 2,560바이트 이하(README 원칙 10). 고정 안내 1,024 · 단위 안내(`session-context.md`) 1,024 · 바뀌는 상태(세션 · 공지 · 점유 · 대기함) 512. 대기함은 건수와 확인 명령 한 줄만 싣는다(06 §3.10). 기준선은 v1.0.8 knots 실측 약 2.4KB(고정 1,480 + 단위 882 + 세션 상태 줄)이고, v2가 더하는 상태 줄은 고정 안내를 줄여 그 안에 넣는다 | 훅 자르기 · 시험: 출력 바이트 |
@@ -196,7 +196,7 @@ render(role, harness):
 
 ### 3.9 역할별 사용량 측정
 
-기본은 꺼짐이다(MR-R11). `harness-kit.json`의 `metrics.tokens`: `"off"`(기본) · `"hooks"` · `"otel"`.
+기본은 꺼짐이다(MR-R11). `knots-sync.json`의 `metrics.tokens`: `"off"`(기본) · `"hooks"` · `"otel"`.
 
 `hooks` 방식(Claude):
 
@@ -209,7 +209,7 @@ Stop · SessionEnd 훅
 ```
 
 ```json
-{ "schema": "harness-kit.usage/v1", "at": "2026-11-23T10:40:02+09:00", "session": "4f0c2d1e",
+{ "schema": "knots-sync.usage/v1", "at": "2026-11-23T10:40:02+09:00", "session": "4f0c2d1e",
   "harness": "claude", "scope": "subagent", "agent": "explorer", "class": "explore", "tier": "light",
   "model": "claude-haiku-…", "effort": "low",
   "tokens": { "input": 18230, "output": 2104, "cacheRead": 120400, "cacheCreation": 9100 } }

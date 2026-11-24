@@ -1,5 +1,5 @@
 /**
- * harness-kit mob(설계 08 §3.14 · DS-R24, HK-19 design §10) — 관리 페이지 GET/POST /intents/{key}/mob 와 같은 처리(mob.py).
+ * knots-sync mob(설계 08 §3.14 · DS-R24, HK-19 design §10) — 관리 페이지 GET/POST /intents/{key}/mob 와 같은 처리(mob.py).
  * 진행자는 사람이다: 에이전트 세션이면 쓰기(start · next · close)를 거부한다. 회차를 닫아도 세션에 요청을 보내지 않는다.
  */
 import type { CommandResult, Ctx } from "../cli/context";
@@ -8,7 +8,7 @@ import { agentSession } from "../../../dashboard/src/agent";
 import { ApiError } from "../../../dashboard/src/errors";
 import { failure, jsonLines, run } from "./api-call";
 
-const USAGE = "harness-kit mob start <INT> --attendees a@x,b@y [--timebox 30] | mob next <INT> | mob close <INT> | mob status <INT>";
+const USAGE = "knots-sync mob start <INT> --attendees a@x,b@y [--timebox 30] | mob next <INT> | mob close <INT> | mob status <INT>";
 
 function lines(d: Record<string, unknown>): string[] {
   const out: string[] = [];

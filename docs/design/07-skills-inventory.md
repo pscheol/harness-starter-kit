@@ -2,7 +2,7 @@
 
 - 단계: P20(v2.2). 선행: P18(하네스 어댑터, 03).
 - 방향과 이유: [02 #skills](../harness-next/02-direction.html#skills) · [04 #skills](../harness-next/04-usage.html#skills) · [05 #extend](../harness-next/05-principles.html#extend) · [03 #p20](../harness-next/03-plan.html#p20)
-- 쓰는 곳: 대시보드 스킬 탭(06), `npx harness-kit skills`, 기획물 명령(08), `/hx-review`(09).
+- 쓰는 곳: 대시보드 스킬 탭(06), `npx knots-sync skills`, 기획물 명령(08), `/kns-review`(09).
 
 ## 1. 목적·범위
 
@@ -36,9 +36,9 @@
 | SK-R5 | 같은 realpath에 여러 위치로 닿으면 스캐너는 스킬 하나로 묶고 위치를 모두 기록한다. |
 | SK-R6 | 내용(sha256)이 다른 두 스킬이 같은 이름이고 같은 하네스에 보이면 스캐너는 이름 겹침으로 보고하고, 그 하네스 규칙으로 어느 쪽이 쓰이는지 적는다. |
 | SK-R7 | 스캐너는 스킬마다 하네스(Claude · Codex · Cursor · Kiro · Gemini)별 `loaded` · `shadowed` · `no`를 계산한다. |
-| SK-R8 | 스킬 지도에 있는 스킬은 지도의 단계를, 머리의 `metadata.hx-stages`가 있으면 그 단계를, 둘 다 없으면 설명 낱말로 추정한 단계를 `추정`으로 표시한다. |
+| SK-R8 | 스킬 지도에 있는 스킬은 지도의 단계를, 머리의 `metadata.kns-stages`가 있으면 그 단계를, 둘 다 없으면 설명 낱말로 추정한 단계를 `추정`으로 표시한다. |
 | SK-R9 | 킷 명령이 스킬 지도의 칸(slot)을 찾으면 목록 순서대로 처음으로 깔려 있고 현재 하네스에서 `loaded`인 스킬을 쓰고, 없으면 지도에 적힌 대체 템플릿을 쓴다. |
-| SK-R10 | `npx harness-kit skills --stage <단계>`는 그 단계의 스킬을 지도 출처 먼저, 추정 다음 순서로 출력한다. |
+| SK-R10 | `npx knots-sync skills --stage <단계>`는 그 단계의 스킬을 지도 출처 먼저, 추정 다음 순서로 출력한다. |
 | SK-R11 | 스캔 결과는 커밋하지 않고, 대시보드 내보내기·네트워크 전송에 넣지 않는다. |
 | SK-R12 | 머리가 없거나 YAML 오류인 SKILL.md는 목록에 `error`로 남기고 스캔을 계속한다. |
 | SK-R13 | 심볼릭 링크가 고리를 이루거나 대상이 일반 파일이 아니면 스캐너는 그 항목을 건너뛰고 `error`로 남긴다. |
@@ -53,7 +53,7 @@
 
 | 순서 | 위치 | scope | 읽는 하네스 | 근거 |
 |---|---|---|---|---|
-| 1 | `<리포>/.agents/skills/` | project | Codex(작업 폴더 → 리포 루트), Cursor, Gemini(별칭), Claude는 킷 링크 `.claude/skills/hx-*`로 | Codex Build skills, Cursor Skills, Gemini CLI Skills 문서 |
+| 1 | `<리포>/.agents/skills/` | project | Codex(작업 폴더 → 리포 루트), Cursor, Gemini(별칭), Claude는 킷 링크 `.claude/skills/kns-*`로 | Codex Build skills, Cursor Skills, Gemini CLI Skills 문서 |
 | 2 | `<리포>/.claude/skills/` | project | Claude, Cursor(호환 경로) | Claude Code Skills, Cursor Skills |
 | 3 | `<리포>/.kiro/skills/` | project | Kiro(에이전트 `resources`의 `skill://` 패턴) | Kiro custom agents 설정 문서 |
 | 4 | `<리포>/.cursor/skills/` · `.gemini/skills/` · `.codex/skills/` | project | Cursor · Gemini · Cursor(호환) | 같은 문서 |
@@ -86,9 +86,9 @@ read(path):
   sha256 = 파일 전체 바이트의 sha256(앞 64 KiB만이 아니라 전체. 256 KiB 한도 안)
 ```
 
-남기는 머리 필드: `name` · `description`(화면 표시는 1,024자) · `model` · `effort` · `context` · `agent` · `disable-model-invocation` · `user-invocable` · `allowed-tools` · `argument-hint` · `metadata.hx-stages`. 다른 필드는 버린다. 스킬 폴더의 다른 파일(scripts·references)은 열지 않는다.
+남기는 머리 필드: `name` · `description`(화면 표시는 1,024자) · `model` · `effort` · `context` · `agent` · `disable-model-invocation` · `user-invocable` · `allowed-tools` · `argument-hint` · `metadata.kns-stages`. 다른 필드는 버린다. 스킬 폴더의 다른 파일(scripts·references)은 열지 않는다.
 
-`metadata.hx-stages`는 킷이 정한 선택 필드다(`[design]` 같은 배열). Agent Skills 표준의 `metadata` 맵 안에 두므로 다른 하네스가 무시한다. 킷 스킬(`hx-*`)은 모두 이 필드를 둔다.
+`metadata.kns-stages`는 킷이 정한 선택 필드다(`[design]` 같은 배열). Agent Skills 표준의 `metadata` 맵 안에 두므로 다른 하네스가 무시한다. 킷 스킬(`kns-*`)은 모두 이 필드를 둔다.
 
 ### 3.3 Claude 플러그인 해석
 
@@ -143,13 +143,13 @@ for skill in skills:
      else: status[h] = "loaded"
 ```
 
-기본 출력은 `harness-kit.json`의 `agents`에 있는 하네스만 보여 준다. `--all`이면 다섯 하네스를 모두 보여 준다.
+기본 출력은 `knots-sync.json`의 `agents`에 있는 하네스만 보여 준다. `--all`이면 다섯 하네스를 모두 보여 준다.
 
 ### 3.6 스캔 결과 형식
 
 ```json
 {
-  "schema": "harness-kit.skills-inventory/v1",
+  "schema": "knots-sync.skills-inventory/v1",
   "scannedAt": "2026-11-23T11:02:10+09:00",
   "roots": [
     { "path": "~/.claude/skills", "scope": "user", "count": 221, "symlinks": 152, "nested": 131, "errors": 0 },
@@ -186,7 +186,7 @@ for skill in skills:
 
 ```json
 {
-  "schema": "harness-kit.skill-map/v1",
+  "schema": "knots-sync.skill-map/v1",
   "stages": {
     "design": {
       "requirements": ["pm-execution:create-prd", "service-planning-agent"],
@@ -207,13 +207,13 @@ for skill in skills:
     "ops":  { "canary": ["gstack-canary"], "retro": ["gstack-retro"] }
   },
   "commands": {
-    "/hx-intent":      { "slots": ["design.requirements", "design.stories"], "fallback": "builtin" },
-    "/hx-screen-plan": { "slots": ["design.screen-plan"], "fallback": "template:plans/screens" },
-    "/hx-design-plan": { "slots": ["design.design-plan"], "fallback": "template:plans/design-plan.md" },
-    "/hx-backlog":     { "slots": ["design.backlog"], "fallback": "template:plans/backlog.md" },
-    "/hx-implement":   { "slots": ["implement.tdd"], "fallback": "builtin", "mode": "advisory" },
-    "/hx-review":      { "slots": ["verify.review", "verify.security"], "fallback": "builtin", "mode": "advisory" },
-    "/hx-docs":        { "slots": ["docs.release-docs"], "fallback": "builtin", "mode": "advisory" }
+    "/kns-intent":      { "slots": ["design.requirements", "design.stories"], "fallback": "builtin" },
+    "/kns-screen-plan": { "slots": ["design.screen-plan"], "fallback": "template:plans/screens" },
+    "/kns-design-plan": { "slots": ["design.design-plan"], "fallback": "template:plans/design-plan.md" },
+    "/kns-backlog":     { "slots": ["design.backlog"], "fallback": "template:plans/backlog.md" },
+    "/kns-implement":   { "slots": ["implement.tdd"], "fallback": "builtin", "mode": "advisory" },
+    "/kns-review":      { "slots": ["verify.review", "verify.security"], "fallback": "builtin", "mode": "advisory" },
+    "/kns-docs":        { "slots": ["docs.release-docs"], "fallback": "builtin", "mode": "advisory" }
   },
   "exclude": []
 }
@@ -240,7 +240,7 @@ resolve(command, harness):
 
 ### 3.8 단계 추정(추정)
 
-지도·`metadata.hx-stages` 둘 다 없는 스킬만 추정한다. 이름 일치는 3점, 설명 일치는 1점이다. 가장 높은 단계가 2점 이상이면 그 단계, 두 단계가 같은 점수면 둘 다, 2점 미만이면 `미분류`다. 결과에는 `source: "추정"`과 맞은 낱말을 남긴다.
+지도·`metadata.kns-stages` 둘 다 없는 스킬만 추정한다. 이름 일치는 3점, 설명 일치는 1점이다. 가장 높은 단계가 2점 이상이면 그 단계, 두 단계가 같은 점수면 둘 다, 2점 미만이면 `미분류`다. 결과에는 `source: "추정"`과 맞은 낱말을 남긴다.
 
 | 단계 | 낱말(대소문자 무시, 부분 일치) |
 |---|---|
@@ -256,19 +256,19 @@ resolve(command, harness):
 ### 3.9 CLI
 
 ```text
-npx harness-kit skills [--stage <단계>] [--harness <h>] [--conflicts] [--errors]
+npx knots-sync skills [--stage <단계>] [--harness <h>] [--conflicts] [--errors]
                        [--all] [--no-user] [--refresh] [--json]
 ```
 
 | 인자 | 동작 |
 |---|---|
 | (없음) | 위치별 개수 요약, 지도 칸별 해석 결과(어떤 스킬이 쓰일지) |
-| `--stage 설계` | 그 단계 스킬: 지도 출처 → `metadata.hx-stages` → 추정 순. 열: 이름 · 칸 · 출처 · 하네스 · 위치 |
+| `--stage 설계` | 그 단계 스킬: 지도 출처 → `metadata.kns-stages` → 추정 순. 열: 이름 · 칸 · 출처 · 하네스 · 위치 |
 | `--harness codex` | 그 하네스에서 `loaded`·`both`인 것만 |
 | `--conflicts` · `--errors` | 이름 겹침 · 오류 항목만 |
 | `--json` | §3.6 형식 |
 
-종료 코드: 0 정상(경고 있어도), 2 인자 오류, 3 리포 밖에서 실행(`harness-kit.json` 없음). 3일 때도 사용자 위치 목록은 출력하고, 지도 해석만 건너뛴다.
+종료 코드: 0 정상(경고 있어도), 2 인자 오류, 3 리포 밖에서 실행(`knots-sync.json` 없음). 3일 때도 사용자 위치 목록은 출력하고, 지도 해석만 건너뛴다.
 
 출력 예:
 
@@ -315,7 +315,7 @@ requirements  pm-execution:create-prd       지도   loaded  no     plugin pm-ex
 3. fixture: 심볼릭 링크 고리, 머리 없음, YAML 오류, 300 KiB 파일, 이름에 `:` 각각 1개 → 모두 `error`·`warning`으로 남고 스캔이 끝까지 돈다.
 4. fixture: 같은 이름·다른 내용 스킬을 `~/.claude/skills`와 `<리포>/.claude/skills`에 두면 Claude는 user 쪽 `loaded`, project 쪽 `shadowed`로 나온다.
 5. fixture: `enabledPlugins`에서 꺼 둔 플러그인의 스킬 0개, 켠 플러그인은 설치 기록의 버전 하나만 나온다.
-6. `/hx-screen-plan`이 `service-planning-agent`가 깔린 장비에서는 `generatedWith: skill:service-planning-agent`, 지운 fixture 홈에서는 `template:plans/screens`를 남긴다.
+6. `/kns-screen-plan`이 `service-planning-agent`가 깔린 장비에서는 `generatedWith: skill:service-planning-agent`, 지운 fixture 홈에서는 `template:plans/screens`를 남긴다.
 7. 라벨 fixture 60개에서 추정 단계 정확도 70% 이상, `미분류` 비율 40% 이하.
 8. `--export` 결과와 `git status`에 스킬 이름·사용자 위치 경로가 0건이다. 스캐너 실행 중 `~/` 아래 파일 쓰기 0건(`fs_usage`·`strace` 또는 시험용 읽기 전용 홈으로 확인).
 9. `skills --stage 설계 --json` 응답 시간: 캐시가 맞을 때 200ms 이하, 첫 스캔 1.5초 이하.

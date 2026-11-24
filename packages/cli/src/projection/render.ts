@@ -14,8 +14,8 @@ const KIRO_TOOLS: [string, string][] = [["read", "read"], ["search", "read"], ["
 export const KIRO_RESOURCES = ["file://AGENTS.md", "file://.agents/rules/guardrails.md", "skill://.agents/skills/**/SKILL.md"];
 const EFFORT_KEY: Partial<Record<ModelHarness, string>> = { claude: "effort", codex: "model_reasoning_effort" };
 
-export const genMd = (source: string): string => `<!-- harness-kit 생성 · 원본 ${source} · 고칠 때는 원본을 고친다 -->`;
-export const genToml = (source: string): string => `# harness-kit 생성 · 원본 ${source} · 고칠 때는 원본을 고친다`;
+export const genMd = (source: string): string => `<!-- knots-sync 생성 · 원본 ${source} · 고칠 때는 원본을 고친다 -->`;
+export const genToml = (source: string): string => `# knots-sync 생성 · 원본 ${source} · 고칠 때는 원본을 고친다`;
 
 function basename(p: string): string {
   return p.slice(p.lastIndexOf("/") + 1);

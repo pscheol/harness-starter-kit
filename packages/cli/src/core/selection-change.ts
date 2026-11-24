@@ -24,7 +24,7 @@ export function parseNames(layout: Layout, raw: string[], command: string): Name
   const words = raw.flatMap((r) => r.split(/[\s,]+/)).filter(Boolean);
   const modules = [...layout.modules, ...layout.externalModules];
   const choices = `하네스: ${layout.harnesses.join(" ")} · 모듈: ${modules.join(" ")}`;
-  if (words.length === 0) throw usageError(`${command}: 이름이 없다`, `harness-kit ${command} <이름>… (${choices})`);
+  if (words.length === 0) throw usageError(`${command}: 이름이 없다`, `knots-sync ${command} <이름>… (${choices})`);
   const later = words.find((w) => Object.hasOwn(LATER_MODULES, w));
   if (later) throw usageError(`'${later}' 모듈은 아직 없다 — ${LATER_MODULES[later]}에서 제공한다`, choices);
   if (words.some((w) => w === "all" || w === "none")) throw usageError(`${command}: all · none 은 받지 않는다(하네스인지 모듈인지 갈리지 않는다)`, choices);

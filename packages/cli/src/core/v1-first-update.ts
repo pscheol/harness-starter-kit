@@ -1,7 +1,7 @@
 /**
  * 표시 줄 없는 v1 lock(v1.0.8)의 첫 update(HK-25 R1, design §2). update 계획의 "가리지 못한" conflict 를
  * 종류대로 새 판(kit) · 줄 병합 · 키 병합(merge)으로 바꾸고, 원본을 .agents/state/merge-backup/<시각>/ 에 둔다.
- * 판정 규칙은 core/v1-merge.ts(update.sh 는 hx-update/v1_merge.py)에 있다.
+ * 판정 규칙은 core/v1-merge.ts(update.sh 는 update/v1_merge.py)에 있다.
  */
 import path from "node:path";
 import { sha256 } from "./hash";
@@ -13,7 +13,7 @@ import { MERGE_BACKUP_DIR, planV1Merge } from "./v1-merge";
 
 export const V1_MERGE_REASON = "v1 lock — 원본은 merge-backup 에 둔다";
 const CLAUDE_MD = "CLAUDE.md";
-const CLAUDE_BLOCK = "<!-- harness-kit:begin claude";
+const CLAUDE_BLOCK = "<!-- knots-sync:begin claude";
 
 export interface MergedFile {
   path: string;

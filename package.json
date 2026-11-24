@@ -1,7 +1,7 @@
 {
   "name": "harness-starter-kit",
   "private": true,
-  "description": "하네스 엔지니어링 스타터 킷 — 원본은 packages/, plugins/harness-kit/ 은 생성물",
+  "description": "knots-sync — 원본은 packages/, plugins/kns/ 은 생성물",
   "engines": { "node": ">=18" },
   "scripts": {
     "build:ui": "pnpm -C packages/dashboard-ui build",

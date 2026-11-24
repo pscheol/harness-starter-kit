@@ -7,19 +7,19 @@
 | 대상 스펙 | `../requirements.md` (필요 시 `../design.md`) |
 | 도메인 초점 | <예: requirements-quality \| security \| ux \| api \| data \| a11y> |
 | 상태 | draft \| in-review \| approved |
-| 생성 | `/hx-checklist <도메인>` (원본: `.agents/rules/sdd-workflow.md` /checklist 절) |
+| 생성 | `/kns-checklist <도메인>` (원본: `.agents/rules/sdd-workflow.md` /checklist 절) |
 
 > 이 체크리스트는 "요구사항의 유닛테스트"다. 코드가 아니라 **스펙 문장 자체의 품질**을 검사한다.
 > "기능이 동작하는가"가 아니라 "요구사항이 **완결·명료·일관·측정가능·커버**되게 쓰였는가"를 묻는다.
 > 각 항목은 스펙을 읽고 **PASS / FAIL / N/A** 로 판정하고, FAIL은 근거(어느 줄·왜)와 조치(어느 명령으로 보완)를 적는다.
 >
 > **작성 규율(추측 금지):** 판정 근거는 스펙 본문에서 인용한다. 확인 불가한 항목은 지어내지 말고
-> `[NEEDS CLARIFICATION: 질문]` 으로 남기고 `/hx-clarify` 로 되돌린다(`.agents/rules/guardrails.md`).
+> `[NEEDS CLARIFICATION: 질문]` 으로 남기고 `/kns-clarify` 로 되돌린다(`.agents/rules/guardrails.md`).
 
 ## 사용법
 
 - 이 템플릿을 도메인별로 복제해 쓴다: `checklists/{{FEATURE_NAME}}-<도메인>.md` (예: `order-security.md`).
-- 아래는 **requirements-quality**(기본) 항목이다. `/hx-checklist security` 등 도메인 초점이 주어지면
+- 아래는 **requirements-quality**(기본) 항목이다. `/kns-checklist security` 등 도메인 초점이 주어지면
   해당 도메인 관점의 항목을 **추가로 생성**해 붙인다(기본 5축은 항상 유지).
 - 판정 표기: `[x]` PASS · `[ ]` FAIL(미충족) · `[-]` N/A. 각 항목 ID `CHK-###`.
 
@@ -69,7 +69,7 @@
 
 ---
 
-## 6. 도메인 추가 항목 *(선택 · `/hx-checklist <도메인>` 이 채운다)*
+## 6. 도메인 추가 항목 *(선택 · `/kns-checklist <도메인>` 이 채운다)*
 
 > 도메인 초점이 주어지면 기본 5축 위에 아래를 **추가**한다. 예시 씨앗(프로젝트에 맞게 교체):
 
@@ -89,7 +89,7 @@
 | 커버리지 |  |  |  |  |
 | 도메인 |  |  |  |  |
 
-**결론:** ☐ 통과(모든 FAIL 해소) / ◐ 조건부(경미 FAIL 잔존·근거 명시) / ✖ 보류(핵심 FAIL — `/hx-clarify`·`/hx-specify`로 보완 후 재검).
+**결론:** ☐ 통과(모든 FAIL 해소) / ◐ 조건부(경미 FAIL 잔존·근거 명시) / ✖ 보류(핵심 FAIL — `/kns-clarify`·`/kns-specify`로 보완 후 재검).
 
-> 체크리스트는 **읽기 전용 판정**이다. 스펙을 고치려면 `/hx-clarify`(모호성) 또는 `/hx-specify`(요구 보완)로 되돌린 뒤 재실행한다.
-> requirements↔design↔tasks **교차 정합성**(커버리지 갭·모순·헌법 충돌)은 `/hx-analyze` 가 담당한다(역할 분담).
+> 체크리스트는 **읽기 전용 판정**이다. 스펙을 고치려면 `/kns-clarify`(모호성) 또는 `/kns-specify`(요구 보완)로 되돌린 뒤 재실행한다.
+> requirements↔design↔tasks **교차 정합성**(커버리지 갭·모순·헌법 충돌)은 `/kns-analyze` 가 담당한다(역할 분담).

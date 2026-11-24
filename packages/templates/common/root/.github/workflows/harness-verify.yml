@@ -54,13 +54,13 @@ jobs:
       - name: affected (base 판 판정)
         if: github.event_name == 'pull_request'
         env:
-          HX_BASE_REF: origin/${{ github.base_ref }}
+          KNS_BASE_REF: origin/${{ github.base_ref }}
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p .agents/state
-          git show "$HX_BASE_REF:scripts/verify.sh" > .agents/state/verify-base.sh || true
-          git show "$HX_BASE_REF:scripts/verify-entry.sh" > .agents/state/verify-entry.sh || true
-          if [ -s .agents/state/verify-base.sh ] && grep -q -- --from-base .agents/state/verify-entry.sh; then bash .agents/state/verify-base.sh --from-base "$HX_BASE_REF" --affected; else bash scripts/verify.sh --affected --bootstrap; fi
+          git show "$KNS_BASE_REF:scripts/verify.sh" > .agents/state/verify-base.sh || true
+          git show "$KNS_BASE_REF:scripts/verify-entry.sh" > .agents/state/verify-entry.sh || true
+          if [ -s .agents/state/verify-base.sh ] && grep -q -- --from-base .agents/state/verify-entry.sh; then bash .agents/state/verify-base.sh --from-base "$KNS_BASE_REF" --affected; else bash scripts/verify.sh --affected --bootstrap; fi
 
       - name: full
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
@@ -96,13 +96,13 @@ jobs:
 
       - name: affected (head 판, 정보용)
         env:
-          HX_BASE_REF: origin/${{ github.base_ref }}
-        run: git diff --quiet "$HX_BASE_REF...HEAD" -- scripts/verify.sh scripts/verify-entry.sh scripts/verify-changed.py scripts/harness .agents/verify-checks.json .agents/quality-gate.json .agents/analyzers.json .agents/deploy.json .agents/quality-baseline.json || bash scripts/verify.sh --affected
+          KNS_BASE_REF: origin/${{ github.base_ref }}
+        run: git diff --quiet "$KNS_BASE_REF...HEAD" -- scripts/verify.sh scripts/verify-entry.sh scripts/verify-changed.py scripts/harness .agents/verify-checks.json .agents/quality-gate.json .agents/analyzers.json .agents/deploy.json .agents/quality-baseline.json || bash scripts/verify.sh --affected
 
   deploy-verify:
     name: deploy-verify
     if: >-
-      (github.event_name == 'push' && github.ref == format('refs/heads/{0}', vars.HX_BASE_BRANCH || 'develop'))
+      (github.event_name == 'push' && github.ref == format('refs/heads/{0}', vars.KNS_BASE_BRANCH || 'develop'))
       || (github.event_name == 'workflow_dispatch' && inputs.resume == 'true')
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -110,8 +110,8 @@ jobs:
       group: harness-verify-env
       cancel-in-progress: false
     env:
-      HX_BASE_BRANCH: ${{ vars.HX_BASE_BRANCH || 'develop' }}
-      HX_DEPLOY_RESUME: ${{ inputs.resume }}
+      KNS_BASE_BRANCH: ${{ vars.KNS_BASE_BRANCH || 'develop' }}
+      KNS_DEPLOY_RESUME: ${{ inputs.resume }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
@@ -123,7 +123,7 @@ jobs:
 
       - name: 직전 실행 결과 읽기
         continue-on-error: true
-        run: python3 scripts/harness/deploy.py history --platform github --base "$HX_BASE_BRANCH"
+        run: python3 scripts/harness/deploy.py history --platform github --base "$KNS_BASE_BRANCH"
 
       - name: 검증 환경 배포
         run: python3 scripts/harness/deploy.py auto-verify
@@ -145,7 +145,7 @@ jobs:
       group: harness-production
       cancel-in-progress: false
     env:
-      HX_DEPLOY_RECORD: ${{ inputs.record }}
+      KNS_DEPLOY_RECORD: ${{ inputs.record }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -155,4 +155,4 @@ jobs:
         uses: ./.github/actions/harness-setup
 
       - name: 운영 배포(승인 검사 포함)
-        run: python3 scripts/harness/deploy.py run --env production --record "$HX_DEPLOY_RECORD"
+        run: python3 scripts/harness/deploy.py run --env production --record "$KNS_DEPLOY_RECORD"

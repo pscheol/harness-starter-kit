@@ -8,32 +8,32 @@
 
 요구사항 한두 문단에서 시작해 Intent 문서 · 질문과 답 · 스토리와 수용 기준 · Unit 목록 · 기획물 네 가지 · Unit별 SDD 이슈까지를 킷만으로 만든다. AI-DLC를 켠 리포(`flow.design = "aidlc"`)는 Intent·Unit 부분만 AI-DLC가 만들고, 그 뒤는 같다.
 
-범위에 넣는 것: `/hx-intent` 흐름, `intent.md` 템플릿, `questions.md` 형식, 분해 기준과 알고리즘, `units.json` 형식, 설계 단계 게이트, `/hx-specify --from-unit` 대응, 기획물 템플릿과 `/hx-screen-plan` · `/hx-design-plan` · `/hx-backlog`, 이슈 생성, 역할·승인자 사용, AI-DLC 경우의 `intent.json`, 기존 코드 역공학과 `codebase` 게이트(§3.13), 몹 정리 규칙(§3.14), 크기 · 위험 프로필(§3.15), 도메인 설계(§3.16).
+범위에 넣는 것: `/kns-intent` 흐름, `intent.md` 템플릿, `questions.md` 형식, 분해 기준과 알고리즘, `units.json` 형식, 설계 단계 게이트, `/kns-specify --from-unit` 대응, 기획물 템플릿과 `/kns-screen-plan` · `/kns-design-plan` · `/kns-backlog`, 이슈 생성, 역할·승인자 사용, AI-DLC 경우의 `intent.json`, 기존 코드 역공학과 `codebase` 게이트(§3.13), 몹 정리 규칙(§3.14), 크기 · 위험 프로필(§3.15), 도메인 설계(§3.16).
 
-범위 밖: AI-DLC 산출물 해석(10 §3.2), Jira API 호출(10 §3.4), requirements 이후 SDD 명령(`/hx-plan` 등, 기존 킷).
+범위 밖: AI-DLC 산출물 해석(10 §3.2), Jira API 호출(10 §3.4), requirements 이후 SDD 명령(`/kns-plan` 등, 기존 킷).
 
 ## 2. 요구사항
 
 | ID | 요구사항(EARS) |
 |---|---|
-| DS-R1 | `/hx-intent "<요구사항>"`을 실행하면 설계 세션은 `.agents/docs/intents/<Intent 키>-<이름>/`에 `intent.md`(draft)와 `questions.md`를 만든다. |
-| DS-R2 | `/hx-intent <Intent 키>`를 실행하면 설계 세션은 파일 상태로 다음 단계(§3.1 표)를 정해 그 단계만 한다. |
+| DS-R1 | `/kns-intent "<요구사항>"`을 실행하면 설계 세션은 `.agents/docs/intents/<Intent 키>-<이름>/`에 `intent.md`(draft)와 `questions.md`를 만든다. |
+| DS-R2 | `/kns-intent <Intent 키>`를 실행하면 설계 세션은 파일 상태로 다음 단계(§3.1 표)를 정해 그 단계만 한다. |
 | DS-R3 | 질문을 낼 때 설계 세션은 한 번에 5개까지, 질문마다 선택지 2~4개와 권장안 1개, 답할 직무, 막는 게이트를 적는다. |
 | DS-R4 | 막는 게이트가 같은 질문에 답이 없는 동안 그 게이트는 승인할 수 없다. |
 | DS-R5 | 스토리 5개 이상 · 도메인 2개 이상 · 사용자 유형 3개 이상 · 외부 통합 3개 이상 중 하나라도 맞으면 설계 세션은 Unit을 나누고, 맞은 기준과 수치를 `intent.md` §10에 적는다. 하나도 맞지 않으면 Unit 하나로 둔다. |
 | DS-R6 | 둘 이상의 도메인이 주고받는 API·이벤트가 있으면 설계 세션은 그 계약을 `kind: contract` Unit으로 따로 두고, 그 계약을 쓰는 Unit의 `dependsOn`에 넣는다. |
 | DS-R7 | `units.json`의 의존이 고리를 이루거나 없는 Unit을 가리키면 검사는 실패하고 고리·이름을 출력한다. |
 | DS-R8 | 모든 스토리는 Unit 하나에만 속하거나 `unassigned`에 이유와 함께 있다. |
-| DS-R9 | `intent` 게이트가 `flow.gates`에 있고 승인되지 않았으면 `/hx-specify --from-unit`은 멈추고 이유를 출력한다. |
-| DS-R10 | 계약 Unit의 이슈 design이 approved가 아니면 그 계약을 쓰는 Unit의 `/hx-plan`은 멈추고 계약 이슈 키를 출력한다. |
-| DS-R11 | `/hx-specify --from-unit <Intent 키>/<Unit id>`는 Unit의 스토리·수용 기준·NFR·위험을 requirements로 옮기고 머리에 `intent:` · `unit:` · `area:`를 단다. |
-| DS-R12 | Unit에 이미 이슈가 연결돼 있으면 `/hx-specify --from-unit`은 새 이슈를 만들지 않고 기존 이슈 경로를 출력한다. |
+| DS-R9 | `intent` 게이트가 `flow.gates`에 있고 승인되지 않았으면 `/kns-specify --from-unit`은 멈추고 이유를 출력한다. |
+| DS-R10 | 계약 Unit의 이슈 design이 approved가 아니면 그 계약을 쓰는 Unit의 `/kns-plan`은 멈추고 계약 이슈 키를 출력한다. |
+| DS-R11 | `/kns-specify --from-unit <Intent 키>/<Unit id>`는 Unit의 스토리·수용 기준·NFR·위험을 requirements로 옮기고 머리에 `intent:` · `unit:` · `area:`를 단다. |
+| DS-R12 | Unit에 이미 이슈가 연결돼 있으면 `/kns-specify --from-unit`은 새 이슈를 만들지 않고 기존 이슈 경로를 출력한다. |
 | DS-R13 | jira-workflow 모듈을 켰으면 이슈 키는 Jira 작업 항목 키이고, 끈 경우 01의 킷 키 규칙을 쓴다. |
 | DS-R14 | 기획물 명령은 스킬 지도(07 §3.7)의 칸을 해석해 깔린 스킬을 쓰고, 없으면 킷 템플릿을 쓴다. 어느 쪽을 썼는지 산출물 머리 `generatedWith`에 남긴다. |
 | DS-R15 | 기획물 명령이 스킬을 쓴 경우에도 산출물은 템플릿의 필수 제목을 모두 가진다. 빠지면 명령은 빠진 제목을 출력하고 실패한다. |
 | DS-R16 | 와이어프레임 HTML은 파일 하나로 열리고 외부 네트워크 요청이 0건이다. |
 | DS-R17 | `backlog.md`의 Unit 상태는 SDD 보드(01·06)와 같은 계산에서 나온다. |
-| DS-R18 | `flow.design = "aidlc"`이면 `intent.md` 대신 `intent.json`을 두고, `units.json`은 어댑터가 쓴다. `/hx-intent`는 AI-DLC 사용을 안내하고 끝낸다. |
+| DS-R18 | `flow.design = "aidlc"`이면 `intent.md` 대신 `intent.json`을 두고, `units.json`은 어댑터가 쓴다. `/kns-intent`는 AI-DLC 사용을 안내하고 끝낸다. |
 | DS-R19 | 설계 세션의 세션 시작 훅은 `roles.design` 하네스와 현재 하네스가 다르면 그 사실을 알린다. |
 | DS-R20 | 접수 종류가 `feature` · `change` · `refactor`이면 설계 세션은 스토리를 쓰기 전에 `current-state.md`와 그것이 가리키는 codebase 모델을 만들거나 갱신한다. |
 | DS-R21 | `codebase` 게이트가 `flow.gates`에 있고 승인되지 않았으면 설계 세션은 스토리 · Unit 분해를 하지 않고 "codebase 게이트 승인 대기"를 출력한다. |
@@ -43,26 +43,26 @@
 | DS-R25 | 설계 세션은 Intent 머리에 `profile` · `risk`를 제안하고, 접수 종류의 기본 프로필과 다르면 범위 질문을 낸다. |
 | DS-R26 | `risk: high`인 이슈의 design · mr · deploy 게이트는 서로 다른 승인자 2명의 기록이 있어야 통과한다. |
 | DS-R27 | design §4.5에 불변식(`INV-<n>`)이 있으면 불변식마다 근거(`R#` · `NFR-#` · Intent 결정 · `KEEP-<n>`)와 시험 연결이 있다. |
-| DS-R28 | `/hx-analyze`는 시험에 연결되지 않은 `INV-<n>` · `KEEP-<n>`을 HIGH로 보고한다. |
+| DS-R28 | `/kns-analyze`는 시험에 연결되지 않은 `INV-<n>` · `KEEP-<n>`을 HIGH로 보고한다. |
 
 ## 3. 설계
 
 ### 3.1 흐름과 상태
 
 ```text
-요구사항 → /hx-intent "<요약>"         intent.md(draft) + questions.md(Q 1회차)
+요구사항 → /kns-intent "<요약>"         intent.md(draft) + questions.md(Q 1회차)
         → (feature · change · refactor) 역공학 §3.13: codebase/<영역>.md 갱신 + current-state.md(draft), 현재 동작 질문
         → [codebase 게이트]            current-state.md + 참조 모델 sha 승인(approvers.codebase)
         → 사람이 관리 페이지에서 답     questions.md status: answered → answers-ready 요청(06 §3.8)
-        → /hx-intent INT-7             답 반영: 목표·범위 밖·스토리·EARS·NFR·위험 채움, 필요하면 질문 2회차
-        → /hx-intent INT-7             분해 판정 → units.json(draft), intent.md §10
+        → /kns-intent INT-7             답 반영: 목표·범위 밖·스토리·EARS·NFR·위험 채움, 필요하면 질문 2회차
+        → /kns-intent INT-7             분해 판정 → units.json(draft), intent.md §10
         → [intent 게이트]              intent.md + units.json 승인(approvers.intent)
-        → /hx-screen-plan · /hx-design-plan · /hx-backlog → plans/
+        → /kns-screen-plan · /kns-design-plan · /kns-backlog → plans/
         → [plans 게이트]               plans/*.md 승인(approvers.plans)
-        → /hx-specify --from-unit INT-7/U-1   계약 Unit 먼저, 그 뒤 의존 순서대로
+        → /kns-specify --from-unit INT-7/U-1   계약 Unit 먼저, 그 뒤 의존 순서대로
 ```
 
-`/hx-intent <키>`의 다음 단계 판정(DS-R2):
+`/kns-intent <키>`의 다음 단계 판정(DS-R2):
 
 | 상태 | 다음 단계 |
 |---|---|
@@ -73,7 +73,7 @@
 | 스토리가 채워졌고 `units.json`이 없다 | 분해(§3.4) |
 | `units.json`이 있고 `intent` 승인 기록이 없다 | `status: in-review`로 올리고 "intent 게이트 승인 대기" 출력 |
 | `intent` 승인 있음, 기획물 없음 | 기획물 명령 셋을 안내 |
-| `plans` 승인 있음 | 의존 순서로 `/hx-specify --from-unit` 할 Unit 목록 출력 |
+| `plans` 승인 있음 | 의존 순서로 `/kns-specify --from-unit` 할 Unit 목록 출력 |
 
 Intent 키: jira-workflow 모듈을 켰으면 에픽 키(`HDRV3D-40`), 아니면 `INT-<n>`이다. `n`은 base 브랜치의 `.agents/docs/intents/INT-*`에서 가장 큰 번호 + 1이다. 폴더 이름은 `<Intent 키>-<이름>`, 이름은 영문 kebab-case 3~5단어(이슈 키 규칙과 같다, 05 #issue-key).
 
@@ -149,7 +149,7 @@ ID 규칙: 스토리 `S-<n>`, 수용 기준 `S-<n>.AC-<m>`, NFR `NFR-<n>`, 위�
 
 ### 3.3 `questions.md` 형식
 
-Intent 폴더(설계 질문)와 이슈 폴더(`/hx-clarify`의 질문 파일 모드)에서 같은 형식을 쓴다.
+Intent 폴더(설계 질문)와 이슈 폴더(`/kns-clarify`의 질문 파일 모드)에서 같은 형식을 쓴다.
 
 ```markdown
 ---
@@ -182,7 +182,7 @@ round: 1
 - 제목 정규식: `^## (Q-\d+) · (범위|보안|개인정보|UX|기술|운영) · 답할 직무: ([a-z][a-z0-9-]*)(?: · 막는 게이트: ([a-z]+))?$`. 분류 순서는 범위 > 보안·개인정보 > UX > 기술 > 운영이고, 질문은 이 순서로 놓는다.
 - 선택지 줄: `^- ([A-D])\. (.+?) — 영향: (.+)$`. 권장 줄은 정확히 1개, 선택지 글자 하나를 가리킨다.
 - 답 줄이 비어 있으면 열린 질문이다. 사람이 고르지 않은 "기타" 답은 `- 답: other · …` 다음 `- 메모:`에 글을 둔다.
-- `답할 직무`는 `harness-kit.json`의 `groups` 키다. 그룹이 없는 이름이면 `/hx-analyze`가 경고한다.
+- `답할 직무`는 `knots-sync.json`의 `groups` 키다. 그룹이 없는 이름이면 `/kns-analyze`가 경고한다.
 - 설계 세션은 `- 답:` 줄을 쓰지 않는다. 답은 관리 페이지 답 API(06 §3.8)만 쓴다. 이 규칙은 훅이 막는다(09 §3.8의 보호 경로에 `questions.md`의 `- 답:` 줄 추가를 넣는다).
 - 회차가 바뀌어도 Q 번호를 이어 붙인다. 이전 회차 질문은 지우지 않는다.
 - 몹 정리 세션을 열면 머리에 `session`이 생기고, 답 줄 끝에 `· 기록: <git 사용자>`가 붙을 수 있다(§3.14).
@@ -220,7 +220,7 @@ Unit 크기 기준(배포 단위): Unit 하나는 브랜치·MR 하나로 끝나
 
 ```json
 {
-  "schema": "harness-kit.units/v1",
+  "schema": "knots-sync.units/v1",
   "intent": { "key": "INT-7", "title": "결제 개편", "doc": "intent.md" },
   "source": { "kind": "kit" },
   "decomposition": {
@@ -261,7 +261,7 @@ Unit 크기 기준(배포 단위): Unit 하나는 브랜치·MR 하나로 끝나
 | `area` | requirements `area:`로 옮겨지는 값. 영문 kebab-case |
 | `repo` | multi-harness 리포에서 이 Unit이 사는 도메인 리포(10 §3.5). 단일 리포면 `null` |
 | `dependsOn` | 같은 파일의 Unit id. 계약 Unit은 feature Unit에 의존하지 않는다 |
-| `issue` | `/hx-specify --from-unit`이 채운다. 사람·관리 페이지는 쓰지 않는다 |
+| `issue` | `/kns-specify --from-unit`이 채운다. 사람·관리 페이지는 쓰지 않는다 |
 | `planned` | `false`면 보드에서 "제외"로 보이고 의존 검사에서 빠진다 |
 | `source` | `{"kind":"kit"}` 또는 10 §3.2의 AI-DLC 출처 |
 
@@ -276,13 +276,13 @@ Unit 크기 기준(배포 단위): Unit 하나는 브랜치·MR 하나로 끝나
 | `plans` | `plans/*.md` 전부(각 sha 기록). 와이어프레임 HTML은 `screens/index.md`가 목록과 sha를 적는다 | `approvers.plans` | `intent` 승인, 기획물 필수 제목 통과 |
 
 - 승인 기록은 Intent 폴더의 `approvals.md`(형식 06 §3.7)에 남긴다.
-- 세 게이트는 `flow.gates`에서 뺄 수 있다(하한 밖). 뺀 경우 `/hx-specify --from-unit`은 승인 검사를 건너뛰고 "intent 게이트 없음"을 출력한다. 리포가 넣어 둔 게이트를 프로필이 끄지는 않는다(§3.15).
+- 세 게이트는 `flow.gates`에서 뺄 수 있다(하한 밖). 뺀 경우 `/kns-specify --from-unit`은 승인 검사를 건너뛰고 "intent 게이트 없음"을 출력한다. 리포가 넣어 둔 게이트를 프로필이 끄지는 않는다(§3.15).
 - 승인 뒤 `intent.md`·`units.json`이 바뀌면 승인이 `stale`이 된다(06 §3.3). 이미 만든 이슈는 그대로 두고, 대시보드가 "Intent 승인 뒤 변경"을 보여 준다.
 
-### 3.7 `/hx-specify --from-unit`
+### 3.7 `/kns-specify --from-unit`
 
 ```text
-/hx-specify --from-unit INT-7/U-2
+/kns-specify --from-unit INT-7/U-2
 1. Intent 폴더와 units.json을 읽는다. intent 게이트 검사(DS-R9)
 2. Unit.issue가 있으면 그 경로 출력 후 끝(DS-R12)
 3. dependsOn의 Unit 중 issue가 없는 것이 있으면 "U-1(계약)부터" 출력 후 끝
@@ -307,7 +307,7 @@ Unit 크기 기준(배포 단위): Unit 하나는 브랜치·MR 하나로 끝나
 | `current-state.md` §3의 `KEEP-n` 중 이 Unit 범위(§1 모듈)에 든 것 | Edge Cases의 "바뀌면 안 되는 동작" 줄. ID 유지 |
 | Intent §12에서 이 Unit의 행 | design 초안 §4.5 요소 표의 "경계 밖 참조" 칸(§3.16) |
 
-DS-R10 구현: `scripts/check-sdd-prerequisites.sh`가 `/hx-plan` 앞에서 requirements 머리의 `dependsOn` 이슈마다 design `status`를 본다. 그 이슈 폴더가 현재 체크아웃에 없으면 base와 로컬 브랜치를 git 객체로 찾는다(06 §3.2와 같은 순서).
+DS-R10 구현: `scripts/check-sdd-prerequisites.sh`가 `/kns-plan` 앞에서 requirements 머리의 `dependsOn` 이슈마다 design `status`를 본다. 그 이슈 폴더가 현재 체크아웃에 없으면 base와 로컬 브랜치를 git 객체로 찾는다(06 §3.2와 같은 순서).
 
 ### 3.8 기획물
 
@@ -346,7 +346,7 @@ updated: 2026-11-23
 `backlog.md` 생성 구간:
 
 ```markdown
-<!-- BACKLOG:BEGIN — /hx-backlog 또는 scripts/board.sh 가 생성한다. 손으로 고치지 않는다 -->
+<!-- BACKLOG:BEGIN — /kns-backlog 또는 scripts/board.sh 가 생성한다. 손으로 고치지 않는다 -->
 | 순서 | Unit | 종류 | 이슈 | 단계 | 의존 | 맡은 하네스 |
 |---|---|---|---|---|---|---|
 | 1 | U-1 결제 API·이벤트 계약 | contract | HDRV3D-11 | design 승인 | — | claude |
@@ -360,7 +360,7 @@ updated: 2026-11-23
 기획물 명령 공통 절차:
 
 ```text
-/hx-screen-plan INT-7   (/hx-design-plan · /hx-backlog 같은 틀)
+/kns-screen-plan INT-7   (/kns-design-plan · /kns-backlog 같은 틀)
 1. intent 게이트 승인 확인(없으면 멈춤. flow.gates에 intent가 없으면 건너뜀)
 2. 07 resolve(command, 현재 하네스) → 스킬 또는 템플릿
 3. 스킬이면: 그 스킬을 부르며 입력을 준다
@@ -371,14 +371,14 @@ updated: 2026-11-23
 6. 모든 기획물이 draft 이상이면 "plans 게이트 승인 대기"를 출력
 ```
 
-`/hx-backlog`는 스킬 칸(`design.backlog`)이 있어도 생성 구간은 킷 스크립트로만 만든다. 스킬은 구간 밖 설명 문단에만 쓴다.
+`/kns-backlog`는 스킬 칸(`design.backlog`)이 있어도 생성 구간은 킷 스크립트로만 만든다. 스킬은 구간 밖 설명 문단에만 쓴다.
 
 ### 3.9 역할과 승인자
 
 - 설계 세션의 하네스는 `roles.design.harness`다(D7 추천값 claude). 역할 원본 `.agents/roles/designer.md`(새로)는 질문 형식(§3.3), 분해 기준(§3.4), 기획물 규칙(§3.8)을 지시하고, 03의 역할 생성기가 하네스별 역할 파일을 만든다.
 - 세션 시작 훅은 `role: design` 세션에 "Intent 폴더만 쓴다. 승인·답 줄은 쓰지 않는다"를 알린다. 현재 하네스가 `roles.design.harness`와 다르면 경고만 하고 막지 않는다(DS-R19).
 - 승인자: `intent` · `plans`는 `approvers.intent` · `approvers.plans`(기본 `po`). 질문의 `답할 직무`도 같은 `groups` 이름을 쓴다. 한 사람이 여러 그룹에 있어도 된다(05 #roles).
-- 승인자 목록의 원본은 `harness-kit.json` 하나다. 문서 머리에 승인자를 따로 적지 않는다.
+- 승인자 목록의 원본은 `knots-sync.json` 하나다. 문서 머리에 승인자를 따로 적지 않는다.
 
 ### 3.10 AI-DLC를 켠 경우
 
@@ -394,7 +394,7 @@ updated: 2026-11-23
 
 ```json
 {
-  "schema": "harness-kit.intent-link/v1",
+  "schema": "knots-sync.intent-link/v1",
   "key": "INT-7",
   "title": "결제 개편",
   "source": "aidlc",
@@ -404,21 +404,21 @@ updated: 2026-11-23
     "path": "aidlc/spaces/main/intents/261123-payment-revamp/",
     "version": "2.11.0"
   },
-  "adapter": { "name": "harness-kit/aidlc", "version": "2.4.0", "inputSha256": "b71e…", "adaptedAt": "2026-11-23T15:00:00+09:00" }
+  "adapter": { "name": "knots-sync/aidlc", "version": "2.4.0", "inputSha256": "b71e…", "adaptedAt": "2026-11-23T15:00:00+09:00" }
 }
 ```
 
 - `units.json`의 `source`는 `{"kind":"aidlc", "path": …, "inputSha256": …}`다. Unit마다 AI-DLC 쪽 식별자를 `sourceId`로 더 둔다(다시 가져올 때 `issue` 연결을 지키는 열쇠).
-- 질문·스토리·Unit 분해는 AI-DLC가 터미널에서 사람 입력으로 받는다. AI-DLC는 승인 입력을 사람이 실제로 했는지 훅으로 확인하므로, 킷은 그 승인을 `intent` 게이트 승인으로 인정한다(README §3, 결정 2026-11-23). 어댑터가 AI-DLC 승인 기록(누가·언제·문구)을 `intents/<INT>/approvals.md`로 옮겨 적고 출처를 `source: aidlc`로 남긴다(10 §3.2). 사람이 두 번 승인하지 않는다. AI-DLC 기록에 승인자가 없으면 옮기지 않고, 그 게이트는 관리 페이지·`harness-kit approve`·Jira 사람 전이로 승인한다.
-- `/hx-intent`는 `flow.design = "aidlc"`에서 "설계 단계는 /aidlc가 맡는다. 끝나면 `npx harness-kit sync aidlc`"를 출력하고 끝낸다(DS-R18).
-- 기획물 명령, `/hx-specify --from-unit`, 게이트 검사, 대시보드는 `intent.md` 대신 `intent.json`이 가리키는 AI-DLC 문서를 입력으로 읽는다. 명령과 출력 형식은 같다.
+- 질문·스토리·Unit 분해는 AI-DLC가 터미널에서 사람 입력으로 받는다. AI-DLC는 승인 입력을 사람이 실제로 했는지 훅으로 확인하므로, 킷은 그 승인을 `intent` 게이트 승인으로 인정한다(README §3, 결정 2026-11-23). 어댑터가 AI-DLC 승인 기록(누가·언제·문구)을 `intents/<INT>/approvals.md`로 옮겨 적고 출처를 `source: aidlc`로 남긴다(10 §3.2). 사람이 두 번 승인하지 않는다. AI-DLC 기록에 승인자가 없으면 옮기지 않고, 그 게이트는 관리 페이지·`knots-sync approve`·Jira 사람 전이로 승인한다.
+- `/kns-intent`는 `flow.design = "aidlc"`에서 "설계 단계는 /aidlc가 맡는다. 끝나면 `npx knots-sync sync aidlc`"를 출력하고 끝낸다(DS-R18).
+- 기획물 명령, `/kns-specify --from-unit`, 게이트 검사, 대시보드는 `intent.md` 대신 `intent.json`이 가리키는 AI-DLC 문서를 입력으로 읽는다. 명령과 출력 형식은 같다.
 
 ### 3.11 요구사항 접수(텍스트·첨부)
 
 요구사항은 텍스트와 첨부 파일로 받는다. 받는 곳은 넷이다.
 - 관리 페이지 "새 요구사항"(화면 S11, API는 06 §3.8.1)
-- 세션에서 `/hx-intent --new <파일…>`
-- Jira 에픽(`jira-workflow` 모듈)과 Notion 페이지·데이터베이스 항목(`notion` 모듈). 둘 다 같은 "접수 출처" 방식으로 가져온다(10 §3.6). 콘솔은 `npx harness-kit intake --from jira:HDRV3D-40` 또는 `--from notion:<페이지 URL>`, 세션은 `/hx-intent --new notion:<URL>`, 화면은 S11의 "가져오기" 탭이다.
+- 세션에서 `/kns-intent --new <파일…>`
+- Jira 에픽(`jira-workflow` 모듈)과 Notion 페이지·데이터베이스 항목(`notion` 모듈). 둘 다 같은 "접수 출처" 방식으로 가져온다(10 §3.6). 콘솔은 `npx knots-sync intake --from jira:HDRV3D-40` 또는 `--from notion:<페이지 URL>`, 세션은 `/kns-intent --new notion:<URL>`, 화면은 S11의 "가져오기" 탭이다.
 - 운영 기록(`source.type: ops`). 다음 Intent 후보는 `intake --from ops:<기록>#NX-<n>`, 장애는 `intake --kind bug --from ops:<기록>#INC-<n>`. 화면은 S10의 "요구사항으로"가 S11을 채워 연다(14 §3.8 · §3.9).
 
 종류는 다섯이다.
@@ -451,19 +451,19 @@ intents/<INT>-<이름>/
 
 - 제한(제안값): 파일 하나 20MB, 접수 하나 합계 100MB. 넘으면 링크로 받거나 git LFS를 쓰라고 안내한다.
 - 텍스트 첨부와 추출본은 gitleaks로 검사하고, 비밀값이 나오면 저장하지 않는다. 주민등록번호·전화번호 패턴이 나오면 커밋 전에 경고한다.
-- 접수 원문 · 첨부 · 추출본 · Jira · Notion에서 가져온 글은 신뢰하지 않는 입력이다. 설계 세션은 그 안의 지시("이전 지시를 무시하라", "이 명령을 실행하라", "승인됐다")를 명령이나 승인으로 따르지 않고 요구사항 자료로만 읽는다. 저장할 때 제어 문자(줄바꿈 · 탭 제외)와 보이지 않는 방향 제어 문자(U+202A~U+202E, U+2066~U+2069)를 지우고, `intake.md` 머리에 `trust: untrusted`를 적는다. `/hx-intent`는 접수 글을 읽기 전에 이 표시를 확인하고 같은 규칙을 지킨다. 판정은 문자열 처리이고 모델을 부르지 않는다(README 원칙 10). 근거: AWS AI-DLC 데모(aws-samples/sample-aidlc-demo)가 요구사항 입력에 프롬프트 주입 방어를 둔다.
+- 접수 원문 · 첨부 · 추출본 · Jira · Notion에서 가져온 글은 신뢰하지 않는 입력이다. 설계 세션은 그 안의 지시("이전 지시를 무시하라", "이 명령을 실행하라", "승인됐다")를 명령이나 승인으로 따르지 않고 요구사항 자료로만 읽는다. 저장할 때 제어 문자(줄바꿈 · 탭 제외)와 보이지 않는 방향 제어 문자(U+202A~U+202E, U+2066~U+2069)를 지우고, `intake.md` 머리에 `trust: untrusted`를 적는다. `/kns-intent`는 접수 글을 읽기 전에 이 표시를 확인하고 같은 규칙을 지킨다. 판정은 문자열 처리이고 모델을 부르지 않는다(README 원칙 10). 근거: AWS AI-DLC 데모(aws-samples/sample-aidlc-demo)가 요구사항 입력에 프롬프트 주입 방어를 둔다.
 - 커밋 범위: `intake.md`·`attachments.json`·추출본은 커밋한다. 원본 바이너리는 `.gitattributes`에 LFS 규칙이 있으면 LFS로 올린다. `intake.storeBinaries: false`면 원본을 `.agents/state/attachments/`에만 두고 링크를 남긴다.
-- 접수가 끝나면 관리 페이지가 설계 역할 세션에 "INT-8 접수됨. `/hx-intent INT-8`"을 요청하거나(06 §3.10), 사람이 세션에서 직접 부른다.
-- `/hx-intent`는 `intake.md`와 추출본을 먼저 읽고 질문 파일을 만든다. 스토리·질문에는 근거가 된 첨부 위치를 적는다(예: `attachments/01-기획서.pdf p.3`).
+- 접수가 끝나면 관리 페이지가 설계 역할 세션에 "INT-8 접수됨. `/kns-intent INT-8`"을 요청하거나(06 §3.10), 사람이 세션에서 직접 부른다.
+- `/kns-intent`는 `intake.md`와 추출본을 먼저 읽고 질문 파일을 만든다. 스토리·질문에는 근거가 된 첨부 위치를 적는다(예: `attachments/01-기획서.pdf p.3`).
 - AI-DLC를 켠 경우 `intake.md` 경로를 AI-DLC의 첫 요청으로 넘긴다.
 
 ### 3.12 처음부터 시작(product)
 
 빈 폴더나 새 리포에서는 이 순서로 간다.
 
-1. 세션에서 `hx-bootstrap` 스킬에 기획서를 넘긴다(`--from-intake <파일…>`). 스킬이 기획서를 읽고 스택·아키텍처 변형 후보와 이유를 내면, 사람이 고른다. 그다음 스킬이 `npx harness-kit init --stack … --arch …`를 부른다. CLI 혼자서는 기획서를 해석하지 않고 질문만 한다.
+1. 세션에서 `kns:bootstrap` 스킬에 기획서를 넘긴다(`--from-intake <파일…>`). 스킬이 기획서를 읽고 스택·아키텍처 변형 후보와 이유를 내면, 사람이 고른다. 그다음 스킬이 `npx knots-sync init --stack … --arch …`를 부른다. CLI 혼자서는 기획서를 해석하지 않고 질문만 한다.
 2. 첫 Intent를 `product` 종류로 접수하고 기획서·화면·디자인을 첨부한다.
-3. `/hx-intent`가 Unit을 나누고 맨 앞에 **걷는 뼈대 Unit**을 둔다. 걷는 뼈대는 기능 없이 빌드·테스트·`verify.sh`·CI·배포 파이프라인만 도는 최소 앱이다. 이 Unit이 끝나야 다른 Unit의 Bolt가 검증을 돌릴 수 있다.
+3. `/kns-intent`가 Unit을 나누고 맨 앞에 **걷는 뼈대 Unit**을 둔다. 걷는 뼈대는 기능 없이 빌드·테스트·`verify.sh`·CI·배포 파이프라인만 도는 최소 앱이다. 이 Unit이 끝나야 다른 Unit의 Bolt가 검증을 돌릴 수 있다.
 4. 그다음 계약 Unit(API·이벤트·DB 스키마)을 두고, 기능 Unit은 의존 순서대로 둔다.
 5. init 때 고른 아키텍처 변형이 Intent 분석과 맞지 않으면 design 단계에서 ADR로 바꾼다. 전환 절차는 각 변형의 `ARCHITECTURE.md`에 있다.
 6. Unit이 15개를 넘으면(제안값) Intent를 1차 출시 범위와 나머지로 나눈다.
@@ -583,7 +583,7 @@ models:
 
 - 5개를 넘으면 바뀔 범위에서 의존(§2)이 많은 모듈의 행부터 낸다.
 - 답이 오면 설계 세션이 모델 행을 고치고 출처를 `confirmed:Q-<n>`으로 바꾼다.
-- `codebase` 승인 뒤의 스토리 · 질문은 `CS-n` · `KEEP-n`을 근거로 단다. `KEEP-n`은 `/hx-specify --from-unit`이 requirements로 옮기고(§3.7), `/hx-analyze`가 시험 연결을 본다(§3.16).
+- `codebase` 승인 뒤의 스토리 · 질문은 `CS-n` · `KEEP-n`을 근거로 단다. `KEEP-n`은 `/kns-specify --from-unit`이 requirements로 옮기고(§3.7), `/kns-analyze`가 시험 연결을 본다(§3.16).
 
 게이트는 §3.6 표의 `codebase`다. 사람은 `current-state.md`와 그것이 가리키는 모델을 함께 승인하고, 승인 기록에 각 파일의 sha가 남는다(06 §3.7).
 
@@ -599,7 +599,7 @@ stale(model):
 ```
 
 - `verify.sh fast`가 바뀐 Intent 폴더와 `codebase/`에 이것을 부르고 경고만 한다.
-- `/hx-intent`의 역공학 단계는 오래된 모델을 먼저 갱신한다. `codebase_scan.py`로 정적 행을 다시 만들고, 근거 파일이 바뀐 `inferred` · `confirmed` 행을 다시 읽어 `inferred`로 둔다. `baseSha`를 base HEAD로 올린다.
+- `/kns-intent`의 역공학 단계는 오래된 모델을 먼저 갱신한다. `codebase_scan.py`로 정적 행을 다시 만들고, 근거 파일이 바뀐 `inferred` · `confirmed` 행을 다시 읽어 `inferred`로 둔다. `baseSha`를 base HEAD로 올린다.
 - 승인 API는 승인 시점에 다시 계산하고, 오래됐으면 422 `model_stale`이다.
 - 승인 뒤 모델이 오래돼도 승인은 유지된다(파일 sha가 그대로다). 진행 보드가 "모델 오래됨"을 보인다.
 
@@ -615,7 +615,7 @@ stale(model):
 | 질문 수 | 회차당 5개(DS-R3) |
 | 답 반영 | 진행자가 회차를 닫으면(`mob next`) 설계 세션에 `answers-ready`가 간다(06 §3.8). 설계 세션이 다음 회차를 쓰면 S04가 파일을 다시 읽어 보인다 |
 | 미룬 결정 | 시간 상자 안에 답이 안 난 질문은 §11 정해야 할 것으로 옮기고 주인(git `user.email`)과 기한을 적는다. 막는 게이트는 계속 막는다 |
-| 승인 | 회의에서 한 말은 승인이 아니다. 승인자는 자기 컴퓨터의 관리 페이지 · `harness-kit approve` · Jira 사람 전이로 승인한다(README §3) |
+| 승인 | 회의에서 한 말은 승인이 아니다. 승인자는 자기 컴퓨터의 관리 페이지 · `knots-sync approve` · Jira 사람 전이로 승인한다(README §3) |
 | 혼자 일할 때 | 참석자 1명. 시간 상자는 그대로 둔다 |
 
 순서(AI-DLC 핸드북 05의 시간 배분을 출발점으로 쓴다):
@@ -650,7 +650,7 @@ session:                          # mob start 가 쓰고 mob end 가 닫는다. 
 ```
 
 - `기록`은 그 컴퓨터의 git 사용자다. 답한 사람과 같으면 생략한다. 대신 적기는 답에만 쓴다. 승인은 승인자 본인의 git 사용자로만 기록된다(06 DB-R11).
-- 명령: `npx harness-kit mob start <INT> --attendees <email…> [--timebox 30]` · `mob next` · `mob end`. S04에 같은 버튼을 둔다.
+- 명령: `npx knots-sync mob start <INT> --attendees <email…> [--timebox 30]` · `mob next` · `mob end`. S04에 같은 버튼을 둔다.
 - 회차 `endedAt − startedAt`가 `timeboxMin`을 넘은 회차 수를 S04가 보인다. 막지는 않는다.
 - 회의가 형식만 남았다는 신호 두 가지를 S04가 경고로 보인다. §11로 미룬 결정이 한 세션에 4건 이상, 한 회차의 답이 모두 권장안과 같고 메모 · 의견이 0건.
 
@@ -680,7 +680,7 @@ session:                          # mob start 가 쓰고 mob end 가 닫는다. 
 | `high` | 권한 · 인증 · 결제 · 개인정보 · 되돌릴 수 없는 마이그레이션 · 동시성 · 외부 공개 API 중 하나, 또는 diff가 `risk.highPaths`에 걸린다 | design · mr · deploy에 서로 다른 승인자 2명(DS-R26, `risk.highApprovals`). 롤백 시험 면제 불가(14 §3.4). `trivial` 불가 |
 
 - `risk`는 Intent와 이슈 머리에 둔다. 설계 세션이 위 표로 제안하고, requirements 승인 때 사람이 확정한다. 이슈는 Intent 값보다 올릴 수만 있다.
-- 기계 하한: `mr` 게이트 판정 때 diff가 `risk.highPaths`(`harness-kit.json`)에 걸리면 머리 값과 상관없이 `high`로 본다.
+- 기계 하한: `mr` 게이트 판정 때 diff가 `risk.highPaths`(`knots-sync.json`)에 걸리면 머리 값과 상관없이 `high`로 본다.
 - `risk.highApprovals`(기본 2)와 `risk.highPaths`는 프로젝트가 엄하게만 바꾼다. 개인 층은 무시한다.
 
 ### 3.16 도메인 설계
@@ -722,7 +722,7 @@ design 템플릿 바꿀 곳(`packages/templates/common/agents-docs/_spec-templat
 | EQ-1 | 이미 시작한 예약을 취소하면? | 거부 · Q-4 답 A | INV-3 · R2.3 |
 ```
 
-설계 세션 순서(역할 원본 `designer.md`와 `/hx-plan` 지침에 넣는다):
+설계 세션 순서(역할 원본 `designer.md`와 `/kns-plan` 지침에 넣는다):
 
 1. 불변식부터 적는다. Unit 스토리의 EARS · NFR · Intent 결정(§11) · `KEEP-n`에서 "언제나 참이어야 하는 것"을 `INV-<n>`으로 적는다. 근거가 없는 불변식은 쓰지 않고 질문으로 낸다.
 2. 함께 지켜야 하는 불변식 묶음마다 애그리거트 하나를 둔다.
@@ -733,7 +733,7 @@ design 템플릿 바꿀 곳(`packages/templates/common/agents-docs/_spec-templat
 - 비즈니스 규칙이 없는 Unit(설정 · 어댑터 · 조회만)은 "해당 없음: <이유>" 한 줄이다. 계약 Unit은 값 객체 · 도메인 이벤트만 적는다.
 - design §17 승인 체크리스트에 더할 줄: "불변식이 목록으로 있고 각각 근거와 시험이 있는가", "규칙이 애그리거트 · 정책 안에 있고 경계 · 이름이 비즈니스 용어와 맞는가", "엣지 케이스 질문에 모두 답했는가", "(risk medium 이상) 사람이 볼 곳 — 동시성 · 권한 · 실패 경로 · 데이터 변경의 위치가 적혀 있는가".
 
-`/hx-analyze` 점검(DS-R28). `hx-analyze/SKILL.md` 2단계 탐지 목록에 "불변식 시험 누락" 유형을 더한다.
+`/kns-analyze` 점검(DS-R28). `kns-analyze/SKILL.md` 2단계 탐지 목록에 "불변식 시험 누락" 유형을 더한다.
 
 | 검사 | 실패 조건 | 심각도 |
 |---|---|---|
@@ -747,11 +747,11 @@ design 템플릿 바꿀 곳(`packages/templates/common/agents-docs/_spec-templat
 | 상황 | 동작 |
 |---|---|
 | Intent 키 충돌(두 브랜치에서 같은 `INT-n`) | `intent_check.py`가 MR 검사에서 잡는다. 늦게 병합하는 쪽이 번호를 바꾼다 |
-| 질문 형식 오류(권장 0개·2개, 선택지 1개) | `/hx-analyze`·`verify.sh fast` 실패, 줄 번호 출력 |
+| 질문 형식 오류(권장 0개·2개, 선택지 1개) | `/kns-analyze`·`verify.sh fast` 실패, 줄 번호 출력 |
 | 분해 결과 Unit 10개 초과 | 경고 "Intent를 둘로 나눌지 질문 파일에 올린다"(Q 자동 생성, 답할 직무 po) |
 | `units.json`을 사람이 고쳐 `issue`가 없는 키를 가리킴 | `intent_check.py` 실패 |
 | 스킬이 필수 제목을 빠뜨림 | 명령 실패, 빠진 제목 목록. 템플릿으로 다시 만들지 사람에게 묻는다 |
-| AI-DLC 산출물이 `units.json`보다 새롭다 | `verify.sh fast` 경고 "npx harness-kit sync aidlc" |
+| AI-DLC 산출물이 `units.json`보다 새롭다 | `verify.sh fast` 경고 "npx knots-sync sync aidlc" |
 | codebase 모델 행에 출처가 없거나 `inferred` 행에 근거 위치가 없다 | `verify.sh fast` 실패, 줄 번호 출력(DS-R22) |
 | 참조 모델이 오래된 채 `codebase` 승인 요청 | 422 `model_stale`, 바뀐 줄 · 파일 수 출력 |
 | §12에서 두 컨텍스트가 같은 애그리거트 후보를 가진다 | `intent_check.py` 실패 |
@@ -779,24 +779,24 @@ design 템플릿 바꿀 곳(`packages/templates/common/agents-docs/_spec-templat
 
 1. AI-DLC·Entire가 없는 임시 리포에서 예시 요구사항(스토리 8개, 도메인 2개) → `intent.md` → 질문 1회차(5개 이하) → 답 → Unit 3개(계약 1개)와 의존 순서 → SDD 이슈 3개가 나오고, 대시보드 진행 탭에 계약 Unit이 먼저 보인다.
 2. 분해 fixture 8종(네 기준 각각 경계값 −1 · 기준값): 기준값인 4종만 `split: true`, 나머지는 Unit 1개.
-3. 시험: 계약 이슈 design이 `in-review`일 때 소비 Unit의 `/hx-plan` 선행 검사가 exit 1과 계약 이슈 키를 출력한다. approved로 바꾸면 통과한다.
+3. 시험: 계약 이슈 design이 `in-review`일 때 소비 Unit의 `/kns-plan` 선행 검사가 exit 1과 계약 이슈 키를 출력한다. approved로 바꾸면 통과한다.
 4. 시험: 막는 게이트가 `intent`인 질문에 답이 없으면 intent 승인 API가 422 `gate_precondition`이다.
 5. `intent_check.py`가 의존 고리·없는 Unit 참조·두 Unit에 걸친 스토리 fixture에서 각각 실패하고 원인을 출력한다.
 6. 기획물 4종이 생기고 대시보드 문서 탭에서 열린다. 디자인 스킬이 깔린 홈과 빈 홈 fixture에서 모두 필수 제목 검사를 통과하고 `generatedWith`가 각각 `skill:…`·`template:…`이다.
 7. 와이어프레임 fixture를 대시보드 sandbox iframe으로 열 때 외부 요청 0건(브라우저 네트워크 기록).
-8. `backlog.md` 생성 구간의 단계 열이 대시보드 진행 탭과 fixture 20개 이슈에서 같다. `/hx-analyze`가 Intent ↔ 이슈 추적 누락(스토리 1개를 requirements에서 뺀 fixture)을 보고한다.
-9. 같은 요구사항을 킷 설계와 AI-DLC 설계(어댑터 fixture)로 돌리면 `units.json`이 `source`·`sourceId`를 빼고 같은 키 집합을 가지며, `/hx-specify --from-unit` 결과의 requirements 절 구성이 같다.
-10. 기존 코드 fixture(`change` 접수)에서 `/hx-intent`가 `codebase/<영역>.md`와 `current-state.md`를 만든다. 도구가 낸 행은 출처가 `static:`이고 나머지 행은 근거 위치를 가진다. `codebase` 승인 전에는 다음 단계 판정이 스토리를 쓰지 않는다.
+8. `backlog.md` 생성 구간의 단계 열이 대시보드 진행 탭과 fixture 20개 이슈에서 같다. `/kns-analyze`가 Intent ↔ 이슈 추적 누락(스토리 1개를 requirements에서 뺀 fixture)을 보고한다.
+9. 같은 요구사항을 킷 설계와 AI-DLC 설계(어댑터 fixture)로 돌리면 `units.json`이 `source`·`sourceId`를 빼고 같은 키 집합을 가지며, `/kns-specify --from-unit` 결과의 requirements 절 구성이 같다.
+10. 기존 코드 fixture(`change` 접수)에서 `/kns-intent`가 `codebase/<영역>.md`와 `current-state.md`를 만든다. 도구가 낸 행은 출처가 `static:`이고 나머지 행은 근거 위치를 가진다. `codebase` 승인 전에는 다음 단계 판정이 스토리를 쓰지 않는다.
 11. 모델 `baseSha` 뒤 `paths`에서 201줄을 바꾼 fixture는 `verify.sh fast` 경고와 승인 API 422 `model_stale`이 나온다. 199줄이면 둘 다 없다.
 12. 몹 fixture: 참석자 2명 세션에서 `by`로 다른 참석자를 고른 답 줄에 `기록:`이 붙고, 참석자 밖 email은 400이다.
 13. 이슈 키 없는 MR에서 바뀐 줄 20은 통과, 21은 실패한다. `risk: high` 이슈의 design은 승인자 1명이면 게이트 미통과, 두 번째 사람이 승인하면 통과한다.
-14. 시험 작업이 없는 `INV-2` fixture에서 `/hx-analyze`가 HIGH "불변식 시험 누락"을 보고한다.
+14. 시험 작업이 없는 `INV-2` fixture에서 `/kns-analyze`가 HIGH "불변식 시험 누락"을 보고한다.
 
 ## 6. 확인 필요
 
 | 항목 | 확인 방법 |
 |---|---|
-| `/hx-clarify`의 기존 질문 방식(대화 안 최대 5개)과 질문 파일 모드를 한 명령에 둘지 | P21 착수 때 기존 `hx-clarify` SKILL.md와 대조해 옵션(`--file`)으로 둘지 정한다 |
+| `/kns-clarify`의 기존 질문 방식(대화 안 최대 5개)과 질문 파일 모드를 한 명령에 둘지 | P21 착수 때 기존 `kns-clarify` SKILL.md와 대조해 옵션(`--file`)으로 둘지 정한다 |
 | Claude Code에서 같은 세션이 `questions.md`의 `- 답:` 줄만 못 쓰게 막는 훅 판정(Edit 도구 입력의 바뀐 줄 검사)이 Codex·Kiro 도구 입력에서도 되는지 | 세 하네스 PreToolUse 입력 형식을 기록하고 시험한다 |
 | 스킬(예: `service-planning-agent`)이 출력 경로·필수 제목 입력을 따르는지 | 대표 스킬 3개로 시험 실행, 필수 제목 통과율을 기록한다 |
 | AI-DLC 산출물에 스토리·Unit·의존이 구조로 들어 있는지(어댑터 입력) | 10 §6과 같이 P22 착수 전 AI-DLC 실제 산출물로 확인한다 |

@@ -49,7 +49,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--root", required=True)
     root = Path(parser.parse_args().root)
-    meta = read_json(root / ".agents" / "harness-kit.json") or {}
+    meta = read_json(root / ".agents" / "knots-sync.json") or {}
     flow = meta.get("flow") if isinstance(meta.get("flow"), dict) else {}
     if flow.get("design") != "aidlc":
         return 0
@@ -76,7 +76,7 @@ def main():
     if unlinked:
         parts.append(f"킷에 연결되지 않은 AI-DLC Intent {unlinked}개")
     if parts:
-        print(json.dumps({"systemMessage": " · ".join(parts) + " — npx harness-kit sync aidlc"}, ensure_ascii=False))
+        print(json.dumps({"systemMessage": " · ".join(parts) + " — npx knots-sync sync aidlc"}, ensure_ascii=False))
     return 0
 
 

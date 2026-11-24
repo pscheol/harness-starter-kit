@@ -1,5 +1,5 @@
 {
-  "schema": "harness-kit.analyzers/v1",
+  "schema": "knots-sync.analyzers/v1",
   "analyzers": [
     {"id": "gitleaks", "layer": "common", "category": "secret", "required": true, "levels": ["changed", "affected", "full"], "scope": "files", "cmd": ["gitleaks", "dir", "{targetsDir}", "--report-format", "sarif", "--report-path", "{out}", "--exit-code", "0", "--redact", "--no-banner", "--log-level", "warn"], "sarif": "native", "versionCmd": ["gitleaks", "version"], "minVersion": "8.19.0", "timeoutSec": 120, "license": "MIT"},
     {"id": "semgrep", "layer": "common", "category": "security", "required": true, "alternatives": ["opengrep"], "levels": ["changed", "affected", "full"], "scope": "files", "cmd": ["semgrep", "scan", "--config", "{rules}", "--sarif", "--output", "{out}", "--metrics", "off", "--disable-version-check", "--quiet", "{targets}"], "rules": {"source": "registry:p/default", "license": "Semgrep Rules License v1.0", "bundled": false}, "sarif": "native", "versionCmd": ["semgrep", "--version"], "timeoutSec": 300, "license": "LGPL-2.1"},

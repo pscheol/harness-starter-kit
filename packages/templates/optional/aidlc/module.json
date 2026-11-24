@@ -1,5 +1,5 @@
 {
-  "schema": "harness-kit.module/v1",
+  "schema": "knots-sync.module/v1",
   "id": "aidlc",
   "title": "AI-DLC 설계 단계",
   "summary": "설계 단계를 AI-DLC 가 맡고, 킷은 그 산출물을 Intent · Unit 목록으로 가져온다",

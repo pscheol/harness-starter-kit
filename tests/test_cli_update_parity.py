@@ -30,10 +30,10 @@ import cli_dist  # noqa: E402
 from test_cli_parity import DEFAULT_TOKENS, base_env, lock_hashes  # noqa: E402
 
 KIT = cli_dist.KIT
-PLUGIN = KIT / "plugins/harness-kit"
-KIT_PARTS = (".claude-plugin", "skills/hx-bootstrap", "skills/hx-update")
-LOCK = ".agents/harness-kit.lock"
-META = ".agents/harness-kit.json"
+PLUGIN = KIT / "plugins/kns"
+KIT_PARTS = (".claude-plugin", "skills/bootstrap", "skills/update")
+LOCK = ".agents/knots-sync.lock"
+META = ".agents/knots-sync.json"
 STATE_DIR = ".agents/state"
 # 업그레이드 공지(HK-24 design §7)는 두 경로의 새 판 값이 달라(update.sh = plugin.json 판, CLI = 패키지 판) 내용이 다르다.
 # 공지 함수 동일성은 같은 입력으로 notice.test.ts 가 본다. 릴리스 스크립트(HK-22)가 판을 하나로 맞추면 다시 비교한다.
@@ -65,8 +65,8 @@ def other_layer_tails(templates: Path) -> set[str]:
 PLAIN_DOC = ("common/agents-docs/guides/doc-standards.md", ".agents/docs/guides/doc-standards.md")
 HEADER_DOC = ("common/agents-docs/tech-debt-tracker.md", ".agents/docs/tech-debt-tracker.md")
 PLAIN_LAST = "새 판 마지막 줄(HK-25)"
-MERGE_BEGIN = "<!-- harness-kit: 설치 전 내용(병합) -->"
-MERGE_END = "<!-- /harness-kit -->"
+MERGE_BEGIN = "<!-- knots-sync: 설치 전 내용(병합) -->"
+MERGE_END = "<!-- /knots-sync -->"
 BACKUPS = ".agents/state/merge-backup"
 
 
@@ -99,7 +99,7 @@ def make_old_kit(root: Path) -> Path:
     kit = root / "old"
     for part in KIT_PARTS:
         shutil.copytree(PLUGIN / part, kit / part, symlinks=True)
-    tpl = kit / "skills/hx-bootstrap/templates"
+    tpl = kit / "skills/bootstrap/templates"
     for rel, body in ((ONLY[0], "혼자 든 파일 {{PROJECT_NAME}}\n"), (GONE_EDITED[0], "빠질 규칙\n")):
         (tpl / rel).parent.mkdir(parents=True, exist_ok=True)
         (tpl / rel).write_text(body, encoding="utf-8")
@@ -116,7 +116,7 @@ LOCK_MARK = "# pre-existing: -"
 def make_new_kit(root: Path, old: Path, picks: Picks) -> Path:
     kit = root / "new"
     shutil.copytree(old, kit, symlinks=True)
-    tpl = kit / "skills/hx-bootstrap/templates"
+    tpl = kit / "skills/bootstrap/templates"
     for rel in (picks.changed[0], picks.script[0], picks.header_doc[0]):
         with (tpl / rel).open("a", encoding="utf-8") as f:
             f.write("\n<!-- HK-11 새 판 줄 -->\n" if rel.endswith(".md") else "\n# HK-11 새 판 줄\n")
@@ -357,7 +357,7 @@ def run_case(cli: Path, root: Path, old: Path, new: Path, picks: Picks, c: Case)
     if c.prep:
         c.prep(base)
     setup = [
-        "bash", str(old / "skills/hx-bootstrap/setup.sh"), f"--stack={c.stack}", f"--arch={c.arch}",
+        "bash", str(old / "skills/bootstrap/setup.sh"), f"--stack={c.stack}", f"--arch={c.arch}",
         f"--agents={c.agents}", f"--modules={c.modules}", str(base),
     ]
     r = subprocess.run(setup, env=base_env(c.tokens), capture_output=True, text=True, timeout=300)
@@ -369,9 +369,9 @@ def run_case(cli: Path, root: Path, old: Path, new: Path, picks: Picks, c: Case)
     for target in (sh, cl):
         shutil.copytree(base, target, symlinks=True)
     env = base_env({})
-    sh_run = subprocess.run(["bash", str(new / "skills/hx-update/update.sh"), *c.sh_flags, str(sh)],
+    sh_run = subprocess.run(["bash", str(new / "skills/update/update.sh"), *c.sh_flags, str(sh)],
                             env=env, capture_output=True, text=True, timeout=300)
-    cli_run = subprocess.run(["node", str(cli), "update", "--json", "--templates", str(new / "skills/hx-bootstrap/templates"),
+    cli_run = subprocess.run(["node", str(cli), "update", "--json", "--templates", str(new / "skills/bootstrap/templates"),
                               "--cwd", str(cl), *c.cli_flags], env=env, capture_output=True, text=True, timeout=300)
     return Outcome(c, base, sh, cl, sh_run, cli_run)
 
@@ -385,7 +385,7 @@ class CliUpdateParityTest(unittest.TestCase):
         cls.cli = cli_dist.cli_bundle()
         cls.tmp = Path(tempfile.mkdtemp(prefix="hk-update-parity-")).resolve()
         old = make_old_kit(cls.tmp)
-        cls.picks = pick(old / "skills/hx-bootstrap/templates")
+        cls.picks = pick(old / "skills/bootstrap/templates")
         cls.new = make_new_kit(cls.tmp, old, cls.picks)
         with ThreadPoolExecutor(max_workers=4) as pool:
             done = list(pool.map(lambda c: run_case(cls.cli, cls.tmp, old, cls.new, cls.picks, c), CASES))
@@ -425,7 +425,7 @@ class CliUpdateParityTest(unittest.TestCase):
         old = lock_hashes(o.base / LOCK)
         sh = lock_hashes(o.sh / LOCK)
         lock = json.loads((o.cli / LOCK).read_text(encoding="utf-8"))
-        self.assertEqual(lock["schema"], "harness-kit.lock/v2")
+        self.assertEqual(lock["schema"], "knots-sync.lock/v2")
         entries = {e["path"]: e for e in lock["entries"]}
         self.assertEqual(set(entries), (set(old) | set(sh) | cli_only) - pruned, "lock 경로 = 옛 v1 경로 ∪ update.sh 새 경로 − prune")
         for rel, e in entries.items():
@@ -433,7 +433,7 @@ class CliUpdateParityTest(unittest.TestCase):
                 self.assertEqual((e["owner"], e.get("sha256")), ("user", None), rel)
             elif rel in sh:
                 self.assertEqual(e.get("sha256") or "-", sh[rel], rel)
-        backup = o.cli / STATE_DIR / "harness-kit.lock.v1.bak"
+        backup = o.cli / STATE_DIR / "knots-sync.lock.v1.bak"
         self.assertEqual(backup.read_bytes(), (o.base / LOCK).read_bytes())
 
     def assert_meta_means_same(self, o: Outcome) -> dict:
@@ -441,7 +441,7 @@ class CliUpdateParityTest(unittest.TestCase):
         cl = json.loads((o.cli / META).read_text(encoding="utf-8"))
         for k in ("stack", "arch", "domain", "agents", "modules", "tokens"):
             self.assertEqual(cl.get(k), sh.get(k), k)
-        self.assertEqual(cl["schema"], "harness-kit/v2")
+        self.assertEqual(cl["schema"], "knots-sync/v2")
         self.assertNotIn("kitVersion", cl)
         return cl
 
@@ -500,7 +500,7 @@ class CliUpdateParityTest(unittest.TestCase):
         self.assertEqual((o.cli / "notes/mine.md").read_text(encoding="utf-8"), "사람 메모\n")
         self.assertEqual([op["action"] for op in j["ops"] if op["path"] == NEW_RULE[1]], ["skip-user"])
         before = snapshot(o.cli)
-        again = subprocess.run(["node", str(self.cli), "update", "--json", "--templates", str(self.new / "skills/hx-bootstrap/templates"), "--cwd", str(o.cli)],
+        again = subprocess.run(["node", str(self.cli), "update", "--json", "--templates", str(self.new / "skills/bootstrap/templates"), "--cwd", str(o.cli)],
                                env=base_env({}), capture_output=True, text=True, timeout=300)
         self.assertEqual(again.returncode, 0, again.stdout[-2000:])
         self.assertEqual(snapshot(o.cli), before)
@@ -588,7 +588,7 @@ class CliUpdateParityTest(unittest.TestCase):
         self.assertEqual(o.cli_run.returncode, 4)
         self.assert_same_tree(o)
         self.assert_lock_means_same(o)
-        kit_tpl = self.new / "skills/hx-bootstrap/templates"
+        kit_tpl = self.new / "skills/bootstrap/templates"
         for target in (o.sh, o.cli):
             with self.subTest(target=target.parent.name):
                 readme_out, readme_in = split_blocks((target / "README.md").read_text(encoding="utf-8"))
@@ -618,7 +618,7 @@ class CliUpdateParityTest(unittest.TestCase):
         self.assertEqual(o.sh_run.stdout.count("v1 lock 첫 업데이트"), 1, o.sh_run.stdout[-3000:])
         # 두 번째 update: lock 이 표시 줄 있는 v1 · v2 라 병합하지 않는다.
         env = base_env({})
-        sh2 = subprocess.run(["bash", str(self.new / "skills/hx-update/update.sh"), str(o.sh)], env=env, capture_output=True, text=True, timeout=300)
+        sh2 = subprocess.run(["bash", str(self.new / "skills/update/update.sh"), str(o.sh)], env=env, capture_output=True, text=True, timeout=300)
         cl2 = subprocess.run(["node", str(self.cli), "update", "--json", "--templates", str(kit_tpl), "--cwd", str(o.cli)],
                              env=env, capture_output=True, text=True, timeout=300)
         self.assertEqual(sh2.returncode, 0, sh2.stderr[-2000:])

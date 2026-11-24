@@ -9,7 +9,7 @@ from pathlib import Path
 
 from harness.worktree_repo import inside, read_json, real, run_git
 
-SCHEMA = "harness-kit.worktree/v1"
+SCHEMA = "knots-sync.worktree/v1"
 LIVE_MINUTES = 30
 DONE_MINUTES = 10
 SESSION_DAYS = 7

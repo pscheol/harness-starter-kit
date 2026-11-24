@@ -55,7 +55,7 @@ class IntakeTest(SddCase):
         self.assertIn("| 카드 | 문자\\|숫자 |", (folder / "attachments/02-fields.md").read_text(encoding="utf-8"))
         self.assertFalse((folder / "attachments/03-flow.md").exists(), "이미지는 설명 md 를 만들지 않는다")
         self.assertTrue((folder / "attachments/03-flow.png").is_file())
-        self.assertEqual("/hx-intent INT-1", out["next"])
+        self.assertEqual("/kns-intent INT-1", out["next"])
         self.assertTrue((folder / "intent.md").is_file() and (folder / "questions.md").is_file())
 
     def test_secret_in_body_stops_and_secret_attachment_is_not_stored(self):
@@ -78,7 +78,7 @@ class IntakeTest(SddCase):
         self.assertIn("01-config.txt (저장 안 함)", (folder / "intake.md").read_text(encoding="utf-8"))
 
     def test_size_limits_and_store_binaries_off(self):
-        meta = self.root / ".agents/harness-kit.json"
+        meta = self.root / ".agents/knots-sync.json"
         data = json.loads(meta.read_text())
         meta.write_text(json.dumps({**data, "intake": {"maxFileMB": 1, "storeBinaries": False}}))
         big = self.files / "big.bin"

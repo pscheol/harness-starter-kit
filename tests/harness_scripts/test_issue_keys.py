@@ -138,7 +138,7 @@ class NextKeyTest(SddCase):
         self.assertFalse((self.docs / "issues").exists())
 
     def test_default_prefix_comes_from_project_slug(self):
-        meta = self.root / ".agents/harness-kit.json"
+        meta = self.root / ".agents/knots-sync.json"
         meta.write_text('{"tokens": {"PROJECT_SLUG": "acme-notes"}}\n')
         self.assert_ok(self.scaffold("--next", "sample-flow", "--area", "demo"))
         self.assertTrue(self.issue("ACMENOTES-1-sample-flow").is_dir())

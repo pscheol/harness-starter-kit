@@ -86,7 +86,7 @@ describe("처리할 일(06 §3.4, DB-R24)", () => {
     writeFile(repo.root, ".agents/docs/issues/DEMO-1-upload-cleanup/approvals.md",
       `# 승인 기록 — DEMO-1\n\n## 2026-11-23T10:00:00+09:00 · requirements · approved\n- 승인자: lee@example.com (Lee) · 그룹: po\n- 대상: requirements.md · sha256: ${"0".repeat(64)}\n- 문구: "확정"\n- 경로: terminal\n- 기록 ID: 01JDQ4ZK6B7Y0M9W2S3T4V5X6Y\n`);
     commitAll(repo.root);
-    writeFile(repo.root, ".agents/state/verify-last.json", JSON.stringify({ schema: "harness-kit.verify-last/v1", level: "changed", status: "failed", finishedAt: "2026-11-23T01:02:11Z", durationMs: 1000, head: { sha: git(repo.root, "rev-parse", "HEAD"), dirty: false }, steps: [] }));
+    writeFile(repo.root, ".agents/state/verify-last.json", JSON.stringify({ schema: "knots-sync.verify-last/v1", level: "changed", status: "failed", finishedAt: "2026-11-23T01:02:11Z", durationMs: 1000, head: { sha: git(repo.root, "rev-parse", "HEAD"), dirty: false }, steps: [] }));
     const remote = path.join(repo.base, "remote.git");
     git(repo.base, "init", "-q", "--bare", remote);
     git(repo.root, "remote", "add", "origin", remote);

@@ -48,10 +48,10 @@ class BlockFullVerifyTest(unittest.TestCase):
         self.checker = hooks / CHECKER.name
 
     def meta(self, value):
-        data = {"schema": "harness-kit/v1"}
+        data = {"schema": "knots-sync/v1"}
         if value is not None:
             data["verify"] = {"fullOnlyInCI": value}
-        (self.tmp / ".agents/harness-kit.json").write_text(json.dumps(data), encoding="utf-8")
+        (self.tmp / ".agents/knots-sync.json").write_text(json.dumps(data), encoding="utf-8")
 
     def run_hook(self, stdin, env_extra=None):
         env = {k: v for k, v in os.environ.items() if k not in ("CI", "HARNESS_VERIFY_PARENT", "CLAUDECODE")}
@@ -101,12 +101,12 @@ class BlockFullVerifyTest(unittest.TestCase):
         # 개인 층(.agents/local/)은 verify.* 를 바꾸지 못한다(설계 04 §3.6 · §5 #2). 공유 메타만 본다.
         self.meta(None)
         (self.tmp / ".agents/local").mkdir()
-        (self.tmp / ".agents/local/harness-kit.local.json").write_text(json.dumps({"verify": {"fullOnlyInCI": False}, "flow": {"gates": []}}), encoding="utf-8")
+        (self.tmp / ".agents/local/knots-sync.local.json").write_text(json.dumps({"verify": {"fullOnlyInCI": False}, "flow": {"gates": []}}), encoding="utf-8")
         self.assertEqual(self.run_hook(payload("bash scripts/verify.sh --full")).returncode, 2)
 
     def test_missing_or_broken_meta_defaults_to_blocking(self):
         self.assertEqual(self.run_hook(payload("bash scripts/verify.sh --full")).returncode, 2)
-        (self.tmp / ".agents/harness-kit.json").write_text("{broken", encoding="utf-8")
+        (self.tmp / ".agents/knots-sync.json").write_text("{broken", encoding="utf-8")
         self.assertEqual(self.run_hook(payload("bash scripts/verify.sh --full")).returncode, 2)
 
     def test_message_lists_scoped_commands_and_setting(self):

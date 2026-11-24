@@ -13,7 +13,7 @@ const FIXTURE = path.join(__dirname, "fixtures/hooks");
 const fixtureHooks = parseHooks(fs.readFileSync(path.join(FIXTURE, "hooks.json"), "utf8"), map) as HookDef[];
 const expected = JSON.parse(fs.readFileSync(path.join(FIXTURE, "expected.json"), "utf8")) as Record<string, any>;
 
-const doc = (hooks: unknown[]): string => JSON.stringify({ schema: "harness-kit.hooks/v1", hooks });
+const doc = (hooks: unknown[]): string => JSON.stringify({ schema: "knots-sync.hooks/v1", hooks });
 const base = { id: "harness-x", event: "stop", script: "scripts/hooks/x.sh", timeoutSec: 5, owner: "kit" };
 
 describe("공용 fixture(TS = Python 기대값)", () => {
@@ -64,7 +64,7 @@ describe("토큰(설치 때 치환하지 않는 {{kit:KEY}})", () => {
 
 describe("주인별 훅 파일 합치기(HK-14 design §4)", () => {
   const kitText = fs.readFileSync(path.join(REAL_TEMPLATES, "common/agents-root/hooks.json"), "utf8");
-  const one = (hooks: Record<string, unknown>[]): string => JSON.stringify({ schema: "harness-kit.hooks/v1", hooks });
+  const one = (hooks: Record<string, unknown>[]): string => JSON.stringify({ schema: "knots-sync.hooks/v1", hooks });
   const packHook = { id: "harness-acme-scan", event: "pre-tool", tools: ["write"], script: "scripts/hooks/acme-scan.sh", timeoutSec: 10, owner: "pack:acme" };
 
   it("읽는 순서: 이름 순, project.json 마지막, 숨김 · json 아닌 파일은 뺀다", () => {

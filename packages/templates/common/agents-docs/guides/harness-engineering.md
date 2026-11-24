@@ -19,7 +19,7 @@ Böckeler(martinfowler.com "Harness engineering")는 하네스의 제어를 둘�
 | | computational(프로그램이 판정) | inferential(모델이 판정) |
 |---|---|---|
 | guides | `scripts/new-feature.sh`가 템플릿에서 만드는 SDD 문서 골격 · `.agents/docs/_spec-templates/` | `AGENTS.md` · `.agents/rules/` · `.agents/roles/` · `.agents/skills/` · 세션 시작 hook 이 붙이는 안내문(`scripts/hooks/session-start.sh`) |
-| sensors | `scripts/verify.sh`와 그 아래 검사(`scripts/check_harness.py` · 가드 · 빌드 · 린트 · 테스트) | reviewer 역할 · `/hx-analyze` · `/hx-checklist` |
+| sensors | `scripts/verify.sh`와 그 아래 검사(`scripts/check_harness.py` · 가드 · 빌드 · 린트 · 테스트) | reviewer 역할 · `/kns-analyze` · `/kns-checklist` |
 
 검사를 두는 원칙:
 
@@ -38,7 +38,7 @@ Böckeler(martinfowler.com "Harness engineering")는 하네스의 제어를 둘�
 | 아키텍처 | `ARCHITECTURE.md` | 구성도 · codemap · 불변식 · 변경 영향 | 고유 |
 | 규칙 | `.agents/rules/*.md` | 규범 원본 | 공통(`sdd-workflow` · `writing-style` · `git-workflow` 등) + 고유(`guardrails` · `structure` · `tech` 등) |
 | 역할 | `.agents/roles/*.md` | 서브에이전트 다섯(explorer · reviewer · planner · worker · docs-researcher) 본문 | 공통 |
-| 스킬 | `.agents/skills/hx-*/SKILL.md` | SDD 명령의 절차 원본 | 공통 |
+| 스킬 | `.agents/skills/kns-*/SKILL.md` | SDD 명령의 절차 원본 | 공통 |
 | 기록 | `.agents/docs/` | SDD(`issues/<키>-<이름>/`) · 결정(`decisions/`) · 부채(`tech-debt-tracker.md`) · 설명서(`guides/`) · 템플릿(`_spec-templates/`) | 템플릿·설명서는 공통, 기록은 고유 |
 | 도구 배선 | `.claude/` · `.codex/` · `.kiro/` | 도구별 역할 등록 · 명령 · hook. 본문 없이 원본 경로를 가리킨다 | 공통 |
 | 게이트 | `scripts/verify.sh` | 모든 트리거가 부르는 검증 진입점 | 고유 |
@@ -78,9 +78,9 @@ flowchart TD
 
 | 도구 | 진입 | 이 폴더에서 시작하면 함께 읽는 것 | 역할 · 명령 · hook |
 |---|---|---|---|
-| Claude Code | `CLAUDE.md`(`@AGENTS.md` 가져오기) | 시작 폴더와 그 상위 폴더의 `CLAUDE.md`를 모두 이어 붙인다. 설정(`.claude/settings.json`)은 시작한 폴더 것만 쓴다. `.agents/`는 자동으로 읽지 않는다(규칙 · 스킬 · 역할은 `.claude/` 아래 복사본 · 생성물로 둔다) | `.claude/agents/*.md`(front matter `name` · `description` · `tools`) · `.claude/skills/hx-*/` · `.claude/rules/*.md`(`paths`) · settings 의 SessionStart · PreToolUse · Stop hook |
-| Codex | `AGENTS.md` | git 리포 루트부터 시작 폴더까지의 `AGENTS.md`를 이어 읽는다(합계 32 KiB 상한). `.codex/config.toml` · `.agents/skills` · `.codex/hooks.json`은 프로젝트 루트(가장 가까운 `.git` — submodule 안이면 그 submodule)부터 시작 폴더까지 `.codex/`가 있는 폴더마다 읽고, 같은 키·같은 이름의 역할은 시작 폴더 쪽이 이긴다. 신뢰하지 않은 폴더의 `.codex/`는 읽지 않는다 | `config.toml`이 `agents/*.toml` 다섯 역할을 등록 · 스킬 `$hx-*` · `hooks.json` |
-| Kiro | `.kiro/steering/*.md`(front matter `inclusion`) · `AGENTS.md` | 연 workspace 의 `.kiro/`만 읽는다. 이 하네스 루트를 workspace 로 연다. 커스텀 에이전트에는 steering 이 자동으로 붙지 않는다. CLI 기본 엔진(V2)은 `.kiro/hooks`를 읽지 않고 고른 에이전트 JSON 의 `hooks`만 쓴다 | `.kiro/agents/*.json`(하네스 id 이름의 조율 에이전트 + 역할 다섯, `resources`로 원본을 넘긴다) · `.kiro/skills/hx-*` · `.kiro/hooks/*.json`(v1) |
+| Claude Code | `CLAUDE.md`(`@AGENTS.md` 가져오기) | 시작 폴더와 그 상위 폴더의 `CLAUDE.md`를 모두 이어 붙인다. 설정(`.claude/settings.json`)은 시작한 폴더 것만 쓴다. `.agents/`는 자동으로 읽지 않는다(규칙 · 스킬 · 역할은 `.claude/` 아래 복사본 · 생성물로 둔다) | `.claude/agents/*.md`(front matter `name` · `description` · `tools`) · `.claude/skills/kns-*/` · `.claude/rules/*.md`(`paths`) · settings 의 SessionStart · PreToolUse · Stop hook |
+| Codex | `AGENTS.md` | git 리포 루트부터 시작 폴더까지의 `AGENTS.md`를 이어 읽는다(합계 32 KiB 상한). `.codex/config.toml` · `.agents/skills` · `.codex/hooks.json`은 프로젝트 루트(가장 가까운 `.git` — submodule 안이면 그 submodule)부터 시작 폴더까지 `.codex/`가 있는 폴더마다 읽고, 같은 키·같은 이름의 역할은 시작 폴더 쪽이 이긴다. 신뢰하지 않은 폴더의 `.codex/`는 읽지 않는다 | `config.toml`이 `agents/*.toml` 다섯 역할을 등록 · 스킬 `$kns-*` · `hooks.json` |
+| Kiro | `.kiro/steering/*.md`(front matter `inclusion`) · `AGENTS.md` | 연 workspace 의 `.kiro/`만 읽는다. 이 하네스 루트를 workspace 로 연다. 커스텀 에이전트에는 steering 이 자동으로 붙지 않는다. CLI 기본 엔진(V2)은 `.kiro/hooks`를 읽지 않고 고른 에이전트 JSON 의 `hooks`만 쓴다 | `.kiro/agents/*.json`(하네스 id 이름의 조율 에이전트 + 역할 다섯, `resources`로 원본을 넘긴다) · `.kiro/skills/kns-*` · `.kiro/hooks/*.json`(v1) |
 
 - 어느 도구도 `.agents/rules/` 전체를 자동으로 넣지 않는다. 작업에 맞는 원본을 직접 연다. 최소한 `.agents/rules/guardrails.md`는 모든 변경 전에 본다.
 - 메인 리포 안 단위 폴더에서 Claude 를 열면 단위 · 도메인 · 메인의 `CLAUDE.md`와 각자 가져온 `AGENTS.md`가 함께 들어온다.
@@ -133,7 +133,7 @@ flowchart TD
 
 세 에이전트 클라이언트와 git 이 같은 스크립트를 부른다. 훅 원본은 `.agents/hooks.json` 하나이고, 하네스별 설정(Claude `.claude/settings.json` · Codex `.codex/hooks.json` · Kiro CLI `.kiro/agents/<하네스 id>.json` · Kiro IDE `.kiro/hooks/harness-*.json`)은 킷이 그 원본에서 만든다. 설정 파일의 킷 항목은 직접 고치지 않는다 — 원본을 고치면 동기화 훅이 다시 만든다. 다른 도구 · 사람이 넣은 항목과 순서는 그대로 둔다.
 
-모든 킷 훅은 `scripts/hooks/dispatch.sh <훅 id> <스크립트>` 를 거친다. 디스패처는 훅 입력의 `cwd` 에서 위로 올라가 `.agents/harness-kit.json` 이나 `.agents/harness.json` 이 있는 첫 폴더를 하네스 루트로 쓴다. 그래서 worktree 에서 연 세션의 훅은 그 worktree 를 검증한다. 세션 시작 출력은 2,560바이트(고정 1,024 · 단위 안내 1,024 · 바뀌는 상태 512) 안에서 자르고, 훅마다 실행 기록(바이트 수만, 내용 없음)을 `.agents/state/hook-output.jsonl` 에 남긴다.
+모든 킷 훅은 `scripts/hooks/dispatch.sh <훅 id> <스크립트>` 를 거친다. 디스패처는 훅 입력의 `cwd` 에서 위로 올라가 `.agents/knots-sync.json` 이나 `.agents/harness.json` 이 있는 첫 폴더를 하네스 루트로 쓴다. 그래서 worktree 에서 연 세션의 훅은 그 worktree 를 검증한다. 세션 시작 출력은 2,560바이트(고정 1,024 · 단위 안내 1,024 · 바뀌는 상태 512) 안에서 자르고, 훅마다 실행 기록(바이트 수만, 내용 없음)을 `.agents/state/hook-output.jsonl` 에 남긴다.
 
 | 이벤트 | Claude Code | Codex | Kiro CLI(조율 에이전트) | Kiro IDE | 부르는 것 |
 |---|---|---|---|---|---|
@@ -283,7 +283,7 @@ sequenceDiagram
 | `.env.example`에 비밀 값을 두지 않는다 | 그 하네스 `security.md`(고유) | 가드 `no-secrets-in-env-example.sh`(강제) | fast | 위반 위치 출력 |
 | 층 의존 방향 | 그 단위 `structure.md`(고유) | JVM: 구조 테스트(Konsist · ArchUnit) · Python: import-linter(`pyproject.toml`의 `[tool.importlinter]`) · Go: golangci-lint depguard · Web·Electron: ESLint import 경계 규칙 | full | 테스트 · 린트 실패 |
 | 파일 하나에 선언 하나 | 그 단위 `structure.md`(고유) | 리뷰 — 킷은 가드를 깔지 않는다. 필요하면 `scripts/guards/_template.sh`를 복사해 경고 가드로 만든다 | 리뷰 때(가드를 만들면 fast) | 리뷰 지적 |
-| 사실 정확성 · 문체 · 문서 사이 중복 | [문체](../../rules/writing-style.md) · [리뷰 정책](../../rules/pr-review-policy.md) | reviewer 역할 · `/hx-analyze` · `/hx-checklist` | 리뷰 때 | 리뷰 지적(inferential) |
+| 사실 정확성 · 문체 · 문서 사이 중복 | [문체](../../rules/writing-style.md) · [리뷰 정책](../../rules/pr-review-policy.md) | reviewer 역할 · `/kns-analyze` · `/kns-checklist` | 리뷰 때 | 리뷰 지적(inferential) |
 
 가드는 문서 → 경고 가드(`harness-guard-enforce: 0`) → 강제 가드(`1`) 순서로 올린다. 위반이 0건이 된 날 강제로 올린다([플랫폼 불변식](../../rules/platform-invariants.md)).
 
@@ -291,7 +291,7 @@ sequenceDiagram
 
 **공통 규칙**(공통 파일 전부 — 규칙 · 역할 · 스킬 · 템플릿 · 배선 · SDD 스크립트 · 이 설명서):
 
-1. 메인 리포 `tools/harness/shared/`의 원본을 고친다. 새 규칙 파일이면 `npx harness-kit repair`로 하네스 폴더 생성물을 만든다.
+1. 메인 리포 `tools/harness/shared/`의 원본을 고친다. 새 규칙 파일이면 `npx knots-sync repair`로 하네스 폴더 생성물을 만든다.
 2. 변경 전 `python3 tools/harness/sync.py --snapshot <path>`, 수정 후 `--baseline <path>`로 등록 하네스에 배포한다. 지문 충돌은 파일을 덮지 않고 확인한다.
 3. 메인 리포 루트에서 `python3 tools/harness/sync.py --check`로 배포 드리프트를 확인하고 `bash scripts/verify.sh --files <변경 파일> --tests <관련 테스트>`로 선택 검증한다. 도메인·단위 전체 구조 검사는 `HARNESS_VERIFY_LEVEL=fast bash scripts/verify.sh`, MR 전에는 `bash scripts/verify.sh --affected`, 전체 빌드·테스트(full)는 CI가 돈다.
 4. 두 단계로 커밋한다. 바뀐 도메인 리포마다 커밋·push 한 뒤, 메인 리포에서 `tools/harness/shared` 변경과 도메인 포인터(`git add <도메인 폴더>`)를 커밋·push 한다.
@@ -301,7 +301,7 @@ sequenceDiagram
 **고유 규칙**:
 
 1. 그 하네스 `.agents/rules/<규칙>.md`를 고친다.
-2. `AGENTS.md` 규칙 색인을 맞추고 `npx harness-kit repair`로 복사본 · 생성물을 다시 만든다.
+2. `AGENTS.md` 규칙 색인을 맞추고 `npx knots-sync repair`로 복사본 · 생성물을 다시 만든다.
 3. 그 하네스 루트에서 `bash scripts/verify.sh`.
 4. 도메인 리포 안이면 그 리포에 커밋·push 하고, 메인 리포 안이면 포인터를 올린다.
 

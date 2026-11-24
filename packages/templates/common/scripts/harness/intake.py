@@ -210,7 +210,7 @@ def take(root: Path, title: str, kind: str, name: str, text: str, attach: list[P
         entries.append(entry)
     entries += [{"link": link} for link in links]
     if entries:
-        writes.append((files_dir / "attachments.json", (json.dumps({"schema": "harness-kit.attachments/v1", "files": entries}, ensure_ascii=False, indent=2) + "\n").encode("utf-8")))
+        writes.append((files_dir / "attachments.json", (json.dumps({"schema": "knots-sync.attachments/v1", "files": entries}, ensure_ascii=False, indent=2) + "\n").encode("utf-8")))
     listing = "\n".join(f"- {e.get('file') or e.get('link')}{'' if e.get('stored', True) else ' (저장 안 함)'}" for e in entries) or "(없음)"
     submitted_by, submitted_at = user, now
     if not created:
@@ -223,7 +223,7 @@ def take(root: Path, title: str, kind: str, name: str, text: str, attach: list[P
     writes.append((folder / "intake.md", intake.encode("utf-8")))
     rel = folder.relative_to(root).as_posix()
     result = {"folder": rel, "kind": kind, "files": entries, "warnings": warnings, "action": "created",
-              "next": f"/hx-intent {intents.FOLDER.match(folder.name)[1]}" if kind != "bug" else "이슈 requirements 를 채운다"}
+              "next": f"/kns-intent {intents.FOLDER.match(folder.name)[1]}" if kind != "bug" else "이슈 requirements 를 채운다"}
     if not created:
         old_intake = (folder / "intake.md").read_text(encoding="utf-8")
         old_list = (files_dir / "attachments.json").read_text(encoding="utf-8") if (files_dir / "attachments.json").is_file() else ""

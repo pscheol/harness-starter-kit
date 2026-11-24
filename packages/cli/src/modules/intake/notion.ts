@@ -1,6 +1,6 @@
 /**
  * Notion 접수 출처(설계 10 §3.6). 페이지 한 장 또는 "요구사항" 데이터베이스 항목을 읽어 Markdown 으로 바꾼다.
- * 토큰은 환경 변수 NOTION_TOKEN 에서만 읽는다(리포 · harness-kit.json 에 쓰지 않는다). 쓰기(writeBack)는 설정이 켜졌을 때만 한다.
+ * 토큰은 환경 변수 NOTION_TOKEN 에서만 읽는다(리포 · knots-sync.json 에 쓰지 않는다). 쓰기(writeBack)는 설정이 켜졌을 때만 한다.
  * 블록 → Markdown 은 결정적이다. 파일 · 이미지 블록은 첨부로 내려받고, 서명된 주소(S3)는 인증 헤더 없이 받는다.
  */
 import { CliError, EXIT } from "../../core/errors";
@@ -50,7 +50,7 @@ export function notionIdOf(ref: string): string {
 
 export function notionToken(env: Record<string, string | undefined>): string {
   const t = env.NOTION_TOKEN;
-  if (!t) throw new CliError(EXIT.ENV, "Notion 인증이 없다: 환경 변수 NOTION_TOKEN 에 통합 토큰을 넣는다", "토큰은 리포 · harness-kit.json 에 쓰지 않는다. 통합에 그 페이지를 공유해야 읽힌다");
+  if (!t) throw new CliError(EXIT.ENV, "Notion 인증이 없다: 환경 변수 NOTION_TOKEN 에 통합 토큰을 넣는다", "토큰은 리포 · knots-sync.json 에 쓰지 않는다. 통합에 그 페이지를 공유해야 읽힌다");
   return t;
 }
 

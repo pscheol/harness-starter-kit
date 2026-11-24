@@ -40,7 +40,7 @@ class ProtectApprovalsTest(unittest.TestCase):
         self.addCleanup(directory.cleanup)
         self.root = Path(directory.name).resolve() / "repo"
         (self.root / ISSUE).mkdir(parents=True)
-        (self.root / ".agents/harness-kit.json").write_text(json.dumps({"git": {"base": "develop"}}))
+        (self.root / ".agents/knots-sync.json").write_text(json.dumps({"git": {"base": "develop"}}))
         (self.root / ".agents/harness.json").write_text(json.dumps({"unit": "demo", "shared": []}))
         self.issue = self.root / ISSUE
         (self.issue / "requirements.md").write_text(doc("status", "in-review", "# Requirements\n"))
@@ -95,10 +95,10 @@ class ProtectApprovalsTest(unittest.TestCase):
             "cat .agents/state/dashboard.token",
             "curl -s -X POST http://127.0.0.1:4310/api/v1/approvals -d '{}'",
             "python3 scripts/harness/approve.py DEMO-1 done --phrase ok",
-            "npx harness-kit approve DEMO-1 --gate done",
-            "npx harness-kit review decide DEMO-1 F-1 --risk-accepted",
+            "npx knots-sync approve DEMO-1 --gate done",
+            "npx knots-sync review decide DEMO-1 F-1 --risk-accepted",
             # HK-17(06 §3.15): 질문 답 명령 · 답 · 리뷰 판단 API 도 사람만 한다
-            "npx harness-kit answer INT-1 Q-1 --choice A",
+            "npx knots-sync answer INT-1 Q-1 --choice A",
             "curl -s -X POST http://127.0.0.1:4310/api/v1/questions/INT-1/Q-1/answer -d '{}'",
             "curl -s -X POST http://127.0.0.1:4310/api/v1/reviews/DEMO-1/F-1/decision -d '{}'",
         )
@@ -117,9 +117,9 @@ class ProtectApprovalsTest(unittest.TestCase):
             "python3 scripts/harness/sdd_gates.py check DEMO-1",
             "python3 scripts/harness/review_state.py .agents/docs/issues/DEMO-1-upload",
             # HK-17: 질문 목록 · 리뷰 보기 · 상태 읽기는 에이전트도 한다
-            "npx harness-kit answer INT-1 --list",
-            "npx harness-kit review show DEMO-1",
-            "npx harness-kit status --issues --json",
+            "npx knots-sync answer INT-1 --list",
+            "npx knots-sync review show DEMO-1",
+            "npx knots-sync status --issues --json",
         ):
             with self.subTest(command=command):
                 self.assert_allowed(tool("Bash", command=command))
@@ -174,7 +174,7 @@ class ProtectApprovalsTest(unittest.TestCase):
         q.write_text(head + one.format(""), encoding="utf-8")
         rel = ".agents/docs/intents/INT-1-pay/questions.md"
         self.assert_blocked(tool("Edit", file_path=str(q), old_string="- 답:\n", new_string="- 답: B\n"), "사람만 쓴다")
-        self.assert_blocked(tool("Write", file_path=str(q), content=head + one.format(" A")), "harness-kit answer")
+        self.assert_blocked(tool("Write", file_path=str(q), content=head + one.format(" A")), "knots-sync answer")
         self.assert_blocked(tool("apply_patch", command=patch(f"*** Update File: {rel}", "@@", "-- 답:", "+- 답: A")))
         self.assert_blocked(tool("Bash", command=f"sed -i '' 's/- 답:/- 답: A/' {rel}"))
         two = one.replace("Q-1", "Q-2").format("")
@@ -189,7 +189,7 @@ class ProtectApprovalsTest(unittest.TestCase):
         rel = ".agents/docs/intents/INT-1-pay/mob.json"
         self.assert_blocked(tool("Write", file_path=self.path(rel), content="{}"))
         self.assert_blocked(tool("Bash", command=f"echo '{{}}' > {rel}"))
-        for command in ("python3 scripts/harness/mob.py start INT-1 --attendees a@b", "npx harness-kit mob close INT-1"):
+        for command in ("python3 scripts/harness/mob.py start INT-1 --attendees a@b", "npx knots-sync mob close INT-1"):
             self.assert_blocked(tool("Bash", command=command))
         self.assert_allowed(tool("Bash", command="python3 scripts/harness/mob.py status INT-1"))
 

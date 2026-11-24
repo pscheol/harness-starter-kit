@@ -4,7 +4,7 @@
     python3 scripts/harness/quality.py run --level changed|affected|full [--files …] [--base <ref>] [--summary]
     python3 scripts/harness/quality.py check-config                 # fast: 등록 · 게이트 · 기준선 형식
     python3 scripts/harness/quality.py baseline --update            # 사람 터미널 · CI: base 브랜치 full 결과로 기준선
-    python3 scripts/harness/quality.py scan                         # /hx-scan: 새 문제를 묶어 보여 준다
+    python3 scripts/harness/quality.py scan                         # /kns-scan: 새 문제를 묶어 보여 준다
 
 exit: 0 통과(경고 포함) · 1 게이트 실패 · 2 미완료 · 3 다시 돌려야 함(scan) · 에이전트 세션 거부(baseline).
 """
@@ -87,7 +87,7 @@ def analyzer_line(severity, analyzer, groups):
 
 
 def scan(root):
-    """/hx-scan 입력: 새 문제를 심각도 · 분석기 · 규칙으로 묶는다. 판정하지 않는다."""
+    """/kns-scan 입력: 새 문제를 심각도 · 분석기 · 규칙으로 묶는다. 판정하지 않는다."""
     path = root / ".agents/reports/findings-latest.json"
     if not path.is_file():
         print(f"분석 결과가 없다 — {RERUN} 를 먼저 돈다(분석기는 그 안에서 돈다)")

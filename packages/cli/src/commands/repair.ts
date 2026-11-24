@@ -19,6 +19,7 @@ import { applyProjection, PROJECTION_OPS, projCounts, projLine, projOpJson, proj
 import { prepare } from "../projection/flow";
 import { mergeWith, missingWith } from "../projection/merge";
 import { loadSpecOrNull } from "../projection/spec";
+import { renameLegacyState } from "../core/legacy-names";
 
 export const REPAIR_KINDS = ["missing", "drifted", "stale", "merge"];
 
@@ -97,6 +98,7 @@ function applyRepair(target: string, inst: Installed, ops: RepairOp[], projectio
   const restored = new Map(ops.filter((o) => o.action === "restore").map((o) => [o.path, o.want as Want]));
   let current = "";
   try {
+    renameLegacyState(target);
     for (const [rel, w] of restored) {
       current = rel;
       writeFileAtomic(full(target, rel), w.content, w.executable);
@@ -205,8 +207,8 @@ function repairFile(target: string, w: FileWant, e: LockEntry | undefined, only:
 }
 
 const HINTS: Record<string, string> = {
-  "needs-update": "harness-kit update 로 킷 판을 맞춘다(되살리는 일도 update 가 한다)",
-  unrestorable: "킷에서 빠진 경로다. lock 에서 빼려면 harness-kit update --prune, 받지 않으려면 --forget <경로>",
+  "needs-update": "knots-sync update 로 킷 판을 맞춘다(되살리는 일도 update 가 한다)",
+  unrestorable: "킷에서 빠진 경로다. lock 에서 빼려면 knots-sync update --prune, 받지 않으려면 --forget <경로>",
 };
 
 export function runRepair(ctx: Ctx): CommandResult {
@@ -232,7 +234,7 @@ export function runRepair(ctx: Ctx): CommandResult {
   if (projection) data.projection = { counts: projCounts(projection.ops), ops: projection.ops.map(projOpJson), findings: projection.findings };
   if (source) data.templates = source.templates;
   const lines = [
-    `harness-kit repair — ${target}`,
+    `knots-sync repair — ${target}`,
     `  킷: lock ${lockVersion ?? "?(v1)"} · CLI ${VERSION}`,
     ...ops.map((o) => `  ${o.action.padEnd(13)} ${o.path}${o.reason ? `  ${o.reason}` : ""}`),
     `  copy 항목: ok ${counts.ok} · drifted ${counts.drifted}(사람이 고친 파일 — 그대로 둔다) · missing ${counts.missing}`,

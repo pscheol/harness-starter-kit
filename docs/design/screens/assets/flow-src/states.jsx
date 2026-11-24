@@ -57,7 +57,7 @@ export function EmptyCanvas() {
         <Icon name="layers" style={{ width: 28, height: 28, color: "var(--design)" }} />
         <h2>units.json이 아직 없다</h2>
         <p>
-          설계 세션이 <span className="mono">/hx-intent {INTENT.key}</span>로 Unit을 나눈다. 나누면 Unit과 의존 순서가 여기에 그려진다.
+          설계 세션이 <span className="mono">/kns-intent {INTENT.key}</span>로 Unit을 나눈다. 나누면 Unit과 의존 순서가 여기에 그려진다.
         </p>
         <p className="path">{INTENT.dir}/units.json</p>
         <div className="f-msg-act">

@@ -17,13 +17,13 @@ import { substitute } from "./tokens";
 import { HooksError, parseHooks, type HookMap } from "../projection/hooks";
 import { treeSha } from "../projection/sources";
 
-export const PACK_SCHEMA = "harness-kit.pack/v1";
+export const PACK_SCHEMA = "knots-sync.pack/v1";
 export const PACK_NAME = /^[a-z][a-z0-9-]{1,30}$/;
 export const PACKS_CACHE = ".agents/state/packs";
 const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 const ALLOWED = ["agents-rules/", "agents-skills/", "agents-root/", "agents-docs/_spec-templates/", "scripts/"];
 /** 팩이 overrides 로도 덮지 못하는 킷 경로(항목 단위 파일은 fragments 로만 더한다) */
-const DENY = new Set([".agents/hooks.json", ".agents/verify-checks.json", ".agents/harness-kit.json", ".agents/harness-kit.lock", ".agents/harness.json", ".agents/model-policy.json"]);
+const DENY = new Set([".agents/hooks.json", ".agents/verify-checks.json", ".agents/knots-sync.json", ".agents/knots-sync.lock", ".agents/harness.json", ".agents/model-policy.json"]);
 const IGNORED_TOP = new Set(["pack.json", "README.md", "LICENSE", "LICENSE.md", "CHANGELOG.md", ".gitignore", ".gitattributes", ".npmignore", "package.json"]);
 
 export type PackSource = { kind: "file"; path: string } | { kind: "git"; url: string; ref: string } | { kind: "npm"; spec: string };

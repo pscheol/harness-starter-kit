@@ -57,7 +57,7 @@ export function jiraCredentials(cfg: Pick<TrackerConfig, "sync">, env: Record<st
   const userName = cfg.sync.restUserEnv ?? "JIRA_USER_EMAIL";
   const token = env[tokenName];
   const email = env[userName];
-  if (!token || !email) throw new CliError(EXIT.ENV, `Jira REST 인증이 없다: 환경 변수 ${userName} · ${tokenName} 을 채운다`, "토큰은 리포 · harness-kit.json 에 쓰지 않는다. hx-jira-setup 스킬 참고");
+  if (!token || !email) throw new CliError(EXIT.ENV, `Jira REST 인증이 없다: 환경 변수 ${userName} · ${tokenName} 을 채운다`, "토큰은 리포 · knots-sync.json 에 쓰지 않는다. kns:jira-setup 스킬 참고");
   return { email, token };
 }
 

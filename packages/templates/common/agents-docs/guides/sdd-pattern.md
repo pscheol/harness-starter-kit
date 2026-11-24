@@ -19,7 +19,7 @@ flowchart LR
 flowchart LR
   s1["S1 분석<br/>requirements"] --> s2["S2 기획<br/>정책·화면·목업"] --> s3["S3 설계<br/>순서도·시퀀스·DB·캐시·동시성"]
   s3 --> s4["S4 계획<br/>tasks"] --> s5["S5 구현<br/>코드·시험·OpenAPI"] --> s6["S6 테스트<br/>검증 사다리"]
-  s6 --> s7["S7 문서 반영<br/>/hx-docs · 생성 · 검사"] --> s8["S8 완료<br/>사용자 검수"]
+  s6 --> s7["S7 문서 반영<br/>/kns-docs · 생성 · 검사"] --> s8["S8 완료<br/>사용자 검수"]
   s7 -. 원고·배정 .-> docs[("기능 문서")]
 ```
 

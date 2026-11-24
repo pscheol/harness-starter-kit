@@ -1,5 +1,5 @@
 {
-  "schema": "harness-kit.hooks/v1",
+  "schema": "knots-sync.hooks/v1",
   "hooks": [
     {
       "id": "harness-session-start",
@@ -8,7 +8,7 @@
       "timeoutSec": 15,
       "owner": "kit",
       "env": {
-        "HX_HARNESS": {
+        "KNS_HARNESS": {
           "claude": "claude",
           "codex": "codex",
           "kiro": "kiro"
@@ -97,7 +97,7 @@
         "claude"
       ],
       "env": {
-        "HX_HARNESS": {
+        "KNS_HARNESS": {
           "claude": "claude"
         }
       },
@@ -127,7 +127,7 @@
       "timeoutSec": 15,
       "owner": "kit",
       "env": {
-        "HX_HARNESS": {
+        "KNS_HARNESS": {
           "claude": "claude",
           "codex": "codex",
           "kiro": "kiro"
@@ -159,7 +159,7 @@
         "claude"
       ],
       "env": {
-        "HX_HARNESS": {
+        "KNS_HARNESS": {
           "claude": "claude"
         }
       },

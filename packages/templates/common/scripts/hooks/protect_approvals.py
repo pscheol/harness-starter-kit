@@ -36,8 +36,8 @@ ISSUE_DOC = re.compile(r"(?:^|/)\.agents/docs/issues/[^/]+/(requirements|design|
 QUESTIONS_DOC = re.compile(r"(?:^|/)\.agents/docs/(?:intents|issues)/[^/]+/questions\.md$")
 ANSWER_LINE = re.compile(r"(?m)^[+\s]*- 답:[ \t]*\S")
 FULL_KEYS = ("content", "contents", "file_text", "text")
-ANSWER_HOW = "→ 답은 사람이 관리 페이지 질문 화면 · harness-kit answer 로 쓴다(08 §3.3). 에이전트는 질문 · 선택지 · 빈 '- 답:' 줄만 쓴다."
-APPROVE_COMMAND = re.compile(r"\bapprove\.py\b|\bharness-kit(?:\.js)?\s+(?:approve|answer(?![^|;&\n]*--list)|review\s+decide|mob\s+(?:start|next|close|end))\b"
+ANSWER_HOW = "→ 답은 사람이 관리 페이지 질문 화면 · knots-sync answer 로 쓴다(08 §3.3). 에이전트는 질문 · 선택지 · 빈 '- 답:' 줄만 쓴다."
+APPROVE_COMMAND = re.compile(r"\bapprove\.py\b|\bknots-sync(?:\.js)?\s+(?:approve|answer(?![^|;&\n]*--list)|review\s+decide|mob\s+(?:start|next|close|end))\b"
                              r"|\bmob\.py\s+(?:start|next|close|end)\b")
 #: 관리 페이지의 승인 · 질문 답 · 리뷰 판단 API(06 §3.15). 토큰 · PIN 이 없어도 부르는 명령 자체를 막는다
 PIN_API = re.compile(r"api/v1/(?:p/[0-9a-f]{12}/)?(?:approvals\b|questions/[^/\s]+/[^/\s]+/answer\b|reviews/[^/\s]+/[^/\s]+/decision\b)")
@@ -98,7 +98,7 @@ def is_protected(path):
 
 def harness_root_of(path):
     for folder in Path(path).resolve().parents:
-        if (folder / ".agents/harness-kit.json").is_file() or (folder / ".agents/harness.json").is_file():
+        if (folder / ".agents/knots-sync.json").is_file() or (folder / ".agents/harness.json").is_file():
             return folder
     return HARNESS_ROOT
 
@@ -113,7 +113,7 @@ def front(path):
 def done_approved(tasks_path):
     root = harness_root_of(tasks_path)
     try:
-        meta = json.loads((root / ".agents/harness-kit.json").read_text(encoding="utf-8"))
+        meta = json.loads((root / ".agents/knots-sync.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         meta = {}
     entries = approvals.read_entries(Path(tasks_path).parent / "approvals.md")

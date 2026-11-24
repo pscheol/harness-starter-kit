@@ -1,10 +1,11 @@
-/** 메타 .agents/harness-kit.json — v2 쓰기, v1 · v2 읽기(HK-8 design §6.1, README §5, 설계 02 §3.8). */
+/** 메타 .agents/knots-sync.json — v2 쓰기, v1 · v2 읽기(HK-8 design §6.1, README §5, 설계 02 §3.8). */
 import fs from "node:fs";
 import { formatJson } from "./json";
 import type { Selection } from "./selection";
+import { LEGACY_META_SCHEMA } from "./legacy-names";
 
-export const META_REL = ".agents/harness-kit.json";
-export const META_SCHEMA = "harness-kit/v2";
+export const META_REL = ".agents/knots-sync.json";
+export const META_SCHEMA = "knots-sync/v2";
 
 /** README §5 의 키 순서. 모르는 키는 이 뒤에 원래 순서로 둔다. */
 const KEY_ORDER = [
@@ -202,10 +203,11 @@ export function readMeta(file: string): MetaRead {
     return { status: "invalid", error: `JSON 해석 실패: ${err instanceof Error ? err.message : String(err)}` };
   }
   if (!isObj(raw)) return { status: "invalid", error: "최상위가 객체가 아니다" };
-  const isV2 = raw.schema === META_SCHEMA;
+  // v2-alpha 메타는 옛 이름 schema(harness-kit/v2)다 — 같은 v2 로 읽는다(HK-22b)
+  const isV2 = raw.schema === META_SCHEMA || raw.schema === LEGACY_META_SCHEMA;
   const isV1 = raw.schema === undefined && "kitVersion" in raw;
   if (!isV2 && !isV1) return { status: "invalid", error: `모르는 형식(schema: ${String(raw.schema)})` };
   const problem = checkCommon(raw);
   if (problem) return { status: "invalid", error: problem };
-  return isV2 ? { status: "ok", schema: "v2", meta: fromV2(raw) } : { status: "ok", schema: "v1", meta: fromV1(raw) };
+  return isV2 ? { status: "ok", schema: "v2", meta: fromV2({ ...raw, schema: META_SCHEMA }) } : { status: "ok", schema: "v1", meta: fromV1(raw) };
 }

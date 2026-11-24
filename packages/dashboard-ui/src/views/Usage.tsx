@@ -31,7 +31,7 @@ function SourcesNotice({ u }: { u: Loose }) {
           </HStack>
         ))}
         <Text size="sm">
-          복사본을 남기지 않고 내보내기(--export) · 커밋 · 세션 요청에 넣지 않습니다. 켜는 곳: <Code>~/.config/harness-kit/config.json</Code> 의 <Code>&quot;history&quot;: &quot;on&quot;</Code>
+          복사본을 남기지 않고 내보내기(--export) · 커밋 · 세션 요청에 넣지 않습니다. 켜는 곳: <Code>~/.config/knots-sync/config.json</Code> 의 <Code>&quot;history&quot;: &quot;on&quot;</Code>
           {u.enabled ? " — 지금 켜짐" : " — 지금 꺼짐"}
         </Text>
       </VStack>
@@ -134,7 +134,7 @@ function UsageTab({ nowData, kitData }: { nowData: Loose | null; kitData: Loose 
           main={
             <>
               <Empty title="토큰 사용량은 대화 기록 읽기를 켜면 보입니다" text="꺼진 동안 이 컴퓨터의 ~/.claude · ~/.codex 를 열지 않습니다. 킷이 덧붙인 양은 늘 보입니다." />
-              <CommandBox cmd={`echo '{ "history": "on" }' > ~/.config/harness-kit/config.json`} label="켜는 명령 복사(사람이 직접)" />
+              <CommandBox cmd={`echo '{ "history": "on" }' > ~/.config/knots-sync/config.json`} label="켜는 명령 복사(사람이 직접)" />
             </>
           }
           side={<><NowPanel n={nowData} />{kit}</>}

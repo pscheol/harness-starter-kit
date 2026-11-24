@@ -19,13 +19,13 @@
 
 ## 2. 요구사항
 
-- R1.1 `harness-kit.json`의 `packs`에 적은 팩을 `update --packs`(또는 `init`)가 받아 배치하고, 그 파일을 `pack:<이름>`으로 lock에 기록한다.
+- R1.1 `knots-sync.json`의 `packs`에 적은 팩을 `update --packs`(또는 `init`)가 받아 배치하고, 그 파일을 `pack:<이름>`으로 lock에 기록한다.
 - R1.2 팩은 `git:`·`npm:`·`file:` 세 소스를 받는다. lock에는 해석한 커밋 sha·무결성 해시를 남긴다.
 - R1.3 팩의 `requires.kit` 범위가 설치할 킷 버전을 포함하지 않으면 설치를 멈추고 exit 3.
 - R2.1 킷 `update`(옵션 없음) 뒤 팩 소유 파일의 해시가 그대로다.
 - R2.2 팩이 킷 경로를 덮으려면 `pack.json`의 `overrides`에 적어야 한다. 적지 않은 킷 경로가 팩에 있으면 설치를 멈추고 exit 3.
 - R2.3 두 팩이 같은 경로·id를 가지면 아무것도 쓰지 않고 충돌 목록과 함께 exit 4.
-- R3.1 개인 층 설정(`.agents/local/harness-kit.local.json`)은 `roles`와 `git.ide`만 바꾼다. 그 밖의 키는 무시하고 doctor가 경고한다.
+- R3.1 개인 층 설정(`.agents/local/knots-sync.local.json`)은 `roles`와 `git.ide`만 바꾼다. 그 밖의 키는 무시하고 doctor가 경고한다.
 - R3.2 개인 층은 더하기만 한다. 공유 스킬·규칙과 같은 이름의 개인 파일은 배치하지 않고 경고한다.
 - R4.1 게이트 하한(requirements · design · mr · done)과 floor 훅 3개는 팩·개인 층이 빼거나 약하게 할 수 없다.
 - R5.1 `doctor`는 경로·id마다 이긴 층과 진 층을 보여 준다(`--only overrides`).
@@ -88,12 +88,12 @@ acme-harness-pack/                  git 리포 또는 npm 패키지
 
 - 팩에 쓸 수 있는 세그먼트: `agents-rules/` `agents-skills/` `agents-root/`(역할·`.agents` 직속 설정) `agents-docs/_spec-templates/` `scripts/`(가드·팩 훅 스크립트) `tools/<팩 이름>/`.
 - 쓸 수 없는 세그먼트: `root/`(AGENTS.md는 킷·프로젝트 몫), `claude/` `codex/` `cursor/` `kiro-*`(하네스 파일은 어댑터가 원본에서 만든다, [03](03-projection-and-hooks.md)). 있으면 설치를 멈춘다.
-- 토큰 치환은 킷과 같다(02 §3.6). 팩이 쓰는 추가 토큰은 `pack.json`의 `tokens`에 적고 값은 `harness-kit.json`의 `tokens`에서 읽는다.
+- 토큰 치환은 킷과 같다(02 §3.6). 팩이 쓰는 추가 토큰은 `pack.json`의 `tokens`에 적고 값은 `knots-sync.json`의 `tokens`에서 읽는다.
 
 ```jsonc
 // pack.json
 {
-  "schema": "harness-kit.pack/v1",
+  "schema": "knots-sync.pack/v1",
   "name": "acme",                              // ^[a-z][a-z0-9-]{1,30}$ → owner "pack:acme"
   "version": "1.2.0",                          // semver. git 소스면 태그 v1.2.0 과 같아야 한다
   "description": "ACME 보안·릴리스 규칙",
@@ -121,7 +121,7 @@ acme-harness-pack/                  git 리포 또는 npm 패키지
 
 ### 3.3 팩 소스
 
-`harness-kit.json`의 `packs`(문자열 배열, README §5):
+`knots-sync.json`의 `packs`(문자열 배열, README §5):
 
 | 소스 | 예 | 받는 방법 | lock `resolved` |
 |---|---|---|---|
@@ -147,8 +147,8 @@ lock 기록:
 
 | 사람이 하는 일 | 명령 | 결과 |
 |---|---|---|
-| 팩을 넣는다 | `packs`에 한 줄 추가(MR) → `npx harness-kit update --packs` | 팩 파일 배치(주인 `pack:<이름>`), 덮은 킷 경로는 킷 판을 쓰지 않는다 |
-| 킷을 올린다 | `npx harness-kit update` | 팩 파일은 skip-pack. 새 킷이 팩의 `requires.kit` 밖이면 exit 3: `팩 acme 1.2.0 은 kit >=2.0.0 <3.0.0 을 요구한다. 팩을 올리거나 kit 버전을 맞춘다` |
+| 팩을 넣는다 | `packs`에 한 줄 추가(MR) → `npx knots-sync update --packs` | 팩 파일 배치(주인 `pack:<이름>`), 덮은 킷 경로는 킷 판을 쓰지 않는다 |
+| 킷을 올린다 | `npx knots-sync update` | 팩 파일은 skip-pack. 새 킷이 팩의 `requires.kit` 밖이면 exit 3: `팩 acme 1.2.0 은 kit >=2.0.0 <3.0.0 을 요구한다. 팩을 올리거나 kit 버전을 맞춘다` |
 | 팩을 올린다 | 태그를 바꾼 MR → `update --packs` | 팩 파일에 02 §3.10 표를 그대로 쓴다(B = lock의 팩 기준 해시). 팩에서 빠진 파일은 orphan. 그 경로를 킷도 가지면 킷 판으로 돌아간다(C = B일 때) |
 | 팩을 뺀다 | `packs`에서 지운 MR → `update --packs` | 고치지 않은 팩 파일을 지운다. 덮였던 킷 경로는 킷 판으로 되돌린다. 사람이 고친 팩 파일은 남기고 주인을 `user`로 바꾼다 |
 
@@ -172,7 +172,7 @@ lock 기록:
   .agents/rules/security-extra.md     pack:acme@1.2.0  ↔  pack:acme-web@0.4.0
   hooks.json id harness-acme-scan     pack:acme@1.2.0  ↔  pack:acme-web@0.4.0
   해결: 한 팩에서 빼고 새 버전을 낸다. 또는 프로젝트가 직접 관리한다:
-        npx harness-kit update --forget .agents/rules/security-extra.md   (주인을 user 로 바꾼다)
+        npx knots-sync update --forget .agents/rules/security-extra.md   (주인을 user 로 바꾼다)
 ```
 
 덮어쓴 것은 충돌이 아니고 보고만 한다:
@@ -186,15 +186,15 @@ lock 기록:
 
 ```text
 .agents/local/                      .gitignore 에 있다(킷 템플릿 .gitignore 에 추가)
-├── harness-kit.local.json          roles · git.ide 만
-├── harness-kit.local.lock          개인 배치 기록(lock v2 형식, owner "user")
+├── knots-sync.local.json          roles · git.ide 만
+├── knots-sync.local.lock          개인 배치 기록(lock v2 형식, owner "user")
 ├── rules/<이름>.md                 개인 규칙
 ├── skills/<이름>/SKILL.md          개인 스킬
 └── hooks.json                      개인 훅(hooks.json 과 같은 형식)
 ```
 
 ```jsonc
-// .agents/local/harness-kit.local.json
+// .agents/local/knots-sync.local.json
 {
   "roles": { "review": { "harness": "claude" } },   // 받는다: 역할별 harness
   "git": { "ide": "idea" },                          // 받는다
@@ -216,8 +216,8 @@ lock 기록:
 | `rules/<이름>.md` | 6장 확인(로컬 메모리 파일 지원) | 6장 확인 | `.kiro/steering/local-<이름>.md` render |
 | `hooks.json` | `.claude/settings.local.json` merge | 지원 없음 → doctor 정보 | `.kiro/hooks/local-<id>.json` render |
 
-- 공유 폴더 안에 만든 개인 파일(`.agents/skills/<이름>` 링크 등)은 `.git/info/exclude`의 킷 블록(`# harness-kit local begin` … `end`)에 경로를 적어 git이 보지 않게 한다. `.git/info/exclude`는 리포 안이고 커밋되지 않는다.
-- 공유 스킬·규칙과 이름이 같으면 배치하지 않는다: `⚠ 개인 스킬 hx-plan 은 공유 스킬과 이름이 같아 배치하지 않았다`.
+- 공유 폴더 안에 만든 개인 파일(`.agents/skills/<이름>` 링크 등)은 `.git/info/exclude`의 킷 블록(`# knots-sync local begin` … `end`)에 경로를 적어 git이 보지 않게 한다. `.git/info/exclude`는 리포 안이고 커밋되지 않는다.
+- 공유 스킬·규칙과 이름이 같으면 배치하지 않는다: `⚠ 개인 스킬 kns-plan 은 공유 스킬과 이름이 같아 배치하지 않았다`.
 - 개인 훅은 floor 훅 id를 쓸 수 없다. 개인 훅이 같은 이벤트에 더해지는 것은 허용한다.
 - 하네스 자체 로컬 설정으로 킷 훅을 끄는 경우도 doctor가 본다: `.claude/settings.local.json`의 `disableAllHooks: true`, 킷 훅 명령을 덮는 항목 → `personal-weakens` 경고.
 
@@ -242,7 +242,7 @@ lock 기록:
 ### 3.9 `pack new`
 
 ```text
-npx harness-kit pack new <이름> --dir <경로> [--from <리포 경로>]… [--kit-range ">=2.0.0 <3.0.0"]
+npx knots-sync pack new <이름> --dir <경로> [--from <리포 경로>]… [--kit-range ">=2.0.0 <3.0.0"]
 ```
 
 1. `--dir`는 필수다. 빈 폴더이거나 없는 경로여야 한다. 현재 리포의 `.agents/` 안이면 거부한다.
@@ -253,7 +253,7 @@ npx harness-kit pack new <이름> --dir <경로> [--from <리포 경로>]… [--
 
 ### 3.10 doctor 덮어쓰기 보고
 
-`npx harness-kit doctor --only overrides [--json]`:
+`npx knots-sync doctor --only overrides [--json]`:
 
 ```text
 덮어쓴 것 (이긴 층 ← 진 층)
@@ -262,8 +262,8 @@ npx harness-kit pack new <이름> --dir <경로> [--from <리포 경로>]… [--
   .agents/verify-checks.json#api-snapshot            user
   roles.review.harness                               local(claude) ← project(codex)
 무시한 개인 설정 2건
-  .agents/local/harness-kit.local.json verify.fullOnlyInCI — 개인 층은 roles · git.ide 만 바꾼다
-  .agents/local/harness-kit.local.json flow.gates
+  .agents/local/knots-sync.local.json verify.fullOnlyInCI — 개인 층은 roles · git.ide 만 바꾼다
+  .agents/local/knots-sync.local.json flow.gates
 하한 0건 위반
 ```
 
@@ -272,7 +272,7 @@ npx harness-kit pack new <이름> --dir <경로> [--from <리포 경로>]… [--
     { "target": ".agents/docs/_spec-templates/design/_template.md", "winner": "pack:acme@1.2.0", "losers": ["kit@2.0.0"], "declared": true },
     { "target": "roles.review.harness", "winner": "local", "value": "claude", "losers": [{ "layer": "project", "value": "codex" }] }
   ],
-  "ignoredPersonal": [ { "key": "verify.fullOnlyInCI", "file": ".agents/local/harness-kit.local.json" } ],
+  "ignoredPersonal": [ { "key": "verify.fullOnlyInCI", "file": ".agents/local/knots-sync.local.json" } ],
   "floorViolations": [] }
 ```
 

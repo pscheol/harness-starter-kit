@@ -71,7 +71,7 @@ async function bundleOf(p: Project, key: string, gate: BundleGate): Promise<{ co
   return { co, info, files, sha256: bundleSha(files) };
 }
 
-/** GET /intents/{key}/gates/{gate}: 승인 화면 · harness-kit approve 가 먼저 읽는다(대상 파일 · 묶음 sha · 앞 조건). */
+/** GET /intents/{key}/gates/{gate}: 승인 화면 · knots-sync approve 가 먼저 읽는다(대상 파일 · 묶음 sha · 앞 조건). */
 export async function getGateBundle(p: Project, key: string, gate: string): Promise<Record<string, unknown>> {
   if (!BUNDLE_GATES.includes(gate)) throw new ApiError(404, "not_found", `묶음 승인 게이트가 아닙니다: ${gate}(codebase · plans)`);
   const b = await bundleOf(p, key, gate as BundleGate);
@@ -94,7 +94,7 @@ export async function approveBundle(p: Project, gate: BundleGate, key: string, d
     if (files.every((f) => approvalState(entries, gate, f.approvalSha256, p.policy()) === "valid")) throw new ApiError(409, "already_approved", "같은 내용으로 승인한 기록이 있습니다");
     const unclear = files.filter((f) => f.path.endsWith(".md") && fs.readFileSync(path.join(co.root, f.path), "utf8").includes(CLARIFY));
     if (unclear.length) throw new ApiError(422, "needs_clarification", `${unclear.map((f) => f.name).join(", ")} 에 [NEEDS CLARIFICATION 가 남았습니다`);
-    if (info.stale.length) throw new ApiError(422, "model_stale", "역공학 문서가 오래됐습니다 — /hx-intent 가 codebase_scan.py 로 갱신한 뒤 승인합니다", { stale: info.stale });
+    if (info.stale.length) throw new ApiError(422, "model_stale", "역공학 문서가 오래됐습니다 — /kns-intent 가 codebase_scan.py 로 갱신한 뒤 승인합니다", { stale: info.stale });
     if (info.reasons.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건이 맞지 않습니다`, { reasons: info.reasons });
   }
   const who = await approver(p, co, gate);

@@ -21,7 +21,7 @@ class PlansCase(unittest.TestCase):
         self.root = Path(directory.name).resolve() / "repo"
         shutil.copytree(ROOT / "scripts/harness", self.root / "scripts/harness", ignore=shutil.ignore_patterns("__pycache__"))
         shutil.copytree(ROOT / ".agents/docs/_spec-templates", self.root / ".agents/docs/_spec-templates")
-        (self.root / ".agents/harness-kit.json").write_text("{}", encoding="utf-8")
+        (self.root / ".agents/knots-sync.json").write_text("{}", encoding="utf-8")
         self.plans = self.root / ".agents/docs/intents/INT-1-pay/plans"
         (self.plans / "screens").mkdir(parents=True)
 

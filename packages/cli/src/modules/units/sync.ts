@@ -1,5 +1,5 @@
 /**
- * `harness-kit sync units [--check] [--unit <id>] [--adopt]`(설계 10 §3.5, MD-R16).
+ * `knots-sync sync units [--check] [--unit <id>] [--adopt]`(설계 10 §3.5, MD-R16).
  * tools/harness/sync.py 와 같은 계획 · 같은 `--check` 줄 형식. 쓰기는 사람이 고친 단위 파일을 `.new` 로 옆에 두고 계속한다.
  */
 import fs from "node:fs";
@@ -18,7 +18,7 @@ export function runSyncUnits(ctx: Ctx): CommandResult {
   const adopt = bool(ctx.values, "adopt");
   if (check && adopt) throw new CliError(EXIT.USAGE, "sync units: --check 와 --adopt 는 같이 쓰지 않는다");
   if (!fs.existsSync(path.join(repo, REGISTRY))) {
-    throw new CliError(EXIT.STATE, `배포 단위 목록이 없다: ${REGISTRY}`, "multi-harness 모듈을 켠다(harness-kit add multi-harness)");
+    throw new CliError(EXIT.STATE, `배포 단위 목록이 없다: ${REGISTRY}`, "multi-harness 모듈을 켠다(knots-sync add multi-harness)");
   }
   try {
     const all = loadUnits(repo, path.join(repo, REGISTRY));
@@ -28,7 +28,7 @@ export function runSyncUnits(ctx: Ctx): CommandResult {
     if (check) {
       const problems = [...plans.flatMap((p) => differences(p)), ...clashes];
       if (problems.length) {
-        ctx.io.stderr("✖ 공통 하네스 파일이 원본과 다릅니다. tools/harness/shared 를 고치고 npx harness-kit sync units 를 실행하십시오.\n");
+        ctx.io.stderr("✖ 공통 하네스 파일이 원본과 다릅니다. tools/harness/shared 를 고치고 npx knots-sync sync units 를 실행하십시오.\n");
         return { code: EXIT.CHECK, data: { check: true, ok: false, problems, units: plans.length }, lines: problems };
       }
       return { code: EXIT.OK, data: { check: true, ok: true, problems: [], units: plans.length }, lines: [`공통 하네스 파일 일치 — 단위 ${plans.length}개`] };

@@ -1,5 +1,5 @@
 {
-  "schema": "harness-kit.approvals-fixture/v1",
+  "schema": "knots-sync.approvals-fixture/v1",
   "format": [
     "approvals.md 파서 기대값(설계 06 §3.7, HK-23 design §2). Python(scripts/harness/approvals.py)과 관리 페이지 Node 파서가 같은 결과를 내야 한다.",
     "cases[].expect: parse(입력) 결과. entries[] 칸은 모두 있다(없으면 null · false). errors 는 코드 정렬 · 중복 없음. 파일 오류는 {line, code}.",

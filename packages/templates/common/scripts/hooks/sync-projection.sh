@@ -20,7 +20,7 @@ projection="$HARNESS_ROOT/scripts/harness/projection.py"
 [ -f "$projection" ] || exit 0
 if ! err="$(python3 -B "$projection" sync --root "$HARNESS_ROOT" "${changed[@]}" 2>&1 >/dev/null)"; then
   # 한 줄 200바이트 이하(hooks.json maxOutputBytes). 이유는 110바이트에서 글자 경계로 자른다.
-  python3 -c 'import sys; r = sys.argv[1].encode()[:110].decode(errors="ignore"); print("하네스 복사본 동기화 실패: " + r + " — harness-kit repair")' \
+  python3 -c 'import sys; r = sys.argv[1].encode()[:110].decode(errors="ignore"); print("하네스 복사본 동기화 실패: " + r + " — knots-sync repair")' \
     "$(printf '%s' "$err" | tail -n 1)"
 fi
 exit 0

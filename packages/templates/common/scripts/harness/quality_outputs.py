@@ -2,7 +2,7 @@
 
     .agents/reports/sarif/<runId>/<분석기>.sarif   정규화한 SARIF(최근 20회)
     .agents/reports/sarif/latest                  마지막 실행(심볼릭 링크, 안 되면 복사)
-    .agents/reports/findings-latest.json          발견 목록(/hx-scan · 기준선 갱신 입력)
+    .agents/reports/findings-latest.json          발견 목록(/kns-scan · 기준선 갱신 입력)
     .agents/reports/quality-gate-last.json        게이트 판정
     .agents/reports/metrics/latest.json · <YYYY-MM-DD>.jsonl
 """
@@ -86,7 +86,7 @@ def metrics_record(context, outcomes, findings, gate):
         max_ccn = max(value for value in ccns if isinstance(value, int))
     repo_percent = property_of(outcomes, "duplication", "percentage")
     return {
-        "schema": "harness-kit.metrics/v1",
+        "schema": "knots-sync.metrics/v1",
         "at": context["at"].isoformat(timespec="seconds"),
         "level": context["level"],
         "head": (context["head"]["sha"] or "")[:7] or None,
@@ -114,7 +114,7 @@ def findings_record(context, run_id, outcomes, findings, metrics):
     for name in context["untriggered"]:
         analyzers[name] = {"status": "not-triggered"}
     return {
-        "schema": "harness-kit.findings/v1", "runId": run_id, "level": context["level"],
+        "schema": "knots-sync.findings/v1", "runId": run_id, "level": context["level"],
         "head": context["head"]["sha"], "branch": context["head"]["branch"], "dirty": context["head"]["dirty"],
         "base": context["reference"], "at": metrics["at"], "judgedBy": context["judgedBy"],
         "analyzers": analyzers,
@@ -126,7 +126,7 @@ def findings_record(context, run_id, outcomes, findings, metrics):
 
 def gate_record(context, gate):
     return {
-        "schema": "harness-kit.quality-gate-result/v1", "level": context["level"], "head": (context["head"]["sha"] or "")[:7] or None,
+        "schema": "knots-sync.quality-gate-result/v1", "level": context["level"], "head": (context["head"]["sha"] or "")[:7] or None,
         "base": context["reference"], "status": gate["status"], "mode": gate["mode"], "judgedBy": context["judgedBy"],
         "bootstrap": context["bootstrap"], "checks": gate["checks"], "incomplete": gate["incomplete"],
     }

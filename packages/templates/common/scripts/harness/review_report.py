@@ -12,10 +12,10 @@ SEVERITIES = ("CRITICAL", "HIGH", "MEDIUM", "LOW")
 CHECKS = ("RV-COV", "RV-ADR", "RV-RULE", "RV-EDGE", "RV-TEST", "RV-SCAN", "RV-DOC")
 BODY_LIMIT = 7
 TEXT_LIMIT = 400
-IDS_MARK = "harness-kit:review-ids"
-DATA_MARK = "harness-kit:review-data"
-IDS = re.compile(r"<!-- harness-kit:review-ids (\{.*?\}) -->")
-DATA = re.compile(r"<!-- harness-kit:review-data (\{.*?\}) -->")
+IDS_MARK = "knots-sync:review-ids"
+DATA_MARK = "knots-sync:review-data"
+IDS = re.compile(r"<!-- knots-sync:review-ids (\{.*?\}) -->")
+DATA = re.compile(r"<!-- knots-sync:review-data (\{.*?\}) -->")
 ID_NUMBER = re.compile(r"^F-(\d+)$")
 
 

@@ -80,7 +80,7 @@ function toolFindings(c: DoctorCtx, m: ModuleDecl): ModuleFinding[] {
   for (const t of m.requires.tools) {
     const range = rangeOf(t, c.meta as unknown as Record<string, unknown>);
     const s = checkTool(c.io, c.root, t, range);
-    if (!s.installed) out.push({ kind: "tool-missing", severity: "warn", owner: m.id, hint: `${m.id} 모듈이 켜져 있는데 ${t.name} 가 없다. 설치 명령은 harness-kit add ${m.id} --dry-run 에 나온다` });
+    if (!s.installed) out.push({ kind: "tool-missing", severity: "warn", owner: m.id, hint: `${m.id} 모듈이 켜져 있는데 ${t.name} 가 없다. 설치 명령은 knots-sync add ${m.id} --dry-run 에 나온다` });
     else if (s.inRange === false) out.push({ kind: "tool-version", severity: "warn", owner: m.id, hint: `${t.name} ${s.version} 은 검증된 범위(${range}) 밖이다`, detail: { version: s.version, range } });
     else if (s.inRange === null) out.push({ kind: "tool-version", severity: "info", owner: m.id, hint: `${t.name} 버전을 읽지 못했다(범위 ${range})` });
   }
@@ -154,7 +154,7 @@ function entireFindings(c: DoctorCtx, m: ModuleDecl): ModuleFinding[] {
   const have = entireHarnesses(c.root);
   const extra = have.filter((h) => h !== impl);
   if (extra.length) out.push({ kind: "implement-only", severity: "warn", owner: m.id, hint: `Entire 훅이 구현 하네스(${impl}) 밖에도 있다: ${extra.join(", ")}. 리뷰 하네스에는 켜지 않는다`, detail: { implement: impl, found: have } });
-  else if (have.length === 0) out.push({ kind: "implement-only", severity: "warn", owner: m.id, hint: `구현 하네스(${impl})에 Entire 훅이 없다. harness-kit add entire 를 다시 하거나 entire agent add 로 켠다` });
+  else if (have.length === 0) out.push({ kind: "implement-only", severity: "warn", owner: m.id, hint: `구현 하네스(${impl})에 Entire 훅이 없다. knots-sync add entire 를 다시 하거나 entire agent add 로 켠다` });
   else if (impl === "claude" || have.includes(impl)) {
     const review = ((c.meta as unknown as Record<string, unknown>).roles as Record<string, { harness?: string }> | undefined)?.review?.harness ?? "codex";
     if (review === impl) out.push({ kind: "implement-only", severity: "info", owner: m.id, hint: "리뷰 하네스가 구현 하네스와 같다. 같은 폴더의 리뷰 세션 대화도 기록된다, 리뷰는 원격 diff 만 읽는다" });
@@ -250,7 +250,7 @@ function declaredHookFindings(c: DoctorCtx, m: ModuleDecl): ModuleFinding[] {
     }
   }
   const missing = m.hooks.filter((h) => !ids.has(h.id)).map((h) => h.id);
-  return missing.length ? [{ kind: "module-undeclared", severity: "error", owner: m.id, hint: `module.json 이 선언한 훅 ${missing.join(" · ")} 가 .agents/hooks.d 에 없다. harness-kit repair`, detail: { missing } }] : [];
+  return missing.length ? [{ kind: "module-undeclared", severity: "error", owner: m.id, hint: `module.json 이 선언한 훅 ${missing.join(" · ")} 가 .agents/hooks.d 에 없다. knots-sync repair`, detail: { missing } }] : [];
 }
 
 /** 선언한 파일 목록 vs 모듈 폴더 안 실제 파일(템플릿 쪽 검사, 시험이 부른다) */

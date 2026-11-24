@@ -4,7 +4,7 @@
 훅 모드(기본): stdin 의 PreToolUse 입력에서 셸 명령을 보고, full 요청이면 exit 2 와 안내를 stderr 로 낸다.
 보조 점검(--entry-check): verify-entry.sh 가 full 레벨일 때 부른다. 에이전트 환경이고 CI 가 아니면 exit 3.
 
-해석하지 못한 입력은 통과시킨다(R2.4). 설정 `.agents/harness-kit.json` 의 verify.fullOnlyInCI 가 false 면 끈다(R2.3).
+해석하지 못한 입력은 통과시킨다(R2.4). 설정 `.agents/knots-sync.json` 의 verify.fullOnlyInCI 가 false 면 끈다(R2.3).
 표준 라이브러리만 쓴다.
 """
 
@@ -25,14 +25,14 @@ MESSAGE = """차단: 에이전트 세션에서는 전체 검증(full)을 돌리�
 → 바꾼 범위:       bash scripts/verify.sh
 → MR 올리기 전:    bash scripts/verify.sh --affected
 → 범위만 보기:     bash scripts/verify.sh --affected --plan
-사람이 터미널에서 직접 실행하는 full은 막지 않는다. 이 규칙은 .agents/harness-kit.json 의 verify.fullOnlyInCI 다.
+사람이 터미널에서 직접 실행하는 full은 막지 않는다. 이 규칙은 .agents/knots-sync.json 의 verify.fullOnlyInCI 다.
 """
 
 
 def full_only_in_ci(root: Path = HARNESS_ROOT) -> bool:
     """설정이 없거나 깨졌으면 기본값 True(막는다)."""
     try:
-        meta = json.loads((root / ".agents/harness-kit.json").read_text(encoding="utf-8"))
+        meta = json.loads((root / ".agents/knots-sync.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return True
     verify = meta.get("verify") if isinstance(meta, dict) else None

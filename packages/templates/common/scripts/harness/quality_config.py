@@ -11,9 +11,9 @@ from datetime import date, timedelta
 from harness.verify_sources import config_path, tools_dir
 
 REGISTRY, GATE, BASELINE = "analyzers.json", "quality-gate.json", "quality-baseline.json"
-REGISTRY_SCHEMA = "harness-kit.analyzers/v1"
-GATE_SCHEMA = "harness-kit.quality-gate/v1"
-BASELINE_SCHEMA = "harness-kit.quality-baseline/v1"
+REGISTRY_SCHEMA = "knots-sync.analyzers/v1"
+GATE_SCHEMA = "knots-sync.quality-gate/v1"
+BASELINE_SCHEMA = "knots-sync.quality-baseline/v1"
 LEVELS = ("changed", "affected", "full")
 SCOPES = ("files", "modules", "repo", "lockfiles")
 CATEGORIES = ("security", "secret", "dependency", "duplication", "complexity", "lint", "bug", "type", "coverage")
@@ -229,7 +229,7 @@ def baseline_problems(data, today):
 
 def semgrep_acknowledged(root):
     try:
-        meta = json.loads((root / ".agents/harness-kit.json").read_text(encoding="utf-8"))
+        meta = json.loads((root / ".agents/knots-sync.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return False
     return isinstance(meta, dict) and (meta.get("analyzers") or {}).get("semgrepRulesAcknowledged") is True
@@ -250,7 +250,7 @@ def check(root, environ=None, today=None):
             count = sum(entry.get("enabled", True) is not False for entry in entries)
             uses_semgrep = any(entry.get("enabled", True) is not False and (entry.get("id") == "semgrep" or (entry.get("cmd") or [""])[0] == "semgrep") for entry in entries)
             if uses_semgrep and not semgrep_acknowledged(root):
-                warnings.append("semgrep 레지스트리 규칙은 Semgrep Rules License 를 따른다 — 확인했으면 .agents/harness-kit.json 에 analyzers.semgrepRulesAcknowledged: true")
+                warnings.append("semgrep 레지스트리 규칙은 Semgrep Rules License 를 따른다 — 확인했으면 .agents/knots-sync.json 에 analyzers.semgrepRulesAcknowledged: true")
         except ConfigError as error:
             errors.append(str(error))
     for name, checker in ((GATE, gate_errors), (BASELINE, None)):

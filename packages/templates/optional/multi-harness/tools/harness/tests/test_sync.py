@@ -9,7 +9,7 @@ import tempfile
 import unittest
 
 SYNC = Path(__file__).resolve().parents[1] / 'sync.py'
-# sync.py 는 단위 토큰(UNIT_ID · UNIT_TITLE …)만 채운다. 설치(hx-bootstrap)가 시험 파일의 토큰을 건드리지 않도록 이어 붙여 만든다.
+# sync.py 는 단위 토큰(UNIT_ID · UNIT_TITLE …)만 채운다. 설치(kns:bootstrap)가 시험 파일의 토큰을 건드리지 않도록 이어 붙여 만든다.
 UNIT_TITLE = '{{' + 'UNIT_TITLE}}'
 UNIT_ID = '{{' + 'UNIT_ID}}'
 

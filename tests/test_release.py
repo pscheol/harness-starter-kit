@@ -3,7 +3,7 @@
     python3 -m unittest tests.test_release
 
 임시 git 리포에 매니페스트 7개(다섯 값 + 원본 매니페스트 둘)와 CHANGELOG 만 복사해 돌린다.
-생성물 · 시험 명령은 HK_RELEASE_BUILD_CMD · HK_RELEASE_TEST_CMD 로 바꿔 부르지 않는다. 네트워크 · push 를 쓰지 않는다.
+생성물 · 시험 명령은 KNS_RELEASE_BUILD_CMD · KNS_RELEASE_TEST_CMD 로 바꿔 부르지 않는다. 네트워크 · push 를 쓰지 않는다.
 """
 
 from __future__ import annotations
@@ -22,8 +22,8 @@ FIVE = [
     "packages/cli/package.json",
     ".claude-plugin/marketplace.json",
     ".agents/plugins/marketplace.json",
-    "plugins/harness-kit/.claude-plugin/plugin.json",
-    "plugins/harness-kit/.codex-plugin/plugin.json",
+    "plugins/kns/.claude-plugin/plugin.json",
+    "plugins/kns/.codex-plugin/plugin.json",
 ]
 SOURCES = ["packages/plugin/.claude-plugin/plugin.json", "packages/plugin/.codex-plugin/plugin.json"]
 ALL = FIVE + SOURCES
@@ -32,7 +32,7 @@ ALL = FIVE + SOURCES
 def version_of(path: Path) -> str:
     doc = json.loads(path.read_text(encoding="utf-8"))
     if "plugins" in doc:
-        return next(p for p in doc["plugins"] if p["name"] == "harness-kit")["version"]
+        return next(p for p in doc["plugins"] if p["name"] == "knots-sync")["version"]
     return doc["version"]
 
 
@@ -46,7 +46,7 @@ class ReleaseScriptTest(unittest.TestCase):
             shutil.copy2(KIT / rel, self.repo / rel)
         self.set_all("2.0.0-alpha.0")
         (self.repo / "CHANGELOG.md").write_text("# 변경 기록\n\n## 2.0.0-alpha.1\n\n- 시험\n\n## 2.0.0-alpha.0\n\n- 처음\n", encoding="utf-8")
-        self.env = {**os.environ, "HK_RELEASE_ROOT": str(self.repo), "HK_RELEASE_BUILD_CMD": "true", "HK_RELEASE_TEST_CMD": "true",
+        self.env = {**os.environ, "KNS_RELEASE_ROOT": str(self.repo), "KNS_RELEASE_BUILD_CMD": "true", "KNS_RELEASE_TEST_CMD": "true",
                     "GIT_CONFIG_GLOBAL": "/dev/null", "GIT_CONFIG_SYSTEM": "/dev/null",
                     "GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.com", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@example.com"}
         self.git("init", "-q", "-b", "main")
@@ -65,7 +65,7 @@ class ReleaseScriptTest(unittest.TestCase):
         for rel in only or ALL:
             path = self.repo / rel
             doc = json.loads(path.read_text(encoding="utf-8"))
-            (next(p for p in doc["plugins"] if p["name"] == "harness-kit") if "plugins" in doc else doc)["version"] = version
+            (next(p for p in doc["plugins"] if p["name"] == "knots-sync") if "plugins" in doc else doc)["version"] = version
             path.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     def versions(self) -> list[str]:
@@ -181,13 +181,13 @@ class ReleaseScriptTest(unittest.TestCase):
         (self.repo / "dirty.txt").unlink()
         self.git("checkout", "-q", "-b", "feature/x")
         self.assertEqual(3, self.release("2.0.0-alpha.1").returncode)
-        self.assertEqual(0, self.release("2.0.0-alpha.1", "--no-commit", HK_RELEASE_ANY_BRANCH="1").returncode)
+        self.assertEqual(0, self.release("2.0.0-alpha.1", "--no-commit", KNS_RELEASE_ANY_BRANCH="1").returncode)
         self.git("checkout", "-q", "--", ".")
         self.git("checkout", "-q", "-b", "release/2.0")
         self.assertEqual(0, self.release("2.0.0-alpha.1", "--no-commit").returncode)
 
     def test_failing_tests_leave_no_commit_and_no_tag(self):
-        r = self.release("2.0.0-alpha.1", HK_RELEASE_TEST_CMD="false")
+        r = self.release("2.0.0-alpha.1", KNS_RELEASE_TEST_CMD="false")
         self.assertEqual(1, r.returncode)
         self.assertEqual("", self.git("tag"))
         self.assertEqual("base", self.git("log", "-1", "--format=%s").strip())
@@ -213,10 +213,10 @@ class RealFilesTest(unittest.TestCase):
         self.assertEqual(0, r.returncode, r.stdout + r.stderr)
 
     def test_update_sh_and_cli_read_the_same_version(self):
-        plugin = version_of(KIT / "plugins/harness-kit/.claude-plugin/plugin.json")
+        plugin = version_of(KIT / "plugins/kns/.claude-plugin/plugin.json")
         self.assertEqual(plugin, version_of(KIT / "packages/cli/package.json"))
-        bundle = (KIT / "plugins/harness-kit/skills/hx-bootstrap/bin/harness-kit.js").read_text(encoding="utf-8").splitlines()[1]
-        self.assertIn(f"harness-kit {plugin} ", bundle)
+        bundle = (KIT / "plugins/kns/skills/bootstrap/bin/knots-sync.js").read_text(encoding="utf-8").splitlines()[1]
+        self.assertIn(f"knots-sync {plugin} ", bundle)
 
 
 if __name__ == "__main__":

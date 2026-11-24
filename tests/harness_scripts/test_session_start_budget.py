@@ -38,7 +38,7 @@ class SessionStartBudgetTest(SessionRegisterCase):
         cwd = cwd or self.tree
         payload = {"session_id": sid, "hook_event_name": "SessionStart", "cwd": str(cwd)}
         return subprocess.run(["bash", str(cwd / "scripts/hooks/session-start.sh")], cwd=cwd, input=json.dumps(payload),
-                              env=clean_env(**{"HX_HARNESS": "claude", **env}), capture_output=True, text=True, timeout=60)
+                              env=clean_env(**{"KNS_HARNESS": "claude", **env}), capture_output=True, text=True, timeout=60)
 
     def fixed_text(self):
         source = (self.root / "scripts/hooks/session-start.sh").read_text(encoding="utf-8")
@@ -51,9 +51,9 @@ class SessionStartBudgetTest(SessionRegisterCase):
     def queue_item(self, filler=10):
         queue = self.root / ".agents/state/dispatch-queue"
         queue.mkdir(parents=True, exist_ok=True)
-        data = {"schema": "harness-kit.dispatch/v1", "id": "01JDQ50000000000000000000A", "createdAt": iso(), "createdBy": "kim@example.com",
+        data = {"schema": "knots-sync.dispatch/v1", "id": "01JDQ50000000000000000000A", "createdAt": iso(), "createdBy": "kim@example.com",
                 "target": {"issue": "DEMO-3", "role": "implement", "harness": "any", "sessionId": None}, "kind": "doc-changed",
-                "message": "[harness-kit 관리 페이지] 요청 " + "나" * filler, "paths": [".agents/docs/issues/DEMO-3-upload-cleanup/requirements.md"],
+                "message": "[knots-sync 관리 페이지] 요청 " + "나" * filler, "paths": [".agents/docs/issues/DEMO-3-upload-cleanup/requirements.md"],
                 "expiresAt": iso(7)}
         (queue / f"{data['id']}.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
@@ -103,16 +103,16 @@ class SessionStartBudgetTest(SessionRegisterCase):
         out = self.start().stdout
         state = out[out.index("대기 요청"):]
         self.assertLessEqual(len(state.encode("utf-8")), STATE, state)
-        self.assertIn("1) [harness-kit 관리 페이지]", state)
+        self.assertIn("1) [knots-sync 관리 페이지]", state)
         self.assertNotIn("- 본문 줄 11", state)
 
     def test_notice_title_only_until_expiry(self):
         (self.tree / NOTICE).write_text(self.kit_notice("2026-12-24"), encoding="utf-8")
         title = "하네스 업데이트 1.0.8 → 2.0.0 · 읽을 것: .agents/harness-upgrade-notice.md"
-        before = self.start(HARNESS_KIT_TODAY="2026-12-24").stdout
+        before = self.start(KNOTS_SYNC_TODAY="2026-12-24").stdout
         self.assertIn(title, before)
         self.assertNotIn("kitFrom", before)
-        after = self.start(sid="s-2", HARNESS_KIT_TODAY="2026-12-25").stdout
+        after = self.start(sid="s-2", KNOTS_SYNC_TODAY="2026-12-25").stdout
         self.assertNotIn("하네스 업데이트", after)
 
     def test_human_notice_gets_a_title_line_and_body_only_if_room(self):
@@ -133,14 +133,14 @@ class SessionStartBudgetTest(SessionRegisterCase):
         self.assertIn("파일 점유를 등록하지 않았다", tail)
 
     def test_design_session_gets_a_role_line_and_a_harness_warning(self):
-        meta = self.tree / ".agents/harness-kit.json"
+        meta = self.tree / ".agents/knots-sync.json"
         data = json.loads(meta.read_text(encoding="utf-8")) if meta.is_file() else {}
         meta.write_text(json.dumps({**data, "roles": {"design": {"harness": "claude"}, "implement": {"harness": "codex"}}}), encoding="utf-8")
-        same = self.start(sid="s-design", HX_ROLE="design")
+        same = self.start(sid="s-design", KNS_ROLE="design")
         self.assertEqual(0, same.returncode, same.stderr)
         self.assertIn("설계 세션: Intent 폴더", same.stdout)
         self.assertNotIn("roles.design.harness", same.stdout)
-        other = self.start(sid="s-design-2", HX_ROLE="design", HX_HARNESS="codex")
+        other = self.start(sid="s-design-2", KNS_ROLE="design", KNS_HARNESS="codex")
         self.assertIn("⚠ 이 세션 하네스 codex ≠ roles.design.harness claude", other.stdout)
         self.assertLessEqual(len(other.stdout.encode("utf-8")), TOTAL)
         plain = self.start(sid="s-impl")
@@ -154,7 +154,7 @@ class SessionStartBudgetTest(SessionRegisterCase):
         out = self.start(sid="s-personal").stdout
         self.assertIn("개인 설정: explore → standard(model: sonnet)", out)
         self.assertNotIn("implement → light", out)
-        codex = self.start(sid="s-personal-codex", HX_HARNESS="codex").stdout
+        codex = self.start(sid="s-personal-codex", KNS_HARNESS="codex").stdout
         self.assertIn("explore → standard(effort medium)", codex)
 
 

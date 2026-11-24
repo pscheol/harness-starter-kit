@@ -39,7 +39,7 @@ export async function runStatus(ctx: Ctx): Promise<CommandResult> {
   if (bool(v, "all")) {
     const data = await projectsOverview(registryProjects(ctx));
     const rows = data.projects as { name: string; state: string; total?: number; error?: string }[];
-    return { code: EXIT.OK, data, lines: rows.length ? rows.map((r) => `${r.name.padEnd(24)} ${r.state === "ok" ? `처리할 일 ${String(r.total ?? 0)}건` : (r.error ?? r.state)}`) : ["등록한 프로젝트가 없다 — npx harness-kit projects add <폴더>"] };
+    return { code: EXIT.OK, data, lines: rows.length ? rows.map((r) => `${r.name.padEnd(24)} ${r.state === "ok" ? `처리할 일 ${String(r.total ?? 0)}건` : (r.error ?? r.state)}`) : ["등록한 프로젝트가 없다 — npx knots-sync projects add <폴더>"] };
   }
   if (bool(v, "ops")) return run(ctx, "GET", "/ops", {}, jsonLines);
   if (bool(v, "session")) return run(ctx, "GET", "/session", {}, jsonLines);
@@ -90,12 +90,12 @@ export async function runQuality(ctx: Ctx): Promise<CommandResult> {
 /** flow gates [--add <g> --after <g> | --remove <g>]. 바닥 넷(requirements · design · mr · done) 아래로 줄이면 exit 1(04 §3.8). */
 export async function runFlow(ctx: Ctx): Promise<CommandResult> {
   const [sub] = ctx.positionals;
-  if (sub !== "gates" || ctx.positionals.length > 1) throw usageError("harness-kit flow gates [--add <게이트> --after <게이트> | --remove <게이트>] [--json]");
+  if (sub !== "gates" || ctx.positionals.length > 1) throw usageError("knots-sync flow gates [--add <게이트> --after <게이트> | --remove <게이트>] [--json]");
   const add = str(ctx.values, "add");
   const remove = str(ctx.values, "remove");
   if (add === undefined && remove === undefined) return run(ctx, "GET", "/flow/gates", {}, (d) => [`게이트: ${(d.gates as string[]).join(" → ")}`, `바닥(줄일 수 없음): ${(d.floor as string[]).join(" · ")}`]);
   const p = await openProject(ctx);
-  const file = path.join(p.root, ".agents/harness-kit.json");
+  const file = path.join(p.root, ".agents/knots-sync.json");
   const meta = JSON.parse(fs.readFileSync(file, "utf8")) as Record<string, unknown>;
   const flow = (meta.flow && typeof meta.flow === "object" ? meta.flow : {}) as Record<string, unknown>;
   let gates = p.gates();
@@ -114,5 +114,5 @@ export async function runFlow(ctx: Ctx): Promise<CommandResult> {
   const tmp = `${file}.${process.pid}.tmp`;
   fs.writeFileSync(tmp, formatJson(next));
   fs.renameSync(tmp, file);
-  return { code: EXIT.OK, data: { gates, floor: GATE_FLOOR, file: ".agents/harness-kit.json" }, lines: [`flow.gates: ${gates.join(" → ")}`, "팀 설정이다. MR 로 올린다"] };
+  return { code: EXIT.OK, data: { gates, floor: GATE_FLOOR, file: ".agents/knots-sync.json" }, lines: [`flow.gates: ${gates.join(" → ")}`, "팀 설정이다. MR 로 올린다"] };
 }

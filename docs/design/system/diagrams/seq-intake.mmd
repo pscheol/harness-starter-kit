@@ -14,7 +14,7 @@ sequenceDiagram
       EXT-->>UI: 제목 · 본문 · 첨부
     end
     UI->>FS: intake.md · attachments/ · 추출본(gitleaks 검사)
-    UI->>DS: 작업 요청 "INT-8 접수됨. /hx-intent INT-8"
+    UI->>DS: 작업 요청 "INT-8 접수됨. /kns-intent INT-8"
   end
   alt flow.design = kit
     DS->>FS: intent.md(draft) · questions.md
@@ -30,4 +30,4 @@ sequenceDiagram
     UI->>AI: sync aidlc: 산출물 읽기
     UI->>FS: intent.json · units.json · approvals.md(source: aidlc)
   end
-  Note over PO,FS: 이후 같다: 기획물 → plans 승인 → /hx-specify --from-unit → issues/키/requirements.md
+  Note over PO,FS: 이후 같다: 기획물 → plans 승인 → /kns-specify --from-unit → issues/키/requirements.md

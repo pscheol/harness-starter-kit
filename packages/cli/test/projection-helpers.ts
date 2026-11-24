@@ -22,9 +22,9 @@ export function projectionFiles(extra: Record<string, string> = {}): Record<stri
     "common/agents-rules/always.md": "# 늘 싣는 규칙\n\n같은 폴더 [kt](./kt.md)\n",
     "common/agents-rules/kt.md": '---\npaths:\n  - "src/**/*.kt"\n---\n# 코틀린 규칙\n',
     "common/agents-rules/multi.md": '---\npaths: ["**/*.ts", "**/*.tsx"]\n---\n# 여럿\n',
-    "common/agents-skills/hx-plan/SKILL.md": "---\nname: hx-plan\ndescription: 설계 — design.md 를 만든다\n---\n\n본문 {{PROJECT_NAME}}\n",
-    "common/agents-skills/hx-plan/agents/openai.yaml": 'interface:\n  display_name: "hx-plan"\n',
-    "common/agents-skills/hx-plan/tool.sh": "#!/bin/sh\necho hi\n",
+    "common/agents-skills/kns-plan/SKILL.md": "---\nname: kns-plan\ndescription: 설계 — design.md 를 만든다\n---\n\n본문 {{PROJECT_NAME}}\n",
+    "common/agents-skills/kns-plan/agents/openai.yaml": 'interface:\n  display_name: "kns-plan"\n',
+    "common/agents-skills/kns-plan/tool.sh": "#!/bin/sh\necho hi\n",
     "common/agents-root/roles/explorer.md":
       "---\nname: explorer\ndescription: 코드에서 근거를 찾는다. 읽기 전용이다.\nmode: read-only\ntools: [read, search]\nclass: explore\n---\n# explorer — {{PROJECT_NAME}}\n\n본문 \"\"\" 와 \\ 를 그대로 둔다.\n",
     "common/agents-root/roles/worker.md":

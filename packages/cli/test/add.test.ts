@@ -168,10 +168,10 @@ describe("add — 하네스 · 모듈", () => {
     const r = await cli("add", ["codex", "--json", "--templates", templates], { env: FIXTURE_ENV });
     expect(r.code, r.stdout).toBe(0);
     const after = readJsonFile(path.join(target, LOCK_FILE));
-    expect(after).toMatchObject({ schema: "harness-kit.lock/v2", kit: { version: "1.0.8" } });
+    expect(after).toMatchObject({ schema: "knots-sync.lock/v2", kit: { version: "1.0.8" } });
     expect(after.entries).toHaveLength(lock.entries.length + 1);
-    expect(fs.readFileSync(path.join(target, ".agents/state/harness-kit.lock.v1.bak"), "utf8")).toBe(v1);
-    expect(readJsonFile(path.join(target, META_FILE))).toMatchObject({ schema: "harness-kit/v2", kit: { version: "1.0.8" }, agents: ["claude", "codex"], teamNote: "keep" });
+    expect(fs.readFileSync(path.join(target, ".agents/state/knots-sync.lock.v1.bak"), "utf8")).toBe(v1);
+    expect(readJsonFile(path.join(target, META_FILE))).toMatchObject({ schema: "knots-sync/v2", kit: { version: "1.0.8" }, agents: ["claude", "codex"], teamNote: "keep" });
   });
 
   it("설치된 킷이 CLI 보다 새것이면 exit 3", async () => {

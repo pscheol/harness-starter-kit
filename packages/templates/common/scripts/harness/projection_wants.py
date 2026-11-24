@@ -55,8 +55,8 @@ from projection_render import (  # noqa: E402
     skill_model_problem,
 )
 
-LOCK_REL = ".agents/harness-kit.lock"
-META_REL = ".agents/harness-kit.json"
+LOCK_REL = ".agents/knots-sync.lock"
+META_REL = ".agents/knots-sync.json"
 V1_HEADER = "# harness-kit lock v1"
 HARNESSES = ("claude", "codex", "cursor", "kiro")
 HARNESS_DIRS = (".claude/", ".codex/", ".cursor/", ".kiro/")
@@ -257,7 +257,7 @@ def build_wants(root: Path, spec: dict, tokens: dict, agents: list[str]) -> tupl
     findings += hook_findings
     if parsed is None:
         findings.append({"kind": "hooks-missing", "severity": "error", "path": HOOKS_REL,
-                         "hint": "훅 원본이 없어 하네스 훅을 만들지 않는다 — harness-kit repair 로 되살린다"})
+                         "hint": "훅 원본이 없어 하네스 훅을 만들지 않는다 — knots-sync repair 로 되살린다"})
     hooks = parsed or []
     hm = spec["hookMap"]
     suffixes = kit_script_suffixes(hooks, hm)
@@ -265,7 +265,7 @@ def build_wants(root: Path, spec: dict, tokens: dict, agents: list[str]) -> tupl
     skills = []
     for s in src.skills:
         if skill_model_problem(s):
-            kit = s.source.rsplit("/", 1)[-1].startswith("hx-")
+            kit = s.source.rsplit("/", 1)[-1].startswith("kns-")
             findings.append({"kind": "skill-model-field", "severity": "error" if kit else "warn", "path": f"{s.source}/SKILL.md",
                              "hint": "context: fork 가 아닌 스킬에 model · effort 를 두지 않는다(그 턴의 사람 세션 모델이 바뀐다)"})
             if kit:
@@ -354,7 +354,7 @@ def check_spec(spec: dict) -> None:
 
 def load_spec(path: Path = HERE / "projection.json") -> dict:
     spec = json.loads(path.read_text(encoding="utf-8"))
-    if spec.get("schema") != "harness-kit.projection/v1":
+    if spec.get("schema") != "knots-sync.projection/v1":
         raise ProjectionError(f"모르는 projection.json schema: {spec.get('schema')}")
     check_spec(spec)
     return spec

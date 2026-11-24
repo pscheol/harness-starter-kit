@@ -73,8 +73,8 @@ LEGACY_FORMS = [
 ]
 # 옛 구조는 읽기만 한다는 설명 문장. (경로 glob, 줄에 든 문구) — 바꾸거나 더하면 여기도 고친다.
 READ_ONLY_EXPLANATIONS = (
-    ("templates/common/agents-skills/hx-*/SKILL.md", "옛 `<영역>-specs/` 이슈는 읽기만 한다"),
-    ("templates/common/agents-skills/hx-harness/SKILL.md", "옛 `<영역>-specs/` 명세는 읽기만 한다"),
+    ("templates/common/agents-skills/kns-*/SKILL.md", "옛 `<영역>-specs/` 이슈는 읽기만 한다"),
+    ("templates/common/agents-skills/kns-harness/SKILL.md", "옛 `<영역>-specs/` 명세는 읽기만 한다"),
     ("templates/common/agents-rules/sdd-workflow.md", "tasks/<상태>/<키>.md`)는 읽기만 한다"),
     ("templates/common/agents-root/roles/planner.md", "옛 `<영역>-specs/` 명세는 읽기만 한다"),
     ("templates/common/agents-docs/specs-index.md", "옛 구조(`<영역>-specs/`)는 읽기만 한다"),
@@ -181,7 +181,7 @@ class LegacySddFormTest(unittest.TestCase):
         self.assertEqual(hits, [], f"옛 SDD 경로 · 명령 형식 {len(hits)}건:\n" + "\n".join(hits))
 
     def test_manifest_counts_match_templates(self):
-        manifest = (PACKAGES / "plugin/skills/hx-bootstrap/manifest.md").read_text(encoding="utf-8")
+        manifest = (PACKAGES / "plugin/skills/bootstrap/manifest.md").read_text(encoding="utf-8")
         counts = install_counts()
         cols = ("core", "claude", "codex", "cursor", "kiro")
         for group, label in (("backend", "| `jvm` · `python` · `go` |"), ("frontend", "| `web` · `electron` (")):
@@ -270,22 +270,19 @@ class ReadmeCountTest(unittest.TestCase):
         readme = (KIT / "README.md").read_text(encoding="utf-8")
         self.assertIsNone(re.search(r"^\| `jvm` · `python` · `go` \| \d+", readme, re.M), "README 에 파일 수 표가 남았다")
         self.assertIsNone(re.search(r"`multi-harness` \d+", readme), "README 에 모듈 파일 수가 남았다")
-        self.assertIn("plugins/harness-kit/skills/hx-bootstrap/manifest.md", readme)
-        self.assertIn("harness-kit plan --json", readme)
-        manifest = (PACKAGES / "plugin/skills/hx-bootstrap/manifest.md").read_text(encoding="utf-8")
+        self.assertIn("plugins/kns/skills/bootstrap/manifest.md", readme)
+        self.assertIn("knots-sync plan --json", readme)
+        manifest = (PACKAGES / "plugin/skills/bootstrap/manifest.md").read_text(encoding="utf-8")
         self.assertIn("## 에이전트 선택", manifest)
 
 
 # 스킬 · 커맨드 → (description 바이트 상한 = 이 판 전 값, 내려가는 v1 스크립트)
 SKILL_DOCS = {
-    "skills/hx-bootstrap/SKILL.md": (1661, "setup.sh"),
-    "skills/hx-update/SKILL.md": (548, "update.sh"),
-    "skills/hx-agent-add/SKILL.md": (547, "add-agent.sh"),
-    "commands/bootstrap.md": (210, "setup.sh"),
-    "commands/update.md": (141, "update.sh"),
-    "commands/agent-add.md": (180, "add-agent.sh"),
-}
-KIT_CALL = re.compile(r'bash "\$SKILL_DIR/(\.\./hx-bootstrap/)?kit\.sh" (init|plan|update|add|remove)\b')
+    "skills/bootstrap/SKILL.md": (1661, "setup.sh"),
+    "skills/update/SKILL.md": (548, "update.sh"),
+    "skills/agent-add/SKILL.md": (547, "add-agent.sh"),
+}  # 옛 commands/ 세 개는 플러그인 이름이 kns 가 되며 스킬(/kns:bootstrap …)과 이름이 겹쳐 뺐다(HK-22b)
+KIT_CALL = re.compile(r'bash "\$SKILL_DIR/(\.\./bootstrap/)?kit\.sh" (init|plan|update|add|remove)\b')
 
 
 class SkillProcedureTest(unittest.TestCase):
@@ -296,7 +293,7 @@ class SkillProcedureTest(unittest.TestCase):
             body = (PACKAGES / "plugin" / rel).read_text(encoding="utf-8")
             with self.subTest(doc=rel):
                 self.assertRegex(body, KIT_CALL)
-                self.assertIn("bin/harness-kit.js", body)
+                self.assertIn("bin/knots-sync.js", body)
                 self.assertIn("Node 18.3", body)
                 self.assertIn(legacy, body)
                 self.assertIn("--json", body)

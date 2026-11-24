@@ -186,7 +186,7 @@ export function applyChange(ctx: Ctx, l: Loaded, after: Selection, r: ChangeResu
     ? buildFeatureDocs(target, ctx.io.env)
     : { status: "skipped", reason: "tools/docs/ 에 킷 판이 아닌 파일이 있다" };
   const entries = r.projection ? mergeEntries(r.entries, r.projection) : r.entries;
-  const lockText = serializeLock({ schema: "harness-kit.lock/v2", kit: { version: inst.lock.kit.version ?? inst.meta.kit.version, source: inst.lock.kit.source }, packs: inst.lock.packs, entries });
+  const lockText = serializeLock({ schema: "knots-sync.lock/v2", kit: { version: inst.lock.kit.version ?? inst.meta.kit.version, source: inst.lock.kit.source }, packs: inst.lock.packs, entries });
   const meta = mergeMetaForUpdate(inst.meta, { version: inst.meta.kit.version, selection: after, tokens: l.tokens, today: today(ctx.io) });
   const state: [string, Buffer][] = [
     ...(inst.lockFormat === "v1" ? ([[V1_LOCK_BACKUP, fs.readFileSync(full(LOCK_REL))]] as [string, Buffer][]) : []),
@@ -271,7 +271,7 @@ export function report(ctx: Ctx, l: Loaded, rep: Report): { data: Record<string,
   if (projection) data.projection = projection;
   const counts = Object.entries(countsOf(rep.result.ops)).filter(([, n]) => n > 0).map(([k, n]) => `${k} ${n}`).join(" · ");
   const lines = [
-    `harness-kit ${rep.command} — ${l.target}`,
+    `knots-sync ${rep.command} — ${l.target}`,
     `  하네스 ${l.before.agents.join(",")} → ${rep.after.agents.join(",")} · 모듈 ${l.before.modules.join(",") || "none"} → ${rep.after.modules.join(",") || "none"}`,
     ...rep.notes,
     ...l.retiredModules.map((m) => retiredNote(m, "meta")),
@@ -285,7 +285,7 @@ export function report(ctx: Ctx, l: Loaded, rep: Report): { data: Record<string,
     lines.push("  충돌 — 고친 파일이라 덮지 않았다. 새 판은 .new 에 있다(리포 폴더에서):");
     for (const c of conflicts) if (c.diff) lines.push(`    ${String(c.diff)}`);
   }
-  lines.push(rep.dryRun ? "  (dry-run — 쓰지 않았다)" : "  다음: harness-kit doctor");
+  lines.push(rep.dryRun ? "  (dry-run — 쓰지 않았다)" : "  다음: knots-sync doctor");
   return { data, lines };
 }
 
@@ -298,7 +298,7 @@ export function retiredOnly(ctx: Ctx, command: string, names: Names): { code: nu
   return {
     code: EXIT.OK,
     data: { command, target, dryRun: dryRunOf(ctx), names },
-    lines: [`harness-kit ${command} — ${target}`, ...names.retired.map((m) => retiredNote(m, "flag"))],
+    lines: [`knots-sync ${command} — ${target}`, ...names.retired.map((m) => retiredNote(m, "flag"))],
   };
 }
 

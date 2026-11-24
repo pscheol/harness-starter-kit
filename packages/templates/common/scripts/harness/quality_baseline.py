@@ -68,7 +68,7 @@ def sarif_entries(run_folder):
                     continue
                 properties = item.get("properties") or {}
                 location = item["locations"][0]["physicalLocation"]["artifactLocation"]["uri"]
-                entry = {"ruleId": item.get("ruleId"), "path": location, "severity": properties.get("harnessKit/severity")}
+                entry = {"ruleId": item.get("ruleId"), "path": location, "severity": properties.get("knotsSync/severity")}
                 if isinstance(properties.get("ccn"), int):
                     entry["ccn"] = properties["ccn"]
                 table[value] = entry

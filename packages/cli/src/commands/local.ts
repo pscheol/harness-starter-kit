@@ -60,7 +60,7 @@ function localLines(r: LocalSyncResult, ignored: string[], quiet: boolean): stri
 
 export function runLocal(ctx: Ctx): CommandResult {
   const [sub, ...rest] = ctx.positionals;
-  if ((sub !== "sync" && sub !== "list") || rest.length) throw usageError("harness-kit local sync [--dry-run] | local list [--json]");
+  if ((sub !== "sync" && sub !== "list") || rest.length) throw usageError("knots-sync local sync [--dry-run] | local list [--json]");
   const target = targetOf(ctx);
   const inst = loadInstalled(target, `local ${sub}`);
   const loc = locateTemplates({ flag: str(ctx.values, "templates"), env: ctx.io.env, cliFile: ctx.io.cliFile, cwd: ctx.io.cwd, version: VERSION });
@@ -71,8 +71,8 @@ export function runLocal(ctx: Ctx): CommandResult {
   const result = syncLocal(target, plan, dryRun);
   const data = { command: "local", sub, target, dryRun, config: { roles: config.roles, ide: config.ide, ignored: config.ignored, error: config.error }, plan: plan.wants.map((w) => w.path), ...result };
   const lines = [
-    `harness-kit local ${sub} — ${target}`,
-    `  설정: ${config.present ? (config.error ? `✖ ${config.error}` : `roles ${JSON.stringify(config.roles)} · git.ide ${config.ide ?? "-"}`) : "없음(.agents/local/harness-kit.local.json)"}`,
+    `knots-sync local ${sub} — ${target}`,
+    `  설정: ${config.present ? (config.error ? `✖ ${config.error}` : `roles ${JSON.stringify(config.roles)} · git.ide ${config.ide ?? "-"}`) : "없음(.agents/local/knots-sync.local.json)"}`,
     ...localLines(result, config.ignored, ctx.quiet),
     ...(dryRun ? ["  (쓰지 않았다)"] : []),
   ];

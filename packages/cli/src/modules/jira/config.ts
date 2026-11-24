@@ -56,7 +56,7 @@ export function readTracker(root: string): TrackerConfig | null {
     // 주석만 있는 줄은 yaml-lite 가 들여쓰기 판정에 쓰지 않도록 미리 뺀다
     doc = parseYaml(fs.readFileSync(file, "utf8").split("\n").filter((l) => !/^\s*#/.test(l) && l.trim() !== "").join("\n"));
   } catch (err) {
-    throw new CliError(EXIT.STATE, `${TRACKER_FILE} 를 읽지 못했다: ${err instanceof Error ? err.message : String(err)}`, "hx-jira-setup 스킬로 다시 채운다");
+    throw new CliError(EXIT.STATE, `${TRACKER_FILE} 를 읽지 못했다: ${err instanceof Error ? err.message : String(err)}`, "kns:jira-setup 스킬로 다시 채운다");
   }
   const sync = isObj(doc.sync) ? doc.sync : {};
   const access = isObj(doc.access) ? doc.access : {};
@@ -94,10 +94,10 @@ export function keyMatcher(cfg: TrackerConfig): RegExp {
   return /^[A-Z][A-Z0-9_]+-\d+$/;
 }
 
-/** 켠 모듈인가: harness-kit.json 의 modules 에 있다. */
+/** 켠 모듈인가: knots-sync.json 의 modules 에 있다. */
 export function moduleEnabled(root: string, id: string): boolean {
   try {
-    const meta = JSON.parse(fs.readFileSync(path.join(root, ".agents/harness-kit.json"), "utf8")) as { modules?: unknown };
+    const meta = JSON.parse(fs.readFileSync(path.join(root, ".agents/knots-sync.json"), "utf8")) as { modules?: unknown };
     return Array.isArray(meta.modules) && meta.modules.includes(id);
   } catch {
     return false;

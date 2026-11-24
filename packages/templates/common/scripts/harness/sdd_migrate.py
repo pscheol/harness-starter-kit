@@ -35,7 +35,7 @@ from harness.sdd_keys import (
 )
 from harness.sdd_layout import STATES, STATUS_ROW, files_at, safe_path, sort_key, spec_roots
 
-SCHEMA = "harness-kit.migrate-map/v1"
+SCHEMA = "knots-sync.migrate-map/v1"
 MAP = ".agents/state/migrate-map.json"
 DOCS = ".agents/docs"
 LEGACY_FOLDER = re.compile(r"^([0-9]+)-([a-z]+)-(.+)$")

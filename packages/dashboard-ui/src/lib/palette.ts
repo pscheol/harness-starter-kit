@@ -1,5 +1,5 @@
 // 색 설정(사용자 결정 2026-11-24): 좌측 메뉴 · 본문 바탕 색을 다섯 가지 중 고른다. 기본은 쿨 그레이.
-// <html data-hx-palette="…"> 속성만 바꾼다(인라인 스타일 없음 — CSP style-src 'self'). 고른 값은 이 브라우저에만 남는다.
+// <html data-kns-palette="…"> 속성만 바꾼다(인라인 스타일 없음 — CSP style-src 'self'). 고른 값은 이 브라우저에만 남는다.
 export interface Palette {
   id: string;
   label: string;
@@ -15,7 +15,9 @@ export const PALETTES: readonly Palette[] = [
 ];
 
 export const DEFAULT_PALETTE = "cool-gray";
-const KEY = "hx-palette";
+const KEY = "kns-palette";
+/** 이름 바꾸기 전(harness-kit) 키 — 고른 값이 있으면 한 번 읽는다(HK-22b) */
+const LEGACY_KEY = "hx-palette";
 
 function known(id: string | null | undefined): id is string {
   return !!id && PALETTES.some((p) => p.id === id);
@@ -23,7 +25,7 @@ function known(id: string | null | undefined): id is string {
 
 export function storedPalette(): string {
   try {
-    const v = window.localStorage.getItem(KEY);
+    const v = window.localStorage.getItem(KEY) ?? window.localStorage.getItem(LEGACY_KEY);
     return known(v) ? v : DEFAULT_PALETTE;
   } catch {
     return DEFAULT_PALETTE;
@@ -32,7 +34,7 @@ export function storedPalette(): string {
 
 export function applyPalette(id: string): string {
   const next = known(id) ? id : DEFAULT_PALETTE;
-  document.documentElement.dataset.hxPalette = next;
+  document.documentElement.dataset.knsPalette = next;
   try {
     window.localStorage.setItem(KEY, next);
   } catch {

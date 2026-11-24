@@ -31,7 +31,7 @@ python3 scripts/session-coordination.py acknowledge --session <actual-id> --noti
 
 ## 코드 작성과 리팩토링
 
-`hx-maintain`은 대상·변경 이유·현재 소유권·재사용 Inventory를 확인한다.
+`kns-maintain`은 대상·변경 이유·현재 소유권·재사용 Inventory를 확인한다.
 패키지는 기존 레이어 안에서 변경 이유로 나눈다. adapter의 저장 호출과 mapper의 변환을 분리하고 정책·권한을 mapper에 옮기지 않는다.
 모호한 이름·반복 상태 문자열·복합 조건은 실제 의미를 찾고 타입·상수·정책 함수로 표현한다.
 API 변경은 OpenAPI 원본·Swagger·operation 문서·소비자 계약·검증을 같은 변경에서 확인한다.

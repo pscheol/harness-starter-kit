@@ -60,9 +60,9 @@ from harness.sdd_migrate import MigrateBlocked, apply, dry_run, rekey, resolve_m
 
 NEW_FORM = "scripts/new-feature.sh <키|--next> <이름> --area <영역>"
 NEXT_STEPS = {
-    "requirements": "/hx-specify → 사용자 승인(status: approved) → /hx-plan",
-    "design": "/hx-plan → 사용자 승인(status: approved) → /hx-tasks",
-    "tasks": "/hx-tasks → 계획 승인 → /hx-implement",
+    "requirements": "/kns-specify → 사용자 승인(status: approved) → /kns-plan",
+    "design": "/kns-plan → 사용자 승인(status: approved) → /kns-tasks",
+    "tasks": "/kns-tasks → 계획 승인 → /kns-implement",
 }
 
 
@@ -357,7 +357,7 @@ def freshness(root, arguments):
         print(f"\n· {title}:")
         print("\n".join(f"  {entry}" for entry in entries) if entries else "  (없음)")
     print(f"\n요약: 정체 스펙={len(stale)}, 미해결 마커={len(markers)}, 정체 tasks={len(stuck)}")
-    print("→ 후속 작업은 /hx-converge 로 기존 tasks 끝에 회수합니다.")
+    print("→ 후속 작업은 /kns-converge 로 기존 tasks 끝에 회수합니다.")
     return 0
 
 

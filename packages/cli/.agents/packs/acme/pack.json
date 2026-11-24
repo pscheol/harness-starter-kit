@@ -1,5 +1,5 @@
 {
-  "schema": "harness-kit.pack/v1",
+  "schema": "knots-sync.pack/v1",
   "name": "acme",
   "version": "0.1.0",
   "description": "acme 팩",

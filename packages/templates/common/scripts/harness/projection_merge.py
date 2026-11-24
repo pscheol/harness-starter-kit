@@ -12,11 +12,11 @@ import re
 from projection_render import toml_string
 from projection_vscode import merge as merge_vscode, missing as missing_vscode, unmerge as unmerge_vscode
 
-CLAUDE_BEGIN = "<!-- harness-kit:begin claude"
-CLAUDE_END = "<!-- harness-kit:end claude -->"
-GEN_BEGIN = "# harness-kit:begin generated"
-GEN_BEGIN_LINE = "# harness-kit:begin generated — .agents/ 원본에서 만든 파일이다. 고칠 때는 원본을 고친다"
-GEN_END = "# harness-kit:end generated"
+CLAUDE_BEGIN = "<!-- knots-sync:begin claude"
+CLAUDE_END = "<!-- knots-sync:end claude -->"
+GEN_BEGIN = "# knots-sync:begin generated"
+GEN_BEGIN_LINE = "# knots-sync:begin generated — .agents/ 원본에서 만든 파일이다. 고칠 때는 원본을 고친다"
+GEN_END = "# knots-sync:end generated"
 AGENTS_LINE = "@AGENTS.md"
 HARNESS_ORDER = ("claude", "codex", "cursor", "kiro")
 TABLE_HEADER = re.compile(r"^\s*\[\[?\s*([^\[\]]+?)\s*\]\]?\s*(?:#.*)?$")

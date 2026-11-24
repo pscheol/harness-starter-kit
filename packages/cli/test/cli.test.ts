@@ -103,9 +103,9 @@ describe("init · plan", () => {
     expect(fs.readFileSync(path.join(target, "AGENTS.md"), "utf8")).toBe("# Acme\n");
     expect(fs.statSync(path.join(target, "scripts/run.sh")).mode & 0o111).not.toBe(0);
     expect(fs.statSync(path.join(target, "AGENTS.md")).mode & 0o111).toBe(0);
-    const meta = JSON.parse(fs.readFileSync(path.join(target, ".agents/harness-kit.json"), "utf8"));
+    const meta = JSON.parse(fs.readFileSync(path.join(target, ".agents/knots-sync.json"), "utf8"));
     expect(meta).toMatchObject({
-      schema: "harness-kit/v2",
+      schema: "knots-sync/v2",
       kit: { version: VERSION },
       stack: "jvm",
       agents: ["claude"],
@@ -116,8 +116,8 @@ describe("init · plan", () => {
       tokens: { PROJECT_NAME: "Acme", PROJECT_SLUG: "acme" },
       installedAt: "2026-11-23",
     });
-    const lock = JSON.parse(fs.readFileSync(path.join(target, ".agents/harness-kit.lock"), "utf8"));
-    expect(lock.schema).toBe("harness-kit.lock/v2");
+    const lock = JSON.parse(fs.readFileSync(path.join(target, ".agents/knots-sync.lock"), "utf8"));
+    expect(lock.schema).toBe("knots-sync.lock/v2");
     expect(lock.kit.version).toBe(VERSION);
     expect(lock.kit.source).toMatch(/^file:/);
     const paths = lock.entries.map((e: { path: string }) => e.path);
@@ -190,7 +190,7 @@ describe("init · plan", () => {
     const r = await init("--name", "R&D Lab", "--package-ns", "com.acme", "--token", "DOMAIN_EXAMPLE=Order", "--issue-source", "jira", "--issue-prefix", "KNOTS", "--base", "main");
     expect(r.code, r.stderr).toBe(0);
     expect(fs.readFileSync(path.join(target, "AGENTS.md"), "utf8")).toBe("# R&D Lab\n");
-    const meta = JSON.parse(fs.readFileSync(path.join(target, ".agents/harness-kit.json"), "utf8"));
+    const meta = JSON.parse(fs.readFileSync(path.join(target, ".agents/knots-sync.json"), "utf8"));
     expect(meta.tokens).toMatchObject({ PROJECT_NAME: "R&D Lab", PACKAGE_NS: "com.acme", DOMAIN_EXAMPLE: "Order" });
     expect(meta.issueKey).toEqual({ source: "jira", prefix: "KNOTS" });
     expect(meta.git.base).toBe("main");
@@ -238,7 +238,7 @@ describe("init · plan", () => {
     const target = path.join(tmpDir(), "tty");
     const ok = await run(["init", "--templates", templates, "--cwd", target], { env: ENV, isTTY: true, answers: ["web", "", "claude", "none", "y"] });
     expect(ok.code, ok.stderr + ok.stdout).toBe(0);
-    const meta = JSON.parse(fs.readFileSync(path.join(target, ".agents/harness-kit.json"), "utf8"));
+    const meta = JSON.parse(fs.readFileSync(path.join(target, ".agents/knots-sync.json"), "utf8"));
     expect(meta).toMatchObject({ stack: "web", arch: "nextjs-app", domain: "frontend", agents: ["claude"] });
     const other = path.join(tmpDir(), "tty2");
     const no = await run(["init", "--templates", templates, "--cwd", other, "--stack", "jvm", "--agents", "claude", "--modules", "none"], {
@@ -275,7 +275,7 @@ describe("init · plan — 없앤 모듈 platform-guards(HK-25 R2)", () => {
     const r = await init("--modules", "platform-guards,jira-workflow");
     expect(r.code, r.stderr).toBe(0);
     expect(r.stdout).toContain("platform-guards 모듈은 공통 층에 포함됨");
-    const meta = JSON.parse(fs.readFileSync(path.join(target, ".agents/harness-kit.json"), "utf8"));
+    const meta = JSON.parse(fs.readFileSync(path.join(target, ".agents/knots-sync.json"), "utf8"));
     expect(meta.modules).toEqual(["jira-workflow"]);
     const plan = json(await run(["plan", "--json", "--templates", fixtureTemplates(BASIC_FILES), "--cwd", tmpDir(), "--agents", "claude", "--modules", "platform-guards"], { env: ENV }));
     expect(plan.selection.modules).toEqual([]);

@@ -16,7 +16,7 @@ function packFiles(name = "acme", extra: Record<string, string> = {}, manifest: 
   return {
     "pack.json": `${JSON.stringify(
       {
-        schema: "harness-kit.pack/v1",
+        schema: "knots-sync.pack/v1",
         name,
         version: "1.2.0",
         description: "ACME 규칙",
@@ -36,7 +36,7 @@ function packFiles(name = "acme", extra: Record<string, string> = {}, manifest: 
     [`common/agents-root/roles/${name}-auditor.md`]: ROLE.split("acme").join(name),
     [`common/scripts/guards/${name}-license.sh`]: "#!/usr/bin/env bash\nexit 0\n",
     [`common/scripts/hooks/${name}-scan.sh`]: "#!/usr/bin/env bash\nexit 0\n",
-    "fragments/hooks.json": `${JSON.stringify({ schema: "harness-kit.hooks/v1", hooks: [{ ...HOOK, id: `harness-${name}-scan`, script: `scripts/hooks/${name}-scan.sh`, owner: `pack:${name}` }] }, null, 2)}\n`,
+    "fragments/hooks.json": `${JSON.stringify({ schema: "knots-sync.hooks/v1", hooks: [{ ...HOOK, id: `harness-${name}-scan`, script: `scripts/hooks/${name}-scan.sh`, owner: `pack:${name}` }] }, null, 2)}\n`,
     "fragments/verify-checks.json": `${JSON.stringify({ checks: [{ id: `${name}-license`, owner: `pack:${name}`, paths: ["**/package.json"], command: ["bash", `scripts/guards/${name}-license.sh`] }] }, null, 2)}\n`,
     ...extra,
   };
@@ -94,7 +94,7 @@ describe("update --packs", () => {
     const t = await installed([`file:${pack}`]);
     const r = await t.packs();
     expect(r.code, r.stdout).toBe(0);
-    const lock = readJsonFile(path.join(t.target, ".agents/harness-kit.lock"));
+    const lock = readJsonFile(path.join(t.target, ".agents/knots-sync.lock"));
     expect(lock.packs).toEqual([{ name: "acme", version: "1.2.0", source: `file:${pack}`, resolved: expect.stringMatching(/^tree:[0-9a-f]{64}$/), requiresKit: ">=2.0.0 <3.0.0" }]);
     const owned = lockEntries(t.target).filter((e) => e.owner === "pack:acme");
     expect(owned.map((e) => e.path).sort()).toEqual([...PACK_PATHS.slice(0, 1), ...PACK_PATHS.slice(1)].sort());
@@ -134,7 +134,7 @@ describe("update --packs", () => {
 
   it.each([
     ["overrides 밖 킷 경로", { "common/agents-rules/always.md": "# 덮기\n" }, {}, /overrides 에 적는다/],
-    ["하한 훅 id", { "fragments/hooks.json": JSON.stringify({ schema: "harness-kit.hooks/v1", hooks: [{ ...HOOK, id: "harness-verify-gate" }] }) }, { provides: { hooks: ["harness-verify-gate"], verifyChecks: ["acme-license"] } }, /하한 훅/],
+    ["하한 훅 id", { "fragments/hooks.json": JSON.stringify({ schema: "knots-sync.hooks/v1", hooks: [{ ...HOOK, id: "harness-verify-gate" }] }) }, { provides: { hooks: ["harness-verify-gate"], verifyChecks: ["acme-license"] } }, /하한 훅/],
     ["하네스 폴더", { "common/claude/settings.json": "{}" }, {}, /하네스 파일|쓸 수 없는/],
     ["root/", { "common/root/AGENTS.md": "x" }, {}, /쓸 수 없는/],
     ["실행 권한 없는 .sh", { "common/scripts/guards/acme-extra.sh": "x" }, {}, /실행 권한/],
@@ -186,7 +186,7 @@ describe("update --packs", () => {
 
   it("킷 update 는 깐 팩이 요구하는 범위 밖이면 쓰기 전에 exit 3", async () => {
     const t = await installed([]);
-    const lockFile = path.join(t.target, ".agents/harness-kit.lock");
+    const lockFile = path.join(t.target, ".agents/knots-sync.lock");
     writeJsonFile(lockFile, { ...readJsonFile(lockFile), packs: [{ name: "acme", version: "1.0.0", source: "file:x", resolved: "tree:0", requiresKit: "<2.0.0" }] });
     const before = readTree(t.target);
     const r = await t.cli("update", ["--json", "--templates", t.templates]);
@@ -222,7 +222,7 @@ describe("git · npm 소스", () => {
     const t = await installed([`git:file://${pack}#v1.2.0`]);
     const r = await t.packs();
     expect(r.code, r.stdout).toBe(0);
-    expect(readJsonFile(path.join(t.target, ".agents/harness-kit.lock")).packs[0].resolved).toBe(`git:${sha}`);
+    expect(readJsonFile(path.join(t.target, ".agents/knots-sync.lock")).packs[0].resolved).toBe(`git:${sha}`);
     expect(fs.statSync(path.join(t.target, "scripts/hooks/acme-scan.sh")).mode & 0o111).not.toBe(0);
     expect(fs.readdirSync(path.join(t.target, ".agents/state/packs")).filter((n) => !n.startsWith("."))).toEqual([`acme@1.2.0-${sha.slice(0, 12)}`]);
     t.setPacks([`git:file://${pack}#v9.9.9`]);
@@ -234,7 +234,7 @@ describe("git · npm 소스", () => {
     const t = await installed([`npm:${pack}`]);
     const r = await t.packs();
     expect(r.code, r.stdout + r.stderr).toBe(0);
-    expect(readJsonFile(path.join(t.target, ".agents/harness-kit.lock")).packs[0].resolved).toMatch(/^npm:sha512-/);
+    expect(readJsonFile(path.join(t.target, ".agents/knots-sync.lock")).packs[0].resolved).toMatch(/^npm:sha512-/);
     expect(fs.existsSync(path.join(t.target, ".agents/rules/acme-security.md"))).toBe(true);
     expect(fs.statSync(path.join(t.target, "scripts/guards/acme-license.sh")).mode & 0o111).not.toBe(0);
   });

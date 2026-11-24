@@ -23,7 +23,7 @@ for verification_argument in "$@"; do
     --full|--fast|--affected|--changed) verification_level_argument="${verification_argument#--}" ;;
     --from-base) verification_expect_base=1 ;;
     --from-base=*) verification_from_base="${verification_argument#--from-base=}" ;;
-    --bootstrap) export HX_VERIFY_BOOTSTRAP=1 ;;
+    --bootstrap) export KNS_VERIFY_BOOTSTRAP=1 ;;
     *) verification_arguments+=("$verification_argument") ;;
   esac
 done
@@ -38,19 +38,19 @@ if [ -n "$verification_expect_base" ] || { [ -n "$verification_from_base" ] && c
   exit 2
 fi
 # bootstrap 은 base 에 검증 코드가 없을 때만 head 판으로 판정한다. base ref 를 못 찾거나(fetch 실패) base 에 검증 코드가 있으면 거부한다.
-if [ "${HX_VERIFY_BOOTSTRAP:-}" = 1 ] && [ -n "${HX_BASE_REF:-}" ]; then
+if [ "${KNS_VERIFY_BOOTSTRAP:-}" = 1 ] && [ -n "${KNS_BASE_REF:-}" ]; then
   verification_bootstrap_root="$(cd "$verification_script_directory/.." && pwd)"
   verification_prefix="$(git -C "$verification_bootstrap_root" rev-parse --show-prefix 2>/dev/null)"
-  if ! git -C "$verification_bootstrap_root" rev-parse --verify --quiet "$HX_BASE_REF^{commit}" >/dev/null 2>&1; then
-    echo "✖ bootstrap: base ref($HX_BASE_REF)를 찾지 못했다 — head 판으로 판정하지 않는다. git fetch 뒤 다시 돈다" >&2
+  if ! git -C "$verification_bootstrap_root" rev-parse --verify --quiet "$KNS_BASE_REF^{commit}" >/dev/null 2>&1; then
+    echo "✖ bootstrap: base ref($KNS_BASE_REF)를 찾지 못했다 — head 판으로 판정하지 않는다. git fetch 뒤 다시 돈다" >&2
     exit 2
   fi
   # base 의 verify-entry.sh 가 --from-base 를 모르면(킷을 처음 올리는 MR) head 판으로 돈다. 알면 base 판이 판정한다.
-  verification_base_entry="$(git -C "$verification_bootstrap_root" show "$HX_BASE_REF:${verification_prefix}scripts/verify-entry.sh" 2>/dev/null)"
-  if git -C "$verification_bootstrap_root" cat-file -e "$HX_BASE_REF:${verification_prefix}scripts/verify.sh" 2>/dev/null; then
+  verification_base_entry="$(git -C "$verification_bootstrap_root" show "$KNS_BASE_REF:${verification_prefix}scripts/verify-entry.sh" 2>/dev/null)"
+  if git -C "$verification_bootstrap_root" cat-file -e "$KNS_BASE_REF:${verification_prefix}scripts/verify.sh" 2>/dev/null; then
     case "$verification_base_entry" in
       *--from-base*)
-        echo "✖ bootstrap: base($HX_BASE_REF)에 검증 코드가 있다 — base 판으로 판정한다(--from-base)" >&2
+        echo "✖ bootstrap: base($KNS_BASE_REF)에 검증 코드가 있다 — base 판으로 판정한다(--from-base)" >&2
         exit 2
         ;;
     esac
@@ -62,11 +62,11 @@ if [ -n "$verification_from_base" ]; then
     *) echo "✖ --from-base 는 changed · affected 에서만 쓴다(full 은 base 브랜치에서 돈다)" >&2; exit 2 ;;
   esac
   verification_head_root="$(pwd -P)"
-  while [ "$verification_head_root" != / ] && [ ! -f "$verification_head_root/.agents/harness-kit.json" ] && [ ! -f "$verification_head_root/.agents/harness.json" ]; do
+  while [ "$verification_head_root" != / ] && [ ! -f "$verification_head_root/.agents/knots-sync.json" ] && [ ! -f "$verification_head_root/.agents/harness.json" ]; do
     verification_head_root="$(dirname "$verification_head_root")"
   done
-  if [ ! -f "$verification_head_root/.agents/harness-kit.json" ] && [ ! -f "$verification_head_root/.agents/harness.json" ]; then
-    echo "✖ 하네스 루트(.agents/harness-kit.json)를 현재 폴더 위에서 찾지 못했다" >&2
+  if [ ! -f "$verification_head_root/.agents/knots-sync.json" ] && [ ! -f "$verification_head_root/.agents/harness.json" ]; then
+    echo "✖ 하네스 루트(.agents/knots-sync.json)를 현재 폴더 위에서 찾지 못했다" >&2
     exit 2
   fi
   verification_prefix="$(git -C "$verification_head_root" rev-parse --show-prefix 2>/dev/null)"
@@ -87,14 +87,14 @@ if [ -n "$verification_from_base" ]; then
     exit 2
   fi
   echo "판정: base 판($verification_from_base) 검증 코드 · 설정 — .agents/state/ci-base/"
-  export HX_ROOT="$verification_head_root" HX_TOOLS_DIR="$verification_ci_base/scripts" HX_GATE_CONFIG_DIR="$verification_ci_base" HX_FROM_BASE="$verification_from_base"
+  export KNS_ROOT="$verification_head_root" KNS_TOOLS_DIR="$verification_ci_base/scripts" KNS_GATE_CONFIG_DIR="$verification_ci_base" KNS_FROM_BASE="$verification_from_base"
   exec bash "$verification_ci_base/scripts/verify.sh" "--${HARNESS_VERIFY_LEVEL:-changed}" ${verification_arguments[@]+"${verification_arguments[@]}"}
 fi
 
 case "${HARNESS_VERIFY_LEVEL:-changed}" in
   changed|affected)
     if [ ! -f "$verification_script_directory/verify-changed.py" ]; then
-      echo "✖ 변경 검증 실행기(scripts/verify-changed.py)가 없다. 공통 하네스를 다시 배포한다(hx-update). MR 전 범위는 bash scripts/verify.sh --affected, 전체 검증(full)은 CI가 돈다." >&2
+      echo "✖ 변경 검증 실행기(scripts/verify-changed.py)가 없다. 공통 하네스를 다시 배포한다(kns:update). MR 전 범위는 bash scripts/verify.sh --affected, 전체 검증(full)은 CI가 돈다." >&2
       exit 2
     fi
     exec python3 "$verification_script_directory/verify-changed.py" \

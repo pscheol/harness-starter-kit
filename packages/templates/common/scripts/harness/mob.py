@@ -29,7 +29,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from harness import approvals  # noqa: E402
 from harness import intent as intents  # noqa: E402
 
-SCHEMA = "harness-kit.mob/v1"
+SCHEMA = "knots-sync.mob/v1"
 EMAIL = re.compile(r"^[^\s@,]+@[^\s@,]+$")
 DEFAULT_TIMEBOX = 30
 DEFERRED_WARN = 4
@@ -153,7 +153,7 @@ def advance(root: Path, target: str, close: bool) -> dict:
     rel = folder.relative_to(root).as_posix()
     key = session["intent"]
     out = {"action": "close" if close else "next", "path": f"{rel}/mob.json", "ended": ended, "session": session, **summary(folder, session)}
-    out["suggest"] = f"npx harness-kit dispatch --to {key}:design --kind answers-ready --path {rel}/questions.md"
+    out["suggest"] = f"npx knots-sync dispatch --to {key}:design --kind answers-ready --path {rel}/questions.md"
     return out
 
 

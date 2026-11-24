@@ -84,7 +84,7 @@ function Rail({ route }: { route: Route }) {
   return (
     <SideNav
       aria-label="주 메뉴"
-      header={<SideNavHeading heading="harnessync" subheading={multi ? "전체 프로젝트" : (s?.repo ?? "…")} icon={<Ico name="harness" size={20} />} />}
+      header={<SideNavHeading heading="knots-sync" subheading={multi ? "전체 프로젝트" : (s?.repo ?? "…")} icon={<Ico name="harness" size={20} />} />}
       footer={
         <VStack gap={2} padding={2}>
           {!multi ? (

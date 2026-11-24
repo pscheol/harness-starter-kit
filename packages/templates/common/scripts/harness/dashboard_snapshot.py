@@ -21,7 +21,7 @@ from harness.sdd_board import board_json  # noqa: E402
 
 
 def snapshot(root):
-    out = {"schema": "harness-kit.dashboard-snapshot/v1", "board": {"issues": []}, "gates": [], "reviews": [], "errors": []}
+    out = {"schema": "knots-sync.dashboard-snapshot/v1", "board": {"issues": []}, "gates": [], "reviews": [], "errors": []}
     for name, compute in (("board", lambda: board_json(root)), ("gates", lambda: sdd_gates.all_results(root)), ("reviews", lambda: review_state.all_states(root))):
         try:
             out[name] = compute()
@@ -35,7 +35,7 @@ def main(argv=None):
     parser.add_argument("--root", required=True)
     options = parser.parse_args(argv)
     root = Path(options.root).resolve()
-    if not ((root / ".agents/harness-kit.json").is_file() or (root / ".agents/harness.json").is_file()):
+    if not ((root / ".agents/knots-sync.json").is_file() or (root / ".agents/harness.json").is_file()):
         print(f"✖ 하네스 루트가 아니다: {root}", file=sys.stderr)
         return 2
     print(json.dumps(snapshot(root), ensure_ascii=False))

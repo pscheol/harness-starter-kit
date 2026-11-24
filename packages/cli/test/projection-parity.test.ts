@@ -22,7 +22,7 @@ function sourcesOnly(target: string, extra: Record<string, string> = {}): string
 
 /** Python 처럼 메타 토큰(PROJECT_SLUG 등 — Kiro 조율 에이전트 경로)에 --token 을 덧씌운다. */
 function tsRecords(dir: string, templates: string): unknown[] {
-  const meta = JSON.parse(fs.readFileSync(path.join(dir, ".agents/harness-kit.json"), "utf8")) as { tokens?: Record<string, string> };
+  const meta = JSON.parse(fs.readFileSync(path.join(dir, ".agents/knots-sync.json"), "utf8")) as { tokens?: Record<string, string> };
   const tokens = { ...(meta.tokens ?? {}), PROTECTED_PATH: "docs/references" };
   return planRecords(buildContext({ view: new FsView(dir), spec: loadSpec(templates), tokens, agents: AGENTS }));
 }
@@ -58,7 +58,7 @@ describe("TS ↔ Python 배치 동일성", () => {
   it("팩 · 프로젝트 훅 파일(hooks.d)을 합친 결과도 같다(HK-14)", async () => {
     const templates = projectionTemplates();
     const { target } = await initWith(templates);
-    const doc = (hooks: Record<string, unknown>[]): string => `${JSON.stringify({ schema: "harness-kit.hooks/v1", hooks }, null, 2)}\n`;
+    const doc = (hooks: Record<string, unknown>[]): string => `${JSON.stringify({ schema: "knots-sync.hooks/v1", hooks }, null, 2)}\n`;
     const dir = sourcesOnly(target, {
       ".agents/hooks.d/acme.json": doc([{ id: "harness-acme-scan", event: "pre-tool", tools: ["write", "shell"], script: "scripts/hooks/acme-scan.sh", timeoutSec: 10, owner: "pack:acme", subagents: true }]),
       ".agents/hooks.d/project.json": doc([

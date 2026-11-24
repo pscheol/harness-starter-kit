@@ -144,7 +144,7 @@ class NormalizeTest(QualityFixture):
         self.write("src/a.py", "x = 1\n")
         document, findings = self.normalize([result("r", "src/a.py", 1)])
         self.assertEqual(sarif_io.structure_errors(document), [])
-        stored = document["runs"][0]["results"][0]["partialFingerprints"]["harnessKit/v1"]
+        stored = document["runs"][0]["results"][0]["partialFingerprints"]["knotsSync/v1"]
         self.assertEqual(stored, findings[0]["fingerprint"])
         _, again = normalize_document(document, analyzer("fake"), self.root)
         self.assertEqual(again[0]["fingerprint"], findings[0]["fingerprint"])

@@ -6,14 +6,14 @@ graph TD
     WT["worktree<br/>../&lt;repo&gt;.worktrees/&lt;키&gt;"]
   end
   subgraph R["설치된 리포"]
-    AG[".agents 원본<br/>rules · skills · roles · hooks.json<br/>harness-kit.json · lock"]
+    AG[".agents 원본<br/>rules · skills · roles · hooks.json<br/>knots-sync.json · lock"]
     HF["하네스 폴더<br/>.claude · .codex · .cursor · .kiro"]
     SDD[".agents/docs<br/>intents · issues · ops"]
     VS["훅 → scripts/verify.sh<br/>scripts/harness/*.py"]
     ST[".agents/state · reports<br/>커밋 안 함"]
   end
   subgraph K["킷 저장소 · 배포물"]
-    SK["플러그인 스킬(생성물)<br/>plugins/harness-kit · hx-bootstrap"]
+    SK["플러그인 스킬(생성물)<br/>plugins/kns · kns:bootstrap"]
     TPL["templates 층<br/>common · domains · stacks · arch"]
     MOD["선택 모듈 · 회사 팩<br/>module.json · pack.json"]
     CLI["CLI 엔진<br/>packages/cli/src/core → dist/cli.js"]

@@ -1,5 +1,5 @@
 /**
- * `harness-kit sync aidlc` — AI-DLC 산출물을 intent.json · units.json 으로 옮긴다(설계 10 §3.2, MD-R9 · R10).
+ * `knots-sync sync aidlc` — AI-DLC 산출물을 intent.json · units.json 으로 옮긴다(설계 10 §3.2, MD-R9 · R10).
  * 같은 입력(sha256)이면 쓰지 않는다. 다시 가져올 때 sourceId 가 같은 Unit 은 id · issue 를 지킨다.
  * AI-DLC 를 실행하지 않고 모델을 부르지 않는다. 파일만 읽는다.
  */
@@ -14,6 +14,7 @@ import { META_REL, readMeta } from "../../core/meta";
 import { VERSION } from "../../core/version";
 import { runCmd, parseVersion } from "../tools";
 import { readAidlcIntent, READER_VERSION, type ARead, type AUnit } from "./adapter-v2";
+import { metaFile } from "../../core/legacy-names";
 
 const INTENTS = ".agents/docs/intents";
 const LABEL = /^\d{6}-(.+)$/;
@@ -139,7 +140,7 @@ export function buildUnits(r: ARead, key: string, aidlcPath: string, existing: O
   units.sort((a, b) => Number(/^U-(\d+)$/.exec(String(a.id))?.[1]) - Number(/^U-(\d+)$/.exec(String(b.id))?.[1]));
   const planned = units.filter((u) => u.planned !== false);
   return {
-    schema: "harness-kit.units/v1",
+    schema: "knots-sync.units/v1",
     intent: { key, title: r.title, doc: "intent.json" },
     source: { kind: "aidlc", path: aidlcPath, inputSha256: r.inputSha256 },
     decomposition: { stories: r.stories.length, domains: 0, userTypes: 0, integrations: 0, split: planned.length > 1, reasons: planned.length > 1 ? ["aidlc"] : [] },
@@ -170,10 +171,10 @@ interface One {
 export function runSyncAidlc(ctx: Ctx): CommandResult {
   const root = targetOf(ctx);
   const check = bool(ctx.values, "check");
-  const metaRead = readMeta(path.join(root, META_REL));
-  if (metaRead.status !== "ok") throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL}): ${root}`, "설치는 harness-kit init");
+  const metaRead = readMeta(metaFile(root));
+  if (metaRead.status !== "ok") throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL}): ${root}`, "설치는 knots-sync init");
   const meta = metaRead.meta;
-  if (!meta.modules.includes("aidlc")) throw new CliError(EXIT.STATE, "aidlc 모듈이 꺼져 있다", "harness-kit add aidlc");
+  if (!meta.modules.includes("aidlc")) throw new CliError(EXIT.STATE, "aidlc 모듈이 꺼져 있다", "knots-sync add aidlc");
   const flow = isObj(meta.flow) ? meta.flow : {};
   const base = isObj(meta.git) && typeof meta.git.base === "string" ? meta.git.base : "develop";
   const asked = str(ctx.values, "intent");
@@ -186,17 +187,17 @@ export function runSyncAidlc(ctx: Ctx): CommandResult {
     picks = [{ space, dir, abs }];
   } else picks = all;
   if (picks.length === 0) {
-    return { code: EXIT.OK, data: { command: "sync", tool: "aidlc", target: root, check, intents: [] }, lines: ["harness-kit sync aidlc — AI-DLC Intent 가 없다(aidlc/spaces/*/intents/*/aidlc-state.md)"] };
+    return { code: EXIT.OK, data: { command: "sync", tool: "aidlc", target: root, check, intents: [] }, lines: ["knots-sync sync aidlc — AI-DLC Intent 가 없다(aidlc/spaces/*/intents/*/aidlc-state.md)"] };
   }
   const version = toolVersion(ctx, root);
-  const adaptedAt = ctx.io.env.HARNESS_KIT_NOW ?? new Date().toISOString();
+  const adaptedAt = ctx.io.env.KNOTS_SYNC_NOW ?? new Date().toISOString();
   const results: One[] = [];
   let firstFail: CliError | null = null;
   for (const p of picks) {
     const aidlcPath = `${path.relative(root, p.abs).split(path.sep).join("/")}/`;
     const r = readAidlcIntent(p.abs);
     const one: One = { intent: p.dir, key: null, folder: null, action: "pending", units: r.units.length, stories: r.stories.length, missing: r.missing, notes: [], inputSha256: r.inputSha256 };
-    if (flow.design !== "aidlc") one.notes.push("flow.design 이 aidlc 가 아니다(harness-kit add aidlc 가 설정한다)");
+    if (flow.design !== "aidlc") one.notes.push("flow.design 이 aidlc 가 아니다(knots-sync add aidlc 가 설정한다)");
     if (r.missing.length) {
       if (asked !== undefined) firstFail ??= new CliError(EXIT.USAGE, `${p.dir}: 필수 항목이 없다 — ${r.missing.join(" · ")}`, "AI-DLC 에서 Units Generation 단계를 마친 뒤 다시 한다. 추측해서 채우지 않는다");
       results.push(one);
@@ -223,7 +224,7 @@ export function runSyncAidlc(ctx: Ctx): CommandResult {
     const unitsText = text(units);
     const unitsSame = fs.existsSync(unitsFile) && fs.readFileSync(unitsFile, "utf8") === unitsText;
     for (const s of r.shared) one.notes.push(`스토리 ${s.story} 가 Unit 여럿에 적혀 있다(${s.units.join(", ")}) — 킷은 한 Unit 에만 둔다: ${s.units[0]}`);
-    if (r.gateApprovals) one.notes.push(`AI-DLC 승인 기록 ${r.gateApprovals}건: 승인자(이메일)가 기록에 없어 approvals.md 로 옮기지 않았다 — 사람이 관리 페이지 · harness-kit approve 로 승인한다`);
+    if (r.gateApprovals) one.notes.push(`AI-DLC 승인 기록 ${r.gateApprovals}건: 승인자(이메일)가 기록에 없어 approvals.md 로 옮기지 않았다 — 사람이 관리 페이지 · knots-sync approve 로 승인한다`);
     if (sameInput && unitsSame) {
       one.action = "same";
       results.push(one);
@@ -235,12 +236,12 @@ export function runSyncAidlc(ctx: Ctx): CommandResult {
       continue;
     }
     const linkOut = {
-      schema: "harness-kit.intent-link/v1",
+      schema: "knots-sync.intent-link/v1",
       key,
       title: r.title,
       source: "aidlc",
       aidlc: { space: p.space, intent: p.dir, path: aidlcPath, version },
-      adapter: { name: "harness-kit/aidlc", version: VERSION, reader: READER_VERSION, inputSha256: r.inputSha256, adaptedAt },
+      adapter: { name: "knots-sync/aidlc", version: VERSION, reader: READER_VERSION, inputSha256: r.inputSha256, adaptedAt },
       stories: r.stories,
     };
     fs.mkdirSync(folderAbs, { recursive: true });
@@ -250,7 +251,7 @@ export function runSyncAidlc(ctx: Ctx): CommandResult {
     results.push(one);
   }
   const diff = results.some((o) => o.action === "check-diff");
-  const lines = [`harness-kit sync aidlc${check ? " --check" : ""} — ${root}`];
+  const lines = [`knots-sync sync aidlc${check ? " --check" : ""} — ${root}`];
   for (const o of results) {
     if (o.action === "pending") lines.push(`  ${o.intent}: 아직 가져올 수 없다 — ${o.missing.join(" · ")}`);
     else lines.push(`  ${o.intent} → ${o.folder}: ${o.action === "same" ? "변화 없음" : o.action === "check-diff" ? "달라졌다(쓰지 않았다)" : o.action === "created" ? "만들었다" : "갱신했다"} · Unit ${o.units} · 스토리 ${o.stories}`);

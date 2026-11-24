@@ -244,9 +244,9 @@ class AutoVerifyTest(OpsCase):
         if history is not None:
             (self.root / ".agents/state").mkdir(parents=True, exist_ok=True)
             (self.root / ".agents/state/history.json").write_text(json.dumps(history), encoding="utf-8")
-            env["HX_DEPLOY_HISTORY"] = str(self.root / ".agents/state/history.json")
+            env["KNS_DEPLOY_HISTORY"] = str(self.root / ".agents/state/history.json")
         if resume:
-            env["HX_DEPLOY_RESUME"] = "true"
+            env["KNS_DEPLOY_RESUME"] = "true"
         before = len(self.calls())
         r = self.run_py("deploy.py", "auto-verify", env=env)
         artifact = max((self.root / ".agents/reports/deploy").glob("auto-verify-*.json"), key=lambda p: json.loads(p.read_text())["seq"])

@@ -63,7 +63,7 @@ class QualityFixture(VerifyFixture):
 
     def setUp(self):
         super().setUp()
-        self.write(".agents/harness-kit.json", json.dumps({"git": {"base": "develop"}, "analyzers": {"semgrepRulesAcknowledged": True}}))
+        self.write(".agents/knots-sync.json", json.dumps({"git": {"base": "develop"}, "analyzers": {"semgrepRulesAcknowledged": True}}))
         self.git("init", "-q", "-b", "develop")
         self.write(".gitignore", ".agents/state/\n")
 
@@ -78,11 +78,11 @@ class QualityFixture(VerifyFixture):
         return self.git("rev-parse", "HEAD")
 
     def registry(self, *entries):
-        self.write(".agents/analyzers.json", json.dumps({"schema": "harness-kit.analyzers/v1", "analyzers": list(entries)}, ensure_ascii=False, indent=2))
+        self.write(".agents/analyzers.json", json.dumps({"schema": "knots-sync.analyzers/v1", "analyzers": list(entries)}, ensure_ascii=False, indent=2))
 
     def gate_config(self, **overrides):
         config = {
-            "schema": "harness-kit.quality-gate/v1",
+            "schema": "knots-sync.quality-gate/v1",
             "newIssues": {"CRITICAL": 0, "HIGH": None, "MEDIUM": None, "LOW": None},
             "duplication": {"newCodeMaxPercent": 3.0, "minChangedLines": 50},
             "complexity": {"functionMaxCcn": 15, "mode": "new-or-worsened"},
@@ -98,7 +98,7 @@ class QualityFixture(VerifyFixture):
 
     def baseline(self, findings=None, accepted=None, commit=None):
         self.write(".agents/quality-baseline.json", json.dumps({
-            "schema": "harness-kit.quality-baseline/v1", "commit": commit or "0000000", "createdAt": "2026-11-20T02:00:00Z",
+            "schema": "knots-sync.quality-baseline/v1", "commit": commit or "0000000", "createdAt": "2026-11-20T02:00:00Z",
             "findings": findings or {}, "metrics": {}, "accepted": accepted or [],
         }, indent=2))
 

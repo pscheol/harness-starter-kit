@@ -135,7 +135,7 @@ def approve_intent_and_plans(sb: Sandbox, config: str, report: Report, key: str,
 
 
 def specify(sb: Sandbox, config: str, report: Report, key: str, unit: str, tag: str) -> dict:
-    """S4 /hx-specify --from-unit(계약 먼저). 반환: 이슈 키 · 폴더."""
+    """S4 /kns-specify --from-unit(계약 먼저). 반환: 이슈 키 · 폴더."""
     r = sb.py("from_unit.py", f"{key}/{unit}", check=False)
     if r.returncode != 0:
         report.add(config, f"S4.from-unit-{unit}{tag}", "fail", (r.stdout + r.stderr)[-400:])

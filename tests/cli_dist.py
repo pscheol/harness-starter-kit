@@ -14,19 +14,19 @@ import subprocess
 import tempfile
 from pathlib import Path
 
-# CLI init 은 이 컴퓨터 등록부(~/.config/harness-kit/projects.json)에 리포를 더한다(06 §3.17).
+# CLI init 은 이 컴퓨터 등록부(~/.config/knots-sync/projects.json)에 리포를 더한다(06 §3.17).
 # 시험은 실제 홈을 쓰지 않는다 — 이 도우미를 부르는 시험과 그 하위 프로세스는 임시 설정 폴더를 쓴다.
-os.environ.setdefault("HARNESS_KIT_CONFIG_DIR", tempfile.mkdtemp(prefix="hk-config-"))
+os.environ.setdefault("KNOTS_SYNC_CONFIG_DIR", tempfile.mkdtemp(prefix="hk-config-"))
 
 KIT = Path(__file__).resolve().parents[1]
 CLI_DIR = KIT / "packages/cli"
 DIST = CLI_DIR / "dist/cli.js"
-CLI_BIN_REL = "skills/hx-bootstrap/bin/harness-kit.js"
-PLUGIN_BIN = KIT / "plugins/harness-kit" / CLI_BIN_REL
-PLUGIN_TEMPLATES = KIT / "plugins/harness-kit/skills/hx-bootstrap/templates"
+CLI_BIN_REL = "skills/bootstrap/bin/knots-sync.js"
+PLUGIN_BIN = KIT / "plugins/kns" / CLI_BIN_REL
+PLUGIN_TEMPLATES = KIT / "plugins/kns/skills/bootstrap/templates"
 ROOT_FILES = ("build.mjs", "package.json", "tsconfig.json")
 DIRS = ("scripts", "src")
-BANNER_RE = re.compile(r"^// harness-kit \S+ · src-sha256 ([0-9a-f]{64})", re.M)
+BANNER_RE = re.compile(r"^// knots-sync \S+ · src-sha256 ([0-9a-f]{64})", re.M)
 
 
 DASHBOARD_FILES = ("package.json",)

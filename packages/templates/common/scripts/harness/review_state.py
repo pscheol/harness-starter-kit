@@ -41,7 +41,7 @@ def read_json(path):
 def harness_root(start):
     current = Path(start).resolve()
     for folder in (current, *current.parents):
-        if (folder / ".agents/harness-kit.json").is_file() or (folder / ".agents/harness.json").is_file():
+        if (folder / ".agents/knots-sync.json").is_file() or (folder / ".agents/harness.json").is_file():
             return folder
     return None
 
@@ -134,7 +134,7 @@ def issue_state(root, folder, report=None, environ=None):
     data, source = report_data(root, key, report, environ)
     if not data:
         return None
-    meta = read_json(root / ".agents/harness-kit.json")
+    meta = read_json(root / ".agents/knots-sync.json")
     entries = approvals.read_entries(folder / "approvals.md")
     try:
         rows = review_rows((folder / "review.md").read_text(encoding="utf-8"))
@@ -198,7 +198,7 @@ def main(argv=None):
         return 2
     state = issue_state(root, folder, options.report)
     if state is None:
-        print("리뷰 보고서 없음 — /hx-review 를 먼저 돈다", file=sys.stderr)
+        print("리뷰 보고서 없음 — /kns-review 를 먼저 돈다", file=sys.stderr)
         return 2
     if options.json:
         print(json.dumps(state, ensure_ascii=False, indent=2))

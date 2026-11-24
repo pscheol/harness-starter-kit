@@ -155,7 +155,7 @@ describe("POST /reviews/{key}/{F-n}/decision", () => {
     const repo = repoWithIssue();
     const fp = "ab".repeat(32);
     const data = { issue: "DEMO-1", mr: "#1", head: git(repo.root, "rev-parse", "HEAD"), findings: [{ id: "F-1", severity: "HIGH", check: "RV-EDGE", path: "README.md", line: 1, fp, title: "빈 입력" }] };
-    writeFile(repo.root, ".agents/reports/review/DEMO-1.md", `---\nissue: DEMO-1\n---\n\n# 리뷰\n\n<!-- harness-kit:review-data ${JSON.stringify(data)} -->\n`);
+    writeFile(repo.root, ".agents/reports/review/DEMO-1.md", `---\nissue: DEMO-1\n---\n\n# 리뷰\n\n<!-- knots-sync:review-data ${JSON.stringify(data)} -->\n`);
     const srv = await serve(repo);
     const before = await call(srv, "GET", "/api/v1/reviews/DEMO-1");
     expect(before.json.data.open.HIGH).toBe(1);

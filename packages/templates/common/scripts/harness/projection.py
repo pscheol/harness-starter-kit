@@ -118,7 +118,7 @@ def cmd_sync(args) -> int:
     agents, tokens = selection(root, args)
     fmt, entries, raw = read_lock(root)
     if fmt == "missing":
-        print("lock 이 없다 — 설치는 harness-kit init", file=sys.stderr)
+        print("lock 이 없다 — 설치는 knots-sync init", file=sys.stderr)
         return 1
     spec = load_spec()
     wants, _ = build_wants(root, spec, tokens, agents)
@@ -189,7 +189,7 @@ def cmd_sync(args) -> int:
         proj = [by_path[p].v1_line() for p in byte_sorted(by_path) if by_path[p].op in PROJECTION_OPS]
         write_atomic(root / LOCK_REL, ("\n".join(head + body + proj) + "\n").encode("utf-8"), False)
     if drifted:
-        line = f"생성 파일을 직접 고쳤다: {drifted[0]}{f' 외 {len(drifted) - 1}' if len(drifted) > 1 else ''} — 원본을 고친 뒤 harness-kit repair"
+        line = f"생성 파일을 직접 고쳤다: {drifted[0]}{f' 외 {len(drifted) - 1}' if len(drifted) > 1 else ''} — 원본을 고친 뒤 knots-sync repair"
         print(line.encode("utf-8")[:200].decode("utf-8", errors="ignore"), file=sys.stderr)
         return 1
     return 0

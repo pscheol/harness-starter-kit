@@ -42,12 +42,12 @@
 ### 3.1 공통 이전 절차
 
 ```text
-1 점검   npx harness-kit doctor                  읽기만. 결과를 이전 이슈의 handoff 문서에 붙인다
-2 계획   npx harness-kit update --dry-run         바뀔 파일 · .new가 생길 파일 · 외부 소유로 잡힐 파일 목록
-3 승인   사람이 목록을 보고 이전 이슈의 tasks 계획을 승인한다   관리 페이지 또는 npx harness-kit approve. 대화의 말은 승인이 아니다(09 §3.8)
-4 적용   npx harness-kit update                  .new 생성, lock v2 쓰기
+1 점검   npx knots-sync doctor                  읽기만. 결과를 이전 이슈의 handoff 문서에 붙인다
+2 계획   npx knots-sync update --dry-run         바뀔 파일 · .new가 생길 파일 · 외부 소유로 잡힐 파일 목록
+3 승인   사람이 목록을 보고 이전 이슈의 tasks 계획을 승인한다   관리 페이지 또는 npx knots-sync approve. 대화의 말은 승인이 아니다(09 §3.8)
+4 적용   npx knots-sync update                  .new 생성, lock v2 쓰기
 5 병합   .new 파일을 하나씩 병합 → 원본 자리로   남은 .new 0개
-6 검증   bash scripts/verify.sh --full(사람 터미널 또는 CI) · npx harness-kit doctor --check(exit 0)
+6 검증   bash scripts/verify.sh --full(사람 터미널 또는 CI) · npx knots-sync doctor --check(exit 0)
 7 커밋   이전 커밋 하나. 메시지: "chore: 하네스 v<버전> 이전 — <단계>"   사람 승인 뒤
 ```
 
@@ -61,16 +61,16 @@ knots 작업 공간 규칙: `git worktree add ~/knots-work/harness-v2-<단계> -
 | 단계 | 킷 버전 | 할 일 | 끝의 확인 | 되돌리기 |
 |---|---|---|---|---|
 | K0 | 1.1 | 이슈 단위 SDD: `sdd-layout.py migrate --dry-run`으로 영역 폴더 13곳의 이슈 목록 → 승인 → 적용. tasks 템플릿의 `--full` 지시 59곳을 "affected 결과 · CI full 링크"로 정리. 에이전트 `--full` 차단 훅 켬 | 적용 뒤 `board.sh` 결과가 이전과 같다. 파일 1개 변경 작업의 changed 검증 3분, affected 15분 이내 | 이전 커밋 revert |
-| K1 | 2.0 | `npx harness-kit doctor`만 돌린다. 쓰지 않는다 | 보고서에 lock v1 변환 가능, 포인터 수, `foreign` 파일 362개(AI-DLC 경로), 배포 단위 23곳이 나온다 | 없음(쓰기 0) |
+| K1 | 2.0 | `npx knots-sync doctor`만 돌린다. 쓰지 않는다 | 보고서에 lock v1 변환 가능, 포인터 수, `foreign` 파일 362개(AI-DLC 경로), 배포 단위 23곳이 나온다 | 없음(쓰기 0) |
 | K2 | 2.4 | 루트 `update`: lock v1 → v2, 포인터 → 링크·생성, 역할 배정 생성, 루트 `.claude/settings.json`을 `op: merge` 대상으로(킷 키만 킷 소유, 나머지는 그대로). AI-DLC 결정(아래) | `doctor --check` exit 0, `verify.sh --full`(CI) 통과, AI-DLC 파일 sha256 불변(MG-R5) | 이전 커밋 revert. lock v1 원본은 `.agents/state/backup/`에도 남긴다 |
-| K3 | 2.6 | 배포 단위: `harness-kit sync units --check`를 `sync.py --check`와 나란히 돌린다. 23곳 결과가 같아지면 훅·문서의 호출을 CLI로 바꾸고 `sync.py`는 한 릴리스 동안 남긴다 | 두 `--check` 출력이 23/23 같다(10 MD-R16) | 호출을 `sync.py`로 되돌리는 커밋 revert |
+| K3 | 2.6 | 배포 단위: `knots-sync sync units --check`를 `sync.py --check`와 나란히 돌린다. 23곳 결과가 같아지면 훅·문서의 호출을 CLI로 바꾸고 `sync.py`는 한 릴리스 동안 남긴다 | 두 `--check` 출력이 23/23 같다(10 MD-R16) | 호출을 `sync.py`로 되돌리는 커밋 revert |
 | K4 | 2.6 | 정리: 점유 상태 prune(완료 세션 7일, 공지 30일), 진입 파일 61KB를 24KB 이하로 나눈다(규칙 본문은 `.agents/rules/`로, 진입 파일에는 목차만) | `state.json` 보존 기한 밖 기록 0건, `doctor`의 진입 파일 경고 0건 | revert. prune 전 사본은 `.agents/state/backup/` |
 
 K2의 AI-DLC 결정(사람이 고르고 ADR로 남긴다):
 
 | 선택 | 할 일 | 결과 |
 |---|---|---|
-| A. 쓴다 | `npx harness-kit add aidlc` — 362개 파일을 `external:aidlc`로 등록, 킷 훅 병합, `flow.design = "aidlc"` | AI-DLC 훅 17개는 계속 돈다 |
+| A. 쓴다 | `npx knots-sync add aidlc` — 362개 파일을 `external:aidlc`로 등록, 킷 훅 병합, `flow.design = "aidlc"` | AI-DLC 훅 17개는 계속 돈다 |
 | B. 쓰지 않는다(추천: Intent 0건) | `flow.design = "kit"`. AI-DLC 훅 17개는 `aidlc uninstall`(도구 명령) 또는 사람이 설정에서 뺀다. 파일 362개는 남기거나 사람이 지운다 | 매 세션 도는 훅 17개가 빠진다. 킷은 파일을 지우지 않는다 |
 
 K2 전후 비교 자료(이전 MR 설명에 붙인다): 세션 시작 때 도는 훅 수, 진입 파일 바이트, 손으로 관리하는 하네스 파일 수(P18 기준 78 → 0), `doctor` 상태별 개수.
@@ -79,12 +79,12 @@ K2 전후 비교 자료(이전 MR 설명에 붙인다): 세션 시작 때 도는
 
 | 단계 | 킷 버전 | 할 일 | 끝의 확인 | 되돌리기 |
 |---|---|---|---|---|
-| H1 | 2.0 | `npx harness-kit init --adopt --dry-run` → 목록 검토(기존 파일 전부 `owner: user`, 새로 깔 파일만 표시) → 승인 → `init --adopt` | 기존 파일 sha256 변경 0건, `doctor --check` exit 0 | 이전 커밋 revert |
+| H1 | 2.0 | `npx knots-sync init --adopt --dry-run` → 목록 검토(기존 파일 전부 `owner: user`, 새로 깔 파일만 표시) → 승인 → `init --adopt` | 기존 파일 sha256 변경 0건, `doctor --check` exit 0 | 이전 커밋 revert |
 | H2 | 2.1 | worktree는 도메인 리포 단위로만(상위 리포는 만들지 않는다). 기존 `.gitlab-ci.yml`에 킷 CI include를 더한다(09 §3.7) | MR 파이프라인에 `harness:fast`·`harness:affected`가 돈다 | revert |
 | H3 | 2.5 | 승인 강제 켬(09 §3.8). 각 개발자가 자기 `.claude/settings.local.json`에서 `Bash(git push*)`·`Bash(git commit*)` 무조건 허용을 지운다(개인 파일이라 커밋 대상이 아니다) | `doctor`가 개인 설정의 base push 허용을 경고하지 않는다(사람마다 확인). 승인 기록 없는 completed 이동이 막힌다 | 승인 강제 설정 커밋 revert |
 | H4 | 2.6 | multi-harness 모듈: submodule 2곳 규칙 사본을 `sync units`로 합친다. `cross-repo-orchestration.md`를 킷 `cross-repo.md` 규칙(10 §3.5)으로 바꾸고, 부모 `specs-index.md`에 SHA 열을 더한다 | `sync units --check` exit 0, 이전 규칙 문서와 새 규칙의 단계 대응표가 MR에 있다 | revert |
 
-`--adopt`로 `owner: user`가 된 파일은 킷 `update`가 건드리지 않는다. 킷 기본 파일로 바꾸고 싶은 파일은 사람이 지운 뒤 `npx harness-kit repair`로 다시 깐다(02).
+`--adopt`로 `owner: user`가 된 파일은 킷 `update`가 건드리지 않는다. 킷 기본 파일로 바꾸고 싶은 파일은 사람이 지운 뒤 `npx knots-sync repair`로 다시 깐다(02).
 
 ### 3.4 두 구성 e2e 시험
 
@@ -97,14 +97,14 @@ K2 전후 비교 자료(이전 MR 설명에 붙인다): 세션 시작 때 도는
 
 ```text
 S1 요구사항 접수        tests/e2e/fixtures/requirement.md(스토리 6, 도메인 2)
-S2 설계                 A: /hx-intent 산출물(대본 에이전트) · B: AI-DLC 산출물 fixture → sync aidlc
+S2 설계                 A: /kns-intent 산출물(대본 에이전트) · B: AI-DLC 산출물 fixture → sync aidlc
 S3 intent·plans 승인    대시보드 API(PIN 포함)
-S4 Unit → SDD 이슈       /hx-specify --from-unit 3회(계약 먼저)
+S4 Unit → SDD 이슈       /kns-specify --from-unit 3회(계약 먼저)
 S5 requirements·design·tasks 승인
 S6 구현 Bolt 2개        대본 에이전트가 코드·시험을 쓰고 커밋. B는 커밋마다 체크포인트
-S7 검증                 verify.sh --changed, --affected, 정적 분석, /hx-review 대본, review.md
+S7 검증                 verify.sh --changed, --affected, 정적 분석, /kns-review 대본, review.md
 S8 MR 승인 → 병합 → done 승인
-S9 반영 · 배포 · 운영    /hx-docs 대본 → deploy plan → 가짜 CI 산출물로 deploy record(롤백 시험 · full 통과)
+S9 반영 · 배포 · 운영    /kns-docs 대본 → deploy plan → 가짜 CI 산출물로 deploy record(롤백 시험 · full 통과)
                         → deploy 승인(대시보드 API) → deploy.py result → ops 기록 1건 → intake --from ops:…#NX-1 → 다음 Intent 초안
 S10 정리                B만: remove entire → remove aidlc → A 시나리오 S4~S9 다시
 ```
@@ -116,7 +116,7 @@ S10 정리                B만: remove entire → remove aidlc → A 시나리�
 | 층 | 언제 | AI-DLC · Entire |
 |---|---|---|
 | `e2e-stub` | 모든 MR | 가짜 실행 파일(`tests/e2e/stubs/aidlc`, `…/entire`)이 받은 인자를 기록하고 알려진 산출물 모양의 파일·ref를 만든다 |
-| `e2e-real` | 릴리스 전 | `harness-kit.json` `versions` 범위의 실제 도구(고정 버전 설치 스크립트, 네트워크 필요) |
+| `e2e-real` | 릴리스 전 | `knots-sync.json` `versions` 범위의 실제 도구(고정 버전 설치 스크립트, 네트워크 필요) |
 
 fixture 리포 `tests/e2e/fixtures/sample-repo/`: python 스택(패키지 2개 = 도메인 2개, pytest 시험 10개, 실행 10초 이하). 시험마다 임시 폴더에 복사하고 `git init`, 가짜 원격(bare 리포)을 붙인다.
 
@@ -136,7 +136,7 @@ tests/e2e/
 └── golden/                        구성별 기대 결과(units.json 키 집합, requirements 절 목록, lock 항목 수)
 ```
 
-- 대본 에이전트는 `HX_E2E_ROLE=implement`처럼 역할 환경 변수를 두고 커밋한다. 세션 등록 훅·Entire stub이 이 값으로 구현·리뷰 세션을 가른다(E4).
+- 대본 에이전트는 `KNS_E2E_ROLE=implement`처럼 역할 환경 변수를 두고 커밋한다. 세션 등록 훅·Entire stub이 이 값으로 구현·리뷰 세션을 가른다(E4).
 - 승인은 대시보드 서버를 시험 안에서 띄우고 PIN을 표준 오류에서 읽어 API로 한다. 에이전트 세션 판정 변수는 시험 환경에서 지운다.
 - 시험 실패 때 임시 폴더를 `tests/e2e/.artifacts/<시각>/`로 옮겨 남긴다(CI 산출물).
 
@@ -145,7 +145,7 @@ tests/e2e/
 | ID | 확인 | 구성 |
 |---|---|---|
 | E1 | `units.json`이 `source`·`sourceId`를 빼고 A·B에서 같은 키 집합 | A·B |
-| E2 | `/hx-specify --from-unit` requirements 절 구성이 A·B에서 같다 | A·B |
+| E2 | `/kns-specify --from-unit` requirements 절 구성이 A·B에서 같다 | A·B |
 | E3 | 게이트 순서: 앞 승인 없이 다음 승인 API가 422 | A·B |
 | E4 | 체크포인트가 구현 하네스 커밋에만 있다(리뷰 세션 커밋 0) | B |
 | E5 | 킷 `update`·`uninstall` 뒤 AI-DLC·Entire 파일·훅 sha256 불변 | B 두 순서 |
@@ -163,10 +163,10 @@ tests/e2e/
 | 파일 | 바꾸는 값 |
 |---|---|
 | `packages/cli/package.json` | `.version` |
-| `.claude-plugin/marketplace.json` | `plugins[name = "harness-kit"].version` |
-| `.agents/plugins/marketplace.json` | `plugins[name = "harness-kit"].version` |
-| `plugins/harness-kit/.claude-plugin/plugin.json` | `.version` |
-| `plugins/harness-kit/.codex-plugin/plugin.json` | `.version` |
+| `.claude-plugin/marketplace.json` | `plugins[name = "knots-sync"].version` |
+| `.agents/plugins/marketplace.json` | `plugins[name = "knots-sync"].version` |
+| `plugins/kns/.claude-plugin/plugin.json` | `.version` |
+| `plugins/kns/.codex-plugin/plugin.json` | `.version` |
 
 ```text
 release.sh 2.2.0
@@ -175,16 +175,16 @@ release.sh 2.2.0
 3 다섯 파일 버전 바꾸기: JSON을 읽어 그 키만 바꾸고 2칸 들여쓰기 + 끝 줄바꿈으로 쓴다
   쓴 뒤 git diff가 다섯 파일의 "version" 줄만 바꿨는지 검사(다른 줄이 바뀌면 되돌리고 exit 1)
 4 CHANGELOG.md에 "## 2.2.0" 절이 있는지(없으면 exit 1)
-4a pnpm -r build 뒤 node scripts/gen-plugins.mjs: packages/ 에서 plugins/harness-kit/ 을 다시 만든다
-   (cli 번들 → bin/harness-kit.js, templates/ · legacy-setup/ 사본, 얇은 스킬). 바뀐 파일은 같은 릴리스 커밋에 넣는다
+4a pnpm -r build 뒤 node scripts/gen-plugins.mjs: packages/ 에서 plugins/kns/ 을 다시 만든다
+   (cli 번들 → bin/knots-sync.js, templates/ · legacy-setup/ 사본, 얇은 스킬). 바뀐 파일은 같은 릴리스 커밋에 넣는다
 5 시험(tests/test_generated.py 포함: 생성물 = 원본): python3 -m unittest discover -s tests, CLI 시험, e2e-stub 두 구성(MG-R7)
-6 릴리스 점검표 출력(사람이 한다): Claude /hx-plan · Codex $hx-plan · Cursor /hx-plan · Kiro 스킬 목록, e2e-real 결과 링크
+6 릴리스 점검표 출력(사람이 한다): Claude /kns-plan · Codex $kns-plan · Cursor /kns-plan · Kiro 스킬 목록, e2e-real 결과 링크
 7 커밋 "chore: release v2.2.0" + 주석 태그 v2.2.0. push는 하지 않는다(MG-R9)
 --check: 다섯 값이 같은지만 보고 다르면 exit 1(CI에서 매 MR)
 --dry-run: 1~4만, 쓰지 않는다
 ```
 
-`README.md`·`hx-bootstrap/manifest.md`의 버전 표기는 사람이 읽는 문서라 스크립트가 바꾸지 않는다. `--check`가 두 파일에서 이전 버전 문자열을 찾으면 경고만 한다.
+`README.md`·`bootstrap/manifest.md`의 버전 표기는 사람이 읽는 문서라 스크립트가 바꾸지 않는다. `--check`가 두 파일에서 이전 버전 문자열을 찾으면 경고만 한다.
 
 ### 3.6 버전 규칙
 
@@ -205,8 +205,8 @@ release.sh 2.2.0
 | v1 lock(TSV) | 읽고 v2로 바꾼다 | 같음 | 읽지 않는다. v2.x로 먼저 올리라고 안내 |
 | v1 SDD 배치(단계 폴더, `tasks/active` · `check` · `completed` 폴더) | 읽기만(보드·대시보드) | 같음 | 읽지 않는다. `sdd-layout.py migrate` 안내 |
 | `setup.sh` | Node 없는 환경의 대체 경로로 남김 | 뺀다(v2.1.0) | — |
-| `.agents/harness.json`(v1 매니페스트, 세션 점유 루트 판정에 쓰인다) | `update`가 지우지 않고 `harness-kit.json`과 같이 둔다 | 점유 코드가 `harness-kit.json`도 루트 표시로 읽는다 | 뺀다 |
-| 플러그인 스킬 `hx-bootstrap`·`hx-update`·`hx-agent-add` | Node 18+면 CLI, 아니면 `setup.sh` | CLI만, Node가 없으면 설치 안내 | 같음 |
+| `.agents/harness.json`(v1 매니페스트, 세션 점유 루트 판정에 쓰인다) | `update`가 지우지 않고 `knots-sync.json`과 같이 둔다 | 점유 코드가 `knots-sync.json`도 루트 표시로 읽는다 | 뺀다 |
+| 플러그인 스킬 `kns:bootstrap`·`kns:update`·`kns:agent-add` | Node 18+면 CLI, 아니면 `setup.sh` | CLI만, Node가 없으면 설치 안내 | 같음 |
 
 ### 3.8 되돌리기
 
@@ -220,7 +220,7 @@ release.sh 2.2.0
 
 | 점검 | 명령 | 통과 |
 |---|---|---|
-| 배치 | `npx harness-kit doctor --check --json` | exit 0, `drifted`·`missing`·`stale`·`symlink-found` 0 |
+| 배치 | `npx knots-sync doctor --check --json` | exit 0, `drifted`·`missing`·`stale`·`symlink-found` 0 |
 | 외부 파일 불변 | `python3 scripts/harness/check_external.py --snapshot .agents/state/module-snapshots/<시각>.json` | 바뀐 sha256 0 |
 | 남은 `.new` | `git ls-files --others --exclude-standard '*.new'` | 출력 0줄 |
 | 보드 | 이전 전후 `bash scripts/board.sh` 출력 비교(v2.2부터 `--json`) | 상태 차이 0 |
@@ -248,7 +248,7 @@ release.sh 2.2.0
 3. hdr 형태 fixture에서 `init --adopt` 뒤 기존 파일 sha256 변경 0건, lock의 기존 파일 항목이 모두 `owner: user`.
 4. 두 구성 e2e(`e2e-stub`)의 판정 항목 E1~E9가 모두 통과하고 합계 5분 이하. B 구성은 두 설치 순서 모두 통과.
 5. `release.sh 9.9.9 --dry-run`이 다섯 파일을 바꿀 계획을 출력하고 쓰기 0건. 다섯 값 중 하나를 다르게 둔 fixture에서 `--check`가 exit 1.
-6. `release.sh` 실행 뒤 `git diff HEAD~1 --stat`이 다섯 파일 · CHANGELOG · `plugins/harness-kit/` 생성물만 보이고, 다섯 파일의 바뀐 줄은 `"version"` 한 줄이다. `plugins/harness-kit/` 안 파일 하나를 손으로 바꾼 fixture에서 `tests/test_generated.py`가 실패한다.
+6. `release.sh` 실행 뒤 `git diff HEAD~1 --stat`이 다섯 파일 · CHANGELOG · `plugins/kns/` 생성물만 보이고, 다섯 파일의 바뀐 줄은 `"version"` 한 줄이다. `plugins/kns/` 안 파일 하나를 손으로 바꾼 fixture에서 `tests/test_generated.py`가 실패한다.
 7. v1 설치 fixture(1.0.7)에서 v2 CLI `update`가 lock v1을 읽어 v2로 쓰고, v1 SDD 배치 이슈 5개가 대시보드 진행 탭에 보인다.
 
 ## 6. 확인 필요

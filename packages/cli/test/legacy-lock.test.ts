@@ -41,7 +41,7 @@ describe("v1 lock 표시 줄", () => {
     const body = "-\tcommon\tcore\tAGENTS.md\n";
     expect(parseLockText(`${HEADER}\n${body}`)).toMatchObject({ format: "v1", ambiguous: true });
     expect(parseLockText(`${HEADER}\n${MARK}\n${body}`)).toMatchObject({ format: "v1", ambiguous: false });
-    expect(parseLockText('{"schema": "harness-kit.lock/v2", "entries": []}')).toMatchObject({ format: "v2", ambiguous: false });
+    expect(parseLockText('{"schema": "knots-sync.lock/v2", "entries": []}')).toMatchObject({ format: "v2", ambiguous: false });
   });
 });
 
@@ -51,7 +51,7 @@ describe("update — 표시 줄 없는 v1 lock", () => {
     const r = await cli("update", ["--json", "--templates", newKit()]);
     expect(r.code, r.stdout).toBe(0);
     const j = json(r);
-    expect(readText(target, "AGENTS.md")).toBe(`# Acme\n<!-- harness-kit: 설치 전 내용(병합) -->\n${MINE}<!-- /harness-kit -->\n`);
+    expect(readText(target, "AGENTS.md")).toBe(`# Acme\n<!-- knots-sync: 설치 전 내용(병합) -->\n${MINE}<!-- /knots-sync -->\n`);
     expect(exists(target, "AGENTS.md.new") || exists(target, `${A}.new`)).toBe(false);
     expect(readText(target, A)).toContain("v2");
     const ops = new Map((j.ops as { path: string; action: string; reason?: string }[]).map((o) => [o.path, o]));

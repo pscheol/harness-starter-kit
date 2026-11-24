@@ -211,12 +211,12 @@ hexagonal-standalone   :my-app-order-infra          컨텍스트마다 core·com
 
 ```bash
 # 5스택 공통 진입
-/harness-kit:hx-bootstrap --stack=<jvm|python|go|web|electron> --arch=<변형> --dry-run
+/kns:bootstrap --stack=<jvm|python|go|web|electron> --arch=<변형> --dry-run
 
 # 스택별 전용 진입(고르는 순서로 묻고 같은 설치기를 부른다)
-/hx-jvm-setup        # + 언어(Kotlin/Java) 확정
-/hx-web-setup
-/hx-electron-setup
+/kns:jvm-setup        # + 언어(Kotlin/Java) 확정
+/kns:web-setup
+/kns:electron-setup
 ```
 
 설치가 끝나면 `setup.sh` 가 **스택×변형별 후속 작업**을 출력한다. 그것이 다음 할 일이다.

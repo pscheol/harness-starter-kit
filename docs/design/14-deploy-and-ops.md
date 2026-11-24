@@ -23,7 +23,7 @@
 | DO-R5 | 배포 기록에 롤백 시험 통과가 없으면 `deploy` 승인은 승인자가 면제 사유를 함께 넣은 경우에만 된다. 기록의 `risk`가 `high`면 면제할 수 없다. |
 | DO-R6 | `deploy.py check <기록> --require-approved`는 유효한 `deploy` 승인 기록이 없거나 계획 구간 sha가 승인한 sha와 다르면 exit 1이다. |
 | DO-R7 | `autoVerify.enabled`가 참이면 base 브랜치에 병합될 때마다 CI는 검증 환경에 배포하고 E2E를 한 번 돌린다. |
-| DO-R8 | 자동 검증 배포가 연속 2회 실패하면 그 뒤 실행은 배포하지 않고 `stopped`로 끝난다. 사람이 `HX_DEPLOY_RESUME=true`로 파이프라인을 수동 실행해야 다시 배포한다. |
+| DO-R8 | 자동 검증 배포가 연속 2회 실패하면 그 뒤 실행은 배포하지 않고 `stopped`로 끝난다. 사람이 `KNS_DEPLOY_RESUME=true`로 파이프라인을 수동 실행해야 다시 배포한다. |
 | DO-R9 | 운영 기록의 실측 값마다 출처(기간을 고정한 링크 또는 CI 산출물 경로)가 있다. 출처 없는 실측 값이 있으면 `verify.sh fast`는 실패한다. |
 | DO-R10 | `intake --kind bug --from ops:<기록>#INC-<n>`은 장애 내용을 담은 bug 이슈를 만들고, 운영 기록의 그 장애 `후속 이슈` 줄만 고친다. |
 | DO-R11 | `intake --from ops:<기록>#NX-<n>`은 08 §3.11과 같은 형식으로 Intent를 만들고 `intake.md` 머리에 `source.type: ops`를 남긴다. 같은 NX를 다시 접수하면 새 Intent를 만들지 않는다. |
@@ -31,7 +31,7 @@
 | DO-R13 | `metrics --baseline`은 킷 도입 전 90일 기록으로 기준선을 만들고 지표마다 계산 방법(`method`)과 입력 범위를 남긴다. 같은 입력으로 다시 계산하면 같은 값이 나온다. |
 | DO-R14 | 승인 기록에 `규칙 후보: 예`가 있거나, 같은 리뷰 점검 ID의 `수용` 지적이 30일 안에 이슈 2개 이상에서 나오면 `rules candidates`는 규칙 후보 파일을 만든다. |
 | DO-R15 | 규칙 후보의 `status: accepted`는 같은 MR에서 그 후보의 `target` 규칙 파일이 바뀐 경우에만 허용된다. 아니면 `verify.sh fast`가 실패한다. |
-| DO-R16 | `GET /ops`는 배포 기록 · 운영 기록 · 장애 · 다음 Intent 후보 · 전달 지표 · 자동 검증 배포 상태 · 규칙 후보를 한 응답으로 준다. `npx harness-kit status --ops --json`은 같은 내용을 낸다. |
+| DO-R16 | `GET /ops`는 배포 기록 · 운영 기록 · 장애 · 다음 Intent 후보 · 전달 지표 · 자동 검증 배포 상태 · 규칙 후보를 한 응답으로 준다. `npx knots-sync status --ops --json`은 같은 내용을 낸다. |
 
 ## 3. 설계
 
@@ -41,7 +41,7 @@
 병합 → [done 승인]
   → (선택) CI 자동 검증 배포: 검증 환경 배포 → 스모크 · 헬스 → E2E 1회 → 롤백 시험      §3.5
   → deploy plan <키…>         배포 기록(state: planned). 포함 이슈 design §13을 모은다      §3.3
-  → [deploy 승인]             관리 페이지 승인 버튼 · harness-kit approve · Jira 사람 전이  §3.4
+  → [deploy 승인]             관리 페이지 승인 버튼 · knots-sync approve · Jira 사람 전이  §3.4
   → 배포 시스템: deploy.py check --require-approved → 운영 배포 → deploy.py result        §3.3
   → 운영 기록(배포 뒤 1주 · 매월 · 장애마다)                                               §3.7
       ├ 장애 INC-n  → intake --kind bug --from ops:…#INC-n → bug 이슈                       §3.8
@@ -176,8 +176,8 @@ created: 2026-12-01
 
 | 명령 | 하는 일 |
 |---|---|
-| `npx harness-kit deploy plan <이슈·Intent 키…> [--env production] [--tag v2.3.0]` | Intent 키면 그 Intent에서 `done`을 통과한 이슈 전부를 넣는다. design §13을 모아 §1~§5를 쓴다. `commit.sha`는 base HEAD, `risk`는 포함 이슈의 최댓값 |
-| `npx harness-kit deploy record <기록> --from-ci <파이프라인 URL\|산출물 파일>` | CI 산출물(`verify-last.json` · `quality-gate-last.json` · `auto-verify-<sha>.json`)에서 §4 시험 줄과 §6 검증 줄을 채운다. 산출물의 `head`가 `commit.sha`와 다르면 두 sha를 출력하고 거부 |
+| `npx knots-sync deploy plan <이슈·Intent 키…> [--env production] [--tag v2.3.0]` | Intent 키면 그 Intent에서 `done`을 통과한 이슈 전부를 넣는다. design §13을 모아 §1~§5를 쓴다. `commit.sha`는 base HEAD, `risk`는 포함 이슈의 최댓값 |
+| `npx knots-sync deploy record <기록> --from-ci <파이프라인 URL\|산출물 파일>` | CI 산출물(`verify-last.json` · `quality-gate-last.json` · `auto-verify-<sha>.json`)에서 §4 시험 줄과 §6 검증 줄을 채운다. 산출물의 `head`가 `commit.sha`와 다르면 두 sha를 출력하고 거부 |
 | `python3 scripts/harness/deploy.py check <기록> [--require-approved]` | §3.4 판정. 맞지 않는 조건 ID를 한 줄씩 출력하고 하나라도 있으면 exit 1. CLI `deploy check`도 같은 일을 한다 |
 | `python3 scripts/harness/deploy.py run --env <이름> [--record <기록>] [--rollback-test]` | `deploy.json` 명령으로 배포 · 스모크 · 헬스. env 종류가 `production`이면 먼저 `check --require-approved` |
 | `python3 scripts/harness/deploy.py result <기록> --from <deploy-result.json>` | 자기 배포 시스템을 쓰는 프로젝트가 배포 뒤 결과를 넣는다. 머리 `state`와 §7 구간만 쓴다 |
@@ -186,7 +186,7 @@ created: 2026-12-01
 
 ```json
 {
-  "schema": "harness-kit.deploy/v1",
+  "schema": "knots-sync.deploy/v1",
   "envs": {
     "verify":     { "kind": "verification", "url": "https://verify.example.internal" },
     "production": { "kind": "production" }
@@ -233,7 +233,7 @@ created: 2026-12-01
 ```
 
 - 승인 경로는 README §3의 넷뿐이다(AI-DLC 승인은 그 모듈을 켜고 기록에 승인자가 있을 때만 옮긴다). 채팅에서 "배포해"라고 한 말은 승인이 아니다.
-- 면제는 승인하는 사람이 승인 요청에 넣는다. 화면 S03의 "롤백 시험 없이 승인" 칸, 콘솔 `npx harness-kit approve deploy:2026-12-01-INT-7 --gate deploy --phrase "…" --waive-rollback "<사유>"`. 에이전트가 기록에 쓴 면제 문장은 D3에서 세지 않는다.
+- 면제는 승인하는 사람이 승인 요청에 넣는다. 화면 S03의 "롤백 시험 없이 승인" 칸, 콘솔 `npx knots-sync approve deploy:2026-12-01-INT-7 --gate deploy --phrase "…" --waive-rollback "<사유>"`. 에이전트가 기록에 쓴 면제 문장은 D3에서 세지 않는다.
 - 승인 뒤 계획 구간이 바뀌면 승인은 `stale`이다(06 §3.3과 같은 규칙). 결과 구간은 승인 sha에 들지 않아서, 배포 뒤 결과를 써도 승인은 유지된다.
 - 강제: 운영 배포 작업은 배포 명령 전에 `deploy.py check <기록> --require-approved`를 부른다(DO-R6). 킷 CI 템플릿의 `deploy-production` 작업(§3.5)은 `run`이 이 검사를 먼저 한다. 자기 배포 시스템을 쓰는 프로젝트는 그 시스템의 첫 단계에 같은 명령을 넣는다. `deploy.json`에 `production` 환경이 있는데 CI 설정 파일에서 이 명령을 찾지 못하면 `doctor`가 경고한다.
 
@@ -244,13 +244,13 @@ created: 2026-12-01
 | 작업 | 언제 | 명령 |
 |---|---|---|
 | `deploy-verify` | base 브랜치 push(병합), 또는 재개 수동 실행 | `python3 scripts/harness/deploy.py auto-verify` |
-| `deploy-production` | 사람이 수동 실행하고 `HX_DEPLOY_RECORD`에 기록 경로를 넣는다 | `python3 scripts/harness/deploy.py run --env production --record "$HX_DEPLOY_RECORD"` |
+| `deploy-production` | 사람이 수동 실행하고 `KNS_DEPLOY_RECORD`에 기록 경로를 넣는다 | `python3 scripts/harness/deploy.py run --env production --record "$KNS_DEPLOY_RECORD"` |
 
 `auto-verify`:
 
 ```text
 1. deploy.json과 scripts/harness/를 이 커밋(base)에서 읽는다
-2. 멈춤 판정: base에서 같은 작업의 직전 완료 실행 2개가 모두 failed이고 HX_DEPLOY_RESUME=true가 없으면
+2. 멈춤 판정: base에서 같은 작업의 직전 완료 실행 2개가 모두 failed이고 KNS_DEPLOY_RESUME=true가 없으면
    배포하지 않고 status: stopped 산출물을 남긴 뒤 exit 1. 직전 실행을 읽지 못해도 stopped(이유: 실패 수 모름)
 3. deploy {env: verify, sha: HEAD} → smoke → health → e2e(한 번. 실패해도 다시 돌리지 않는다)
 4. 롤백 시험: rollback {toSha: lastPassedSha} → health → deploy HEAD → health
@@ -260,7 +260,7 @@ created: 2026-12-01
 
 ```json
 {
-  "schema": "harness-kit.auto-verify/v1",
+  "schema": "knots-sync.auto-verify/v1",
   "sha": "4c1d9e0", "env": "verify", "status": "passed",
   "steps": [ { "id": "deploy", "status": "ok", "seconds": 212 }, { "id": "e2e", "status": "ok", "seconds": 340 } ],
   "rollbackTest": { "status": "passed", "toSha": "77c0e1a" },
@@ -272,26 +272,26 @@ created: 2026-12-01
 
 - 직전 실행 찾기: GitLab은 `glab api "projects/:id/pipelines?ref=<base>&scope=finished"` 뒤 작업 이름으로 거른다. GitHub는 `gh run list --branch <base> --workflow harness-verify.yml --json conclusion,databaseId` 뒤 작업 결과를 본다. GoCD는 이전 stage 산출물의 `auto-verify-*.json`에서 `consecutiveFailures`를 읽는다. `lastPassedSha`도 같은 방법으로 찾는다.
 - E2E를 한 실행 안에서 다시 돌리지 않는다. 다시 돌리면 불안정한 시험이 통과로 가려진다.
-- 재개: 사람이 플랫폼에서 파이프라인을 수동 실행하고 `HX_DEPLOY_RESUME=true`를 넣는다. 재개한 실행이 통과하면 실패 수가 0이 된다.
+- 재개: 사람이 플랫폼에서 파이프라인을 수동 실행하고 `KNS_DEPLOY_RESUME=true`를 넣는다. 재개한 실행이 통과하면 실패 수가 0이 된다.
 - 동시 실행: GitLab `resource_group: harness-verify-env`, GitHub `concurrency: harness-verify-env`로 한 번에 하나만 배포한다. 운영은 `harness-production`.
 - 멈춤 · 실패는 그 병합 커밋 MR의 요약 코멘트(09 §3.1)에 `<!-- section:deploy -->` 구간으로 적고, 관리 페이지 "처리할 일"에 나온다(§3.12).
 
-GitLab 템플릿(`ci/harness-kit.gitlab-ci.yml`)에 더하는 것. `stages`에 `deploy`를 더한다.
+GitLab 템플릿(`ci/knots-sync.gitlab-ci.yml`)에 더하는 것. `stages`에 `deploy`를 더한다.
 
 ```yaml
 harness:deploy-verify:
   stage: deploy
   rules:
-    - if: '$CI_COMMIT_BRANCH == $HX_BASE_BRANCH && $CI_PIPELINE_SOURCE == "push"'
-    - if: '$CI_COMMIT_BRANCH == $HX_BASE_BRANCH && $HX_DEPLOY_RESUME == "true"'
+    - if: '$CI_COMMIT_BRANCH == $KNS_BASE_BRANCH && $CI_PIPELINE_SOURCE == "push"'
+    - if: '$CI_COMMIT_BRANCH == $KNS_BASE_BRANCH && $KNS_DEPLOY_RESUME == "true"'
   resource_group: harness-verify-env
   script: [python3 scripts/harness/deploy.py auto-verify]
   artifacts: { when: always, paths: [.agents/reports/deploy/], expire_in: 30 days }
 harness:deploy-production:
   stage: deploy
-  rules: [{ if: '$CI_COMMIT_BRANCH == $HX_BASE_BRANCH', when: manual }]
+  rules: [{ if: '$CI_COMMIT_BRANCH == $KNS_BASE_BRANCH', when: manual }]
   resource_group: harness-production
-  script: [python3 scripts/harness/deploy.py run --env production --record "$HX_DEPLOY_RECORD"]
+  script: [python3 scripts/harness/deploy.py run --env production --record "$KNS_DEPLOY_RECORD"]
 ```
 
 GitHub Actions는 `push: { branches: [<base>] }`에 `deploy-verify` job을, `workflow_dispatch`(입력 `record`)에 `deploy-production` job을 둔다. GoCD는 `deploy` stage를 수동 승인 stage로 둔다.
@@ -337,7 +337,7 @@ created: 2026-12-08
 | HDRV3D-12 NFR-1 | 결제 API p95 | ≤ 300ms | 340ms | 미달 | ci:…/pipelines/900/artifacts/perf.json |
 
 ## 2. 전달 지표
-<!-- METRICS:BEGIN — harness-kit metrics 가 쓴다. 손으로 고치지 않는다 -->
+<!-- METRICS:BEGIN — knots-sync metrics 가 쓴다. 손으로 고치지 않는다 -->
 | 지표 | 기준선 | 이 기간 | 계산 방법 |
 |---|---|---|---|
 <!-- METRICS:END -->
@@ -366,7 +366,7 @@ created: 2026-12-08
 | L-1 | 배포 전 PG 토큰 만료 설정을 확인하지 않았다 | — |
 ```
 
-- `ops new`: `npx harness-kit ops new --topic <주제> [--from <날짜>] [--to <날짜>]`가 틀을 만든다. 명령은 기간 안 배포 기록 목록, 그 배포의 Intent §3 성공 지표와 이슈 NFR의 목표값(§1의 ID · 지표 · 목표 칸), §2 구간을 채운다. 실측 · 판정 · 출처는 사람이나 에이전트 세션이 채운다.
+- `ops new`: `npx knots-sync ops new --topic <주제> [--from <날짜>] [--to <날짜>]`가 틀을 만든다. 명령은 기간 안 배포 기록 목록, 그 배포의 Intent §3 성공 지표와 이슈 NFR의 목표값(§1의 ID · 지표 · 목표 칸), §2 구간을 채운다. 실측 · 판정 · 출처는 사람이나 에이전트 세션이 채운다.
 - 출처(DO-R9): 기간을 고정한 링크(`from`·`to`가 든 URL) 또는 `ci:<산출물 경로>`. 출처 없는 실측 값은 `verify.sh fast` 실패다. 서비스 지표 값은 §3.10의 전달 지표 계산에 쓰지 않는다.
 - 판정: `충족` · `미달` · `측정 못 함`. `미달` 행을 §3 장애나 §5 후보의 `근거`가 가리키지 않으면 `verify.sh fast`가 경고한다.
 - 장애 등급: 1(전체 중단) · 2(주요 기능 장애) · 3(일부 사용자) · 4(불편). 제목 정규식 `^### (INC-\d+) · 등급 ([1-4]) · (\d{4}-\d{2}-\d{2})$`.
@@ -376,7 +376,7 @@ created: 2026-12-08
 ### 3.8 장애 → bug 이슈
 
 ```text
-npx harness-kit intake --kind bug --from ops:<기록 경로>#INC-1     (세션 /hx-intent --new ops:<기록>#INC-1)
+npx knots-sync intake --kind bug --from ops:<기록 경로>#INC-1     (세션 /kns-intent --new ops:<기록>#INC-1)
 1. 기록에서 INC-1 절을 읽는다. 없으면 exit 2
 2. 08 §3.11의 bug 접수: issues/<키>-<이름>/ 와 requirements.md 초안. 키는 01 §3.7.2 · 10 §3.4 규칙
 3. requirements 초안: §1에 영향 · 감지, Edge Cases에 현재 동작(장애) · 기대 동작 · 바뀌면 안 되는 동작,
@@ -393,7 +393,7 @@ npx harness-kit intake --kind bug --from ops:<기록 경로>#INC-1     (세션 /
 08 §3.11 접수를 그대로 쓰고 출처만 `ops`다.
 
 ```text
-npx harness-kit intake --from ops:<기록>#NX-1     (세션 /hx-intent --new ops:<기록>#NX-1, 화면 S10 "요구사항으로" → S11)
+npx knots-sync intake --from ops:<기록>#NX-1     (세션 /kns-intent --new ops:<기록>#NX-1, 화면 S10 "요구사항으로" → S11)
 ```
 
 - 제목과 종류는 NX 행에서 가져온다. 본문은 NX 행과, 그 행의 `근거`가 가리키는 지표 행 · 장애 절 · 배운 것 행을 원문 그대로 `intake.md`에 옮긴다.
@@ -418,12 +418,12 @@ npx harness-kit intake --from ops:<기록>#NX-1     (세션 /hx-intent --new ops
 - 운영 배포 기록이 없는 리포(라이브러리)는 리드 타임을 병합 커밋까지로 재고 `method: merge`로 표시한다. 배포 실패율 · 복구 시간은 `null`.
 
 ```text
-npx harness-kit metrics [--baseline [--force]] [--verify-baseline] [--from YYYY-MM-DD --to YYYY-MM-DD] [--json]
+npx knots-sync metrics [--baseline [--force]] [--verify-baseline] [--from YYYY-MM-DD --to YYYY-MM-DD] [--json]
 python3 scripts/harness/delivery_metrics.py …     Node 없는 CI
 ```
 
 - 기본 기간은 최근 30일. 결과는 `.agents/reports/metrics/delivery-<끝 날짜>.json`(커밋 안 함). 운영 기록 §2 구간도 같은 계산으로 채운다.
-- `--baseline`: 킷 도입 커밋(`harness-kit.lock`을 처음 더한 커밋) 앞 90일. 결과는 `.agents/docs/ops/metrics-baseline.json`(커밋함). 이미 있으면 `--force` 없이는 거부한다.
+- `--baseline`: 킷 도입 커밋(`knots-sync.lock`을 처음 더한 커밋) 앞 90일. 결과는 `.agents/docs/ops/metrics-baseline.json`(커밋함). 이미 있으면 `--force` 없이는 거부한다.
 - `--verify-baseline`: 기준선의 입력 범위로 다시 계산해 값이 다르면 exit 1. CI 야간 `full`이 부른다.
 
 도입 전에는 배포 기록과 승인 기록이 없어서 기준선은 다른 입력을 쓴다. 지표마다 `method`를 남긴다.
@@ -438,7 +438,7 @@ python3 scripts/harness/delivery_metrics.py …     Node 없는 CI
 
 ```json
 {
-  "schema": "harness-kit.delivery-baseline/v1",
+  "schema": "knots-sync.delivery-baseline/v1",
   "range": { "from": "2026-08-25", "to": "2026-11-23", "base": "develop", "headSha": "a1b2c3d" },
   "inputDigest": "sha256:7c1e…",
   "metrics": {
@@ -468,9 +468,9 @@ python3 scripts/harness/delivery_metrics.py …     Node 없는 CI
 | 운영 기록 | §6 배운 것 행. 08 §3.13 codebase 모델의 `관행` 행 중 사람이 질문 답으로 "규칙으로 올린다"를 고른 것 |
 
 ```text
-npx harness-kit rules candidates [--since 30d]     출처를 훑어 새 후보 파일을 만든다(이미 있는 출처는 건너뛴다)
-npx harness-kit rules promote RC-4                 chore/RC-4-<이름> 브랜치에 규칙 파일 수정 + 후보 status: accepted
-npx harness-kit rules reject RC-4 --reason "…"     후보 status: rejected
+npx knots-sync rules candidates [--since 30d]     출처를 훑어 새 후보 파일을 만든다(이미 있는 출처는 건너뛴다)
+npx knots-sync rules promote RC-4                 chore/RC-4-<이름> 브랜치에 규칙 파일 수정 + 후보 status: accepted
+npx knots-sync rules reject RC-4 --reason "…"     후보 status: rejected
 ```
 
 후보 파일 `.agents/docs/rule-candidates/RC-<n>-<이름>.md`:
@@ -540,7 +540,7 @@ S10 영역(화면기획서 S10 정의는 1~3이 있고, 4~6을 더한다):
 
 - S10은 쓰지 않는다(지금 정의 유지). 장애 → bug 이슈와 후보 → Intent는 S11 접수로 보낸다.
 - "처리할 일"(06 §3.4)에 더할 항목: 자동 검증 배포 멈춤, `deploy` 승인 대기 기록, `미달`인데 장애 · 후보가 가리키지 않는 지표 행, 14일 넘은 `proposed` 규칙 후보.
-- 콘솔: `npx harness-kit status --ops [--json]`(06 §3.15 S10 행).
+- 콘솔: `npx knots-sync status --ops [--json]`(06 §3.15 S10 행).
 
 ### 3.13 오류
 
@@ -577,7 +577,7 @@ S10 영역(화면기획서 S10 정의는 1~3이 있고, 4~6을 더한다):
 3. 시험: §4가 `시험: none`이고 면제 사유가 없는 `deploy` 승인 요청은 422 `gate_precondition`(D3). 사유를 넣으면 201이고 두 이슈 `approvals.md`에 같은 기록이 붙는다. `risk: high` 기록은 사유가 있어도 422다.
 4. 시험: `risk: high` 기록은 승인자 1명이면 게이트 미통과, 다른 git `user.email`의 두 번째 승인 뒤 통과한다.
 5. 시험: 승인 뒤 계획 구간 한 줄을 바꾸면 `deploy.py check --require-approved`가 exit 1, 결과 구간만 바꾸면 exit 0이다.
-6. 시험: 가짜 CI(11 §3.4 stubs)에서 E2E가 두 번 연속 실패하면 세 번째 base push의 `auto-verify`가 배포 명령을 부르지 않고(stub 호출 기록 0건) `stopped`다. `HX_DEPLOY_RESUME=true` 실행이 통과하면 다음 push는 배포한다.
+6. 시험: 가짜 CI(11 §3.4 stubs)에서 E2E가 두 번 연속 실패하면 세 번째 base push의 `auto-verify`가 배포 명령을 부르지 않고(stub 호출 기록 0건) `stopped`다. `KNS_DEPLOY_RESUME=true` 실행이 통과하면 다음 push는 배포한다.
 7. 출처 없는 실측 값이 1개인 운영 기록 fixture에서 `verify.sh fast`가 실패한다.
 8. `intake --kind bug --from ops:…#INC-1`이 bug 이슈 폴더를 만들고 운영 기록 diff는 1줄이다. `intake --from ops:…#NX-1`이 `source.type: ops`인 Intent를 만들고, 같은 명령을 다시 돌리면 Intent 수가 그대로다.
 9. git fixture(병합 20건 · 태그 5개 · revert 1건 · hotfix 1건)에서 `metrics --baseline` 값이 기대값 파일과 같고 `--verify-baseline`이 exit 0이다. 기준선 숫자 하나를 바꾸면 exit 1이다.

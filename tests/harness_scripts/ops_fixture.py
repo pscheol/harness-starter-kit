@@ -56,7 +56,7 @@ sys.exit(1 if os.path.exists(f"ops/fail-{step}") else 0)
 
 def deploy_json(auto=True, limit=2):
     stub = lambda *extra: ["python3", "ops/stub.py", *extra]  # noqa: E731
-    return {"schema": "harness-kit.deploy/v1",
+    return {"schema": "knots-sync.deploy/v1",
             "envs": {"verify": {"kind": "verification", "url": "https://verify.example.internal"}, "production": {"kind": "production"}},
             "commands": {"deploy": stub("deploy", "{env}", "{sha}"), "smoke": stub("smoke", "{env}"), "health": stub("health", "{env}"),
                          "rollback": stub("rollback", "{env}", "{toSha}"), "e2e": stub("e2e", "{url}")},

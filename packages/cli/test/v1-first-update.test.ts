@@ -6,8 +6,8 @@ import { BASIC_FILES, exists, fixtureTemplates, installedFixture, json, LOCK_FIL
 import { initWith, projectionTemplates } from "./projection-helpers";
 
 const HEADER = "# harness-kit lock v1 — sha256<TAB>layer<TAB>agent<TAB>path";
-const B = "<!-- harness-kit: 설치 전 내용(병합) -->";
-const E = "<!-- /harness-kit -->";
+const B = "<!-- knots-sync: 설치 전 내용(병합) -->";
+const E = "<!-- /knots-sync -->";
 // 원본은 <경로>.orig — 설치본 검사(check_harness.py)가 .agents/**/*.md 링크를 보므로 .md 이름을 남기지 않는다.
 const BACKUP = /^\.agents\/state\/merge-backup\/\d{8}T\d{6}Z\/(.+)\.orig$/;
 
@@ -151,7 +151,7 @@ describe("update — v1 CLAUDE.md(배치 merge)", () => {
     const r = await cli("update", ["--json", "--templates", templates]);
     expect(r.code, r.stdout).toBe(0);
     const j = json(r);
-    expect(readText(target, "CLAUDE.md").startsWith("@AGENTS.md\n\n<!-- harness-kit:begin claude")).toBe(true);
+    expect(readText(target, "CLAUDE.md").startsWith("@AGENTS.md\n\n<!-- knots-sync:begin claude")).toBe(true);
     const m = (j.merged as { path: string; kind: string; backup: string }[]).find((x) => x.path === "CLAUDE.md");
     expect(m).toMatchObject({ kind: "kit" });
     expect(m?.backup).toMatch(BACKUP);

@@ -20,7 +20,7 @@ export async function postProposal(p: Project, body: unknown): Promise<Record<st
     if (b.proposalSha256 && fs.existsSync(file) && sha256(fs.readFileSync(file)) !== b.proposalSha256) throw new ApiError(409, "conflict", "다른 곳에서 제안을 먼저 저장했습니다");
     applyChanges(units.units, b.changes);
     const u = await gitUser(co.root, p.env);
-    const proposal = { schema: "harness-kit.units-proposal/v1", intent: b.intent, baseSha256: b.baseSha256, createdBy: u.email, createdAt: nowText(), changes: b.changes };
+    const proposal = { schema: "knots-sync.units-proposal/v1", intent: b.intent, baseSha256: b.baseSha256, createdBy: u.email, createdAt: nowText(), changes: b.changes };
     const text = `${JSON.stringify(proposal, null, 2)}\n`;
     atomicWrite(file, text);
     return { intent: b.intent, path: `${info.dir}/units.proposed.json`, sha256: sha256(Buffer.from(text, "utf8")), changes: b.changes.length };

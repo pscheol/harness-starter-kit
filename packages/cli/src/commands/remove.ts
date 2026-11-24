@@ -105,7 +105,7 @@ export function runKitRemove(ctx: Ctx, kit: ReturnType<typeof kitOf>, asked: Nam
   const notOn = [...asked.harnesses.filter((h) => !l.before.agents.includes(h)), ...asked.modules.filter((m) => !l.before.modules.includes(m))];
   const names: Names = { harnesses: asked.harnesses.filter((h) => !notOn.includes(h)), modules: asked.modules.filter((m) => !notOn.includes(m)), retired: asked.retired };
   const after = withoutNames(l.before, names);
-  if (after.agents.length === 0) throw usageError("하네스를 모두 뺄 수 없다 — 하나는 남는다", "킷을 통째로 지우려면 harness-kit uninstall");
+  if (after.agents.length === 0) throw usageError("하네스를 모두 뺄 수 없다 — 하나는 남는다", "킷을 통째로 지우려면 knots-sync uninstall");
   const dryRun = dryRunOf(ctx);
   const nothing = names.harnesses.length + names.modules.length === 0;
   const result: ChangeResult = nothing ? { ops: [], entries: l.inst.lock.entries, manifest: null } : planRemove(l, after);

@@ -1,4 +1,4 @@
-"""/hx-review 의 결정적 부분 · 열린 리뷰 지적 · MR 요약 코멘트 하나(HK-23, 설계 09 §3.1 · §3.8 · VQ-R1~R4 · R17 · §5 완료 기준 2 · 3 · 10).
+"""/kns-review 의 결정적 부분 · 열린 리뷰 지적 · MR 요약 코멘트 하나(HK-23, 설계 09 §3.1 · §3.8 · VQ-R1~R4 · R17 · §5 완료 기준 2 · 3 · 10).
 
 가짜 gh · glab 으로 돈다(네트워크 없음). 리뷰 판단(findings.json)은 모델 대신 시험이 쓴다.
 """
@@ -141,7 +141,7 @@ class PublishTest(ReviewFixture):
 
     def test_duplicate_kit_comments_are_merged_into_one(self):
         state = self.forge()
-        scan = f"{MARKER}\n### harness-kit 요약\n<!-- section:review -->\n(아직 없음)\n<!-- /section:review -->\n<!-- section:scan -->\n스캔 줄\n<!-- /section:scan -->\n"
+        scan = f"{MARKER}\n### knots-sync 요약\n<!-- section:review -->\n(아직 없음)\n<!-- /section:review -->\n<!-- section:scan -->\n스캔 줄\n<!-- /section:scan -->\n"
         state["comments"] = [
             {"id": 501, "mr": "12", "body": scan, "at": "2026-11-23T00:00:01Z"},
             {"id": 502, "mr": "12", "body": scan.replace("스캔 줄", "다른 스캔 줄"), "at": "2026-11-23T00:00:02Z"},
@@ -264,7 +264,7 @@ class CiScanSectionTest(ReviewFixture):
         event = self.base / "event.json"
         event.write_text(json.dumps({"pull_request": {"number": 12}}))
         self.ci = {"CI": "true", "GITHUB_ACTIONS": "true", "GITHUB_EVENT_NAME": "pull_request", "GITHUB_EVENT_PATH": str(event),
-                   "GITHUB_HEAD_REF": self.branch, "GITHUB_BASE_REF": "develop", "HX_BASE_REF": "origin/develop"}
+                   "GITHUB_HEAD_REF": self.branch, "GITHUB_BASE_REF": "develop", "KNS_BASE_REF": "origin/develop"}
 
     def affected(self, extra):
         return self.run_cli("--level", "affected", "--files", "docs/upload.md", "--summary", env={**self.env, **extra})

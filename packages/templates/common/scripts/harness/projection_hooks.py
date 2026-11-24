@@ -10,7 +10,7 @@ import json
 import re
 
 HOOKS_REL = ".agents/hooks.json"
-SCHEMA = "harness-kit.hooks/v1"
+SCHEMA = "knots-sync.hooks/v1"
 HOOK_ID = re.compile(r"^harness-[a-z0-9-]+$")
 ENV_KEY = re.compile(r"^[A-Z][A-Z0-9_]*$")
 SCRIPT = re.compile(r"^scripts/[A-Za-z0-9._/-]+$")

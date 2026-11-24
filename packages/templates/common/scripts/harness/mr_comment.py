@@ -3,7 +3,7 @@
 
     python3 scripts/harness/mr_comment.py scan [--root <루트>]     CI: 마지막 검증 결과로 scan 구간을 고친다
 
-코멘트는 표시 `<!-- harness-kit:mr-summary -->` 로 찾고 구간 `review` · `scan` 을 따로 고친다. 둘 이상이면 가장 오래된 것에 모으고
+코멘트는 표시 `<!-- knots-sync:mr-summary -->` 로 찾고 구간 `review` · `scan` 을 따로 고친다. 둘 이상이면 가장 오래된 것에 모으고
 나머지를 지워 항상 하나로 둔다. CLI 가 없거나 토큰 · API 가 실패하면 ForgeError 다(부르는 쪽은 경고 한 줄로 끝낸다).
 """
 
@@ -20,10 +20,10 @@ sys.dont_write_bytecode = True
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-MARKER = "<!-- harness-kit:mr-summary -->"
+MARKER = "<!-- knots-sync:mr-summary -->"
 SECTIONS = ("review", "scan")
 PLACEHOLDER = "(아직 없음)"
-TITLE = "### harness-kit 요약"
+TITLE = "### knots-sync 요약"
 TOP = 7
 TIMEOUT = 60
 
@@ -166,9 +166,9 @@ def upsert(forge, name, content):
 
 # ── CI 정보 ──────────────────────────────────────────────────────────────────
 def ci_context(environ=None):
-    """(플랫폼, 번호, 프로젝트) 또는 None. HX_MR(#12 · !7) 이 있으면 그것을 쓴다."""
+    """(플랫폼, 번호, 프로젝트) 또는 None. KNS_MR(#12 · !7) 이 있으면 그것을 쓴다."""
     environ = os.environ if environ is None else environ
-    override = environ.get("HX_MR", "")
+    override = environ.get("KNS_MR", "")
     if override[:1] in ("#", "!") and override[1:].isdigit():
         return ("github" if override[0] == "#" else "gitlab"), override[1:], environ.get("CI_PROJECT_ID")
     if environ.get("CI_MERGE_REQUEST_IID"):
@@ -244,9 +244,9 @@ def scan_section(root, result=None, environ=None):
     incomplete = gate.get("incomplete") or []
     if incomplete:
         lines.append("- 미완료 분석기: " + ", ".join(f"{item.get('analyzer')}({item.get('reason')})" for item in incomplete[:5]))
-    if environ.get("HX_FROM_BASE"):
-        lines.append(f"- 판정 판: base({environ['HX_FROM_BASE']}) 검증 코드 · 설정")
-    elif environ.get("HX_VERIFY_BOOTSTRAP") == "1":
+    if environ.get("KNS_FROM_BASE"):
+        lines.append(f"- 판정 판: base({environ['KNS_FROM_BASE']}) 검증 코드 · 설정")
+    elif environ.get("KNS_VERIFY_BOOTSTRAP") == "1":
         lines.append("- 판정 판: bootstrap(base 에 검증 코드가 없어 head 판)")
     lines.append("- 자세한 결과: CI 산출물 harness-reports(.agents/reports/)")
     return "\n".join(lines)

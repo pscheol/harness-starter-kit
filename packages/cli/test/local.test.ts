@@ -19,7 +19,7 @@ async function installed() {
 describe("개인 설정", () => {
   it("roles.<역할>.harness · git.ide 만 받고 나머지는 무시 → doctor personal-ignored(04 §5 #2)", async () => {
     const t = await installed();
-    writeTree(t.target, { ".agents/local/harness-kit.local.json": JSON.stringify({ roles: { review: { harness: "claude", model: "opus" } }, git: { ide: "idea", base: "main" }, verify: { fullOnlyInCI: false }, flow: { gates: [] } }) });
+    writeTree(t.target, { ".agents/local/knots-sync.local.json": JSON.stringify({ roles: { review: { harness: "claude", model: "opus" } }, git: { ide: "idea", base: "main" }, verify: { fullOnlyInCI: false }, flow: { gates: [] } }) });
     const c = readLocalConfig(t.target);
     expect(c.roles).toEqual({ review: "claude" });
     expect(c.ide).toBe("idea");
@@ -44,7 +44,7 @@ describe("개인 설정", () => {
 
   it("깨진 개인 설정은 local-invalid, disableAllHooks 는 personal-weakens", async () => {
     const t = await installed();
-    writeTree(t.target, { ".agents/local/harness-kit.local.json": "{ 깨짐", ".claude/settings.local.json": JSON.stringify({ disableAllHooks: true }) });
+    writeTree(t.target, { ".agents/local/knots-sync.local.json": "{ 깨짐", ".claude/settings.local.json": JSON.stringify({ disableAllHooks: true }) });
     const kinds = (json(await t.cli("doctor", ["--json"])).findings as { kind: string }[]).map((f) => f.kind);
     expect(kinds).toEqual(expect.arrayContaining(["local-invalid", "personal-weakens"]));
   });
@@ -53,13 +53,13 @@ describe("개인 설정", () => {
 describe("local sync", () => {
   it("개인 스킬 · 규칙 · 훅을 배치하고 공유 lock 은 그대로, exclude 블록에 적는다", async () => {
     const t = await installed();
-    const lockBefore = fs.readFileSync(path.join(t.target, ".agents/harness-kit.lock"), "utf8");
+    const lockBefore = fs.readFileSync(path.join(t.target, ".agents/knots-sync.lock"), "utf8");
     writeTree(t.target, {
       ".agents/local/skills/my-notes/SKILL.md": "---\nname: my-notes\ndescription: 내 메모\n---\n\n본문\n",
-      ".agents/local/skills/hx-plan/SKILL.md": "---\nname: hx-plan\ndescription: 겹침\n---\n",
+      ".agents/local/skills/kns-plan/SKILL.md": "---\nname: kns-plan\ndescription: 겹침\n---\n",
       ".agents/local/rules/my-style.md": "# 내 글 규칙\n",
       ".agents/local/rules/always.md": "# 겹침\n",
-      ".agents/local/hooks.json": JSON.stringify({ schema: "harness-kit.hooks/v1", hooks: [HOOK("harness-my-notify"), HOOK("harness-verify-gate"), HOOK("harness-session-idle")] }),
+      ".agents/local/hooks.json": JSON.stringify({ schema: "knots-sync.hooks/v1", hooks: [HOOK("harness-my-notify"), HOOK("harness-verify-gate"), HOOK("harness-session-idle")] }),
     });
     const r = await t.local("sync");
     expect(r.code, r.stdout).toBe(4);
@@ -68,13 +68,13 @@ describe("local sync", () => {
       expect.arrayContaining([".claude/skills/my-notes/SKILL.md", ".kiro/skills/my-notes/SKILL.md", ".kiro/steering/local-my-style.md", ".kiro/hooks/local-harness-my-notify.json"]),
     );
     expect(out.findings.map((f: { kind: string }) => f.kind)).toEqual(expect.arrayContaining(["personal-shadowed", "personal-floor"]));
-    expect(fs.existsSync(path.join(t.target, ".claude/skills/hx-plan/SKILL.md")) && fs.readFileSync(path.join(t.target, ".claude/skills/hx-plan/SKILL.md"), "utf8")).not.toContain("겹침");
+    expect(fs.existsSync(path.join(t.target, ".claude/skills/kns-plan/SKILL.md")) && fs.readFileSync(path.join(t.target, ".claude/skills/kns-plan/SKILL.md"), "utf8")).not.toContain("겹침");
     const local = JSON.parse(fs.readFileSync(path.join(t.target, ".claude/settings.local.json"), "utf8"));
     expect(JSON.stringify(local)).toContain("harness-my-notify");
     expect(JSON.stringify(local)).not.toContain("harness-verify-gate");
-    expect(fs.readFileSync(path.join(t.target, ".agents/harness-kit.lock"), "utf8")).toBe(lockBefore);
+    expect(fs.readFileSync(path.join(t.target, ".agents/knots-sync.lock"), "utf8")).toBe(lockBefore);
     const exclude = fs.readFileSync(path.join(t.target, ".git/info/exclude"), "utf8");
-    expect(exclude).toContain("# harness-kit local begin\n");
+    expect(exclude).toContain("# knots-sync local begin\n");
     expect(exclude).toContain("/.claude/skills/my-notes/SKILL.md\n");
     expect(exclude).toContain("/.claude/settings.local.json\n");
     const status = spawnSync("git", ["status", "--porcelain", "--untracked-files=all", ".claude/skills/my-notes", ".kiro/steering"], { cwd: t.target, encoding: "utf8" }).stdout;
@@ -90,7 +90,7 @@ describe("local sync", () => {
     writeTree(t.target, {
       ".agents/local/skills/my-notes/SKILL.md": "---\nname: my-notes\ndescription: 내 메모\n---\n",
       ".agents/local/rules/my-style.md": "# 내 글 규칙\n",
-      ".agents/local/hooks.json": JSON.stringify({ schema: "harness-kit.hooks/v1", hooks: [HOOK("harness-my-notify")] }),
+      ".agents/local/hooks.json": JSON.stringify({ schema: "knots-sync.hooks/v1", hooks: [HOOK("harness-my-notify")] }),
     });
     expect((await t.local("sync")).code).toBe(0);
     fs.appendFileSync(path.join(t.target, ".kiro/steering/local-my-style.md"), "손\n");

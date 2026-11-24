@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>S00 전체 프로젝트 · harness-kit 관리 페이지</title>
+<title>S00 전체 프로젝트 · knots-sync 관리 페이지</title>
 <link rel="stylesheet" href="assets/app.css">
 <style>
   [hidden] { display: none !important; }
@@ -141,7 +141,7 @@
     <header class="topbar">
       <div>
         <h1>전체 프로젝트</h1>
-        <p class="src-label" data-co="1"><svg class="i s" aria-hidden="true"><use href="#i-folder"/></svg><span><span data-state-show="default error loading">등록된 프로젝트 12</span><span data-state-show="empty">등록된 프로젝트 0</span> · <span class="path">~/.config/harness-kit/projects.json</span></span><span data-state-show="default error">· 10:52에 다시 읽었다</span></p>
+        <p class="src-label" data-co="1"><svg class="i s" aria-hidden="true"><use href="#i-folder"/></svg><span><span data-state-show="default error loading">등록된 프로젝트 12</span><span data-state-show="empty">등록된 프로젝트 0</span> · <span class="path">~/.config/knots-sync/projects.json</span></span><span data-state-show="default error">· 10:52에 다시 읽었다</span></p>
       </div>
       <div class="top-meta">
         <span class="tag line">쓰기 없음 · 쓰기는 프로젝트 안에서</span>
@@ -205,9 +205,9 @@
               </div>
               <div class="first">
                 <ol>
-                  <li><span>킷이 설치된 리포를 더한다<br><code>npx harness-kit projects add ~/work/knots-platform</code></span></li>
-                  <li><span>새 리포는 설치할 때 더해진다<br><code>npx harness-kit init</code></span></li>
-                  <li><span>등록부 없이 한 번만 훑어볼 때는 서버를 이렇게 연다<br><code>npx harness-kit dashboard --root ~/work</code></span></li>
+                  <li><span>킷이 설치된 리포를 더한다<br><code>npx knots-sync projects add ~/work/knots-platform</code></span></li>
+                  <li><span>새 리포는 설치할 때 더해진다<br><code>npx knots-sync init</code></span></li>
+                  <li><span>등록부 없이 한 번만 훑어볼 때는 서버를 이렇게 연다<br><code>npx knots-sync dashboard --root ~/work</code></span></li>
                 </ol>
               </div>
             </div>
@@ -284,7 +284,7 @@
                 <div class="pj-top"><svg class="i" aria-hidden="true"><use href="#i-folder"/></svg><span class="pj-nm">old-admin</span><span class="tag line">없음</span></div>
                 <span class="path">~/work/old-admin · 09-02 더함</span>
                 <p class="why">폴더가 없다. 옮겼거나 지웠다. 등록부에서 저절로 지우지 않는다.</p>
-                <div class="cmd"><code>npx harness-kit projects remove old-admin</code><button class="btn sm" type="button" data-toast="명령을 복사했다 · 터미널에서 실행한다"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg>복사</button></div>
+                <div class="cmd"><code>npx knots-sync projects remove old-admin</code><button class="btn sm" type="button" data-toast="명령을 복사했다 · 터미널에서 실행한다"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg>복사</button></div>
               </li>
             </ul>
           </section>
@@ -304,7 +304,7 @@
           <section class="panel" aria-labelledby="sec-title" data-co="8">
             <div class="panel-head"><h2 id="sec-title">읽는 곳 · 보안</h2></div>
             <dl class="facts-dl">
-              <dt>등록부</dt><dd><b>~/.config/harness-kit/projects.json</b> · 경로 · 이름 · 더한 날만 둔다. 다른 출처: <code>--root &lt;dir&gt;</code>(폴더 아래 훑기) · <code>--workspace &lt;file&gt;</code>(목록 파일)</dd>
+              <dt>등록부</dt><dd><b>~/.config/knots-sync/projects.json</b> · 경로 · 이름 · 더한 날만 둔다. 다른 출처: <code>--root &lt;dir&gt;</code>(폴더 아래 훑기) · <code>--workspace &lt;file&gt;</code>(목록 파일)</dd>
               <dt>접속</dt><dd>127.0.0.1에만 연다 · 접속 토큰 하나</dd>
               <dt>쓰기</dt><dd>전체 프로젝트는 쓰지 않는다. 프로젝트에 들어가면 그 리포 안에서만 쓰고, 리포마다 쓰기 검사(허용 경로 · baseSha256 · PIN)를 따로 거친다.</dd>
             </dl>
@@ -356,7 +356,7 @@ document.addEventListener("hx:ready", function () {
     { p: "knots-platform", k: "others", key: "HDRV3D-22", t: "정산 주기와 지급", why: "<b>design 승인 대기</b> · 1일째 · approvers&nbsp;dev", act: ["열기", "S03-issue.html"] },
     { p: "knots-platform", k: "cleanup", key: "KNOTS-17", t: "desktop-parity", why: "변경 없음 · 모두 push · 병합됨 · 1.9GB", act: ["명령 보기", "S07-workspace.html"] },
     { p: "knots-platform", k: "cleanup", key: "HDRV3D-09", t: "upload-progress", why: "변경 없음 · 모두 push · 병합됨 · 1.2GB", act: ["명령 보기", "S07-workspace.html"] },
-    { p: "knots-platform", k: "doctor", key: "doctor", t: "Kiro steering 1개가 원본과 다르다", why: '<span class="path">.kiro/steering/git-workflow.md</span> · npx harness-kit repair', act: ["하네스 보기", "S09-harness.html"] },
+    { p: "knots-platform", k: "doctor", key: "doctor", t: "Kiro steering 1개가 원본과 다르다", why: '<span class="path">.kiro/steering/git-workflow.md</span> · npx knots-sync repair', act: ["하네스 보기", "S09-harness.html"] },
     { p: "hr-vision-3d", k: "blocked", key: "HRV-31", t: "포즈 추정 모델 교체", badge: ["solid-gate", "검증 실패"], why: "full 검증 실패 · 어제 22:10 · 회귀 시험&nbsp;3개", act: ["검증 보기", "S01-home.html"] },
     { p: "hr-vision-3d", k: "mine", key: "HRV-28", t: "3D 뷰어 회전 제스처", why: "<b>design 승인 대기</b> · approvers 비어 있음 → 이 리포 git 사용자 누구나", act: ["열어서 승인", "S01-home.html", "approve"] },
     { p: "hr-vision-3d", k: "question", key: "HRV-30", t: "측정 단위 표시", why: "[NEEDS CLARIFICATION] 1 · requirements R2 · 답할 그룹 비어 있음 → 누구나", act: ["답하기", "S01-home.html"] },

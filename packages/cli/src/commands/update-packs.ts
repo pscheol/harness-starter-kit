@@ -21,6 +21,7 @@ import { applyProjection, PROJECTION_OPS } from "../projection/engine";
 import { mergeEntries, needsHuman, projectionConflicts, projectionData, projectionLines } from "../projection/flow";
 import { loadSpec } from "../projection/spec";
 import { projectionForUpdate } from "./update";
+import { renameLegacyState } from "../core/legacy-names";
 
 export interface PackRecord {
   name: string;
@@ -114,6 +115,7 @@ function conflictsBetween(plans: { pack: FetchedPack; wants: Map<string, PackWan
 function applyPacks(target: string, ops: UpdateOp[], lockText: string, projection: Parameters<typeof applyProjection>[1] | null): void {
   let currentPath = "";
   try {
+    renameLegacyState(target);
     const deleted: string[] = [];
     for (const o of ops) {
       currentPath = o.path;
@@ -138,7 +140,7 @@ export function runUpdatePacks(ctx: Ctx): CommandResult {
   const { io } = ctx;
   const target = targetOf(ctx);
   const inst = loadInstalled(target, "update --packs");
-  if (inst.lockFormat !== "v2") throw new CliError(EXIT.STATE, "팩은 lock v2 에서만 깐다", "먼저 harness-kit update 로 lock 을 v2 로 올린다");
+  if (inst.lockFormat !== "v2") throw new CliError(EXIT.STATE, "팩은 lock v2 에서만 깐다", "먼저 knots-sync update 로 lock 을 v2 로 올린다");
   const loc = locateTemplates({ flag: str(ctx.values, "templates"), env: io.env, cliFile: io.cliFile, cwd: io.cwd, version: VERSION });
   const layout = loadLayout(loc.dir);
   const { selection } = selectionFromMeta(layout, loc.dir, inst.meta);
@@ -153,7 +155,7 @@ export function runUpdatePacks(ctx: Ctx): CommandResult {
   if (problems.length) throw new CliError(EXIT.STATE, `팩 검사 ${problems.length}건 — 아무것도 쓰지 않았다\n${problems.map((p) => `  ${p}`).join("\n")}`, "팩을 고쳐 새 판을 내거나 packs 에서 뺀다");
   const clash = conflictsBetween(plans);
   if (clash.length) {
-    const lines = [`✖ 팩 충돌 ${clash.length}건 — 아무것도 쓰지 않았다`, ...clash, "  해결: 한 팩에서 빼고 새 판을 낸다. 또는 프로젝트가 직접 관리한다: harness-kit update --forget <경로>(주인을 user 로)"];
+    const lines = [`✖ 팩 충돌 ${clash.length}건 — 아무것도 쓰지 않았다`, ...clash, "  해결: 한 팩에서 빼고 새 판을 낸다. 또는 프로젝트가 직접 관리한다: knots-sync update --forget <경로>(주인을 user 로)"];
     return { code: EXIT.HUMAN, data: { command: "update", packs: true, target, conflicts: clash.map((l) => l.trim()) }, lines };
   }
 
@@ -189,14 +191,14 @@ export function runUpdatePacks(ctx: Ctx): CommandResult {
   const human = conflict.length > 0 || ops.some((o) => o.action === "orphan") || (projection ? needsHuman(projection.plan, projection.findings) : false);
   const shown = ops.filter((o) => o.action !== "same" || o.reason);
   const lines = [
-    `harness-kit update --packs — ${target}`,
+    `knots-sync update --packs — ${target}`,
     ...records.map((r) => `  팩: ${r.name}@${r.version}  ${r.source}  (${r.resolved.slice(0, 19)})`),
     ...(records.length ? [] : ["  packs 가 비었다 — 팩 파일을 뺀다"]),
     ...shown.map((o) => `  ${o.action.padEnd(10)} ${o.path}${o.reason ? `  ${o.reason}` : ""}`),
     `  팩 파일: ${(["new", "update", "restore", "same", "conflict", "delete", "orphan", "skip-user"] as const).map((a) => `${a} ${ops.filter((o) => o.action === a).length}`).join(" · ")}`,
     ...(projection ? projectionLines(projection.plan, projection.findings, ctx.quiet) : []),
     ...(conflict.length ? ["  충돌 — 사람이 고친 파일이라 덮지 않았다. 새 판은 .new 에 있다"] : []),
-    dryRun ? "  (dry-run — 쓰지 않았다)" : "  다음: harness-kit doctor --only overrides",
+    dryRun ? "  (dry-run — 쓰지 않았다)" : "  다음: knots-sync doctor --only overrides",
   ];
   const data: Record<string, unknown> = {
     command: "update",

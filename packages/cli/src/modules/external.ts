@@ -76,7 +76,7 @@ function shaOfFile(file: string): string | null {
 }
 
 export interface Snapshot {
-  schema: "harness-kit.module-snapshot/v1";
+  schema: "knots-sync.module-snapshot/v1";
   module: string;
   at: string;
   /** externalPaths 에 맞는 기존 파일 → sha256 */
@@ -97,7 +97,7 @@ export function takeSnapshot(root: string, m: ModuleDecl, at: string): Snapshot 
     const s = shaOfFile(path.join(root, f));
     if (s) settings[f] = s;
   }
-  return { schema: "harness-kit.module-snapshot/v1", module: m.id, at, external, settings, files: walkFiles(root), lock: shaOfFile(path.join(root, ".agents/harness-kit.lock")), meta: shaOfFile(path.join(root, ".agents/harness-kit.json")) };
+  return { schema: "knots-sync.module-snapshot/v1", module: m.id, at, external, settings, files: walkFiles(root), lock: shaOfFile(path.join(root, ".agents/knots-sync.lock")), meta: shaOfFile(path.join(root, ".agents/knots-sync.json")) };
 }
 
 export function writeSnapshot(root: string, snap: Snapshot): string {

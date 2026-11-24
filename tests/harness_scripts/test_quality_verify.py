@@ -99,7 +99,7 @@ class BaselineUpdateTest(QualityFixture):
         updated = self.quality("baseline", "--update")
         self.assertEqual(updated.returncode, 0, updated.stdout + updated.stderr)
         baseline = json.loads((self.root / ".agents/quality-baseline.json").read_text())
-        self.assertEqual(baseline["schema"], "harness-kit.quality-baseline/v1")
+        self.assertEqual(baseline["schema"], "knots-sync.quality-baseline/v1")
         self.assertEqual(baseline["commit"], self.git("rev-parse", "--short=7", "HEAD"))
         self.assertEqual([entry["ruleId"] for entry in baseline["findings"]["scan"].values()], ["secret"])
         self.commit("baseline")

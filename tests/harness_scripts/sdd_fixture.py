@@ -78,7 +78,7 @@ class SddCase(unittest.TestCase):
 
     # ── 설정 · 실행 ────────────────────────────────────────────────────────────
     def settings(self, source="kit", prefix=None, base="develop"):
-        meta = self.root / ".agents/harness-kit.json"
+        meta = self.root / ".agents/knots-sync.json"
         data = json.loads(meta.read_text()) if meta.is_file() else {}
         data["issueKey"] = {"source": source, "prefix": prefix or self.prefix}
         data["git"] = {**data.get("git", {}), "base": base}

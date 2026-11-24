@@ -1,4 +1,0 @@
-interface:
-  display_name: "hx-harness"
-  short_description: "하네스 컨텍스트 로딩"
-  default_prompt: "$hx-harness 스킬로 요청한 작업을 진행해 주세요."

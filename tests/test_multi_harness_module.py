@@ -17,7 +17,7 @@ import unittest
 from pathlib import Path
 
 KIT = Path(__file__).resolve().parents[1]
-SETUP = KIT / "plugins/harness-kit/skills/hx-bootstrap/setup.sh"
+SETUP = KIT / "plugins/kns/skills/bootstrap/setup.sh"
 
 
 class MultiHarnessModuleTest(unittest.TestCase):

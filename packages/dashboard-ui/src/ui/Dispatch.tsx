@@ -117,7 +117,7 @@ function DispatchBody({ opts, close }: { opts: DispatchOptions; close: () => voi
     setResult({ kind: "err", title: errorText(r.error) });
   }
 
-  const cmd = `npx harness-kit dispatch --to ${opts.issue ?? "<세션>"}${opts.role ? `:${opts.role}` : ""} --kind ${opts.kind ?? "doc-changed"} ${(opts.paths ?? []).map((p) => `--path ${p}`).join(" ")}`.trim();
+  const cmd = `npx knots-sync dispatch --to ${opts.issue ?? "<세션>"}${opts.role ? `:${opts.role}` : ""} --kind ${opts.kind ?? "doc-changed"} ${(opts.paths ?? []).map((p) => `--path ${p}`).join(" ")}`.trim();
 
   return (
     <VStack gap={4} padding={5}>

@@ -1,6 +1,6 @@
 /**
  * 템플릿 폴더 찾기(HK-8 design §7).
- * --templates > HARNESS_KIT_TEMPLATES > <CLI 폴더>/../templates > <CLI 폴더>/../../templates.
+ * --templates > KNOTS_SYNC_TEMPLATES > <CLI 폴더>/../templates > <CLI 폴더>/../../templates.
  * layout.json 이 있는 첫 폴더를 쓴다.
  */
 import fs from "node:fs";
@@ -24,7 +24,7 @@ export function locateTemplates(opts: {
   cwd: string;
   version: string;
 }): TemplatesLocation {
-  const explicit = opts.flag ?? (opts.env.HARNESS_KIT_TEMPLATES || undefined);
+  const explicit = opts.flag ?? (opts.env.KNOTS_SYNC_TEMPLATES || undefined);
   if (explicit !== undefined) {
     const dir = path.resolve(opts.cwd, explicit);
     if (!hasLayout(dir)) throw new CliError(EXIT.ENV, `템플릿 폴더가 아니다(layout.json 없음): ${dir}`);
@@ -39,9 +39,9 @@ export function locateTemplates(opts: {
   const beside = path.resolve(cliDir, "..", "templates");
   if (hasLayout(beside)) {
     const where = path.basename(cliDir) === "bin" ? "plugin" : "npm";
-    return { dir: beside, source: `${where}:harness-kit@${opts.version}` };
+    return { dir: beside, source: `${where}:knots-sync@${opts.version}` };
   }
   const mono = path.resolve(cliDir, "..", "..", "templates");
   if (hasLayout(mono)) return { dir: mono, source: `file:${mono}` };
-  throw new CliError(EXIT.ENV, "템플릿 폴더를 찾지 못했다", `--templates <폴더> 또는 HARNESS_KIT_TEMPLATES 로 준다 (찾은 곳: ${beside} · ${mono})`);
+  throw new CliError(EXIT.ENV, "템플릿 폴더를 찾지 못했다", `--templates <폴더> 또는 KNOTS_SYNC_TEMPLATES 로 준다 (찾은 곳: ${beside} · ${mono})`);
 }

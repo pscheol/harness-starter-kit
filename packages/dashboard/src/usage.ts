@@ -1,6 +1,6 @@
 /**
  * 기록 · 사용량(설계 06 §3.18, DB-R26 · R28). 모델을 부르지 않고 대화 내용을 요약하지 않는다.
- * 대화 기록(`~/.claude` · `~/.codex`)은 `~/.config/harness-kit/config.json` 의 `history` 가 "on" 일 때만 연다.
+ * 대화 기록(`~/.claude` · `~/.codex`)은 `~/.config/knots-sync/config.json` 의 `history` 가 "on" 일 때만 연다.
  * 켜져 있어도 복사본 · 집계 파일을 남기지 않는다(읽은 위치와 줄 값은 메모리에만 둔다).
  */
 import fs from "node:fs";
@@ -54,7 +54,7 @@ export function historyOn(p: Project): boolean {
 }
 
 export function configHint(p: Project): Record<string, unknown> {
-  return { config: "~/.config/harness-kit/config.json", enable: '{ "history": "on" }', current: p.machineConfig().history ?? null };
+  return { config: "~/.config/knots-sync/config.json", enable: '{ "history": "on" }', current: p.machineConfig().history ?? null };
 }
 
 function enc(dir: string): string {
@@ -455,7 +455,7 @@ export async function usageKit(p: Project): Promise<Record<string, unknown>> {
  * 외부 도구 훅은 lock 의 external:<도구> 이름이 명령에 든 것으로 가린다(모듈 선언 없이 읽는다).
  */
 function loadOf(p: Project): Record<string, unknown> | null {
-  const lock = readJson(path.join(p.root, ".agents/harness-kit.lock"));
+  const lock = readJson(path.join(p.root, ".agents/knots-sync.lock"));
   const entries = lock && Array.isArray(lock.entries) ? lock.entries.filter(isObj) : [];
   const pairs = entries.filter((e) => typeof e.path === "string" && typeof e.owner === "string").map((e) => ({ path: e.path as string, owner: e.owner as string }));
   const tools = [...new Set(pairs.map((e) => e.owner).filter((o) => o.startsWith("external:")))];
@@ -467,7 +467,7 @@ function loadOf(p: Project): Record<string, unknown> | null {
 
 /** lock 의 owner 별 세션마다 실리는 파일 · hooks.json 의 owner 별 이벤트 수(정적 합계). */
 function modulesOf(p: Project): Record<string, unknown>[] {
-  const lock = readJson(path.join(p.root, ".agents/harness-kit.lock"));
+  const lock = readJson(path.join(p.root, ".agents/knots-sync.lock"));
   const entries = lock && Array.isArray(lock.entries) ? lock.entries.filter(isObj) : [];
   const out = new Map<string, { owner: string; files: number; bytes: number; hooks: Record<string, number> }>();
   const get = (owner: string): { owner: string; files: number; bytes: number; hooks: Record<string, number> } => {
@@ -505,7 +505,7 @@ export interface HistoryQuery {
 
 /** GET /history — 프롬프트 기록. 꺼져 있으면 404 history_off. 글을 보여 주기만 한다. */
 export async function historyData(p: Project, q: HistoryQuery): Promise<Record<string, unknown>> {
-  if (!historyOn(p)) throw new ApiError(404, "history_off", "대화 기록 읽기가 꺼져 있습니다. 켜려면 사람이 ~/.config/harness-kit/config.json 에 \"history\": \"on\" 을 씁니다", configHint(p));
+  if (!historyOn(p)) throw new ApiError(404, "history_off", "대화 기록 읽기가 꺼져 있습니다. 켜려면 사람이 ~/.config/knots-sync/config.json 에 \"history\": \"on\" 을 씁니다", configHint(p));
   const dirs = projectDirs(p);
   const sess = await sessionMap(p);
   const prompts: { at: string; text: string; session: string | null; role: string | null; issue: string | null; harness: string }[] = [];

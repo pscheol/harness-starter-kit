@@ -7,7 +7,7 @@
     python3 scripts/harness/intent.py check <폴더> [--json]
     python3 scripts/harness/intent.py backlog <폴더>
 
-판정 · 검사는 파일 상태만 본다. 모델을 부르지 않는다. 설계 세션(/hx-intent)이 next 가 정한 단계만 한다.
+판정 · 검사는 파일 상태만 본다. 모델을 부르지 않는다. 설계 세션(/kns-intent)이 next 가 정한 단계만 한다.
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ PLAN_FILES = ("requirements-doc.md", "screens/index.md", "design-plan.md", "back
 
 def harness_root(start: Path) -> Path:
     for folder in (start.resolve(), *start.resolve().parents):
-        if (folder / ".agents/harness-kit.json").is_file() or (folder / ".agents/harness.json").is_file():
+        if (folder / ".agents/knots-sync.json").is_file() or (folder / ".agents/harness.json").is_file():
             return folder
     return start.resolve()
 
@@ -72,7 +72,7 @@ def read_json(path: Path):
 
 
 def meta_of(root: Path) -> dict:
-    data = read_json(root / ".agents/harness-kit.json")
+    data = read_json(root / ".agents/knots-sync.json")
     return data if isinstance(data, dict) else {}
 
 
@@ -244,8 +244,8 @@ def aidlc_stories(folder: Path) -> list[str] | None:
 
 def units_problems(folder: Path, data, intent_text: str, key: str) -> list[str]:
     out: list[str] = []
-    if not isinstance(data, dict) or data.get("schema") != "harness-kit.units/v1":
-        return ["units.json: schema 는 harness-kit.units/v1"]
+    if not isinstance(data, dict) or data.get("schema") != "knots-sync.units/v1":
+        return ["units.json: schema 는 knots-sync.units/v1"]
     if (data.get("intent") or {}).get("key") != key:
         out.append(f"units.json: intent.key 가 폴더 키 {key} 와 다르다")
     units = data.get("units") if isinstance(data.get("units"), list) else []
@@ -373,7 +373,7 @@ def next_step(folder: Path) -> dict:
     flow = meta.get("flow") if isinstance(meta.get("flow"), dict) else {}
     key = FOLDER.match(folder.name)[1]
     if flow.get("design") == "aidlc":
-        return {"step": "aidlc", "reason": "flow.design = aidlc — 설계 단계는 /aidlc 가 맡는다. 끝나면 npx harness-kit sync aidlc", "blocking": []}
+        return {"step": "aidlc", "reason": "flow.design = aidlc — 설계 단계는 /aidlc 가 맡는다. 끝나면 npx knots-sync sync aidlc", "blocking": []}
     gates = gates_of(meta)
     intent_path = folder / "intent.md"
     head = front(intent_path)
@@ -395,7 +395,7 @@ def next_step(folder: Path) -> dict:
                 return {"step": "answers-wait", "reason": f"질문 {len(open_by_gate['codebase'])}건 답 대기(막는 게이트 codebase)", "blocking": open_by_gate["codebase"]}
             return {"step": "codebase-approval-wait", "reason": "codebase 게이트 승인 대기 — current-state.md 를 in-review 로 올린다. 스토리를 쓰지 않는다(DS-R21)", "blocking": []}
     if open_by_gate.get("intent"):
-        return {"step": "answers-wait", "reason": f"질문 {len(open_by_gate['intent'])}건 답 대기(막는 게이트 intent) — 관리 페이지 질문 화면 · harness-kit answer", "blocking": open_by_gate["intent"]}
+        return {"step": "answers-wait", "reason": f"질문 {len(open_by_gate['intent'])}건 답 대기(막는 게이트 intent) — 관리 페이지 질문 화면 · knots-sync answer", "blocking": open_by_gate["intent"]}
     answered = [q for q in qdoc["questions"] if q["answer"]]
     qsha = hashlib.sha256(qtext.encode("utf-8")).hexdigest() if qtext else None
     if answered and head.get("answersSha256") != qsha:
@@ -410,7 +410,7 @@ def next_step(folder: Path) -> dict:
     plans = folder / "plans"
     have = [p for p in PLAN_FILES if (plans / p).is_file()]
     if not have:
-        return {"step": "plans", "reason": "기획물을 만든다 — /hx-plans doc · screen · design · backlog", "blocking": []}
+        return {"step": "plans", "reason": "기획물을 만든다 — /kns-plans doc · screen · design · backlog", "blocking": []}
     if "plans" in gates and gate_state(folder, "plans", plans / "screens/index.md" if (plans / "screens/index.md").is_file() else plans / have[0], meta) != "valid":
         missing = [p for p in PLAN_FILES if p not in have]
         return {"step": "plans-approval-wait", "reason": "plans 게이트 승인 대기" + (f"(아직 없는 기획물: {', '.join(missing)})" if missing else ""), "blocking": missing}
@@ -418,7 +418,7 @@ def next_step(folder: Path) -> dict:
     todo = sorted((u for u in units if isinstance(u, dict) and u.get("planned", True) is not False and not u.get("issue")), key=lambda u: (u.get("order") or 999, u.get("id")))
     if not todo:
         return {"step": "done", "reason": "모든 Unit 에 이슈가 있다 — 이슈 SDD 로 진행한다", "blocking": []}
-    return {"step": "specify", "reason": "의존 순서로 /hx-specify --from-unit " + " · ".join(f"{key}/{u['id']}" for u in todo), "blocking": [], "units": [u["id"] for u in todo]}
+    return {"step": "specify", "reason": "의존 순서로 /kns-specify --from-unit " + " · ".join(f"{key}/{u['id']}" for u in todo), "blocking": [], "units": [u["id"] for u in todo]}
 
 
 # ── 키 · 새로 만들기 ─────────────────────────────────────────────────────────
@@ -473,7 +473,7 @@ def new_intent(root: Path, title: str, name: str, kind: str, key: str | None) ->
     for template, out in (("_template.md", "intent.md"), ("questions.md", "questions.md")):
         src = root / TEMPLATES / template
         if not src.is_file():
-            raise SystemExit(f"템플릿이 없다: {src.relative_to(root)} — harness-kit repair")
+            raise SystemExit(f"템플릿이 없다: {src.relative_to(root)} — knots-sync repair")
         (folder / out).write_text(fill(src.read_text(encoding="utf-8"), values), encoding="utf-8")
     return folder
 
@@ -513,7 +513,7 @@ def backlog(folder: Path) -> int:
     if not path.is_file():
         src = root / PLANS_TEMPLATES / "backlog.md"
         if not src.is_file():
-            raise SystemExit("backlog 템플릿이 없다 — harness-kit repair")
+            raise SystemExit("backlog 템플릿이 없다 — knots-sync repair")
         path.parent.mkdir(parents=True, exist_ok=True)
         head = front(folder / "intent.md")
         path.write_text(fill(src.read_text(encoding="utf-8"), {"INTENT_KEY": FOLDER.match(folder.name)[1], "TITLE": str(head.get("title") or ""), "HARNESS": "template", "CREATED": date.today().isoformat()}), encoding="utf-8")

@@ -92,7 +92,7 @@ export function makeBin(tools: Record<string, string>, extraEnv: Record<string, 
     fs.writeFileSync(path.join(dir, name), body, { mode: 0o755 });
   }
   const sys = [...new Set([whichDir("git"), whichDir("node"), "/usr/bin", "/bin"])];
-  return { dir, log, env: { PATH: [dir, ...sys].join(":"), FAKE_LOG: log, FAKE_BIN: dir, HARNESS_KIT_PLATFORM: "darwin", ...extraEnv } };
+  return { dir, log, env: { PATH: [dir, ...sys].join(":"), FAKE_LOG: log, FAKE_BIN: dir, KNOTS_SYNC_PLATFORM: "darwin", ...extraEnv } };
 }
 
 export const calls = (b: Bin): string[] => fs.readFileSync(b.log, "utf8").split("\n").filter(Boolean);
@@ -123,7 +123,7 @@ export async function cli(target: string, argv: string[], bin: Bin | null, o: Ru
     stderr: (s) => {
       stderr += s;
     },
-    env: { ...FIXTURE_ENV, ...(bin?.env ?? { PATH: `${whichDir("git")}:/usr/bin:/bin` }), HARNESS_KIT_CONFIG_DIR: path.join(target, "..", "cfg"), ...(o.env ?? {}) },
+    env: { ...FIXTURE_ENV, ...(bin?.env ?? { PATH: `${whichDir("git")}:/usr/bin:/bin` }), KNOTS_SYNC_CONFIG_DIR: path.join(target, "..", "cfg"), ...(o.env ?? {}) },
     cwd: target,
     cliFile: path.join(CLI_DIR, "dist", "cli.js"),
     isTTY: o.tty ?? false,

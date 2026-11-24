@@ -36,13 +36,13 @@ def validate_ref(root, reference):
     return revision.decode().strip()
 
 
-META_FILE = ".agents/harness-kit.json"
+META_FILE = ".agents/knots-sync.json"
 DEFAULT_BASE = "develop"
 BRANCH_NAME = re.compile(r"\w[\w./-]*")
 
 
 def git_base_name(root):
-    """`.agents/harness-kit.json` 의 `git.base`. 하네스 루트부터 저장소 뿌리까지 찾고, 없거나 형식이 틀리면 develop."""
+    """`.agents/knots-sync.json` 의 `git.base`. 하네스 루트부터 저장소 뿌리까지 찾고, 없거나 형식이 틀리면 develop."""
     for directory in (root, *root.parents):
         meta = directory / META_FILE
         if meta.is_file():

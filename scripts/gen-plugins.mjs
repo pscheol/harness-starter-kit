@@ -1,15 +1,15 @@
 #!/usr/bin/env node
-// gen-plugins.mjs — packages/ 원본에서 plugins/harness-kit/ 을 만든다(HK-1, 설계 02 §3.1).
+// gen-plugins.mjs — packages/ 원본에서 plugins/kns/ 을 만든다(HK-1, 설계 02 §3.1).
 //
-//   node scripts/gen-plugins.mjs              plugins/harness-kit/ 을 다시 만든다
+//   node scripts/gen-plugins.mjs              plugins/kns/ 을 다시 만든다
 //   node scripts/gen-plugins.mjs --check      임시 폴더에 만들어 커밋된 생성물과 비교한다(쓰기 없음)
 //   node scripts/gen-plugins.mjs --out <폴더>  다른 폴더에 만든다(비어 있거나 생성물인 폴더만)
 //
 // 층(같은 경로가 두 층에 있으면 거부한다):
 //   packages/plugin/**                → <out>/**
 //   packages/legacy-setup/<스킬>/**    → <out>/skills/<스킬>/**
-//   packages/templates/**             → <out>/skills/hx-bootstrap/templates/**
-//   packages/cli/dist/cli.js          → <out>/skills/hx-bootstrap/bin/harness-kit.js (755, HK-8)
+//   packages/templates/**             → <out>/skills/bootstrap/templates/**
+//   packages/cli/dist/cli.js          → <out>/skills/bootstrap/bin/knots-sync.js (755, HK-8)
 //
 // CLI 번들은 여기서 빌드하지 않는다(이 스크립트는 node_modules 없이 돈다). 소스를 고쳤으면 먼저 `pnpm build`.
 // 번들 머리줄의 src-sha256 이 지금 packages/cli 소스 해시와 같은 것만 원본으로 쓴다.
@@ -38,10 +38,10 @@ function realResolve(p) {
 }
 
 const ROOT = realResolve(path.join(path.dirname(fileURLToPath(import.meta.url)), ".."));
-const DEFAULT_OUT = path.join(ROOT, "plugins", "harness-kit");
+const DEFAULT_OUT = path.join(ROOT, "plugins", "kns");
 const SKIP_NAMES = new Set([".DS_Store", "__pycache__", "node_modules"]);
 const MARKER = path.join(".claude-plugin", "plugin.json");
-export const CLI_BIN_REL = "skills/hx-bootstrap/bin/harness-kit.js";
+export const CLI_BIN_REL = "skills/bootstrap/bin/knots-sync.js";
 
 class UsageError extends Error {}
 
@@ -82,7 +82,7 @@ function walk(dir, base = dir, acc = []) {
  * 2. dist 가 없으면 committedDir 의 사본을 쓴다 — 그 사본의 머리줄 해시가 지금 소스 해시와 같을 때만.
  * 3. 그것도 아니면 쓰기는 UsageError, --check 는 null(차이로 보고된다).
  */
-export function cliBundleSource(root, { check = false, committedDir = path.join(root, "plugins", "harness-kit") } = {}) {
+export function cliBundleSource(root, { check = false, committedDir = path.join(root, "plugins", "kns") } = {}) {
   const cliDir = path.join(root, "packages", "cli");
   const dist = path.join(cliDir, "dist", "cli.js");
   const want = srcHash(cliDir);
@@ -116,7 +116,7 @@ export function buildPlan(root = ROOT, cliOptions = {}) {
     for (const rel of walk(skillDir)) add(`skills/${skill}/${rel}`, path.join(skillDir, rel));
   }
   const tplDir = path.join(root, "packages", "templates");
-  for (const rel of walk(tplDir)) add(`skills/hx-bootstrap/templates/${rel}`, path.join(tplDir, rel));
+  for (const rel of walk(tplDir)) add(`skills/bootstrap/templates/${rel}`, path.join(tplDir, rel));
   const bundle = cliBundleSource(root, cliOptions);
   if (bundle) add(CLI_BIN_REL, bundle);
   return new Map([...plan.entries()].sort(([a], [b]) => byText(a, b)));
@@ -135,7 +135,7 @@ function assertSafeOut(out, explicit) {
   if (out === path.parse(out).root || out === home || isInside(ROOT, out)) {
     throw new UsageError(`지울 수 없는 폴더다: ${out}`);
   }
-  if (isInside(out, ROOT)) throw new UsageError(`저장소 안에서는 plugins/harness-kit 만 출력 폴더로 쓴다: ${out}`);
+  if (isInside(out, ROOT)) throw new UsageError(`저장소 안에서는 plugins/kns 만 출력 폴더로 쓴다: ${out}`);
   if (fs.existsSync(out)) {
     const entries = fs.readdirSync(out);
     if (entries.length > 0 && !fs.existsSync(path.join(out, MARKER))) {
@@ -201,7 +201,7 @@ function main() {
   if (opts.check) {
     const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "hk-gen-check-"));
     try {
-      const out = path.join(tmp, "harness-kit");
+      const out = path.join(tmp, "kns");
       generate(out, plan);
       const lines = diff(out, opts.out ?? DEFAULT_OUT);
       if (lines.length) {

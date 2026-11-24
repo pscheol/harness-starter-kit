@@ -15,7 +15,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 MARKERS = ("CLAUDECODE", "CLAUDE_CODE_", "CODEX_", "KIRO_", "HX_", "HARNESS_", "CLAUDE_SESSION_ID", "GIT_")
-SKILL = ".agents/skills/hx-plan/SKILL.md"
+SKILL = ".agents/skills/kns-plan/SKILL.md"
 
 
 def clean_env(**extra):
@@ -81,9 +81,9 @@ class SyncProjectionTest(unittest.TestCase):
         result = self.run_hook("PostToolUse", "harness-sync-projection", {"file_path": str(source)})
         self.assertEqual(0, result.returncode, result.stderr)
         self.assertEqual("", result.stdout)
-        for copy in (".claude/skills/hx-plan/SKILL.md", ".kiro/skills/hx-plan/SKILL.md"):
+        for copy in (".claude/skills/kns-plan/SKILL.md", ".kiro/skills/kns-plan/SKILL.md"):
             self.assertEqual(source.read_bytes(), (self.root / copy).read_bytes(), copy)
-        self.assertIn("원본에 더한 줄", (self.root / ".cursor/commands/hx-plan.md").read_text(encoding="utf-8"))
+        self.assertIn("원본에 더한 줄", (self.root / ".cursor/commands/kns-plan.md").read_text(encoding="utf-8"))
         self.assertNotEqual(before, self.lock_sha(".claude/rules/git-workflow.md"))
         self.assertEqual([], self.stale())
 
@@ -107,7 +107,7 @@ class SyncProjectionTest(unittest.TestCase):
         self.assertEqual([], self.stale())
 
     def test_writes_outside_sources_do_not_touch_the_lock(self):
-        lock = self.root / ".agents/harness-kit.lock"
+        lock = self.root / ".agents/knots-sync.lock"
         before = sha(lock)
         result = self.run_hook("PostToolUse", "harness-sync-projection", {"file_path": "src/app.py"})
         self.assertEqual(("", 0), (result.stdout, result.returncode))
@@ -122,7 +122,7 @@ class SyncProjectionTest(unittest.TestCase):
         self.assertIn("동기화 실패", result.stdout)
 
     def test_generated_files_are_protected_with_the_source_path(self):
-        for rel, origin in ((".claude/skills/hx-plan/SKILL.md", ".agents/skills/hx-plan"), (".kiro/steering/git-workflow.md", ".agents/rules/git-workflow.md"),
+        for rel, origin in ((".claude/skills/kns-plan/SKILL.md", ".agents/skills/kns-plan"), (".kiro/steering/git-workflow.md", ".agents/rules/git-workflow.md"),
                             (".kiro/hooks/harness-verify-gate.json", ".agents/hooks.json")):
             with self.subTest(rel=rel):
                 result = self.run_hook("PreToolUse", "harness-protect-generated", {"file_path": rel})

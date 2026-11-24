@@ -242,7 +242,7 @@ class OutputTest(QualityFixture):
         for _ in range(2):
             self.quality("run", "--level", "affected", "--files", "src/app.py")
         metrics = self.report("metrics/latest.json")
-        self.assertEqual(metrics["schema"], "harness-kit.metrics/v1")
+        self.assertEqual(metrics["schema"], "knots-sync.metrics/v1")
         self.assertEqual(metrics["level"], "affected")
         self.assertEqual(metrics["head"], self.head[:7])
         scan = metrics["analyzers"]["scan"]

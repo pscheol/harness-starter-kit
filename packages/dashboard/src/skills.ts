@@ -356,7 +356,8 @@ async function readRoot(root: RootSpec, home: string, repo: string): Promise<Roo
     const fields: Record<string, unknown> = {};
     for (const k of KEEP_FIELDS) if (k in f) fields[k] = f[k];
     const meta = isObj(f.metadata) ? f.metadata : {};
-    const hx = meta["hx-stages"];
+    // 이름 바꾸기 전 스킬은 hx-stages 다(HK-22b)
+    const hx = meta["kns-stages"] ?? meta["hx-stages"];
     const stages = Array.isArray(hx) ? hx.filter((x): x is string => typeof x === "string") : typeof hx === "string" ? [hx] : [];
     return {
       root, dir, file, real, viaLink: link, id: root.plugin ? `${root.plugin}:${nm}` : nm, name: nm,
@@ -465,7 +466,7 @@ export interface SkillOut {
 }
 
 export interface Inventory {
-  schema: "harness-kit.skills-inventory/v1";
+  schema: "knots-sync.skills-inventory/v1";
   scannedAt: string;
   harnesses: string[];
   roots: Record<string, unknown>[];
@@ -624,7 +625,7 @@ async function scan(p: Project, opts: SkillsOptions): Promise<Inventory> {
     if (any) conflicts.push({ name, candidates: gs.map((g) => g.display), winner });
   }
   return {
-    schema: "harness-kit.skills-inventory/v1",
+    schema: "knots-sync.skills-inventory/v1",
     scannedAt: new Date().toISOString(),
     harnesses: activeHarnesses(p),
     roots: rootsOut,

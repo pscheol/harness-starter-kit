@@ -3,7 +3,7 @@
 
     python3 scripts/harness/intent_gate.py <Intent 키|폴더> codebase|plans [--json]
 
-관리 페이지 승인 API(=harness-kit approve)가 부른다. 출력 {gate, folder, files[{name, path}], reasons[], stale[]}.
+관리 페이지 승인 API(=knots-sync approve)가 부른다. 출력 {gate, folder, files[{name, path}], reasons[], stale[]}.
 reasons 가 있으면 422 gate_precondition, stale 이 있으면 422 model_stale(codebase 만). 모델을 부르지 않는다.
 """
 
@@ -29,7 +29,7 @@ def plans_gate(root: Path, target: str) -> dict:
     files = [{"name": f"plans/{p}", "path": f"{rel}/plans/{p}"} for p in intents.PLAN_FILES if (plans / p).is_file()]
     screens = sorted((plans / "screens").glob("*.html")) if (plans / "screens").is_dir() else []
     files += [{"name": f"plans/screens/{s.name}", "path": f"{rel}/plans/screens/{s.name}"} for s in screens if not s.name.startswith("_")]
-    reasons = [] if files else ["plans/ 에 기획물이 없다 — /hx-plans 로 만든다"]
+    reasons = [] if files else ["plans/ 에 기획물이 없다 — /kns-plans 로 만든다"]
     reasons += plan_check.problems(plans) if plans.is_dir() else []
     reasons += [p for s in screens if not s.name.startswith("_") for p in wireframe_check.problems(s)]
     qpath = folder / "questions.md"

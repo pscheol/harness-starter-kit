@@ -9,7 +9,7 @@ import { CliError, EXIT } from "../core/errors";
 import type { HookMap } from "./hooks";
 
 export const SPEC_REL = "common/scripts/harness/projection.json";
-export const SPEC_SCHEMA = "harness-kit.projection/v1";
+export const SPEC_SCHEMA = "knots-sync.projection/v1";
 
 /** 설정 병합에 넣는 훅 하나(hooks.json 에서 만든다, HK-24). */
 export interface HookSpec {

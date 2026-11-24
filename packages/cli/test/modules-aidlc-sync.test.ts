@@ -82,7 +82,7 @@ describe("sync aidlc", () => {
     const folder = path.basename(r.json.intents[0].folder as string);
     expect(folder).toBe("INT-1-todo-sync");
     const u = units(t, folder);
-    expect(u.schema).toBe("harness-kit.units/v1");
+    expect(u.schema).toBe("knots-sync.units/v1");
     expect(u.source).toMatchObject({ kind: "aidlc", path: `${INTENT_DIR}/` });
     expect(u.units.map((x: any) => [x.id, x.name, x.kind, x.dependsOn, x.order, x.stories, x.planned, x.issue])).toEqual([
       ["U-1", "u1-ledger", "contract", [], 1, [], true, null],
@@ -95,7 +95,7 @@ describe("sync aidlc", () => {
     expect(Object.keys(u).filter((k) => k !== "source").sort()).toEqual(["decomposition", "intent", "schema", "unassigned", "units"]);
     expect(Object.keys(u.decomposition).sort()).toEqual(["domains", "integrations", "reasons", "split", "stories", "userTypes"]);
     const link = JSON.parse(fs.readFileSync(path.join(t, ".agents/docs/intents", folder, "intent.json"), "utf8")) as Record<string, any>;
-    expect(link).toMatchObject({ schema: "harness-kit.intent-link/v1", key: "INT-1", source: "aidlc", aidlc: { space: "default", intent: "261124-todo-sync", path: `${INTENT_DIR}/` } });
+    expect(link).toMatchObject({ schema: "knots-sync.intent-link/v1", key: "INT-1", source: "aidlc", aidlc: { space: "default", intent: "261124-todo-sync", path: `${INTENT_DIR}/` } });
     expect(link.adapter.inputSha256).toBe(u.source.inputSha256);
     expect(r.json.intents[0].notes.join("\n")).toContain("US2.1");
   });
@@ -107,7 +107,7 @@ describe("sync aidlc", () => {
     const files = [".agents/docs/intents/INT-1-todo-sync/units.json", ".agents/docs/intents/INT-1-todo-sync/intent.json"].map((f) => path.join(t, f));
     const stats = files.map((f) => fs.statSync(f).mtimeMs);
     await new Promise((r) => setTimeout(r, 30));
-    const again = await cli(t, ["sync", "aidlc", "--json", ...T], bin, { env: { HARNESS_KIT_NOW: "2099-01-01T00:00:00.000Z" } });
+    const again = await cli(t, ["sync", "aidlc", "--json", ...T], bin, { env: { KNOTS_SYNC_NOW: "2099-01-01T00:00:00.000Z" } });
     expect(again.code).toBe(0);
     expect(again.json.intents[0].action).toBe("same");
     expect(files.map((f) => fs.statSync(f).mtimeMs)).toEqual(stats);
@@ -121,7 +121,7 @@ describe("sync aidlc", () => {
     expect((await cli(t, ["sync", "aidlc", ...T], bin)).code).toBe(0);
     const uf = path.join(t, ".agents/docs/intents/INT-1-todo-sync/units.json");
     const data = JSON.parse(fs.readFileSync(uf, "utf8")) as Record<string, any>;
-    data.units[1].issue = "DEMO-2"; // /hx-specify --from-unit 이 채운 연결
+    data.units[1].issue = "DEMO-2"; // /kns-specify --from-unit 이 채운 연결
     fs.writeFileSync(uf, JSON.stringify(data, null, 2));
     // u3-sync 를 AI-DLC 쪽에서 지운다
     write(t, {

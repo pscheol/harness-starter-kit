@@ -1,11 +1,11 @@
 # 제목
 새 줄
 ---
-<!-- harness-kit: 설치 전 내용(병합) -->
+<!-- knots-sync: 설치 전 내용(병합) -->
 사람 줄
 ```bash
 make test
 ```
-<!-- /harness-kit -->
+<!-- /knots-sync -->
 ## 끝
 옮겨진 줄이다

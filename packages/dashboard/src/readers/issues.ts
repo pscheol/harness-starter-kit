@@ -159,7 +159,7 @@ function snapStamp(p: Project, co: Checkout): string {
   return [
     treeStamp(path.join(docs, "issues"), 2),
     ...specs.map((s) => treeStamp(path.join(docs, s), 4)),
-    fileStamp(path.join(r, ".agents/harness-kit.json")),
+    fileStamp(path.join(r, ".agents/knots-sync.json")),
     fileStamp(path.join(r, ".agents/state/verify-last.json")),
     fileStamp(path.join(r, ".agents/reports/quality-gate-last.json")),
     treeStamp(path.join(r, ".agents/reports/review"), 0),

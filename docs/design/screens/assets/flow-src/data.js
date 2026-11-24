@@ -184,10 +184,10 @@ export const PROPOSAL = {
 
 /* 흐름 틀(flow.gates)은 팀 설정이라 관리 페이지는 바꾸지 않는다(제안도 받지 않는다, 06 §3.16).
  * 화면은 지금 게이트와 바닥 네 개를 보이고, 터미널 명령을 복사하게 한다.
- * 명령은 harness-kit.json을 고치고 MR로 올린다. 바닥 아래로 줄이면 명령이 거부한다(04 §3.8). */
+ * 명령은 knots-sync.json을 고치고 MR로 올린다. 바닥 아래로 줄이면 명령이 거부한다(04 §3.8). */
 export const GATE_FLOOR = ["requirements", "design", "MR", "완료"];
 export const GATES_NOW = ["intent", "plans", "requirements", "design", "tasks", "MR", "완료", "배포"];
-export const FLOW_GATES_CMD = "npx harness-kit flow gates --add <게이트> --after <게이트>";
+export const FLOW_GATES_CMD = "npx knots-sync flow gates --add <게이트> --after <게이트>";
 
 /* 계약이 아닌 의존에만 붙는 이름 */
 export const EDGE_LABELS = { "U-1>U-2": "환불 API", "U-2>U-3": "정산 결과" };

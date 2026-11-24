@@ -29,7 +29,7 @@ EVENTS = {"SessionStart": "start", "agentSpawn": "start", "UserPromptSubmit": "p
 HARNESSES = ("claude", "codex", "kiro", "cursor")
 EXECUTABLES = {"claude": "claude", "codex": "codex", "kiro": "kiro", "kiro-cli": "kiro"}
 INTERPRETERS = {"node", "nodejs", "bun", "deno"}
-SCHEMA = "harness-kit.session/v1"
+SCHEMA = "knots-sync.session/v1"
 
 
 def read_payload():
@@ -64,7 +64,7 @@ def git(cwd, *arguments):
 
 
 def harness_of(explicit):
-    name = explicit or os.environ.get("HX_HARNESS") or ""
+    name = explicit or os.environ.get("KNS_HARNESS") or ""
     if name in HARNESSES:
         return name
     if os.environ.get("CLAUDECODE") == "1":
@@ -117,9 +117,9 @@ def harness_process():
 
 
 def local_roles(root, main):
-    """개인 층(.agents/local/harness-kit.local.json)의 roles.<역할>.harness — 이 사람이 역할을 어느 하네스로 쓰는지(설계 04 §3.6)."""
+    """개인 층(.agents/local/knots-sync.local.json)의 roles.<역할>.harness — 이 사람이 역할을 어느 하네스로 쓰는지(설계 04 §3.6)."""
     for base in (root, main):
-        data = read_json(base / ".agents/local/harness-kit.local.json")
+        data = read_json(base / ".agents/local/knots-sync.local.json")
         if data is not None:
             roles = data.get("roles") if isinstance(data.get("roles"), dict) else {}
             return {name: value["harness"] for name, value in roles.items() if isinstance(value, dict) and isinstance(value.get("harness"), str)}
@@ -127,8 +127,8 @@ def local_roles(root, main):
 
 
 def role_of(branch, meta, harness, personal=None):
-    if os.environ.get("HX_ROLE"):
-        return os.environ["HX_ROLE"], "env"
+    if os.environ.get("KNS_ROLE"):
+        return os.environ["KNS_ROLE"], "env"
     if branch and BRANCH_KEY.match(branch) and not branch.startswith("docs/"):
         return "implement", "branch"
     if branch and branch.startswith("docs/"):
@@ -143,8 +143,8 @@ def role_of(branch, meta, harness, personal=None):
 
 
 def issue_of(branch):
-    if os.environ.get("HX_ISSUE"):
-        return os.environ["HX_ISSUE"]
+    if os.environ.get("KNS_ISSUE"):
+        return os.environ["KNS_ISSUE"]
     match = BRANCH_KEY.match(branch or "")
     return match.group(1) if match else None
 
@@ -162,7 +162,7 @@ def now_text():
 
 
 def record(root, main, payload, sid, harness, previous):
-    meta = read_json(root / ".agents/harness-kit.json") or read_json(main / ".agents/harness-kit.json") or {}
+    meta = read_json(root / ".agents/knots-sync.json") or read_json(main / ".agents/knots-sync.json") or {}
     branch = git(root, "rev-parse", "--abbrev-ref", "HEAD")
     top = git(root, "rev-parse", "--show-toplevel")
     main_top = git(main, "rev-parse", "--show-toplevel")
@@ -174,7 +174,7 @@ def record(root, main, payload, sid, harness, previous):
     now = now_text()
     return {
         "schema": SCHEMA, "id": sid, "harness": harness, "harnessVersion": None,
-        "name": os.environ.get("HX_SESSION_NAME") or (previous or {}).get("name"),
+        "name": os.environ.get("KNS_SESSION_NAME") or (previous or {}).get("name"),
         "role": role, "roleSource": source, "issue": issue_of(branch), "cwd": cwd,
         "checkout": "main" if top and main_top and Path(top).resolve() == Path(main_top).resolve() else "worktree", "branch": branch,
         "pid": pid, "pidStartedAt": started, "startedAt": (previous or {}).get("startedAt") or now, "lastSeenAt": now,

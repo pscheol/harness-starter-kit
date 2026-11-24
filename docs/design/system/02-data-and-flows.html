@@ -54,14 +54,14 @@
         <table>
           <thead><tr><th scope="col">파일</th><th scope="col">형식</th><th scope="col">쓰는 주체</th><th scope="col">읽는 주체</th><th scope="col">커밋</th></tr></thead>
           <tbody>
-            <tr><th scope="row"><code>.agents/harness-kit.json</code></th><td><code>harness-kit/v2</code></td><td>CLI(<code>init</code> · <code>add</code> · <code>remove</code> · <code>update</code>), 팀(MR)</td><td>모든 명령 · 훅 · 서버</td><td>예</td></tr>
-            <tr><th scope="row"><code>.agents/harness-kit.lock</code></th><td><code>harness-kit.lock/v2</code></td><td>CLI만</td><td><code>doctor</code> · <code>repair</code> · <code>check_layout.py</code></td><td>예</td></tr>
-            <tr><th scope="row"><code>.agents/local/harness-kit.local.json</code></th><td>개인 층</td><td>개인</td><td>CLI(<code>roles</code> · <code>git.ide</code>만 적용)</td><td>아니오</td></tr>
-            <tr><th scope="row"><code>intents/&lt;INT&gt;/intake.md</code> · <code>attachments/</code></th><td>접수 원문, 원본 + 텍스트 추출본, <code>attachments.json</code></td><td>관리 페이지 S11 · <code>intake</code> · <code>/hx-intent --new</code></td><td>설계 세션</td><td>예(원본 바이너리는 LFS 또는 <code>state/</code>)</td></tr>
+            <tr><th scope="row"><code>.agents/knots-sync.json</code></th><td><code>knots-sync/v2</code></td><td>CLI(<code>init</code> · <code>add</code> · <code>remove</code> · <code>update</code>), 팀(MR)</td><td>모든 명령 · 훅 · 서버</td><td>예</td></tr>
+            <tr><th scope="row"><code>.agents/knots-sync.lock</code></th><td><code>knots-sync.lock/v2</code></td><td>CLI만</td><td><code>doctor</code> · <code>repair</code> · <code>check_layout.py</code></td><td>예</td></tr>
+            <tr><th scope="row"><code>.agents/local/knots-sync.local.json</code></th><td>개인 층</td><td>개인</td><td>CLI(<code>roles</code> · <code>git.ide</code>만 적용)</td><td>아니오</td></tr>
+            <tr><th scope="row"><code>intents/&lt;INT&gt;/intake.md</code> · <code>attachments/</code></th><td>접수 원문, 원본 + 텍스트 추출본, <code>attachments.json</code></td><td>관리 페이지 S11 · <code>intake</code> · <code>/kns-intent --new</code></td><td>설계 세션</td><td>예(원본 바이너리는 LFS 또는 <code>state/</code>)</td></tr>
             <tr><th scope="row"><code>intents/&lt;INT&gt;/intent.md</code> · <code>current-state.md</code></th><td>Markdown + 머리</td><td>설계 세션, 사람(관리 페이지 저장)</td><td>기획물 명령, 게이트, 서버</td><td>예</td></tr>
-            <tr><th scope="row"><code>intents/&lt;INT&gt;/intent.json</code></th><td><code>harness-kit.intent-link/v1</code></td><td><code>sync aidlc</code></td><td>기획물 명령, 게이트, 서버</td><td>예</td></tr>
-            <tr><th scope="row"><code>intents/&lt;INT&gt;/units.json</code></th><td><code>harness-kit.units/v1</code></td><td><code>/hx-intent</code> 또는 <code>sync aidlc</code></td><td><code>/hx-specify --from-unit</code>, 서버, <code>sync jira</code></td><td>예</td></tr>
-            <tr><th scope="row"><code>intents/&lt;INT&gt;/questions.md</code></th><td>질문 블록(답할 직무 · 막는 게이트)</td><td>설계 세션(질문), 사람(답 API · 직접 편집)</td><td><code>/hx-intent</code></td><td>예</td></tr>
+            <tr><th scope="row"><code>intents/&lt;INT&gt;/intent.json</code></th><td><code>knots-sync.intent-link/v1</code></td><td><code>sync aidlc</code></td><td>기획물 명령, 게이트, 서버</td><td>예</td></tr>
+            <tr><th scope="row"><code>intents/&lt;INT&gt;/units.json</code></th><td><code>knots-sync.units/v1</code></td><td><code>/kns-intent</code> 또는 <code>sync aidlc</code></td><td><code>/kns-specify --from-unit</code>, 서버, <code>sync jira</code></td><td>예</td></tr>
+            <tr><th scope="row"><code>intents/&lt;INT&gt;/questions.md</code></th><td>질문 블록(답할 직무 · 막는 게이트)</td><td>설계 세션(질문), 사람(답 API · 직접 편집)</td><td><code>/kns-intent</code></td><td>예</td></tr>
             <tr><th scope="row"><code>**/approvals.md</code></th><td>덧붙이기 기록(06 §3.7)</td><td>관리 페이지 · <code>approve</code> · <code>sync jira --approvals</code> · <code>sync aidlc</code></td><td><code>sdd_gates.py</code>, 서버, CI</td><td>예</td></tr>
             <tr><th scope="row"><code>issues/&lt;키&gt;-&lt;이름&gt;/requirements.md</code> · <code>design.md</code> · <code>tasks.md</code></th><td>SDD 세 문서, <code>tasks.md</code> 머리 <code>state</code></td><td>그 이슈의 세션, 사람(저장)</td><td><code>verify.sh</code>, 서버, <code>board.sh</code></td><td>예(그 이슈 브랜치)</td></tr>
             <tr><th scope="row"><code>issues/&lt;키&gt;/review.md</code></th><td>지적 처리 결과</td><td>구현 세션</td><td><code>mr</code> 게이트</td><td>예</td></tr>
@@ -71,10 +71,10 @@
             <tr><th scope="row"><code>ops/records/*.md</code> · <code>metrics-baseline.json</code></th><td>운영 기록, 전달 지표 기준선</td><td><code>ops new</code>, 사람, <code>metrics</code></td><td><code>intake --from ops</code>, S10</td><td>예</td></tr>
             <tr><th scope="row"><code>rule-candidates/RC-&lt;n&gt;-*.md</code></th><td>규칙 후보</td><td><code>rules candidates</code></td><td><code>rules promote</code> · <code>reject</code>(사람)</td><td>예</td></tr>
             <tr><th scope="row"><code>.agents/state/verify-last.json</code></th><td>마지막 검증 레벨 · 결과 · 느린 단계</td><td><code>verify.sh</code></td><td>서버, <code>mr</code> 게이트</td><td>아니오</td></tr>
-            <tr><th scope="row"><code>.agents/state/sessions/</code> · <code>dispatch-queue/</code></th><td><code>harness-kit.session/v1</code> · <code>harness-kit.dispatch/v1</code></td><td>세션 시작 훅 · 서버</td><td>서버, 대기함 소비 훅</td><td>아니오</td></tr>
+            <tr><th scope="row"><code>.agents/state/sessions/</code> · <code>dispatch-queue/</code></th><td><code>knots-sync.session/v1</code> · <code>knots-sync.dispatch/v1</code></td><td>세션 시작 훅 · 서버</td><td>서버, 대기함 소비 훅</td><td>아니오</td></tr>
             <tr><th scope="row"><code>.agents/state/dashboard.token</code> · <code>approvals-log.jsonl</code></th><td>0600 파일</td><td>서버</td><td>화면(토큰), fast(위조 경고)</td><td>아니오</td></tr>
-            <tr><th scope="row"><code>.agents/reports/sarif/</code> · <code>quality-gate-last.json</code> · <code>metrics/</code></th><td>SARIF 2.1.0, 게이트 결과, 지표</td><td><code>verify_static.py</code> · <code>/hx-scan</code></td><td>품질 게이트, 서버</td><td>아니오</td></tr>
-            <tr><th scope="row"><code>.agents/state/usage/</code></th><td><code>harness-kit.usage/v1</code>(토큰 수 · 모델 · 역할만)</td><td>사람이 켠 SubagentStop · Stop 훅</td><td>서버 하네스 탭</td><td>아니오</td></tr>
+            <tr><th scope="row"><code>.agents/reports/sarif/</code> · <code>quality-gate-last.json</code> · <code>metrics/</code></th><td>SARIF 2.1.0, 게이트 결과, 지표</td><td><code>verify_static.py</code> · <code>/kns-scan</code></td><td>품질 게이트, 서버</td><td>아니오</td></tr>
+            <tr><th scope="row"><code>.agents/state/usage/</code></th><td><code>knots-sync.usage/v1</code>(토큰 수 · 모델 · 역할만)</td><td>사람이 켠 SubagentStop · Stop 훅</td><td>서버 하네스 탭</td><td>아니오</td></tr>
             <tr><th scope="row"><code>docs/features/</code></th><td>기능 문서</td><td>문서 세션(병합 뒤 반영)</td><td>사람</td><td>예</td></tr>
           </tbody>
         </table>
@@ -110,19 +110,19 @@
 
       <h3 id="flow-intake">6.1 요구사항 접수 → Unit 승인</h3>
       <figure class="diagram bleed">
-        <a href="diagrams/seq-intake.svg"><img src="diagrams/seq-intake.svg" width="1660" height="1174" alt="참여자: PO(사람), 관리 페이지·CLI, Jira·Notion, 설계 세션, intents/INT-8 폴더, AI-DLC(선택). 1 PO가 새 요구사항(텍스트·첨부)을 넣거나 intake --from을 부른다. 출처가 Jira·Notion이면 2 관리 페이지가 에픽·페이지를 읽고(토큰은 환경 변수) 3 제목·본문·첨부를 받는다. 4 intake.md·attachments·추출본을 gitleaks 검사 뒤 쓴다. 5 설계 세션에 INT-8 접수됨 작업 요청을 보낸다. flow.design = kit이면 6 설계 세션이 intent.md(draft)와 questions.md를 쓴다(feature·change·refactor는 먼저 역공학과 codebase 게이트). 7 PO가 PIN으로 질문에 답하고 8 questions.md가 answered가 된다. 9 설계 세션이 스토리·EARS·units.json을 쓰고 in-review로 올린다. 10 PO가 intent를 승인하고 11 approvals.md에 덧붙이고 status가 approved가 된다. flow.design = aidlc이면 12 설계 세션이 intake.md 경로로 /aidlc를 부르고 13 PO가 AI-DLC 안에서 질문 답·승인을 하며(사람 입력 확인 훅) 14 sync aidlc가 산출물을 읽고 15 intent.json·units.json·approvals.md(source: aidlc)를 쓴다. 이후는 같다: 기획물, plans 승인, /hx-specify --from-unit, issues/키/requirements.md" loading="lazy" decoding="async"></a>
+        <a href="diagrams/seq-intake.svg"><img src="diagrams/seq-intake.svg" width="1660" height="1174" alt="참여자: PO(사람), 관리 페이지·CLI, Jira·Notion, 설계 세션, intents/INT-8 폴더, AI-DLC(선택). 1 PO가 새 요구사항(텍스트·첨부)을 넣거나 intake --from을 부른다. 출처가 Jira·Notion이면 2 관리 페이지가 에픽·페이지를 읽고(토큰은 환경 변수) 3 제목·본문·첨부를 받는다. 4 intake.md·attachments·추출본을 gitleaks 검사 뒤 쓴다. 5 설계 세션에 INT-8 접수됨 작업 요청을 보낸다. flow.design = kit이면 6 설계 세션이 intent.md(draft)와 questions.md를 쓴다(feature·change·refactor는 먼저 역공학과 codebase 게이트). 7 PO가 PIN으로 질문에 답하고 8 questions.md가 answered가 된다. 9 설계 세션이 스토리·EARS·units.json을 쓰고 in-review로 올린다. 10 PO가 intent를 승인하고 11 approvals.md에 덧붙이고 status가 approved가 된다. flow.design = aidlc이면 12 설계 세션이 intake.md 경로로 /aidlc를 부르고 13 PO가 AI-DLC 안에서 질문 답·승인을 하며(사람 입력 확인 훅) 14 sync aidlc가 산출물을 읽고 15 intent.json·units.json·approvals.md(source: aidlc)를 쓴다. 이후는 같다: 기획물, plans 승인, /kns-specify --from-unit, issues/키/requirements.md" loading="lazy" decoding="async"></a>
         <figcaption>요구사항 접수에서 Unit 승인까지. 아래 갈래는 AI-DLC를 켰을 때다(<a href="#flow-aidlc">6.5</a>). <a class="edit" href="diagrams/seq-intake.mmd">편집 원본(.mmd)</a> · <a class="edit" href="diagrams/seq-intake.excalidraw">excalidraw</a></figcaption>
       </figure>
       <ul>
         <li>접수 종류는 product · feature · change · refactor · bug 다섯이다. bug는 Intent 없이 이슈 하나로 간다. feature · change · refactor는 스토리를 쓰기 전에 역공학으로 <code>current-state.md</code>를 만들고 <code>codebase</code> 게이트를 받는다(<a href="../08-design-stage.md">08</a> §3.11 · §3.13).</li>
         <li>분해 기준: 스토리 5개 이상, 도메인 2개 이상, 사용자 유형 3개 이상, 외부 통합 3개 이상 중 하나라도 맞으면 Unit을 나눈다. 계약 Unit을 먼저 두고, 처음부터 만드는 product는 맨 앞에 걷는 뼈대 Unit을 둔다(<a href="../08-design-stage.md">08</a> §3.4 · §3.12).</li>
         <li>첨부는 파일 하나 20MB, 접수 하나 100MB까지(제안값). 텍스트와 추출본은 gitleaks 검사를 통과해야 저장한다.</li>
-        <li>5번 작업 요청은 사람이 접수 화면에서 고를 때만 보낸다. 사람이 세션에서 <code>/hx-intent INT-8</code>을 직접 불러도 된다.</li>
+        <li>5번 작업 요청은 사람이 접수 화면에서 고를 때만 보낸다. 사람이 세션에서 <code>/kns-intent INT-8</code>을 직접 불러도 된다.</li>
       </ul>
 
       <h3 id="flow-delivery">6.2 Unit → 구현 · 검증 → 병합 → 배포 → 운영 기록</h3>
       <figure class="diagram bleed">
-        <a href="diagrams/seq-delivery.svg"><img src="diagrams/seq-delivery.svg" width="1771" height="1310" alt="참여자: 사람(개발자·QA·운영), 구현 세션(worktree), verify.sh, GitLab·CI, 리뷰 세션(Codex), 배포 시스템·ops. requirements·design·tasks 승인 뒤 1 사람이 wt new로 worktree를 만들고 /hx-implement를 부른다. Bolt마다 2 구현 세션이 verify.sh --changed(바꾼 파일·연결 테스트·정적 분석)를 돌리고 3 passed·failed·incomplete를 받는다. 4 MR 전 한 번 --affected를 돌리고 5 push·MR을 연다. 6 CI가 base판 verify.sh affected·SARIF·품질 게이트를 돈다. 7 리뷰 세션이 /hx-review로 원격 diff를 읽고 요약 코멘트 하나를 남긴다. 8 구현 세션이 지적을 처리하고 review.md를 커밋한다. mr 승인, 병합, done 승인: 9 사람이 관리 페이지·approve·MR 플랫폼에서 승인한다. autoVerify를 켰으면 10 CI가 검증 환경에 배포하고 스모크·E2E·롤백 시험을 돈다. 11 사람이 deploy plan으로 배포 기록(PLAN)을 만든다. deploy 승인(D1~D7, high면 2명). 12 배포 시스템이 deploy.py check --require-approved 뒤 운영 배포하고 result를 쓴다. 13 사람이 ops new로 운영 기록(지표·장애·다음 후보)을 쓰고 14 intake --from ops로 다음 Intent·bug 이슈·규칙 후보가 열린다" loading="lazy" decoding="async"></a>
+        <a href="diagrams/seq-delivery.svg"><img src="diagrams/seq-delivery.svg" width="1771" height="1310" alt="참여자: 사람(개발자·QA·운영), 구현 세션(worktree), verify.sh, GitLab·CI, 리뷰 세션(Codex), 배포 시스템·ops. requirements·design·tasks 승인 뒤 1 사람이 wt new로 worktree를 만들고 /kns-implement를 부른다. Bolt마다 2 구현 세션이 verify.sh --changed(바꾼 파일·연결 테스트·정적 분석)를 돌리고 3 passed·failed·incomplete를 받는다. 4 MR 전 한 번 --affected를 돌리고 5 push·MR을 연다. 6 CI가 base판 verify.sh affected·SARIF·품질 게이트를 돈다. 7 리뷰 세션이 /kns-review로 원격 diff를 읽고 요약 코멘트 하나를 남긴다. 8 구현 세션이 지적을 처리하고 review.md를 커밋한다. mr 승인, 병합, done 승인: 9 사람이 관리 페이지·approve·MR 플랫폼에서 승인한다. autoVerify를 켰으면 10 CI가 검증 환경에 배포하고 스모크·E2E·롤백 시험을 돈다. 11 사람이 deploy plan으로 배포 기록(PLAN)을 만든다. deploy 승인(D1~D7, high면 2명). 12 배포 시스템이 deploy.py check --require-approved 뒤 운영 배포하고 result를 쓴다. 13 사람이 ops new로 운영 기록(지표·장애·다음 후보)을 쓰고 14 intake --from ops로 다음 Intent·bug 이슈·규칙 후보가 열린다" loading="lazy" decoding="async"></a>
         <figcaption>Unit 하나가 운영 기록이 되기까지. 파랑은 설계, 앰버는 구현 · 검증, 청록은 반영 · 운영이다. <a class="edit" href="diagrams/seq-delivery.mmd">편집 원본(.mmd)</a> · <a class="edit" href="diagrams/seq-delivery.excalidraw">excalidraw</a></figcaption>
       </figure>
       <div class="table-wrap bleed">
@@ -151,7 +151,7 @@
 
       <h3 id="flow-update">6.4 킷 update · doctor · repair</h3>
       <figure class="diagram bleed">
-        <a href="diagrams/seq-update.svg"><img src="diagrams/seq-update.svg" width="1610" height="1049" alt="참여자: 사람(터미널), npx harness-kit, 새 킷 템플릿·팩, harness-kit.lock, 리포 파일, verify.sh fast. 1 사람이 update --dry-run을 부른다. 2 CLI가 층 해석과 토큰 치환으로 원하는 내용 D를 만들고 3 lock에서 기준 해시 B와 주인 O를, 4 리포에서 지금 파일 C를 읽어 5 작업 목록(new·update·conflict·skip-user 등)을 보여 준다. 6 사람이 update를 부르면 7 C = B면 교체하고, C ≠ B면 경로.new를 두며, 주인이 user·external·pack인 파일은 건너뛴다. 8 lock v2와 kit.version을 쓰고 9 .new가 있으면 exit 4와 diff 목록을 낸다. 사람이 .new를 하나씩 병합한다. 10 doctor --check는 11 항목마다 op와 sha를 비교해 12 drifted·missing·stale·symlink-found·merge-missing을 보고한다. 13 repair는 14 missing 복원, render 재생성, 복사본 재생성, 킷 키 재병합을 한다. 사람이 고친 copy 파일(drifted)은 건드리지 않는다. 15 verify.sh fast의 check_layout.py가 doctor와 같은 규칙으로 lock을 보고 오류면 Stop 훅이 실패한다" loading="lazy" decoding="async"></a>
+        <a href="diagrams/seq-update.svg"><img src="diagrams/seq-update.svg" width="1610" height="1049" alt="참여자: 사람(터미널), npx knots-sync, 새 킷 템플릿·팩, knots-sync.lock, 리포 파일, verify.sh fast. 1 사람이 update --dry-run을 부른다. 2 CLI가 층 해석과 토큰 치환으로 원하는 내용 D를 만들고 3 lock에서 기준 해시 B와 주인 O를, 4 리포에서 지금 파일 C를 읽어 5 작업 목록(new·update·conflict·skip-user 등)을 보여 준다. 6 사람이 update를 부르면 7 C = B면 교체하고, C ≠ B면 경로.new를 두며, 주인이 user·external·pack인 파일은 건너뛴다. 8 lock v2와 kit.version을 쓰고 9 .new가 있으면 exit 4와 diff 목록을 낸다. 사람이 .new를 하나씩 병합한다. 10 doctor --check는 11 항목마다 op와 sha를 비교해 12 drifted·missing·stale·symlink-found·merge-missing을 보고한다. 13 repair는 14 missing 복원, render 재생성, 복사본 재생성, 킷 키 재병합을 한다. 사람이 고친 copy 파일(drifted)은 건드리지 않는다. 15 verify.sh fast의 check_layout.py가 doctor와 같은 규칙으로 lock을 보고 오류면 Stop 훅이 실패한다" loading="lazy" decoding="async"></a>
         <figcaption>킷 갱신과 점검 · 복구. <a class="edit" href="diagrams/seq-update.mmd">편집 원본(.mmd)</a> · <a class="edit" href="diagrams/seq-update.excalidraw">excalidraw</a></figcaption>
       </figure>
       <ul>
@@ -164,10 +164,10 @@
       <p>결정 2026-11-23: AI-DLC는 승인 입력을 사람이 했는지 자기 훅으로 확인하므로, 그 승인을 킷 게이트 승인으로 인정한다. 사람은 같은 게이트를 두 번 승인하지 않는다(README §3, <a href="../08-design-stage.md">08</a> §3.10, <a href="../10-modules.md">10</a> §3.2).</p>
       <ol class="flow-steps">
         <li><code>add aidlc</code>가 <code>aidlc config --harness &lt;설계 하네스&gt;</code>를 실행하고, 생긴 파일을 <code>external:aidlc</code>로 등록하고, <code>flow.design = "aidlc"</code>로 바꾼다.</li>
-        <li>설계 세션에서 사람이 <code>/aidlc</code>를 부르고, 질문 답과 Unit 분해 승인을 AI-DLC 안에서 한다. 킷 <code>/hx-intent</code>는 "설계 단계는 /aidlc가 맡는다"를 출력하고 끝낸다.</li>
-        <li><code>npx harness-kit sync aidlc</code>가 AI-DLC 폴더를 읽어 <code>intent.json</code> · <code>units.json</code>을 쓴다. 같은 입력 sha면 아무것도 바꾸지 않고, 다시 가져올 때 <code>sourceId</code>로 Unit의 <code>issue</code> 연결을 지킨다.</li>
+        <li>설계 세션에서 사람이 <code>/aidlc</code>를 부르고, 질문 답과 Unit 분해 승인을 AI-DLC 안에서 한다. 킷 <code>/kns-intent</code>는 "설계 단계는 /aidlc가 맡는다"를 출력하고 끝낸다.</li>
+        <li><code>npx knots-sync sync aidlc</code>가 AI-DLC 폴더를 읽어 <code>intent.json</code> · <code>units.json</code>을 쓴다. 같은 입력 sha면 아무것도 바꾸지 않고, 다시 가져올 때 <code>sourceId</code>로 Unit의 <code>issue</code> 연결을 지킨다.</li>
         <li>AI-DLC 승인 기록에 승인자가 있으면 승인자 · 시각 · 문구를 <code>intents/&lt;INT&gt;/approvals.md</code>에 출처 <code>aidlc</code>로 옮긴다. 승인자가 없으면 옮기지 않고, 그 게이트는 관리 페이지 · <code>approve</code> · Jira 사람 전이로 승인한다.</li>
-        <li>그 뒤 기획물 · <code>/hx-specify --from-unit</code> · 게이트 검사 · 관리 페이지는 <code>intent.json</code>이 가리키는 AI-DLC 문서를 읽는다. 구현은 킷 SDD가 맡고, AI-DLC 구현 산출물이 생기면 <code>doctor</code>가 경고한다.</li>
+        <li>그 뒤 기획물 · <code>/kns-specify --from-unit</code> · 게이트 검사 · 관리 페이지는 <code>intent.json</code>이 가리키는 AI-DLC 문서를 읽는다. 구현은 킷 SDD가 맡고, AI-DLC 구현 산출물이 생기면 <code>doctor</code>가 경고한다.</li>
       </ol>
       <p>AI-DLC 세션의 그 밖의 대화는 승인이 아니다. AI-DLC가 승인자를 기록에 남기는지는 구현 전에 확인한다(<a href="../10-modules.md">10</a> §3.2).</p>
 

@@ -42,6 +42,6 @@ scripts/new-feature.sh <키> --stage=tasks              # design 승인 후
 
 ## 원본 링크
 
-- **SDD 워크플로 원본**: `.agents/rules/sdd-workflow.md` (specify → clarify → checklist → plan → tasks → analyze → implement, 구현 후 잔여 작업은 `/hx-converge` 회수).
+- **SDD 워크플로 원본**: `.agents/rules/sdd-workflow.md` (specify → clarify → checklist → plan → tasks → analyze → implement, 구현 후 잔여 작업은 `/kns-converge` 회수).
 - **전역 설계 결정(ADR)·핵심 원칙**: `decisions/`.
 - **규칙 원본**: `.agents/rules/`. 검증 게이트: `scripts/verify.sh`.

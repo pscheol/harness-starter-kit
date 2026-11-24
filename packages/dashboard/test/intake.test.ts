@@ -24,7 +24,7 @@ describe("POST /intake", () => {
     expect(folder).toBe(".agents/docs/intents/INT-1-pay-reform");
     expect(readFile(r.root, `${folder}/intake.md`)).toContain("trust: untrusted");
     expect(readFile(r.root, `${folder}/attachments/01-memo.md`)).toBe("# 메모\n");
-    expect(res.json.data.next).toBe("/hx-intent INT-1");
+    expect(res.json.data.next).toBe("/kns-intent INT-1");
     await srv.close();
   });
 

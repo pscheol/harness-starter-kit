@@ -16,7 +16,7 @@ const io: Io = {
   },
 };
 
-// `harness-kit list --files | head` 처럼 읽는 쪽이 먼저 닫히면 조용히 끝낸다.
+// `knots-sync list --files | head` 처럼 읽는 쪽이 먼저 닫히면 조용히 끝낸다.
 process.stdout.on("error", (err: NodeJS.ErrnoException) => {
   if (err.code === "EPIPE") process.exit(process.exitCode ?? 0);
   throw err;

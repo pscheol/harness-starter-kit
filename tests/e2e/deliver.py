@@ -68,7 +68,7 @@ def implement(sb: Sandbox, config: str, report: Report, issue: dict, checkpoints
     for bolt in (1, 2):
         src = f"src/{area}/__init__.py"
         sb.write(src, sb.read(src) + f"\n\ndef bolt_{bolt}_{key.lower().replace('-', '_')}():\n    return {bolt}\n")
-        sb.commit(f"feat: {key} Bolt {bolt}", env={"HX_E2E_ROLE": IMPLEMENT_ROLE})
+        sb.commit(f"feat: {key} Bolt {bolt}", env={"KNS_E2E_ROLE": IMPLEMENT_ROLE})
         commits.append(sb.git("rev-parse", "HEAD"))
     if not checkpoints:
         return
@@ -79,7 +79,7 @@ def implement(sb: Sandbox, config: str, report: Report, issue: dict, checkpoints
     for n, sha in enumerate(commits, 1):
         sb.run("entire", "checkpoint-make", sha, f"{n:02d}" + "ab" * 5)
     sb.write("review-note.md", "리뷰 세션이 남긴 메모\n")
-    review_sha = sb.commit(f"docs: {key} 리뷰 메모", env={"HX_E2E_ROLE": REVIEW_ROLE})
+    review_sha = sb.commit(f"docs: {key} 리뷰 메모", env={"KNS_E2E_ROLE": REVIEW_ROLE})
     status, data = sb.call("GET", f"/api/v1/checkpoints?issue={key}")
     listed = json.dumps(data, ensure_ascii=False)
     ok = status == 200 and review_sha[:7] not in listed and commits[0][:7] in listed
@@ -128,7 +128,7 @@ def deploy(sb: Sandbox, config: str, report: Report, intent_key: str, tag: str) 
     sha = sb.git("rev-parse", "--short=12", "HEAD")
     text = sb.read(record).replace("- full: none", f"- full: passed · sha {sha} · https://ci.example/1").replace("- quality-gate: none", f"- quality-gate: passed · sha {sha}")
     sb.write(record, text)
-    deploy_cfg = {"schema": "harness-kit.deploy/v1", "envs": {"verify": {"kind": "verification"}, "production": {"kind": "production"}}, "commands": {}, "autoVerify": {"enabled": False}}
+    deploy_cfg = {"schema": "knots-sync.deploy/v1", "envs": {"verify": {"kind": "verification"}, "production": {"kind": "production"}}, "commands": {}, "autoVerify": {"enabled": False}}
     sb.write(".agents/deploy.json", json.dumps(deploy_cfg))
     sb.commit("docs: 배포 기록")
     check = sb.py("deploy.py", "check", record_id, "--json", check=False)

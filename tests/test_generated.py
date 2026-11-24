@@ -1,4 +1,4 @@
-"""생성물 시험 — plugins/harness-kit/ 이 packages/ 에서 만든 결과와 같은지 본다(HK-1).
+"""생성물 시험 — plugins/kns/ 이 packages/ 에서 만든 결과와 같은지 본다(HK-1).
 
     python3 -m unittest tests.test_generated
 
@@ -20,7 +20,7 @@ import cli_dist  # noqa: E402
 
 KIT = Path(__file__).resolve().parents[1]
 GEN = KIT / "scripts/gen-plugins.mjs"
-PLUGIN = KIT / "plugins/harness-kit"
+PLUGIN = KIT / "plugins/kns"
 COPY_IGNORE = shutil.ignore_patterns("__pycache__", "*.pyc", ".DS_Store", "node_modules")
 
 
@@ -52,21 +52,21 @@ class GeneratedPluginTest(unittest.TestCase):
 
     def test_detects_manual_edit_of_generated_file(self):
         kit = self.kit_copy()
-        target = kit / "plugins/harness-kit/skills/hx-bootstrap/SKILL.md"
+        target = kit / "plugins/kns/skills/bootstrap/SKILL.md"
         target.write_text(target.read_text(encoding="utf-8") + "\n손으로 고친 줄\n", encoding="utf-8")
         r = node("--check", cwd=kit)
         self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
-        self.assertIn("skills/hx-bootstrap/SKILL.md", r.stdout)
+        self.assertIn("skills/bootstrap/SKILL.md", r.stdout)
 
     def test_detects_lost_exec_bit(self):
         kit = self.kit_copy()
-        execs = sorted(p for p in (kit / "plugins/harness-kit").rglob("*") if p.is_file() and os.access(p, os.X_OK))
+        execs = sorted(p for p in (kit / "plugins/kns").rglob("*") if p.is_file() and os.access(p, os.X_OK))
         self.assertTrue(execs, "실행 권한이 있는 생성물이 하나 이상 있어야 한다")
         target = execs[0]
         target.chmod(0o644)
         r = node("--check", cwd=kit)
         self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
-        self.assertIn("x " + target.relative_to(kit / "plugins/harness-kit").as_posix(), r.stdout)
+        self.assertIn("x " + target.relative_to(kit / "plugins/kns").as_posix(), r.stdout)
 
     def test_output_is_deterministic(self):
         a = Path(tempfile.mkdtemp(prefix="hk-gen-a-"))
@@ -80,7 +80,7 @@ class GeneratedPluginTest(unittest.TestCase):
 
     def test_overlapping_layers_are_rejected(self):
         kit = self.kit_copy()
-        dup = kit / "packages/legacy-setup/hx-bootstrap/SKILL.md"
+        dup = kit / "packages/legacy-setup/bootstrap/SKILL.md"
         dup.write_text("겹침\n", encoding="utf-8")
         r = node("--check", cwd=kit)
         self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
@@ -101,12 +101,12 @@ class GeneratedPluginTest(unittest.TestCase):
     def test_cli_bundle_copy_is_built_from_current_sources(self):
         """플러그인의 CLI 사본: 실행 비트 · 머리줄 해시 = 지금 소스 해시 · dist 가 있으면 바이트 같음(HK-8 R9.1)."""
         copy = PLUGIN / cli_dist.CLI_BIN_REL
-        self.assertTrue(copy.is_file(), "plugins/harness-kit/skills/hx-bootstrap/bin/harness-kit.js 가 없다")
+        self.assertTrue(copy.is_file(), "plugins/kns/skills/bootstrap/bin/knots-sync.js 가 없다")
         self.assertTrue(os.access(copy, os.X_OK))
         self.assertEqual(cli_dist.banner_hash(copy), cli_dist.src_hash())
         if cli_dist.banner_hash(cli_dist.DIST) == cli_dist.src_hash():
             self.assertEqual(copy.read_bytes(), cli_dist.DIST.read_bytes())
-        self.assertTrue((PLUGIN / "skills/hx-bootstrap/templates/layout.json").is_file())
+        self.assertTrue((PLUGIN / "skills/bootstrap/templates/layout.json").is_file())
 
     def test_check_detects_cli_source_change(self):
         """CLI 소스를 고치고 다시 빌드하지 않으면 --check 가 실패한다(dist 있음 → 2, 없음 → 1)."""
@@ -125,7 +125,7 @@ class GeneratedPluginTest(unittest.TestCase):
         w = node(cwd=kit)
         self.assertEqual(w.returncode, 2, w.stdout + w.stderr)
         self.assertIn("pnpm build", w.stdout + w.stderr)
-        self.assertTrue((kit / "plugins/harness-kit" / cli_dist.CLI_BIN_REL).is_file(), "실패한 생성이 기존 생성물을 지웠다")
+        self.assertTrue((kit / "plugins/kns" / cli_dist.CLI_BIN_REL).is_file(), "실패한 생성이 기존 생성물을 지웠다")
 
     def test_works_without_dist_when_copy_is_current(self):
         """dist 가 없어도(새로 받은 저장소) 커밋된 사본이 지금 소스에서 만든 것이면 생성 · 비교가 돈다."""
@@ -143,10 +143,10 @@ class GeneratedPluginTest(unittest.TestCase):
     def test_plugin_matches_layers(self):
         """생성물의 세 층이 원본 세 곳에서 왔다(R1.1 · R3.1)."""
         self.assertTrue((KIT / "packages/templates/common").is_dir())
-        self.assertTrue((KIT / "packages/legacy-setup/hx-bootstrap/setup.sh").is_file())
+        self.assertTrue((KIT / "packages/legacy-setup/bootstrap/setup.sh").is_file())
         self.assertTrue((KIT / "packages/plugin/.claude-plugin/plugin.json").is_file())
-        self.assertFalse((PLUGIN / "skills/hx-bootstrap/tools").exists(), "개발 도구는 플러그인에 넣지 않는다")
-        self.assertTrue((PLUGIN / "skills/hx-bootstrap/templates/common").is_dir())
+        self.assertFalse((PLUGIN / "skills/bootstrap/tools").exists(), "개발 도구는 플러그인에 넣지 않는다")
+        self.assertTrue((PLUGIN / "skills/bootstrap/templates/common").is_dir())
 
 
 if __name__ == "__main__":

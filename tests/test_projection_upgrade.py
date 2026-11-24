@@ -24,11 +24,11 @@ from test_cli_parity import base_env  # noqa: E402
 from test_cli_update_parity import snapshot  # noqa: E402
 
 KIT = cli_dist.KIT
-UPDATE = KIT / "plugins/harness-kit/skills/hx-update/update.sh"
+UPDATE = KIT / "plugins/kns/skills/update/update.sh"
 TEMPLATES = cli_dist.PLUGIN_TEMPLATES
 POINTER_PHRASES = ("를 읽고 그대로 수행한다", "를 읽고 그대로 따른다", "얇은 포인터", "(포인터)")
 EDITED_STEERING = ".kiro/steering/git-workflow.md"
-EDITED_COMMAND = ".claude/commands/hx-plan.md"
+EDITED_COMMAND = ".claude/commands/kns-plan.md"
 
 
 @unittest.skipUnless(shutil.which("node"), "Node 18.3 이상이 필요하다")
@@ -117,7 +117,7 @@ class ProjectionUpgradeTest(unittest.TestCase):
             with self.subTest(target=target.parent.name):
                 files = harness_files(target)
                 self.assertEqual([f for f in files if f.startswith(".claude/commands/")], [EDITED_COMMAND])
-                for skill in ("hx-plan", "hx-issue"):
+                for skill in ("kns-plan", "kns-issue"):
                     src = (target / ".agents/skills" / skill / "SKILL.md").read_bytes()
                     self.assertEqual((target / ".claude/skills" / skill / "SKILL.md").read_bytes(), src)
                     self.assertEqual((target / ".kiro/skills" / skill / "SKILL.md").read_bytes(), src)

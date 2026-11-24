@@ -1,6 +1,6 @@
 /**
  * GET /ops(설계 14 §3.12, DO-R16): 배포 기록 · 운영 기록 · 장애 · 다음 Intent 후보 · 전달 지표 · 자동 검증 배포 상태 · 규칙 후보.
- * 처리는 scripts/harness/ops_report.py 하나다 — 관리 페이지와 `harness-kit status --ops --json` 이 같은 응답을 받는다.
+ * 처리는 scripts/harness/ops_report.py 하나다 — 관리 페이지와 `knots-sync status --ops --json` 이 같은 응답을 받는다.
  * 모델을 부르지 않고 파일을 쓰지 않는다(전달 지표 보고서는 ops_report 가 쓰지 않는다).
  */
 import fs from "node:fs";
@@ -30,7 +30,7 @@ function scriptOf(p: Project): string | null {
 
 export async function readOps(p: Project): Promise<Record<string, unknown>> {
   const script = scriptOf(p);
-  if (!script) return { ...EMPTY_OPS, unavailable: `${SCRIPT} 가 없습니다 — npx harness-kit update 로 킷을 올립니다` };
+  if (!script) return { ...EMPTY_OPS, unavailable: `${SCRIPT} 가 없습니다 — npx knots-sync update 로 킷을 올립니다` };
   const r = await python(p.root, p.env, [script, "--root", p.root], 120_000);
   try {
     const data = JSON.parse(r.stdout) as unknown;

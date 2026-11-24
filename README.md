@@ -4,13 +4,17 @@ Claude Code, Codex, Kiro, Cursor 네 하네스에서 같은 규칙과 같은 슬
 
 에이전트마다 규칙 파일을 따로 관리하다 보면 내용이 조금씩 어긋난다. 이 킷은 규칙을 `.agents/rules/`
 한 곳에만 두고 나머지 하네스는 그곳을 가리키게 만든다. 백엔드(JVM·Python·Go)든 프론트엔드(Web·Electron)든
-리포에 그 골격을 한 번에 깔아주는 `hx-bootstrap` 스킬을 배포한다.
+리포에 그 골격을 한 번에 깔아주는 `kns:bootstrap` 스킬을 배포한다.
+
+> **이름: knots-sync(약어 `kns`)** — 2026-11-24 옛 이름 harness-kit 에서 바꿨다. CLI 는 `knots-sync`(별칭 `kns`, 한동안 `harness-kit`),
+> 플러그인 스킬은 `/kns:<명령>`, 프로젝트 스킬은 `kns-<명령>`, 상태 파일은 `.agents/knots-sync.json` · `.lock` 이다. 저장소 이름은 그대로다.
+> 옛 이름으로 깐 리포는 `update` 가 옮긴다 → [이전 안내서 1.1](docs/migration-guide.md#11-이름이-바뀌었다harness-kit--knots-sync).
 
 설치하면 진입점 역할을 하는 `AGENTS.md` 목차, `.agents/rules`의 공통 규칙, SDD 기록 시스템,
 `scripts/verify.sh` 검증 게이트, 네 하네스에서 이름이 같은 슬래시 커맨드 11종, 그리고 기능 문서 생성기(`tools/docs`)가 생긴다.
 
 1.0.8부터 SDD는 SDLC 단계(S1 분석 → S2 기획 → S3 설계 → S4 계획 → S5 구현 → S6 테스트 → S7 문서 반영 → S8 완료)를 따른다.
-이슈마다 `.agents/docs/<slug>-specs/issues/<key>/`에 requirements·design·tasks를 두고, 구현이 끝나면 `/hx-docs`가
+이슈마다 `.agents/docs/<slug>-specs/issues/<key>/`에 requirements·design·tasks를 두고, 구현이 끝나면 `/kns-docs`가
 기능 문서(`docs/features/`)를 갱신한다. 기능 문서는 요구사항·정책·화면·시스템 설계·흐름·시퀀스·DB·캐시·API·시험·목업
 12단계 페이지와 기능별 페이지로 된 정적 사이트이고, API 명세는 Scalar로 보여 준다. → [기능 문서](#기능-문서--toolsdocs)
 
@@ -24,29 +28,29 @@ harness-starter-kit/                        ← 마켓플레이스 루트 · pnp
 ├── packages/                               ← 원본은 여기만 고친다
 │   ├── templates/                          common/ + domains/<domain>/ + stacks/<stack>/ + arch/<변형>/ + optional/<module>/
 │   ├── legacy-setup/<스킬>/                setup.sh · lib/harness-lib.sh · update.sh · add-agent.sh
-│   └── plugin/                             플러그인 매니페스트 · commands/ · skills/hx-*/SKILL.md
+│   └── plugin/                             플러그인 매니페스트 · commands/ · skills/kns-*/SKILL.md
 ├── plugins/
-│   └── harness-kit/                        ← 생성물(손으로 고치지 않는다). node scripts/gen-plugins.mjs 가 만든다
+│   └── knots-sync/                        ← 생성물(손으로 고치지 않는다). node scripts/gen-plugins.mjs 가 만든다
 │       ├── .claude-plugin/plugin.json      Claude Code 플러그인 매니페스트
 │       ├── .codex-plugin/plugin.json       Codex 플러그인 매니페스트
-│       ├── commands/                       /harness-kit:{bootstrap,agent-add,update}
+│       ├── commands/                       /kns:{bootstrap,agent-add,update}
 │       └── skills/
-│           ├── hx-bootstrap/          ← 설치 본체 (모든 스킬이 이것을 호출한다)
+│           ├── bootstrap/          ← 설치 본체 (모든 스킬이 이것을 호출한다)
 │           │   ├── SKILL.md
 │           │   ├── setup.sh                스캐폴딩 실행기 (유일한 설치 로직)
 │           │   ├── manifest.md             무엇이 어디에 설치되나
 │           │   ├── README.md
 │           │   ├── lib/harness-lib.sh      경로 매핑 · 치환 · lock 공용 함수
 │           │   └── templates/              packages/templates 사본
-│           ├── hx-jvm-setup/          ← JVM 전용 진입 (아키텍처 8종 선택)
-│           ├── hx-jvm-hexagonal/      ←   헥사고날 3변형 레시피
-│           ├── hx-jvm-layered/        ←   단일 모듈 레이어드 레시피
-│           ├── hx-jvm-layered-multimodule/  ← 멀티모듈 레이어드 레시피
-│           ├── hx-web-setup/          ← 웹 프론트엔드 진입 (아키텍처 3종 선택)
-│           ├── hx-electron-setup/     ← Electron 데스크톱 진입 (아키텍처 3종 선택)
-│           ├── hx-jira-setup/         ← 이슈 트래커 연동 설정 (선택 모듈을 켠 리포만)
-│           ├── hx-agent-add/          에이전트 배선 추가
-│           └── hx-update/             킷 새 버전 반영
+│           ├── jvm-setup/          ← JVM 전용 진입 (아키텍처 8종 선택)
+│           ├── jvm-hexagonal/      ←   헥사고날 3변형 레시피
+│           ├── jvm-layered/        ←   단일 모듈 레이어드 레시피
+│           ├── jvm-layered-multimodule/  ← 멀티모듈 레이어드 레시피
+│           ├── web-setup/          ← 웹 프론트엔드 진입 (아키텍처 3종 선택)
+│           ├── electron-setup/     ← Electron 데스크톱 진입 (아키텍처 3종 선택)
+│           ├── jira-setup/         ← 이슈 트래커 연동 설정 (선택 모듈을 켠 리포만)
+│           ├── agent-add/          에이전트 배선 추가
+│           └── update/             킷 새 버전 반영
 ├── scripts/                                킷 개발 도구: gen-plugins.mjs
 ├── tests/                                  설치 시험 · 생성물 시험(test_generated.py)
 └── docs/
@@ -65,7 +69,7 @@ harness-starter-kit/                        ← 마켓플레이스 루트 · pnp
 ```bash
 # 로컬 경로로 등록
 /plugin marketplace add /path/to/harness-starter-kit
-/plugin install harness-kit@harness-starter-kit
+/plugin install kns@knots-sync
 
 # GitHub에 올린 뒤에는
 /plugin marketplace add <owner>/harness-starter-kit
@@ -76,7 +80,7 @@ harness-starter-kit/                        ← 마켓플레이스 루트 · pnp
 ```bash
 # 로컬 경로로 등록
 codex plugin marketplace add /path/to/harness-starter-kit
-codex plugin add harness-kit@harness-starter-kit
+codex plugin add kns@knots-sync
 
 # GitHub에 올린 뒤에는
 codex plugin marketplace add <owner>/harness-starter-kit
@@ -98,28 +102,28 @@ bash install-kiro.sh --home=/path/.kiro   # 대상 홈 지정 (환경변수 KIRO
 
 ```text
 ~/.kiro/skills/
-├── hx-bootstrap/     SKILL.md + setup.sh + lib/ + templates/
-├── hx-jvm-setup/     SKILL.md
-├── hx-jvm-hexagonal/ · hx-jvm-layered/ · hx-jvm-layered-multimodule/
-├── hx-web-setup/     SKILL.md
-├── hx-electron-setup/ SKILL.md
-├── hx-jira-setup/    SKILL.md
-├── hx-agent-add/     SKILL.md + add-agent.sh
-└── hx-update/        SKILL.md + update.sh
+├── bootstrap/     SKILL.md + setup.sh + lib/ + templates/
+├── jvm-setup/     SKILL.md
+├── jvm-hexagonal/ · jvm-layered/ · jvm-layered-multimodule/
+├── web-setup/     SKILL.md
+├── electron-setup/ SKILL.md
+├── jira-setup/    SKILL.md
+├── agent-add/     SKILL.md + add-agent.sh
+└── update/        SKILL.md + update.sh
 ```
 
 Kiro 스킬 규약은 `<홈>/skills/<스킬명>/SKILL.md` 다. 프로젝트 레벨(`.kiro/skills/`)과 같은 구조이며,
-**한 겹 더 감싸면(`skills/harness-kit/skills/…`) 인식되지 않는다.** 리포를 통째로 복사해 넣으면 이 함정에 빠진다.
+**한 겹 더 감싸면(`skills/knots-sync/skills/…`) 인식되지 않는다.** 리포를 통째로 복사해 넣으면 이 함정에 빠진다.
 
-세션이 시작될 때 로드되므로 설치 후 `kiro-cli` 를 다시 켜야 `/hx-bootstrap` · `/hx-jvm-setup` 이 잡힌다.
+세션이 시작될 때 로드되므로 설치 후 `kiro-cli` 를 다시 켜야 `/kns:bootstrap` · `/kns:jvm-setup` 이 잡힌다.
 
 스크립트를 직접 불러도 된다. 리포 없이 설치본만으로 스캐폴딩까지 끝난다.
 
 ```bash
-bash ~/.kiro/skills/hx-bootstrap/setup.sh --agents=kiro --dry-run <대상_리포>
+bash ~/.kiro/skills/bootstrap/setup.sh --agents=kiro --dry-run <대상_리포>
 ```
 
-설치 기록은 `~/.kiro/.harness-kit-manifest.json` 에 남는다.
+설치 기록은 `~/.kiro/.knots-sync-manifest.json` 에 남는다.
 
 ```json
 {
@@ -127,7 +131,7 @@ bash ~/.kiro/skills/hx-bootstrap/setup.sh --agents=kiro --dry-run <대상_리포
   "kitPath": "/path/to/harness-starter-kit",
   "agent": "kiro",
   "installedAt": "2026-01-01",
-  "managedDirs": ["skills/hx-bootstrap", "…"]
+  "managedDirs": ["skills/bootstrap", "…"]
 }
 ```
 
@@ -135,52 +139,52 @@ bash ~/.kiro/skills/hx-bootstrap/setup.sh --agents=kiro --dry-run <대상_리포
 건드리지 않는다. 킷을 갱신했으면 `--force` 로 다시 깐다.
 
 이 스크립트가 까는 것은 **킷 스킬**(리포에 골격을 깔아주는 쪽)이다. 대상 리포의 Kiro 배선
-(`.kiro/steering` · `.kiro/skills` · `.agents/rules`)은 `hx-bootstrap` 이 깐다:
+(`.kiro/steering` · `.kiro/skills` · `.agents/rules`)은 `kns:bootstrap` 이 깐다:
 
 ```bash
-bash plugins/harness-kit/skills/hx-bootstrap/setup.sh --agents=kiro <대상_리포>
+bash plugins/kns/skills/bootstrap/setup.sh --agents=kiro <대상_리포>
 ```
 
 ### 설치 확인
 
-Claude Code는 `/plugin`, Codex는 `codex plugin list`, Kiro는 `~/.kiro/skills/hx-*` 확인 후 `/hx-` 로 부른다.
+Claude Code는 `/plugin`, Codex는 `codex plugin list`, Kiro는 `~/.kiro/skills/kns-*` 확인 후 `/kns-` 로 부른다.
 플러그인과 스킬 목록은 세션이 시작될 때 로드되기 때문에, 설치 직후에는 재시작해야 보인다.
 
 ## 스킬 사용법
 
-이름은 전부 `hx-` 로 시작하지만 **사는 곳이 다른 두 층**이 있다. 먼저 구분하고 넘어간다.
+이름은 전부 `kns-` 로 시작하지만 **사는 곳이 다른 두 층**이 있다. 먼저 구분하고 넘어간다.
 
 | 층 | 스킬 | 사는 곳 | 언제 쓰나 |
 |---|---|---|---|
-| 킷 스킬 (10종) | `hx-bootstrap` · `hx-jvm-setup` · `hx-jvm-hexagonal` · `hx-jvm-layered` · `hx-jvm-layered-multimodule` · `hx-web-setup` · `hx-electron-setup` · `hx-jira-setup` · `hx-agent-add` · `hx-update` | 플러그인 — `harness-kit:` 네임스페이스가 붙는다 (Kiro는 `install-kiro.sh` 가 깐 `~/.kiro/skills/hx-*`) | 리포에 골격을 깔거나 유지할 때 |
-| 프로젝트 스킬 (11종) | `hx-specify` · `hx-clarify` · `hx-checklist` · `hx-plan` · `hx-tasks` · `hx-analyze` · `hx-implement` · `hx-docs` · `hx-converge` · `hx-harness` · `hx-maintain` | 대상 리포 — `hx-bootstrap` 이 설치해준다 | 깔린 리포에서 개발할 때, 매일 |
+| 킷 스킬 (10종) | `kns:bootstrap` · `kns:jvm-setup` · `kns:jvm-hexagonal` · `kns:jvm-layered` · `kns:jvm-layered-multimodule` · `kns:web-setup` · `kns:electron-setup` · `kns:jira-setup` · `kns:agent-add` · `kns:update` | 플러그인 — `kns:` 네임스페이스가 붙는다 (Kiro는 `install-kiro.sh` 가 깐 `~/.kiro/skills/kns-*`) | 리포에 골격을 깔거나 유지할 때 |
+| 프로젝트 스킬 (11종) | `kns-specify` · `kns-clarify` · `kns-checklist` · `kns-plan` · `kns-tasks` · `kns-analyze` · `kns-implement` · `kns-docs` · `kns-converge` · `kns-harness` · `kns-maintain` | 대상 리포 — `kns:bootstrap` 이 설치해준다 | 깔린 리포에서 개발할 때, 매일 |
 
-플러그인 스킬은 `harness-kit:` 네임스페이스를 갖기 때문에 프로젝트 스킬과 **구조적으로 충돌하지 않는다**.
-두 층의 이름도 겹치는 것이 하나도 없어서 짧은 형태(`/hx-jvm-setup`)로도 안전하게 부를 수 있다.
+플러그인 스킬은 `kns:` 네임스페이스를 갖기 때문에 프로젝트 스킬과 **구조적으로 충돌하지 않는다**.
+두 층의 이름도 겹치는 것이 하나도 없어서 짧은 형태(`/kns:jvm-setup`)로도 안전하게 부를 수 있다.
 
-### 킷 스킬 — `hx-bootstrap`
+### 킷 스킬 — `kns:bootstrap`
 
 대상 리포에 `AGENTS.md`, `.agents/rules`, SDD 기록 시스템, `scripts/verify.sh`,
-`hx-*` 커맨드 11종, 기능 문서 생성기(`tools/docs`)와 원고 골격(`docs/features/_src`)을 한 번에 깐다.
+`kns-*` 커맨드 11종, 기능 문서 생성기(`tools/docs`)와 원고 골격(`docs/features/_src`)을 한 번에 깐다.
 
 Claude Code에서는 스킬을 슬래시로 바로 부른다. 짧은 형태는 같은 이름의 다른 커맨드가 없을 때 동작한다.
 
 ```
-/harness-kit:hx-bootstrap                       현재 디렉터리에 설치(스택·변형은 판단 후 질문)
-/hx-bootstrap ~/work/api --dry-run              미리보기 (짧은 형태)
-/hx-jvm-setup                                   JVM 전용 진입 — 아키텍처 8종 선택
-/hx-web-setup                                   웹 프론트엔드 진입 — 아키텍처 3종 선택
-/hx-electron-setup                              Electron 데스크톱 진입 — 아키텍처 3종 선택
+/kns:bootstrap                       현재 디렉터리에 설치(스택·변형은 판단 후 질문)
+/kns:bootstrap ~/work/api --dry-run              미리보기 (짧은 형태)
+/kns:jvm-setup                                   JVM 전용 진입 — 아키텍처 8종 선택
+/kns:web-setup                                   웹 프론트엔드 진입 — 아키텍처 3종 선택
+/kns:electron-setup                              Electron 데스크톱 진입 — 아키텍처 3종 선택
 ```
 
-`/harness-kit:bootstrap` · `/harness-kit:agent-add` · `/harness-kit:update` 세 커맨드도 그대로 남아 있다.
+`/kns:bootstrap` · `/kns:agent-add` · `/kns:update` 세 커맨드도 그대로 남아 있다.
 스킬을 가리키는 얇은 트리거라 어느 쪽으로 불러도 결과는 같다.
 
-Codex는 플러그인 매니페스트에 커맨드 필드가 없어서 스킬로 부른다(`/skills` 목록 또는 `$hx-bootstrap`).
+Codex는 플러그인 매니페스트에 커맨드 필드가 없어서 스킬로 부른다(`/skills` 목록 또는 `$kns:bootstrap`).
 어느 하네스든 자연어로도 걸린다.
 
 ```
-hx-bootstrap 스킬로 이 리포에 하네스 골격을 세팅해줘
+kns:bootstrap 스킬로 이 리포에 하네스 골격을 세팅해줘
 ```
 
 인자는 생략해도 된다. 에이전트가 대상 리포를 보고 판단하되, 애매하면 임의로 정하지 않고 묻는다.
@@ -197,14 +201,14 @@ hx-bootstrap 스킬로 이 리포에 하네스 골격을 세팅해줘
 플러그인 설치 없이 직접 실행하려면 스킬 폴더 절대경로를 `SKILL_DIR`로 잡는다.
 
 ```bash
-SKILL_DIR=~/.claude/plugins/.../skills/hx-bootstrap   # 또는 ~/.codex/plugins/...
+SKILL_DIR=~/.claude/plugins/.../skills/bootstrap   # 또는 ~/.codex/plugins/...
 bash "$SKILL_DIR/setup.sh" --dry-run --stack=python --arch=modular /path/to/project
 ```
 
 설치되는 파일 수는 **스택군과 고른 에이전트**에 달렸다. 규칙·SDD·게이트(core)는 항상 깔고,
 에이전트 배선은 쓰는 것만 얹는다. `.claude/`·`.codex/`·`.cursor/`·`.kiro/` 를 전부 만들지 않는다.
-스택군 × 하네스별 파일 수의 원본은 [hx-bootstrap manifest](plugins/harness-kit/skills/hx-bootstrap/manifest.md)의
-「에이전트 선택」 · 「선택 모듈」 표다(시험이 템플릿과 맞춘다). 고른 값으로 정확한 수는 `harness-kit plan --json` 의 `counts` 가 낸다.
+스택군 × 하네스별 파일 수의 원본은 [kns:bootstrap manifest](plugins/kns/skills/bootstrap/manifest.md)의
+「에이전트 선택」 · 「선택 모듈」 표다(시험이 템플릿과 맞춘다). 고른 값으로 정확한 수는 `knots-sync plan --json` 의 `counts` 가 낸다.
 
 프론트엔드가 많은 건 `web`·`electron` 이 공유하는 `frontend` 도메인 규칙(디자인 시스템·접근성·
 UI 상태·성능) 때문이다. 선택 모듈(`jira-workflow` · `multi-harness`)은 여기에 더해진다.
@@ -216,52 +220,52 @@ bash "$SKILL_DIR/setup.sh" --stack=python --arch=modular --list-agents /path/to/
 # 감지 결과와 에이전트별 파일 수를 보여준다(설치하지 않는다)
 ```
 
-나중에 다른 에이전트를 붙이거나(`hx-agent-add`) 킷 새 버전을 반영하려면(`hx-update`)
-설치 때 남는 `.agents/harness-kit.json`·`.agents/harness-kit.lock` 을 쓴다. 둘 다 커밋한다.
+나중에 다른 에이전트를 붙이거나(`kns:agent-add`) 킷 새 버전을 반영하려면(`kns:update`)
+설치 때 남는 `.agents/knots-sync.json`·`.agents/knots-sync.lock` 을 쓴다. 둘 다 커밋한다.
 
 처음이라면 [시작 가이드](docs/guides/01-getting-started.md)를 순서대로 따라가면 된다.
 아키텍처를 아직 못 골랐으면 [아키텍처 선택 가이드](docs/guides/02-choosing-architecture.md)의 결정 트리를,
 JVM이면 [JVM 실전 레시피](docs/guides/03-jvm-architecture-recipes.md)를 본다.
 
 스택·변형 목록과 파일→경로 맵은
-[스킬 README](plugins/harness-kit/skills/hx-bootstrap/README.md)와
-[manifest.md](plugins/harness-kit/skills/hx-bootstrap/manifest.md)에 정리해 두었다.
+[스킬 README](plugins/kns/skills/bootstrap/README.md)와
+[manifest.md](plugins/kns/skills/bootstrap/manifest.md)에 정리해 두었다.
 
-### 프로젝트 스킬 — `hx-*` 11종
+### 프로젝트 스킬 — `kns-*` 11종
 
-bootstrap이 끝나면 커맨드 11종이 `hx-` 접두사로 깔린다. 네 하네스에서 이름이 같다.
+bootstrap이 끝나면 커맨드 11종이 `kns-` 접두사로 깔린다. 네 하네스에서 이름이 같다.
 
 ```
-S1·S2 /hx-specify → (/hx-clarify · /hx-checklist) → S3 /hx-plan → S4 /hx-tasks → (/hx-analyze)
-      → S5·S6 /hx-implement → S7 /hx-docs → S8 완료(사용자 승인) → (/hx-converge)
+S1·S2 /kns-specify → (/kns-clarify · /kns-checklist) → S3 /kns-plan → S4 /kns-tasks → (/kns-analyze)
+      → S5·S6 /kns-implement → S7 /kns-docs → S8 완료(사용자 승인) → (/kns-converge)
 ```
 
-괄호 안은 선택 단계다. 이와 별개로 `/hx-harness`가 작업 시작 시 규칙 전체를 로드하고,
-`/hx-maintain`이 새 코드·리팩터링·리뷰에 코드 유지보수 기준(`.agents/rules/code-maintenance.md`)을 적용한다.
+괄호 안은 선택 단계다. 이와 별개로 `/kns-harness`가 작업 시작 시 규칙 전체를 로드하고,
+`/kns-maintain`이 새 코드·리팩터링·리뷰에 코드 유지보수 기준(`.agents/rules/code-maintenance.md`)을 적용한다.
 
 | 단계 | 커맨드 | 남는 것 |
 |---|---|---|
-| S1 분석 | `/hx-specify` | requirements — User Story(P1/P2/P3) · 요구(R#.#) · Success Criteria |
-| S2 기획 | `/hx-specify` | requirements — 정책 표(P-#) · 화면 표(없으면 "화면 없음") · 갱신할 기능 문서 ID |
-| S3 설계 | `/hx-plan` | design — 시퀀스 · 순서도(§4.3) · 상태 전이(§4.4) · API · 테이블 · 쿼리→인덱스(§7.1) · 캐시 키(§7.2) · 동시성(§7.3) |
-| S4 계획 | `/hx-tasks` | `tasks/active.md` — Polish 에 문서 반영 작업과 문서 검사 명령 |
-| S5 구현 · S6 테스트 | `/hx-implement` | 코드 · 시험 · `[VERIFICATION]` 기록 |
-| S7 문서 반영 | `/hx-docs` | `docs/features/_src` 원고 · 생성 HTML · `feature_docs.py check` 통과 |
+| S1 분석 | `/kns-specify` | requirements — User Story(P1/P2/P3) · 요구(R#.#) · Success Criteria |
+| S2 기획 | `/kns-specify` | requirements — 정책 표(P-#) · 화면 표(없으면 "화면 없음") · 갱신할 기능 문서 ID |
+| S3 설계 | `/kns-plan` | design — 시퀀스 · 순서도(§4.3) · 상태 전이(§4.4) · API · 테이블 · 쿼리→인덱스(§7.1) · 캐시 키(§7.2) · 동시성(§7.3) |
+| S4 계획 | `/kns-tasks` | `tasks/active.md` — Polish 에 문서 반영 작업과 문서 검사 명령 |
+| S5 구현 · S6 테스트 | `/kns-implement` | 코드 · 시험 · `[VERIFICATION]` 기록 |
+| S7 문서 반영 | `/kns-docs` | `docs/features/_src` 원고 · 생성 HTML · `feature_docs.py check` 통과 |
 | S8 완료 | 사용자 승인 | `tasks/check.md` → 승인 뒤 `tasks/completed.md` |
 
 단계마다 사용자 승인을 받고 넘어간다. 원본은 `.agents/rules/sdd-workflow.md`의 「SDLC 단계」 절이다.
 
 | 하네스 | 설치 경로 | 호출 |
 |---|---|---|
-| Claude Code | `.claude/skills/hx-*/SKILL.md`(복사본) | `/hx-specify` |
-| Cursor | `.cursor/commands/hx-*.md`(생성물) | `/hx-specify` |
-| Kiro (IDE) | `.kiro/steering/hx-*.md` (`inclusion: manual`, 생성물) | 슬래시 메뉴에서 선택 |
-| Kiro (CLI) | `.kiro/skills/hx-*/SKILL.md`(복사본) | `/hx-specify` |
-| Codex | `.agents/skills/hx-*/SKILL.md` | `$hx-specify` (목록은 `/skills`) |
+| Claude Code | `.claude/skills/kns-*/SKILL.md`(복사본) | `/kns-specify` |
+| Cursor | `.cursor/commands/kns-*.md`(생성물) | `/kns-specify` |
+| Kiro (IDE) | `.kiro/steering/kns-*.md` (`inclusion: manual`, 생성물) | 슬래시 메뉴에서 선택 |
+| Kiro (CLI) | `.kiro/skills/kns-*/SKILL.md`(복사본) | `/kns-specify` |
+| Codex | `.agents/skills/kns-*/SKILL.md` | `$kns-specify` (목록은 `/skills`) |
 
-커맨드 본문은 `.agents/skills/hx-*/SKILL.md` 한 곳에 있고(스킬이 `.agents/rules/sdd-workflow.md`의 해당 절을 읽는다),
+커맨드 본문은 `.agents/skills/kns-*/SKILL.md` 한 곳에 있고(스킬이 `.agents/rules/sdd-workflow.md`의 해당 절을 읽는다),
 하네스 폴더에는 그 원본의 복사본 · 생성물이 있다(링크 · 포인터 파일이 아니다).
-`hx-` 접두사를 붙인 건 `/plan`이나 `/analyze` 같은 흔한 이름이 다른 플러그인과 부딪히는 걸 막기 위해서다.
+`kns-` 접두사를 붙인 건 `/plan`이나 `/analyze` 같은 흔한 이름이 다른 플러그인과 부딪히는 걸 막기 위해서다.
 
 > Codex 경로에 주의한다. 프로젝트 로컬 `.codex/prompts/`는 탐색 경로가 아니다(유저 홈 전용이고
 > custom prompts 자체가 deprecated). 그래서 Codex 공식 프로젝트 스킬 경로인 `.agents/skills/`를 쓴다.
@@ -272,43 +276,43 @@ S1·S2 /hx-specify → (/hx-clarify · /hx-checklist) → S3 /hx-plan → S4 /hx
 
 | 스킬 | 단계 | 하는 일 | 쓰기 | 만들어지는 것 |
 |---|---|---|---|---|
-| [`hx-bootstrap`](#hx-bootstrap--하네스-골격-설치) | 설치 | 리포에 하네스 골격 스캐폴딩(5스택 공통 진입) | O | core + 고른 에이전트 |
-| [`hx-jvm-setup`](#hx-jvm-setup--jvm-전용-진입) | 설치 | JVM 전용 진입 — 아키텍처 8종 선택 + 언어(Kotlin/Java) 확정 | O | 위와 동일(설치는 `setup.sh` 위임) |
-| `hx-jvm-hexagonal` | 설치 | 헥사고날 3변형 선택 + 모듈 등록·포트/어댑터·구조 테스트 레시피 | O | 위와 동일 |
-| `hx-jvm-layered` | 설치 | 단일 모듈 레이어드 + ArchUnit 구조 테스트 레시피 | O | 위와 동일 |
-| `hx-jvm-layered-multimodule` | 설치 | 멀티모듈 레이어드 + 엔티티 노출 범위 결정 레시피 | O | 위와 동일 |
-| [`hx-web-setup`](#hx-web-setup--hx-electron-setup--프론트엔드-진입) | 설치 | 웹 전용 진입 — 아키텍처 3종 선택 + ESLint 경계 등록 안내 | O | 위와 동일 |
-| [`hx-electron-setup`](#hx-web-setup--hx-electron-setup--프론트엔드-진입) | 설치 | Electron 전용 진입 — 프로세스 경계 + 아키텍처 3종 선택 | O | 위와 동일 |
-| `hx-agent-add` | 설치 | 에이전트 배선을 나중에 추가(cursor·kiro…) | O | 해당 에이전트 파일만 |
-| `hx-update` | 유지 | 킷 새 버전을 기존 리포에 반영 | O | 변경분 · 충돌은 `.new` |
-| [`/hx-harness`](#hx-harness--하네스-컨텍스트-로드) | 상시 | 규칙·가드레일 컨텍스트 로드 | X | — |
-| [`/hx-maintain`](#hx-maintain--코드-유지보수-기준) | 상시 | 새 코드·리팩터링·리뷰에 유지보수 기준 적용 | O | 코드 · 시험 |
-| [`/hx-specify`](#hx-specify--s1s2-요구사항정책화면) | S1·S2 | 무엇을/왜 + 정책·화면 → requirements | O | `issues/<key>/requirements.md` |
-| [`/hx-clarify`](#hx-clarify--모호성-해소선택) | S2 | 모호성 ≤5문답으로 해소 | O | requirements의 `## Clarifications` |
-| [`/hx-checklist`](#hx-checklist--스펙-품질-게이트선택) | S2 | 요구사항 문장 품질 판정 | O | `issues/<key>/checklists/<도메인>.md` |
-| [`/hx-plan`](#hx-plan--s3-설계) | S3 | 어떻게 → design + 헌법 검사 | O | `issues/<key>/design.md` |
-| [`/hx-tasks`](#hx-tasks--s4-작업-분해) | S4 | design → 실행 가능한 작업 목록 | O | `issues/<key>/tasks/active.md` |
-| [`/hx-analyze`](#hx-analyze--교차-정합성-검사선택) | S4 | 세 문서 교차 정합성·커버리지 | X | 읽기 전용 리포트 |
-| [`/hx-implement`](#hx-implement--s5s6-구현과-시험) | S5·S6 | Phase 순 구현 + 완료 게이트 | O | 코드 + `tasks/check.md` |
-| [`/hx-docs`](#hx-docs--s7-문서-반영) | S7 | 기능 문서 원고 갱신 · 생성 · 검사 | O | `docs/features/_src/features/<ID>.md` · HTML |
-| [`/hx-converge`](#hx-converge--잔여-작업-회수선택) | 회수 | 잔여·후속 작업 회수 | O(append-only) | `## Phase N: Convergence` |
+| [`kns:bootstrap`](#kns:bootstrap--하네스-골격-설치) | 설치 | 리포에 하네스 골격 스캐폴딩(5스택 공통 진입) | O | core + 고른 에이전트 |
+| [`kns:jvm-setup`](#kns:jvm-setup--jvm-전용-진입) | 설치 | JVM 전용 진입 — 아키텍처 8종 선택 + 언어(Kotlin/Java) 확정 | O | 위와 동일(설치는 `setup.sh` 위임) |
+| `kns:jvm-hexagonal` | 설치 | 헥사고날 3변형 선택 + 모듈 등록·포트/어댑터·구조 테스트 레시피 | O | 위와 동일 |
+| `kns:jvm-layered` | 설치 | 단일 모듈 레이어드 + ArchUnit 구조 테스트 레시피 | O | 위와 동일 |
+| `kns:jvm-layered-multimodule` | 설치 | 멀티모듈 레이어드 + 엔티티 노출 범위 결정 레시피 | O | 위와 동일 |
+| [`kns:web-setup`](#kns:web-setup--kns-electron-setup--프론트엔드-진입) | 설치 | 웹 전용 진입 — 아키텍처 3종 선택 + ESLint 경계 등록 안내 | O | 위와 동일 |
+| [`kns:electron-setup`](#kns:web-setup--kns-electron-setup--프론트엔드-진입) | 설치 | Electron 전용 진입 — 프로세스 경계 + 아키텍처 3종 선택 | O | 위와 동일 |
+| `kns:agent-add` | 설치 | 에이전트 배선을 나중에 추가(cursor·kiro…) | O | 해당 에이전트 파일만 |
+| `kns:update` | 유지 | 킷 새 버전을 기존 리포에 반영 | O | 변경분 · 충돌은 `.new` |
+| [`/kns-harness`](#kns-harness--하네스-컨텍스트-로드) | 상시 | 규칙·가드레일 컨텍스트 로드 | X | — |
+| [`/kns-maintain`](#kns-maintain--코드-유지보수-기준) | 상시 | 새 코드·리팩터링·리뷰에 유지보수 기준 적용 | O | 코드 · 시험 |
+| [`/kns-specify`](#kns-specify--s1s2-요구사항정책화면) | S1·S2 | 무엇을/왜 + 정책·화면 → requirements | O | `issues/<key>/requirements.md` |
+| [`/kns-clarify`](#kns-clarify--모호성-해소선택) | S2 | 모호성 ≤5문답으로 해소 | O | requirements의 `## Clarifications` |
+| [`/kns-checklist`](#kns-checklist--스펙-품질-게이트선택) | S2 | 요구사항 문장 품질 판정 | O | `issues/<key>/checklists/<도메인>.md` |
+| [`/kns-plan`](#kns-plan--s3-설계) | S3 | 어떻게 → design + 헌법 검사 | O | `issues/<key>/design.md` |
+| [`/kns-tasks`](#kns-tasks--s4-작업-분해) | S4 | design → 실행 가능한 작업 목록 | O | `issues/<key>/tasks/active.md` |
+| [`/kns-analyze`](#kns-analyze--교차-정합성-검사선택) | S4 | 세 문서 교차 정합성·커버리지 | X | 읽기 전용 리포트 |
+| [`/kns-implement`](#kns-implement--s5s6-구현과-시험) | S5·S6 | Phase 순 구현 + 완료 게이트 | O | 코드 + `tasks/check.md` |
+| [`/kns-docs`](#kns-docs--s7-문서-반영) | S7 | 기능 문서 원고 갱신 · 생성 · 검사 | O | `docs/features/_src/features/<ID>.md` · HTML |
+| [`/kns-converge`](#kns-converge--잔여-작업-회수선택) | 회수 | 잔여·후속 작업 회수 | O(append-only) | `## Phase N: Convergence` |
 
 ---
 
-### `hx-bootstrap` — 하네스 골격 설치
+### `kns:bootstrap` — 하네스 골격 설치
 
 스택(`jvm`·`python`·`go`·`web`·`electron`)과 아키텍처 변형을 정한 뒤 `setup.sh`로 골격을 깐다.
 
 깔리는 것은 진입점 목차(`AGENTS.md`/`CLAUDE.md`), 네 하네스가 공유하는 공통 규칙(`.agents/rules`),
 하네스 폴더의 규칙 · 스킬 · 역할 복사본 · 생성물(`paths` 자동 로드), SDD 기록 시스템(`.agents/docs`), 검증 게이트(`scripts/verify.sh`),
-네 하네스 분의 `hx-*` 커맨드 11종, 그리고 기능 문서 생성기와 원고 골격이다.
+네 하네스 분의 `kns-*` 커맨드 11종, 그리고 기능 문서 생성기와 원고 골격이다.
 
-설치가 끝나면 스택×변형별 후속 작업이 출력된다. 그다음 `/hx-harness`로 컨텍스트를 로드하고
-`/hx-specify`부터 시작하면 된다.
+설치가 끝나면 스택×변형별 후속 작업이 출력된다. 그다음 `/kns-harness`로 컨텍스트를 로드하고
+`/kns-specify`부터 시작하면 된다.
 
-### `hx-jvm-setup` — JVM 전용 진입
+### `kns:jvm-setup` — JVM 전용 진입
 
-JVM(Kotlin/Java + Spring)만 다루는 진입 스킬이다. `hx-bootstrap`이 3스택 공통이라 아키텍처 선택 안내가
+JVM(Kotlin/Java + Spring)만 다루는 진입 스킬이다. `kns:bootstrap`이 3스택 공통이라 아키텍처 선택 안내가
 표 한 장으로 끝나는 데 비해, 이쪽은 **고르는 순서로 묻고** 언어까지 확정한 뒤 같은 `setup.sh`를 호출한다.
 
 묻는 것은 셋이다. 배포 단위가 하나인가 여럿인가, 도메인 규칙이 복잡한가, 무엇을 기준으로 나눌 것인가.
@@ -325,14 +329,14 @@ JVM(Kotlin/Java + Spring)만 다루는 진입 스킬이다. `hx-bootstrap`이 3�
 언어를 `--lang=kotlin|java`로 확정하면 빌드 DSL(Kotlin DSL / Groovy DSL)과 구조 테스트 도구(Konsist / ArchUnit)
 안내가 그에 맞춰 출력된다. 아직 못 정했으면 생략해도 된다.
 
-아키텍처가 정해지면 자식 스킬이 이어받는다 — `hx-jvm-hexagonal`(3변형 선택·`settings.gradle` 등록·포트/어댑터·
-구조 테스트) · `hx-jvm-layered`(패키지 생성·ArchUnit) · `hx-jvm-layered-multimodule`(모듈 등록·엔티티
+아키텍처가 정해지면 자식 스킬이 이어받는다 — `kns:jvm-hexagonal`(3변형 선택·`settings.gradle` 등록·포트/어댑터·
+구조 테스트) · `kns:jvm-layered`(패키지 생성·ArchUnit) · `kns:jvm-layered-multimodule`(모듈 등록·엔티티
 노출 범위 `api()` vs `implementation()` 결정). 자식 스킬만 단독으로 불러도 된다.
 
 **이 스킬들이 만드는 것은 규칙·문서·검증 게이트다.** `build.gradle.kts`와 소스 코드는 만들지 않는다 —
 무엇을 손으로 세워야 하는지를 순서와 함정까지 적어 줄 뿐이다.
 
-### `hx-web-setup` · `hx-electron-setup` — 프론트엔드 진입
+### `kns:web-setup` · `kns:electron-setup` — 프론트엔드 진입
 
 두 스킬은 `frontend` 도메인 규칙을 공유한다. 디자인 시스템(토큰이 원본), 접근성(시맨틱·키보드·대비·
 `prefers-reduced-motion`), UI 상태(서버/클라이언트/URL/폼 **4종을 섞지 않는다**), 성능(예산을 먼저 정하고
@@ -357,7 +361,7 @@ Electron 은 아키텍처가 폴더가 아니라 **권한 경계**에서 시작�
 `scripts/verify.sh` 가 `fast` 레벨에서(즉 에이전트 턴마다) grep 으로 막는다. `ipcRenderer` 를 통째로
 `window` 에 붙이는 것도 같은 가드가 잡는다.
 
-### `/hx-harness` — 하네스 컨텍스트 로드
+### `/kns-harness` — 하네스 컨텍스트 로드
 
 작업을 시작하기 전에 규칙을 먼저 읽히는 커맨드다. SDD 단계가 아니라 상시 진입점이다.
 
@@ -369,16 +373,16 @@ Electron 은 아키텍처가 폴더가 아니라 **권한 경계**에서 시작�
 이슈 폴더의 `tasks/active.md`에 계획을 남기기, 변경은 `scripts/verify.sh`(기본 changed)로 검증하기.
 동시에 여러 세션이 일하면 `scripts/session-coordination.py`로 파일 점유를 등록하고 공지를 확인한다.
 
-### `/hx-maintain` — 코드 유지보수 기준
+### `/kns-maintain` — 코드 유지보수 기준
 
 새 코드·버그 수정·동작 보존 리팩터링·리뷰에 `.agents/rules/code-maintenance.md`를 적용한다.
 패키지 책임, 읽히는 이름, 의미 있는 조건 함수(predicate), adapter/mapper 분리, 함수 50줄 상한,
 OpenAPI 문서와 계약 테스트를 함께 본다. 신규·버그는 실패하는 시험부터, 리팩터링은 현재 동작을 잡는 시험부터 쓴다.
 `python3 scripts/check-maintenance.py --files <파일>`이 후보를 경고로 알려 준다(실패 판정이 아니다).
 
-`/hx-harness <실제 요청>` 형태로 부르면 규칙을 읽은 뒤 이어서 그 요청을 수행한다.
+`/kns-harness <실제 요청>` 형태로 부르면 규칙을 읽은 뒤 이어서 그 요청을 수행한다.
 
-### `/hx-specify` — S1·S2: 요구사항·정책·화면
+### `/kns-specify` — S1·S2: 요구사항·정책·화면
 
 무엇을, 왜 만드는지와 지켜야 할 정책·화면을 적는 단계다. 스택이나 API, 코드 이야기는 여기 쓰지 않는다.
 
@@ -386,7 +390,7 @@ OpenAPI 문서와 계약 테스트를 함께 본다. 신규·버그는 실패하
 `.agents/docs/<slug>-specs/issues/<N>-<type>-<feature>/requirements.md` **하나만** 스캐폴딩되고
 제품 `index.md`에 등록된다(`--type=feat|fix|refactor|…`, 기본 feat). 그다음 requirements를 채운다.
 
-design·tasks는 이 시점에 만들지 않는다. 각각 `/hx-plan`·`/hx-tasks`가 그때 만든다. 빈 문서를 미리 깔면
+design·tasks는 이 시점에 만들지 않는다. 각각 `/kns-plan`·`/kns-tasks`가 그때 만든다. 빈 문서를 미리 깔면
 보드(파일 위치로 상태를 계산한다)가 곧장 🔨 구현으로 뛰고 단계 게이트도 항상 통과해버리기 때문이다.
 세 문서를 한 번에 만드는 `--all`은 승인 게이트를 건너뛰므로 지원하지 않는다. requirements·design은 상태가 정확히 `approved`여야 다음 문서를 만든다.
 
@@ -395,19 +399,19 @@ design·tasks는 이 시점에 만들지 않는다. 각각 `/hx-plan`·`/hx-task
 그리고 S2 기획인 정책 표(P-#: 규칙·근거·위반 시 동작)와 화면 표(화면이 없으면 "화면 없음"), 갱신할 기능 문서 ID다.
 
 품질 자체검증을 최대 3회 돌린 뒤 상태를 `in-review`로 바꾸고 사용자 승인을 받는다.
-그다음은 `/hx-clarify` 또는 `/hx-plan`이다.
+그다음은 `/kns-clarify` 또는 `/kns-plan`이다.
 
-### `/hx-clarify` — 모호성 해소(선택)
+### `/kns-clarify` — 모호성 해소(선택)
 
-requirements에 남은 모호함을 질문으로 걷어낸다. `/hx-plan` 전에 돌리는 걸 권장한다.
+requirements에 남은 모호함을 질문으로 걷어낸다. `/kns-plan` 전에 돌리는 걸 권장한다.
 
 분류축을 따라 스캔한 뒤 한 번에 하나씩, 최대 5개를 묻는다. 객관식 2~5안이나 5단어 이하로 답할 수 있게
 만들고 권장안을 먼저 제시한다. 답을 받을 때마다 `## Clarifications`에 오늘 날짜로 불릿을 추가하고
 관련 섹션을 바로 갱신한다.
 
-영향이 큰데 해소하지 못한 항목은 Deferred로 남긴다. 나중에 `/hx-converge`가 이걸 회수 근거로 쓴다.
+영향이 큰데 해소하지 못한 항목은 Deferred로 남긴다. 나중에 `/kns-converge`가 이걸 회수 근거로 쓴다.
 
-### `/hx-checklist` — 스펙 품질 게이트(선택)
+### `/kns-checklist` — 스펙 품질 게이트(선택)
 
 요구사항의 유닛테스트에 해당한다. 기능이 아니라 스펙 문장 자체의 품질을 본다. 읽기 전용이라
 스펙을 고치지 않는다.
@@ -417,12 +421,12 @@ requirements에 남은 모호함을 질문으로 걷어낸다. `/hx-plan` 전에
 근거는 스펙에서 인용하고, 확인할 수 없으면 `[NEEDS CLARIFICATION]`으로 둔다.
 도메인 초점(security·api·data·ux)을 주면 해당 항목이 추가된다.
 
-결론은 통과, 조건부, 보류 셋 중 하나다. 핵심 항목이 FAIL이면 `/hx-clarify`나 `/hx-specify`로
+결론은 통과, 조건부, 보류 셋 중 하나다. 핵심 항목이 FAIL이면 `/kns-clarify`나 `/kns-specify`로
 되돌린 뒤 다시 돌린다.
 
-한 문서의 품질을 보는 게 `/hx-checklist`, 세 문서 사이의 정합성을 보는 게 `/hx-analyze`다.
+한 문서의 품질을 보는 게 `/kns-checklist`, 세 문서 사이의 정합성을 보는 게 `/kns-analyze`다.
 
-### `/hx-plan` — S3: 설계
+### `/kns-plan` — S3: 설계
 
 requirements가 승인되어야 시작할 수 있다(`scripts/check-sdd-prerequisites.sh <slug> <feature> --stage design`).
 
@@ -439,10 +443,10 @@ design의 Complexity/대안 섹션에 정당화를 적어야만 진행할 수 �
 S3에서는 순서도(§4.3)·상태 전이(§4.4)·쿼리→인덱스 표(§7.1)·캐시 키와 무효화(§7.2)·동시성(잠금·멱등, §7.3)도 채운다.
 이 그림과 표가 S7에서 기능 문서로 옮겨진다.
 
-`NEEDS CLARIFICATION`이 남아 있으면 중단하고 `/hx-clarify`로 간다.
-사용자 승인을 받으면 `/hx-tasks`로 넘어간다.
+`NEEDS CLARIFICATION`이 남아 있으면 중단하고 `/kns-clarify`로 간다.
+사용자 승인을 받으면 `/kns-tasks`로 넘어간다.
 
-### `/hx-tasks` — S4: 작업 분해
+### `/kns-tasks` — S4: 작업 분해
 
 design이 승인되어야 시작한다(`--stage tasks`).
 
@@ -454,11 +458,11 @@ design이 없으면 스크립트가 거부한다. 이슈 폴더에 `tasks/active
 
 Phase는 Setup → Foundational(차단 선행) → User Story별(P 순) → Polish 순으로 구성하고,
 각 작업에 요구사항 ID와 설계 § 를 표기한다. 의존 그래프, 병렬 실행 예시, 구현 전략(핵심 우선 /
-점진 인도)도 함께 넣는다. Polish에는 문서 반영(`/hx-docs`) 작업과 문서 검사 명령을 둔다. 상태는 `active`다.
+점진 인도)도 함께 넣는다. Polish에는 문서 반영(`/kns-docs`) 작업과 문서 검사 명령을 둔다. 상태는 `active`다.
 
-승인 후 `/hx-analyze`나 `/hx-implement`로 간다.
+승인 후 `/kns-analyze`나 `/kns-implement`로 간다.
 
-### `/hx-analyze` — 교차 정합성 검사(선택)
+### `/kns-analyze` — 교차 정합성 검사(선택)
 
 requirements·design·tasks 세 문서 사이의 정합성을 본다. 읽기 전용이며 파일을 절대 수정하지 않는다.
 
@@ -467,9 +471,9 @@ requirements·design·tasks 세 문서 사이의 정합성을 본다. 읽기 전
 모호함(측정 불가하거나 미해결 마커가 남은 것), 용어 드리프트다.
 
 리포트는 `ID·심각도·유형·위치·발견·권고` 표와 커버리지 매트릭스 요약, 심각도별 집계로 낸다.
-보완은 사용자 승인을 받은 뒤 `/hx-specify`·`/hx-clarify`·`/hx-plan`·`/hx-tasks`로 되돌아가 수행한다.
+보완은 사용자 승인을 받은 뒤 `/kns-specify`·`/kns-clarify`·`/kns-plan`·`/kns-tasks`로 되돌아가 수행한다.
 
-### `/hx-implement` — S5·S6: 구현과 시험
+### `/kns-implement` — S5·S6: 구현과 시험
 
 tasks가 승인되어야 시작한다(`--stage implement`).
 
@@ -477,11 +481,11 @@ tasks를 Phase 순서대로 실행한다. `[P]`는 병렬로 돌리되 같은 �
 TDD를 우선하고, 테스트를 요청받았다면 실패를 확인한 뒤 구현한다. 완료한 작업은 `- [X]`로 체크하고
 변경할 때마다 `scripts/verify.sh --files <변경 파일> --tests <관련 시험>`을 돌린다.
 
-완료 게이트에는 사용자 승인이 필수다. DoD와 verify를 충족하고 S7(`/hx-docs`)까지 마치면
+완료 게이트에는 사용자 승인이 필수다. DoD와 verify를 충족하고 S7(`/kns-docs`)까지 마치면
 `tasks/active.md`를 `tasks/check.md`로 옮기고 상태를 `check`로 바꾼 뒤 근거를 기록하고 사용자에게 검증을 요청한다.
 승인을 받은 뒤에만 `tasks/completed.md`로 옮기고 상태를 `completed`로 바꾼다. 에이전트가 임의로 completed로 바꾸는 건 금지다.
 
-### `/hx-docs` — S7: 문서 반영
+### `/kns-docs` — S7: 문서 반영
 
 이번 이슈가 바꾼 기능의 문서를 고친다. requirements의 「기능 문서」 칸과 변경 파일로 범위를 정하고,
 OpenAPI·마이그레이션이 바뀌었으면 `refresh openapi`·`refresh schema`로 원본을 갱신한다.
@@ -489,12 +493,12 @@ OpenAPI·마이그레이션이 바뀌었으면 `refresh openapi`·`refresh schem
 `python3 tools/docs/feature_docs.py brief <기능 ID>`가 그 기능에 닿는 코드 사실을 모아 주고,
 그것을 출발점으로 원고 절 12개를 고친 뒤 `build`와 `check`를 통과시킨다. 생성 HTML은 손으로 고치지 않는다.
 
-### `/hx-converge` — 잔여 작업 회수(선택)
+### `/kns-converge` — 잔여 작업 회수(선택)
 
 구현이 끝난 뒤 발견된 잔여 작업이나 후속 작업을 tasks로 되살린다. append-only라서
 기존 Phase나 이력을 다시 쓰거나 지우지 않는다.
 
-회수 근거로는 `/hx-analyze`가 찾은 커버리지 갭, 리뷰 지적, 놓친 버그, requirements의 Deferred 항목,
+회수 근거로는 `/kns-analyze`가 찾은 커버리지 갭, 리뷰 지적, 놓친 버그, requirements의 Deferred 항목,
 그리고 `scripts/check-spec-freshness.sh` 리포트(오래된 draft, 미해결 `[NEEDS CLARIFICATION]`,
 정체된 active tasks)를 쓴다.
 
@@ -502,11 +506,11 @@ OpenAPI·마이그레이션이 바뀌었으면 `refresh openapi`·`refresh schem
 각 작업에는 어디서 회수했는지(analyze ID, 이슈, 마커 위치)를 근거로 표기한다.
 이미 `tasks/completed.md`로 옮긴 이슈면 같은 이슈의 `tasks/active.md`로 되돌린다. 완료 이력은 커밋에 남으니 괜찮다.
 
-스펙 자체에 결함이 있다면 회수가 아니라 되돌림이다. 요구가 빠졌으면 `/hx-specify`,
-모호하면 `/hx-clarify`, 설계가 바뀌어야 하면 `/hx-plan`으로 간다.
-`/hx-converge`는 작업 목록을 복구하는 것이지 스펙을 고치는 게 아니다.
+스펙 자체에 결함이 있다면 회수가 아니라 되돌림이다. 요구가 빠졌으면 `/kns-specify`,
+모호하면 `/kns-clarify`, 설계가 바뀌어야 하면 `/kns-plan`으로 간다.
+`/kns-converge`는 작업 목록을 복구하는 것이지 스펙을 고치는 게 아니다.
 
-승인을 받으면 `/hx-implement`로 회수 Phase를 실행하고 완료 게이트를 다시 탄다.
+승인을 받으면 `/kns-implement`로 회수 Phase를 실행하고 완료 게이트를 다시 탄다.
 
 ## 기능 문서 — `tools/docs`
 
@@ -537,11 +541,11 @@ FastAPI 경로, Next.js 화면과 그 화면이 부르는 API, 시험 파일 수
 
 ## 개발
 
-원본은 `packages/`다. `plugins/harness-kit/`은 마켓플레이스가 git에서 받아 가는 생성물이라 커밋하지만 손으로 고치지 않는다.
+원본은 `packages/`다. `plugins/kns/`은 마켓플레이스가 git에서 받아 가는 생성물이라 커밋하지만 손으로 고치지 않는다.
 원본을 고친 뒤에는 생성물을 다시 만든다(Node 18 이상).
 
 ```bash
-node scripts/gen-plugins.mjs           # packages/ → plugins/harness-kit/
+node scripts/gen-plugins.mjs           # packages/ → plugins/kns/
 node scripts/gen-plugins.mjs --check   # 다르면 1 (tests/test_generated.py 가 같은 검사를 한다)
 ```
 
@@ -552,11 +556,11 @@ codex plugin marketplace upgrade                 # Codex
 /plugin marketplace update harness-starter-kit   # Claude Code
 ```
 
-슬래시 커맨드를 고칠 때는 원본 한 곳만 고친다. 설치본의 하네스 폴더 사본은 `npx harness-kit repair`(Node 가 없으면 `python3 scripts/harness/projection.py sync`)가 다시 만든다.
+슬래시 커맨드를 고칠 때는 원본 한 곳만 고친다. 설치본의 하네스 폴더 사본은 `npx knots-sync repair`(Node 가 없으면 `python3 scripts/harness/projection.py sync`)가 다시 만든다.
 사본을 직접 고치면 배치 검사(`scripts/harness/check_layout.py`)가 `drifted`로 막는다.
 
 ```bash
-# 1) packages/templates/common/agents-skills/hx-*/SKILL.md 를 고친다 (원본 — 설치 위치 .agents/skills, Codex 가 직접 읽는다)
+# 1) packages/templates/common/agents-skills/kns-*/SKILL.md 를 고친다 (원본 — 설치 위치 .agents/skills, Codex 가 직접 읽는다)
 # 2) 플러그인 생성물을 다시 만든다(하네스 폴더 사본은 설치가 원본에서 만든다)
 node scripts/gen-plugins.mjs
 ```
@@ -568,5 +572,5 @@ node scripts/gen-plugins.mjs
 python3 -m unittest discover -s tests -p "test_*.py"
 ```
 
-스킬 폴더명은 `SKILL.md` frontmatter의 `name`과 반드시 같아야 한다(`hx-bootstrap`).
+스킬 폴더명은 `SKILL.md` frontmatter의 `name`과 반드시 같아야 한다(`kns:bootstrap`).
 계획과 완료 이력은 [docs/roadmap.md](docs/roadmap.md)에 있다.

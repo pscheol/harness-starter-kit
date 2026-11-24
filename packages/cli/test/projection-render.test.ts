@@ -24,7 +24,7 @@ import { REAL_TEMPLATES } from "./helpers";
 
 const spec = loadSpec(REAL_TEMPLATES);
 const policy = parsePolicy(fs.readFileSync(path.join(REAL_TEMPLATES, "common/agents-root/model-policy.json"), "utf8"));
-const GEN = (from: string): string => `<!-- harness-kit 생성 · 원본 ${from} · 고칠 때는 원본을 고친다 -->`;
+const GEN = (from: string): string => `<!-- knots-sync 생성 · 원본 ${from} · 고칠 때는 원본을 고친다 -->`;
 
 describe("머리(frontmatter)", () => {
   it("블록 목록 · 흐름 목록 · 흐름 표 · 따옴표 · 머리 없음", () => {
@@ -54,12 +54,12 @@ describe("규칙 → Cursor · Kiro(R2, 03 §3.7 · §5 #10)", () => {
 });
 
 describe("스킬 → Cursor 명령 · Kiro 명령 steering(03 §3.2)", () => {
-  const files = new Map([["SKILL.md", { bytes: Buffer.from("---\nname: hx-plan\ndescription: 설계 — 만든다\n---\n\n본문\n"), executable: false }]]);
-  const skill = parseSkill(".agents/skills/hx-plan", files);
+  const files = new Map([["SKILL.md", { bytes: Buffer.from("---\nname: kns-plan\ndescription: 설계 — 만든다\n---\n\n본문\n"), executable: false }]]);
+  const skill = parseSkill(".agents/skills/kns-plan", files);
   it("본문 전체를 싣고 원본 포인터만 두지 않는다", () => {
-    expect(skill).toMatchObject({ name: "hx-plan", description: "설계 — 만든다" });
-    expect(renderCursorCommand(skill)).toBe(`---\ndescription: 설계 — 만든다\n---\n${GEN(".agents/skills/hx-plan/SKILL.md")}\n\n본문\n`);
-    expect(renderKiroSkillSteering(skill)).toBe(`---\ninclusion: manual\ndescription: 설계 — 만든다\n---\n${GEN(".agents/skills/hx-plan/SKILL.md")}\n\n본문\n`);
+    expect(skill).toMatchObject({ name: "kns-plan", description: "설계 — 만든다" });
+    expect(renderCursorCommand(skill)).toBe(`---\ndescription: 설계 — 만든다\n---\n${GEN(".agents/skills/kns-plan/SKILL.md")}\n\n본문\n`);
+    expect(renderKiroSkillSteering(skill)).toBe(`---\ninclusion: manual\ndescription: 설계 — 만든다\n---\n${GEN(".agents/skills/kns-plan/SKILL.md")}\n\n본문\n`);
   });
 });
 
@@ -97,7 +97,7 @@ describe("역할(R3, 03 §3.6 · 12 §3.5)", () => {
 
   it("Codex toml: read-only 첫 줄, 본문 전체, 이스케이프", () => {
     const text = renderCodexRole(explorer, { model_reasoning_effort: "low" }, spec);
-    expect(text.startsWith("# harness-kit 생성 · 원본 .agents/roles/explorer.md · 고칠 때는 원본을 고친다\nname = \"explorer\"\ndescription = \"근거를 찾는다\"\nsandbox_mode = \"read-only\"\nmodel_reasoning_effort = \"low\"\n\ndeveloper_instructions = \"\"\"\n")).toBe(true);
+    expect(text.startsWith("# knots-sync 생성 · 원본 .agents/roles/explorer.md · 고칠 때는 원본을 고친다\nname = \"explorer\"\ndescription = \"근거를 찾는다\"\nsandbox_mode = \"read-only\"\nmodel_reasoning_effort = \"low\"\n\ndeveloper_instructions = \"\"\"\n")).toBe(true);
     expect(text).toContain(`${spec.readOnlyLine}\n# explorer\n`);
     expect(text).toContain('본문 ""\\" \\\\ 끝\n"""\n');
     expect(renderCodexRole(worker, {}, spec)).toContain('sandbox_mode = "workspace-write"\n\ndeveloper_instructions = """\n# worker\n"""\n');

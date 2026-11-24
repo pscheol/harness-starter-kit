@@ -58,7 +58,7 @@ export default function Intake({ route }: { route: Route }) {
     }
     if (r.error.code === "not_implemented") {
       const stage = ((r.error.details as Loose)?.stage as string | undefined) ?? "HK-19";
-      setOut({ kind: "info", title: "접수 기능은 아직 제공하지 않습니다. ", text: `이 서버의 POST /intake 는 ${stage}(설계 08 §3.8.1)에서 만듭니다. 쓴 글은 어디에도 저장되지 않았습니다 — 아래 단추로 본문을 복사해 둡니다.`, cmd: `npx harness-kit intake --kind ${kind} --title "${title.trim().replace(/"/g, "'")}" --body-file req.md` });
+      setOut({ kind: "info", title: "접수 기능은 아직 제공하지 않습니다. ", text: `이 서버의 POST /intake 는 ${stage}(설계 08 §3.8.1)에서 만듭니다. 쓴 글은 어디에도 저장되지 않았습니다 — 아래 단추로 본문을 복사해 둡니다.`, cmd: `npx knots-sync intake --kind ${kind} --title "${title.trim().replace(/"/g, "'")}" --body-file req.md` });
       return;
     }
     setOut({ kind: "err", title: `${r.error.code}: `, text: errorText(r.error) });
@@ -76,7 +76,7 @@ export default function Intake({ route }: { route: Route }) {
               <Tag label="PIN 없음 · 접수는 승인이 아닙니다" />
             </HStack>
             <VStack gap={2} aria-live="polite">{out ? <Notice kind={out.kind} title={out.title}>{out.text}</Notice> : null}</VStack>
-            <CommandBox cmd={`npx harness-kit intake --from ${from}`} label="접수 명령 복사" />
+            <CommandBox cmd={`npx knots-sync intake --from ${from}`} label="접수 명령 복사" />
           </VStack>
         ) : null}
         <TabList value={tab} onChange={setTab} hasDivider aria-label="접수 방법">

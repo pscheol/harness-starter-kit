@@ -38,12 +38,12 @@ describe("skills", () => {
     writeFile(repo.home, ".claude/skills/planner/SKILL.md", skill("planner", "PRD 를 쓴다"));
     writeFile(repo.home, ".claude/skills/guessed/SKILL.md", skill("guessed", "wireframe and storyboard helper"));
     writeFile(repo.home, ".claude/skills/code-review/SKILL.md", skill("code-review", "Review code and security"));
-    writeFile(repo.root, ".agents/skill-map.json", JSON.stringify({ schema: "harness-kit.skill-map/v1", stages: { design: { "screen-plan": ["planner"] } }, commands: { "/hx-screen-plan": { slots: ["design.screen-plan"], fallback: "template:plans/screens" } }, exclude: [] }));
+    writeFile(repo.root, ".agents/skill-map.json", JSON.stringify({ schema: "knots-sync.skill-map/v1", stages: { design: { "screen-plan": ["planner"] } }, commands: { "/kns-screen-plan": { slots: ["design.screen-plan"], fallback: "template:plans/screens" } }, exclude: [] }));
     const all = await cli(["skills"], repo);
     expect(all.code, all.stderr).toBe(0);
     expect(all.stdout).toContain("위치별 개수");
     expect(all.stdout).toContain("~/.claude/skills");
-    expect(all.stdout).toMatch(/\/hx-screen-plan\s+design\.screen-plan\s+claude\s+planner/);
+    expect(all.stdout).toMatch(/\/kns-screen-plan\s+design\.screen-plan\s+claude\s+planner/);
     expect(all.stdout).toContain("스킬 3개");
     const design = await cli(["skills", "--stage", "설계"], repo);
     expect(design.code).toBe(0);
@@ -83,7 +83,7 @@ describe("skills", () => {
 
   it("--help 와 예약 목록: skills · usage 는 더 이상 예약이 아니다", async () => {
     const repo = makeRepo();
-    expect((await cli(["skills", "--help"], repo)).stdout).toContain("harness-kit skills");
+    expect((await cli(["skills", "--help"], repo)).stdout).toContain("knots-sync skills");
     expect((await cli(["usage", "--help"], repo)).stdout).toContain("usage --kit");
     expect((await cli(["--help"], repo)).stdout).toMatch(/skills\s+이 컴퓨터/);
   });
@@ -114,7 +114,7 @@ describe("usage · history", () => {
 
   it("켜면 usage · --sources · --now · history --q 사람용 출력", async () => {
     const repo = makeRepo();
-    writeFile(repo.home, ".config/harness-kit/config.json", JSON.stringify({ history: "on" }));
+    writeFile(repo.home, ".config/knots-sync/config.json", JSON.stringify({ history: "on" }));
     const enc = repo.root.replace(/[^A-Za-z0-9]/g, "-");
     const noon = new Date();
     noon.setHours(12, 0, 0, 0);
@@ -142,7 +142,7 @@ describe("status --flow --burn", () => {
     const repo = makeRepo();
     const INT = ".agents/docs/intents/INT-7-pay";
     writeFile(repo.root, `${INT}/intent.md`, "---\nkey: INT-7\ntitle: 결제\nstatus: in-review\n---\n\n# I\n");
-    writeFile(repo.root, `${INT}/units.json`, `${JSON.stringify({ schema: "harness-kit.units/v1", intent: { key: "INT-7", title: "결제", doc: "intent.md" }, source: { kind: "kit" }, units: [{ id: "U-1", title: "등록", kind: "feature", area: "pay", dependsOn: [], order: 1, issue: null, planned: true, stories: ["S-1", "S-2", "S-3"] }] }, null, 2)}\n`);
+    writeFile(repo.root, `${INT}/units.json`, `${JSON.stringify({ schema: "knots-sync.units/v1", intent: { key: "INT-7", title: "결제", doc: "intent.md" }, source: { kind: "kit" }, units: [{ id: "U-1", title: "등록", kind: "feature", area: "pay", dependsOn: [], order: 1, issue: null, planned: true, stories: ["S-1", "S-2", "S-3"] }] }, null, 2)}\n`);
     const r = await cli(["status", "--flow", "INT-7", "--burn", "--days", "3", "--json"], repo);
     expect(r.code, r.stderr).toBe(0);
     const d = JSON.parse(r.stdout);

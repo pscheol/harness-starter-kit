@@ -7,7 +7,7 @@ import { json, META_FILE, readJsonFile, tmpDir, writeJsonFile, writeTree } from 
 
 function pack(dir: string): void {
   writeTree(dir, {
-    "pack.json": JSON.stringify({ schema: "harness-kit.pack/v1", name: "acme", version: "1.2.0", requires: { kit: ">=2.0.0 <3.0.0" }, provides: { rules: ["acme-security"] }, overrides: [".agents/rules/always.md"] }),
+    "pack.json": JSON.stringify({ schema: "knots-sync.pack/v1", name: "acme", version: "1.2.0", requires: { kit: ">=2.0.0 <3.0.0" }, provides: { rules: ["acme-security"] }, overrides: [".agents/rules/always.md"] }),
     "common/agents-rules/acme-security.md": "# acme\n",
     "common/agents-rules/always.md": "# 팩 판\n",
   });
@@ -24,8 +24,8 @@ describe("doctor --only overrides", () => {
     expect((await t.cli("update", ["--packs", "--json", "--templates", templates])).code).toBe(0);
     fs.appendFileSync(path.join(t.target, ".agents/rules/kt.md"), "사람 줄\n");
     writeTree(t.target, {
-      ".agents/hooks.d/project.json": JSON.stringify({ schema: "harness-kit.hooks/v1", hooks: [{ id: "harness-session-idle", event: "stop", script: "scripts/hooks/session-register.sh", timeoutSec: 30, owner: "user" }, { id: "harness-verify-gate", event: "stop", script: "scripts/hooks/x.sh", timeoutSec: 5, owner: "user" }] }),
-      ".agents/local/harness-kit.local.json": JSON.stringify({ roles: { review: { harness: "claude" } }, verify: { fullOnlyInCI: false } }),
+      ".agents/hooks.d/project.json": JSON.stringify({ schema: "knots-sync.hooks/v1", hooks: [{ id: "harness-session-idle", event: "stop", script: "scripts/hooks/session-register.sh", timeoutSec: 30, owner: "user" }, { id: "harness-verify-gate", event: "stop", script: "scripts/hooks/x.sh", timeoutSec: 5, owner: "user" }] }),
+      ".agents/local/knots-sync.local.json": JSON.stringify({ roles: { review: { harness: "claude" } }, verify: { fullOnlyInCI: false } }),
     });
     const r = await t.cli("doctor", ["--only", "overrides", "--json", "--templates", templates]);
     expect(r.code).toBe(0);
@@ -38,7 +38,7 @@ describe("doctor --only overrides", () => {
     ]);
     expect(out.overrides.find((o: { target: string }) => o.target === ".agents/rules/always.md").declared).toBe(true);
     expect(out.overrides.find((o: { target: string }) => o.target === "roles.review.harness")).toMatchObject({ value: "claude", losers: [{ layer: "project", value: "codex" }] });
-    expect(out.ignoredPersonal).toEqual([{ key: "verify.fullOnlyInCI", file: ".agents/local/harness-kit.local.json" }]);
+    expect(out.ignoredPersonal).toEqual([{ key: "verify.fullOnlyInCI", file: ".agents/local/knots-sync.local.json" }]);
     expect(out.floorViolations).toEqual([{ kind: "floor-override", target: ".agents/hooks.d/project.json#harness-verify-gate" }]);
     expect((await t.cli("doctor", ["--only", "overrides", "--check", "--templates", templates])).code).toBe(1);
     const human = await t.cli("doctor", ["--only", "overrides", "--templates", templates]);

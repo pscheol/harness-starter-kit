@@ -9,7 +9,7 @@ sequenceDiagram
   participant OPS as 배포 시스템 · ops/
   rect rgba(231, 234, 251, 0.55)
     Note over H,IS: requirements · design · tasks 승인 뒤
-    H->>IS: wt new KEY · /hx-implement
+    H->>IS: wt new KEY · /kns-implement
   end
   rect rgba(251, 241, 220, 0.55)
     loop Bolt마다
@@ -19,7 +19,7 @@ sequenceDiagram
     IS->>V: --affected(MR 전 한 번)
     IS->>G: push · MR
     G->>G: base판 verify.sh affected · SARIF · 품질 게이트
-    RV->>G: /hx-review: 원격 diff 읽기 · 요약 코멘트 1개
+    RV->>G: /kns-review: 원격 diff 읽기 · 요약 코멘트 1개
     IS->>IS: 지적 처리 → review.md 커밋
   end
   Note over H,G: mr 승인 → 병합 → done 승인

@@ -90,7 +90,7 @@ class IntentCase(unittest.TestCase):
         (self.root / "scripts").mkdir(parents=True)
         shutil.copytree(ROOT / "scripts/harness", self.root / "scripts/harness", ignore=shutil.ignore_patterns("__pycache__"))
         shutil.copytree(ROOT / ".agents/docs/_spec-templates", self.root / ".agents/docs/_spec-templates")
-        (self.root / ".agents/harness-kit.json").write_text(json.dumps({"schema": "harness-kit/v2", "git": {"base": "develop"}, "flow": {"gates": ["intent", "plans", "requirements", "design", "mr", "done"]}}), encoding="utf-8")
+        (self.root / ".agents/knots-sync.json").write_text(json.dumps({"schema": "knots-sync/v2", "git": {"base": "develop"}, "flow": {"gates": ["intent", "plans", "requirements", "design", "mr", "done"]}}), encoding="utf-8")
         git(self.root, "init", "-q", "-b", "develop")
         git(self.root, "add", "-A")
         git(self.root, "commit", "-q", "-m", "init")
@@ -122,7 +122,7 @@ class IntentCase(unittest.TestCase):
     def units(stories, **extra):
         u = {"id": "U-1", "name": "payment", "title": "결제", "kind": "feature", "area": "payment", "stories": stories, "dependsOn": [], "provides": [], "consumes": [], "order": 1, "issue": None, "planned": True}
         u.update(extra)
-        return {"schema": "harness-kit.units/v1", "intent": {"key": "INT-1", "title": "결제", "doc": "intent.md"}, "source": {"kind": "kit"},
+        return {"schema": "knots-sync.units/v1", "intent": {"key": "INT-1", "title": "결제", "doc": "intent.md"}, "source": {"kind": "kit"},
                 "decomposition": {"stories": len(stories), "domains": 1, "userTypes": 1, "integrations": 0, "split": False, "reasons": []}, "units": [u], "unassigned": []}
 
 
@@ -152,8 +152,8 @@ class KeyAndNewTest(IntentCase):
         self.assertNotEqual(0, self.run_intent("new", "x", "--name", "bug-fix-thing", "--kind", "bug").returncode)
 
     def test_new_with_jira_module_needs_an_epic_key(self):
-        meta = json.loads((self.root / ".agents/harness-kit.json").read_text(encoding="utf-8"))
-        (self.root / ".agents/harness-kit.json").write_text(json.dumps({**meta, "modules": ["jira-workflow"]}), encoding="utf-8")
+        meta = json.loads((self.root / ".agents/knots-sync.json").read_text(encoding="utf-8"))
+        (self.root / ".agents/knots-sync.json").write_text(json.dumps({**meta, "modules": ["jira-workflow"]}), encoding="utf-8")
         r = self.run_intent("new", "결제", "--name", "payment-revamp")
         self.assertNotEqual(0, r.returncode)
         self.assertIn("에픽 키", r.stdout + r.stderr)
@@ -181,8 +181,8 @@ class NextStepTest(IntentCase):
     def test_units_then_intent_approval_then_plans(self):
         self.make(stories=1, questions=None, units=self.units(["S-1"]))
         self.assertEqual("intent-approval-wait", self.next()["step"])
-        meta = json.loads((self.root / ".agents/harness-kit.json").read_text(encoding="utf-8"))
-        (self.root / ".agents/harness-kit.json").write_text(json.dumps({**meta, "flow": {"gates": ["requirements", "design", "mr", "done"]}}), encoding="utf-8")
+        meta = json.loads((self.root / ".agents/knots-sync.json").read_text(encoding="utf-8"))
+        (self.root / ".agents/knots-sync.json").write_text(json.dumps({**meta, "flow": {"gates": ["requirements", "design", "mr", "done"]}}), encoding="utf-8")
         self.assertEqual("plans", self.next()["step"])
         plans = self.root / ".agents/docs/intents/INT-1-payment-revamp/plans"
         plans.mkdir()
@@ -195,14 +195,14 @@ class NextStepTest(IntentCase):
         (folder / "intent.md").write_text((folder / "intent.md").read_text(encoding="utf-8").replace("kind: product", "kind: change"), encoding="utf-8")
         self.assertEqual("reverse-engineer", self.next()["step"])
         (folder / "current-state.md").write_text("---\nintent: INT-1\nkind: current-state\nstatus: draft\n---\n", encoding="utf-8")
-        meta = json.loads((self.root / ".agents/harness-kit.json").read_text(encoding="utf-8"))
-        (self.root / ".agents/harness-kit.json").write_text(json.dumps({**meta, "flow": {"gates": ["codebase", "intent", "requirements", "design", "mr", "done"]}}), encoding="utf-8")
+        meta = json.loads((self.root / ".agents/knots-sync.json").read_text(encoding="utf-8"))
+        (self.root / ".agents/knots-sync.json").write_text(json.dumps({**meta, "flow": {"gates": ["codebase", "intent", "requirements", "design", "mr", "done"]}}), encoding="utf-8")
         self.assertEqual("codebase-approval-wait", self.next()["step"])
 
     def test_aidlc_flow_only_points_to_aidlc(self):
         self.make(stories=1)
-        meta = json.loads((self.root / ".agents/harness-kit.json").read_text(encoding="utf-8"))
-        (self.root / ".agents/harness-kit.json").write_text(json.dumps({**meta, "flow": {"design": "aidlc"}}), encoding="utf-8")
+        meta = json.loads((self.root / ".agents/knots-sync.json").read_text(encoding="utf-8"))
+        (self.root / ".agents/knots-sync.json").write_text(json.dumps({**meta, "flow": {"design": "aidlc"}}), encoding="utf-8")
         r = self.next()
         self.assertEqual("aidlc", r["step"])
         self.assertIn("sync aidlc", r["reason"])

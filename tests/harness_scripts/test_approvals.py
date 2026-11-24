@@ -170,7 +170,7 @@ class ApproveCommandTest(ApprovalCase):
         self.assertEqual(self.field(self.issue_dir / "design.md", "status"), "approved")
 
     def test_approver_outside_the_gate_list_is_refused(self):
-        meta = self.root / ".agents/harness-kit.json"
+        meta = self.root / ".agents/knots-sync.json"
         data = json.loads(meta.read_text())
         data["approvers"] = {"requirements": ["po"]}
         data["groups"] = {"po": ["someone@example.com"]}
@@ -303,7 +303,7 @@ class FastCheckTest(ApprovalCase):
         self.assert_ok(self.check())
 
     def test_done_record_by_someone_outside_approvers_does_not_count(self):
-        meta = self.root / ".agents/harness-kit.json"
+        meta = self.root / ".agents/knots-sync.json"
         data = json.loads(meta.read_text())
         data["approvers"] = {"done": ["qa"]}
         data["groups"] = {"qa": ["qa@example.com"]}

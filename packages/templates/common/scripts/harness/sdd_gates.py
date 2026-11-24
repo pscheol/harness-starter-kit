@@ -47,10 +47,10 @@ def git(root, *arguments):
 
 
 def harness_root(start):
-    """README §10: 위로 올라가며 .agents/harness-kit.json · .agents/harness.json 이 있는 가장 가까운 폴더."""
+    """README §10: 위로 올라가며 .agents/knots-sync.json · .agents/harness.json 이 있는 가장 가까운 폴더."""
     current = Path(start).resolve()
     for folder in (current, *current.parents):
-        if (folder / ".agents/harness-kit.json").is_file() or (folder / ".agents/harness.json").is_file():
+        if (folder / ".agents/knots-sync.json").is_file() or (folder / ".agents/harness.json").is_file():
             return folder
     return None
 
@@ -62,7 +62,7 @@ class Issue:
         self.root = Path(root)
         self.folder = Path(folder)
         self.key = (split_folder(self.folder.name) or (self.folder.name,))[0]
-        self.meta = read_json(self.root / ".agents/harness-kit.json")
+        self.meta = read_json(self.root / ".agents/knots-sync.json")
         self.policy = approvals.policy_of(self.meta)
         self.entries = approvals.read_entries(self.folder / "approvals.md")
         self.memo = {}
@@ -274,7 +274,7 @@ def main(argv=None):
 
     root = harness_root(options.root or Path.cwd())
     if root is None:
-        print("✖ 하네스 루트(.agents/harness-kit.json)를 찾지 못했다", file=sys.stderr)
+        print("✖ 하네스 루트(.agents/knots-sync.json)를 찾지 못했다", file=sys.stderr)
         return 2
     if options.all:
         print(json.dumps({"issues": all_results(root)}, ensure_ascii=False, indent=2))

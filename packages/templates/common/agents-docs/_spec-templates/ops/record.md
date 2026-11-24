@@ -13,7 +13,7 @@ created: {{CREATED}}
 | ID | 지표 | 목표 | 실측 | 판정 | 출처 |
 |---|---|---|---|---|---|
 ## 2. 전달 지표
-<!-- METRICS:BEGIN — harness-kit metrics 가 쓴다. 손으로 고치지 않는다 -->
+<!-- METRICS:BEGIN — knots-sync metrics 가 쓴다. 손으로 고치지 않는다 -->
 | 지표 | 기준선 | 이 기간 | 계산 방법 |
 |---|---|---|---|
 <!-- METRICS:END -->

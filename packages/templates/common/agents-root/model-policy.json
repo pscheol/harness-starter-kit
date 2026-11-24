@@ -1,5 +1,5 @@
 {
-  "schema": "harness-kit.model-policy/v1",
+  "schema": "knots-sync.model-policy/v1",
   "locked": ["implement", "design", "review"],
   "classes": {
     "explore": "light",

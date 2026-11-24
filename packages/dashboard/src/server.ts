@@ -187,10 +187,10 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     try {
       single = await Project.open(opts.cwd, { ...projectOpts, multi: false });
     } catch (err) {
-      throw new StartError(3, err instanceof Error ? err.message : String(err), "npx harness-kit doctor");
+      throw new StartError(3, err instanceof Error ? err.message : String(err), "npx knots-sync doctor");
     }
     const meta = single.meta();
-    if (meta.schema !== "harness-kit/v2") throw new StartError(3, `.agents/harness-kit.json 의 schema 가 harness-kit/v2 가 아닙니다(${String(meta.schema ?? "없음")})`, "npx harness-kit doctor");
+    if (meta.schema !== "knots-sync/v2") throw new StartError(3, `.agents/knots-sync.json 의 schema 가 knots-sync/v2 가 아닙니다(${String(meta.schema ?? "없음")})`, "npx knots-sync doctor");
   } else {
     projects = new Projects(() => modeEntries(mode, home, opts.env), { ...projectOpts, multi: true });
   }

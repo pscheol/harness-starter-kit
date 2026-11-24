@@ -27,7 +27,7 @@ describe("어댑터 작업 목록", () => {
     const { target, r } = await initWith(templates);
     expect(r.code, r.stdout).toBe(0);
     expect(plan(target, templates, "claude")).toEqual([
-      "mirror .claude/skills/hx-plan ← .agents/skills/hx-plan",
+      "mirror .claude/skills/kns-plan ← .agents/skills/kns-plan",
       "mirror .claude/rules/always.md ← .agents/rules/always.md",
       "mirror .claude/rules/kt.md ← .agents/rules/kt.md",
       "mirror .claude/rules/multi.md ← .agents/rules/multi.md",
@@ -45,7 +45,7 @@ describe("어댑터 작업 목록", () => {
       "merge .codex/config.toml",
     ]);
     expect(plan(target, templates, "cursor")).toEqual([
-      "render .cursor/commands/hx-plan.md ← .agents/skills/hx-plan/SKILL.md",
+      "render .cursor/commands/kns-plan.md ← .agents/skills/kns-plan/SKILL.md",
       "render .cursor/rules/always.mdc ← .agents/rules/always.md",
       "render .cursor/rules/kt.mdc ← .agents/rules/kt.md",
       "render .cursor/rules/multi.mdc ← .agents/rules/multi.md",
@@ -53,13 +53,13 @@ describe("어댑터 작업 목록", () => {
       "render .cursor/rules/tech.mdc ← .agents/rules/tech.md",
     ]);
     expect(plan(target, templates, "kiro")).toEqual([
-      "mirror .kiro/skills/hx-plan ← .agents/skills/hx-plan",
+      "mirror .kiro/skills/kns-plan ← .agents/skills/kns-plan",
       "render .kiro/steering/always.md ← .agents/rules/always.md",
       "render .kiro/steering/kt.md ← .agents/rules/kt.md",
       "render .kiro/steering/multi.md ← .agents/rules/multi.md",
       "render .kiro/steering/structure.md ← .agents/rules/structure.md",
       "render .kiro/steering/tech.md ← .agents/rules/tech.md",
-      "render .kiro/steering/hx-plan.md ← .agents/skills/hx-plan/SKILL.md",
+      "render .kiro/steering/kns-plan.md ← .agents/skills/kns-plan/SKILL.md",
       "render .kiro/agents/explorer.json ← .agents/roles/explorer.md",
       "render .kiro/agents/worker.json ← .agents/roles/worker.md",
       // HK-24: IDE 훅(훅 하나에 파일 하나) · 조율 에이전트는 hooks.json 에서 만든다

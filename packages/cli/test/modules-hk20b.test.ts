@@ -10,7 +10,7 @@ import { lockEntries, readJsonFile, REAL_TEMPLATES } from "./helpers";
 import { cli, installedRepo, makeBin } from "./modules-helpers";
 
 const T = ["--templates", REAL_TEMPLATES];
-const meta = (t: string): Record<string, any> => readJsonFile(path.join(t, ".agents/harness-kit.json"));
+const meta = (t: string): Record<string, any> => readJsonFile(path.join(t, ".agents/knots-sync.json"));
 
 describe("notion 모듈(설계 10 §3.6)", () => {
   it("선언: 외부 도구가 없고 모든 파일이 선언돼 있다. init --modules all 에는 들어가지 않는다", () => {

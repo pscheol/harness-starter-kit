@@ -9,9 +9,9 @@ import { call, commitAll, makeRepo, python, readFile, serve, sha256, writeFile }
 const INT = ".agents/docs/intents/INT-1-order-billing";
 
 const LINK = {
-  schema: "harness-kit.intent-link/v1", key: "INT-1", title: "주문 결제 연동", source: "aidlc",
+  schema: "knots-sync.intent-link/v1", key: "INT-1", title: "주문 결제 연동", source: "aidlc",
   aidlc: { space: "default", intent: "261124-order-billing", path: "aidlc/spaces/default/intents/261124-order-billing/", version: "2.11.4" },
-  adapter: { name: "harness-kit/aidlc", version: "2.0.0-alpha.0", reader: "aidlc-v2", inputSha256: "0".repeat(64), adaptedAt: "2026-11-24T00:00:00.000Z" },
+  adapter: { name: "knots-sync/aidlc", version: "2.0.0-alpha.0", reader: "aidlc-v2", inputSha256: "0".repeat(64), adaptedAt: "2026-11-24T00:00:00.000Z" },
   stories: [{ id: "US1.1", title: "주문" }, { id: "US2.1", title: "결제" }],
 };
 
@@ -21,7 +21,7 @@ const unit = (id: string, stories: string[], deps: string[]): Record<string, unk
 });
 
 const UNITS = {
-  schema: "harness-kit.units/v1", intent: { key: "INT-1", title: "주문 결제 연동", doc: "intent.json" }, source: { kind: "aidlc" },
+  schema: "knots-sync.units/v1", intent: { key: "INT-1", title: "주문 결제 연동", doc: "intent.json" }, source: { kind: "aidlc" },
   decomposition: { stories: 2, domains: 0, userTypes: 0, integrations: 0, split: true, reasons: ["aidlc"] },
   units: [unit("U-1", ["US1.1"], []), unit("U-2", ["US2.1"], ["U-1"])], unassigned: [],
 };

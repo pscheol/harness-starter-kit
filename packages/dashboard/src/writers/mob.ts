@@ -23,7 +23,7 @@ export interface MobSession {
 export function openMob(intentAbs: string): MobSession | null {
   try {
     const data = JSON.parse(fs.readFileSync(path.join(intentAbs, "mob.json"), "utf8")) as Record<string, unknown>;
-    if (data.schema !== "harness-kit.mob/v1" || data.closedAt) return null;
+    if (data.schema !== "knots-sync.mob/v1" || data.closedAt) return null;
     return Array.isArray(data.attendees) ? (data as unknown as MobSession) : null;
   } catch {
     return null;

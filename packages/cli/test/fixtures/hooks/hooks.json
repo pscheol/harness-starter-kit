@@ -1,8 +1,8 @@
 {
-  "schema": "harness-kit.hooks/v1",
+  "schema": "knots-sync.hooks/v1",
   "hooks": [
     { "id": "harness-a-start", "event": "session-start", "script": "scripts/hooks/a.sh", "timeoutSec": 15, "owner": "kit",
-      "env": { "HX_HARNESS": { "claude": "claude", "codex": "codex", "kiro": "kiro" }, "B_FLAG": { "kiro": "1" } }, "maxOutputBytes": 100, "title": "시작" },
+      "env": { "KNS_HARNESS": { "claude": "claude", "codex": "codex", "kiro": "kiro" }, "B_FLAG": { "kiro": "1" } }, "maxOutputBytes": 100, "title": "시작" },
     { "id": "harness-b-guard", "event": "pre-tool", "tools": ["write", "shell"], "script": "scripts/hooks/b.sh", "timeoutSec": 10, "owner": "kit",
       "floor": true, "subagents": true, "description": "쓰기 · 셸 둘 다" },
     { "id": "harness-c-shell", "event": "pre-tool", "tools": ["shell"], "script": "scripts/hooks/c.sh", "timeoutSec": 5, "owner": "user" },

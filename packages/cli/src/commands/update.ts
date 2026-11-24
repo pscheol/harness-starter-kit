@@ -31,8 +31,10 @@ import type { OverlayWrite } from "../projection/view";
 import { localAfter } from "./local";
 import { runUpdatePacks } from "./update-packs";
 import { runUpdateTools } from "./update-tools";
+import { lockFile } from "../core/legacy-names";
+import { renameLegacyState } from "../core/legacy-names";
 
-export const V1_LOCK_BACKUP = ".agents/state/harness-kit.lock.v1.bak";
+export const V1_LOCK_BACKUP = ".agents/state/knots-sync.lock.v1.bak";
 
 const LATER_FLAGS: Record<string, string> = {};
 
@@ -47,7 +49,7 @@ function checkFlags(ctx: Ctx): string | undefined {
   const to = str(ctx.values, "to");
   if (to === undefined || to === VERSION) return to;
   if (/[:#/]/.test(to)) throw usageError(`--to 에 소스는 아직 받지 않는다: '${to}'`, "다른 템플릿 폴더는 --templates <폴더> 로 준다");
-  throw usageError(`이 CLI 는 ${VERSION} 판만 깐다: --to ${to}`, `그 판은 npx harness-kit@${to} update 로 올린다`);
+  throw usageError(`이 CLI 는 ${VERSION} 판만 깐다: --to ${to}`, `그 판은 npx knots-sync@${to} update 로 올린다`);
 }
 
 /** 깐 팩이 요구하는 킷 범위 밖이면 쓰기 전에 exit 3(설계 04 §3.4). */
@@ -63,7 +65,7 @@ function checkPackRanges(packs: unknown[]): void {
 function checkVersion(installed: string, to: string | undefined): void {
   const cmp = compareSemver(installed, VERSION);
   if (cmp !== null && cmp > 0 && to !== VERSION) {
-    throw new CliError(EXIT.STATE, `설치된 킷(${installed})이 이 CLI(${VERSION})보다 새것이다`, `새 CLI 로 다시 실행한다. 내리려면 harness-kit update --to ${VERSION}`);
+    throw new CliError(EXIT.STATE, `설치된 킷(${installed})이 이 CLI(${VERSION})보다 새것이다`, `새 CLI 로 다시 실행한다. 내리려면 knots-sync update --to ${VERSION}`);
   }
 }
 
@@ -113,6 +115,7 @@ interface Written {
 function applyUpdate(target: string, plan: UpdatePlan, w: Written, projection: ProjectionPlan | null): void {
   let current = "";
   try {
+    renameLegacyState(target);
     for (const b of w.mergeBackups) {
       current = b.path;
       writeFileAtomic(full(target, b.path), b.data, false);
@@ -163,7 +166,7 @@ function mergedLines(merged: MergedFile[], backupDir: string): string[] {
     if (m.kind !== "kit") lines.push(`    ${m.kind}  ${m.path}`);
     else if (m.path === "CLAUDE.md") lines.push("    kit    CLAUDE.md   (배치가 새 파일로 바꿨다 — 사람이 쓴 내용이면 원본에서 블록 밖으로 옮긴다)");
   }
-  if (n) lines.push("    병합본의 '<!-- harness-kit: 설치 전 내용(병합) -->' 묶음을 보고 필요 없으면 지운다");
+  if (n) lines.push("    병합본의 '<!-- knots-sync: 설치 전 내용(병합) -->' 묶음을 보고 필요 없으면 지운다");
   return lines;
 }
 
@@ -174,18 +177,18 @@ function humanLines(ctx: Ctx, head: string[], plan: UpdatePlan, shown: UpdateOp[
   if (conflicts.length) {
     lines.push("  충돌 — 고친 파일이라 덮지 않았다. 새 판은 .new 에 있다(리포 폴더에서):");
     for (const c of conflicts) if (c.diff) lines.push(`    ${String(c.diff)}`);
-    lines.push("  병합했으면 .new 를 지운다. 새 판을 그대로 쓰려면 mv 로 덮는다. 전부 새 판으로: harness-kit update --accept-all");
+    lines.push("  병합했으면 .new 를 지운다. 새 판을 그대로 쓰려면 mv 로 덮는다. 전부 새 판으로: knots-sync update --accept-all");
   }
-  if (plan.ops.some((o) => o.action === "orphan") && !bool(ctx.values, "prune")) lines.push("  킷에서 빠진 미수정 파일을 지우려면: harness-kit update --prune");
-  lines.push(dryRun ? "  (dry-run — 쓰지 않았다)" : "  다음: harness-kit doctor");
+  if (plan.ops.some((o) => o.action === "orphan") && !bool(ctx.values, "prune")) lines.push("  킷에서 빠진 미수정 파일을 지우려면: knots-sync update --prune");
+  lines.push(dryRun ? "  (dry-run — 쓰지 않았다)" : "  다음: knots-sync doctor");
   return lines;
 }
 
 function writtenState(ctx: Ctx, target: string, inst: Installed, entries: LockEntry[], sel: Selection, tokens: Record<string, string>, source: string, mergeBackups: BackupWrite[]): Written {
-  const lockText = serializeLock({ schema: "harness-kit.lock/v2", kit: { version: VERSION, source }, packs: inst.lock.packs, entries });
+  const lockText = serializeLock({ schema: "knots-sync.lock/v2", kit: { version: VERSION, source }, packs: inst.lock.packs, entries });
   const meta = mergeMetaForUpdate(inst.meta, { version: VERSION, selection: sel, tokens, today: today(ctx.io) });
   const manifest = lstatOrNull(full(target, MANIFEST_PATH)) ? null : manifestContent(sel, tokens);
-  const v1Backup = inst.lockFormat === "v1" ? fs.readFileSync(full(target, LOCK_REL)) : null;
+  const v1Backup = inst.lockFormat === "v1" ? fs.readFileSync(lockFile(target)) : null;
   return { lockText, metaText: serializeMeta(meta), manifest, v1Backup, mergeBackups };
 }
 
@@ -262,7 +265,7 @@ export function runUpdate(ctx: Ctx): CommandResult | Promise<CommandResult> {
   };
   if (projection) data.projection = projectionData(projection.plan, projection.findings);
   const head = [
-    `harness-kit update — ${target}`,
+    `knots-sync update — ${target}`,
     `  킷: ${inst.meta.kit.version} → ${VERSION} · 메타 ${inst.metaFormat} · lock ${inst.lockFormat}`,
     selectionLine(selection),
     ...retiredModules.map((m) => retiredNote(m, "meta")),

@@ -229,12 +229,12 @@ def pointer_errors(root):
         fields = front_matter(text)
         if fields is None or fields.get("inclusion", "always") not in INCLUSIONS:
             errors.append(f"{label(root, steering)}: steering needs front matter with a known inclusion")
-        if steering.stem.startswith("hx-"):
+        if steering.stem.startswith("kns-"):
             continue
         for target in re.findall(r"원본[:\s`]*\.agents/rules/([a-z0-9-]+)\.md", text):
             if target not in rules:
                 errors.append(f"{label(root, steering)}: points to orphan rule {target}.md")
-    for skill in sorted((root / ".agents/skills").glob("hx-*")):
+    for skill in sorted((root / ".agents/skills").glob("kns-*")):
         canonical = f".agents/skills/{skill.name}/SKILL.md"
         fields = front_matter((skill / "SKILL.md").read_text()) if (skill / "SKILL.md").is_file() else None
         if not fields or fields.get("name") != skill.name or not fields.get("description"):

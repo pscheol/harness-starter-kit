@@ -17,8 +17,8 @@ async function inventory(srv: Awaited<ReturnType<typeof serve>>, query = ""): Pr
 
 describe("YAML 머리 해석(07 §3.2)", () => {
   it("맵 · 따옴표 · 흐름 배열 · 블록 문자열 · 이어지는 줄 · 안쪽 맵", () => {
-    const y = parseYaml(`name: x\ndescription: "한 줄: 따옴표"\nlong: 첫째 줄\n  둘째 줄\nblock: |\n  가\n  나\nfold: >-\n  하나\n  둘\nmetadata:\n  hx-stages: [design, "ops"]\n  seq:\n    - a\n    - b\nmodel: null\nn: 3\nflag: true\n`);
-    expect(y).toEqual({ name: "x", description: "한 줄: 따옴표", long: "첫째 줄 둘째 줄", block: "가\n나\n", fold: "하나 둘", metadata: { "hx-stages": ["design", "ops"], seq: ["a", "b"] }, model: null, n: 3, flag: true });
+    const y = parseYaml(`name: x\ndescription: "한 줄: 따옴표"\nlong: 첫째 줄\n  둘째 줄\nblock: |\n  가\n  나\nfold: >-\n  하나\n  둘\nmetadata:\n  kns-stages: [design, "ops"]\n  seq:\n    - a\n    - b\nmodel: null\nn: 3\nflag: true\n`);
+    expect(y).toEqual({ name: "x", description: "한 줄: 따옴표", long: "첫째 줄 둘째 줄", block: "가\n나\n", fold: "하나 둘", metadata: { "kns-stages": ["design", "ops"], seq: ["a", "b"] }, model: null, n: 3, flag: true });
   });
 
   it.each([
@@ -150,28 +150,28 @@ describe("스캐너", () => {
     expect(v3.warnings.join(" ")).toContain("version");
   });
 
-  it("단계: 지도 > metadata.hx-stages > 추정, 지도 칸 해석 · 개인 층 앞 더하기(SK-R8 · R9)", async () => {
+  it("단계: 지도 > metadata.kns-stages > 추정, 지도 칸 해석 · 개인 층 앞 더하기(SK-R8 · R9)", async () => {
     const repo = makeRepo();
     writeFile(repo.home, ".claude/skills/planner/SKILL.md", skillMd("planner", "PRD 를 쓴다"));
-    writeFile(repo.home, ".claude/skills/hx-kit/SKILL.md", skillMd("hx-kit", "킷 스킬", "metadata:\n  hx-stages: [design]\n"));
+    writeFile(repo.home, ".claude/skills/kns-kit/SKILL.md", skillMd("kns-kit", "킷 스킬", "metadata:\n  kns-stages: [design]\n"));
     writeFile(repo.home, ".claude/skills/guessed/SKILL.md", skillMd("guessed", "code review and security audit for pull requests"));
     writeFile(repo.home, ".claude/skills/weather/SKILL.md", skillMd("weather", "오늘 날씨를 알려 준다"));
     writeFile(repo.home, ".claude/skills/mine/SKILL.md", skillMd("mine", "내 기획"));
-    writeFile(repo.root, ".agents/skill-map.json", JSON.stringify({ schema: "harness-kit.skill-map/v1", stages: { design: { "screen-plan": ["planner", "absent-skill"] } }, commands: { "/hx-screen-plan": { slots: ["design.screen-plan"], fallback: "template:plans/screens" }, "/hx-backlog": { slots: ["design.backlog"], fallback: "template:plans/backlog.md" } }, exclude: [] }));
+    writeFile(repo.root, ".agents/skill-map.json", JSON.stringify({ schema: "knots-sync.skill-map/v1", stages: { design: { "screen-plan": ["planner", "absent-skill"] } }, commands: { "/kns-screen-plan": { slots: ["design.screen-plan"], fallback: "template:plans/screens" }, "/kns-backlog": { slots: ["design.backlog"], fallback: "template:plans/backlog.md" } }, exclude: [] }));
     writeFile(repo.root, ".agents/local/skill-map.local.json", JSON.stringify({ prepend: { "design.screen-plan": ["mine"] } }));
     const srv = await serve(repo);
     const inv = await inventory(srv);
     const by = Object.fromEntries(inv.skills.map((s: any) => [s.id, s]));
     expect(by.planner.stages).toEqual([{ stage: "design", slot: "screen-plan", source: "map" }]);
-    expect(by["hx-kit"].stages).toEqual([{ stage: "design", slot: null, source: "metadata" }]);
+    expect(by["kns-kit"].stages).toEqual([{ stage: "design", slot: null, source: "metadata" }]);
     expect(by.guessed.stages[0]).toMatchObject({ stage: "verify", source: "추정" });
     expect(by.weather.stages).toEqual([]);
     expect(inv.map.present).toBe(true);
     const r = inv.map.resolved.filter((x: any) => x.harness === "claude");
-    expect(r.find((x: any) => x.command === "/hx-screen-plan").skill).toBe("mine");
-    expect(r.find((x: any) => x.command === "/hx-backlog")).toMatchObject({ skill: null, fallback: "template:plans/backlog.md" });
+    expect(r.find((x: any) => x.command === "/kns-screen-plan").skill).toBe("mine");
+    expect(r.find((x: any) => x.command === "/kns-backlog")).toMatchObject({ skill: null, fallback: "template:plans/backlog.md" });
     const design = await inventory(srv, `?stage=${encodeURIComponent("설계")}`);
-    expect(design.skills.map((s: any) => s.id)).toEqual(["planner", "hx-kit"]);
+    expect(design.skills.map((s: any) => s.id)).toEqual(["planner", "kns-kit"]);
     const claude = await inventory(srv, "?harness=codex");
     expect(claude.skills).toEqual([]);
   });

@@ -9,7 +9,7 @@ import { ROUTES } from "../src/api";
 import { call, cleanEnv, commitAll, makeRepo, serve, snapshotTree, tmpDir, writeFile, writeIssue } from "./helpers";
 
 function registry(home: string, paths: string[]): void {
-  writeFile(home, ".config/harness-kit/projects.json", `${JSON.stringify({ schema: "harness-kit.projects/v1", projects: paths.map((p) => ({ path: p, name: path.basename(p), addedAt: "2026-11-23" })) }, null, 2)}\n`);
+  writeFile(home, ".config/knots-sync/projects.json", `${JSON.stringify({ schema: "knots-sync.projects/v1", projects: paths.map((p) => ({ path: p, name: path.basename(p), addedAt: "2026-11-23" })) }, null, 2)}\n`);
 }
 
 const id = (p: string): string => crypto.createHash("sha256").update(fs.realpathSync(p)).digest("hex").slice(0, 12);
@@ -17,7 +17,7 @@ const id = (p: string): string => crypto.createHash("sha256").update(fs.realpath
 const READS = ["session", "overview", "issues", "intents", "verify", "reports/summary", "reports/findings", "worktrees", "sessions", "dispatch/queue", "harness", "flow/gates"];
 
 describe("dashboard --all", () => {
-  it("등록 프로젝트 3개, 모든 읽기 API 뒤 세 리포와 ~/.config/harness-kit 의 파일 수 · mtime 이 그대로다(DB-R27)", async () => {
+  it("등록 프로젝트 3개, 모든 읽기 API 뒤 세 리포와 ~/.config/knots-sync 의 파일 수 · mtime 이 그대로다(DB-R27)", async () => {
     const parent = tmpDir();
     const repos = ["alpha", "beta", "gamma"].map((n) => makeRepo({}, n, parent));
     for (const [i, r] of repos.entries()) {
@@ -27,7 +27,7 @@ describe("dashboard --all", () => {
     const home = (repos[0] as { home: string }).home;
     registry(home, [...repos.map((r) => r.root), path.join(parent, "missing")]);
     const before = repos.map((r) => snapshotTree(r.root));
-    const cfgBefore = snapshotTree(path.join(home, ".config/harness-kit"));
+    const cfgBefore = snapshotTree(path.join(home, ".config/knots-sync"));
     const srv = await serve(repos[0] as never, { mode: { kind: "all" }, env: cleanEnv(home) });
     const list = await call(srv, "GET", "/api/v1/projects");
     expect(list.status, list.text).toBe(200);
@@ -50,7 +50,7 @@ describe("dashboard --all", () => {
     expect((await call(srv, "GET", "/api/v1/p/000000000000/overview")).status).toBe(404);
     expect((await call(srv, "GET", "/api/v1/overview")).status).toBe(404);
     expect(repos.map((r) => snapshotTree(r.root))).toEqual(before);
-    expect(snapshotTree(path.join(home, ".config/harness-kit"))).toEqual(cfgBefore);
+    expect(snapshotTree(path.join(home, ".config/knots-sync"))).toEqual(cfgBefore);
     expect(fs.existsSync(path.join(repos[0]!.root, ".agents/state/dashboard.token"))).toBe(false);
   });
 
@@ -92,11 +92,11 @@ describe("대화 기록은 기본 꺼짐(DB-R28)", () => {
       const srv = await serve(repo);
       const h = await call(srv, "GET", "/api/v1/history");
       expect([h.status, h.json.error.code]).toEqual([404, "history_off"]);
-      writeFile(repo.home, ".config/harness-kit/config.json", JSON.stringify({ history: "off" }));
+      writeFile(repo.home, ".config/knots-sync/config.json", JSON.stringify({ history: "off" }));
       expect((await call(srv, "GET", "/api/v1/history")).json.error.code).toBe("history_off");
       for (const r of ["usage", "usage/now", "usage/kit", "overview", "sessions"]) await call(srv, "GET", `/api/v1/${r}`);
       expect(touched).toEqual([]);
-      writeFile(repo.home, ".config/harness-kit/config.json", JSON.stringify({ history: "on" }));
+      writeFile(repo.home, ".config/knots-sync/config.json", JSON.stringify({ history: "on" }));
       const before = snapshotTree(repo.root);
       const on = await call(srv, "GET", "/api/v1/history");
       expect([on.status, on.json.data.enabled, on.json.data.prompts]).toEqual([200, true, []]);

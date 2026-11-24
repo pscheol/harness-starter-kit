@@ -15,6 +15,7 @@ import { AncestorCheck, assertSafeRelPath, BLOCKED, existing, isSafeRelPath } fr
 import { readTemplate, resolveCandidates, type Overlap } from "./resolve";
 import type { Selection } from "./selection";
 import { substitute } from "./tokens";
+import { renamedKitPath } from "./legacy-names";
 
 const PROJECTION_OPS = new Set(["mirror", "render", "merge"]);
 
@@ -133,7 +134,8 @@ function orphan(ctx: Ctx, p: string, e: LockEntry, cur: Cur): Judged {
   }
   if (cur.kind === "other") return { op: { ...base, action: "orphan", reason: cur.what, modified: true }, entry: e };
   const modified = !(e.sha256 && cur.sha === e.sha256);
-  if (ctx.prune && !modified) return { op: { ...base, action: "delete", removeFile: true }, entry: null };
+  // 옛 킷 스킬(hx-*)은 새 이름(kns-*) 파일이 대신한다 — 고치지 않았으면 --prune 없이도 지운다(세션에 같은 스킬이 두 번 실리지 않게, HK-22b)
+  if ((ctx.prune || renamedKitPath(p)) && !modified) return { op: { ...base, action: "delete", removeFile: true, ...(ctx.prune ? {} : { reason: "옛 이름(hx-) 킷 스킬 — kns- 가 대신한다" }) }, entry: null };
   return { op: { ...base, action: "orphan", modified }, entry: e };
 }
 
@@ -202,7 +204,7 @@ function forgetSet(raw: string[], locked: Map<string, LockEntry>, want: Map<stri
   for (const r of raw) {
     const p = r.replace(/^\.\/+/, "");
     if (!isSafeRelPath(p)) throw usageError(`--forget 경로가 리포 안 상대 경로가 아니다: '${r}'`);
-    if (!locked.has(p) && !want.has(p)) throw usageError(`--forget: lock 에도 킷에도 없는 경로다: '${r}'`, "harness-kit list --files 로 경로를 본다");
+    if (!locked.has(p) && !want.has(p)) throw usageError(`--forget: lock 에도 킷에도 없는 경로다: '${r}'`, "knots-sync list --files 로 경로를 본다");
     out.add(p);
   }
   return out;

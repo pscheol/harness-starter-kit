@@ -13,7 +13,7 @@ const AWS = `${"AK"}${"IA"}${"Q".repeat(16)}`;
 function repoWith(modules: string[], extra: Record<string, unknown> = {}): Repo {
   const r = makeRepo({ modules });
   fs.cpSync(TEMPLATES, path.join(r.root, ".agents/docs/_spec-templates"), { recursive: true });
-  const file = path.join(r.root, ".agents/harness-kit.json");
+  const file = path.join(r.root, ".agents/knots-sync.json");
   const meta = { ...JSON.parse(fs.readFileSync(file, "utf8")), ...extra };
   fs.writeFileSync(file, `${JSON.stringify(meta, null, 2)}\n`);
   commitAll(r.root);
@@ -236,7 +236,7 @@ describe("intake --from notion:<페이지>", () => {
     expect(source).toMatchObject({ type: "notion", ref: PAGE, version: "2026-11-23T01:00:00.000Z" });
     expect(srv.seen[0]?.auth).toBe(`Bearer ${NTOKEN}`);
     expect(s3.seen.every((x) => x.auth === undefined)).toBe(true);
-    const all = walk(path.join(repo.root, folder)).map((f) => fs.readFileSync(f).toString("latin1")).join("\n") + readFile(repo.root, ".agents/harness-kit.json");
+    const all = walk(path.join(repo.root, folder)).map((f) => fs.readFileSync(f).toString("latin1")).join("\n") + readFile(repo.root, ".agents/knots-sync.json");
     expect(all).not.toContain(NTOKEN);
     expect(srv.seen.filter((x) => x.method !== "GET")).toHaveLength(0);
     await srv.close();

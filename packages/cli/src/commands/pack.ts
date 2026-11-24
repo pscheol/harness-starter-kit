@@ -32,7 +32,7 @@ class PackTest(unittest.TestCase):
         self.pack = json.loads((ROOT / "pack.json").read_text(encoding="utf-8"))
 
     def test_manifest(self):
-        self.assertEqual("harness-kit.pack/v1", self.pack["schema"])
+        self.assertEqual("knots-sync.pack/v1", self.pack["schema"])
         self.assertRegex(self.pack["name"], r"^[a-z][a-z0-9-]{1,30}$")
         self.assertRegex(self.pack["version"], r"^\\d+\\.\\d+\\.\\d+")
         self.assertTrue(self.pack["requires"]["kit"])
@@ -110,7 +110,7 @@ function pickItem(target: string, rel: string, id: string, key: "hooks" | "check
 
 export function runPack(ctx: Ctx): CommandResult {
   const [sub, name, ...rest] = ctx.positionals;
-  if (sub !== "new") throw usageError("pack 하위 명령은 new 하나다", "harness-kit pack new <이름> --dir <경로> [--from <파일>[#id]]…");
+  if (sub !== "new") throw usageError("pack 하위 명령은 new 하나다", "knots-sync pack new <이름> --dir <경로> [--from <파일>[#id]]…");
   if (rest.length) throw usageError(`pack new: 위치 인자가 많다: ${rest.join(" ")}`);
   if (!name || !PACK_NAME.test(name)) throw usageError(`팩 이름은 ^[a-z][a-z0-9-]{1,30}$: ${name ?? "(없음)"}`);
   const dirFlag = str(ctx.values, "dir");
@@ -172,8 +172,8 @@ export function runPack(ctx: Ctx): CommandResult {
   const manifest = { schema: PACK_SCHEMA, name, version: "0.1.0", description: `${name} 팩`, requires: { kit: range }, provides: prune(provides), overrides, tokens: [] as string[] };
   const out = new Map<string, { data: Buffer; executable: boolean }>([
     ["pack.json", { data: Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`), executable: false }],
-    ["README.md", { data: Buffer.from(`# ${name} 하네스 팩\n\n프로젝트의 \`.agents/harness-kit.json\` \`packs\` 에 \`git:<host>/<path>#v0.1.0\` 을 더하고 \`npx harness-kit update --packs\` 로 깐다.\n`), executable: false }],
-    ["fragments/hooks.json", { data: Buffer.from(`${JSON.stringify({ schema: "harness-kit.hooks/v1", hooks }, null, 2)}\n`), executable: false }],
+    ["README.md", { data: Buffer.from(`# ${name} 하네스 팩\n\n프로젝트의 \`.agents/knots-sync.json\` \`packs\` 에 \`git:<host>/<path>#v0.1.0\` 을 더하고 \`npx knots-sync update --packs\` 로 깐다.\n`), executable: false }],
+    ["fragments/hooks.json", { data: Buffer.from(`${JSON.stringify({ schema: "knots-sync.hooks/v1", hooks }, null, 2)}\n`), executable: false }],
     ["fragments/verify-checks.json", { data: Buffer.from(`${JSON.stringify({ checks }, null, 2)}\n`), executable: false }],
     ["tests/test_pack.py", { data: Buffer.from(TEST_PY), executable: false }],
     [".gitignore", { data: Buffer.from("__pycache__/\n"), executable: false }],
@@ -186,13 +186,13 @@ export function runPack(ctx: Ctx): CommandResult {
     throw new CliError(EXIT.ENV, `팩 골격을 쓰지 못했다: ${err instanceof Error ? err.message : String(err)}`);
   }
   const lines = [
-    `harness-kit pack new ${name} — ${dir}`,
+    `knots-sync pack new ${name} — ${dir}`,
     ...[...out.keys()].sort(byteCompare).map((p) => `  + ${p}`),
     ...warnings.map((w) => `  ⚠ ${w}`),
     "  다음:",
     `    cd ${dirFlag} && git init && git add -A && git commit -m "${name} 0.1.0" && git tag v0.1.0`,
-    `    프로젝트 .agents/harness-kit.json packs 에 "git:<host>/<path>#v0.1.0" 을 더한다(MR)`,
-    "    npx harness-kit update --packs",
+    `    프로젝트 .agents/knots-sync.json packs 에 "git:<host>/<path>#v0.1.0" 을 더한다(MR)`,
+    "    npx knots-sync update --packs",
   ];
   return { code: EXIT.OK, data: { command: "pack", sub: "new", name, dir, files: [...out.keys()].sort(byteCompare), manifest, warnings }, lines };
 }

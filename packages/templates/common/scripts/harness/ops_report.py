@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""관리 페이지 `GET /ops` · `harness-kit status --ops --json` 의 data(설계 14 §3.12, DO-R16). 두 입구가 이 스크립트 하나를 부른다.
+"""관리 페이지 `GET /ops` · `knots-sync status --ops --json` 의 data(설계 14 §3.12, DO-R16). 두 입구가 이 스크립트 하나를 부른다.
 
     python3 scripts/harness/ops_report.py [--today YYYY-MM-DD] [--no-metrics]
     python3 scripts/harness/ops_report.py --todo        "처리할 일"에 더할 항목만(가볍다)
@@ -89,7 +89,7 @@ def auto_verify_state(root):
         return {"enabled": False, "status": "off", "consecutiveFailures": 0, "lastPassedSha": (last or {}).get("lastPassedSha"), "lastRun": (last or {}).get("finishedAt")}
     return {"enabled": True, "status": (last or {}).get("status", "none"), "consecutiveFailures": (last or {}).get("consecutiveFailures", 0), "lastPassedSha": (last or {}).get("lastPassedSha"),
             "lastRun": (last or {}).get("finishedAt"), "reason": (last or {}).get("reason"), "maxConsecutiveFailures": auto["maxConsecutiveFailures"],
-            "resume": "플랫폼에서 파이프라인을 수동 실행하고 HX_DEPLOY_RESUME=true 를 넣는다" if (last or {}).get("status") == "stopped" else None}
+            "resume": "플랫폼에서 파이프라인을 수동 실행하고 KNS_DEPLOY_RESUME=true 를 넣는다" if (last or {}).get("status") == "stopped" else None}
 
 
 def delivery(root, today):

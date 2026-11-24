@@ -1,5 +1,5 @@
 {
-  "schema": "harness-kit.module/v1",
+  "schema": "knots-sync.module/v1",
   "id": "entire",
   "title": "Entire 대화 기록",
   "summary": "구현 하네스에만 커밋별 체크포인트를 남긴다",

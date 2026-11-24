@@ -33,7 +33,7 @@ created: 2026-12-08
 | HDRV3D-12 NFR-1 | 결제 API p95 | ≤ 300ms | 340ms | 미달 | ci:artifacts/perf.json |
 
 ## 2. 전달 지표
-<!-- METRICS:BEGIN — harness-kit metrics 가 쓴다. 손으로 고치지 않는다 -->
+<!-- METRICS:BEGIN — knots-sync metrics 가 쓴다. 손으로 고치지 않는다 -->
 | 지표 | 기준선 | 이 기간 | 계산 방법 |
 |---|---|---|---|
 <!-- METRICS:END -->

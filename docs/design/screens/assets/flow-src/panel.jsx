@@ -324,7 +324,7 @@ const OVERVIEW_HEAD = {
     tag: "intent 작성 중",
     tone: "design",
     sub: "Unit 아직 없음 · intent 게이트 전",
-    file: "아직 없다 · 설계 세션이 /hx-intent로 만든다."
+    file: "아직 없다 · 설계 세션이 /kns-intent로 만든다."
   },
   error: {
     tag: "units.json 오류",
@@ -386,7 +386,7 @@ function ProposalSection({ units }) {
           type="button"
           onClick={() => {
             if (navigator.clipboard) navigator.clipboard.writeText(FLOW_GATES_CMD).catch(() => {});
-            if (window.HX) window.HX.toast("복사했다 · " + FLOW_GATES_CMD + " · harness-kit.json을 고쳐 MR로 올린다");
+            if (window.HX) window.HX.toast("복사했다 · " + FLOW_GATES_CMD + " · knots-sync.json을 고쳐 MR로 올린다");
           }}
         >
           명령 복사

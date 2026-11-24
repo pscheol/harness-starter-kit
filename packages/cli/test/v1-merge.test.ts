@@ -1,4 +1,4 @@
-// v1 lock 첫 update 의 병합(HK-25 R1, design §2.2~§2.4) — TS(core/v1-merge) 와 Python(hx-update/v1_merge.py) 이 같은 바이트를 낸다.
+// v1 lock 첫 update 의 병합(HK-25 R1, design §2.2~§2.4) — TS(core/v1-merge) 와 Python(update/v1_merge.py) 이 같은 바이트를 낸다.
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
@@ -7,7 +7,7 @@ import { MERGE_BEGIN, MERGE_END, planV1Merge } from "../src/core/v1-merge";
 import { CLI_DIR, tmpDir } from "./helpers";
 
 const FIXTURES = path.join(CLI_DIR, "test", "fixtures", "v1-merge");
-const PY = path.join(CLI_DIR, "..", "legacy-setup", "hx-update", "v1_merge.py");
+const PY = path.join(CLI_DIR, "..", "legacy-setup", "update", "v1_merge.py");
 
 interface Fixture {
   name: string;
