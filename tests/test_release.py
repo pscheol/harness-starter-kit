@@ -32,7 +32,7 @@ ALL = FIVE + SOURCES
 def version_of(path: Path) -> str:
     doc = json.loads(path.read_text(encoding="utf-8"))
     if "plugins" in doc:
-        return next(p for p in doc["plugins"] if p["name"] == "knots-sync")["version"]
+        return next(p for p in doc["plugins"] if p["name"] == "kns")["version"]
     return doc["version"]
 
 
@@ -65,7 +65,7 @@ class ReleaseScriptTest(unittest.TestCase):
         for rel in only or ALL:
             path = self.repo / rel
             doc = json.loads(path.read_text(encoding="utf-8"))
-            (next(p for p in doc["plugins"] if p["name"] == "knots-sync") if "plugins" in doc else doc)["version"] = version
+            (next(p for p in doc["plugins"] if p["name"] == "kns") if "plugins" in doc else doc)["version"] = version
             path.write_text(json.dumps(doc, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
     def versions(self) -> list[str]:

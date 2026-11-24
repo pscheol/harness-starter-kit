@@ -27,12 +27,13 @@ V108_CONTEXT = {
 
 def extract_v108(dest: Path) -> Path | None:
     """e181b6f 의 플러그인을 dest 에 푼다. setup.sh 경로(없으면 None)."""
-    r = subprocess.run(["git", "-C", str(KIT), "archive", V108_COMMIT, "plugins/kns"], capture_output=True, timeout=120)
+    # v1.0.8 커밋 안의 경로는 이름을 바꾸기 전 그대로다(plugins/harness-kit · skills/hx-bootstrap) — 역사 기록이라 새 이름으로 바꾸지 않는다(HK-22b)
+    r = subprocess.run(["git", "-C", str(KIT), "archive", V108_COMMIT, "plugins/harness-kit"], capture_output=True, timeout=120)
     if r.returncode != 0:
         return None
     with tarfile.open(fileobj=io.BytesIO(r.stdout)) as tar:
         tar.extractall(dest, filter="data")
-    setup = dest / "plugins/kns/skills/bootstrap/setup.sh"
+    setup = dest / "plugins/harness-kit/skills/hx-bootstrap/setup.sh"
     return setup if setup.is_file() else None
 
 

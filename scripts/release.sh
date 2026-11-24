@@ -6,8 +6,8 @@
 #
 # 다섯 값(plugins/ 아래 두 매니페스트는 생성물이라, 원본 packages/plugin/ 의 같은 파일도 같이 바꾼다):
 #   packages/cli/package.json                       .version
-#   .claude-plugin/marketplace.json                 plugins[name = knots-sync].version
-#   .agents/plugins/marketplace.json                plugins[name = knots-sync].version
+#   .claude-plugin/marketplace.json                 plugins[name = kns].version
+#   .agents/plugins/marketplace.json                plugins[name = kns].version
 #   plugins/kns/.claude-plugin/plugin.json  .version   (원본 packages/plugin/.claude-plugin/plugin.json)
 #   plugins/kns/.codex-plugin/plugin.json   .version   (원본 packages/plugin/.codex-plugin/plugin.json)
 #
@@ -47,7 +47,7 @@ function target(doc, name) {
 if (mode === "get") {
   const out = FILES.map((f) => {
     let v;
-    try { v = target(JSON.parse(fs.readFileSync(f, "utf8")), "knots-sync").version; } catch (e) { v = `(읽지 못함: ${e.message})`; }
+    try { v = target(JSON.parse(fs.readFileSync(f, "utf8")), "kns").version; } catch (e) { v = `(읽지 못함: ${e.message})`; }
     return `${f}\t${v === undefined ? "(없음)" : v}`;
   });
   console.log(out.join("\n"));
@@ -56,7 +56,7 @@ if (mode === "get") {
   for (const f of FILES) {
     const text = fs.readFileSync(f, "utf8");
     const doc = JSON.parse(text);
-    target(doc, "knots-sync").version = version;
+    target(doc, "kns").version = version;
     fs.writeFileSync(f, JSON.stringify(doc, null, 2) + "\n");
   }
 } else if (mode === "cmp") {
