@@ -18,7 +18,7 @@ import type { Env } from "./util";
 export class ExportLeakError extends Error {
   readonly hits: string[];
   constructor(hits: string[]) {
-    super(`내보낸 파일에 남으면 안 되는 문자열이 있다: ${hits.slice(0, 5).join(", ")}`);
+    super(`내보낸 파일에 남으면 안 되는 문자열이 있습니다: ${hits.slice(0, 5).join(", ")}`);
     this.name = "ExportLeakError";
     this.hits = hits;
   }
@@ -70,7 +70,7 @@ function issueRow(i: Omit<IssueModel, "root">): string {
 
 export async function exportStatic(opts: ExportOptions): Promise<{ out: string; files: string[] }> {
   const out = path.resolve(opts.out);
-  if (fs.existsSync(out) && fs.readdirSync(out).length > 0) throw new ExportError("out_not_empty", `출력 폴더가 비어 있지 않다: ${out}`);
+  if (fs.existsSync(out) && fs.readdirSync(out).length > 0) throw new ExportError("out_not_empty", `출력 폴더가 비어 있지 않습니다: ${out}`);
   const home = opts.env.HOME ?? os.homedir();
   const p = await Project.open(opts.cwd, { env: opts.env, home, readOnly: true, multi: true, deps: {} });
   const cos = await checkouts(p);
@@ -108,7 +108,7 @@ export async function exportStatic(opts: ExportOptions): Promise<{ out: string; 
       "index.html",
       page(
         `${p.name()} — 관리 페이지(내보내기)`,
-        `<h1>${escapeHtml(p.name())}</h1><p>정적 내보내기다. 저장 · 승인 · 답 · 요청은 리포의 관리 페이지 · 콘솔에서 한다.</p><h2>처리할 일</h2><ol>${o.todo.map((t) => `<li>[${t.rank}] ${escapeHtml(t.title)} — ${escapeHtml(t.reason)}</li>`).join("")}</ol><h2>단계별</h2><ul>${Object.entries(o.stages).map(([k, v]) => `<li>${escapeHtml(k)} ${v}</li>`).join("")}</ul><h2>이슈</h2><table><thead><tr><th>키</th><th>이름</th><th>영역</th><th>단계</th><th>출처</th><th>체크아웃</th></tr></thead><tbody>${rows.map(issueRow).join("")}</tbody></table>`,
+        `<h1>${escapeHtml(p.name())}</h1><p>정적 내보내기입니다. 저장 · 승인 · 답 · 요청은 리포의 관리 페이지 · 콘솔에서 합니다.</p><h2>처리할 일</h2><ol>${o.todo.map((t) => `<li>[${t.rank}] ${escapeHtml(t.title)} — ${escapeHtml(t.reason)}</li>`).join("")}</ol><h2>단계별</h2><ul>${Object.entries(o.stages).map(([k, v]) => `<li>${escapeHtml(k)} ${v}</li>`).join("")}</ul><h2>이슈</h2><table><thead><tr><th>키</th><th>이름</th><th>영역</th><th>단계</th><th>출처</th><th>체크아웃</th></tr></thead><tbody>${rows.map(issueRow).join("")}</tbody></table>`,
       ),
     );
     for (const issue of loaded.issues) {

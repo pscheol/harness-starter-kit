@@ -68,17 +68,17 @@ function value(raw: string, depth: number): unknown {
   if (depth > MAX_DEPTH) throw new YamlError("깊이 8 초과");
   if (s === "") return null;
   const c = s[0] as string;
-  if (c === "*") throw new YamlError("별칭(*)은 쓸 수 없다");
-  if (c === "&") throw new YamlError("앵커(&)는 쓸 수 없다");
-  if (c === "!") throw new YamlError("태그(!)는 쓸 수 없다");
+  if (c === "*") throw new YamlError("별칭(*)은 쓸 수 없습니다");
+  if (c === "&") throw new YamlError("앵커(&)는 쓸 수 없습니다");
+  if (c === "!") throw new YamlError("태그(!)는 쓸 수 없습니다");
   if (c === '"') {
     const end = closing(s, '"');
-    if (s.slice(end + 1).trim()) throw new YamlError("따옴표 뒤에 글이 남았다");
+    if (s.slice(end + 1).trim()) throw new YamlError("따옴표 뒤에 글이 남았습니다");
     return dq(s.slice(1, end));
   }
   if (c === "'") {
     const end = closing(s, "'");
-    if (s.slice(end + 1).trim()) throw new YamlError("따옴표 뒤에 글이 남았다");
+    if (s.slice(end + 1).trim()) throw new YamlError("따옴표 뒤에 글이 남았습니다");
     return s.slice(1, end).replace(/''/g, "'");
   }
   if (c === "[") return flow(s, depth);
@@ -102,7 +102,7 @@ function closing(s: string, q: string): number {
       return i;
     }
   }
-  throw new YamlError("따옴표가 닫히지 않았다");
+  throw new YamlError("따옴표가 닫히지 않았습니다");
 }
 
 function flow(s: string, depth: number): unknown {
@@ -138,7 +138,7 @@ function flow(s: string, depth: number): unknown {
           i += 1;
           return out;
         }
-        throw new YamlError("흐름 배열이 닫히지 않았다");
+        throw new YamlError("흐름 배열이 닫히지 않았습니다");
       }
     }
     if (c === "{") {
@@ -153,7 +153,7 @@ function flow(s: string, depth: number): unknown {
         ws();
         const k = String(item(d + 1));
         ws();
-        if (s[i] !== ":") throw new YamlError("흐름 맵의 ':' 가 없다");
+        if (s[i] !== ":") throw new YamlError("흐름 맵의 ':' 가 없습니다");
         i += 1;
         if (Object.hasOwn(out, k)) throw new YamlError(`같은 키 ${k}`);
         out[k] = item(d + 1);
@@ -166,7 +166,7 @@ function flow(s: string, depth: number): unknown {
           i += 1;
           return out;
         }
-        throw new YamlError("흐름 맵이 닫히지 않았다");
+        throw new YamlError("흐름 맵이 닫히지 않았습니다");
       }
     }
     if (c === '"' || c === "'") {
@@ -183,7 +183,7 @@ function flow(s: string, depth: number): unknown {
   };
   const out = item(depth);
   ws();
-  if (i < s.length) throw new YamlError("흐름 값 뒤에 글이 남았다");
+  if (i < s.length) throw new YamlError("흐름 값 뒤에 글이 남았습니다");
   return out;
 }
 
@@ -214,7 +214,7 @@ class Reader {
 
 function blockScalar(r: Reader, header: string, parentIndent: number): string {
   const m = /^([|>])([+-]?)([1-9]?)$/.exec(header.trim());
-  if (!m) throw new YamlError(`블록 문자열 머리가 틀렸다: ${header}`);
+  if (!m) throw new YamlError(`블록 문자열 머리가 틀렸습니다: ${header}`);
   const [, style, chomp] = m;
   const body: { indent: number; text: string }[] = [];
   let contentIndent = -1;
@@ -259,7 +259,7 @@ function parseSeq(r: Reader, indent: number, depth: number): unknown[] {
   for (;;) {
     const l = r.peek();
     if (!l || l.indent !== indent || !(l.text.startsWith("- ") || l.text === "-")) {
-      if (l && l.indent > indent) throw new YamlError(`들여쓰기가 맞지 않다(${l.no}째 줄)`);
+      if (l && l.indent > indent) throw new YamlError(`들여쓰기가 맞지 않습니다(${l.no}째 줄)`);
       return out;
     }
     r.i += 1;
@@ -283,15 +283,15 @@ function parseMap(r: Reader, indent: number, depth: number): Record<string, unkn
   for (;;) {
     const l = r.peek();
     if (!l || l.indent < indent) return out;
-    if (l.indent > indent) throw new YamlError(`들여쓰기가 맞지 않다(${l.no}째 줄)`);
+    if (l.indent > indent) throw new YamlError(`들여쓰기가 맞지 않습니다(${l.no}째 줄)`);
     if (l.text.startsWith("- ") || l.text === "-") return out;
     const text = stripComment(l.text);
     const m = /^("(?:[^"\\]|\\.)*"|'(?:[^']|'')*'|[^\s:#][^:]*?)\s*:(?:\s+(.*))?$/.exec(text);
     if (!m) throw new YamlError(`'키: 값' 모양이 아니다(${l.no}째 줄)`);
     let key = m[1] as string;
     if (key[0] === '"' || key[0] === "'") key = String(value(key, depth));
-    else if (/^[&*!]/.test(key)) throw new YamlError("키에 별칭 · 앵커 · 태그를 쓸 수 없다");
-    if (key === "<<") throw new YamlError("병합 키(<<)는 쓸 수 없다");
+    else if (/^[&*!]/.test(key)) throw new YamlError("키에 별칭 · 앵커 · 태그를 쓸 수 없습니다");
+    if (key === "<<") throw new YamlError("병합 키(<<)는 쓸 수 없습니다");
     if (Object.hasOwn(out, key)) throw new YamlError(`같은 키 ${key}(${l.no}째 줄)`);
     r.i += 1;
     const rest = (m[2] ?? "").trim();
@@ -357,7 +357,7 @@ export function parseYaml(text: string): Record<string, unknown> {
   const first = r.peek();
   if (!first) return {};
   const res = parseBlock(r, first.indent, 0);
-  if (r.peek()) throw new YamlError(`읽지 못한 줄이 남았다(${(r.peek() as Line).no}째 줄)`);
+  if (r.peek()) throw new YamlError(`읽지 못한 줄이 남았습니다(${(r.peek() as Line).no}째 줄)`);
   if (res === null || typeof res !== "object" || Array.isArray(res)) throw new YamlError("머리가 맵이 아니다");
   return res as Record<string, unknown>;
 }

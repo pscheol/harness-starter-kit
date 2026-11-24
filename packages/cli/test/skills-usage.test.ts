@@ -100,7 +100,7 @@ describe("usage · history", () => {
     expect(now.stdout).toContain("꺼져 있다");
     const h = await cli(["history"], repo);
     expect(h.code).toBe(1);
-    expect(h.stderr).toContain("꺼져 있다");
+    expect(h.stderr).toContain("꺼져 있습니다");
   });
 
   it("usage --kit 은 늘 보인다: 세션 시작 평균 · 훅별 · owner", async () => {

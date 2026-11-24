@@ -32,7 +32,7 @@ export async function locate(cwd: string, env: Env): Promise<Location> {
   try {
     start = fs.realpathSync(cwd);
   } catch {
-    throw new LocateError(`폴더가 없다: ${cwd}`);
+    throw new LocateError(`폴더가 없습니다: ${cwd}`);
   }
   let harness: string | null = null;
   for (let cur = start; ; cur = path.dirname(cur)) {
@@ -42,7 +42,7 @@ export async function locate(cwd: string, env: Env): Promise<Location> {
     }
     if (path.dirname(cur) === cur) break;
   }
-  if (!harness) throw new LocateError(`하네스 루트(.agents/harness-kit.json)를 찾지 못했다: ${start}`);
+  if (!harness) throw new LocateError(`하네스 루트(.agents/harness-kit.json)를 찾지 못했습니다: ${start}`);
   const top = await gitOut(harness, env, "rev-parse", "--show-toplevel");
   const common = await gitOut(harness, env, "rev-parse", "--path-format=absolute", "--git-common-dir");
   if (!top || !common) throw new LocateError(`git 저장소가 아니다: ${harness}`);
@@ -148,16 +148,16 @@ export async function resolveIssueCheckout(p: Project, key: string, docRel: stri
     return i > 0 && prefixes.test(b.slice(0, i)) && b.slice(i + 1).startsWith(`${key}-`);
   });
   const cos = await checkouts(p);
-  if (mine.length > 1) throw new ApiError(409, "ambiguous_branch", `${key} 의 브랜치가 둘 이상이다: ${mine.join(", ")}`, { branches: mine });
+  if (mine.length > 1) throw new ApiError(409, "ambiguous_branch", `${key} 의 브랜치가 둘 이상입니다: ${mine.join(", ")}`, { branches: mine });
   if (mine.length === 1) {
     const co = cos.find((c) => c.branch === mine[0]);
     if (co) return co;
-    throw new ApiError(409, "branch_not_checked_out", `${mine[0]} 가 어느 폴더에도 체크아웃돼 있지 않다. wt new ${key} 뒤 다시 저장한다`, { branch: mine[0] });
+    throw new ApiError(409, "branch_not_checked_out", `${mine[0]} 가 어느 폴더에도 체크아웃돼 있지 않습니다. wt new ${key} 뒤 다시 저장합니다`, { branch: mine[0] });
   }
   const main = cos[0] as Checkout;
   const base = p.base();
   if (main.branch === base && (docRel === null || lstatChain(main.root, docRel) === "file")) return main;
-  throw new ApiError(409, "branch_not_checked_out", `${key} 의 이슈 브랜치가 없고 메인 폴더가 ${base} 가 아니거나 문서가 없다. wt new ${key} 뒤 다시 저장한다`, { base, mainBranch: main.branch });
+  throw new ApiError(409, "branch_not_checked_out", `${key} 의 이슈 브랜치가 없고 메인 폴더가 ${base} 가 아니거나 문서가 없습니다. wt new ${key} 뒤 다시 저장합니다`, { base, mainBranch: main.branch });
 }
 
 /** Intent 문서: `docs/<INT>-…` 브랜치가 있으면 이슈와 같은 규칙, 없으면 메인 폴더. */

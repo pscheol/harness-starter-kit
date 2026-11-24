@@ -49,7 +49,7 @@ async function locateForRead(p: Project, t: DocTarget): Promise<Located> {
       co = main;
     }
   }
-  if (lstatChain(co.root, t.rel) !== "file") throw notFound(`문서가 없다: ${t.rel}`);
+  if (lstatChain(co.root, t.rel) !== "file") throw notFound(`문서가 없습니다: ${t.rel}`);
   return { co, ref: null, bytes: fs.readFileSync(path.join(co.root, t.rel)) };
 }
 
@@ -59,14 +59,14 @@ export async function readRaw(p: Project, relPath: string): Promise<Buffer> {
   const intent = /^\.agents\/docs\/intents\/([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5})-[^/]+\//.exec(relPath);
   const t: DocTarget = issue ? { rel: relPath, kind: "issue", key: issue[1] as string, creatable: false } : intent ? { rel: relPath, kind: "intent", key: intent[1] as string, creatable: false } : { rel: relPath, kind: "main", key: null, creatable: false };
   const found = await locateForRead(p, t);
-  if (found.bytes.length > 20 * LIMIT) throw bad("파일이 너무 크다");
+  if (found.bytes.length > 20 * LIMIT) throw bad("파일이 너무 크입니다");
   return found.bytes;
 }
 
 export async function getDoc(p: Project, relInput: unknown, sign: ((rel: string) => string | null) | undefined): Promise<Record<string, unknown>> {
   const t = readTarget(relInput);
   const found = await locateForRead(p, t);
-  if (found.bytes.length > LIMIT) throw bad("1 MiB 를 넘는 문서다");
+  if (found.bytes.length > LIMIT) throw bad("1 MiB 를 넘는 문서입니다");
   const text = found.bytes.toString("utf8");
   let writable = t.writable && found.co !== null;
   if (writable) {
@@ -150,40 +150,40 @@ export async function putDoc(p: Project, body: unknown): Promise<{ data: Record<
   if (!body || typeof body !== "object") throw bad("본문이 객체가 아니다");
   const b = body as Record<string, unknown>;
   const t = docTarget(b.path);
-  if (typeof b.baseSha256 !== "string" || typeof b.markdown !== "string") throw bad("path · baseSha256 · markdown 이 필요하다");
-  if (Buffer.byteLength(b.markdown) > LIMIT) throw bad("1 MiB 를 넘는다");
+  if (typeof b.baseSha256 !== "string" || typeof b.markdown !== "string") throw bad("path · baseSha256 · markdown 이 필요합니다");
+  if (Buffer.byteLength(b.markdown) > LIMIT) throw bad("1 MiB 를 넘습니다");
   const force = b.force === true;
   const co = await writeCheckout(p, t);
   const kind = lstatChain(co.root, t.rel);
-  if (kind !== "file" && !(kind === "missing" && t.creatable)) throw kind === "missing" ? notFound(`문서가 없다: ${t.rel}`) : forbiddenPath(t.rel);
+  if (kind !== "file" && !(kind === "missing" && t.creatable)) throw kind === "missing" ? notFound(`문서가 없습니다: ${t.rel}`) : forbiddenPath(t.rel);
   const abs = path.join(co.root, t.rel);
   return p.withLock(abs, async () => {
     const current = kind === "file" ? fs.readFileSync(abs) : Buffer.alloc(0);
-    if (current.length > LIMIT) throw bad("1 MiB 를 넘는 문서다");
+    if (current.length > LIMIT) throw bad("1 MiB 를 넘는 문서입니다");
     const currentText = current.toString("utf8");
-    if (sha256(current) !== b.baseSha256) throw new ApiError(409, "conflict", "다른 곳에서 먼저 저장했다", { currentSha256: sha256(current), currentMarkdown: currentText });
+    if (sha256(current) !== b.baseSha256) throw new ApiError(409, "conflict", "다른 곳에서 먼저 저장했습니다", { currentSha256: sha256(current), currentMarkdown: currentText });
     let next = (b.markdown as string).replace(/\r\n/g, "\n");
     let after: Record<string, string> | null;
     try {
       after = parseFm(next);
     } catch (err) {
-      throw bad(`문서 머리를 읽지 못한다: ${(err as FrontmatterError).message}`);
+      throw bad(`문서 머리를 읽지 못합니다: ${(err as FrontmatterError).message}`);
     }
     const before = parseLoose(currentText);
     let statusChanged: string | null = null;
-    if (after?.status === "approved" && before?.status !== "approved") throw new ApiError(422, "status_change_forbidden", "머리 status 를 approved 로 바꾸는 것은 승인 처리만 한다(승인 화면 · approve)");
+    if (after?.status === "approved" && before?.status !== "approved") throw new ApiError(422, "status_change_forbidden", "머리 status 를 approved 로 바꾸는 것은 승인 처리만 합니다(승인 화면 · approve)");
     if (before?.status === "approved" && after?.status === "approved" && next !== currentText.replace(/\r\n/g, "\n")) {
       next = setField(next, "status", "in-review");
       statusChanged = "approved→in-review";
     }
     const held = await leaseHolder(p, co, t.rel);
-    if (held && !force) throw new ApiError(409, "lease_held", `다른 세션(${held})이 이 파일을 점유 중이다. force 로 저장할 수 있다`, { leaseHeldBy: held });
+    if (held && !force) throw new ApiError(409, "lease_held", `다른 세션(${held})이 이 파일을 점유 중입니다. force 로 저장할 수 있습니다`, { leaseHeldBy: held });
     if (currentText.includes("\r\n")) next = next.replace(/\n/g, "\r\n");
     atomicWrite(abs, next, kind === "file" ? undefined : 0o644);
     const summary = changeSummary(currentText, next);
     return {
       data: { sha256: sha256(Buffer.from(next, "utf8")), savedTo: rel(p.loc.top, co.path), branch: co.branch, statusChanged, changeSummary: summary, leaseHeldBy: held },
-      meta: { commit: "커밋은 그 이슈의 세션이 한다" },
+      meta: { commit: "커밋은 그 이슈의 세션이 합니다" },
     };
   });
 }

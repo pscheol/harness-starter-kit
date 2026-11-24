@@ -42,7 +42,7 @@ async function runMob(p: Project, key: string, args: string[]): Promise<Record<s
   } catch {
     throw new ApiError(500, "internal", `mob.py 출력이 JSON 이 아니다: ${(r.stderr || r.stdout).slice(0, 200)}`);
   }
-  if (r.code === 3) throw new ApiError(422, "mob_refused", String(out.error ?? "몹 세션 처리를 거부했다"));
+  if (r.code === 3) throw new ApiError(422, "mob_refused", String(out.error ?? "몹 세션 처리를 거부했습니다"));
   if (r.code !== 0) throw new ApiError(500, "internal", String(out.error ?? "mob.py 실패"));
   return out;
 }
@@ -56,7 +56,7 @@ export async function postMob(p: Project, key: string, body: unknown): Promise<R
   if (!isObj(body) || typeof body.action !== "string" || !ACTIONS.has(body.action)) throw bad("action 은 start · next · close 다");
   if (body.action !== "start") return runMob(p, key, [body.action, key]);
   const attendees = Array.isArray(body.attendees) ? body.attendees.filter((a): a is string => typeof a === "string") : [];
-  if (!attendees.length || attendees.some((a) => !EMAIL.test(a))) throw bad("attendees 는 email 목록이다");
+  if (!attendees.length || attendees.some((a) => !EMAIL.test(a))) throw bad("attendees 는 email 목록입니다");
   const timebox = typeof body.timeboxMin === "number" && Number.isInteger(body.timeboxMin) && body.timeboxMin > 0 ? body.timeboxMin : 30;
   return runMob(p, key, ["start", key, "--attendees", attendees.join(","), "--timebox", String(timebox)]);
 }

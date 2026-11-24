@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 e6d0c2e172923bd65c0320d1cf52d1cfd7f9bd0929a2be8849845092fbfb3470 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 7269f535ee9ec186210155f615a7954b0b24a42f9146228d5c425e7f10a22f1c · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -5849,7 +5849,7 @@ var FIELDS2 = {
   "규칙 후보": "ruleCandidate",
   "롤백 면제": "rollbackWaiver"
 };
-var FORMAT_NOTE = "<!-- 덧붙이기만 한다. 에이전트는 이 파일을 쓰지 않는다. 형식과 승인 경로: .agents/rules/approval-vocabulary.md -->";
+var FORMAT_NOTE = "<!-- 덧붙이기만 합니다. 에이전트는 이 파일을 쓰지 않습니다. 형식과 승인 경로: .agents/rules/approval-vocabulary.md -->";
 function newEntry(line, at, gate, decision) {
   return { line, at, gate, decision, approver: null, target: null, phrase: null, path: null, entryId: null, source: null, evidence: null, ruleCandidate: false, rollbackWaiver: null, errors: [], valid: true };
 }
@@ -6201,8 +6201,8 @@ var ApiError = class extends Error {
 var bad3 = (message2, details) => new ApiError(400, "bad_request", message2, details);
 var notFound = (message2) => new ApiError(404, "not_found", message2);
 var forbiddenPath = (p) => new ApiError(403, "forbidden_path", `쓰기 허용 경로가 아니다: ${p.slice(0, 200)}`);
-var readOnly = () => new ApiError(403, "read_only", "읽기 전용 모드다(에이전트 세션 또는 --read-only). 사람이 자기 터미널에서 연 관리 페이지에서 한다");
-var notImplemented = (stage, what) => new ApiError(501, "not_implemented", `${what}은(는) ${stage}에서 제공한다`, { stage });
+var readOnly = () => new ApiError(403, "read_only", "읽기 전용 모드입니다(에이전트 세션 또는 --read-only). 사람이 자기 터미널에서 연 관리 페이지에서 합니다");
+var notImplemented = (stage, what) => new ApiError(501, "not_implemented", `${what}은(는) ${stage}에서 제공합니다`, { stage });
 
 // ../dashboard/src/frontmatter.ts
 var LINE = /^([a-z][a-zA-Z0-9]*):\s*([^\n]*?)(\s+#[^\n]*)?$/;
@@ -6383,8 +6383,8 @@ function intentFolders(root) {
 }
 function findIntent(root, key) {
   const found = intentFolders(root).filter((i) => i.key === key);
-  if (found.length === 0) throw notFound(`Intent 가 없다: ${key}`);
-  if (found.length > 1) throw new ApiError(409, "ambiguous_branch", `같은 키의 Intent 폴더가 둘 이상이다: ${key}`);
+  if (found.length === 0) throw notFound(`Intent 가 없습니다: ${key}`);
+  if (found.length > 1) throw new ApiError(409, "ambiguous_branch", `같은 키의 Intent 폴더가 둘 이상입니다: ${key}`);
   return found[0];
 }
 function readUnitsFile(abs) {
@@ -6567,7 +6567,7 @@ function flowData(p, info, issues, sessions) {
   };
 }
 function validChanges(input) {
-  if (!Array.isArray(input) || input.length > 100) throw bad3("changes 는 100개 이하의 배열이다");
+  if (!Array.isArray(input) || input.length > 100) throw bad3("changes 는 100개 이하의 배열입니다");
   return input.map((c) => {
     if (!isObj6(c) || typeof c.op !== "string" || !["add-dep", "remove-dep", "split", "merge", "order"].includes(c.op)) throw bad3("op 는 add-dep · remove-dep · split · merge · order 다");
     const out = { op: c.op };
@@ -6591,12 +6591,12 @@ function applyChanges(units, changes) {
     if (c.op === "add-dep" || c.op === "remove-dep") {
       const u = get(c.unit);
       const d = get(c.dependsOn);
-      if (u.kind === "contract" && d.kind !== "contract" && c.op === "add-dep") throw new ApiError(422, "contract_dependency", "계약 Unit 은 기능 Unit 에 의존하지 않는다(08 §3.5)");
+      if (u.kind === "contract" && d.kind !== "contract" && c.op === "add-dep") throw new ApiError(422, "contract_dependency", "계약 Unit 은 기능 Unit 에 의존하지 않습니다(08 §3.5)");
       list3 = list3.map((x) => x.id !== u.id ? x : { ...x, dependsOn: c.op === "add-dep" ? [.../* @__PURE__ */ new Set([...x.dependsOn, d.id])] : x.dependsOn.filter((y) => y !== d.id) });
     } else if (c.op === "merge") {
       const [a, b] = (c.units ?? []).map((id) => get(id));
-      if (!a || !b || a.id === b.id) throw bad3("merge 는 서로 다른 Unit 둘이다");
-      if (a.kind === "contract" || b.kind === "contract") throw new ApiError(422, "contract_merge", "계약 Unit 은 합치지 않는다");
+      if (!a || !b || a.id === b.id) throw bad3("merge 는 서로 다른 Unit 둘입니다");
+      if (a.kind === "contract" || b.kind === "contract") throw new ApiError(422, "contract_merge", "계약 Unit 은 합치지 않습니다");
       list3 = list3.map((x) => {
         if (x.id === a.id) return { ...x, stories: [.../* @__PURE__ */ new Set([...x.stories, ...b.stories])], dependsOn: [.../* @__PURE__ */ new Set([...x.dependsOn, ...b.dependsOn])].filter((y) => y !== a.id && y !== b.id) };
         if (x.id === b.id) return { ...x, planned: false };
@@ -6605,7 +6605,7 @@ function applyChanges(units, changes) {
     } else if (c.op === "split") {
       const u = get(c.unit);
       const titles = c.into ?? [];
-      if (titles.length < 2) throw bad3("split 의 into 는 제목 2개 이상이다");
+      if (titles.length < 2) throw bad3("split 의 into 는 제목 2개 이상입니다");
       const made = titles.map((t, i) => ({ ...u, id: `U-${++next}`, title: t, stories: i === 0 ? [...u.stories] : [], issue: null, planned: true }));
       const madeIds = made.map((m) => m.id);
       list3 = [...list3.map((x) => x.id === u.id ? { ...x, planned: false } : { ...x, dependsOn: x.dependsOn.flatMap((y) => y === u.id ? madeIds : [y]) }), ...made];
@@ -6631,12 +6631,12 @@ function applyChanges(units, changes) {
   for (const id of live.keys()) if (visit(id, [])) throw new ApiError(422, "cycle", `dependsOn 고리: ${cycle.join(" → ")}`, { cycle });
   for (const c of changes.filter((x) => x.op === "order")) {
     const ids2 = c.units ?? [];
-    for (const id of ids2) for (const d of live.get(id)?.dependsOn ?? []) if (ids2.includes(d) && ids2.indexOf(d) > ids2.indexOf(id)) throw new ApiError(422, "cycle", `순서가 의존과 어긋난다: ${d} 가 ${id} 보다 먼저다`, { cycle: [d, id] });
+    for (const id of ids2) for (const d of live.get(id)?.dependsOn ?? []) if (ids2.includes(d) && ids2.indexOf(d) > ids2.indexOf(id)) throw new ApiError(422, "cycle", `순서가 의존과 어긋납니다: ${d} 가 ${id} 보다 먼저입니다`, { cycle: [d, id] });
   }
   return list3;
 }
 function proposalBody(body) {
-  if (!isObj6(body) || typeof body.intent !== "string" || typeof body.baseSha256 !== "string") throw bad3("intent · baseSha256 · changes 가 필요하다");
+  if (!isObj6(body) || typeof body.intent !== "string" || typeof body.baseSha256 !== "string") throw bad3("intent · baseSha256 · changes 가 필요합니다");
   return { intent: body.intent, baseSha256: body.baseSha256, proposalSha256: typeof body.proposalSha256 === "string" ? body.proposalSha256 : null, changes: validChanges(body.changes) };
 }
 function appliedUnitsBytes(raw, data, units, changes) {
@@ -6849,7 +6849,7 @@ async function locate(cwd, env) {
   try {
     start = import_node_fs26.default.realpathSync(cwd);
   } catch {
-    throw new LocateError(`폴더가 없다: ${cwd}`);
+    throw new LocateError(`폴더가 없습니다: ${cwd}`);
   }
   let harness = null;
   for (let cur = start; ; cur = import_node_path29.default.dirname(cur)) {
@@ -6859,7 +6859,7 @@ async function locate(cwd, env) {
     }
     if (import_node_path29.default.dirname(cur) === cur) break;
   }
-  if (!harness) throw new LocateError(`하네스 루트(.agents/harness-kit.json)를 찾지 못했다: ${start}`);
+  if (!harness) throw new LocateError(`하네스 루트(.agents/harness-kit.json)를 찾지 못했습니다: ${start}`);
   const top = await gitOut(harness, env, "rev-parse", "--show-toplevel");
   const common = await gitOut(harness, env, "rev-parse", "--path-format=absolute", "--git-common-dir");
   if (!top || !common) throw new LocateError(`git 저장소가 아니다: ${harness}`);
@@ -6942,16 +6942,16 @@ async function resolveIssueCheckout(p, key, docRel, prefixes = /^[a-z]+$/) {
     return i > 0 && prefixes.test(b.slice(0, i)) && b.slice(i + 1).startsWith(`${key}-`);
   });
   const cos = await checkouts(p);
-  if (mine.length > 1) throw new ApiError(409, "ambiguous_branch", `${key} 의 브랜치가 둘 이상이다: ${mine.join(", ")}`, { branches: mine });
+  if (mine.length > 1) throw new ApiError(409, "ambiguous_branch", `${key} 의 브랜치가 둘 이상입니다: ${mine.join(", ")}`, { branches: mine });
   if (mine.length === 1) {
     const co = cos.find((c) => c.branch === mine[0]);
     if (co) return co;
-    throw new ApiError(409, "branch_not_checked_out", `${mine[0]} 가 어느 폴더에도 체크아웃돼 있지 않다. wt new ${key} 뒤 다시 저장한다`, { branch: mine[0] });
+    throw new ApiError(409, "branch_not_checked_out", `${mine[0]} 가 어느 폴더에도 체크아웃돼 있지 않습니다. wt new ${key} 뒤 다시 저장합니다`, { branch: mine[0] });
   }
   const main2 = cos[0];
   const base = p.base();
   if (main2.branch === base && (docRel === null || lstatChain(main2.root, docRel) === "file")) return main2;
-  throw new ApiError(409, "branch_not_checked_out", `${key} 의 이슈 브랜치가 없고 메인 폴더가 ${base} 가 아니거나 문서가 없다. wt new ${key} 뒤 다시 저장한다`, { base, mainBranch: main2.branch });
+  throw new ApiError(409, "branch_not_checked_out", `${key} 의 이슈 브랜치가 없고 메인 폴더가 ${base} 가 아니거나 문서가 없습니다. wt new ${key} 뒤 다시 저장합니다`, { base, mainBranch: main2.branch });
 }
 async function resolveIntentCheckout(p, key) {
   const all = await branches(p);
@@ -7176,16 +7176,16 @@ function nodeGates(docs, legacyFlags) {
     const d = docs[gate];
     let passed = false;
     const reasons = [];
-    if (gate === "mr" || gate === "done") reasons.push("git 객체로 읽은 이슈는 이 게이트를 판정하지 않는다(체크아웃 필요)");
-    else if (!d) reasons.push(`${gate}.md 가 없다`);
+    if (gate === "mr" || gate === "done") reasons.push("git 객체로 읽은 이슈는 이 게이트를 판정하지 않습니다(체크아웃 필요)");
+    else if (!d) reasons.push(`${gate}.md 가 없습니다`);
     else {
-      if (d.clarify) reasons.push(`${gate}.md 에 [NEEDS CLARIFICATION 가 남았다`);
+      if (d.clarify) reasons.push(`${gate}.md 에 [NEEDS CLARIFICATION 가 남았습니다`);
       if (gate !== "tasks" && d.status !== "approved") reasons.push(`${gate}.md 머리 status 가 approved 가 아니다`);
       const valid = d.approval === "valid" || gate === "tasks" && d.approval === "stale" || legacyFlags[gate] === true;
       if (!valid) reasons.push(`${gate} 승인 기록이 ${d.approval}`);
       passed = reasons.length === 0 && ok2;
     }
-    const pre = ok2 ? [] : ["앞 게이트를 통과하지 않았다"];
+    const pre = ok2 ? [] : ["앞 게이트를 통과하지 않았습니다"];
     out.push({ gate, passed: passed && ok2, reasons: [...pre, ...reasons], preconditions: pre, approval: d?.approval ?? "none" });
     ok2 = ok2 && passed;
   }
@@ -7698,7 +7698,7 @@ async function readReview(p, root, folderRel) {
   return p.cache.get(`review:${root}:${folderRel}`, stamp, async () => {
     const r = await python(root, p.env, [script, import_node_path33.default.join(root, folderRel), "--json"], 3e4);
     if (r.code === 2) return { key, report: null, head: null, stale: false, open: { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 }, findings: [] };
-    if (r.code !== 0 && r.code !== 1) throw new ApiError(500, "internal", "리뷰 상태를 읽지 못했다");
+    if (r.code !== 0 && r.code !== 1) throw new ApiError(500, "internal", "리뷰 상태를 읽지 못했습니다");
     const data = JSON.parse(r.stdout);
     if (typeof data.report === "string" && import_node_path33.default.isAbsolute(data.report)) data.report = rel(p.root, data.report);
     return data;
@@ -7788,7 +7788,7 @@ async function todos(p, loaded) {
     const open = i.review?.open ?? {};
     const blocking = (open.CRITICAL ?? 0) + (open.HIGH ?? 0);
     if (blocking > 0) {
-      out.push({ rank: 1, kind: "review-blocker", target: i.key, title: `${i.key} 리뷰 지적 CRITICAL ${open.CRITICAL ?? 0} · HIGH ${open.HIGH ?? 0}`, reason: "열린 CRITICAL · HIGH 지적이 있으면 mr 승인 · full 이 막힌다", since: iso(i.review?.report ? mtime(import_node_path34.default.join(p.root, i.review.report)) : null), link: `${link}/review`, mine: false });
+      out.push({ rank: 1, kind: "review-blocker", target: i.key, title: `${i.key} 리뷰 지적 CRITICAL ${open.CRITICAL ?? 0} · HIGH ${open.HIGH ?? 0}`, reason: "열린 CRITICAL · HIGH 지적이 있으면 mr 승인 · full 이 막힙니다", since: iso(i.review?.report ? mtime(import_node_path34.default.join(p.root, i.review.report)) : null), link: `${link}/review`, mine: false });
     }
     if (i.waitingOn) {
       const d = i.docs[i.waitingOn.gate];
@@ -7797,7 +7797,7 @@ async function todos(p, loaded) {
         kind: i.waitingOn.mine ? "gate-mine" : "gate-others",
         target: i.key,
         title: `${i.key} ${i.waitingOn.gate} 승인 대기`,
-        reason: i.waitingOn.approvers.length ? `승인자: ${i.waitingOn.approvers.join(", ")}` : "approvers 가 비어 git 사용자 누구나 승인한다",
+        reason: i.waitingOn.approvers.length ? `승인자: ${i.waitingOn.approvers.join(", ")}` : "approvers 가 비어 git 사용자 누구나 승인합니다",
         since: iso(d?.mtimeMs ?? null),
         link: `${link}/approve?gate=${i.waitingOn.gate}`,
         mine: i.waitingOn.mine
@@ -7805,8 +7805,8 @@ async function todos(p, loaded) {
     }
     for (const [gate2, d] of Object.entries(i.docs)) {
       if (!d) continue;
-      if (d.clarify > 0) out.push({ rank: 3, kind: "questions", target: i.key, title: `${i.key} ${gate2}.md 에 [NEEDS CLARIFICATION ${d.clarify}건`, reason: "표시가 남은 문서는 승인할 수 없다(DB-R13)", since: iso(d.mtimeMs ?? null), link: `${link}/docs/${gate2}`, mine: false });
-      if (d.approval === "stale" && gate2 !== "tasks") out.push({ rank: 5, kind: "approval-stale", target: i.key, title: `${i.key} ${gate2} 승인 뒤 내용이 바뀌었다`, reason: "승인 기록의 sha 와 지금 문서가 다르다. 다시 승인한다", since: iso(d.mtimeMs ?? null), link: `${link}/docs/${gate2}`, mine: allowed(user.email, gate2, p.policy()) });
+      if (d.clarify > 0) out.push({ rank: 3, kind: "questions", target: i.key, title: `${i.key} ${gate2}.md 에 [NEEDS CLARIFICATION ${d.clarify}건`, reason: "표시가 남은 문서는 승인할 수 없습니다(DB-R13)", since: iso(d.mtimeMs ?? null), link: `${link}/docs/${gate2}`, mine: false });
+      if (d.approval === "stale" && gate2 !== "tasks") out.push({ rank: 5, kind: "approval-stale", target: i.key, title: `${i.key} ${gate2} 승인 뒤 내용이 바뀌었습니다`, reason: "승인 기록의 sha 와 지금 문서가 다르입니다. 다시 승인합니다", since: iso(d.mtimeMs ?? null), link: `${link}/docs/${gate2}`, mine: allowed(user.email, gate2, p.policy()) });
     }
   }
   for (const info of intentFolders(p.root)) {
@@ -7865,7 +7865,7 @@ async function overview(p) {
 var ExportLeakError = class extends Error {
   hits;
   constructor(hits) {
-    super(`내보낸 파일에 남으면 안 되는 문자열이 있다: ${hits.slice(0, 5).join(", ")}`);
+    super(`내보낸 파일에 남으면 안 되는 문자열이 있습니다: ${hits.slice(0, 5).join(", ")}`);
     this.name = "ExportLeakError";
     this.hits = hits;
   }
@@ -7905,7 +7905,7 @@ function issueRow(i) {
 }
 async function exportStatic(opts) {
   const out = import_node_path35.default.resolve(opts.out);
-  if (import_node_fs32.default.existsSync(out) && import_node_fs32.default.readdirSync(out).length > 0) throw new ExportError("out_not_empty", `출력 폴더가 비어 있지 않다: ${out}`);
+  if (import_node_fs32.default.existsSync(out) && import_node_fs32.default.readdirSync(out).length > 0) throw new ExportError("out_not_empty", `출력 폴더가 비어 있지 않습니다: ${out}`);
   const home = opts.env.HOME ?? import_node_os.default.homedir();
   const p = await Project.open(opts.cwd, { env: opts.env, home, readOnly: true, multi: true, deps: {} });
   const cos = await checkouts(p);
@@ -7944,7 +7944,7 @@ async function exportStatic(opts) {
       "index.html",
       page(
         `${p.name()} — 관리 페이지(내보내기)`,
-        `<h1>${escapeHtml(p.name())}</h1><p>정적 내보내기다. 저장 · 승인 · 답 · 요청은 리포의 관리 페이지 · 콘솔에서 한다.</p><h2>처리할 일</h2><ol>${o.todo.map((t) => `<li>[${t.rank}] ${escapeHtml(t.title)} — ${escapeHtml(t.reason)}</li>`).join("")}</ol><h2>단계별</h2><ul>${Object.entries(o.stages).map(([k, v]) => `<li>${escapeHtml(k)} ${v}</li>`).join("")}</ul><h2>이슈</h2><table><thead><tr><th>키</th><th>이름</th><th>영역</th><th>단계</th><th>출처</th><th>체크아웃</th></tr></thead><tbody>${rows.map(issueRow).join("")}</tbody></table>`
+        `<h1>${escapeHtml(p.name())}</h1><p>정적 내보내기입니다. 저장 · 승인 · 답 · 요청은 리포의 관리 페이지 · 콘솔에서 합니다.</p><h2>처리할 일</h2><ol>${o.todo.map((t) => `<li>[${t.rank}] ${escapeHtml(t.title)} — ${escapeHtml(t.reason)}</li>`).join("")}</ol><h2>단계별</h2><ul>${Object.entries(o.stages).map(([k, v]) => `<li>${escapeHtml(k)} ${v}</li>`).join("")}</ul><h2>이슈</h2><table><thead><tr><th>키</th><th>이름</th><th>영역</th><th>단계</th><th>출처</th><th>체크아웃</th></tr></thead><tbody>${rows.map(issueRow).join("")}</tbody></table>`
       )
     );
     for (const issue of loaded.issues) {
@@ -8079,7 +8079,7 @@ async function history(p, issue) {
 }
 async function burnData(p, info, issues, daysText) {
   const days = daysText === null ? 14 : Number(daysText);
-  if (!Number.isInteger(days) || days < 1 || days > 90) throw bad3("days 는 1~90 이다");
+  if (!Number.isInteger(days) || days < 1 || days > 90) throw bad3("days 는 1~90 입니다");
   const { units } = readUnitsFile(info.abs);
   const live = units.filter((u) => u.planned && !(u.kind === "contract" && !u.issue));
   const startDay = /* @__PURE__ */ new Date();
@@ -8152,7 +8152,7 @@ function addProject(home, dir, today2, env = {}) {
   try {
     real2 = import_node_fs33.default.realpathSync(dir);
   } catch {
-    throw new ApiError(404, "not_found", `폴더가 없다: ${dir}`);
+    throw new ApiError(404, "not_found", `폴더가 없습니다: ${dir}`);
   }
   if (!isHarnessRepo(real2)) throw new ApiError(422, "not_a_harness_repo", `킷을 설치한 리포가 아니다(.agents/harness-kit.json 없음): ${real2}`);
   const list3 = readRegistry(home, env);
@@ -8173,7 +8173,7 @@ function removeProject(home, nameOrPath, env = {}) {
     real2 = import_node_path37.default.resolve(nameOrPath);
   }
   const removed = list3.filter((e) => e.name === nameOrPath || e.path === nameOrPath || e.path === real2);
-  if (removed.length === 0) throw new ApiError(404, "not_found", `등록부에 없다: ${nameOrPath}`);
+  if (removed.length === 0) throw new ApiError(404, "not_found", `등록부에 없습니다: ${nameOrPath}`);
   writeRegistry(home, list3.filter((e) => !removed.includes(e)), env);
   return { removed };
 }
@@ -8202,7 +8202,7 @@ function discover(dir, depth = 3) {
 }
 function workspaceEntries(file) {
   const data = readJson(file);
-  if (!data) throw bad3(`workspace 파일을 읽지 못했다: ${file}`);
+  if (!data) throw bad3(`workspace 파일을 읽지 못했습니다: ${file}`);
   const list3 = Array.isArray(data.projects) ? data.projects : [];
   return list3.map((x) => typeof x === "string" ? x : isObj6(x) && typeof x.path === "string" ? x.path : null).filter((x) => x !== null).map((p) => {
     const abs = import_node_path37.default.resolve(import_node_path37.default.dirname(file), p);
@@ -8373,17 +8373,17 @@ function value(raw, depth) {
   if (depth > MAX_DEPTH) throw new YamlError("깊이 8 초과");
   if (s === "") return null;
   const c = s[0];
-  if (c === "*") throw new YamlError("별칭(*)은 쓸 수 없다");
-  if (c === "&") throw new YamlError("앵커(&)는 쓸 수 없다");
-  if (c === "!") throw new YamlError("태그(!)는 쓸 수 없다");
+  if (c === "*") throw new YamlError("별칭(*)은 쓸 수 없습니다");
+  if (c === "&") throw new YamlError("앵커(&)는 쓸 수 없습니다");
+  if (c === "!") throw new YamlError("태그(!)는 쓸 수 없습니다");
   if (c === '"') {
     const end = closing(s, '"');
-    if (s.slice(end + 1).trim()) throw new YamlError("따옴표 뒤에 글이 남았다");
+    if (s.slice(end + 1).trim()) throw new YamlError("따옴표 뒤에 글이 남았습니다");
     return dq(s.slice(1, end));
   }
   if (c === "'") {
     const end = closing(s, "'");
-    if (s.slice(end + 1).trim()) throw new YamlError("따옴표 뒤에 글이 남았다");
+    if (s.slice(end + 1).trim()) throw new YamlError("따옴표 뒤에 글이 남았습니다");
     return s.slice(1, end).replace(/''/g, "'");
   }
   if (c === "[") return flow(s, depth);
@@ -8406,7 +8406,7 @@ function closing(s, q2) {
       return i;
     }
   }
-  throw new YamlError("따옴표가 닫히지 않았다");
+  throw new YamlError("따옴표가 닫히지 않았습니다");
 }
 function flow(s, depth) {
   let i = 0;
@@ -8441,7 +8441,7 @@ function flow(s, depth) {
           i += 1;
           return out2;
         }
-        throw new YamlError("흐름 배열이 닫히지 않았다");
+        throw new YamlError("흐름 배열이 닫히지 않았습니다");
       }
     }
     if (c === "{") {
@@ -8456,7 +8456,7 @@ function flow(s, depth) {
         ws();
         const k = String(item(d + 1));
         ws();
-        if (s[i] !== ":") throw new YamlError("흐름 맵의 ':' 가 없다");
+        if (s[i] !== ":") throw new YamlError("흐름 맵의 ':' 가 없습니다");
         i += 1;
         if (Object.hasOwn(out2, k)) throw new YamlError(`같은 키 ${k}`);
         out2[k] = item(d + 1);
@@ -8469,7 +8469,7 @@ function flow(s, depth) {
           i += 1;
           return out2;
         }
-        throw new YamlError("흐름 맵이 닫히지 않았다");
+        throw new YamlError("흐름 맵이 닫히지 않았습니다");
       }
     }
     if (c === '"' || c === "'") {
@@ -8486,7 +8486,7 @@ function flow(s, depth) {
   };
   const out = item(depth);
   ws();
-  if (i < s.length) throw new YamlError("흐름 값 뒤에 글이 남았다");
+  if (i < s.length) throw new YamlError("흐름 값 뒤에 글이 남았습니다");
   return out;
 }
 function lines(text2) {
@@ -8516,7 +8516,7 @@ var Reader = class {
 };
 function blockScalar(r, header, parentIndent) {
   const m = /^([|>])([+-]?)([1-9]?)$/.exec(header.trim());
-  if (!m) throw new YamlError(`블록 문자열 머리가 틀렸다: ${header}`);
+  if (!m) throw new YamlError(`블록 문자열 머리가 틀렸습니다: ${header}`);
   const [, style, chomp] = m;
   const body = [];
   let contentIndent = -1;
@@ -8560,7 +8560,7 @@ function parseSeq(r, indent, depth) {
   for (; ; ) {
     const l = r.peek();
     if (!l || l.indent !== indent || !(l.text.startsWith("- ") || l.text === "-")) {
-      if (l && l.indent > indent) throw new YamlError(`들여쓰기가 맞지 않다(${l.no}째 줄)`);
+      if (l && l.indent > indent) throw new YamlError(`들여쓰기가 맞지 않습니다(${l.no}째 줄)`);
       return out;
     }
     r.i += 1;
@@ -8582,15 +8582,15 @@ function parseMap(r, indent, depth) {
   for (; ; ) {
     const l = r.peek();
     if (!l || l.indent < indent) return out;
-    if (l.indent > indent) throw new YamlError(`들여쓰기가 맞지 않다(${l.no}째 줄)`);
+    if (l.indent > indent) throw new YamlError(`들여쓰기가 맞지 않습니다(${l.no}째 줄)`);
     if (l.text.startsWith("- ") || l.text === "-") return out;
     const text2 = stripComment(l.text);
     const m = /^("(?:[^"\\]|\\.)*"|'(?:[^']|'')*'|[^\s:#][^:]*?)\s*:(?:\s+(.*))?$/.exec(text2);
     if (!m) throw new YamlError(`'키: 값' 모양이 아니다(${l.no}째 줄)`);
     let key = m[1];
     if (key[0] === '"' || key[0] === "'") key = String(value(key, depth));
-    else if (/^[&*!]/.test(key)) throw new YamlError("키에 별칭 · 앵커 · 태그를 쓸 수 없다");
-    if (key === "<<") throw new YamlError("병합 키(<<)는 쓸 수 없다");
+    else if (/^[&*!]/.test(key)) throw new YamlError("키에 별칭 · 앵커 · 태그를 쓸 수 없습니다");
+    if (key === "<<") throw new YamlError("병합 키(<<)는 쓸 수 없습니다");
     if (Object.hasOwn(out, key)) throw new YamlError(`같은 키 ${key}(${l.no}째 줄)`);
     r.i += 1;
     const rest = (m[2] ?? "").trim();
@@ -8651,7 +8651,7 @@ function parseYaml(text2) {
   const first = r.peek();
   if (!first) return {};
   const res = parseBlock(r, first.indent, 0);
-  if (r.peek()) throw new YamlError(`읽지 못한 줄이 남았다(${r.peek().no}째 줄)`);
+  if (r.peek()) throw new YamlError(`읽지 못한 줄이 남았습니다(${r.peek().no}째 줄)`);
   if (res === null || typeof res !== "object" || Array.isArray(res)) throw new YamlError("머리가 맵이 아니다");
   return res;
 }
@@ -8761,7 +8761,7 @@ function pluginRoots(repo, home) {
   const installed = readJson(import_node_path38.default.join(base, "installed_plugins.json"));
   if (!installed) return out;
   if (installed.version !== 2) {
-    out.warning = "installed_plugins.json 의 version 이 2 가 아니라 플러그인 해석을 건너뛴다";
+    out.warning = "installed_plugins.json 의 version 이 2 가 아니라 플러그인 해석을 건너뜁니다";
     return out;
   }
   const enabled = /* @__PURE__ */ new Map();
@@ -9465,7 +9465,7 @@ var localDate2 = (ms) => {
 };
 function rangeOf(daysText) {
   const days = daysText === null ? 7 : Number(daysText);
-  if (!Number.isInteger(days) || days < 1 || days > 90) throw bad3("days 는 1~90 이다");
+  if (!Number.isInteger(days) || days < 1 || days > 90) throw bad3("days 는 1~90 입니다");
   const start = /* @__PURE__ */ new Date();
   start.setHours(0, 0, 0, 0);
   return { days, from: start.getTime() - (days - 1) * DAY3, to: Date.now() };
@@ -9486,7 +9486,7 @@ function priceOf(p, model) {
 }
 async function usageData(p, q2) {
   const range = rangeOf(q2.days);
-  if (q2.harness && !["claude", "codex", "kiro"].includes(q2.harness)) throw bad3("harness 는 claude · codex · kiro 중 하나다");
+  if (q2.harness && !["claude", "codex", "kiro"].includes(q2.harness)) throw bad3("harness 는 claude · codex · kiro 중 하나입니다");
   if (!historyOn(p)) return { enabled: false, ...configHint(p), range: { days: range.days }, sources: sourcesOff(), totals: null, daily: [], roles: [], byIssue: [], cache: { average: null, daily: [] }, cost: null, unreadable: 0 };
   const { recs, sources, unreadable } = await loadRecords(p, range.from, q2.harness);
   const sess = await sessionMap(p);
@@ -9538,7 +9538,7 @@ async function usageData(p, q2) {
     roles: [...roles].sort(),
     byIssue: [...issues].map(([issue, sum]) => ({ issue, sum })).sort((a, b) => b.sum - a.sum || (a.issue < b.issue ? -1 : 1)),
     cache: { average: ratio(totals), daily: dayList.map((d) => ({ date: d.date, ratio: ratio(d) })) },
-    cost: priced ? { estimate: Math.round(cost * 100) / 100, note: "usage.pricing 으로 센 추정이다. 청구 금액이 아니다" } : null,
+    cost: priced ? { estimate: Math.round(cost * 100) / 100, note: "usage.pricing 으로 센 추정입니다. 청구 금액이 아니다" } : null,
     unreadable
   };
 }
@@ -9577,7 +9577,7 @@ async function usageNow(p) {
       ratio,
       warnAt,
       warn: ratio !== null && ratio >= warnAt,
-      windowNote: window ? null : "기록에 없다"
+      windowNote: window ? null : "기록에 없습니다"
     }
   };
 }
@@ -9622,7 +9622,7 @@ async function usageKit(p) {
     skipped,
     sessionStart: { avgBytes: avgTotal, maxBytes: start.reduce((s, h) => s + h.maxBytes, 0), limit: SESSION_START_LIMIT, ratio: avgTotal / SESSION_START_LIMIT, within: avgTotal <= SESSION_START_LIMIT, estTokens: Math.round(avgTotal / 3) },
     modules: modulesOf(p),
-    note: "바이트 ÷ 3 은 한글 위주 글의 토큰 추정이다"
+    note: "바이트 ÷ 3 은 한글 위주 글의 토큰 추정입니다"
   };
 }
 function modulesOf(p) {
@@ -9655,7 +9655,7 @@ function modulesOf(p) {
   return [...out.values()].sort((a, b) => a.owner < b.owner ? -1 : 1).map((o) => ({ ...o, estTokens: Math.round(o.bytes / 3) }));
 }
 async function historyData(p, q2) {
-  if (!historyOn(p)) throw new ApiError(404, "history_off", '대화 기록 읽기가 꺼져 있다. 켜려면 사람이 ~/.config/harness-kit/config.json 에 "history": "on" 을 쓴다', configHint(p));
+  if (!historyOn(p)) throw new ApiError(404, "history_off", '대화 기록 읽기가 꺼져 있습니다. 켜려면 사람이 ~/.config/harness-kit/config.json 에 "history": "on" 을 씁니다', configHint(p));
   const dirs = projectDirs(p);
   const sess = await sessionMap(p);
   const prompts = [];
@@ -9704,7 +9704,7 @@ async function historyData(p, q2) {
   }
   const needle = q2.q?.toLowerCase() ?? null;
   const all = prompts.filter((x) => (!needle || x.text.toLowerCase().includes(needle)) && (!q2.session || x.session === q2.session) && (!q2.role || x.role === q2.role)).sort((a, b) => a.at < b.at ? 1 : a.at > b.at ? -1 : 0);
-  return { enabled: true, prompts: all.slice(0, HISTORY_LIMIT), total: all.length, shown: Math.min(all.length, HISTORY_LIMIT), unreadable, note: "글을 보여 주기만 한다. 내보내기 · 커밋 · 세션 요청에 넣지 않는다" };
+  return { enabled: true, prompts: all.slice(0, HISTORY_LIMIT), total: all.length, shown: Math.min(all.length, HISTORY_LIMIT), unreadable, note: "글을 보여 주기만 합니다. 내보내기 · 커밋 · 세션 요청에 넣지 않습니다" };
 }
 
 // ../dashboard/src/writers/answers.ts
@@ -9728,7 +9728,7 @@ async function gateInfo(p, root, key, gate) {
   try {
     return JSON.parse(r.stdout);
   } catch {
-    throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건을 판정하지 못했다`, { reasons: [(r.stderr.trim().split("\n").pop() ?? "").slice(0, 300)] });
+    throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건을 판정하지 못했습니다`, { reasons: [(r.stderr.trim().split("\n").pop() ?? "").slice(0, 300)] });
   }
 }
 function headValue(text2, key) {
@@ -9762,21 +9762,21 @@ async function getGateBundle(p, key, gate) {
 async function approveBundle(p, gate, key, decision, phrase, body, via) {
   if (p.readOnly) throw readOnly();
   const { co, info, files, sha256: bundle } = await bundleOf(p, key, gate);
-  if (!files.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 대상 파일이 없다`, { reasons: info.reasons });
-  if (body.docSha256 !== bundle) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 대상 파일이 바뀌었다. 다시 읽고 승인한다", { currentSha256: bundle });
+  if (!files.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 대상 파일이 없습니다`, { reasons: info.reasons });
+  if (body.docSha256 !== bundle) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 대상 파일이 바뀌었습니다. 다시 읽고 승인합니다", { currentSha256: bundle });
   const approvalsFile = import_node_path40.default.join(co.root, info.folder, "approvals.md");
   const current4 = import_node_fs36.default.existsSync(approvalsFile) ? import_node_fs36.default.readFileSync(approvalsFile, "utf8") : null;
   const entries = current4 ? parse(current4).entries : [];
   const first = files[0];
   const firstText = import_node_fs36.default.readFileSync(import_node_path40.default.join(co.root, first.path), "utf8");
   const status = gate === "codebase" ? headValue(firstText, "status") : null;
-  if (gate === "codebase" && !STATUSES.includes(status ?? "")) throw new ApiError(422, "gate_precondition", `current-state.md 머리 status 가 ${status ?? "없음"} 이다`, { reasons: [`status ${status ?? "없음"}`] });
+  if (gate === "codebase" && !STATUSES.includes(status ?? "")) throw new ApiError(422, "gate_precondition", `current-state.md 머리 status 가 ${status ?? "없음"} 입니다`, { reasons: [`status ${status ?? "없음"}`] });
   if (decision === "approved") {
-    if (files.every((f) => approvalState(entries, gate, f.approvalSha256, p.policy()) === "valid")) throw new ApiError(409, "already_approved", "같은 내용으로 승인한 기록이 있다");
+    if (files.every((f) => approvalState(entries, gate, f.approvalSha256, p.policy()) === "valid")) throw new ApiError(409, "already_approved", "같은 내용으로 승인한 기록이 있습니다");
     const unclear = files.filter((f) => f.path.endsWith(".md") && import_node_fs36.default.readFileSync(import_node_path40.default.join(co.root, f.path), "utf8").includes(CLARIFY2));
-    if (unclear.length) throw new ApiError(422, "needs_clarification", `${unclear.map((f) => f.name).join(", ")} 에 [NEEDS CLARIFICATION 가 남았다`);
-    if (info.stale.length) throw new ApiError(422, "model_stale", "역공학 문서가 오래됐다 — /hx-intent 가 codebase_scan.py 로 갱신한 뒤 승인한다", { stale: info.stale });
-    if (info.reasons.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건이 맞지 않는다`, { reasons: info.reasons });
+    if (unclear.length) throw new ApiError(422, "needs_clarification", `${unclear.map((f) => f.name).join(", ")} 에 [NEEDS CLARIFICATION 가 남았습니다`);
+    if (info.stale.length) throw new ApiError(422, "model_stale", "역공학 문서가 오래됐습니다 — /hx-intent 가 codebase_scan.py 로 갱신한 뒤 승인합니다", { stale: info.stale });
+    if (info.reasons.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건이 맞지 않습니다`, { reasons: info.reasons });
   }
   const who = await approver(p, co, gate);
   const at = nowText();
@@ -9827,8 +9827,8 @@ function issueFolder(root, key) {
     names = [];
   }
   const found = names.filter((n) => FOLDER.exec(n)?.[1] === key);
-  if (found.length === 0) throw notFound(`이슈 폴더가 없다: ${key}`);
-  if (found.length > 1) throw new ApiError(409, "ambiguous_branch", `같은 키의 이슈 폴더가 둘 이상이다: ${found.join(", ")}`);
+  if (found.length === 0) throw notFound(`이슈 폴더가 없습니다: ${key}`);
+  if (found.length > 1) throw new ApiError(409, "ambiguous_branch", `같은 키의 이슈 폴더가 둘 이상입니다: ${found.join(", ")}`);
   return `.agents/docs/issues/${found[0]}`;
 }
 function writeAll(writes) {
@@ -9855,7 +9855,7 @@ function writeAll(writes) {
     }
     process.stderr.write(`승인 기록 쓰기 실패: ${err instanceof Error ? err.message : String(err)}
 `);
-    throw new ApiError(500, "internal", "기록을 쓰지 못해 되돌렸다");
+    throw new ApiError(500, "internal", "기록을 쓰지 못해 되돌렸습니다");
   }
 }
 function appendLog(root, record) {
@@ -9868,21 +9868,21 @@ function appendLog(root, record) {
 }
 async function approver(p, co, gate) {
   const u = await gitUser(co.root, p.env);
-  if (!u.email) throw new ApiError(403, "not_an_approver", "git config user.email 이 비었다 — 승인자는 이 체크아웃의 git 사용자다");
+  if (!u.email) throw new ApiError(403, "not_an_approver", "git config user.email 이 비었습니다 — 승인자는 이 체크아웃의 git 사용자입니다");
   const policy = p.policy();
-  if (!allowed(u.email, gate, policy)) throw new ApiError(403, "not_an_approver", `${u.email} 은 ${gate} 게이트 승인자 목록(approvers.${gate})에 없다`, { approvers: (policy.approvers ?? {})[gate] ?? [] });
+  if (!allowed(u.email, gate, policy)) throw new ApiError(403, "not_an_approver", `${u.email} 은 ${gate} 게이트 승인자 목록(approvers.${gate})에 없습니다`, { approvers: (policy.approvers ?? {})[gate] ?? [] });
   return { email: u.email, name: u.name, group: groupOf(u.email, gate, policy) };
 }
 function phraseOf(body, field = "phrase") {
   const v = body[field];
-  if (typeof v !== "string" || !v.trim()) throw bad3(`${field} 가 비었다(승인할 때 남길 문구)`);
+  if (typeof v !== "string" || !v.trim()) throw bad3(`${field} 가 비었습니다(승인할 때 남길 문구)`);
   return v.replace(/\s+/g, " ").trim().slice(0, 500);
 }
 async function preconditions(p, co, key, gate) {
   const own = import_node_path41.default.join(co.root, "scripts/harness/sdd_gates.py");
   const script = import_node_fs37.default.existsSync(own) ? own : import_node_path41.default.join(p.root, "scripts/harness/sdd_gates.py");
   const r = await python(co.root, p.env, [script, "check", key, "--json", "--root", co.root], 6e4);
-  if (r.code !== 0) throw new ApiError(422, "gate_precondition", "게이트 조건을 판정하지 못했다", { reasons: [(r.stderr.trim().split("\n").pop() ?? "").slice(0, 300)] });
+  if (r.code !== 0) throw new ApiError(422, "gate_precondition", "게이트 조건을 판정하지 못했습니다", { reasons: [(r.stderr.trim().split("\n").pop() ?? "").slice(0, 300)] });
   const data = JSON.parse(r.stdout);
   const g = data.gates.find((x) => x.gate === gate);
   return g?.preconditions ?? g?.reasons ?? [];
@@ -9896,17 +9896,17 @@ async function postApproval(p, body, via) {
   const gate = typeof body.gate === "string" ? body.gate : "";
   const decision = body.decision === "changes-requested" ? "changes-requested" : body.decision === "approved" ? "approved" : null;
   if (!decision) throw bad3("decision 은 approved 또는 changes-requested 다");
-  if (!p.gates().includes(gate)) throw new ApiError(422, "gate_not_in_flow", `${gate} 는 flow.gates 에 없다`, { gates: p.gates() });
-  if (Object.hasOwn(LATER, gate)) throw new ApiError(422, "gate_precondition", `${gate} 게이트 승인은 이 판에 없다(${LATER[gate]})`, { later: LATER[gate], reasons: [`${LATER[gate]} 에서 제공한다`] });
+  if (!p.gates().includes(gate)) throw new ApiError(422, "gate_not_in_flow", `${gate} 는 flow.gates 에 없습니다`, { gates: p.gates() });
+  if (Object.hasOwn(LATER, gate)) throw new ApiError(422, "gate_precondition", `${gate} 게이트 승인은 이 판에 없습니다(${LATER[gate]})`, { later: LATER[gate], reasons: [`${LATER[gate]} 에서 제공합니다`] });
   const phrase = phraseOf(body);
   const target = isObj6(body.target) ? body.target : {};
   if (gate === "intent" || BUNDLE_GATES.includes(gate)) {
-    if (typeof target.intent !== "string") throw bad3(`${gate} 게이트는 target.intent 가 필요하다`);
+    if (typeof target.intent !== "string") throw bad3(`${gate} 게이트는 target.intent 가 필요합니다`);
     if (gate !== "intent") return approveBundle(p, gate, target.intent, decision, phrase, body, via);
     return approveIntent(p, target.intent, decision, phrase, body, via);
   }
   if (!ISSUE_GATES.includes(gate)) throw new ApiError(422, "gate_not_in_flow", `모르는 게이트: ${gate}`);
-  if (typeof target.issue !== "string") throw bad3("target.issue 가 필요하다");
+  if (typeof target.issue !== "string") throw bad3("target.issue 가 필요합니다");
   const key = target.issue;
   const co = await resolveIssueCheckout(p, key, null);
   const folder = issueFolder(co.root, key);
@@ -9918,20 +9918,20 @@ async function postApproval(p, body, via) {
   let statusChanged = null;
   if (Object.hasOwn(DOC_FILES, gate)) {
     const docFile = import_node_path41.default.join(co.root, folder, DOC_FILES[gate]);
-    if (!import_node_fs37.default.existsSync(docFile)) throw notFound(`${DOC_FILES[gate]} 가 없다`);
+    if (!import_node_fs37.default.existsSync(docFile)) throw notFound(`${DOC_FILES[gate]} 가 없습니다`);
     const bytes = import_node_fs37.default.readFileSync(docFile);
     const text2 = bytes.toString("utf8");
     const fm = parseLoose(text2) ?? {};
     const status = fm.status ?? null;
     const aSha = approvalSha(bytes);
-    if (gate !== "tasks" && !["draft", "in-review", "approved"].includes(status ?? "")) throw new ApiError(422, "gate_precondition", `${DOC_FILES[gate]} 머리 status 가 ${status ?? "없음"} 이다(draft · in-review 만 승인한다)`, { reasons: [`status ${status ?? "없음"}`] });
+    if (gate !== "tasks" && !["draft", "in-review", "approved"].includes(status ?? "")) throw new ApiError(422, "gate_precondition", `${DOC_FILES[gate]} 머리 status 가 ${status ?? "없음"} 입니다(draft · in-review 만 승인합니다)`, { reasons: [`status ${status ?? "없음"}`] });
     const need = needOf(p.meta(), riskOfFolder(import_node_path41.default.join(co.root, folder)), gate);
     const state = approvalState(entries, gate, aSha, p.policy(), need);
-    if (decision === "approved" && state === "valid") throw new ApiError(409, "already_approved", `${gate}: 같은 내용(sha ${aSha.slice(0, 12)})으로 승인한 기록이 있다`);
+    if (decision === "approved" && state === "valid") throw new ApiError(409, "already_approved", `${gate}: 같은 내용(sha ${aSha.slice(0, 12)})으로 승인한 기록이 있습니다`);
     const me = ((await gitUser(co.root, p.env)).email ?? "").toLowerCase();
-    if (decision === "approved" && state === "partial" && me && approversOf(entries, gate, aSha).has(me)) throw new ApiError(409, "already_approved", `${gate}: 이미 승인했다 — risk: high 는 다른 승인자 한 명이 더 승인한다(DS-R26)`, { need });
-    if (decision === "approved" && text2.includes(CLARIFY3)) throw new ApiError(422, "needs_clarification", `${DOC_FILES[gate]} 에 [NEEDS CLARIFICATION 가 남았다`);
-    if (body.docSha256 !== sha2562(bytes)) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 문서가 바뀌었다. 다시 읽고 승인한다", { currentSha256: sha2562(bytes) });
+    if (decision === "approved" && state === "partial" && me && approversOf(entries, gate, aSha).has(me)) throw new ApiError(409, "already_approved", `${gate}: 이미 승인했습니다 — risk: high 는 다른 승인자 한 명이 더 승인합니다(DS-R26)`, { need });
+    if (decision === "approved" && text2.includes(CLARIFY3)) throw new ApiError(422, "needs_clarification", `${DOC_FILES[gate]} 에 [NEEDS CLARIFICATION 가 남았습니다`);
+    if (body.docSha256 !== sha2562(bytes)) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 문서가 바뀌었습니다. 다시 읽고 승인합니다", { currentSha256: sha2562(bytes) });
     targetRef = { name: DOC_FILES[gate], sha256: aSha };
     if (decision === "approved" && status !== "approved" && gate !== "tasks") {
       writes.push({ file: docFile, data: Buffer.from(setField2(text2, "status", "approved"), "utf8") });
@@ -9943,7 +9943,7 @@ async function postApproval(p, body, via) {
   }
   if (decision === "approved") {
     const reasons = await preconditions(p, co, key, gate);
-    if (reasons.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건이 맞지 않는다`, { reasons });
+    if (reasons.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건이 맞지 않습니다`, { reasons });
   }
   const who = await approver(p, co, gate);
   const entry = { at: nowText(), gate, decision, approver: who, target: targetRef, phrase, path: via, entryId: ulid(), ruleCandidate: decision === "changes-requested" && body.ruleCandidate === true };
@@ -9959,7 +9959,7 @@ async function approveIntent(p, key, decision, phrase, body, via) {
   const co = await resolveIntentCheckout(p, key);
   const info = findIntent(co.root, key);
   const intentFile = import_node_path41.default.join(info.abs, "intent.md");
-  if (!import_node_fs37.default.existsSync(intentFile)) throw notFound("intent.md 가 없다");
+  if (!import_node_fs37.default.existsSync(intentFile)) throw notFound("intent.md 가 없습니다");
   const bytes = import_node_fs37.default.readFileSync(intentFile);
   const text2 = bytes.toString("utf8");
   const status = parseLoose(text2)?.status ?? null;
@@ -9967,10 +9967,10 @@ async function approveIntent(p, key, decision, phrase, body, via) {
   const current4 = import_node_fs37.default.existsSync(approvalsFile) ? import_node_fs37.default.readFileSync(approvalsFile, "utf8") : null;
   const entries = current4 ? parse(current4).entries : [];
   const aSha = approvalSha(bytes);
-  if (!["draft", "in-review", "approved"].includes(status ?? "")) throw new ApiError(422, "gate_precondition", `intent.md 머리 status 가 ${status ?? "없음"} 이다`, { reasons: [`status ${status ?? "없음"}`] });
-  if (decision === "approved" && approvalState(entries, "intent", aSha, p.policy()) === "valid" && !proposalOf(info.abs)) throw new ApiError(409, "already_approved", "같은 내용으로 승인한 기록이 있다");
-  if (decision === "approved" && text2.includes(CLARIFY3)) throw new ApiError(422, "needs_clarification", "intent.md 에 [NEEDS CLARIFICATION 가 남았다");
-  if (body.docSha256 !== sha2562(bytes)) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 intent.md 가 바뀌었다", { currentSha256: sha2562(bytes) });
+  if (!["draft", "in-review", "approved"].includes(status ?? "")) throw new ApiError(422, "gate_precondition", `intent.md 머리 status 가 ${status ?? "없음"} 입니다`, { reasons: [`status ${status ?? "없음"}`] });
+  if (decision === "approved" && approvalState(entries, "intent", aSha, p.policy()) === "valid" && !proposalOf(info.abs)) throw new ApiError(409, "already_approved", "같은 내용으로 승인한 기록이 있습니다");
+  if (decision === "approved" && text2.includes(CLARIFY3)) throw new ApiError(422, "needs_clarification", "intent.md 에 [NEEDS CLARIFICATION 가 남았습니다");
+  if (body.docSha256 !== sha2562(bytes)) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 intent.md 가 바뀌었습니다", { currentSha256: sha2562(bytes) });
   if (decision === "approved") {
     const reasons = [];
     try {
@@ -9992,7 +9992,7 @@ async function approveIntent(p, key, decision, phrase, body, via) {
         reasons.push(...problems.map((x) => `intent.py check: ${x}`));
       }
     }
-    if (reasons.length) throw new ApiError(422, "gate_precondition", "intent 게이트 조건이 맞지 않는다", { reasons });
+    if (reasons.length) throw new ApiError(422, "gate_precondition", "intent 게이트 조건이 맞지 않습니다", { reasons });
   }
   const who = await approver(p, co, "intent");
   const writes = [];
@@ -10000,7 +10000,7 @@ async function approveIntent(p, key, decision, phrase, body, via) {
   let unitsBytes = units.raw;
   const proposal = proposalOf(info.abs);
   if (decision === "approved" && proposal) {
-    if (!units.raw || !units.data || proposal.baseSha256 !== sha2562(units.raw)) throw new ApiError(409, "proposal_stale", "제안을 만든 뒤 units.json 이 바뀌었다. 제안을 다시 저장하거나 버린다");
+    if (!units.raw || !units.data || proposal.baseSha256 !== sha2562(units.raw)) throw new ApiError(409, "proposal_stale", "제안을 만든 뒤 units.json 이 바뀌었습니다. 제안을 다시 저장하거나 버립니다");
     unitsBytes = appliedUnitsBytes(units.raw, units.data, units.units, proposal.changes ?? []);
     writes.push({ file: import_node_path41.default.join(info.abs, "units.json"), data: unitsBytes });
     writes.push({ file: import_node_path41.default.join(info.abs, "units.proposed.json"), data: null });
@@ -10024,16 +10024,16 @@ async function reviewFinding(p, key, findingId) {
   const own = import_node_path41.default.join(co.root, "scripts/harness/review_state.py");
   const script = import_node_fs37.default.existsSync(own) ? own : import_node_path41.default.join(p.root, "scripts/harness/review_state.py");
   const r = await python(co.root, p.env, [script, import_node_path41.default.join(co.root, folder), "--json"], 3e4);
-  if (r.code === 2) throw notFound(`리뷰 보고서가 없다(.agents/reports/review/${key}.md)`);
+  if (r.code === 2) throw notFound(`리뷰 보고서가 없습니다(.agents/reports/review/${key}.md)`);
   const data = JSON.parse(r.stdout);
   const item = data.findings.find((f) => f.id === findingId);
-  if (!item) throw notFound(`보고서에 ${findingId} 가 없다`);
+  if (!item) throw notFound(`보고서에 ${findingId} 가 없습니다`);
   return { co, folder, fp: item.fp, severity: item.severity };
 }
 async function postReviewDecision(p, key, findingId, body, via) {
   if (p.readOnly) throw readOnly();
   if (!isObj6(body)) throw bad3("본문이 객체가 아니다");
-  if (!/^F-\d+$/.test(findingId)) throw bad3("발견 ID 는 F-<n> 이다");
+  if (!/^F-\d+$/.test(findingId)) throw bad3("발견 ID 는 F-<n> 입니다");
   const decision = body.decision === "risk-accepted" || body.decision === "fix-required" ? body.decision : null;
   if (!decision) throw bad3("decision 은 risk-accepted 또는 fix-required 다");
   const phrase = phraseOf(body);
@@ -10073,7 +10073,7 @@ async function runMob(p, key, args) {
   } catch {
     throw new ApiError(500, "internal", `mob.py 출력이 JSON 이 아니다: ${(r.stderr || r.stdout).slice(0, 200)}`);
   }
-  if (r.code === 3) throw new ApiError(422, "mob_refused", String(out.error ?? "몹 세션 처리를 거부했다"));
+  if (r.code === 3) throw new ApiError(422, "mob_refused", String(out.error ?? "몹 세션 처리를 거부했습니다"));
   if (r.code !== 0) throw new ApiError(500, "internal", String(out.error ?? "mob.py 실패"));
   return out;
 }
@@ -10085,7 +10085,7 @@ async function postMob(p, key, body) {
   if (!isObj6(body) || typeof body.action !== "string" || !ACTIONS.has(body.action)) throw bad3("action 은 start · next · close 다");
   if (body.action !== "start") return runMob(p, key, [body.action, key]);
   const attendees = Array.isArray(body.attendees) ? body.attendees.filter((a) => typeof a === "string") : [];
-  if (!attendees.length || attendees.some((a) => !EMAIL.test(a))) throw bad3("attendees 는 email 목록이다");
+  if (!attendees.length || attendees.some((a) => !EMAIL.test(a))) throw bad3("attendees 는 email 목록입니다");
   const timebox = typeof body.timeboxMin === "number" && Number.isInteger(body.timeboxMin) && body.timeboxMin > 0 ? body.timeboxMin : 30;
   return runMob(p, key, ["start", key, "--attendees", attendees.join(","), "--timebox", String(timebox)]);
 }
@@ -10104,7 +10104,7 @@ async function locate2(p, target) {
   return { co, rel: `${folder}/questions.md`, abs: import_node_path43.default.join(co.root, folder, "questions.md") };
 }
 async function getQuestions(p, target) {
-  if (!target) throw bad3("target 이 필요하다");
+  if (!target) throw bad3("target 이 필요합니다");
   const { rel: rel2, abs } = await locate2(p, target);
   if (!import_node_fs39.default.existsSync(abs)) return { target, path: rel2, sha256: null, status: null, questions: [] };
   const bytes = import_node_fs39.default.readFileSync(abs);
@@ -10115,24 +10115,24 @@ async function postAnswer(p, target, qid, body) {
   if (p.readOnly) throw readOnly();
   if (!isObj6(body)) throw bad3("본문이 객체가 아니다");
   const { co, rel: rel2, abs, intentAbs } = await locate2(p, target);
-  if (!import_node_fs39.default.existsSync(abs)) throw notFound(`질문 파일이 없다: ${rel2}`);
+  if (!import_node_fs39.default.existsSync(abs)) throw notFound(`질문 파일이 없습니다: ${rel2}`);
   const mob = intentAbs ? openMob(intentAbs) : null;
   return p.withLock(abs, async () => {
     const bytes = import_node_fs39.default.readFileSync(abs);
-    if (body.baseSha256 !== sha2562(bytes)) throw new ApiError(409, "conflict", "다른 곳에서 먼저 저장했다", { currentSha256: sha2562(bytes), currentMarkdown: bytes.toString("utf8") });
+    if (body.baseSha256 !== sha2562(bytes)) throw new ApiError(409, "conflict", "다른 곳에서 먼저 저장했습니다", { currentSha256: sha2562(bytes), currentMarkdown: bytes.toString("utf8") });
     const doc = parseQuestions(bytes.toString("utf8"));
     const q2 = doc.questions.find((x) => x.id === qid);
-    if (!q2) throw notFound(`질문이 없다: ${qid}`);
+    if (!q2) throw notFound(`질문이 없습니다: ${qid}`);
     const choice = typeof body.choice === "string" ? body.choice : "";
     if (choice !== "other" && !q2.choices.some((c) => c.id === choice)) throw bad3(`선택지가 아니다: ${choice} (${q2.choices.map((c) => c.id).join(" · ")} · other)`);
     const text2 = typeof body.text === "string" && body.text.trim() ? body.text : null;
-    if (choice === "other" && !text2) throw bad3("other 는 text 가 필요하다");
+    if (choice === "other" && !text2) throw bad3("other 는 text 가 필요합니다");
     const u = await gitUser(co.root, p.env);
-    if (!u.email) throw new ApiError(403, "not_an_approver", "git config user.email 이 비었다");
+    if (!u.email) throw new ApiError(403, "not_an_approver", "git config user.email 이 비었습니다");
     let who = u.email;
     if (mob) {
       const by = typeof body.by === "string" ? body.by.trim() : "";
-      if (!by) throw bad3("몹 세션이 열려 있다 — by(답한 참석자 email)가 필요하다", { attendees: mob.attendees.map((a) => a.email) });
+      if (!by) throw bad3("몹 세션이 열려 있습니다 — by(답한 참석자 email)가 필요합니다", { attendees: mob.attendees.map((a) => a.email) });
       if (!mob.attendees.some((a) => a.email.toLowerCase() === by.toLowerCase())) throw bad3(`${by} 는 몹 세션 참석자가 아니다`, { attendees: mob.attendees.map((a) => a.email) });
       who = by;
     }
@@ -10361,7 +10361,7 @@ async function locateForRead(p, t) {
       co = main2;
     }
   }
-  if (lstatChain(co.root, t.rel) !== "file") throw notFound(`문서가 없다: ${t.rel}`);
+  if (lstatChain(co.root, t.rel) !== "file") throw notFound(`문서가 없습니다: ${t.rel}`);
   return { co, ref: null, bytes: import_node_fs41.default.readFileSync(import_node_path45.default.join(co.root, t.rel)) };
 }
 async function readRaw(p, relPath) {
@@ -10369,13 +10369,13 @@ async function readRaw(p, relPath) {
   const intent = /^\.agents\/docs\/intents\/([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5})-[^/]+\//.exec(relPath);
   const t = issue ? { rel: relPath, kind: "issue", key: issue[1], creatable: false } : intent ? { rel: relPath, kind: "intent", key: intent[1], creatable: false } : { rel: relPath, kind: "main", key: null, creatable: false };
   const found = await locateForRead(p, t);
-  if (found.bytes.length > 20 * LIMIT) throw bad3("파일이 너무 크다");
+  if (found.bytes.length > 20 * LIMIT) throw bad3("파일이 너무 크입니다");
   return found.bytes;
 }
 async function getDoc(p, relInput, sign) {
   const t = readTarget(relInput);
   const found = await locateForRead(p, t);
-  if (found.bytes.length > LIMIT) throw bad3("1 MiB 를 넘는 문서다");
+  if (found.bytes.length > LIMIT) throw bad3("1 MiB 를 넘는 문서입니다");
   const text2 = found.bytes.toString("utf8");
   let writable = t.writable && found.co !== null;
   if (writable) {
@@ -10455,40 +10455,40 @@ async function putDoc(p, body) {
   if (!body || typeof body !== "object") throw bad3("본문이 객체가 아니다");
   const b = body;
   const t = docTarget(b.path);
-  if (typeof b.baseSha256 !== "string" || typeof b.markdown !== "string") throw bad3("path · baseSha256 · markdown 이 필요하다");
-  if (Buffer.byteLength(b.markdown) > LIMIT) throw bad3("1 MiB 를 넘는다");
+  if (typeof b.baseSha256 !== "string" || typeof b.markdown !== "string") throw bad3("path · baseSha256 · markdown 이 필요합니다");
+  if (Buffer.byteLength(b.markdown) > LIMIT) throw bad3("1 MiB 를 넘습니다");
   const force = b.force === true;
   const co = await writeCheckout(p, t);
   const kind = lstatChain(co.root, t.rel);
-  if (kind !== "file" && !(kind === "missing" && t.creatable)) throw kind === "missing" ? notFound(`문서가 없다: ${t.rel}`) : forbiddenPath(t.rel);
+  if (kind !== "file" && !(kind === "missing" && t.creatable)) throw kind === "missing" ? notFound(`문서가 없습니다: ${t.rel}`) : forbiddenPath(t.rel);
   const abs = import_node_path45.default.join(co.root, t.rel);
   return p.withLock(abs, async () => {
     const current4 = kind === "file" ? import_node_fs41.default.readFileSync(abs) : Buffer.alloc(0);
-    if (current4.length > LIMIT) throw bad3("1 MiB 를 넘는 문서다");
+    if (current4.length > LIMIT) throw bad3("1 MiB 를 넘는 문서입니다");
     const currentText = current4.toString("utf8");
-    if (sha2562(current4) !== b.baseSha256) throw new ApiError(409, "conflict", "다른 곳에서 먼저 저장했다", { currentSha256: sha2562(current4), currentMarkdown: currentText });
+    if (sha2562(current4) !== b.baseSha256) throw new ApiError(409, "conflict", "다른 곳에서 먼저 저장했습니다", { currentSha256: sha2562(current4), currentMarkdown: currentText });
     let next = b.markdown.replace(/\r\n/g, "\n");
     let after;
     try {
       after = parse2(next);
     } catch (err) {
-      throw bad3(`문서 머리를 읽지 못한다: ${err.message}`);
+      throw bad3(`문서 머리를 읽지 못합니다: ${err.message}`);
     }
     const before = parseLoose(currentText);
     let statusChanged = null;
-    if (after?.status === "approved" && before?.status !== "approved") throw new ApiError(422, "status_change_forbidden", "머리 status 를 approved 로 바꾸는 것은 승인 처리만 한다(승인 화면 · approve)");
+    if (after?.status === "approved" && before?.status !== "approved") throw new ApiError(422, "status_change_forbidden", "머리 status 를 approved 로 바꾸는 것은 승인 처리만 합니다(승인 화면 · approve)");
     if (before?.status === "approved" && after?.status === "approved" && next !== currentText.replace(/\r\n/g, "\n")) {
       next = setField2(next, "status", "in-review");
       statusChanged = "approved→in-review";
     }
     const held = await leaseHolder(p, co, t.rel);
-    if (held && !force) throw new ApiError(409, "lease_held", `다른 세션(${held})이 이 파일을 점유 중이다. force 로 저장할 수 있다`, { leaseHeldBy: held });
+    if (held && !force) throw new ApiError(409, "lease_held", `다른 세션(${held})이 이 파일을 점유 중입니다. force 로 저장할 수 있습니다`, { leaseHeldBy: held });
     if (currentText.includes("\r\n")) next = next.replace(/\n/g, "\r\n");
     atomicWrite(abs, next, kind === "file" ? void 0 : 420);
     const summary = changeSummary(currentText, next);
     return {
       data: { sha256: sha2562(Buffer.from(next, "utf8")), savedTo: rel(p.loc.top, co.path), branch: co.branch, statusChanged, changeSummary: summary, leaseHeldBy: held },
-      meta: { commit: "커밋은 그 이슈의 세션이 한다" }
+      meta: { commit: "커밋은 그 이슈의 세션이 합니다" }
     };
   });
 }
@@ -10516,34 +10516,34 @@ var FILE_NAME = /^[^/\\\0]{1,120}$/;
 var MAX_FILES = 20;
 function strings(v, field) {
   if (v === void 0) return [];
-  if (!Array.isArray(v) || !v.every((x) => typeof x === "string")) throw bad3(`${field} 는 문자열 목록이다`);
+  if (!Array.isArray(v) || !v.every((x) => typeof x === "string")) throw bad3(`${field} 는 문자열 목록입니다`);
   return v;
 }
 function intakeBody(body, via) {
-  if (!isObj6(body)) throw bad3("본문은 JSON 객체다");
+  if (!isObj6(body)) throw bad3("본문은 JSON 객체입니다");
   const { title, kind, name, area, text: text2 } = body;
-  if (typeof title !== "string" || !title.trim() || title.length > 200) throw bad3("title 은 1~200자 문자열이다");
+  if (typeof title !== "string" || !title.trim() || title.length > 200) throw bad3("title 은 1~200자 문자열입니다");
   if (typeof kind !== "string" || !KINDS2.has(kind)) throw bad3(`kind 는 ${[...KINDS2].join(" · ")}`);
   if (typeof name !== "string" || !NAME.test(name) || name.length > 60) throw bad3("name 은 영문 소문자 · 숫자 kebab-case(60자 이하)다");
   if (area !== void 0 && area !== null && (typeof area !== "string" || !NAME.test(area))) throw bad3("area 는 kebab-case 다");
-  if (text2 !== void 0 && typeof text2 !== "string") throw bad3("text 는 문자열이다");
+  if (text2 !== void 0 && typeof text2 !== "string") throw bad3("text 는 문자열입니다");
   const links = strings(body.links, "links");
-  if (links.some((l) => !/^https?:\/\/\S+$/.test(l))) throw bad3("링크는 http(s):// 로 시작한다");
+  if (links.some((l) => !/^https?:\/\/\S+$/.test(l))) throw bad3("링크는 http(s):// 로 시작합니다");
   const paths = strings(body.paths, "paths");
-  if (paths.length && via !== "terminal") throw bad3("로컬 경로(paths)는 터미널(CLI)에서만 받는다 — 화면은 files(base64)로 보낸다");
+  if (paths.length && via !== "terminal") throw bad3("로컬 경로(paths)는 터미널(CLI)에서만 받습니다 — 화면은 files(base64)로 보냅니다");
   const raw = body.files === void 0 ? [] : body.files;
-  if (!Array.isArray(raw)) throw bad3("files 는 [{name, base64}] 목록이다");
-  if (raw.length + paths.length > MAX_FILES) throw bad3(`첨부는 ${MAX_FILES}개까지다`);
+  if (!Array.isArray(raw)) throw bad3("files 는 [{name, base64}] 목록입니다");
+  if (raw.length + paths.length > MAX_FILES) throw bad3(`첨부는 ${MAX_FILES}개까지입니다`);
   const files = raw.map((f, i) => {
     if (!isObj6(f) || typeof f.name !== "string" || !FILE_NAME.test(f.name) || f.name === "." || f.name === ".." || typeof f.base64 !== "string") {
-      throw bad3(`files[${i}] 는 {name: 파일 이름, base64: 내용} 이다`);
+      throw bad3(`files[${i}] 는 {name: 파일 이름, base64: 내용} 입니다`);
     }
     return { name: f.name, data: Buffer.from(f.base64, "base64") };
   });
   return { title, kind, name, area: typeof area === "string" ? area : null, text: typeof text2 === "string" ? text2 : "", links, files, paths };
 }
 function rejected(out) {
-  const message2 = out.trim().split("\n").filter(Boolean).pop() ?? "접수하지 못했다";
+  const message2 = out.trim().split("\n").filter(Boolean).pop() ?? "접수하지 못했습니다";
   return new ApiError(422, "intake_rejected", message2.slice(0, 500));
 }
 async function postIntake(p, body, via) {
@@ -10588,10 +10588,10 @@ async function postProposal(p, body) {
   const info = findIntent(co.root, b.intent);
   return p.withLock(import_node_path47.default.join(info.abs, "units.proposed.json"), async () => {
     const units = readUnitsFile(info.abs);
-    if (!units.raw) throw notFound("units.json 이 없다");
-    if (sha2562(units.raw) !== b.baseSha256) throw new ApiError(409, "conflict", "units.json 이 바뀌었다. 다시 읽고 제안한다", { currentSha256: sha2562(units.raw) });
+    if (!units.raw) throw notFound("units.json 이 없습니다");
+    if (sha2562(units.raw) !== b.baseSha256) throw new ApiError(409, "conflict", "units.json 이 바뀌었습니다. 다시 읽고 제안합니다", { currentSha256: sha2562(units.raw) });
     const file = import_node_path47.default.join(info.abs, "units.proposed.json");
-    if (b.proposalSha256 && import_node_fs43.default.existsSync(file) && sha2562(import_node_fs43.default.readFileSync(file)) !== b.proposalSha256) throw new ApiError(409, "conflict", "다른 곳에서 제안을 먼저 저장했다");
+    if (b.proposalSha256 && import_node_fs43.default.existsSync(file) && sha2562(import_node_fs43.default.readFileSync(file)) !== b.proposalSha256) throw new ApiError(409, "conflict", "다른 곳에서 제안을 먼저 저장했습니다");
     applyChanges(units.units, b.changes);
     const u = await gitUser(co.root, p.env);
     const proposal = { schema: "harness-kit.units-proposal/v1", intent: b.intent, baseSha256: b.baseSha256, createdBy: u.email, createdAt: nowText(), changes: b.changes };
@@ -10605,7 +10605,7 @@ async function deleteProposal(p, intent) {
   if (p.readOnly) throw readOnly();
   const co = await resolveIntentCheckout(p, intent);
   const info = findIntent(co.root, intent);
-  if (!proposalOf(info.abs)) throw notFound("변경 제안이 없다");
+  if (!proposalOf(info.abs)) throw notFound("변경 제안이 없습니다");
   import_node_fs43.default.unlinkSync(import_node_path47.default.join(info.abs, "units.proposed.json"));
   return { intent, discarded: true };
 }
@@ -10634,7 +10634,7 @@ async function issueList(p, r) {
 async function oneIssue(p, key) {
   const { issues } = await load(p);
   const i = issues.find((x) => x.key === key);
-  if (!i) throw notFound(`이슈가 없다: ${key}`);
+  if (!i) throw notFound(`이슈가 없습니다: ${key}`);
   return i;
 }
 var stub = (method, path64, stage, cli, what) => ({
@@ -10686,7 +10686,7 @@ var ROUTES = [
   {
     method: "PUT",
     path: "/docs",
-    cli: "편집기로 파일을 직접 고친다(06 §3.15 S03)",
+    cli: "편집기로 파일을 직접 고칩니다(06 §3.15 S03)",
     handler: async (p, r) => {
       const res = await putDoc(p, r.body);
       return ok(res.data, 200, res.meta);
@@ -10792,7 +10792,7 @@ var ROUTES = [
     cli: "status --flow <INT>",
     handler: async (p, r) => {
       const key = q(r, "intent");
-      if (!key) throw bad3("intent 가 필요하다");
+      if (!key) throw bad3("intent 가 필요합니다");
       const { issues, sessions } = await load(p);
       return ok(flowData(p, findIntent(p.root, key), issues, sessions));
     }
@@ -10831,7 +10831,7 @@ var ROUTES = [
     handler: async (p, r) => ok(await historyData(p, { q: q(r, "q"), session: q(r, "session"), role: q(r, "role") }))
   },
   { method: "GET", path: "/raw/{path}", cli: "— (브라우저 이미지 · 와이어프레임, 서명 URL)", handler: async () => {
-    throw notFound("서명 URL 로만 연다");
+    throw notFound("서명 URL 로만 엽니다");
   } }
 ];
 var COMPILED = ROUTES.map((route) => {
@@ -10974,8 +10974,8 @@ function readBody(req) {
       if (size > LIMIT2) over = true;
       else chunks.push(c);
     });
-    req.on("end", () => over ? reject(new ApiError(400, "bad_request", "본문이 1 MiB 를 넘는다")) : resolve(Buffer.concat(chunks)));
-    req.on("error", () => reject(new ApiError(400, "bad_request", "본문을 읽지 못했다")));
+    req.on("end", () => over ? reject(new ApiError(400, "bad_request", "본문이 1 MiB 를 넘습니다")) : resolve(Buffer.concat(chunks)));
+    req.on("error", () => reject(new ApiError(400, "bad_request", "본문을 읽지 못했습니다")));
   });
 }
 async function startServer(opts) {
@@ -11029,7 +11029,7 @@ ${exp}`).digest("hex");
   async function handleApi(req, res, url) {
     const auth = req.headers.authorization ?? "";
     const given = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-    if (!given || !same(given, token)) throw new ApiError(401, "unauthorized", "토큰이 없거나 틀렸다");
+    if (!given || !same(given, token)) throw new ApiError(401, "unauthorized", "토큰이 없거나 틀렸습니다");
     const method = req.method ?? "GET";
     const writes = method === "POST" || method === "PUT" || method === "DELETE";
     const hasBody = Number(req.headers["content-length"] ?? 0) > 0 || req.headers["transfer-encoding"] !== void 0;
@@ -11054,21 +11054,21 @@ ${exp}`).digest("hex");
       const top = match(method, rest);
       if (top && "route" in top && (top.route.multi || rest === "/sessions" && url.searchParams.get("scope") === "machine")) {
         const first = (await projects.list()).find((s) => s.project)?.project ?? null;
-        if (!first && !top.route.multi) throw new ApiError(404, "not_found", "읽을 프로젝트가 없다");
+        if (!first && !top.route.multi) throw new ApiError(404, "not_found", "읽을 프로젝트가 없습니다");
         target = { p: first, path: rest, prefix: "" };
       }
     }
-    if (!target) throw new ApiError(404, "not_found", "프로젝트가 없다");
+    if (!target) throw new ApiError(404, "not_found", "프로젝트가 없습니다");
     const m = match(method, target.path);
     if (!m) throw new ApiError(404, "not_found", `경로 없음: ${target.path}`);
     if (!("route" in m)) throw new ApiError(405, "method_not_allowed", `허용 메서드: ${m.methods.join(", ")}`);
     if (m.route.pin) {
-      if (readOnly2) throw new ApiError(403, "read_only", "읽기 전용 모드다 — PIN 이 없다");
-      if (failures >= PIN_TRIES) throw new ApiError(403, "pin_locked", "PIN 을 5번 틀려 서버가 끝날 때까지 막았다");
+      if (readOnly2) throw new ApiError(403, "read_only", "읽기 전용 모드입니다 — PIN 이 없습니다");
+      if (failures >= PIN_TRIES) throw new ApiError(403, "pin_locked", "PIN 을 5번 틀려 서버가 끝날 때까지 막았습니다");
       const given2 = body && typeof body === "object" ? body.pin : void 0;
       if (typeof given2 !== "string" || !same(given2, pin)) {
         failures += 1;
-        throw new ApiError(403, "pin_required", "승인 PIN 이 없거나 틀렸다(서버를 연 터미널에만 보인다)");
+        throw new ApiError(403, "pin_required", "승인 PIN 이 없거나 틀렸습니다(서버를 연 터미널에만 보입니다)");
       }
     }
     const request = {
@@ -11104,21 +11104,21 @@ ${exp}`).digest("hex");
       p = await projects.get(pm[1]);
       rest = pm[2];
     }
-    if (!p) throw new ApiError(404, "not_found", "프로젝트가 없다");
+    if (!p) throw new ApiError(404, "not_found", "프로젝트가 없습니다");
     let relPath;
     try {
       relPath = rest.slice("/raw/".length).split("/").map(decodeURIComponent).join("/");
     } catch {
-      throw new ApiError(403, "forbidden_path", "경로를 읽지 못했다");
+      throw new ApiError(403, "forbidden_path", "경로를 읽지 못했습니다");
     }
     rawTarget(relPath);
     const exp = Number(url.searchParams.get("exp") ?? "");
     const sig = url.searchParams.get("sig") ?? "";
     const now = Math.floor(Date.now() / 1e3);
-    if (!Number.isInteger(exp) || exp < now || exp > now + RAW_TTL + 5) throw new ApiError(403, "forbidden_path", "서명 URL 이 지났다");
+    if (!Number.isInteger(exp) || exp < now || exp > now + RAW_TTL + 5) throw new ApiError(403, "forbidden_path", "서명 URL 이 지났습니다");
     const want = import_node_crypto7.default.createHmac("sha256", token).update(`${relPath}
 ${exp}`).digest("hex");
-    if (!same(sig, want)) throw new ApiError(403, "forbidden_path", "서명이 틀렸다");
+    if (!same(sig, want)) throw new ApiError(403, "forbidden_path", "서명이 틀렸습니다");
     const bytes = await readRaw(p, relPath);
     const ct = contentType(relPath);
     send(res, 200, bytes, { "Content-Type": ct, "Content-Security-Policy": ct.startsWith("text/html") ? `${RAW_CSP}; sandbox allow-scripts` : RAW_CSP, "Cache-Control": "private, max-age=60" });
@@ -11148,7 +11148,7 @@ ${exp}`).digest("hex");
         else if (url.pathname.startsWith("/api/")) throw new ApiError(404, "not_found", "경로 없음");
         else if (url.pathname.startsWith("/raw/") || /^\/p\/[0-9a-f]{12}\/raw\//.test(url.pathname)) await handleRaw(res, url);
         else if (req.method === "GET" || req.method === "HEAD") handleStatic(res, url);
-        else throw new ApiError(405, "method_not_allowed", "화면 파일은 GET 만 받는다");
+        else throw new ApiError(405, "method_not_allowed", "화면 파일은 GET 만 받습니다");
       } catch (err) {
         if (res.headersSent) {
           res.end();
@@ -11162,7 +11162,7 @@ ${exp}`).digest("hex");
         }
         log(`관리 페이지 내부 오류: ${err instanceof Error ? err.stack ?? err.message : String(err)}
 `);
-        sendError(res, new ApiError(500, "internal", "예상하지 못한 오류(서버 터미널에 적었다)"));
+        sendError(res, new ApiError(500, "internal", "예상하지 못한 오류(서버 터미널에 적었습니다)"));
       }
     })();
   });

@@ -60,8 +60,8 @@ export function intentFolders(root: string): IntentInfo[] {
 
 export function findIntent(root: string, key: string): IntentInfo {
   const found = intentFolders(root).filter((i) => i.key === key);
-  if (found.length === 0) throw notFound(`Intent 가 없다: ${key}`);
-  if (found.length > 1) throw new ApiError(409, "ambiguous_branch", `같은 키의 Intent 폴더가 둘 이상이다: ${key}`);
+  if (found.length === 0) throw notFound(`Intent 가 없습니다: ${key}`);
+  if (found.length > 1) throw new ApiError(409, "ambiguous_branch", `같은 키의 Intent 폴더가 둘 이상입니다: ${key}`);
   return found[0] as IntentInfo;
 }
 
@@ -260,7 +260,7 @@ export interface Change {
 }
 
 function validChanges(input: unknown): Change[] {
-  if (!Array.isArray(input) || input.length > 100) throw bad("changes 는 100개 이하의 배열이다");
+  if (!Array.isArray(input) || input.length > 100) throw bad("changes 는 100개 이하의 배열입니다");
   return input.map((c) => {
     if (!isObj(c) || typeof c.op !== "string" || !["add-dep", "remove-dep", "split", "merge", "order"].includes(c.op)) throw bad("op 는 add-dep · remove-dep · split · merge · order 다");
     const out: Change = { op: c.op };
@@ -286,12 +286,12 @@ export function applyChanges(units: Unit[], changes: Change[]): Unit[] {
     if (c.op === "add-dep" || c.op === "remove-dep") {
       const u = get(c.unit);
       const d = get(c.dependsOn);
-      if (u.kind === "contract" && d.kind !== "contract" && c.op === "add-dep") throw new ApiError(422, "contract_dependency", "계약 Unit 은 기능 Unit 에 의존하지 않는다(08 §3.5)");
+      if (u.kind === "contract" && d.kind !== "contract" && c.op === "add-dep") throw new ApiError(422, "contract_dependency", "계약 Unit 은 기능 Unit 에 의존하지 않습니다(08 §3.5)");
       list = list.map((x) => (x.id !== u.id ? x : { ...x, dependsOn: c.op === "add-dep" ? [...new Set([...x.dependsOn, d.id])] : x.dependsOn.filter((y) => y !== d.id) }));
     } else if (c.op === "merge") {
       const [a, b] = (c.units ?? []).map((id) => get(id));
-      if (!a || !b || a.id === b.id) throw bad("merge 는 서로 다른 Unit 둘이다");
-      if (a.kind === "contract" || b.kind === "contract") throw new ApiError(422, "contract_merge", "계약 Unit 은 합치지 않는다");
+      if (!a || !b || a.id === b.id) throw bad("merge 는 서로 다른 Unit 둘입니다");
+      if (a.kind === "contract" || b.kind === "contract") throw new ApiError(422, "contract_merge", "계약 Unit 은 합치지 않습니다");
       list = list.map((x) => {
         if (x.id === a.id) return { ...x, stories: [...new Set([...x.stories, ...b.stories])], dependsOn: [...new Set([...x.dependsOn, ...b.dependsOn])].filter((y) => y !== a.id && y !== b.id) };
         if (x.id === b.id) return { ...x, planned: false };
@@ -300,7 +300,7 @@ export function applyChanges(units: Unit[], changes: Change[]): Unit[] {
     } else if (c.op === "split") {
       const u = get(c.unit);
       const titles = c.into ?? [];
-      if (titles.length < 2) throw bad("split 의 into 는 제목 2개 이상이다");
+      if (titles.length < 2) throw bad("split 의 into 는 제목 2개 이상입니다");
       const made = titles.map((t, i) => ({ ...u, id: `U-${++next}`, title: t, stories: i === 0 ? [...u.stories] : [], issue: null, planned: true }));
       const madeIds = made.map((m) => m.id);
       list = [...list.map((x) => (x.id === u.id ? { ...x, planned: false } : { ...x, dependsOn: x.dependsOn.flatMap((y) => (y === u.id ? madeIds : [y])) })), ...made];
@@ -326,13 +326,13 @@ export function applyChanges(units: Unit[], changes: Change[]): Unit[] {
   for (const id of live.keys()) if (visit(id, [])) throw new ApiError(422, "cycle", `dependsOn 고리: ${cycle.join(" → ")}`, { cycle });
   for (const c of changes.filter((x) => x.op === "order")) {
     const ids = c.units ?? [];
-    for (const id of ids) for (const d of live.get(id)?.dependsOn ?? []) if (ids.includes(d) && ids.indexOf(d) > ids.indexOf(id)) throw new ApiError(422, "cycle", `순서가 의존과 어긋난다: ${d} 가 ${id} 보다 먼저다`, { cycle: [d, id] });
+    for (const id of ids) for (const d of live.get(id)?.dependsOn ?? []) if (ids.includes(d) && ids.indexOf(d) > ids.indexOf(id)) throw new ApiError(422, "cycle", `순서가 의존과 어긋납니다: ${d} 가 ${id} 보다 먼저입니다`, { cycle: [d, id] });
   }
   return list;
 }
 
 export function proposalBody(body: unknown): { intent: string; baseSha256: string; proposalSha256: string | null; changes: Change[] } {
-  if (!isObj(body) || typeof body.intent !== "string" || typeof body.baseSha256 !== "string") throw bad("intent · baseSha256 · changes 가 필요하다");
+  if (!isObj(body) || typeof body.intent !== "string" || typeof body.baseSha256 !== "string") throw bad("intent · baseSha256 · changes 가 필요합니다");
   return { intent: body.intent, baseSha256: body.baseSha256, proposalSha256: typeof body.proposalSha256 === "string" ? body.proposalSha256 : null, changes: validChanges(body.changes) };
 }
 

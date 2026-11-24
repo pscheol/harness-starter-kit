@@ -215,16 +215,16 @@ function nodeGates(docs: IssueModel["docs"], legacyFlags: Record<string, boolean
     const d = (docs as Record<string, DocInfo | null>)[gate];
     let passed = false;
     const reasons: string[] = [];
-    if (gate === "mr" || gate === "done") reasons.push("git 객체로 읽은 이슈는 이 게이트를 판정하지 않는다(체크아웃 필요)");
-    else if (!d) reasons.push(`${gate}.md 가 없다`);
+    if (gate === "mr" || gate === "done") reasons.push("git 객체로 읽은 이슈는 이 게이트를 판정하지 않습니다(체크아웃 필요)");
+    else if (!d) reasons.push(`${gate}.md 가 없습니다`);
     else {
-      if (d.clarify) reasons.push(`${gate}.md 에 [NEEDS CLARIFICATION 가 남았다`);
+      if (d.clarify) reasons.push(`${gate}.md 에 [NEEDS CLARIFICATION 가 남았습니다`);
       if (gate !== "tasks" && d.status !== "approved") reasons.push(`${gate}.md 머리 status 가 approved 가 아니다`);
       const valid = d.approval === "valid" || (gate === "tasks" && d.approval === "stale") || legacyFlags[gate] === true;
       if (!valid) reasons.push(`${gate} 승인 기록이 ${d.approval}`);
       passed = reasons.length === 0 && ok;
     }
-    const pre = ok ? [] : ["앞 게이트를 통과하지 않았다"];
+    const pre = ok ? [] : ["앞 게이트를 통과하지 않았습니다"];
     out.push({ gate, passed: passed && ok, reasons: [...pre, ...reasons], preconditions: pre, approval: d?.approval ?? "none" });
     ok = ok && passed;
   }

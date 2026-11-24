@@ -77,7 +77,7 @@ export async function readReview(p: Project, root: string, folderRel: string): P
   return p.cache.get(`review:${root}:${folderRel}`, stamp, async () => {
     const r = await python(root, p.env, [script, path.join(root, folderRel), "--json"], 30_000);
     if (r.code === 2) return { key, report: null, head: null, stale: false, open: { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 }, findings: [] };
-    if (r.code !== 0 && r.code !== 1) throw new ApiError(500, "internal", "리뷰 상태를 읽지 못했다");
+    if (r.code !== 0 && r.code !== 1) throw new ApiError(500, "internal", "리뷰 상태를 읽지 못했습니다");
     const data = JSON.parse(r.stdout) as Record<string, unknown>;
     if (typeof data.report === "string" && path.isAbsolute(data.report)) data.report = rel(p.root, data.report);
     return data;

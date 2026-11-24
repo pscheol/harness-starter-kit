@@ -27,7 +27,7 @@ const FIELDS: Record<string, keyof Entry> = {
   승인자: "approver", 대상: "target", 문구: "phrase", 경로: "path", "기록 ID": "entryId",
   근거: "evidence", source: "source", "규칙 후보": "ruleCandidate", "롤백 면제": "rollbackWaiver",
 };
-export const FORMAT_NOTE = "<!-- 덧붙이기만 한다. 에이전트는 이 파일을 쓰지 않는다. 형식과 승인 경로: .agents/rules/approval-vocabulary.md -->";
+export const FORMAT_NOTE = "<!-- 덧붙이기만 합니다. 에이전트는 이 파일을 쓰지 않습니다. 형식과 승인 경로: .agents/rules/approval-vocabulary.md -->";
 
 export interface Approver {
   email: string;

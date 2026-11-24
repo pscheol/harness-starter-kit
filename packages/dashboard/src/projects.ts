@@ -48,7 +48,7 @@ export function addProject(home: string, dir: string, today: string, env: Env = 
   try {
     real = fs.realpathSync(dir);
   } catch {
-    throw new ApiError(404, "not_found", `폴더가 없다: ${dir}`);
+    throw new ApiError(404, "not_found", `폴더가 없습니다: ${dir}`);
   }
   if (!isHarnessRepo(real)) throw new ApiError(422, "not_a_harness_repo", `킷을 설치한 리포가 아니다(.agents/harness-kit.json 없음): ${real}`);
   const list = readRegistry(home, env);
@@ -70,7 +70,7 @@ export function removeProject(home: string, nameOrPath: string, env: Env = {}): 
     real = path.resolve(nameOrPath);
   }
   const removed = list.filter((e) => e.name === nameOrPath || e.path === nameOrPath || e.path === real);
-  if (removed.length === 0) throw new ApiError(404, "not_found", `등록부에 없다: ${nameOrPath}`);
+  if (removed.length === 0) throw new ApiError(404, "not_found", `등록부에 없습니다: ${nameOrPath}`);
   writeRegistry(home, list.filter((e) => !removed.includes(e)), env);
   return { removed };
 }
@@ -103,7 +103,7 @@ export function discover(dir: string, depth = 3): RegistryEntry[] {
 
 export function workspaceEntries(file: string): RegistryEntry[] {
   const data = readJson(file);
-  if (!data) throw bad(`workspace 파일을 읽지 못했다: ${file}`);
+  if (!data) throw bad(`workspace 파일을 읽지 못했습니다: ${file}`);
   const list = Array.isArray(data.projects) ? data.projects : [];
   return list.map((x) => (typeof x === "string" ? x : isObj(x) && typeof x.path === "string" ? x.path : null)).filter((x): x is string => x !== null).map((p) => {
     const abs = path.resolve(path.dirname(file), p);

@@ -34,28 +34,28 @@ export interface IntakeBody {
 
 function strings(v: unknown, field: string): string[] {
   if (v === undefined) return [];
-  if (!Array.isArray(v) || !v.every((x) => typeof x === "string")) throw bad(`${field} 는 문자열 목록이다`);
+  if (!Array.isArray(v) || !v.every((x) => typeof x === "string")) throw bad(`${field} 는 문자열 목록입니다`);
   return v as string[];
 }
 
 export function intakeBody(body: unknown, via: Via): IntakeBody {
-  if (!isObj(body)) throw bad("본문은 JSON 객체다");
+  if (!isObj(body)) throw bad("본문은 JSON 객체입니다");
   const { title, kind, name, area, text } = body;
-  if (typeof title !== "string" || !title.trim() || title.length > 200) throw bad("title 은 1~200자 문자열이다");
+  if (typeof title !== "string" || !title.trim() || title.length > 200) throw bad("title 은 1~200자 문자열입니다");
   if (typeof kind !== "string" || !KINDS.has(kind)) throw bad(`kind 는 ${[...KINDS].join(" · ")}`);
   if (typeof name !== "string" || !NAME.test(name) || name.length > 60) throw bad("name 은 영문 소문자 · 숫자 kebab-case(60자 이하)다");
   if (area !== undefined && area !== null && (typeof area !== "string" || !NAME.test(area))) throw bad("area 는 kebab-case 다");
-  if (text !== undefined && typeof text !== "string") throw bad("text 는 문자열이다");
+  if (text !== undefined && typeof text !== "string") throw bad("text 는 문자열입니다");
   const links = strings(body.links, "links");
-  if (links.some((l) => !/^https?:\/\/\S+$/.test(l))) throw bad("링크는 http(s):// 로 시작한다");
+  if (links.some((l) => !/^https?:\/\/\S+$/.test(l))) throw bad("링크는 http(s):// 로 시작합니다");
   const paths = strings(body.paths, "paths");
-  if (paths.length && via !== "terminal") throw bad("로컬 경로(paths)는 터미널(CLI)에서만 받는다 — 화면은 files(base64)로 보낸다");
+  if (paths.length && via !== "terminal") throw bad("로컬 경로(paths)는 터미널(CLI)에서만 받습니다 — 화면은 files(base64)로 보냅니다");
   const raw = body.files === undefined ? [] : body.files;
-  if (!Array.isArray(raw)) throw bad("files 는 [{name, base64}] 목록이다");
-  if (raw.length + paths.length > MAX_FILES) throw bad(`첨부는 ${MAX_FILES}개까지다`);
+  if (!Array.isArray(raw)) throw bad("files 는 [{name, base64}] 목록입니다");
+  if (raw.length + paths.length > MAX_FILES) throw bad(`첨부는 ${MAX_FILES}개까지입니다`);
   const files = raw.map((f, i) => {
     if (!isObj(f) || typeof f.name !== "string" || !FILE_NAME.test(f.name) || f.name === "." || f.name === ".." || typeof f.base64 !== "string") {
-      throw bad(`files[${i}] 는 {name: 파일 이름, base64: 내용} 이다`);
+      throw bad(`files[${i}] 는 {name: 파일 이름, base64: 내용} 입니다`);
     }
     return { name: f.name, data: Buffer.from(f.base64, "base64") };
   });
@@ -64,7 +64,7 @@ export function intakeBody(body: unknown, via: Via): IntakeBody {
 
 /** intake.py 의 SystemExit 문구 → 422. JSON 이 아니면 그대로 잘라 낸다. */
 function rejected(out: string): ApiError {
-  const message = out.trim().split("\n").filter(Boolean).pop() ?? "접수하지 못했다";
+  const message = out.trim().split("\n").filter(Boolean).pop() ?? "접수하지 못했습니다";
   return new ApiError(422, "intake_rejected", message.slice(0, 500));
 }
 

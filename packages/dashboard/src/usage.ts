@@ -286,7 +286,7 @@ const localDate = (ms: number): string => {
 
 function rangeOf(daysText: string | null): { days: number; from: number; to: number } {
   const days = daysText === null ? 7 : Number(daysText);
-  if (!Number.isInteger(days) || days < 1 || days > 90) throw bad("days 는 1~90 이다");
+  if (!Number.isInteger(days) || days < 1 || days > 90) throw bad("days 는 1~90 입니다");
   const start = new Date();
   start.setHours(0, 0, 0, 0);
   return { days, from: start.getTime() - (days - 1) * DAY, to: Date.now() };
@@ -317,7 +317,7 @@ function priceOf(p: Project, model: string | null): { input: number; output: num
 /** GET /usage — 토큰이 쓰인 곳. 꺼져 있으면 무엇을 읽는지와 켜는 곳만 낸다(파일을 열지 않는다). */
 export async function usageData(p: Project, q: UsageQuery): Promise<Record<string, unknown>> {
   const range = rangeOf(q.days);
-  if (q.harness && !["claude", "codex", "kiro"].includes(q.harness)) throw bad("harness 는 claude · codex · kiro 중 하나다");
+  if (q.harness && !["claude", "codex", "kiro"].includes(q.harness)) throw bad("harness 는 claude · codex · kiro 중 하나입니다");
   if (!historyOn(p)) return { enabled: false, ...configHint(p), range: { days: range.days }, sources: sourcesOff(), totals: null, daily: [], roles: [], byIssue: [], cache: { average: null, daily: [] }, cost: null, unreadable: 0 };
   const { recs, sources, unreadable } = await loadRecords(p, range.from, q.harness);
   const sess = await sessionMap(p);
@@ -366,7 +366,7 @@ export async function usageData(p: Project, q: UsageQuery): Promise<Record<strin
     sources, totals, daily: dayList, roles: [...roles].sort(),
     byIssue: [...issues].map(([issue, sum]) => ({ issue, sum })).sort((a, b) => b.sum - a.sum || (a.issue < b.issue ? -1 : 1)),
     cache: { average: ratio(totals), daily: dayList.map((d) => ({ date: d.date, ratio: ratio(d) })) },
-    cost: priced ? { estimate: Math.round(cost * 100) / 100, note: "usage.pricing 으로 센 추정이다. 청구 금액이 아니다" } : null,
+    cost: priced ? { estimate: Math.round(cost * 100) / 100, note: "usage.pricing 으로 센 추정입니다. 청구 금액이 아니다" } : null,
     unreadable,
   };
 }
@@ -396,7 +396,7 @@ export async function usageNow(p: Project): Promise<Record<string, unknown>> {
       id: last.session, harness: last.harness, model: last.model, role: meta?.role ?? null, issue: meta?.issue ?? issueOf(last.branch),
       at: new Date(last.ts).toISOString(), since: new Date(Math.min(...mine.map((r) => r.ts))).toISOString(), requests: mine.length,
       last: { input: last.input, output: last.output, cacheRead: last.cacheRead, cacheWrite: last.cacheWrite },
-      used, window, ratio, warnAt, warn: ratio !== null && ratio >= warnAt, windowNote: window ? null : "기록에 없다",
+      used, window, ratio, warnAt, warn: ratio !== null && ratio >= warnAt, windowNote: window ? null : "기록에 없습니다",
     },
   };
 }
@@ -444,7 +444,7 @@ export async function usageKit(p: Project): Promise<Record<string, unknown>> {
     hooks, skipped,
     sessionStart: { avgBytes: avgTotal, maxBytes: start.reduce((s, h) => s + h.maxBytes, 0), limit: SESSION_START_LIMIT, ratio: avgTotal / SESSION_START_LIMIT, within: avgTotal <= SESSION_START_LIMIT, estTokens: Math.round(avgTotal / 3) },
     modules: modulesOf(p),
-    note: "바이트 ÷ 3 은 한글 위주 글의 토큰 추정이다",
+    note: "바이트 ÷ 3 은 한글 위주 글의 토큰 추정입니다",
   };
 }
 
@@ -488,7 +488,7 @@ export interface HistoryQuery {
 
 /** GET /history — 프롬프트 기록. 꺼져 있으면 404 history_off. 글을 보여 주기만 한다. */
 export async function historyData(p: Project, q: HistoryQuery): Promise<Record<string, unknown>> {
-  if (!historyOn(p)) throw new ApiError(404, "history_off", "대화 기록 읽기가 꺼져 있다. 켜려면 사람이 ~/.config/harness-kit/config.json 에 \"history\": \"on\" 을 쓴다", configHint(p));
+  if (!historyOn(p)) throw new ApiError(404, "history_off", "대화 기록 읽기가 꺼져 있습니다. 켜려면 사람이 ~/.config/harness-kit/config.json 에 \"history\": \"on\" 을 씁니다", configHint(p));
   const dirs = projectDirs(p);
   const sess = await sessionMap(p);
   const prompts: { at: string; text: string; session: string | null; role: string | null; issue: string | null; harness: string }[] = [];
@@ -539,5 +539,5 @@ export async function historyData(p: Project, q: HistoryQuery): Promise<Record<s
   const all = prompts
     .filter((x) => (!needle || x.text.toLowerCase().includes(needle)) && (!q.session || x.session === q.session) && (!q.role || x.role === q.role))
     .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
-  return { enabled: true, prompts: all.slice(0, HISTORY_LIMIT), total: all.length, shown: Math.min(all.length, HISTORY_LIMIT), unreadable, note: "글을 보여 주기만 한다. 내보내기 · 커밋 · 세션 요청에 넣지 않는다" };
+  return { enabled: true, prompts: all.slice(0, HISTORY_LIMIT), total: all.length, shown: Math.min(all.length, HISTORY_LIMIT), unreadable, note: "글을 보여 주기만 합니다. 내보내기 · 커밋 · 세션 요청에 넣지 않습니다" };
 }

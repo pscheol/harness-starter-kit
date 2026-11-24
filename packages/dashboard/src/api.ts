@@ -87,7 +87,7 @@ async function issueList(p: Project, r: ApiRequest): Promise<ApiResult> {
 async function oneIssue(p: Project, key: string) {
   const { issues } = await load(p);
   const i = issues.find((x) => x.key === key);
-  if (!i) throw notFound(`이슈가 없다: ${key}`);
+  if (!i) throw notFound(`이슈가 없습니다: ${key}`);
   return i;
 }
 
@@ -130,7 +130,7 @@ export const ROUTES: Route[] = [
   { method: "GET", path: "/issues/{key}", cli: "status --issue <키>", handler: async (p, r) => ok(publicIssue(await oneIssue(p, r.params.key as string))) },
   { method: "GET", path: "/docs", cli: "status --doc <경로>", handler: async (p, r) => ok(await getDoc(p, q(r, "path"), r.sign)) },
   {
-    method: "PUT", path: "/docs", cli: "편집기로 파일을 직접 고친다(06 §3.15 S03)",
+    method: "PUT", path: "/docs", cli: "편집기로 파일을 직접 고칩니다(06 §3.15 S03)",
     handler: async (p, r) => {
       const res = await putDoc(p, r.body);
       return ok(res.data, 200, res.meta);
@@ -216,7 +216,7 @@ export const ROUTES: Route[] = [
     method: "GET", path: "/flow", cli: "status --flow <INT>",
     handler: async (p, r) => {
       const key = q(r, "intent");
-      if (!key) throw bad("intent 가 필요하다");
+      if (!key) throw bad("intent 가 필요합니다");
       const { issues, sessions } = await load(p);
       return ok(flowData(p, findIntent(p.root, key), issues, sessions));
     },
@@ -246,7 +246,7 @@ export const ROUTES: Route[] = [
     method: "GET", path: "/history", cli: "history [--q …] [--session id] [--role r] (꺼짐이면 history_off)",
     handler: async (p, r) => ok(await historyData(p, { q: q(r, "q"), session: q(r, "session"), role: q(r, "role") })),
   },
-  { method: "GET", path: "/raw/{path}", cli: "— (브라우저 이미지 · 와이어프레임, 서명 URL)", handler: async () => { throw notFound("서명 URL 로만 연다"); } },
+  { method: "GET", path: "/raw/{path}", cli: "— (브라우저 이미지 · 와이어프레임, 서명 URL)", handler: async () => { throw notFound("서명 URL 로만 엽니다"); } },
 ];
 
 interface Compiled {

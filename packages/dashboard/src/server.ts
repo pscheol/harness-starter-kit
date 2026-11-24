@@ -167,8 +167,8 @@ function readBody(req: http.IncomingMessage): Promise<Buffer> {
       if (size > LIMIT) over = true;
       else chunks.push(c);
     });
-    req.on("end", () => (over ? reject(new ApiError(400, "bad_request", "본문이 1 MiB 를 넘는다")) : resolve(Buffer.concat(chunks))));
-    req.on("error", () => reject(new ApiError(400, "bad_request", "본문을 읽지 못했다")));
+    req.on("end", () => (over ? reject(new ApiError(400, "bad_request", "본문이 1 MiB 를 넘습니다")) : resolve(Buffer.concat(chunks))));
+    req.on("error", () => reject(new ApiError(400, "bad_request", "본문을 읽지 못했습니다")));
   });
 }
 
@@ -223,7 +223,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   async function handleApi(req: http.IncomingMessage, res: http.ServerResponse, url: URL): Promise<void> {
     const auth = req.headers.authorization ?? "";
     const given = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-    if (!given || !same(given, token)) throw new ApiError(401, "unauthorized", "토큰이 없거나 틀렸다");
+    if (!given || !same(given, token)) throw new ApiError(401, "unauthorized", "토큰이 없거나 틀렸습니다");
     const method = req.method ?? "GET";
     const writes = method === "POST" || method === "PUT" || method === "DELETE";
     const hasBody = Number(req.headers["content-length"] ?? 0) > 0 || req.headers["transfer-encoding"] !== undefined;
@@ -248,21 +248,21 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       const top = match(method, rest);
       if (top && "route" in top && (top.route.multi || (rest === "/sessions" && url.searchParams.get("scope") === "machine"))) {
         const first = (await projects.list()).find((s) => s.project)?.project ?? null;
-        if (!first && !top.route.multi) throw new ApiError(404, "not_found", "읽을 프로젝트가 없다");
+        if (!first && !top.route.multi) throw new ApiError(404, "not_found", "읽을 프로젝트가 없습니다");
         target = { p: first as Project, path: rest, prefix: "" };
       }
     }
-    if (!target) throw new ApiError(404, "not_found", "프로젝트가 없다");
+    if (!target) throw new ApiError(404, "not_found", "프로젝트가 없습니다");
     const m = match(method, target.path);
     if (!m) throw new ApiError(404, "not_found", `경로 없음: ${target.path}`);
     if (!("route" in m)) throw new ApiError(405, "method_not_allowed", `허용 메서드: ${m.methods.join(", ")}`);
     if (m.route.pin) {
-      if (readOnly) throw new ApiError(403, "read_only", "읽기 전용 모드다 — PIN 이 없다");
-      if (failures >= PIN_TRIES) throw new ApiError(403, "pin_locked", "PIN 을 5번 틀려 서버가 끝날 때까지 막았다");
+      if (readOnly) throw new ApiError(403, "read_only", "읽기 전용 모드입니다 — PIN 이 없습니다");
+      if (failures >= PIN_TRIES) throw new ApiError(403, "pin_locked", "PIN 을 5번 틀려 서버가 끝날 때까지 막았습니다");
       const given = body && typeof body === "object" ? (body as Record<string, unknown>).pin : undefined;
       if (typeof given !== "string" || !same(given, pin as string)) {
         failures += 1;
-        throw new ApiError(403, "pin_required", "승인 PIN 이 없거나 틀렸다(서버를 연 터미널에만 보인다)");
+        throw new ApiError(403, "pin_required", "승인 PIN 이 없거나 틀렸습니다(서버를 연 터미널에만 보입니다)");
       }
     }
     const request: ApiRequest = {
@@ -293,20 +293,20 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       p = await projects.get(pm[1] as string);
       rest = pm[2] as string;
     }
-    if (!p) throw new ApiError(404, "not_found", "프로젝트가 없다");
+    if (!p) throw new ApiError(404, "not_found", "프로젝트가 없습니다");
     let relPath: string;
     try {
       relPath = rest.slice("/raw/".length).split("/").map(decodeURIComponent).join("/");
     } catch {
-      throw new ApiError(403, "forbidden_path", "경로를 읽지 못했다");
+      throw new ApiError(403, "forbidden_path", "경로를 읽지 못했습니다");
     }
     rawTarget(relPath);
     const exp = Number(url.searchParams.get("exp") ?? "");
     const sig = url.searchParams.get("sig") ?? "";
     const now = Math.floor(Date.now() / 1000);
-    if (!Number.isInteger(exp) || exp < now || exp > now + RAW_TTL + 5) throw new ApiError(403, "forbidden_path", "서명 URL 이 지났다");
+    if (!Number.isInteger(exp) || exp < now || exp > now + RAW_TTL + 5) throw new ApiError(403, "forbidden_path", "서명 URL 이 지났습니다");
     const want = crypto.createHmac("sha256", token).update(`${relPath}\n${exp}`).digest("hex");
-    if (!same(sig, want)) throw new ApiError(403, "forbidden_path", "서명이 틀렸다");
+    if (!same(sig, want)) throw new ApiError(403, "forbidden_path", "서명이 틀렸습니다");
     const bytes = await readRaw(p, relPath);
     const ct = contentType(relPath);
     send(res, 200, bytes, { "Content-Type": ct, "Content-Security-Policy": ct.startsWith("text/html") ? `${RAW_CSP}; sandbox allow-scripts` : RAW_CSP, "Cache-Control": "private, max-age=60" });
@@ -338,7 +338,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         else if (url.pathname.startsWith("/api/")) throw new ApiError(404, "not_found", "경로 없음");
         else if (url.pathname.startsWith("/raw/") || /^\/p\/[0-9a-f]{12}\/raw\//.test(url.pathname)) await handleRaw(res, url);
         else if (req.method === "GET" || req.method === "HEAD") handleStatic(res, url);
-        else throw new ApiError(405, "method_not_allowed", "화면 파일은 GET 만 받는다");
+        else throw new ApiError(405, "method_not_allowed", "화면 파일은 GET 만 받습니다");
       } catch (err) {
         if (res.headersSent) {
           res.end();
@@ -350,7 +350,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
           return;
         }
         log(`관리 페이지 내부 오류: ${err instanceof Error ? (err.stack ?? err.message) : String(err)}\n`);
-        sendError(res, new ApiError(500, "internal", "예상하지 못한 오류(서버 터미널에 적었다)"));
+        sendError(res, new ApiError(500, "internal", "예상하지 못한 오류(서버 터미널에 적었습니다)"));
       }
     })();
   });

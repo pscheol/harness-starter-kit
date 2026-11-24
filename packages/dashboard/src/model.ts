@@ -92,20 +92,20 @@ export async function todos(p: Project, loaded: Loaded): Promise<Todo[]> {
     const open = i.review?.open ?? {};
     const blocking = (open.CRITICAL ?? 0) + (open.HIGH ?? 0);
     if (blocking > 0) {
-      out.push({ rank: 1, kind: "review-blocker", target: i.key, title: `${i.key} 리뷰 지적 CRITICAL ${open.CRITICAL ?? 0} · HIGH ${open.HIGH ?? 0}`, reason: "열린 CRITICAL · HIGH 지적이 있으면 mr 승인 · full 이 막힌다", since: iso(i.review?.report ? mtime(path.join(p.root, i.review.report)) : null), link: `${link}/review`, mine: false });
+      out.push({ rank: 1, kind: "review-blocker", target: i.key, title: `${i.key} 리뷰 지적 CRITICAL ${open.CRITICAL ?? 0} · HIGH ${open.HIGH ?? 0}`, reason: "열린 CRITICAL · HIGH 지적이 있으면 mr 승인 · full 이 막힙니다", since: iso(i.review?.report ? mtime(path.join(p.root, i.review.report)) : null), link: `${link}/review`, mine: false });
     }
     if (i.waitingOn) {
       const d = (i.docs as Record<string, { mtimeMs?: number } | null>)[i.waitingOn.gate];
       out.push({
         rank: i.waitingOn.mine ? 2 : 6, kind: i.waitingOn.mine ? "gate-mine" : "gate-others", target: i.key,
-        title: `${i.key} ${i.waitingOn.gate} 승인 대기`, reason: i.waitingOn.approvers.length ? `승인자: ${i.waitingOn.approvers.join(", ")}` : "approvers 가 비어 git 사용자 누구나 승인한다",
+        title: `${i.key} ${i.waitingOn.gate} 승인 대기`, reason: i.waitingOn.approvers.length ? `승인자: ${i.waitingOn.approvers.join(", ")}` : "approvers 가 비어 git 사용자 누구나 승인합니다",
         since: iso(d?.mtimeMs ?? null), link: `${link}/approve?gate=${i.waitingOn.gate}`, mine: i.waitingOn.mine,
       });
     }
     for (const [gate, d] of Object.entries(i.docs) as [string, { clarify: number; approval: string; mtimeMs?: number } | null][]) {
       if (!d) continue;
-      if (d.clarify > 0) out.push({ rank: 3, kind: "questions", target: i.key, title: `${i.key} ${gate}.md 에 [NEEDS CLARIFICATION ${d.clarify}건`, reason: "표시가 남은 문서는 승인할 수 없다(DB-R13)", since: iso(d.mtimeMs ?? null), link: `${link}/docs/${gate}`, mine: false });
-      if (d.approval === "stale" && gate !== "tasks") out.push({ rank: 5, kind: "approval-stale", target: i.key, title: `${i.key} ${gate} 승인 뒤 내용이 바뀌었다`, reason: "승인 기록의 sha 와 지금 문서가 다르다. 다시 승인한다", since: iso(d.mtimeMs ?? null), link: `${link}/docs/${gate}`, mine: allowed(user.email, gate, p.policy()) });
+      if (d.clarify > 0) out.push({ rank: 3, kind: "questions", target: i.key, title: `${i.key} ${gate}.md 에 [NEEDS CLARIFICATION ${d.clarify}건`, reason: "표시가 남은 문서는 승인할 수 없습니다(DB-R13)", since: iso(d.mtimeMs ?? null), link: `${link}/docs/${gate}`, mine: false });
+      if (d.approval === "stale" && gate !== "tasks") out.push({ rank: 5, kind: "approval-stale", target: i.key, title: `${i.key} ${gate} 승인 뒤 내용이 바뀌었습니다`, reason: "승인 기록의 sha 와 지금 문서가 다르입니다. 다시 승인합니다", since: iso(d.mtimeMs ?? null), link: `${link}/docs/${gate}`, mine: allowed(user.email, gate, p.policy()) });
     }
   }
   for (const info of intentFolders(p.root)) {

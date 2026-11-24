@@ -14,10 +14,10 @@ export async function postProposal(p: Project, body: unknown): Promise<Record<st
   const info = findIntent(co.root, b.intent);
   return p.withLock(path.join(info.abs, "units.proposed.json"), async () => {
     const units = readUnitsFile(info.abs);
-    if (!units.raw) throw notFound("units.json 이 없다");
-    if (sha256(units.raw) !== b.baseSha256) throw new ApiError(409, "conflict", "units.json 이 바뀌었다. 다시 읽고 제안한다", { currentSha256: sha256(units.raw) });
+    if (!units.raw) throw notFound("units.json 이 없습니다");
+    if (sha256(units.raw) !== b.baseSha256) throw new ApiError(409, "conflict", "units.json 이 바뀌었습니다. 다시 읽고 제안합니다", { currentSha256: sha256(units.raw) });
     const file = path.join(info.abs, "units.proposed.json");
-    if (b.proposalSha256 && fs.existsSync(file) && sha256(fs.readFileSync(file)) !== b.proposalSha256) throw new ApiError(409, "conflict", "다른 곳에서 제안을 먼저 저장했다");
+    if (b.proposalSha256 && fs.existsSync(file) && sha256(fs.readFileSync(file)) !== b.proposalSha256) throw new ApiError(409, "conflict", "다른 곳에서 제안을 먼저 저장했습니다");
     applyChanges(units.units, b.changes);
     const u = await gitUser(co.root, p.env);
     const proposal = { schema: "harness-kit.units-proposal/v1", intent: b.intent, baseSha256: b.baseSha256, createdBy: u.email, createdAt: nowText(), changes: b.changes };
@@ -31,7 +31,7 @@ export async function deleteProposal(p: Project, intent: string): Promise<Record
   if (p.readOnly) throw readOnly();
   const co = await resolveIntentCheckout(p, intent);
   const info = findIntent(co.root, intent);
-  if (!proposalOf(info.abs)) throw notFound("변경 제안이 없다");
+  if (!proposalOf(info.abs)) throw notFound("변경 제안이 없습니다");
   fs.unlinkSync(path.join(info.abs, "units.proposed.json"));
   return { intent, discarded: true };
 }

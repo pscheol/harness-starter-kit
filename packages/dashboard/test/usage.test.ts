@@ -95,7 +95,7 @@ describe("GET /usage · /usage/now · /history", () => {
     writeFile(repo.home, ".config/harness-kit/config.json", JSON.stringify({ history: "on" }));
     writeFile(dir, "a.jsonl", `${claudeLine({ id: "m2", ts: noon(0), cwd: repo.root, session: "s1", model: "unknown-model" })}\n`);
     const unk = (await call(srv, "GET", "/api/v1/usage/now")).json.data.session;
-    expect([unk.window, unk.ratio, unk.windowNote]).toEqual([null, null, "기록에 없다"]);
+    expect([unk.window, unk.ratio, unk.windowNote]).toEqual([null, null, "기록에 없습니다"]);
   });
 
   it("덧붙은 줄만 더 읽는다: 파일이 자라도 앞 줄을 다시 세지 않고, 잘린 마지막 줄은 다음에 읽는다", async () => {

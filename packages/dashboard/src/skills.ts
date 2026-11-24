@@ -175,7 +175,7 @@ function pluginRoots(repo: string, home: string): PluginRead {
   const installed = readJson(path.join(base, "installed_plugins.json"));
   if (!installed) return out;
   if (installed.version !== 2) {
-    out.warning = "installed_plugins.json 의 version 이 2 가 아니라 플러그인 해석을 건너뛴다";
+    out.warning = "installed_plugins.json 의 version 이 2 가 아니라 플러그인 해석을 건너뜁니다";
     return out;
   }
   const enabled = new Map<string, boolean>();

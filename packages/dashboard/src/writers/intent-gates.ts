@@ -40,7 +40,7 @@ async function gateInfo(p: Project, root: string, key: string, gate: BundleGate)
   try {
     return JSON.parse(r.stdout) as GateInfo;
   } catch {
-    throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건을 판정하지 못했다`, { reasons: [(r.stderr.trim().split("\n").pop() ?? "").slice(0, 300)] });
+    throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건을 판정하지 못했습니다`, { reasons: [(r.stderr.trim().split("\n").pop() ?? "").slice(0, 300)] });
   }
 }
 
@@ -81,21 +81,21 @@ export async function getGateBundle(p: Project, key: string, gate: string): Prom
 export async function approveBundle(p: Project, gate: BundleGate, key: string, decision: string, phrase: string, body: Record<string, unknown>, via: Via): Promise<ApprovalResult> {
   if (p.readOnly) throw readOnly();
   const { co, info, files, sha256: bundle } = await bundleOf(p, key, gate);
-  if (!files.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 대상 파일이 없다`, { reasons: info.reasons });
-  if (body.docSha256 !== bundle) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 대상 파일이 바뀌었다. 다시 읽고 승인한다", { currentSha256: bundle });
+  if (!files.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 대상 파일이 없습니다`, { reasons: info.reasons });
+  if (body.docSha256 !== bundle) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 대상 파일이 바뀌었습니다. 다시 읽고 승인합니다", { currentSha256: bundle });
   const approvalsFile = path.join(co.root, info.folder, "approvals.md");
   const current = fs.existsSync(approvalsFile) ? fs.readFileSync(approvalsFile, "utf8") : null;
   const entries = current ? parseApprovals(current).entries : [];
   const first = files[0] as BundleFile;
   const firstText = fs.readFileSync(path.join(co.root, first.path), "utf8");
   const status = gate === "codebase" ? headValue(firstText, "status") : null;
-  if (gate === "codebase" && !STATUSES.includes(status ?? "")) throw new ApiError(422, "gate_precondition", `current-state.md 머리 status 가 ${status ?? "없음"} 이다`, { reasons: [`status ${status ?? "없음"}`] });
+  if (gate === "codebase" && !STATUSES.includes(status ?? "")) throw new ApiError(422, "gate_precondition", `current-state.md 머리 status 가 ${status ?? "없음"} 입니다`, { reasons: [`status ${status ?? "없음"}`] });
   if (decision === "approved") {
-    if (files.every((f) => approvalState(entries, gate, f.approvalSha256, p.policy()) === "valid")) throw new ApiError(409, "already_approved", "같은 내용으로 승인한 기록이 있다");
+    if (files.every((f) => approvalState(entries, gate, f.approvalSha256, p.policy()) === "valid")) throw new ApiError(409, "already_approved", "같은 내용으로 승인한 기록이 있습니다");
     const unclear = files.filter((f) => f.path.endsWith(".md") && fs.readFileSync(path.join(co.root, f.path), "utf8").includes(CLARIFY));
-    if (unclear.length) throw new ApiError(422, "needs_clarification", `${unclear.map((f) => f.name).join(", ")} 에 [NEEDS CLARIFICATION 가 남았다`);
-    if (info.stale.length) throw new ApiError(422, "model_stale", "역공학 문서가 오래됐다 — /hx-intent 가 codebase_scan.py 로 갱신한 뒤 승인한다", { stale: info.stale });
-    if (info.reasons.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건이 맞지 않는다`, { reasons: info.reasons });
+    if (unclear.length) throw new ApiError(422, "needs_clarification", `${unclear.map((f) => f.name).join(", ")} 에 [NEEDS CLARIFICATION 가 남았습니다`);
+    if (info.stale.length) throw new ApiError(422, "model_stale", "역공학 문서가 오래됐습니다 — /hx-intent 가 codebase_scan.py 로 갱신한 뒤 승인합니다", { stale: info.stale });
+    if (info.reasons.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건이 맞지 않습니다`, { reasons: info.reasons });
   }
   const who = await approver(p, co, gate);
   const at = nowText();

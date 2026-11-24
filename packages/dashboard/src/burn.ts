@@ -47,7 +47,7 @@ interface Track {
 
 export async function burnData(p: Project, info: IntentInfo, issues: IssueModel[], daysText: string | null): Promise<Record<string, unknown>> {
   const days = daysText === null ? 14 : Number(daysText);
-  if (!Number.isInteger(days) || days < 1 || days > 90) throw bad("days 는 1~90 이다");
+  if (!Number.isInteger(days) || days < 1 || days > 90) throw bad("days 는 1~90 입니다");
   const { units } = readUnitsFile(info.abs);
   // 계약 Unit 은 자기 이슈가 없으면 Bolt 가 없다(S12 노드도 Bolt 를 그리지 않는다)
   const live = units.filter((u) => u.planned && !(u.kind === "contract" && !u.issue));

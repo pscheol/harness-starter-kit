@@ -44,8 +44,8 @@ export function issueFolder(root: string, key: string): string {
     names = [];
   }
   const found = names.filter((n) => FOLDER.exec(n)?.[1] === key);
-  if (found.length === 0) throw notFound(`이슈 폴더가 없다: ${key}`);
-  if (found.length > 1) throw new ApiError(409, "ambiguous_branch", `같은 키의 이슈 폴더가 둘 이상이다: ${found.join(", ")}`);
+  if (found.length === 0) throw notFound(`이슈 폴더가 없습니다: ${key}`);
+  if (found.length > 1) throw new ApiError(409, "ambiguous_branch", `같은 키의 이슈 폴더가 둘 이상입니다: ${found.join(", ")}`);
   return `.agents/docs/issues/${found[0]}`;
 }
 
@@ -79,7 +79,7 @@ export function writeAll(writes: Write[]): void {
       }
     }
     process.stderr.write(`승인 기록 쓰기 실패: ${err instanceof Error ? err.message : String(err)}\n`);
-    throw new ApiError(500, "internal", "기록을 쓰지 못해 되돌렸다");
+    throw new ApiError(500, "internal", "기록을 쓰지 못해 되돌렸습니다");
   }
 }
 
@@ -93,15 +93,15 @@ export function appendLog(root: string, record: Record<string, unknown>): void {
 
 export async function approver(p: Project, co: Checkout, gate: string): Promise<{ email: string; name: string | null; group: string | null }> {
   const u = await gitUser(co.root, p.env);
-  if (!u.email) throw new ApiError(403, "not_an_approver", "git config user.email 이 비었다 — 승인자는 이 체크아웃의 git 사용자다");
+  if (!u.email) throw new ApiError(403, "not_an_approver", "git config user.email 이 비었습니다 — 승인자는 이 체크아웃의 git 사용자입니다");
   const policy = p.policy();
-  if (!allowed(u.email, gate, policy)) throw new ApiError(403, "not_an_approver", `${u.email} 은 ${gate} 게이트 승인자 목록(approvers.${gate})에 없다`, { approvers: (policy.approvers ?? {})[gate] ?? [] });
+  if (!allowed(u.email, gate, policy)) throw new ApiError(403, "not_an_approver", `${u.email} 은 ${gate} 게이트 승인자 목록(approvers.${gate})에 없습니다`, { approvers: (policy.approvers ?? {})[gate] ?? [] });
   return { email: u.email, name: u.name, group: groupOf(u.email, gate, policy) };
 }
 
 function phraseOf(body: Record<string, unknown>, field = "phrase"): string {
   const v = body[field];
-  if (typeof v !== "string" || !v.trim()) throw bad(`${field} 가 비었다(승인할 때 남길 문구)`);
+  if (typeof v !== "string" || !v.trim()) throw bad(`${field} 가 비었습니다(승인할 때 남길 문구)`);
   return v.replace(/\s+/g, " ").trim().slice(0, 500);
 }
 
@@ -110,7 +110,7 @@ async function preconditions(p: Project, co: Checkout, key: string, gate: string
   const own = path.join(co.root, "scripts/harness/sdd_gates.py");
   const script = fs.existsSync(own) ? own : path.join(p.root, "scripts/harness/sdd_gates.py");
   const r = await python(co.root, p.env, [script, "check", key, "--json", "--root", co.root], 60_000);
-  if (r.code !== 0) throw new ApiError(422, "gate_precondition", "게이트 조건을 판정하지 못했다", { reasons: [(r.stderr.trim().split("\n").pop() ?? "").slice(0, 300)] });
+  if (r.code !== 0) throw new ApiError(422, "gate_precondition", "게이트 조건을 판정하지 못했습니다", { reasons: [(r.stderr.trim().split("\n").pop() ?? "").slice(0, 300)] });
   const data = JSON.parse(r.stdout) as { gates: { gate: string; preconditions?: string[]; reasons: string[] }[] };
   const g = data.gates.find((x) => x.gate === gate);
   return g?.preconditions ?? g?.reasons ?? [];
@@ -131,17 +131,17 @@ export async function postApproval(p: Project, body: unknown, via: Via): Promise
   const gate = typeof body.gate === "string" ? body.gate : "";
   const decision = body.decision === "changes-requested" ? "changes-requested" : body.decision === "approved" ? "approved" : null;
   if (!decision) throw bad("decision 은 approved 또는 changes-requested 다");
-  if (!p.gates().includes(gate)) throw new ApiError(422, "gate_not_in_flow", `${gate} 는 flow.gates 에 없다`, { gates: p.gates() });
-  if (Object.hasOwn(LATER, gate)) throw new ApiError(422, "gate_precondition", `${gate} 게이트 승인은 이 판에 없다(${LATER[gate]})`, { later: LATER[gate], reasons: [`${LATER[gate]} 에서 제공한다`] });
+  if (!p.gates().includes(gate)) throw new ApiError(422, "gate_not_in_flow", `${gate} 는 flow.gates 에 없습니다`, { gates: p.gates() });
+  if (Object.hasOwn(LATER, gate)) throw new ApiError(422, "gate_precondition", `${gate} 게이트 승인은 이 판에 없습니다(${LATER[gate]})`, { later: LATER[gate], reasons: [`${LATER[gate]} 에서 제공합니다`] });
   const phrase = phraseOf(body);
   const target = isObj(body.target) ? body.target : {};
   if (gate === "intent" || BUNDLE_GATES.includes(gate)) {
-    if (typeof target.intent !== "string") throw bad(`${gate} 게이트는 target.intent 가 필요하다`);
+    if (typeof target.intent !== "string") throw bad(`${gate} 게이트는 target.intent 가 필요합니다`);
     if (gate !== "intent") return approveBundle(p, gate as BundleGate, target.intent, decision, phrase, body, via);
     return approveIntent(p, target.intent, decision, phrase, body, via);
   }
   if (!ISSUE_GATES.includes(gate)) throw new ApiError(422, "gate_not_in_flow", `모르는 게이트: ${gate}`);
-  if (typeof target.issue !== "string") throw bad("target.issue 가 필요하다");
+  if (typeof target.issue !== "string") throw bad("target.issue 가 필요합니다");
   const key = target.issue;
   const co = await resolveIssueCheckout(p, key, null);
   const folder = issueFolder(co.root, key);
@@ -153,20 +153,20 @@ export async function postApproval(p: Project, body: unknown, via: Via): Promise
   let statusChanged: string | null = null;
   if (Object.hasOwn(DOC_FILES, gate)) {
     const docFile = path.join(co.root, folder, DOC_FILES[gate] as string);
-    if (!fs.existsSync(docFile)) throw notFound(`${DOC_FILES[gate]} 가 없다`);
+    if (!fs.existsSync(docFile)) throw notFound(`${DOC_FILES[gate]} 가 없습니다`);
     const bytes = fs.readFileSync(docFile);
     const text = bytes.toString("utf8");
     const fm = parseLoose(text) ?? {};
     const status = fm.status ?? null;
     const aSha = approvalSha(bytes);
-    if (gate !== "tasks" && !["draft", "in-review", "approved"].includes(status ?? "")) throw new ApiError(422, "gate_precondition", `${DOC_FILES[gate]} 머리 status 가 ${status ?? "없음"} 이다(draft · in-review 만 승인한다)`, { reasons: [`status ${status ?? "없음"}`] });
+    if (gate !== "tasks" && !["draft", "in-review", "approved"].includes(status ?? "")) throw new ApiError(422, "gate_precondition", `${DOC_FILES[gate]} 머리 status 가 ${status ?? "없음"} 입니다(draft · in-review 만 승인합니다)`, { reasons: [`status ${status ?? "없음"}`] });
     const need = needOf(p.meta(), riskOfFolder(path.join(co.root, folder)), gate);
     const state = approvalState(entries, gate, aSha, p.policy(), need);
-    if (decision === "approved" && state === "valid") throw new ApiError(409, "already_approved", `${gate}: 같은 내용(sha ${aSha.slice(0, 12)})으로 승인한 기록이 있다`);
+    if (decision === "approved" && state === "valid") throw new ApiError(409, "already_approved", `${gate}: 같은 내용(sha ${aSha.slice(0, 12)})으로 승인한 기록이 있습니다`);
     const me = ((await gitUser(co.root, p.env)).email ?? "").toLowerCase();
-    if (decision === "approved" && state === "partial" && me && approversOf(entries, gate, aSha).has(me)) throw new ApiError(409, "already_approved", `${gate}: 이미 승인했다 — risk: high 는 다른 승인자 한 명이 더 승인한다(DS-R26)`, { need });
-    if (decision === "approved" && text.includes(CLARIFY)) throw new ApiError(422, "needs_clarification", `${DOC_FILES[gate]} 에 [NEEDS CLARIFICATION 가 남았다`);
-    if (body.docSha256 !== sha256(bytes)) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 문서가 바뀌었다. 다시 읽고 승인한다", { currentSha256: sha256(bytes) });
+    if (decision === "approved" && state === "partial" && me && approversOf(entries, gate, aSha).has(me)) throw new ApiError(409, "already_approved", `${gate}: 이미 승인했습니다 — risk: high 는 다른 승인자 한 명이 더 승인합니다(DS-R26)`, { need });
+    if (decision === "approved" && text.includes(CLARIFY)) throw new ApiError(422, "needs_clarification", `${DOC_FILES[gate]} 에 [NEEDS CLARIFICATION 가 남았습니다`);
+    if (body.docSha256 !== sha256(bytes)) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 문서가 바뀌었습니다. 다시 읽고 승인합니다", { currentSha256: sha256(bytes) });
     targetRef = { name: DOC_FILES[gate] as string, sha256: aSha };
     if (decision === "approved" && status !== "approved" && gate !== "tasks") {
       writes.push({ file: docFile, data: Buffer.from(setField(text, "status", "approved"), "utf8") });
@@ -178,7 +178,7 @@ export async function postApproval(p: Project, body: unknown, via: Via): Promise
   }
   if (decision === "approved") {
     const reasons = await preconditions(p, co, key, gate);
-    if (reasons.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건이 맞지 않는다`, { reasons });
+    if (reasons.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건이 맞지 않습니다`, { reasons });
   }
   const who = await approver(p, co, gate);
   const entry: NewEntry = { at: nowText(), gate, decision, approver: who, target: targetRef, phrase, path: via, entryId: ulid(), ruleCandidate: decision === "changes-requested" && body.ruleCandidate === true };
@@ -195,7 +195,7 @@ async function approveIntent(p: Project, key: string, decision: string, phrase: 
   const co = await resolveIntentCheckout(p, key);
   const info = findIntent(co.root, key);
   const intentFile = path.join(info.abs, "intent.md");
-  if (!fs.existsSync(intentFile)) throw notFound("intent.md 가 없다");
+  if (!fs.existsSync(intentFile)) throw notFound("intent.md 가 없습니다");
   const bytes = fs.readFileSync(intentFile);
   const text = bytes.toString("utf8");
   const status = parseLoose(text)?.status ?? null;
@@ -203,10 +203,10 @@ async function approveIntent(p: Project, key: string, decision: string, phrase: 
   const current = fs.existsSync(approvalsFile) ? fs.readFileSync(approvalsFile, "utf8") : null;
   const entries = current ? parseApprovals(current).entries : [];
   const aSha = approvalSha(bytes);
-  if (!["draft", "in-review", "approved"].includes(status ?? "")) throw new ApiError(422, "gate_precondition", `intent.md 머리 status 가 ${status ?? "없음"} 이다`, { reasons: [`status ${status ?? "없음"}`] });
-  if (decision === "approved" && approvalState(entries, "intent", aSha, p.policy()) === "valid" && !proposalOf(info.abs)) throw new ApiError(409, "already_approved", "같은 내용으로 승인한 기록이 있다");
-  if (decision === "approved" && text.includes(CLARIFY)) throw new ApiError(422, "needs_clarification", "intent.md 에 [NEEDS CLARIFICATION 가 남았다");
-  if (body.docSha256 !== sha256(bytes)) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 intent.md 가 바뀌었다", { currentSha256: sha256(bytes) });
+  if (!["draft", "in-review", "approved"].includes(status ?? "")) throw new ApiError(422, "gate_precondition", `intent.md 머리 status 가 ${status ?? "없음"} 입니다`, { reasons: [`status ${status ?? "없음"}`] });
+  if (decision === "approved" && approvalState(entries, "intent", aSha, p.policy()) === "valid" && !proposalOf(info.abs)) throw new ApiError(409, "already_approved", "같은 내용으로 승인한 기록이 있습니다");
+  if (decision === "approved" && text.includes(CLARIFY)) throw new ApiError(422, "needs_clarification", "intent.md 에 [NEEDS CLARIFICATION 가 남았습니다");
+  if (body.docSha256 !== sha256(bytes)) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 intent.md 가 바뀌었습니다", { currentSha256: sha256(bytes) });
   if (decision === "approved") {
     const reasons: string[] = [];
     try {
@@ -229,7 +229,7 @@ async function approveIntent(p: Project, key: string, decision: string, phrase: 
         reasons.push(...problems.map((x) => `intent.py check: ${x}`));
       }
     }
-    if (reasons.length) throw new ApiError(422, "gate_precondition", "intent 게이트 조건이 맞지 않는다", { reasons });
+    if (reasons.length) throw new ApiError(422, "gate_precondition", "intent 게이트 조건이 맞지 않습니다", { reasons });
   }
   const who = await approver(p, co, "intent");
   const writes: Write[] = [];
@@ -237,7 +237,7 @@ async function approveIntent(p: Project, key: string, decision: string, phrase: 
   let unitsBytes = units.raw;
   const proposal = proposalOf(info.abs);
   if (decision === "approved" && proposal) {
-    if (!units.raw || !units.data || proposal.baseSha256 !== sha256(units.raw)) throw new ApiError(409, "proposal_stale", "제안을 만든 뒤 units.json 이 바뀌었다. 제안을 다시 저장하거나 버린다");
+    if (!units.raw || !units.data || proposal.baseSha256 !== sha256(units.raw)) throw new ApiError(409, "proposal_stale", "제안을 만든 뒤 units.json 이 바뀌었습니다. 제안을 다시 저장하거나 버립니다");
     unitsBytes = appliedUnitsBytes(units.raw, units.data, units.units, (proposal.changes ?? []) as Change[]);
     writes.push({ file: path.join(info.abs, "units.json"), data: unitsBytes });
     writes.push({ file: path.join(info.abs, "units.proposed.json"), data: null });
@@ -262,17 +262,17 @@ export async function reviewFinding(p: Project, key: string, findingId: string):
   const own = path.join(co.root, "scripts/harness/review_state.py");
   const script = fs.existsSync(own) ? own : path.join(p.root, "scripts/harness/review_state.py");
   const r = await python(co.root, p.env, [script, path.join(co.root, folder), "--json"], 30_000);
-  if (r.code === 2) throw notFound(`리뷰 보고서가 없다(.agents/reports/review/${key}.md)`);
+  if (r.code === 2) throw notFound(`리뷰 보고서가 없습니다(.agents/reports/review/${key}.md)`);
   const data = JSON.parse(r.stdout) as { findings: { id: string; fp: string; severity: string }[] };
   const item = data.findings.find((f) => f.id === findingId);
-  if (!item) throw notFound(`보고서에 ${findingId} 가 없다`);
+  if (!item) throw notFound(`보고서에 ${findingId} 가 없습니다`);
   return { co, folder, fp: item.fp, severity: item.severity };
 }
 
 export async function postReviewDecision(p: Project, key: string, findingId: string, body: unknown, via: Via): Promise<ApprovalResult> {
   if (p.readOnly) throw readOnly();
   if (!isObj(body)) throw bad("본문이 객체가 아니다");
-  if (!/^F-\d+$/.test(findingId)) throw bad("발견 ID 는 F-<n> 이다");
+  if (!/^F-\d+$/.test(findingId)) throw bad("발견 ID 는 F-<n> 입니다");
   const decision = body.decision === "risk-accepted" || body.decision === "fix-required" ? body.decision : null;
   if (!decision) throw bad("decision 은 risk-accepted 또는 fix-required 다");
   const phrase = phraseOf(body);
