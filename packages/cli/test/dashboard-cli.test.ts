@@ -219,9 +219,27 @@ describe("쓰기 명령", () => {
     expect(fs.existsSync(path.join(out, "index.html"))).toBe(true);
   });
 
+  it("intake 는 POST /intake 와 같은 처리 — 로컬 첨부 경로 · --text-file · 비밀값은 exit 1", async () => {
+    const repo = fixture();
+    fs.cpSync(path.resolve(CLI_DIR, "../templates/common/agents-docs/_spec-templates"), path.join(repo.root, ".agents/docs/_spec-templates"), { recursive: true });
+    const note = path.join(repo.base, "note.txt");
+    fs.writeFileSync(note, "현장 메모\n");
+    const body = path.join(repo.base, "body.md");
+    fs.writeFileSync(body, "본문 한 줄\n");
+    const r = await cli(["intake", "--title", "알림 개편", "--kind", "change", "--name", "notice-change", "--text-file", body, "--attach", note, "--json"], repo);
+    expect(r.code, r.stdout + r.stderr).toBe(0);
+    expect(r.json.folder).toBe(".agents/docs/intents/INT-8-notice-change");
+    expect(readFile(repo.root, `${r.json.folder}/intake.md`)).toContain("본문 한 줄");
+    expect(readFile(repo.root, `${r.json.folder}/attachments/01-note.txt`)).toBe("현장 메모\n");
+    const bad = await cli(["intake", "--title", "x", "--kind", "change", "--name", "leak", "--text", `${"AK"}${"IA"}${"Q".repeat(16)}`], repo);
+    expect([bad.code, bad.stderr.includes("비밀값")]).toEqual([1, true]);
+    const usage = await cli(["intake", "--kind", "change"], repo);
+    expect(usage.code).toBe(2);
+  });
+
   it("범위 밖 명령은 exit 2 와 제공 이슈", async () => {
     const repo = fixture();
-    for (const [cmd, stage] of [["usage", "HK-18"], ["skills", "HK-18"], ["intake", "HK-19"]] as const) {
+    for (const [cmd, stage] of [["usage", "HK-18"], ["skills", "HK-18"]] as const) {
       const r = await cli([cmd], repo);
       expect([cmd, r.code, r.stderr.includes(stage)]).toEqual([cmd, 2, true]);
     }

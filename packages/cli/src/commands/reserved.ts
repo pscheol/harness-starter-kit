@@ -2,7 +2,6 @@
 export const RESERVED: Record<string, string> = {
   skills: "P20 · HK-18(스킬 목록, 설계 07)",
   usage: "P20 · HK-18(관리 페이지 사용량, 설계 06 §3.18 · 12)",
-  intake: "P21 · HK-19(요구사항 접수, 설계 08)",
   mob: "P21 · HK-19(설계 단계, 설계 08)",
   deploy: "P24(배포 · 운영, 설계 14)",
   ops: "P24(배포 · 운영, 설계 14)",

@@ -99,6 +99,8 @@ export const COMMAND_OPTIONS: Record<string, OptSpec> = {
   // 확장 층(HK-14, 설계 04)
   pack: { dir: { type: "string" }, from: { type: "string", multiple: true }, "kit-range": { type: "string" } },
   local: {},
+  // 설계 단계(HK-19, 설계 08)
+  intake: { title: { type: "string" }, kind: { type: "string" }, name: { type: "string" }, area: { type: "string" }, text: { type: "string" }, "text-file": { type: "string" }, attach: { type: "string", multiple: true }, link: { type: "string", multiple: true } },
 };
 
 /** 위치 인자(이름 · 하위 명령 · 키)를 받는 명령. 나머지는 위치 인자를 거부한다(대상 폴더는 --cwd). */

@@ -17,6 +17,7 @@ import { postAnswer, getQuestions } from "./writers/answers";
 import { issueFolder, postApproval, postReviewDecision, type Via } from "./writers/approvals";
 import { dropQueued, postDispatch } from "./writers/dispatch";
 import { getDoc, putDoc } from "./writers/docs";
+import { postIntake } from "./writers/intake";
 import { deleteProposal, postProposal } from "./writers/proposals";
 
 export interface ApiRequest {
@@ -175,7 +176,6 @@ export const ROUTES: Route[] = [
   stub("GET", "/checkpoints", "HK-20", "— (entire 모듈, HK-20)", "체크포인트 목록"),
   stub("GET", "/checkpoints/{id}", "HK-20", "— (entire 모듈, HK-20)", "체크포인트 설명"),
   stub("GET", "/ops", "HK-21", "status --ops(HK-21)", "운영 기록"),
-  stub("POST", "/intake", "HK-19", "intake(HK-19)", "요구사항 접수"),
   {
     method: "GET", path: "/flow", cli: "status --flow <INT>",
     handler: async (p, r) => {
@@ -186,6 +186,7 @@ export const ROUTES: Route[] = [
     },
   },
   { method: "GET", path: "/flow/gates", cli: "flow gates", handler: async (p) => ok({ gates: p.gates(), floor: GATE_FLOOR, command: "npx harness-kit flow gates --add <게이트> --after <게이트>" }) },
+  { method: "POST", path: "/intake", cli: "intake --title … --kind … --name … [--text-file | --text] [--attach]… [--link]…", handler: async (p, r) => ok(await postIntake(p, r.body, r.via), 201) },
   { method: "POST", path: "/units/proposals", cli: "units propose <INT> --add-dep U-a:U-b | --remove-dep … | --split … | --merge … | --order …", handler: async (p, r) => ok(await postProposal(p, r.body)) },
   { method: "DELETE", path: "/units/proposals/{intent}", cli: "units discard <INT>", handler: async (p, r) => ok(await deleteProposal(p, r.params.intent as string)) },
   {

@@ -6,6 +6,7 @@ import { runDashboard } from "./commands/dashboard";
 import { runAnswer, runApprove, runReview } from "./commands/decide";
 import { runDoctor } from "./commands/doctor";
 import { runInit } from "./commands/init";
+import { runIntake } from "./commands/intake";
 import { runList } from "./commands/list";
 import { runOutdated } from "./commands/outdated";
 import { runRemove } from "./commands/remove";
@@ -48,6 +49,7 @@ const COMMANDS: Record<string, (ctx: Ctx) => CommandResult | Promise<CommandResu
   history: runHistory,
   pack: runPack,
   local: runLocal,
+  intake: runIntake,
 };
 
 const USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 킷
@@ -72,6 +74,7 @@ const USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 �
   units      Unit 변경 제안(propose · discard). flow gates 흐름 틀 · quality 품질 결과 · projects 등록부
   pack       pack new <이름> --dir <경로> --from <파일>… — 프로젝트 파일로 회사 팩 골격을 만든다
   local      local sync | list — 개인 층(.agents/local/)을 하네스 폴더에 배치한다(공유 lock 밖)
+  intake     요구사항 접수 — 글 · 첨부를 Intent 폴더(bug 는 이슈 폴더)로 받는다(신뢰하지 않는 입력으로 표시)
 
 공통 플래그: --cwd <폴더> --dry-run --yes --json --templates <폴더> --quiet --no-color --help
 init · plan: --stack --arch --domain --lang --agents <목록|all> --modules <목록|all|none>
@@ -108,6 +111,7 @@ const COMMAND_HELP: Record<string, string> = {
   quality: "harness-kit quality [--findings [--issue <키>] [--severity S] [--new]] [--json]\n",
   history: "harness-kit history [--q …] [--json] — ~/.config/harness-kit/config.json 의 history 가 on 일 때만(HK-18)\n",
   pack: "harness-kit pack new <이름> --dir <경로> [--from <파일|폴더>[#훅·검사 id]]… [--kit-range \">=2.0.0 <3.0.0\"] [--json] — --dir 은 빈 폴더나 없는 경로\n",
+  intake: "harness-kit intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--area <영역>] [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]… [--json] — 비밀값이 든 글은 접수하지 않는다(exit 1)\n",
   local: "harness-kit local sync [--dry-run] | local list [--json] — 개인 스킬 · Kiro 규칙 · 개인 훅(.claude/settings.local.json · .kiro/hooks/local-*). 공유 원본과 이름이 같으면 배치하지 않는다\n",
 };
 
