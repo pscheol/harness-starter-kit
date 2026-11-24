@@ -50,3 +50,11 @@ created: 2026-11-24
 - 화면 모양(색 · 간격 · 밀도)은 사람이 눈으로 확인한다: 스크린숏은 `screens/` 에 있다. 특히 강조색(graphite)과 의미 색 칩의 낮은 채도가 화면기획서의 의미 색 화면보다 조용해진 점.
 - 흐름 캔버스 노드 안(`flow-view/src/flow.css`)은 옛 이름의 변수를 astryx 토큰에 이어 쓴다(design §7). 노드 모양을 astryx 컴포넌트로 다시 그리지는 않았다.
 - 초점이 온 요소의 링은 astryx 기본이다. 키보드로 훑을 때 보이는지 한 번 본다.
+
+## 사람 의견 반영(2026-11-24)
+
+- 제품 이름 harnessync(사이드바 · 탭 제목, HTML 제목은 `build.mjs` 템플릿).
+- 화면 글 321곳 · 서버 문구 195곳을 합니다체로. 바꾼 규칙: 동사 -ㄴ다/-는다 → -ㅂ니다/-습니다, 과거 -ㅆ다 → -ㅆ습니다, 하다 · 아니다 · 이다 → 합니다 · 아닙니다 · 입니다, 명사 + 다 → 입니다. "마다" · "보다" · 부사 "다" · 주석은 그대로.
+- 색 설정(`src/lib/palette.ts` · `src/ui/PalettePicker.tsx` · `css/app.css` 의 `:root[data-hx-palette]`): 다섯 색, 기본 쿨 그레이, 이미 쓰는 부품(Button · Dialog · RadioList)만 써서 번들 크기 상한 안. 시험 `test/palette.test.ts`.
+- 시험: `pnpm test:ui` 33 · 관리 페이지 148 · CLI 447 통과.
+

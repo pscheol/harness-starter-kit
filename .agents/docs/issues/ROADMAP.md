@@ -69,6 +69,8 @@
 - (반영) init 등록부 자동 등록 — 설치 끝에 `~/.config/harness-kit/projects.json` 에 더한다. `--no-register` 면 안 한다. 위치는 `HARNESS_KIT_CONFIG_DIR`(절대) 또는 `HOME`, 둘 다 없으면 건너뛴다(실제 홈 추측 없음). 킷 시험(`tests/cli_dist.py`)은 임시 설정 폴더를 쓴다.
 - (사용자 결정 2026-11-24) 관리 페이지 화면 층은 React 19 + Meta astryx 로 바꾼다(HK-26) — 순수 JS 화면의 간격 · 정렬이 깨졌다. 레퍼런스: 사람이 준 분석 대시보드 그림(사이드바 묶음 · KPI 카드 · 큰 그래프 · 점 격자 · 오른쪽 상세 서랍). 색은 더 나은 방향이면 바꿔도 된다(AA 대비 · 색맹 구분 · 색 말고 아이콘 · 글자로도 상태).
 - (HK-26 확인할 것) 스크린숏 S01 · S02(서랍) · S13 · 색 견본, design 승인.
+- (사용자 결정 2026-11-24, 반영) 관리 페이지 화면 글과 화면에 뜨는 서버 오류 · 안내 문구는 합니다체("~습니다"). CLI 자체 출력 · 스크립트 출력 · 세션 요청 글 · 문서 · 주석은 지금 문체 그대로.
+- (사용자 결정 2026-11-24, 반영) 관리 페이지 색 설정: 머리줄 아이콘에서 쿨 그레이(기본) · 웜 그레이 · 소프트 사이드바 · 미드나이트 네이비 · 차콜 중 고른다. 브라우저에 저장. 메뉴와 본문 바탕을 나누고 카드는 흰색.
 - (HK-19) 사람 확인: 설계 세션 실제 한 바퀴(/hx-intent → 질문 답 → intent 승인 → /hx-plans → /hx-specify --from-unit), SubagentStop 훅이 긴 위임 결과를 실제로 한 번 돌려보내는지(설계 12 §5 #8, 수동), design.md 승인(in-review).
 - (HK-20 기본값) Jira · Notion 은 이 세션 Atlassian 인증이 없어 흉내 응답 시험만 하고 실제 연결은 사람 확인으로 둔다 — 시험용 프로젝트 · 페이지를 주면 실제로 시험한다.
 - (HK-15) 사람 확인: 살아 있는 Claude Code `claude -w` · 하위 에이전트 훅 입력, IntelliJ · VS Code worktree 표시, knots 사본 prune 실측, `git.worktreeRoot`(예: ~/knots-work) 결정. design in-review.
