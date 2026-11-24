@@ -2,6 +2,7 @@
 
 import datetime
 import re
+import subprocess
 
 from harness.sdd_frontmatter import STATUSES, TASK_STATES, TYPES, parse, render, strip
 from harness.sdd_keys import AREA, ISSUES, folder_problems, is_key, split_folder
@@ -87,6 +88,39 @@ def find_issue(root, ident):
     return folders[0]
 
 
+def dependency_design_status(root, key):
+    """의존 이슈의 design status. 체크아웃에 폴더가 없으면 base · 로컬 브랜치 git 객체에서 찾는다(설계 06 §3.2 순서). 못 찾으면 None."""
+    try:
+        fields = read_doc(root, find_issue(root, key) / "design.md")
+        return fields.get("status") if fields is not None else "없음"
+    except ValueError:
+        pass
+    refs = subprocess.run(["git", "for-each-ref", "--format=%(refname:short)", "refs/heads"], cwd=root, capture_output=True, text=True, check=False).stdout.split()
+    for ref in refs:
+        listed = subprocess.run(["git", "ls-tree", "-d", "--name-only", f"{ref}:{ISSUES}"], cwd=root, capture_output=True, text=True, check=False).stdout.split()
+        name = next((n for n in listed if (split_folder(n) or ("",))[0] == key), None)
+        if not name:
+            continue
+        shown = subprocess.run(["git", "show", f"{ref}:{ISSUES}/{name}/design.md"], cwd=root, capture_output=True, text=True, check=False)
+        if shown.returncode == 0:
+            return (parse(shown.stdout) or {}).get("status")
+        return "없음"
+    return None
+
+
+def dependency_errors(root, folder):
+    """requirements 머리 dependsOn 의 이슈마다 design approved(설계 08 §3.7 · DS-R10). 계약 Unit 의 design 이 먼저다."""
+    fields = read_doc(root, folder / "requirements.md") or {}
+    raw = (fields.get("dependsOn") or "").strip()
+    keys = [k.strip() for k in raw.strip("[]").split(",") if k.strip()]
+    errors = []
+    for key in keys:
+        status = dependency_design_status(root, key)
+        if status != "approved":
+            errors.append(f"의존 계약 {key} 의 design 이 승인되지 않았다(지금 {status or '이슈 없음'}) — 그 이슈 design 승인 뒤에 /hx-plan 한다")
+    return errors
+
+
 def prerequisites(root, folder, stage):
     """앞 단계 승인 확인(R7.4). 상태의 원본은 frontmatter 다."""
     expected = [("requirements", "approved")]
@@ -102,6 +136,10 @@ def prerequisites(root, folder, stage):
         field = state_field(document)
         if stage and fields.get(field, "") != value:
             raise ValueError(f"{document} must have {field} '{value}', found '{fields.get(field, '')}': {label(root, path)}")
+    if stage == "design":
+        errors = dependency_errors(root, folder)
+        if errors:
+            raise ValueError("; ".join(errors))
 
 
 def field_errors(name, stage, fields, key):
