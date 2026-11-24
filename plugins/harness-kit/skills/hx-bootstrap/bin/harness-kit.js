@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 a39dde11a6040a50c682add666bd5619b0e92f6f873c667d5e96aee5d3356f3d · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 5efe3574125522968ae9f4b437c8c186008f78aa841c4730864abafa6924f7e1 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -154,9 +154,12 @@ var COMMAND_OPTIONS = {
   },
   flow: { add: { type: "string" }, after: { type: "string" }, remove: { type: "string" } },
   quality: { findings: { type: "boolean" }, issue: { type: "string" }, severity: { type: "string" }, new: { type: "boolean" } },
-  history: { q: { type: "string" } }
+  history: { q: { type: "string" } },
+  // 확장 층(HK-14, 설계 04)
+  pack: { dir: { type: "string" }, from: { type: "string", multiple: true }, "kit-range": { type: "string" } },
+  local: {}
 };
-var POSITIONAL = /* @__PURE__ */ new Set(["add", "remove", "projects", "approve", "answer", "review", "dispatch", "units", "flow"]);
+var POSITIONAL = /* @__PURE__ */ new Set(["add", "remove", "projects", "approve", "answer", "review", "dispatch", "units", "flow", "pack", "local"]);
 function parseCommandArgs(command, argv) {
   const options = { ...COMMON, ...COMMAND_OPTIONS[command] ?? {} };
   try {
@@ -1778,17 +1781,17 @@ function stem(source) {
   const base = source.slice(source.lastIndexOf("/") + 1);
   return base.endsWith(".md") ? base.slice(0, -".md".length) : base;
 }
-function mirrorDir(path53, harness, skill, deferred) {
+function mirrorDir(path54, harness, skill, deferred) {
   const t = treeSha(skill.files);
-  return { op: "mirror", path: path53, harness, from: skill.source, kind: "dir", files: skill.files, data: Buffer.alloc(0), executable: false, sha256: t, fromSha256: t, deferred: deferred.has(skill.source) };
+  return { op: "mirror", path: path54, harness, from: skill.source, kind: "dir", files: skill.files, data: Buffer.alloc(0), executable: false, sha256: t, fromSha256: t, deferred: deferred.has(skill.source) };
 }
-function mirrorFile(path53, harness, rule, view, deferred) {
+function mirrorFile(path54, harness, rule, view, deferred) {
   const s = sha256(rule.data);
-  return { op: "mirror", path: path53, harness, from: rule.source, kind: "file", files: [], data: rule.data, executable: view.executable(rule.source), sha256: s, fromSha256: s, deferred: deferred.has(rule.source) };
+  return { op: "mirror", path: path54, harness, from: rule.source, kind: "file", files: [], data: rule.data, executable: view.executable(rule.source), sha256: s, fromSha256: s, deferred: deferred.has(rule.source) };
 }
-function renderWant(path53, harness, from, text2, sourceData, deferred) {
+function renderWant(path54, harness, from, text2, sourceData, deferred) {
   const data = Buffer.from(text2, "utf8");
-  return { op: "render", path: path53, harness, from, kind: "file", files: [], data, executable: false, sha256: sha256(data), fromSha256: sha256(sourceData), deferred: deferred.has(from) };
+  return { op: "render", path: path54, harness, from, kind: "file", files: [], data, executable: false, sha256: sha256(data), fromSha256: sha256(sourceData), deferred: deferred.has(from) };
 }
 function skillData(skill) {
   return skill.files.find((f) => f.rel === "SKILL.md")?.bytes ?? Buffer.alloc(0);
@@ -7886,9 +7889,9 @@ async function oneIssue(p, key) {
   if (!i) throw notFound(`이슈가 없다: ${key}`);
   return i;
 }
-var stub = (method, path53, stage, cli, what) => ({
+var stub = (method, path54, stage, cli, what) => ({
   method,
-  path: path53,
+  path: path54,
   stub: stage,
   cli,
   handler: async () => {
@@ -8074,10 +8077,10 @@ var COMPILED = ROUTES.map((route) => {
   })}$`);
   return { route, re, names };
 });
-function match(method, path53) {
+function match(method, path54) {
   const methods = [];
   for (const c of COMPILED) {
-    const m = c.re.exec(path53);
+    const m = c.re.exec(path54);
     if (!m) continue;
     if (c.route.method !== method) {
       methods.push(c.route.method);
@@ -8091,9 +8094,9 @@ function match(method, path53) {
   }
   return methods.length ? { methods } : null;
 }
-async function callApi(p, method, path53, opts = {}) {
-  const m = match(method, path53);
-  if (!m || !("route" in m)) throw notFound(`경로 없음: ${method} ${path53}`);
+async function callApi(p, method, path54, opts = {}) {
+  const m = match(method, path54);
+  if (!m || !("route" in m)) throw notFound(`경로 없음: ${method} ${path54}`);
   return m.route.handler(p, { method, params: m.params, query: new URLSearchParams(opts.query ?? {}), body: opts.body, via: opts.via ?? "terminal", mode: opts.mode ?? "single", ...opts.projects ? { projects: opts.projects } : {} });
 }
 
@@ -8945,10 +8948,10 @@ function humanTerminal(ctx) {
   if (!ctx.io.isTTY) return new ApiError(403, "read_only", "TTY 가 아니다 — 사람이 터미널에서 직접 실행한다");
   return null;
 }
-async function run3(ctx, method, path53, opts, human) {
+async function run3(ctx, method, path54, opts, human) {
   try {
     const p = opts.project ?? await openProject(ctx);
-    const r = await callApi(p, method, path53, { ...opts.query ? { query: opts.query } : {}, body: opts.body, via: "terminal", mode: opts.mode ?? "single", ...opts.projects ? { projects: opts.projects } : {} });
+    const r = await callApi(p, method, path54, { ...opts.query ? { query: opts.query } : {}, body: opts.body, via: "terminal", mode: opts.mode ?? "single", ...opts.projects ? { projects: opts.projects } : {} });
     const data = r.data;
     return { code: EXIT.OK, data, lines: human(data) };
   } catch (err) {
@@ -9656,7 +9659,6 @@ function runRepair(ctx) {
 
 // src/commands/reserved.ts
 var RESERVED = {
-  pack: "P18(확장 층, 설계 04)",
   skills: "P20 · HK-18(스킬 목록, 설계 07)",
   usage: "P20 · HK-18(관리 페이지 사용량, 설계 06 §3.18 · 12)",
   intake: "P21 · HK-19(요구사항 접수, 설계 08)",
@@ -10009,9 +10011,186 @@ async function runUninstall(ctx) {
   return { code: keep.length ? EXIT.HUMAN : EXIT.OK, data, lines };
 }
 
-// src/commands/work.ts
+// src/commands/pack.ts
 var import_node_fs44 = __toESM(require("node:fs"));
 var import_node_path52 = __toESM(require("node:path"));
+var TEST_PY = `"""팩 자체 검사(설계 04 §3.2 검증) — 이 폴더에서 python3 -m unittest tests.test_pack 으로 돈다. 팩과 함께 설치하지 않는다."""
+
+import json
+import re
+import unittest
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class PackTest(unittest.TestCase):
+    def setUp(self):
+        self.pack = json.loads((ROOT / "pack.json").read_text(encoding="utf-8"))
+
+    def test_manifest(self):
+        self.assertEqual("harness-kit.pack/v1", self.pack["schema"])
+        self.assertRegex(self.pack["name"], r"^[a-z][a-z0-9-]{1,30}$")
+        self.assertRegex(self.pack["version"], r"^\\d+\\.\\d+\\.\\d+")
+        self.assertTrue(self.pack["requires"]["kit"])
+
+    def test_fragment_ids_match_provides(self):
+        name = self.pack["name"]
+        hooks = json.loads((ROOT / "fragments/hooks.json").read_text(encoding="utf-8"))["hooks"]
+        checks = json.loads((ROOT / "fragments/verify-checks.json").read_text(encoding="utf-8"))["checks"]
+        self.assertEqual(sorted(h["id"] for h in hooks), sorted(self.pack["provides"].get("hooks", [])))
+        self.assertEqual(sorted(c["id"] for c in checks), sorted(self.pack["provides"].get("verifyChecks", [])))
+        for hook in hooks:
+            self.assertTrue(hook["id"].startswith(f"harness-{name}-"), hook["id"])
+        for check in checks:
+            self.assertTrue(check["id"].startswith(f"{name}-"), check["id"])
+
+    def test_no_links_and_shell_scripts_are_executable(self):
+        for path in ROOT.rglob("*"):
+            self.assertFalse(path.is_symlink(), path)
+            if path.suffix == ".sh":
+                self.assertTrue(path.stat().st_mode & 0o111, path)
+
+
+if __name__ == "__main__":
+    unittest.main()
+`;
+function defaultRange() {
+  const m = /^(\d+)\.(\d+)\.(\d+)/.exec(VERSION);
+  return m ? `>=${m[1]}.${m[2]}.0 <${Number(m[1]) + 1}.0.0` : ">=2.0.0 <3.0.0";
+}
+function reverseMap(layout2, dest) {
+  const segs = layout2.segments.filter((s) => s.harness === null && s.from !== "" && s.from !== "root/" && s.from.endsWith("/"));
+  const best = segs.filter((s) => dest.startsWith(s.to)).sort((a, b) => b.to.length - a.to.length)[0];
+  return best ? `common/${best.from}${dest.slice(best.to.length)}` : null;
+}
+function classify(dest, provides, name) {
+  let m;
+  if (m = /^\.agents\/rules\/([^/]+)\.md$/.exec(dest)) provides.rules.push(m[1]);
+  else if (m = /^\.agents\/skills\/([^/]+)\//.exec(dest)) {
+    if (!provides.skills.includes(m[1])) provides.skills.push(m[1]);
+  } else if (m = /^\.agents\/roles\/([^/]+)\.md$/.exec(dest)) provides.roles.push(m[1]);
+  else if (m = /^scripts\/guards\/([^/]+)\.sh$/.exec(dest)) provides.guards.push(m[1]);
+  else if (dest.startsWith("scripts/")) provides.scripts.push(dest);
+  else if (dest.startsWith(".agents/docs/_spec-templates/")) provides.templates.push(dest);
+  else if (!dest.startsWith(`tools/${name}/`)) return false;
+  return true;
+}
+function filesUnder(target, rel2) {
+  const abs = import_node_path52.default.join(target, ...rel2.split("/"));
+  const st = import_node_fs44.default.lstatSync(abs);
+  if (st.isSymbolicLink()) throw usageError(`--from 은 링크를 받지 않는다: ${rel2}`);
+  if (st.isFile()) return [rel2];
+  return import_node_fs44.default.readdirSync(abs).sort(byteCompare).flatMap((n) => filesUnder(target, `${rel2}/${n}`));
+}
+function pickItem(target, rel2, id, key) {
+  let doc;
+  try {
+    doc = JSON.parse(import_node_fs44.default.readFileSync(import_node_path52.default.join(target, ...rel2.split("/")), "utf8"));
+  } catch (err) {
+    throw usageError(`--from ${rel2}#${id}: 읽을 수 없다(${err instanceof Error ? err.message : String(err)})`);
+  }
+  const items = Array.isArray(doc[key]) ? doc[key] : [];
+  const found = items.find((x) => x && x.id === id);
+  if (!found) throw usageError(`--from ${rel2}#${id}: 그 id 가 없다`);
+  return found;
+}
+function runPack(ctx) {
+  const [sub2, name, ...rest] = ctx.positionals;
+  if (sub2 !== "new") throw usageError("pack 하위 명령은 new 하나다", "harness-kit pack new <이름> --dir <경로> [--from <파일>[#id]]…");
+  if (rest.length) throw usageError(`pack new: 위치 인자가 많다: ${rest.join(" ")}`);
+  if (!name || !PACK_NAME.test(name)) throw usageError(`팩 이름은 ^[a-z][a-z0-9-]{1,30}$: ${name ?? "(없음)"}`);
+  const dirFlag = str(ctx.values, "dir");
+  if (!dirFlag) throw usageError("pack new 는 --dir <경로> 가 필요하다(빈 폴더나 없는 경로)");
+  const target = targetOf(ctx);
+  const dir = import_node_path52.default.resolve(ctx.io.cwd, dirFlag);
+  const relToRepo = import_node_path52.default.relative(import_node_path52.default.join(target, ".agents"), dir);
+  if (!relToRepo.startsWith("..") && !import_node_path52.default.isAbsolute(relToRepo)) throw usageError(`--dir 은 리포 .agents/ 안일 수 없다: ${dir}`);
+  if (import_node_fs44.default.existsSync(dir) && (!import_node_fs44.default.statSync(dir).isDirectory() || import_node_fs44.default.readdirSync(dir).length)) throw usageError(`--dir 은 빈 폴더나 없는 경로다: ${dir}`);
+  const inst = loadInstalled(target, "pack new");
+  const loc = locateTemplates({ flag: str(ctx.values, "templates"), env: ctx.io.env, cliFile: ctx.io.cliFile, cwd: ctx.io.cwd, version: VERSION });
+  const layout2 = loadLayout(loc.dir);
+  const { selection } = selectionFromMeta(layout2, loc.dir, inst.meta);
+  const tokens = tokensFromMeta(layout2, selection, inst.meta, ctx.io.env, target);
+  const kitPaths = new Set(wanted({ layout: layout2, templatesDir: loc.dir, selection, tokens }).want.keys());
+  const provides = { rules: [], skills: [], roles: [], guards: [], scripts: [], templates: [], hooks: [], verifyChecks: [] };
+  const overrides = [];
+  const warnings = [];
+  const files = /* @__PURE__ */ new Map();
+  const hooks = [];
+  const checks = [];
+  for (const raw of list(ctx.values, "from")) {
+    const hash = raw.indexOf("#");
+    const rel2 = (hash < 0 ? raw : raw.slice(0, hash)).replace(/\/+$/, "");
+    if (!rel2 || rel2.startsWith("/") || rel2.split("/").includes("..")) throw usageError(`--from 은 리포 상대 경로다: ${raw}`);
+    if (hash >= 0) {
+      const id = raw.slice(hash + 1);
+      if (/^\.agents\/hooks(\.json|\.d\/[^/]+\.json)$/.test(rel2)) {
+        const item = { ...pickItem(target, rel2, id, "hooks") };
+        const newId = id.startsWith(`harness-${name}-`) ? id : `harness-${name}-${id.replace(/^harness-/, "")}`;
+        hooks.push({ ...item, id: newId, owner: `pack:${name}` });
+        provides.hooks.push(newId);
+        if (newId !== id) warnings.push(`훅 id ${id} → ${newId}`);
+      } else if (/^\.agents\/verify-checks(\.json|\.d\/[^/]+\.json)$/.test(rel2)) {
+        const item = { ...pickItem(target, rel2, id, "checks") };
+        const newId = id.startsWith(`${name}-`) ? id : `${name}-${id}`;
+        checks.push({ ...item, id: newId, owner: `pack:${name}` });
+        provides.verifyChecks.push(newId);
+        if (newId !== id) warnings.push(`검사 id ${id} → ${newId}`);
+      } else throw usageError(`--from <파일>#<id> 는 .agents/hooks.json · hooks.d · verify-checks.json · verify-checks.d 에만 쓴다: ${raw}`);
+      continue;
+    }
+    if (!import_node_fs44.default.existsSync(import_node_path52.default.join(target, ...rel2.split("/")))) throw usageError(`--from 파일이 없다: ${rel2}`);
+    for (const f of filesUnder(target, rel2)) {
+      const packPath = reverseMap(layout2, f);
+      if (!packPath) throw usageError(`팩이 가질 수 없는 경로다(하네스 파일 · 루트 문서): ${f}`, "원본(.agents/ · scripts/)을 준다");
+      if (kitPaths.has(f)) {
+        overrides.push(f);
+        warnings.push(`${f} 는 킷 경로다 — overrides 에 넣었다(킷 판을 덮는다)`);
+      } else if (!classify(f, provides, name)) throw usageError(`provides 로 나눌 수 없는 경로다: ${f}`, "규칙 · 스킬 · 역할 · 가드 · scripts · _spec-templates · tools/<팩>/ 만 옮긴다");
+      const abs = import_node_path52.default.join(target, ...f.split("/"));
+      files.set(packPath, { data: import_node_fs44.default.readFileSync(abs), executable: (import_node_fs44.default.statSync(abs).mode & 73) !== 0 });
+    }
+  }
+  const range = str(ctx.values, "kit-range") ?? defaultRange();
+  const prune = (p) => Object.fromEntries(Object.entries(p).filter(([, v]) => v.length));
+  const manifest = { schema: PACK_SCHEMA, name, version: "0.1.0", description: `${name} 팩`, requires: { kit: range }, provides: prune(provides), overrides, tokens: [] };
+  const out = new Map([
+    ["pack.json", { data: Buffer.from(`${JSON.stringify(manifest, null, 2)}
+`), executable: false }],
+    ["README.md", { data: Buffer.from(`# ${name} 하네스 팩
+
+프로젝트의 \`.agents/harness-kit.json\` \`packs\` 에 \`git:<host>/<path>#v0.1.0\` 을 더하고 \`npx harness-kit update --packs\` 로 깐다.
+`), executable: false }],
+    ["fragments/hooks.json", { data: Buffer.from(`${JSON.stringify({ schema: "harness-kit.hooks/v1", hooks }, null, 2)}
+`), executable: false }],
+    ["fragments/verify-checks.json", { data: Buffer.from(`${JSON.stringify({ checks }, null, 2)}
+`), executable: false }],
+    ["tests/test_pack.py", { data: Buffer.from(TEST_PY), executable: false }],
+    [".gitignore", { data: Buffer.from("__pycache__/\n"), executable: false }],
+    ...files
+  ]);
+  try {
+    import_node_fs44.default.mkdirSync(import_node_path52.default.join(dir, "common"), { recursive: true });
+    for (const [rel2, f] of out) writeFileAtomic(import_node_path52.default.join(dir, ...rel2.split("/")), f.data, f.executable);
+  } catch (err) {
+    throw new CliError(EXIT.ENV, `팩 골격을 쓰지 못했다: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  const lines = [
+    `harness-kit pack new ${name} — ${dir}`,
+    ...[...out.keys()].sort(byteCompare).map((p) => `  + ${p}`),
+    ...warnings.map((w) => `  ⚠ ${w}`),
+    "  다음:",
+    `    cd ${dirFlag} && git init && git add -A && git commit -m "${name} 0.1.0" && git tag v0.1.0`,
+    `    프로젝트 .agents/harness-kit.json packs 에 "git:<host>/<path>#v0.1.0" 을 더한다(MR)`,
+    "    npx harness-kit update --packs"
+  ];
+  return { code: EXIT.OK, data: { command: "pack", sub: "new", name, dir, files: [...out.keys()].sort(byteCompare), manifest, warnings }, lines };
+}
+
+// src/commands/work.ts
+var import_node_fs45 = __toESM(require("node:fs"));
+var import_node_path53 = __toESM(require("node:path"));
 var ISSUE_ROLE = /^([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5}):([a-z][a-z0-9-]*)$/;
 async function runDispatch(ctx) {
   const [sub2, id, extra] = ctx.positionals;
@@ -10029,7 +10208,7 @@ async function runDispatch(ctx) {
   const kind = str(ctx.values, "kind") ?? (text2 ? "custom" : "doc-changed");
   const m = ISSUE_ROLE.exec(to);
   const p = await openProject(ctx);
-  const isSession = import_node_fs44.default.existsSync(import_node_path52.default.join(p.root, ".agents/state/sessions", `${to}.json`));
+  const isSession = import_node_fs45.default.existsSync(import_node_path53.default.join(p.root, ".agents/state/sessions", `${to}.json`));
   const target = m ? { issue: m[1], role: m[2] } : isSession ? { sessionId: to } : { name: to };
   const via = str(ctx.values, "via");
   return run3(
@@ -10090,7 +10269,7 @@ async function runProjects(ctx) {
       return { code: EXIT.OK, data, lines: rows.length ? rows.map((r) => `${r.name.padEnd(24)} ${r.state === "ok" ? "" : `(${r.state}) `}${r.path}`) : ["등록한 프로젝트가 없다"] };
     }
     if (sub2 === "add" && arg && !extra) {
-      const r = addProject(home, import_node_path52.default.resolve(ctx.io.cwd, arg), today(ctx.io));
+      const r = addProject(home, import_node_path53.default.resolve(ctx.io.cwd, arg), today(ctx.io));
       return { code: EXIT.OK, data: { added: r.added, project: r.entry }, lines: [r.added ? `등록했다: ${r.entry.name} ${r.entry.path}` : `이미 있다: ${r.entry.name}`] };
     }
     if (sub2 === "remove" && arg && !extra) {
@@ -10127,7 +10306,8 @@ var COMMANDS = {
   units: runUnits,
   flow: runFlow,
   quality: runQuality,
-  history: runHistory
+  history: runHistory,
+  pack: runPack
 };
 var USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 킷
 
@@ -10149,6 +10329,7 @@ var USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 킷
   approve    사람 터미널 승인(approvals.md 에 덧붙인다). answer 질문 답 · review show|decide 리뷰 판단
   sessions   켜 둔 세션. dispatch 세션에 작업 요청(사람이 고를 때만) · dispatch list|drop 대기함
   units      Unit 변경 제안(propose · discard). flow gates 흐름 틀 · quality 품질 결과 · projects 등록부
+  pack       pack new <이름> --dir <경로> --from <파일>… — 프로젝트 파일로 회사 팩 골격을 만든다
 
 공통 플래그: --cwd <폴더> --dry-run --yes --json --templates <폴더> --quiet --no-color --help
 init · plan: --stack --arch --domain --lang --agents <목록|all> --modules <목록|all|none>
@@ -10156,7 +10337,7 @@ init · plan: --stack --arch --domain --lang --agents <목록|all> --modules <�
              --issue-prefix --base --adopt --force
 add · remove: <이름>…(하네스 claude codex cursor kiro · 모듈 jira-workflow multi-harness)
 dashboard: --port --open --read-only --export <폴더> --all --root <dir> --workspace <file> · 관리 페이지 명령은 harness-kit <명령> --help
-update: --accept-all --prune --forget <경로>(반복) --to <CLI 버전> · outdated: --check --source <git 원격>
+update: --accept-all --prune --forget <경로>(반복) --to <CLI 버전> --packs(메타 packs 의 팩만 받아 깐다) · outdated: --check --source <git 원격>
 repair: --only missing,drifted,stale,merge · uninstall: --keep-state --keep-packs
 종료 코드: 0 성공 · 1 검사 문제 · 2 사용법 · 3 리포 상태 · 4 사람 판단 필요 · 5 실행 환경 · 130 중단
 `;
@@ -10168,7 +10349,7 @@ var COMMAND_HELP = {
   add: "harness-kit add <하네스|모듈>… [--dry-run] [--json] — 그 몫만 깐다. 사람이 고친 매니페스트는 .new 로 받고 exit 4\n",
   remove: "harness-kit remove <하네스|모듈>… [--dry-run] [--json] — 고치지 않은 그 몫만 지운다. 고친 파일을 남기면 exit 4\n",
   outdated: "harness-kit outdated [--check] [--source <git 원격|경로>] [--json] — 소스: --source > HARNESS_KIT_SOURCE > lock kit.source. 닿지 못하면 '확인 못 함' 과 exit 0\n",
-  update: "harness-kit update [--dry-run] [--accept-all] [--prune] [--forget 경로]… [--to 버전] [--templates 폴더] [--json] — conflict 가 있으면 exit 4\n",
+  update: "harness-kit update [--dry-run] [--accept-all] [--prune] [--forget 경로]… [--to 버전] [--templates 폴더] [--json] — conflict 가 있으면 exit 4. update --packs 는 팩만(검사 실패 exit 3 · 팩 충돌 exit 4)\n",
   repair: "harness-kit repair [--dry-run] [--only missing,drifted,stale,merge] [--json] — 되살리지 못한 missing 이 있으면 exit 4\n",
   uninstall: "harness-kit uninstall [--dry-run] [--yes] [--keep-state] [--keep-packs] [--json] — 고친 파일을 남기면 exit 4. TTY 가 아니면 --yes\n",
   dashboard: "harness-kit dashboard [--port <n>] [--open] [--read-only] [--export <폴더>] [--all | --root <dir> | --workspace <file>] — 127.0.0.1 에만 연다. 주소는 stdout, 승인 PIN 은 stderr\n",
@@ -10182,7 +10363,8 @@ var COMMAND_HELP = {
   units: "harness-kit units propose <INT> --add-dep U-a:U-b | --remove-dep U-a:U-b | --split U-n=제목1|제목2 | --merge U-a,U-b | --order U-a,U-b [--reason …] | units discard <INT>\n",
   flow: "harness-kit flow gates [--add <게이트> --after <게이트> | --remove <게이트>] [--json]\n",
   quality: "harness-kit quality [--findings [--issue <키>] [--severity S] [--new]] [--json]\n",
-  history: "harness-kit history [--q …] [--json] — ~/.config/harness-kit/config.json 의 history 가 on 일 때만(HK-18)\n"
+  history: "harness-kit history [--q …] [--json] — ~/.config/harness-kit/config.json 의 history 가 on 일 때만(HK-18)\n",
+  pack: 'harness-kit pack new <이름> --dir <경로> [--from <파일|폴더>[#훅·검사 id]]… [--kit-range ">=2.0.0 <3.0.0"] [--json] — --dir 은 빈 폴더나 없는 경로\n'
 };
 function emitError(io2, command, err, json) {
   if (json) {

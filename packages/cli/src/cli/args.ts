@@ -96,10 +96,13 @@ export const COMMAND_OPTIONS: Record<string, OptSpec> = {
   flow: { add: { type: "string" }, after: { type: "string" }, remove: { type: "string" } },
   quality: { findings: { type: "boolean" }, issue: { type: "string" }, severity: { type: "string" }, new: { type: "boolean" } },
   history: { q: { type: "string" } },
+  // 확장 층(HK-14, 설계 04)
+  pack: { dir: { type: "string" }, from: { type: "string", multiple: true }, "kit-range": { type: "string" } },
+  local: {},
 };
 
 /** 위치 인자(이름 · 하위 명령 · 키)를 받는 명령. 나머지는 위치 인자를 거부한다(대상 폴더는 --cwd). */
-const POSITIONAL = new Set(["add", "remove", "projects", "approve", "answer", "review", "dispatch", "units", "flow"]);
+const POSITIONAL = new Set(["add", "remove", "projects", "approve", "answer", "review", "dispatch", "units", "flow", "pack", "local"]);
 
 export type Values = Record<string, string | boolean | string[] | undefined>;
 

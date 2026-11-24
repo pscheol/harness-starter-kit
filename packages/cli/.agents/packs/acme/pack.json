@@ -1,0 +1,12 @@
+{
+  "schema": "harness-kit.pack/v1",
+  "name": "acme",
+  "version": "0.1.0",
+  "description": "acme 팩",
+  "requires": {
+    "kit": ">=2.0.0 <3.0.0"
+  },
+  "provides": {},
+  "overrides": [],
+  "tokens": []
+}

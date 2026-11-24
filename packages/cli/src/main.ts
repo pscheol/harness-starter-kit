@@ -14,6 +14,7 @@ import { RESERVED } from "./commands/reserved";
 import { runFlow, runHistory, runQuality, runSessions, runStatus } from "./commands/status";
 import { runUninstall } from "./commands/uninstall";
 import { runUpdate } from "./commands/update";
+import { runPack } from "./commands/pack";
 import { runDispatch, runProjects, runUnits } from "./commands/work";
 import { CliError, EXIT, usageError } from "./core/errors";
 import { formatJson } from "./core/json";
@@ -44,6 +45,7 @@ const COMMANDS: Record<string, (ctx: Ctx) => CommandResult | Promise<CommandResu
   flow: runFlow,
   quality: runQuality,
   history: runHistory,
+  pack: runPack,
 };
 
 const USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 킷
@@ -66,6 +68,7 @@ const USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 �
   approve    사람 터미널 승인(approvals.md 에 덧붙인다). answer 질문 답 · review show|decide 리뷰 판단
   sessions   켜 둔 세션. dispatch 세션에 작업 요청(사람이 고를 때만) · dispatch list|drop 대기함
   units      Unit 변경 제안(propose · discard). flow gates 흐름 틀 · quality 품질 결과 · projects 등록부
+  pack       pack new <이름> --dir <경로> --from <파일>… — 프로젝트 파일로 회사 팩 골격을 만든다
 
 공통 플래그: --cwd <폴더> --dry-run --yes --json --templates <폴더> --quiet --no-color --help
 init · plan: --stack --arch --domain --lang --agents <목록|all> --modules <목록|all|none>
@@ -73,7 +76,7 @@ init · plan: --stack --arch --domain --lang --agents <목록|all> --modules <�
              --issue-prefix --base --adopt --force
 add · remove: <이름>…(하네스 claude codex cursor kiro · 모듈 jira-workflow multi-harness)
 dashboard: --port --open --read-only --export <폴더> --all --root <dir> --workspace <file> · 관리 페이지 명령은 harness-kit <명령> --help
-update: --accept-all --prune --forget <경로>(반복) --to <CLI 버전> · outdated: --check --source <git 원격>
+update: --accept-all --prune --forget <경로>(반복) --to <CLI 버전> --packs(메타 packs 의 팩만 받아 깐다) · outdated: --check --source <git 원격>
 repair: --only missing,drifted,stale,merge · uninstall: --keep-state --keep-packs
 종료 코드: 0 성공 · 1 검사 문제 · 2 사용법 · 3 리포 상태 · 4 사람 판단 필요 · 5 실행 환경 · 130 중단
 `;
@@ -86,7 +89,7 @@ const COMMAND_HELP: Record<string, string> = {
   add: "harness-kit add <하네스|모듈>… [--dry-run] [--json] — 그 몫만 깐다. 사람이 고친 매니페스트는 .new 로 받고 exit 4\n",
   remove: "harness-kit remove <하네스|모듈>… [--dry-run] [--json] — 고치지 않은 그 몫만 지운다. 고친 파일을 남기면 exit 4\n",
   outdated: "harness-kit outdated [--check] [--source <git 원격|경로>] [--json] — 소스: --source > HARNESS_KIT_SOURCE > lock kit.source. 닿지 못하면 '확인 못 함' 과 exit 0\n",
-  update: "harness-kit update [--dry-run] [--accept-all] [--prune] [--forget 경로]… [--to 버전] [--templates 폴더] [--json] — conflict 가 있으면 exit 4\n",
+  update: "harness-kit update [--dry-run] [--accept-all] [--prune] [--forget 경로]… [--to 버전] [--templates 폴더] [--json] — conflict 가 있으면 exit 4. update --packs 는 팩만(검사 실패 exit 3 · 팩 충돌 exit 4)\n",
   repair: "harness-kit repair [--dry-run] [--only missing,drifted,stale,merge] [--json] — 되살리지 못한 missing 이 있으면 exit 4\n",
   uninstall: "harness-kit uninstall [--dry-run] [--yes] [--keep-state] [--keep-packs] [--json] — 고친 파일을 남기면 exit 4. TTY 가 아니면 --yes\n",
   dashboard: "harness-kit dashboard [--port <n>] [--open] [--read-only] [--export <폴더>] [--all | --root <dir> | --workspace <file>] — 127.0.0.1 에만 연다. 주소는 stdout, 승인 PIN 은 stderr\n",
@@ -101,6 +104,7 @@ const COMMAND_HELP: Record<string, string> = {
   flow: "harness-kit flow gates [--add <게이트> --after <게이트> | --remove <게이트>] [--json]\n",
   quality: "harness-kit quality [--findings [--issue <키>] [--severity S] [--new]] [--json]\n",
   history: "harness-kit history [--q …] [--json] — ~/.config/harness-kit/config.json 의 history 가 on 일 때만(HK-18)\n",
+  pack: "harness-kit pack new <이름> --dir <경로> [--from <파일|폴더>[#훅·검사 id]]… [--kit-range \">=2.0.0 <3.0.0\"] [--json] — --dir 은 빈 폴더나 없는 경로\n",
 };
 
 function emitError(io: Io, command: string, err: CliError, json: boolean): number {
