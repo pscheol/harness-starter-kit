@@ -2,6 +2,8 @@
 import { bool, parseCommandArgs } from "./cli/args";
 import type { CommandResult, Ctx, Io } from "./cli/context";
 import { runAdd } from "./commands/add";
+import { runDashboard } from "./commands/dashboard";
+import { runAnswer, runApprove, runReview } from "./commands/decide";
 import { runDoctor } from "./commands/doctor";
 import { runInit } from "./commands/init";
 import { runList } from "./commands/list";
@@ -9,8 +11,10 @@ import { runOutdated } from "./commands/outdated";
 import { runRemove } from "./commands/remove";
 import { runRepair } from "./commands/repair";
 import { RESERVED } from "./commands/reserved";
+import { runFlow, runHistory, runQuality, runSessions, runStatus } from "./commands/status";
 import { runUninstall } from "./commands/uninstall";
 import { runUpdate } from "./commands/update";
+import { runDispatch, runProjects, runUnits } from "./commands/work";
 import { CliError, EXIT, usageError } from "./core/errors";
 import { formatJson } from "./core/json";
 import { MIN_NODE_TEXT, nodeTooOld, VERSION } from "./core/version";
@@ -28,6 +32,18 @@ const COMMANDS: Record<string, (ctx: Ctx) => CommandResult | Promise<CommandResu
   uninstall: runUninstall,
   doctor: runDoctor,
   list: runList,
+  dashboard: runDashboard,
+  status: runStatus,
+  projects: runProjects,
+  approve: runApprove,
+  answer: runAnswer,
+  review: runReview,
+  sessions: runSessions,
+  dispatch: runDispatch,
+  units: runUnits,
+  flow: runFlow,
+  quality: runQuality,
+  history: runHistory,
 };
 
 const USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 킷
@@ -45,12 +61,18 @@ const USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 �
   uninstall  킷 소유이면서 고치지 않은 파일을 지운다
   doctor     설치 상태를 점검한다(읽기만). --check 면 오류가 있을 때 exit 1
   list       설치 요약. --files 면 lock 항목
+  dashboard  관리 페이지 서버(127.0.0.1). --export <폴더> 는 정적 HTML, --all · --root · --workspace 는 여러 프로젝트
+  status     처리할 일 · 이슈 · 문서 · 검증 · 흐름(--json 은 관리 페이지 API 와 같다)
+  approve    사람 터미널 승인(approvals.md 에 덧붙인다). answer 질문 답 · review show|decide 리뷰 판단
+  sessions   켜 둔 세션. dispatch 세션에 작업 요청(사람이 고를 때만) · dispatch list|drop 대기함
+  units      Unit 변경 제안(propose · discard). flow gates 흐름 틀 · quality 품질 결과 · projects 등록부
 
 공통 플래그: --cwd <폴더> --dry-run --yes --json --templates <폴더> --quiet --no-color --help
 init · plan: --stack --arch --domain --lang --agents <목록|all> --modules <목록|all|none>
              --name --slug --package-ns --protected-path --token KEY=VALUE --issue-source kit|jira
              --issue-prefix --base --adopt --force
 add · remove: <이름>…(하네스 claude codex cursor kiro · 모듈 jira-workflow multi-harness)
+dashboard: --port --open --read-only --export <폴더> --all --root <dir> --workspace <file> · 관리 페이지 명령은 harness-kit <명령> --help
 update: --accept-all --prune --forget <경로>(반복) --to <CLI 버전> · outdated: --check --source <git 원격>
 repair: --only missing,drifted,stale,merge · uninstall: --keep-state --keep-packs
 종료 코드: 0 성공 · 1 검사 문제 · 2 사용법 · 3 리포 상태 · 4 사람 판단 필요 · 5 실행 환경 · 130 중단
@@ -67,6 +89,18 @@ const COMMAND_HELP: Record<string, string> = {
   update: "harness-kit update [--dry-run] [--accept-all] [--prune] [--forget 경로]… [--to 버전] [--templates 폴더] [--json] — conflict 가 있으면 exit 4\n",
   repair: "harness-kit repair [--dry-run] [--only missing,drifted,stale,merge] [--json] — 되살리지 못한 missing 이 있으면 exit 4\n",
   uninstall: "harness-kit uninstall [--dry-run] [--yes] [--keep-state] [--keep-packs] [--json] — 고친 파일을 남기면 exit 4. TTY 가 아니면 --yes\n",
+  dashboard: "harness-kit dashboard [--port <n>] [--open] [--read-only] [--export <폴더>] [--all | --root <dir> | --workspace <file>] — 127.0.0.1 에만 연다. 주소는 stdout, 승인 PIN 은 stderr\n",
+  status: "harness-kit status [--session | --intents | --intent <INT> | --issues [--area --stage --intent] | --issue <키> | --doc <경로> | --verify [--issue] | --worktrees | --harness | --flow <INT> | --all] [--json]\n",
+  projects: "harness-kit projects list | add <폴더> | remove <이름|경로> [--json] — 등록부 ~/.config/harness-kit/projects.json\n",
+  approve: 'harness-kit approve <키> --gate <게이트> --phrase "<문구>" [--changes-requested [--rule-candidate]] [--json] — 사람 터미널에서만(에이전트 세션 · TTY 아님은 exit 3)\n',
+  answer: "harness-kit answer <INT|키> --list | <Q-n> --choice <A-D|other> [--text …] [--json] — 사람 터미널에서만\n",
+  review: "harness-kit review show <키> | review decide <키> <F-n> --fix|--accept-risk --reason … [--json] — decide 는 사람 터미널에서만\n",
+  sessions: "harness-kit sessions [--machine] [--json]\n",
+  dispatch: "harness-kit dispatch --to <세션 id|키:역할|이름> --kind <종류> --path <파일>… [--text …] [--via socket|deeplink|queue] | dispatch list | dispatch drop <id>\n",
+  units: "harness-kit units propose <INT> --add-dep U-a:U-b | --remove-dep U-a:U-b | --split U-n=제목1|제목2 | --merge U-a,U-b | --order U-a,U-b [--reason …] | units discard <INT>\n",
+  flow: "harness-kit flow gates [--add <게이트> --after <게이트> | --remove <게이트>] [--json]\n",
+  quality: "harness-kit quality [--findings [--issue <키>] [--severity S] [--new]] [--json]\n",
+  history: "harness-kit history [--q …] [--json] — ~/.config/harness-kit/config.json 의 history 가 on 일 때만(HK-18)\n",
 };
 
 function emitError(io: Io, command: string, err: CliError, json: boolean): number {
@@ -86,7 +120,7 @@ function commandOf(argv: string[], first: string, command: string): (ctx: Ctx) =
   if (argv.length === 0) throw usageError("명령이 없다", USAGE.trimEnd());
   if (command === "") throw usageError(`명령이 먼저 온다: ${first}`, "harness-kit --help");
   if (Object.hasOwn(RESERVED, command)) {
-    throw usageError(`'${command}' 는 아직 없다 — ${RESERVED[command]}에서 제공한다`, "지금 있는 명령: init · plan · add · remove · update · outdated · repair · uninstall · doctor · list");
+    throw usageError(`'${command}' 는 아직 없다 — ${RESERVED[command]}에서 제공한다`, `지금 있는 명령: ${Object.keys(COMMANDS).join(" · ")}`);
   }
   if (!Object.hasOwn(COMMANDS, command)) throw usageError(`모르는 명령: ${command}`, "harness-kit --help");
   return COMMANDS[command] as (ctx: Ctx) => CommandResult | Promise<CommandResult>;

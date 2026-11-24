@@ -194,6 +194,37 @@ def render_index(root, specs):
     return wrap(lines)
 
 
+def board_json(root):
+    """보드와 같은 계산의 이슈 목록(`board.sh --json`, 관리 페이지 진행 탭 · 설계 06 §3.2). 새 이슈 다음 옛 이슈 순서다."""
+    items = []
+    for folder in issue_folders(root):
+        entry = issue_row(root, folder)
+        if not entry:
+            continue
+        parts = split_folder(folder.name)
+        docs = documents(root, folder)
+        present = [fields for fields in (docs["requirements"], docs["design"], docs["tasks"]) if fields is not None]
+        items.append({
+            "key": parts[0], "name": parts[1], "folder": label(root, folder), "area": entry[0], "type": present[0].get("type"),
+            "requirements": (docs["requirements"] or {}).get("status"), "design": (docs["design"] or {}).get("status"),
+            "tasks": (docs["tasks"] or {}).get("state") if docs["tasks"] is not None else None, "state": entry[1], "legacy": False,
+        })
+    for spec in spec_roots(root):
+        area = spec.name.removesuffix("-specs")
+        for key, layout in legacy_features(root, spec):
+            number, kind, name = key_parts(key)
+            statuses = []
+            for stage in ("requirements", "design"):
+                path = safe_path(root, stage_path(spec, key, layout, stage))
+                statuses.append(status_of(path) if path.is_file() else None)
+            state = feature_state(root, spec, key, layout)
+            items.append({
+                "key": key, "name": name, "folder": label(root, spec), "area": area, "type": kind, "requirements": statuses[0],
+                "design": statuses[1], "tasks": state if state in TASK_STATES else None, "state": state, "legacy": True, "number": number,
+            })
+    return {"schema": "harness-kit.board/v1", "issues": items}
+
+
 def render_area(root, area):
     check_area(area)
     areas = area_tables(root)

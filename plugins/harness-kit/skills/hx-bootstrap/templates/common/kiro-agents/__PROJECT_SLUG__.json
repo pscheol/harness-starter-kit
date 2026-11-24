@@ -35,6 +35,10 @@
       {
         "command": "bash -c 'r=\"$PWD\"; while [ \"$r\" != / ] && [ ! -f \"$r/.agents/harness.json\" ]; do r=\"$(dirname \"$r\")\"; done; h=\"$r/scripts/hooks/$1\"; [ -f \"$h\" ] || exit 0; exec bash \"$h\"' _ session-start.sh",
         "timeout_ms": 15000
+      },
+      {
+        "command": "HX_HARNESS=kiro bash -c 'r=\"$PWD\"; while [ \"$r\" != / ] && [ ! -f \"$r/.agents/harness.json\" ]; do r=\"$(dirname \"$r\")\"; done; h=\"$r/scripts/hooks/$1\"; [ -f \"$h\" ] || exit 0; exec bash \"$h\"' _ session-register.sh",
+        "timeout_ms": 15000
       }
     ],
     "preToolUse": [
@@ -63,6 +67,10 @@
       {
         "command": "HARNESS_VERIFY_FAIL_EXIT=1 bash -c 'r=\"$PWD\"; while [ \"$r\" != / ] && [ ! -f \"$r/.agents/harness.json\" ]; do r=\"$(dirname \"$r\")\"; done; h=\"$r/scripts/hooks/$1\"; [ -f \"$h\" ] || exit 0; exec bash \"$h\"' _ verify-gate.sh",
         "timeout_ms": 180000
+      },
+      {
+        "command": "HX_HARNESS=kiro bash -c 'r=\"$PWD\"; while [ \"$r\" != / ] && [ ! -f \"$r/.agents/harness.json\" ]; do r=\"$(dirname \"$r\")\"; done; h=\"$r/scripts/hooks/$1\"; [ -f \"$h\" ] || exit 0; exec bash \"$h\"' _ session-register.sh",
+        "timeout_ms": 15000
       }
     ]
   }

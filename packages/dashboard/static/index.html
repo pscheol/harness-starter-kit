@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>harness-kit 관리 페이지</title>
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<header><h1>harness-kit 관리 페이지</h1><p id="who">연결 중</p></header>
+<main>
+<section aria-labelledby="todo-h"><h2 id="todo-h">처리할 일</h2><ol id="todo"></ol><p id="more"></p></section>
+<section aria-labelledby="stage-h"><h2 id="stage-h">단계별 이슈</h2><ul id="stages"></ul></section>
+<p class="note">화면(S00~S13)은 HK-18 에서 채운다. 모든 기능은 콘솔 명령으로도 된다: <code>npx harness-kit status</code></p>
+</main>
+<script src="/app.js"></script>
+</body>
+</html>

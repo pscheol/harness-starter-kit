@@ -14,6 +14,8 @@ export interface Io {
   stdin?: NodeJS.ReadableStream;
   /** YYYY-MM-DD. 없으면 오늘(로컬) */
   today?: string;
+  /** 에이전트 세션 판정(설계 06 §3.11). 없으면 환경 표지 + 부모 프로세스. 시험만 바꿔 끼운다(cli.ts 는 넣지 않는다) */
+  agentSession?: () => string | null;
 }
 
 export interface Ctx {

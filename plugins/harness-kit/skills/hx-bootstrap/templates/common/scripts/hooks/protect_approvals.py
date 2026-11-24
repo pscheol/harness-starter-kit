@@ -32,7 +32,9 @@ APPROVED = re.compile(r"(?m)^[+\s]*status:\s*approved\b")
 SHELL_COMPLETED = re.compile(r"state:\s*completed\b")
 SHELL_APPROVED = re.compile(r"status:\s*approved\b")
 ISSUE_DOC = re.compile(r"(?:^|/)\.agents/docs/issues/[^/]+/(requirements|design|tasks)\.md$")
-APPROVE_COMMAND = re.compile(r"\bapprove\.py\b|\bharness-kit(?:\.js)?\s+(?:approve|review\s+decide)\b")
+APPROVE_COMMAND = re.compile(r"\bapprove\.py\b|\bharness-kit(?:\.js)?\s+(?:approve|answer(?![^|;&\n]*--list)|review\s+decide)\b")
+#: 관리 페이지의 승인 · 질문 답 · 리뷰 판단 API(06 §3.15). 토큰 · PIN 이 없어도 부르는 명령 자체를 막는다
+PIN_API = re.compile(r"api/v1/(?:p/[0-9a-f]{12}/)?(?:approvals\b|questions/[^/\s]+/[^/\s]+/answer\b|reviews/[^/\s]+/[^/\s]+/decision\b)")
 WRITE_WORDS = frozenset({"mv", "rm", "truncate", "touch", "ln", "dd", "unlink", "install", "shred"})
 COPY_WORDS = frozenset({"cp", "rsync"})
 GIT_WRITES = frozenset({"checkout", "restore", "rm", "mv", "reset", "stash", "apply", "am", "clean", "switch"})
@@ -199,7 +201,7 @@ def doc_paths(segment, name, cwd):
 def check_shell(command, cwd):
     if APPROVE_COMMAND.search(command):
         raise Blocked(f"차단: 승인 명령은 사람이 자기 터미널에서 실행한다. 에이전트는 부르지 않는다.\n{HOW}")
-    if "dashboard.token" in command or "api/v1/approvals" in command:
+    if "dashboard.token" in command or PIN_API.search(command):
         raise Blocked(f"차단: 관리 페이지 토큰 · 승인 API 는 에이전트가 쓰지 않는다(VQ-R12).\n{HOW}")
     for raw_path in PATCH_HEADER.findall(command):
         if is_protected(raw_path):
