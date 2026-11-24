@@ -9,7 +9,6 @@ import { git } from "../core/git";
 import type { LockEntry } from "../core/lock";
 import { HARNESS_LOAD, measureSession, type Measure } from "../core/measure";
 import type { MetaV2 } from "../core/meta";
-import { globToRegExp } from "../core/layout";
 import { isDir } from "../core/fsx";
 import { loadModuleOrNull, listModuleIds, type ModuleDecl } from "./declaration";
 import { checkVisibility, uploadsAllowed } from "./entire/visibility";
@@ -40,9 +39,8 @@ export function harnessesOfOwner(entries: LockEntry[], owner: string): string[] 
   return [...out].sort();
 }
 
-/** 하네스 설정 파일에 남은 외부 훅 수(그 모듈 externalHooks 에 맞는 명령) */
-export function externalHookCount(m: ModuleDecl, measure: Measure, owner: string): number {
-  void m;
+/** 하네스 설정 파일에 남은 외부 훅 수 */
+export function externalHookCount(measure: Measure, owner: string): number {
   return Object.values(measure.hooks[owner] ?? {}).reduce((s, n) => s + n, 0);
 }
 
@@ -201,7 +199,7 @@ function leftoverFindings(c: DoctorCtx, off: ModuleDecl[]): ModuleFinding[] {
     if (!m.externalHooks.length) continue;
     const owner = `external:${m.requires.tools[0]?.name ?? m.id}`;
     let n = 0;
-    for (const h of Object.keys(HARNESS_LOAD)) n += externalHookCount(m, measureSession(c.root, { harness: h, entries: [], hookOwners: table }), owner);
+    for (const h of Object.keys(HARNESS_LOAD)) n += externalHookCount(measureSession(c.root, { harness: h, entries: [], hookOwners: table }), owner);
     if (n > 0) out.push({ kind: "external-hooks-left", severity: "info", owner: m.id, hint: `${m.id} 모듈은 꺼졌지만 ${owner} 훅이 하네스 설정에 ${n}개 남아 있다. 그 도구의 명령으로 뺀다(킷은 건드리지 않는다)`, detail: { count: n } });
   }
   return out;
@@ -269,6 +267,5 @@ export function undeclaredTemplateFiles(templatesDir: string, m: ModuleDecl): st
     }
   };
   walk("");
-  void globToRegExp;
   return found.filter((f) => !declared.has(f)).sort();
 }

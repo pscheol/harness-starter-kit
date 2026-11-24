@@ -384,6 +384,49 @@ printf '{"hooks":{"SessionStart":[{"matcher":"","hooks":[{"type":"command","comm
   });
 });
 
+describe("측정 확인(MD-R16)", () => {
+  const big = async (): Promise<{ target: string; templates: string; bin: Bin }> => {
+    const files = {
+      ...BASIC_FILES,
+      "optional/zz-big/module.json": JSON.stringify({
+        schema: "harness-kit.module/v1", id: "zz-big", title: "x", summary: "x", kind: "external",
+        requires: { modules: [], tools: [{ name: "zzbig", versionCmd: ["zzbig", "--version"], range: ">=1.0" }] },
+        files: "layer", externalPaths: [".claude/rules/zzbig-*"], config: { set: { "flow.record": "big" }, unset: { "flow.record": "none" } },
+        steps: { add: [{ run: ["zzbig", "make"], confirm: true }, { registerExternal: true }, { applyKit: true }, { setConfig: true }], remove: [{ removeKit: true }, { unsetConfig: true }] },
+      }),
+      "optional/zz-big/agents-rules/zzbig-kit.md": "kit\n",
+    };
+    const templates = fixtureTemplates(files, { externalModules: ["zz-big"] });
+    const target = path.join(tmpDir(), "acme");
+    expect((await cli(target, ["init", "--yes", "--templates", templates, "--agents", "claude", "--no-register"], null)).code).toBe(0);
+    const bin = makeBin({ zzbig: '#!/bin/bash\n[ "$1" = "--version" ] && { echo "zzbig 1.0.0"; exit 0; }\nmkdir -p .claude/rules\nprintf "%06000d" 0 > .claude/rules/zzbig-1.md\n' });
+    return { target, templates, bin };
+  };
+
+  it("늘어난 양이 4,096바이트를 넘으면 TTY 에서 한 번 더 묻고, 아니오면 킷 몫을 빼고 exit 4 로 끝낸다(외부 파일은 남는다)", async () => {
+    const { target, templates, bin } = await big();
+    const r = await cli(target, ["add", "zz-big", "--templates", templates], bin, { tty: true, answers: ["y", "n"] });
+    expect(r.code, r.stdout + r.stderr).toBe(4);
+    expect(r.stdout).toContain("6,000바이트");
+    expect(r.stdout).toContain("켜지 않기로 했다");
+    expect(meta(target).modules).not.toContain("zz-big");
+    expect(meta(target).flow.record).toBe("none");
+    expect(fs.existsSync(path.join(target, ".agents/rules/zzbig-kit.md"))).toBe(false);
+    expect(fs.existsSync(path.join(target, ".claude/rules/zzbig-1.md"))).toBe(true);
+  });
+
+  it("TTY 가 아니면 묻지 않고 경고 한 줄만 낸다. 외부 명령 확인은 --yes 가 없으면 exit 5 로 쓰기 전에 멈춘다", async () => {
+    const { target, templates, bin } = await big();
+    const noYes = await cli(target, ["add", "zz-big", "--templates", templates], bin);
+    expect(noYes.code).toBe(5);
+    expect(fs.existsSync(path.join(target, ".claude/rules/zzbig-1.md"))).toBe(false);
+    const ok = await cli(target, ["add", "zz-big", "--yes", "--templates", templates], bin);
+    expect(ok.code, ok.stdout + ok.stderr).toBe(0);
+    expect(ok.stdout).toContain("4,096바이트를 넘는다");
+    expect(meta(target).modules).toContain("zz-big");
+  });
+});
+
 describe("init --modules 외부 도구 모듈 · update --tools", () => {
   it("init --modules aidlc,entire 는 킷을 깐 뒤 모듈 엔진으로 켠다. all 에는 들어가지 않는다", async () => {
     const bin = makeBin(tools(), { FAKE_VIS: "PRIVATE" });

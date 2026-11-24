@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 ea6b1bbefd9601e956ee2e9f9dba6990772955a2deef66a20bcdff25d9b9b627 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 b989c75194342c13b5493ca472d98111e76e78e7c1f21d992fd2ee42fba85287 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -6533,8 +6533,7 @@ function harnessesOfOwner(entries, owner) {
   }
   return [...out].sort();
 }
-function externalHookCount(m, measure, owner) {
-  void m;
+function externalHookCount(measure, owner) {
   return Object.values(measure.hooks[owner] ?? {}).reduce((s, n) => s + n, 0);
 }
 function readText2(file) {
@@ -6673,7 +6672,7 @@ function leftoverFindings(c, off) {
     if (!m.externalHooks.length) continue;
     const owner = `external:${m.requires.tools[0]?.name ?? m.id}`;
     let n = 0;
-    for (const h of Object.keys(HARNESS_LOAD)) n += externalHookCount(m, measureSession(c.root, { harness: h, entries: [], hookOwners: table }), owner);
+    for (const h of Object.keys(HARNESS_LOAD)) n += externalHookCount(measureSession(c.root, { harness: h, entries: [], hookOwners: table }), owner);
     if (n > 0) out.push({ kind: "external-hooks-left", severity: "info", owner: m.id, hint: `${m.id} 모듈은 꺼졌지만 ${owner} 훅이 하네스 설정에 ${n}개 남아 있다. 그 도구의 명령으로 뺀다(킷은 건드리지 않는다)`, detail: { count: n } });
   }
   return out;
