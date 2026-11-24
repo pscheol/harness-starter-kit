@@ -85,6 +85,7 @@ const PAIRS: [string, string[]][] = [
   ["/api/v1/intents", ["status", "--intents"]],
   ["/api/v1/intents/INT-7", ["status", "--intent", "INT-7"]],
   ["/api/v1/intents/INT-7/gates?gate=plans", ["status", "--intent", "INT-7", "--gate", "plans"]],
+  ["/api/v1/intents/INT-7/mob", ["mob", "status", "INT-7"]],
   [`/api/v1/docs?path=${encodeURIComponent(".agents/docs/issues/DEMO-1-upload-cleanup/requirements.md")}`, ["status", "--doc", ".agents/docs/issues/DEMO-1-upload-cleanup/requirements.md"]],
   ["/api/v1/verify", ["status", "--verify"]],
   ["/api/v1/worktrees", ["status", "--worktrees"]],

@@ -68,8 +68,8 @@
 
 | 스택군 | core | claude | codex | cursor | kiro | 전부 고를 때 |
 |---|---|---|---|---|---|---|
-| `jvm` · `python` · `go` | 278 | 0 | 1 | 0 | 1 | **280** |
-| `web` · `electron` (`frontend` 도메인 +4 core) | 282 | 0 | 1 | 0 | 1 | **284** |
+| `jvm` · `python` · `go` | 279 | 0 | 1 | 0 | 1 | **281** |
+| `web` · `electron` (`frontend` 도메인 +4 core) | 283 | 0 | 1 | 0 | 1 | **285** |
 
 하네스 폴더 파일은 설치가 `.agents/` 원본에서 만든다(배치 — mirror · render · merge, 모듈 없음 기준):
 
@@ -130,7 +130,7 @@
 
 ## 공통 vs 스택별 (무엇이 어디에 있나)
 
-| 영역 | `templates/common/` (265개) | `templates/domains/frontend/` (8개 · web·electron 만) | `templates/stacks/<stack>/` (변형 무관 14개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
+| 영역 | `templates/common/` (266개) | `templates/domains/frontend/` (8개 · web·electron 만) | `templates/stacks/<stack>/` (변형 무관 14개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
 |---|---|---|---|---|
 | 진입점 | `README.md` | — | `AGENTS.md` · `.gitignore` · `.github/actions/harness-setup/action.yml` | `root/ARCHITECTURE.md` |
 | 규칙 | `agent-harness.md` · `sdd-workflow.md` · `product.md` · `writing-style.md` · `design-principles.md` · `reuse-before-new.md` · `verification-ladder.md` · `pr-review-policy.md` · `git-workflow.md` · `platform-invariants.md` · **`code-maintenance.md`** · **`session-collaboration.md`** · **`approval-vocabulary.md`** | `design-system.md` · `accessibility.md` · `ui-state.md` · `frontend-performance.md` | `code-comments.md` · `api-standards.md` · `security.md` · `reliability.md` · `quality-score.md` · `guardrails.md` | `agents-rules/structure.md` · `agents-rules/tech.md` |
@@ -221,6 +221,7 @@
 | `.agents/local/`(gitignore) | 개인 층 — `harness-kit.local.json`(roles · git.ide 만) · 개인 스킬 · 규칙 · 훅. `harness-kit local sync` 가 하네스 폴더에 배치하고 개인 lock · `.git/info/exclude` 에 적는다 | — | 개인 |
 | `scripts/harness/{intent.py,plan_check.py,wireframe_check.py}` · `scripts/new-intent.sh` | 설계 단계(HK-19) — Intent 키 · 새 폴더 · 다음 단계 판정(`next`) · 검사(질문 형식 · units 규칙 · 스토리 배정 · 의존 고리 · 분해 판정, fast 가 부른다) · backlog 생성 구간 · 기획물 필수 제목 · 와이어프레임(외부 참조 0 · 상태 넷) | — | 도구 |
 | `scripts/harness/{codebase_scan.py,codebase_check.py,intent_gate.py}` | 역공학(HK-19) — codebase 모델 정적 행(설정 · import · 마이그레이션 · 엔티티, 그 컴퓨터에 있는 것만) · 출처 칸(DS-R22, fast 실패) · 오래됨(DS-R23, fast 경고 · 승인 422 `model_stale`) · codebase · plans 게이트 대상 파일과 앞 조건(관리 페이지 승인이 부른다) | — | 도구 |
+| `scripts/harness/mob.py` | 몹 정리 세션 start · next · close · status(Intent 폴더 `mob.json`, 참석자 그룹 검사, 회차를 닫아도 세션에 요청하지 않는다, DS-R24 — `harness-kit mob` · `/intents/{key}/mob`) | — | 도구 |
 | `scripts/harness/invariants.py` | 불변식(design §4.5 `INV-n`) · `KEEP-n` 의 근거와 시험 연결, 답 없는 엣지 질문(DS-R27 · R28, `/hx-analyze` 가 옮긴다) | — | 도구 |
 | `scripts/harness/{from_unit.py,intake.py}` | `/hx-specify --from-unit` 의 결정적 부분(intent 게이트 · 계약 Unit 먼저 · requirements FROM-UNIT 구간 · units.json issue) · 요구사항 접수(`harness-kit intake` · `POST /intake` — 신뢰하지 않는 입력 표시 · 비밀값 첨부 저장 안 함 · 크기 상한 · 추출본) | — | 도구 |
 | `.agents/docs/_spec-templates/{intent,codebase,plans}/` · `.agents/roles/designer.md` · `.agents/rules/mob-elaboration.md` | Intent · 질문 · 현재 상태 · 코드 모델 · 기획물 템플릿, 설계 역할, 몹 정리 규칙(Intent 폴더를 다룰 때만 실린다) | — | 인간 |

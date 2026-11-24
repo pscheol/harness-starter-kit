@@ -7,6 +7,7 @@ import { runAnswer, runApprove, runReview } from "./commands/decide";
 import { runDoctor } from "./commands/doctor";
 import { runInit } from "./commands/init";
 import { runIntake } from "./commands/intake";
+import { runMob } from "./commands/mob";
 import { runList } from "./commands/list";
 import { runOutdated } from "./commands/outdated";
 import { runRemove } from "./commands/remove";
@@ -53,6 +54,7 @@ const COMMANDS: Record<string, (ctx: Ctx) => CommandResult | Promise<CommandResu
   pack: runPack,
   local: runLocal,
   intake: runIntake,
+  mob: runMob,
 };
 
 const USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 킷
@@ -78,6 +80,7 @@ const USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 �
   skills     이 컴퓨터 · 리포의 스킬 목록(단계 · 하네스 · 이름 겹침). usage 토큰 사용량 · 킷이 덧붙인 양 · history 프롬프트 기록
   pack       pack new <이름> --dir <경로> --from <파일>… — 프로젝트 파일로 회사 팩 골격을 만든다
   local      local sync | list — 개인 층(.agents/local/)을 하네스 폴더에 배치한다(공유 lock 밖)
+  mob        몹 정리 세션 start | next | close | status(진행자 터미널, 회차를 닫아도 세션에 요청하지 않는다)
   intake     요구사항 접수 — 글 · 첨부를 Intent 폴더(bug 는 이슈 폴더)로 받는다(신뢰하지 않는 입력으로 표시)
 
 공통 플래그: --cwd <폴더> --dry-run --yes --json --templates <폴더> --quiet --no-color --help
@@ -106,7 +109,8 @@ const COMMAND_HELP: Record<string, string> = {
   status: "harness-kit status [--session | --intents | --intent <INT> [--gate codebase|plans] | --issues [--area --stage --intent] | --issue <키> | --doc <경로> | --verify [--issue] | --worktrees | --harness | --flow <INT> [--burn [--days n]] | --all] [--json]\n",
   projects: "harness-kit projects list | add <폴더> | remove <이름|경로> [--json] — 등록부 ~/.config/harness-kit/projects.json\n",
   approve: 'harness-kit approve <키> --gate <게이트> --phrase "<문구>" [--changes-requested [--rule-candidate]] [--json] — 사람 터미널에서만(에이전트 세션 · TTY 아님은 exit 3)\n',
-  answer: "harness-kit answer <INT|키> --list | <Q-n> --choice <A-D|other> [--text …] [--json] — 사람 터미널에서만\n",
+  answer: "harness-kit answer <INT|키> --list | <Q-n> --choice <A-D|other> [--text …] [--by <참석자 email>] [--json] — 사람 터미널에서만. 몹 세션이 열려 있으면 --by 필요\n",
+  mob: "harness-kit mob start <INT> --attendees a@x,b@y [--timebox 30] | mob next <INT> | mob close <INT> | mob status <INT> [--json] — 진행자 터미널(에이전트 세션은 exit 3)\n",
   review: "harness-kit review show <키> | review decide <키> <F-n> --fix|--accept-risk --reason … [--json] — decide 는 사람 터미널에서만\n",
   sessions: "harness-kit sessions [--machine] [--json]\n",
   dispatch: "harness-kit dispatch --to <세션 id|키:역할|이름> --kind <종류> --path <파일>… [--text …] [--via socket|deeplink|queue] | dispatch list | dispatch drop <id>\n",

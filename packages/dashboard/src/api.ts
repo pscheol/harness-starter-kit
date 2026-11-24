@@ -22,6 +22,7 @@ import { dropQueued, postDispatch } from "./writers/dispatch";
 import { getDoc, putDoc } from "./writers/docs";
 import { postIntake } from "./writers/intake";
 import { getGateBundle } from "./writers/intent-gates";
+import { getMob, postMob } from "./writers/mob";
 import { deleteProposal, postProposal } from "./writers/proposals";
 
 export interface ApiRequest {
@@ -100,6 +101,8 @@ export const ROUTES: Route[] = [
       return ok(intentModel(p, findIntent(p.root, r.params.key as string), issues));
     },
   },
+  { method: "GET", path: "/intents/{key}/mob", cli: "mob status <INT>", handler: async (p, r) => ok(await getMob(p, r.params.key as string)) },
+  { method: "POST", path: "/intents/{key}/mob", cli: "mob start <INT> --attendees a,b [--timebox 30] | mob next <INT> | mob close <INT>", handler: async (p, r) => ok(await postMob(p, r.params.key as string, r.body)) },
   { method: "GET", path: "/intents/{key}/gates", cli: "status --intent <INT> --gate codebase|plans", handler: async (p, r) => ok(await getGateBundle(p, r.params.key as string, q(r, "gate") ?? "")) },
   {
     method: "GET", path: "/intents/{key}/burn", cli: "status --flow <INT> --burn [--days n]",

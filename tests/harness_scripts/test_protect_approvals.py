@@ -185,6 +185,14 @@ class ProtectApprovalsTest(unittest.TestCase):
         self.assert_blocked(tool("Edit", file_path=str(q), old_string="- 답: B", new_string="- 답:"))
         self.assert_allowed(tool("Edit", file_path=str(q), old_string="넣는가?", new_string="이번에 넣는가?"))
 
+    def test_agent_cannot_write_mob_session_or_run_mob_commands(self):
+        rel = ".agents/docs/intents/INT-1-pay/mob.json"
+        self.assert_blocked(tool("Write", file_path=self.path(rel), content="{}"))
+        self.assert_blocked(tool("Bash", command=f"echo '{{}}' > {rel}"))
+        for command in ("python3 scripts/harness/mob.py start INT-1 --attendees a@b", "npx harness-kit mob close INT-1"):
+            self.assert_blocked(tool("Bash", command=command))
+        self.assert_allowed(tool("Bash", command="python3 scripts/harness/mob.py status INT-1"))
+
     def test_unrelated_or_unparseable_input_passes_silently(self):
         self.assert_allowed(tool("Bash", command="ls -la"))
         self.assert_allowed(tool("Write", file_path=self.path("README.md"), content="hello"))

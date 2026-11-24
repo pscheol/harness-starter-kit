@@ -66,6 +66,8 @@ export interface AnswerInput {
   at: string;
   /** 의견으로 남긴다(답할 직무 그룹 밖) */
   opinion: boolean;
+  /** 몹 세션에서 대신 적은 git 사용자(답한 사람과 같으면 없음, 08 DS-R24) */
+  recordedBy?: string | null;
 }
 
 /** 답 · 의견 줄을 넣은 새 내용과 모두 답했는지. 다른 줄 · 줄바꿈은 그대로 둔다. */
@@ -95,7 +97,7 @@ export function writeAnswer(text: string, input: AnswerInput): { text: string; a
     block.splice(at, 0, `- 의견: ${input.choice} · ${input.email}${memo ? ` — ${memo}` : ""}${cr}`);
   } else {
     const ai = block.findIndex((l) => ANSWER.test(l.replace(/\r$/, "")));
-    const value = `${input.choice} · ${input.email} · ${input.at}`;
+    const value = `${input.choice} · ${input.email} · ${input.at}${input.recordedBy ? ` · 기록: ${input.recordedBy}` : ""}`;
     const added = [`- 답: ${value}${cr}`];
     if (memo) added.push(`- 메모: ${memo}${cr}`);
     if (ai < 0) {

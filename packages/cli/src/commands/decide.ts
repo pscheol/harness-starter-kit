@@ -58,7 +58,7 @@ export async function runApprove(ctx: Ctx): Promise<CommandResult> {
 
 export async function runAnswer(ctx: Ctx): Promise<CommandResult> {
   const [target, qid, extra] = ctx.positionals;
-  if (!target || extra) throw usageError("harness-kit answer <INT 또는 키> --list | <Q-n> --choice <A-D|other> [--text …]");
+  if (!target || extra) throw usageError("harness-kit answer <INT 또는 키> --list | <Q-n> --choice <A-D|other> [--text …] [--by <참석자 email>]");
   if (bool(ctx.values, "list") || !qid) {
     return run(ctx, "GET", "/questions", { query: { target } }, (d) => {
       const qs = (d.questions as { id: string; open: boolean; role: string; text: string; recommended: string | null; answer: string | null }[]) ?? [];
@@ -72,7 +72,7 @@ export async function runAnswer(ctx: Ctx): Promise<CommandResult> {
   try {
     const p = await openProject(ctx);
     const list = (await callApi(p, "GET", "/questions", { query: { target } })).data as { sha256: string | null };
-    return run(ctx, "POST", `/questions/${target}/${qid}/answer`, { project: p, body: { choice, text: str(ctx.values, "text"), baseSha256: list.sha256 } }, (d) => [`${String(d.kind) === "opinion" ? "의견" : "답"}을 남겼다: ${String(d.path)} · 열린 질문 ${String(d.open)}건${d.statusChanged ? ` · ${String(d.statusChanged)}` : ""}`]);
+    return run(ctx, "POST", `/questions/${target}/${qid}/answer`, { project: p, body: { choice, text: str(ctx.values, "text"), baseSha256: list.sha256, ...(str(ctx.values, "by") ? { by: str(ctx.values, "by") } : {}) } }, (d) => [`${String(d.kind) === "opinion" ? "의견" : "답"}을 남겼다: ${String(d.path)} · 열린 질문 ${String(d.open)}건${d.statusChanged ? ` · ${String(d.statusChanged)}` : ""}`]);
   } catch (err) {
     if (err instanceof ApiError) return failure(ctx, err);
     throw err;

@@ -8,14 +8,15 @@ import { parseQuestions, writeAnswer } from "../questions";
 import { type Checkout, gitUser, KEY, resolveIntentCheckout, resolveIssueCheckout } from "../repo";
 import { atomicWrite, isObj, nowText, sha256 } from "../util";
 import { issueFolder } from "./approvals";
+import { openMob } from "./mob";
 
-async function locate(p: Project, target: string): Promise<{ co: Checkout; rel: string; abs: string }> {
+async function locate(p: Project, target: string): Promise<{ co: Checkout; rel: string; abs: string; intentAbs?: string }> {
   if (!KEY.test(target)) throw bad(`대상 키 형식이 아니다: ${target}`);
   const isIntent = fs.existsSync(path.join(p.root, ".agents/docs/intents")) && fs.readdirSync(path.join(p.root, ".agents/docs/intents")).some((n) => INTENT_FOLDER.exec(n)?.[1] === target);
   if (isIntent) {
     const co = await resolveIntentCheckout(p, target);
     const info = findIntent(co.root, target);
-    return { co, rel: `${info.dir}/questions.md`, abs: path.join(info.abs, "questions.md") };
+    return { co, rel: `${info.dir}/questions.md`, abs: path.join(info.abs, "questions.md"), intentAbs: info.abs };
   }
   const co = await resolveIssueCheckout(p, target, null);
   const folder = issueFolder(co.root, target);
@@ -34,8 +35,9 @@ export async function getQuestions(p: Project, target: string | null): Promise<R
 export async function postAnswer(p: Project, target: string, qid: string, body: unknown): Promise<Record<string, unknown>> {
   if (p.readOnly) throw readOnly();
   if (!isObj(body)) throw bad("본문이 객체가 아니다");
-  const { co, rel, abs } = await locate(p, target);
+  const { co, rel, abs, intentAbs } = await locate(p, target);
   if (!fs.existsSync(abs)) throw notFound(`질문 파일이 없다: ${rel}`);
+  const mob = intentAbs ? openMob(intentAbs) : null;
   return p.withLock(abs, async () => {
     const bytes = fs.readFileSync(abs);
     if (body.baseSha256 !== sha256(bytes)) throw new ApiError(409, "conflict", "다른 곳에서 먼저 저장했다", { currentSha256: sha256(bytes), currentMarkdown: bytes.toString("utf8") });
@@ -48,10 +50,19 @@ export async function postAnswer(p: Project, target: string, qid: string, body: 
     if (choice === "other" && !text) throw bad("other 는 text 가 필요하다");
     const u = await gitUser(co.root, p.env);
     if (!u.email) throw new ApiError(403, "not_an_approver", "git config user.email 이 비었다");
+    // DS-R24: 몹 세션이 열려 있으면 답한 사람은 참석자(by) 중 하나이고, 그룹 검사도 by 로 한다. 기록한 git 사용자는 따로 남긴다
+    let who = u.email;
+    if (mob) {
+      const by = typeof body.by === "string" ? body.by.trim() : "";
+      if (!by) throw bad("몹 세션이 열려 있다 — by(답한 참석자 email)가 필요하다", { attendees: mob.attendees.map((a) => a.email) });
+      if (!mob.attendees.some((a) => a.email.toLowerCase() === by.toLowerCase())) throw bad(`${by} 는 몹 세션 참석자가 아니다`, { attendees: mob.attendees.map((a) => a.email) });
+      who = by;
+    }
     const groups = p.policy().groups ?? {};
     const members = Object.hasOwn(groups, q.role) ? groups[q.role] : undefined;
-    const opinion = members !== undefined && !members.some((m) => m.toLowerCase() === (u.email as string).toLowerCase());
-    const out = writeAnswer(bytes.toString("utf8"), { qid, choice, text, email: u.email, at: nowText(), opinion });
+    const opinion = members !== undefined && !members.some((m) => m.toLowerCase() === who.toLowerCase());
+    const recordedBy = who.toLowerCase() === u.email.toLowerCase() ? null : u.email;
+    const out = writeAnswer(bytes.toString("utf8"), { qid, choice, text, email: who, at: nowText(), opinion, recordedBy });
     atomicWrite(abs, out.text);
     const after = parseQuestions(out.text).questions;
     return { sha256: sha256(Buffer.from(out.text, "utf8")), path: rel, kind: opinion ? "opinion" : "answer", answered: after.filter((x) => !x.open).length, open: after.filter((x) => x.open).length, statusChanged: out.statusChanged };
