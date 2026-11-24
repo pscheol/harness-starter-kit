@@ -14,6 +14,7 @@ import { RESERVED } from "./commands/reserved";
 import { runFlow, runHistory, runQuality, runSessions, runStatus } from "./commands/status";
 import { runUninstall } from "./commands/uninstall";
 import { runUpdate } from "./commands/update";
+import { runLocal } from "./commands/local";
 import { runPack } from "./commands/pack";
 import { runDispatch, runProjects, runUnits } from "./commands/work";
 import { CliError, EXIT, usageError } from "./core/errors";
@@ -46,6 +47,7 @@ const COMMANDS: Record<string, (ctx: Ctx) => CommandResult | Promise<CommandResu
   quality: runQuality,
   history: runHistory,
   pack: runPack,
+  local: runLocal,
 };
 
 const USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 킷
@@ -69,6 +71,7 @@ const USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 �
   sessions   켜 둔 세션. dispatch 세션에 작업 요청(사람이 고를 때만) · dispatch list|drop 대기함
   units      Unit 변경 제안(propose · discard). flow gates 흐름 틀 · quality 품질 결과 · projects 등록부
   pack       pack new <이름> --dir <경로> --from <파일>… — 프로젝트 파일로 회사 팩 골격을 만든다
+  local      local sync | list — 개인 층(.agents/local/)을 하네스 폴더에 배치한다(공유 lock 밖)
 
 공통 플래그: --cwd <폴더> --dry-run --yes --json --templates <폴더> --quiet --no-color --help
 init · plan: --stack --arch --domain --lang --agents <목록|all> --modules <목록|all|none>
@@ -105,6 +108,7 @@ const COMMAND_HELP: Record<string, string> = {
   quality: "harness-kit quality [--findings [--issue <키>] [--severity S] [--new]] [--json]\n",
   history: "harness-kit history [--q …] [--json] — ~/.config/harness-kit/config.json 의 history 가 on 일 때만(HK-18)\n",
   pack: "harness-kit pack new <이름> --dir <경로> [--from <파일|폴더>[#훅·검사 id]]… [--kit-range \">=2.0.0 <3.0.0\"] [--json] — --dir 은 빈 폴더나 없는 경로\n",
+  local: "harness-kit local sync [--dry-run] | local list [--json] — 개인 스킬 · Kiro 규칙 · 개인 훅(.claude/settings.local.json · .kiro/hooks/local-*). 공유 원본과 이름이 같으면 배치하지 않는다\n",
 };
 
 function emitError(io: Io, command: string, err: CliError, json: boolean): number {

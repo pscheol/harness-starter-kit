@@ -28,6 +28,7 @@ import { applyProjection, judgeUpdate, PROJECTION_OPS, type ProjectionPlan } fro
 import { mergeEntries, needsHuman, prepare, projectionConflicts, projectionData, projectionLines } from "../projection/flow";
 import { loadSpecOrNull } from "../projection/spec";
 import type { OverlayWrite } from "../projection/view";
+import { localAfter } from "./local";
 import { runUpdatePacks } from "./update-packs";
 
 export const V1_LOCK_BACKUP = ".agents/state/harness-kit.lock.v1.bak";
@@ -270,6 +271,12 @@ export function runUpdate(ctx: Ctx): CommandResult {
   const lines = humanLines(ctx, head, plan, shown, conflicts, dryRun, board, merged, `${MERGE_BACKUP_DIR}/${stamp}`);
   const noticeLine = NOTICE_LINES[notice.action];
   if (noticeLine) lines.splice(lines.length - 1, 0, `  ${noticeLine}`);
+  // 개인 층(HK-14 design §5): .agents/local/ 이 있으면 새 판 원본 기준으로 다시 배치한다
+  const local = localAfter(ctx, target, inst, loc.dir, dryRun);
+  if (local) {
+    data.local = local.result;
+    lines.splice(lines.length - 1, 0, ...local.lines);
+  }
   if (projection) lines.splice(head.length + shown.length + 1, 0, ...projectionLines(projection.plan, projection.findings, ctx.quiet));
   else if (inst.lock.entries.some((e) => PROJECTION_OPS.has(e.op))) lines.splice(head.length + shown.length + 1, 0, "  배치: 이 템플릿에 projection.json 이 없다 — 배치 항목은 그대로 둔다");
   return { code, data, lines };

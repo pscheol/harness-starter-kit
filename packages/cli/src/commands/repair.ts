@@ -13,6 +13,7 @@ import { AncestorCheck, existing } from "../core/plan";
 import { locateTemplates } from "../core/templates";
 import { wanted, type Want } from "../core/update-plan";
 import { VERSION } from "../core/version";
+import { localAfter } from "./local";
 import type { FileWant, Finding, MergeOpWant } from "../adapters/types";
 import { applyProjection, PROJECTION_OPS, projCounts, projLine, projOpJson, projSummary, stateOf, type Cur, type ProjOp } from "../projection/engine";
 import { prepare } from "../projection/flow";
@@ -240,5 +241,12 @@ export function runRepair(ctx: Ctx): CommandResult {
     ...hints.map((h) => `  다음: ${h}`),
     ...(dryRun ? ["  (dry-run — 쓰지 않았다)"] : []),
   ];
+  // 개인 층(HK-14 design §5): .agents/local/ 이 있으면 다시 배치한다
+  const tpl = source?.templates ?? locateTemplates({ flag: str(ctx.values, "templates"), env: ctx.io.env, cliFile: ctx.io.cliFile, cwd: ctx.io.cwd, version: VERSION }).dir;
+  const local = localAfter(ctx, target, inst, tpl, dryRun);
+  if (local) {
+    data.local = local.result;
+    lines.splice(lines.length - (dryRun ? 1 : 0), 0, ...local.lines);
+  }
   return { code, data, lines };
 }

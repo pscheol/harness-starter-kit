@@ -54,8 +54,13 @@ describe("진입점", () => {
     for (const cmd of ["update", "doctor", "outdated"]) expect((await run([cmd, "extra", "--cwd", tmpDir()])).code).toBe(2);
   });
 
+  it("pack 은 HK-14 부터 명령이다 — 하위 명령 없으면 exit 2", async () => {
+    const r = await run(["pack"]);
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain("pack new");
+  });
+
   it.each([
-    ["pack", "P18"],
     ["skills", "HK-18"],
     ["intake", "HK-19"],
     ["mob", "P21"],

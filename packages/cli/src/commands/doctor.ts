@@ -11,6 +11,7 @@ import { META_REL, readMeta, type MetaV2 } from "../core/meta";
 import { FLOOR_HOOKS, missingFloorGates } from "../core/floor";
 import { isKitNotice, NOTICE_REL, noticeExpired } from "../core/notice";
 import { sourceWarnings } from "../core/packs";
+import { LOCAL_CONFIG, readLocalConfig, SETTINGS_LOCAL } from "../core/local";
 import { isSafeRelPath } from "../core/plan";
 import { compareSemver, VERSION } from "../core/version";
 import { layoutFindings, PROJECTION_KINDS } from "../projection/check";
@@ -29,7 +30,8 @@ export interface Finding {
 
 export const FLOOR_KINDS = ["gate-floor", "floor-hook-missing", "floor-override", "full-allowed", "approvers"];
 export const PACK_KINDS = ["pack-unpinned", "pack-local-path"];
-export const DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "version-mismatch", "missing", "drifted", "gitignore", "entry-size", "upgrade-notice-expired", ...FLOOR_KINDS, ...PACK_KINDS, ...PROJECTION_KINDS];
+export const LOCAL_KINDS = ["personal-ignored", "personal-weakens", "local-invalid"];
+export const DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "version-mismatch", "missing", "drifted", "gitignore", "entry-size", "upgrade-notice-expired", ...FLOOR_KINDS, ...PACK_KINDS, ...LOCAL_KINDS, ...PROJECTION_KINDS];
 export const GITIGNORE_NEEDS = [".agents/state/", ".agents/local/", ".agents/reports/"];
 export const ENTRY_FILES = ["AGENTS.md", "CLAUDE.md"];
 export const ENTRY_LIMIT = 24 * 1024;
@@ -171,6 +173,23 @@ function floorFindings(target: string, raw: Record<string, unknown> | null): Fin
   out.push(...approverFindings(raw));
   const packs = raw && Array.isArray(raw.packs) ? raw.packs.filter((x): x is string => typeof x === "string") : [];
   for (const src of packs) for (const w of sourceWarnings(target, src)) out.push({ kind: w.kind, severity: "warn", path: META_REL, hint: w.hint });
+  out.push(...personalFindings(target));
+  return out;
+}
+
+/** 개인 층 설정이 받지 않는 키 · 하네스 로컬 설정이 킷 훅을 끄는 경우(04 §3.6). */
+function personalFindings(target: string): Finding[] {
+  const out: Finding[] = [];
+  const conf = readLocalConfig(target);
+  if (conf.error) out.push({ kind: "local-invalid", severity: "error", path: LOCAL_CONFIG, hint: conf.error });
+  for (const key of conf.ignored) out.push({ kind: "personal-ignored", severity: "warn", path: LOCAL_CONFIG, hint: `${key} — 개인 층은 roles.<역할>.harness · git.ide 만 바꾼다(무시했다)` });
+  let local: unknown = null;
+  try {
+    local = JSON.parse(fs.readFileSync(path.join(target, ...SETTINGS_LOCAL.split("/")), "utf8"));
+  } catch {
+    local = null;
+  }
+  if (isObjAny(local) && local.disableAllHooks === true) out.push({ kind: "personal-weakens", severity: "warn", path: SETTINGS_LOCAL, hint: "disableAllHooks: true 가 킷 훅(보호 · 검증 게이트)까지 끈다" });
   return out;
 }
 
