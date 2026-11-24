@@ -107,6 +107,21 @@ describe("deploy · approve deploy:<기록>", () => {
   });
 });
 
+describe("doctor — 배포 설정", () => {
+  it("연속 실패 상한 3 은 오류, 운영 환경이 있는데 CI 가 승인 검사를 안 부르면 경고, 부르면 조용하다", async () => {
+    const repo = makeRepo();
+    const cfg = (limit: number) => JSON.stringify({ schema: "harness-kit.deploy/v1", envs: { production: { kind: "production" } }, commands: {}, autoVerify: { enabled: false, maxConsecutiveFailures: limit } });
+    writeFile(repo.root, ".agents/deploy.json", cfg(3));
+    const bad = await cli(["doctor", "--json"], repo);
+    const kinds = (bad.json.findings as { kind: string; severity: string }[]).filter((f) => f.kind.startsWith("deploy-")).map((f) => `${f.kind}:${f.severity}`).sort();
+    expect(kinds).toEqual(["deploy-config:error", "deploy-guard-missing:warn"]);
+    writeFile(repo.root, ".agents/deploy.json", cfg(2));
+    writeFile(repo.root, "ci/harness-kit.gitlab-ci.yml", "harness:deploy-production:\n  script:\n    - python3 scripts/harness/deploy.py run --env production --record \"$HX_DEPLOY_RECORD\"\n");
+    const ok = await cli(["doctor", "--json"], repo);
+    expect((ok.json.findings as { kind: string }[]).filter((f) => f.kind.startsWith("deploy-"))).toEqual([]);
+  });
+});
+
 describe("ops · metrics · rules · intake --from · status --ops", () => {
   it("ops new / check, status --ops 는 GET /ops 와 같다", async () => {
     const repo = makeRepo();

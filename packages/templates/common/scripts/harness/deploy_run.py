@@ -15,6 +15,7 @@ from pathlib import Path
 from harness import deploy_config, deploy_gate, deploy_record
 
 REPORTS = deploy_gate.REPORTS
+HISTORY_FILE = ".agents/state/deploy-history.json"
 
 
 def now_text():
@@ -182,6 +183,9 @@ def read_history(root, environ):
     named = environ.get("HX_DEPLOY_HISTORY")
     if named:
         return history_from_file(named), "HX_DEPLOY_HISTORY"
+    written = Path(root) / HISTORY_FILE
+    if written.is_file():
+        return history_from_file(written), HISTORY_FILE
     return history_from_artifacts(root), "산출물"
 
 
@@ -307,7 +311,7 @@ def write_history(root, platform, base):
     if items is None:
         print("✖ 직전 실행 결과를 읽지 못했다(glab · gh · 토큰 · 권한을 확인한다)", file=sys.stderr)
         return 1
-    path = Path(root) / ".agents/state/deploy-history.json"
+    path = Path(root) / HISTORY_FILE
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(items, ensure_ascii=False) + "\n", encoding="utf-8")
     print(f"직전 실행 {len(items)}건 → {path.relative_to(root).as_posix()}")

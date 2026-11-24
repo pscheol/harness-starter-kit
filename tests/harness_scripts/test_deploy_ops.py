@@ -298,6 +298,27 @@ class AutoVerifyTest(OpsCase):
         self.assertEqual({"status": "passed", "toSha": "1234567"}, out["rollbackTest"])
         self.assertEqual(["deploy", "smoke", "health", "e2e", "rollback", "health", "deploy", "health"], [line.split()[0] for line in calls])
 
+    def test_platform_history_feeds_auto_verify(self):
+        """템플릿의 앞 단계(deploy.py history)가 gh 로 직전 실패 둘을 읽으면 auto-verify 는 배포하지 않고 멈춘다."""
+        self.init_git()
+        bin_dir = self.base / "bin"
+        bin_dir.mkdir()
+        fake = bin_dir / "gh"
+        fake.write_text("#!/usr/bin/env python3\nimport json, sys\na = sys.argv[1:]\n"
+                        "if a[:2] == ['run', 'list']:\n    print(json.dumps([{'databaseId': 2, 'conclusion': 'failure', 'headSha': 'b' * 40}, {'databaseId': 1, 'conclusion': 'failure', 'headSha': 'a' * 40}]))\n"
+                        "elif a[:2] == ['run', 'view']:\n    print(json.dumps({'jobs': [{'name': 'deploy-verify', 'conclusion': 'failure'}]}))\n", encoding="utf-8")
+        fake.chmod(0o755)
+        env = {"PATH": f"{bin_dir}:{self.env['PATH']}"}
+        r = self.run_py("deploy.py", "history", "--platform", "github", "--base", "develop", env=env)
+        self.assertEqual(0, r.returncode, r.stdout + r.stderr)
+        self.assertEqual(["failed", "failed"], [item["status"] for item in json.loads((self.root / ".agents/state/deploy-history.json").read_text())])
+        r = self.run_py("deploy.py", "auto-verify")
+        self.assertEqual(1, r.returncode)
+        self.assertIn("연속 2회 실패", r.stdout)
+        self.assertEqual([], self.calls())
+        fake.write_text("#!/bin/sh\nexit 1\n", encoding="utf-8")
+        self.assertEqual(1, self.run_py("deploy.py", "history", "--platform", "github", env=env).returncode, "읽지 못하면 exit 1")
+
     def test_disabled_is_off(self):
         self.deploy_config(False)
         self.init_git()

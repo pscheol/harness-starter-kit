@@ -107,13 +107,13 @@ def todo(root, today):
     stamp = today.isoformat() + "T00:00:00+00:00"
     state = auto_verify_state(root)
     if state["status"] == "stopped":
-        out.append({"rank": 2, "kind": "deploy-stopped", "target": ".", "title": f"자동 검증 배포가 멈췄다(연속 실패 {state['consecutiveFailures']}회)", "reason": state.get("resume") or "", "since": state.get("lastRun") or stamp, "link": "/ops", "mine": False})
+        out.append({"rank": 1, "kind": "deploy-stopped", "target": ".", "title": f"자동 검증 배포가 멈췄다(연속 실패 {state['consecutiveFailures']}회)", "reason": state.get("resume") or "", "since": state.get("lastRun") or stamp, "link": "/ops", "mine": False})
     for record in deploy_record.all_records(root):
         if record.state in ("planned", "approved") and deploy_gate.approval_summary(root, record)["state"] != "valid":
-            out.append({"rank": 3, "kind": "deploy-approval", "target": record.id, "title": f"{record.id} deploy 승인 대기", "reason": "승인하면 운영 배포 작업이 deploy.py check --require-approved 를 통과한다", "since": str(record.fm.get("created") or stamp), "link": "/ops", "mine": False})
+            out.append({"rank": 2, "kind": "deploy-approval", "target": record.id, "title": f"{record.id} deploy 승인 대기", "reason": "승인하면 운영 배포 작업이 deploy.py check --require-approved 를 통과한다", "since": str(record.fm.get("created") or stamp), "link": "/ops", "mine": False})
     for record in ops_records.all_records(root):
         for warning in ops_records.problems(record)[1]:
-            out.append({"rank": 5, "kind": "ops-metric-miss", "target": record["name"], "title": warning.split(": ", 1)[-1], "reason": "미달 지표는 장애 · 다음 Intent 후보가 가리켜야 한다", "since": str(record["fm"].get("created") or stamp), "link": "/ops", "mine": False})
+            out.append({"rank": 4, "kind": "ops-metric-miss", "target": record["name"], "title": warning.split(": ", 1)[-1], "reason": "미달 지표는 장애 · 다음 Intent 후보가 가리켜야 한다", "since": str(record["fm"].get("created") or stamp), "link": "/ops", "mine": False})
     for item in rule_candidates.summary(root, today):
         if item["status"] == "proposed" and item["ageDays"] > STALE_CANDIDATE_DAYS:
             out.append({"rank": 7, "kind": "rule-candidate-stale", "target": item["id"], "title": f"{item['id']} 규칙 후보가 {item['ageDays']}일째 proposed", "reason": "승격(rules promote) 또는 거절(rules reject)한다", "since": stamp, "link": "/ops", "mine": False})
