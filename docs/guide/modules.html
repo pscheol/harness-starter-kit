@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="이슈 트래커 · 접수 출처 · 여러 리포">
+<title>jira · notion · multi-harness — knots-sync 사용 안내서</title>
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="site-header">
+<a class="brand" href="index.html">knots-sync<span>사용 안내서</span></a>
+<span class="site-meta">CLI 2.0.0-alpha.0 기준 · 2026-11-24 · 저장소 harness-starter-kit</span>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="안내서 목차">
+<p class="toc-title">안내서 목차</p>
+<ol>
+<li class="toc-group">시작</li>
+<li><a href="index.html"><span class="n">00</span><span>시작하기</span></a></li>
+<li><a href="concepts.html"><span class="n">01</span><span>개념</span></a></li>
+<li><a href="install.html"><span class="n">02</span><span>설치</span></a></li>
+<li class="toc-group">쓰기</li>
+<li><a href="daily-flow.html"><span class="n">03</span><span>하루 흐름</span></a></li>
+<li><a href="dashboard.html"><span class="n">04</span><span>관리 페이지</span></a></li>
+<li><a href="cli.html"><span class="n">05</span><span>CLI 명령 참고</span></a></li>
+<li class="toc-group">모듈</li>
+<li><a href="aidlc.html"><span class="n">06</span><span>AI-DLC 모듈</span></a></li>
+<li><a href="entire.html"><span class="n">07</span><span>Entire 모듈</span></a></li>
+<li><a href="modules.html" aria-current="page"><span class="n">08</span><span>jira · notion · multi-harness</span></a></li>
+<li class="toc-group">운영과 팀</li>
+<li><a href="ops.html"><span class="n">09</span><span>배포 · 운영 · 지표</span></a></li>
+<li><a href="roles.html"><span class="n">10</span><span>역할별 활용 가이드</span></a></li>
+<li class="toc-group">옮기기와 도움</li>
+<li><a href="migration.html"><span class="n">11</span><span>옛 이름에서 옮기기</span></a></li>
+<li><a href="faq.html"><span class="n">12</span><span>문제 해결 · FAQ</span></a></li>
+</ol>
+</nav>
+<main id="main" tabindex="-1">
+<article>
+<p class="kicker">08 · 모듈</p>
+<h1>jira-workflow · notion · multi-harness</h1>
+<p class="lede">선택 모듈은 다섯이다. 외부 도구를 붙이는 <code>aidlc</code> · <code>entire</code> 는 앞 두 장에서 다뤘고, 이 장은 모듈 공통 규칙과 나머지 셋 — 이슈 트래커(<code>jira-workflow</code>), Notion 접수(<code>notion</code>), 여러 리포(<code>multi-harness</code>) — 을 다룬다.</p>
+<nav class="on-page" aria-label="이 장의 절"><h2>이 장에서</h2><ol><li><a href="#common">모듈 공통</a></li><li><a href="#jira">jira-workflow — 이슈 트래커</a></li><li><a href="#notion">notion — Notion 접수 출처</a></li><li><a href="#multi">multi-harness — 여러 리포</a></li></ol></nav>
+
+<h2 id="common">모듈 공통</h2>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">모듈</th><th scope="col">종류</th><th scope="col">하는 일</th><th scope="col">설정에 남는 것</th></tr></thead>
+<tbody>
+<tr><td><code>aidlc</code></td><td>외부 도구</td><td>설계 단계를 AI-DLC 가 맡고 산출물을 Intent · Unit 으로 가져온다</td><td><code>flow.design = "aidlc"</code></td></tr>
+<tr><td><code>entire</code></td><td>외부 도구</td><td>구현 하네스에 커밋별 대화 체크포인트</td><td><code>flow.record = "entire"</code></td></tr>
+<tr><td><code>jira-workflow</code></td><td>킷</td><td>한 세션 = 한 활성 티켓, pull gate, ID 로 전이, 에이전트는 검증 단계까지</td><td><code>.agents/issue-tracker.yml</code></td></tr>
+<tr><td><code>notion</code></td><td>외부 출처</td><td>Notion 페이지 · 데이터베이스 항목을 요구사항 접수로</td><td><code>notion.writeBack = false</code></td></tr>
+<tr><td><code>multi-harness</code></td><td>킷</td><td>상위 리포 + 도메인 submodule 을 하네스 하나로. 단위 동기화 · 게이트 · 안전 검사</td><td><code>tools/harness/units.json</code></td></tr>
+</tbody></table></div>
+<pre class="cmd"><code><span class="p">$ </span>knots-sync init … --modules jira-workflow,multi-harness   <span class="c"># 깔 때 함께</span>
+<span class="p">$ </span>knots-sync add notion                                      <span class="c"># 나중에 켜기 — 그 몫만 깐다</span>
+<span class="p">$ </span>knots-sync remove jira-workflow                            <span class="c"># 끄기 — 고치지 않은 그 몫만 지운다</span></code></pre>
+<p>모듈마다 <code>module.json</code>(설치 대상은 아니다)이 요구 조건 · 파일 · 훅 · 외부 경로 · 켜고 끌 때의 단계 · doctor 점검을 적는다. 모듈에서 온 lock 항목은 <code>layer: optional/&lt;id&gt;</code> 로 남는다. 아래 그림은 모듈이 들어와도 <strong>누가 무엇을 고칠 수 있나</strong>가 어떻게 지켜지는지 보여 준다.</p>
+<figure class="diagram wide">
+<svg viewBox="0 0 960 400" role="img" aria-labelledby="own-t own-d">
+<title id="own-t">lock 의 소유자별로 update · remove 가 하는 일</title>
+<desc id="own-d">가운데 위에 knots-sync.lock 이 있고 아래로 네 소유자 칸이 있다. kit 칸: 킷 템플릿과 jira-workflow · multi-harness · notion 모듈 파일, update는 고치지 않은 것만 바꾸고 고친 것은 .new, remove와 uninstall은 고치지 않은 것만 지운다. user 칸: 설치 전부터 있던 파일, 킷은 건드리지 않는다. pack 칸: 회사 팩 파일, update --packs 로만 바꾼다. external 칸: AI-DLC와 Entire가 만든 파일과 훅, op none으로 기록만 하고 sha를 바꾸지 않으며 지우지 않는다. 도구 쪽 제거는 사람이 aidlc uninstall · entire disable로 한다.</desc>
+<defs><marker id="ah-own" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrow-head"/></marker></defs>
+<rect x="330" y="14" width="300" height="56" rx="6" class="n-dark"/>
+<text x="480" y="38" text-anchor="middle" class="t-strong t-white mono">.agents/knots-sync.lock</text>
+<text x="480" y="58" text-anchor="middle" class="t-white" style="font-size:12px">항목마다 owner · op · sha256 · layer</text>
+<path d="M480,70 V92 M125,92 H835 M125,92 V112 M360,92 V112 M600,92 V112 M835,92 V112" class="e"/>
+<rect x="20" y="112" width="210" height="270" rx="6" class="n-plain"/>
+<text x="40" y="140" class="t-strong mono">owner: kit</text>
+<text x="40" y="164" class="t-sub">킷 템플릿 + 킷 모듈</text>
+<text x="40" y="182" class="t-sub">(jira-workflow · notion ·</text>
+<text x="40" y="200" class="t-sub">multi-harness)</text>
+<text x="40" y="236" class="t-strong" style="font-size:12px">update</text>
+<text x="40" y="254" class="t-sub">고치지 않은 것 → 새 판</text>
+<text x="40" y="272" class="t-sub">고친 것 → &lt;경로&gt;.new</text>
+<text x="40" y="306" class="t-strong" style="font-size:12px">remove · uninstall</text>
+<text x="40" y="324" class="t-sub">고치지 않은 것만 지운다</text>
+<text x="40" y="342" class="t-sub">고친 것은 남김(exit 4)</text>
+<rect x="255" y="112" width="210" height="270" rx="6" class="n-plain"/>
+<text x="275" y="140" class="t-strong mono">owner: user</text>
+<text x="275" y="164" class="t-sub">설치 전부터 있던 파일</text>
+<text x="275" y="182" class="t-sub">(init --adopt 로 받은 것)</text>
+<text x="275" y="236" class="t-strong" style="font-size:12px">update · remove</text>
+<text x="275" y="254" class="t-sub">건드리지 않는다</text>
+<text x="275" y="306" class="t-strong" style="font-size:12px">킷 판으로 바꾸려면</text>
+<text x="275" y="324" class="t-sub">사람이 지운 뒤 repair</text>
+<rect x="495" y="112" width="210" height="270" rx="6" class="n-plain"/>
+<text x="515" y="140" class="t-strong mono">owner: pack:&lt;이름&gt;</text>
+<text x="515" y="164" class="t-sub">회사 팩이 준 파일</text>
+<text x="515" y="236" class="t-strong" style="font-size:12px">update --packs</text>
+<text x="515" y="254" class="t-sub">팩만 받아 깐다</text>
+<text x="515" y="272" class="t-sub">팩끼리 겹치면 exit 4</text>
+<text x="515" y="306" class="t-strong" style="font-size:12px">uninstall</text>
+<text x="515" y="324" class="t-sub">--keep-packs 면 남김</text>
+<rect x="730" y="112" width="210" height="270" rx="6" class="n-human"/>
+<text x="750" y="140" class="t-strong mono">owner: external:…</text>
+<text x="750" y="164" class="t-sub">AI-DLC · Entire 가 만든</text>
+<text x="750" y="182" class="t-sub">파일과 훅(op: none)</text>
+<text x="750" y="236" class="t-strong" style="font-size:12px">update · repair · remove</text>
+<text x="750" y="254" class="t-sub">기록만. sha 를 바꾸지</text>
+<text x="750" y="272" class="t-sub">않고 지우지 않는다</text>
+<text x="750" y="306" class="t-strong" style="font-size:12px">도구 쪽 제거</text>
+<text x="750" y="324" class="t-sub">사람이 aidlc uninstall ·</text>
+<text x="750" y="342" class="t-sub">entire disable</text>
+</svg>
+<figcaption><strong>그림 5.</strong> 모듈과 소유자. 킷 모듈(jira-workflow · notion · multi-harness)의 파일은 킷 소유, 외부 도구 모듈의 파일은 그 도구 소유다. 외부 파일 불변은 e2e 의 E5 · E6 이 sha256 으로 지킨다.</figcaption>
+</figure>
+<p>모듈별 세션 적재량(Claude Code, e2e 실측): 킷만 약 10.2KB · 훅 13, AI-DLC +73,333 B · 훅 +17, Entire +0 B · 훅 +10. jira-workflow · notion · multi-harness 는 규칙 파일 몇 개가 더해지며, 규칙은 <code>paths</code> 가 걸린 파일을 다룰 때만 실린다. 켠 뒤의 실제 값은 <code>knots-sync doctor</code> 의 "세션마다 실리는 양" 줄로 본다.</p>
+
+<h2 id="jira">jira-workflow — 이슈 트래커</h2>
+<p>Jira(또는 비슷한 트래커)를 쓰는 팀을 위한 작업 규약이다. 켜면 규칙 <code>issue-tracker-workflow.md</code> · <code>issue-agent-lock.md</code>, 설정 <code>.agents/issue-tracker.yml</code>, 스킬 <code>/kns-issue</code>(조회 · 착수 · 리뷰 요청 · 착수 철회 · 락 해제 · 티켓 생성) · <code>/kns-ticket</code>(티켓 하나를 가져오기 → SDD 스펙 → 착수 → 구현 → 리뷰 요청까지)이 깔린다.</p>
+<h3>대응</h3>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">AI-DLC 말</th><th scope="col">Jira</th><th scope="col">리포</th></tr></thead>
+<tbody>
+<tr><td>Intent</td><td>에픽</td><td><code>intents/&lt;에픽 키&gt;-&lt;이름&gt;/</code></td></tr>
+<tr><td>Unit</td><td>작업 항목(contract · integration → 작업, feature → 스토리, 버그 → 버그). 이 키가 이슈 키</td><td><code>issues/&lt;키&gt;-&lt;이름&gt;/</code> · 브랜치 · MR</td></tr>
+<tr><td>Bolt</td><td>하위 작업(선택, Bolt 2개 이하 Unit 은 만들지 않는다)</td><td><code>tasks.md</code> 의 Phase</td></tr>
+<tr><td>승인 게이트</td><td>상태 전이</td><td><code>approvals.md</code></td></tr>
+</tbody></table></div>
+<h3>상태와 누가 옮기나</h3>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">Jira 상태</th><th scope="col">킷 단계</th><th scope="col">옮기는 주체</th></tr></thead>
+<tbody>
+<tr><td>백로그</td><td>Unit 목록에 있음</td><td>에이전트(사람 요청으로 이슈 생성)</td></tr>
+<tr><td>요구사항 작성</td><td>requirements draft</td><td>에이전트</td></tr>
+<tr><td>요구사항 승인 대기</td><td>requirements in-review</td><td>에이전트</td></tr>
+<tr><td>설계</td><td>design</td><td><strong>사람(PO)</strong> — requirements 승인 전이</td></tr>
+<tr><td>구현 중</td><td>tasks active</td><td><strong>사람(개발자)</strong> — design · tasks 승인 전이</td></tr>
+<tr><td>검증</td><td>MR 열림</td><td>에이전트(MR + affected 통과)</td></tr>
+<tr><td>완료</td><td>tasks completed</td><td><strong>사람(QA · PO)</strong> — 완료 승인 전이</td></tr>
+<tr><td>배포됨</td><td>운영 기록</td><td><strong>사람(운영)</strong> — 배포 승인 전이</td></tr>
+</tbody></table></div>
+<p>에이전트가 옮길 수 있는 상한은 "검증"이다(<code>agentBoundary.maxStatus: verifying</code>). <code>approvalTransitions</code> 에 적힌 전이(요구사항 승인 대기 → 설계, 설계 → 구현 중, 검증 → 완료, 완료 → 배포됨)는 에이전트가 하지 않는다.</p>
+<h3>설정하기</h3>
+<ol class="steps">
+<li><h3>모듈을 켠다</h3><p><code>knots-sync add jira-workflow</code>. <code>.agents/issue-tracker.yml</code> 이 <code>TBD</code> 가 든 채로 깔린다.</p></li>
+<li><h3>ID 를 채운다 — <code>/kns:jira-setup</code></h3><p>플러그인 스킬이 트래커 접근 수단(MCP · CLI · REST)을 정하고, 트래커에서 상태 ID · 전이 ID 를 조회해 <code>statusMap</code> · <code>approvalTransitions</code> · <code>issueTypes</code> · <code>groupMap</code> 의 TBD 를 채운 뒤 읽기 전용 스모크로 확인한다.</p></li>
+<li><h3>토큰은 환경 변수에만</h3><p>REST 는 <code>JIRA_API_TOKEN</code> · <code>JIRA_USER_EMAIL</code> 을 읽는다. 리포 · 세션에 쓰지 않는다.</p></li>
+<li><h3>이슈 키를 Jira 에서 받는다</h3><p><code>knots-sync.json</code> 의 <code>issueKey.source = "jira"</code>(설치 때 <code>--issue-source jira</code>). Intent 키는 에픽 키가 된다.</p></li>
+</ol>
+<h3>맞추기</h3>
+<pre class="cmd"><code><span class="p">$ </span>knots-sync sync jira --dry-run                     <span class="c"># 리포 → Jira: 에이전트 몫 전이 · 원격 링크(설명은 고치지 않는다)</span>
+<span class="p">$ </span>knots-sync sync jira --issue &lt;키&gt; --to &lt;상태&gt;          <span class="c"># 한 이슈만(에이전트 몫 전이만)</span>
+<span class="p">$ </span>knots-sync sync jira --approvals                   <span class="c"># Jira → 리포: 사람이 한 승인 전이를 approvals.md 로(REST, changelog)</span>
+<span class="p">$ </span>knots-sync intake --from jira:PAY-40 --name payment-revamp   <span class="c"># 에픽을 요구사항으로 접수</span></code></pre>
+<p>가져온 승인은 <code>경로: jira</code> 와 <code>근거: changelog &lt;id&gt;</code> 줄로 남는다. 모듈이 꺼져 있으면 <code>sync jira</code> 는 exit 0 으로 아무것도 하지 않는다. 이미 가져온 출처를 다시 <code>intake</code> 하면 diff 만 보이고(exit 4), <code>--yes</code> 로 반영한다.</p>
+<div class="unverified"><span class="box-title">실제 Jira</span><p>Jira 연동은 흉내 응답(가짜 REST)으로만 시험했다. 실제 Jira 프로젝트에서 상태 · 전이 ID 조회, 승인 전이 가져오기, 에픽 접수를 사람이 확인해야 한다(로드맵의 사람 확인 목록).</p></div>
+
+<h2 id="notion">notion — Notion 접수 출처</h2>
+<p>요구사항이 Notion 에 쌓이는 팀을 위한 모듈이다. Notion 페이지나 요구사항 데이터베이스 항목을 <code>intake.md</code> 로 가져온다.</p>
+<pre class="cmd"><code><span class="p">$ </span>knots-sync add notion
+<span class="p">$ </span>export NOTION_TOKEN=…          <span class="c"># 사람 셸에만. 리포에 쓰지 않는다</span>
+<span class="p">$ </span>knots-sync intake --from notion:https://www.notion.so/… --name refund-policy [--depth 1] [--yes]</code></pre>
+<ul>
+<li>가져오는 것은 <strong>사람이 터미널에서</strong> 한다. 에이전트 세션은 토큰을 읽거나 Notion 을 직접 부르지 않는다.</li>
+<li>Notion 통합(integration)에 가져올 페이지를 공유해 둔다. 하위 페이지는 <code>--depth</code> 단계(기본 1)만 따라가고 파일 · 이미지는 첨부로 받는다.</li>
+<li>가져온 글은 <code>trust: untrusted</code>. <code>intake.md</code> 머리 <code>source: {type, ref, url, importedAt, version}</code> 가 출처다. 가져온 뒤의 원본은 리포다. 다시 가져오면 바뀐 부분을 diff 로 보이고 <code>--yes</code> 전에는 덮지 않는다.</li>
+<li>속성 대응은 <code>knots-sync.json</code> 의 <code>notion</code> 절(<code>database</code> · <code>properties</code> · <code>kindMap</code> · <code>writeBack</code>). <code>writeBack</code> 은 기본 꺼짐 — 킷은 Notion 에 쓰지 않는다.</li>
+</ul>
+<div class="unverified"><span class="box-title">실제 Notion</span><p>흉내 응답으로만 시험했다. 실제 워크스페이스 · 데이터베이스 연결은 사람 확인 항목이다.</p></div>
+
+<h2 id="multi">multi-harness — 여러 리포</h2>
+<p>상위 리포 하나와 도메인 리포(submodule) 여럿을 하네스 하나로 다루는 팀을 위한 모듈이다. 공통 하네스 파일을 <strong>배포 단위</strong>(배포 대상 폴더, <code>tools/harness/units.json</code>)마다 복사하고, 리포 간 작업 순서와 안전 검사를 준다. 이 "배포 단위"는 Intent 의 Unit 과 다른 것이다 — Intent Unit 의 <code>repo</code> 값이 배포 단위 <code>id</code> 다.</p>
+<pre class="cmd"><code><span class="p">$ </span>knots-sync add multi-harness
+<span class="p">$ </span>knots-sync sync units --check            <span class="c"># 단위마다 공통 하네스가 맞는지(쓰지 않음). 줄 형식은 tools/harness/sync.py 와 같다</span>
+<span class="p">$ </span>knots-sync sync units                    <span class="c"># 복사</span>
+<span class="p">$ </span>knots-sync sync units --unit api --adopt <span class="c"># 한 단위만 · 있던 파일을 받아들이며</span>
+<span class="p">$ </span>python3 scripts/harness/check_submodules.py [--record &lt;이슈 키&gt;]</code></pre>
+<div class="table-wrap"><table>
+<caption>기능 하나가 도메인 리포 둘 이상을 건드릴 때(규칙 <code>cross-repo.md</code>)</caption>
+<thead><tr><th scope="col">단계</th><th scope="col">하는 일</th></tr></thead>
+<tbody>
+<tr><td>1 계약 확정</td><td>상위 리포에 계약 Unit(<code>kind: contract</code>) 이슈. design §6 승인이 계약 승인이다</td></tr>
+<tr><td>2 병렬 구현</td><td>도메인 리포마다 구현 세션 1개. 리포가 다르면 worktree 없이 각자 폴더에서</td></tr>
+<tr><td>3 경계 검증</td><td>상위 리포에서 계약 시험 + <code>check_submodules.py</code> + 도메인 간 경로 가드</td></tr>
+<tr><td>4 순서 커밋</td><td>제공 도메인 → 소비 도메인 → 상위 리포 포인터. 포인터를 먼저 커밋하지 않는다</td></tr>
+<tr><td>5 기록</td><td><code>check_submodules.py --record &lt;이슈 키&gt;</code> 로 상위 <code>specs-index.md</code> 의 그 이슈 행에 도메인별 submodule SHA</td></tr>
+</tbody></table></div>
+<ul>
+<li><code>check_submodules.py</code> 가 보는 것: 초기화 안 됨 · 포인터가 원격에 없는 커밋을 가리킴 · 커밋 안 된 변경이 있는데 포인터를 커밋하려 함 · 상위와 submodule 의 이슈 키가 다름. <code>affected</code> 검증은 바뀐 도메인 submodule 에만 이것을 부른다.</li>
+<li>도메인 파일이 다른 도메인 경로를 참조하면 <code>scripts/guards/no-cross-domain-paths.sh</code> 가 알린다. 예외는 <code>.agents/guards/cross-domain-allow.txt</code> 에 <code>경로 사유</code> 로. 경고로 시작하고 위반이 0건이 되면 강제로 올린다.</li>
+<li>하위 단위는 <code>.agents/harness.json</code> 으로 자기 하네스 루트를 표시한다. 훅과 스크립트는 작업 폴더에서 위로 올라가며 가장 가까운 <code>knots-sync.json</code> 또는 <code>harness.json</code> 을 루트로 쓴다.</li>
+<li>submodule 이 있는 상위 리포는 worktree 로 만들지 않는다(git 이 권하지 않는다). worktree 는 도메인 리포 단위로만.</li>
+</ul>
+
+</article>
+<nav class="pager" aria-label="이전 장 · 다음 장"><a class="prev" href="entire.html" rel="prev"><small>← 이전</small>Entire 모듈</a><a class="next" href="ops.html" rel="next"><small>다음 →</small>배포 · 운영 · 지표</a></nav>
+</main>
+</div>
+<footer class="site-footer">knots-sync(약어 kns) 사용 안내서 · 정적 HTML · 외부 글꼴 · 스크립트 없음</footer>
+</body>
+</html>

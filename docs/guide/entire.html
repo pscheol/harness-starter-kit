@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="커밋별 대화 체크포인트">
+<title>Entire 모듈 — knots-sync 사용 안내서</title>
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="site-header">
+<a class="brand" href="index.html">knots-sync<span>사용 안내서</span></a>
+<span class="site-meta">CLI 2.0.0-alpha.0 기준 · 2026-11-24 · 저장소 harness-starter-kit</span>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="안내서 목차">
+<p class="toc-title">안내서 목차</p>
+<ol>
+<li class="toc-group">시작</li>
+<li><a href="index.html"><span class="n">00</span><span>시작하기</span></a></li>
+<li><a href="concepts.html"><span class="n">01</span><span>개념</span></a></li>
+<li><a href="install.html"><span class="n">02</span><span>설치</span></a></li>
+<li class="toc-group">쓰기</li>
+<li><a href="daily-flow.html"><span class="n">03</span><span>하루 흐름</span></a></li>
+<li><a href="dashboard.html"><span class="n">04</span><span>관리 페이지</span></a></li>
+<li><a href="cli.html"><span class="n">05</span><span>CLI 명령 참고</span></a></li>
+<li class="toc-group">모듈</li>
+<li><a href="aidlc.html"><span class="n">06</span><span>AI-DLC 모듈</span></a></li>
+<li><a href="entire.html" aria-current="page"><span class="n">07</span><span>Entire 모듈</span></a></li>
+<li><a href="modules.html"><span class="n">08</span><span>jira · notion · multi-harness</span></a></li>
+<li class="toc-group">운영과 팀</li>
+<li><a href="ops.html"><span class="n">09</span><span>배포 · 운영 · 지표</span></a></li>
+<li><a href="roles.html"><span class="n">10</span><span>역할별 활용 가이드</span></a></li>
+<li class="toc-group">옮기기와 도움</li>
+<li><a href="migration.html"><span class="n">11</span><span>옛 이름에서 옮기기</span></a></li>
+<li><a href="faq.html"><span class="n">12</span><span>문제 해결 · FAQ</span></a></li>
+</ol>
+</nav>
+<main id="main" tabindex="-1">
+<article>
+<p class="kicker">07 · 모듈</p>
+<h1>Entire 모듈</h1>
+<p class="lede">Entire(entireio 의 <code>entire</code> CLI)는 에이전트 대화를 커밋마다 체크포인트로 남긴다. <code>entire</code> 모듈은 그 기록을 <strong>구현 하네스 하나에만</strong> 켜고, 커밋 트레일러 · push 정책 · 비밀값 가림을 킷 규칙에 맞춘다. 기본은 꺼져 있다.</p>
+<nav class="on-page" aria-label="이 장의 절"><h2>이 장에서</h2><ol><li><a href="#what">무엇이 남나</a></li><li><a href="#add">켜기 — add entire</a></li><li><a href="#push">push 정책(결정 D6)</a></li><li><a href="#trailer">커밋 트레일러와 MR 플랫폼</a></li><li><a href="#checkpoints">체크포인트 보기 — checkpoints</a></li><li><a href="#remove">끄기 — remove entire</a></li><li><a href="#doctor">doctor 점검</a></li></ol></nav>
+
+<h2 id="what">무엇이 남나</h2>
+<ul>
+<li>구현 세션이 커밋할 때 커밋 메시지에 <code>Entire-Checkpoint: &lt;id&gt;</code> 트레일러가 붙고, 대화 기록은 <code>refs/entire/checkpoints/</code> 아래 ref 로 남는다.</li>
+<li>리뷰어는 "이 코드가 어떤 대화에서 나왔나"를 이슈 브랜치의 커밋별로 따라갈 수 있다.</li>
+<li>설정 <code>flow.record = "entire"</code>. 규칙 파일 <code>.agents/rules/entire-usage.md</code> 하나가 킷 몫이다.</li>
+<li>세션에 실리는 글은 0바이트, 훅은 구현 하네스에만 10개(e2e real 실측)다.</li>
+</ul>
+
+<h2 id="add">켜기 — <code>add entire</code></h2>
+<div class="human"><span class="box-title">처음은 일회용 HOME 에서</span><p><code>entire enable</code> 이 전역 git 설정에 손댄 일이 있었다. 처음 켤 때는 일회용 HOME 에서 시험하고, 실제 홈에서는 사람 터미널에서 한다. <code>doctor</code> 의 <code>global-hooks-path</code> 점검이 전역 <code>core.hooksPath</code> 를 본다.</p></div>
+<pre class="cmd"><code><span class="p">$ </span>entire --version                     <span class="c"># 검증 범위: &gt;=0.13 &lt;0.14 (0.x 라 좁게)</span>
+<span class="p">$ </span>knots-sync add entire --dry-run
+<span class="p">$ </span>knots-sync add entire</code></pre>
+<ol>
+<li><code>entire enable --agent &lt;구현 하네스&gt; --project</code> — 확인을 받고 실행한다. 하네스 이름은 claude → <code>claude-code</code>, codex → <code>codex</code>, cursor → <code>cursor</code>(Kiro 는 대상이 아니다). 리뷰 하네스가 같은 하네스여도 하나만 더한다.</li>
+<li><strong>push 정책</strong>을 정한다(아래).</li>
+<li>Entire 파일(<code>.entire/**</code>)과 훅을 <code>external:entire</code> 로 등록한다.</li>
+<li>규칙 <code>entire-usage.md</code> 를 깔고 <code>flow.record = "entire"</code>.</li>
+<li><code>doctor</code> 의 entire 점검을 돈다.</li>
+</ol>
+<p>도구가 없으면 exit 5 와 설치 안내(macOS <code>brew install --cask entireio/tap/entire</code>, Linux <code>curl -fsSL https://entire.com/install.sh | bash</code>). <code>--install-tools</code> 는 사람 터미널에서만이다.</p>
+
+<h2 id="push">push 정책(결정 D6)</h2>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">원격 공개 여부</th><th scope="col">기본 정책</th></tr></thead>
+<tbody>
+<tr><td>private · internal(<code>gh repo view --json visibility</code> · <code>glab repo view -F json</code>)</td><td>같은 원격에 체크포인트 ref 를 올린다</td></tr>
+<tr><td>public</td><td>올리지 않는다. 별도 비공개 원격이 있으면 <code>entire configure --checkpoint-remote gitlab:&lt;그룹&gt;/&lt;리포&gt;</code>(gitlab.com)를 안내한다</td></tr>
+<tr><td>확인 실패(CLI 없음 · 인증 없음 · 자체 호스팅)</td><td>public 으로 보고 올리지 않는다</td></tr>
+</tbody></table></div>
+<p>대화 기록에는 코드 밖의 맥락이 들어가므로, 공개 저장소에는 기본으로 올리지 않는다. 비밀값 가림은 킷 비밀값 가드와 같은 목록(<code>*_KEY</code> · <code>*_SECRET</code> · <code>*_TOKEN</code> · <code>*_PASSWORD</code> 대입, AWS 키, 개인 키 블록, JWT, <code>.env</code> 내용)을 쓴다.</p>
+
+<h2 id="trailer">커밋 트레일러와 MR 플랫폼</h2>
+<ul>
+<li>킷의 커밋 메시지 검사(git 훅 · 가드)는 <code>Entire-Checkpoint:</code> 트레일러를 지우거나 거부하지 않는다(<code>trailer-allowed</code> 점검).</li>
+<li>GitLab 의 squash 병합 기본 메시지는 커밋 본문을 버려 트레일러가 사라진다. <code>doctor</code> 가 "Settings → Merge requests → Squash commit message template 을 <code>%{title} (%{reference})</code> 다음 줄에 <code>%{all_commits}</code> 로"를 알린다(<code>gitlab-squash-template</code>).</li>
+<li>entire.io 의 웹 보기는 GitHub 전용이다. GitLab 리포는 아래 <code>checkpoints</code> 명령으로 본다.</li>
+<li>같은 폴더에 살아 있는 구현 세션이 둘이면 기록이 섞인다 — <code>doctor</code> · 관리 페이지가 "둘째 세션은 worktree 로"를 알린다(<code>concurrent-sessions</code>).</li>
+</ul>
+
+<h2 id="checkpoints">체크포인트 보기 — <code>checkpoints</code></h2>
+<div class="block"><span class="block-label"><span class="tag">--help</span>knots-sync checkpoints</span>
+<pre><code>knots-sync checkpoints [--issue &lt;키&gt;] [--json] | checkpoints &lt;체크포인트 id&gt; [--json] — Entire 체크포인트 목록(이슈 브랜치 커밋의 Entire-Checkpoint 트레일러) · 설명(entire checkpoint explain, 10초 제한)</code></pre></div>
+<ul>
+<li><strong>목록</strong>: <code>git log origin/&lt;base&gt;..&lt;이슈 브랜치&gt;</code> 의 트레일러를 모으고, 각 id 가 <code>refs/entire/checkpoints/</code> 에 있으면 <code>local</code>, 없으면 "원격에만 또는 없음"이다. <code>--issue</code> 를 빼면 지금 브랜치.</li>
+<li><strong>설명</strong>: <code>entire checkpoint explain &lt;id&gt;</code> 를 10초 제한으로 부르고 출력을 글자 그대로(제어 문자 제거 · 상한) 보여 준다. 신뢰하지 않는 내용으로 다룬다.</li>
+<li>읽기만 한다. 체크포인트 ref 를 만들거나 push 하지 않는다. 모델도 부르지 않는다.</li>
+<li>관리 페이지 API 는 <code>GET /api/v1/checkpoints?issue=&lt;키&gt;</code> · <code>/checkpoints/{id}</code> 다. 이 판의 화면에는 체크포인트 전용 화면이 없다 — CLI 로 본다. 내보내기에는 id 만 넣고 설명은 넣지 않는다.</li>
+</ul>
+<div class="block"><span class="block-label"><span class="tag">실제 출력</span>모듈이 꺼진 리포에서 knots-sync checkpoints</span>
+<pre><code>entire 모듈이 꺼져 있습니다(knots-sync add entire)</code></pre></div>
+
+<h2 id="remove">끄기 — <code>remove entire</code></h2>
+<p>킷 몫(규칙 · 등록)을 빼고 <code>flow.record = "none"</code>. 끝에 "기록을 끄려면 사람이 <code>entire agent remove &lt;구현 하네스&gt;</code> 또는 <code>entire disable</code>(전부 지우려면 <code>--uninstall</code>)을 실행한다(킷은 실행하지 않는다). <code>.entire/</code> 와 체크포인트 ref 는 그대로 남는다"를 알린다.</p>
+
+<h2 id="doctor">doctor 점검</h2>
+<p><code>tool-version</code> · <code>implement-only</code>(구현 하네스에만 켜졌나) · <code>trailer-allowed</code> · <code>push-policy</code> · <code>global-hooks-path</code> · <code>gitlab-squash-template</code> · <code>concurrent-sessions</code>.</p>
+<div class="unverified"><span class="box-title">살아 있는 체크포인트</span><p>e2e real 모드는 entire 0.13.4 를 실제로 설치해 켜기 · 끄기 · 외부 파일 불변을 확인했다. 하지만 체크포인트는 살아 있는 구현 세션의 훅이 만들기 때문에, "실제 세션에서 체크포인트가 생기고 <code>checkpoints</code> 에 보이는가"(E4)는 정해서 건너뛰었다(결정 D9). stub 모드는 가짜 트레일러로 목록 · 설명 경로만 시험했다. 팀이 처음 켤 때 한 번 확인한다.</p></div>
+
+</article>
+<nav class="pager" aria-label="이전 장 · 다음 장"><a class="prev" href="aidlc.html" rel="prev"><small>← 이전</small>AI-DLC 모듈</a><a class="next" href="modules.html" rel="next"><small>다음 →</small>jira · notion · multi-harness</a></nav>
+</main>
+</div>
+<footer class="site-footer">knots-sync(약어 kns) 사용 안내서 · 정적 HTML · 외부 글꼴 · 스크립트 없음</footer>
+</body>
+</html>

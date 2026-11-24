@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="플러그인 · CLI · 하네스별 설치와 확인">
+<title>설치 — knots-sync 사용 안내서</title>
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="site-header">
+<a class="brand" href="index.html">knots-sync<span>사용 안내서</span></a>
+<span class="site-meta">CLI 2.0.0-alpha.0 기준 · 2026-11-24 · 저장소 harness-starter-kit</span>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="안내서 목차">
+<p class="toc-title">안내서 목차</p>
+<ol>
+<li class="toc-group">시작</li>
+<li><a href="index.html"><span class="n">00</span><span>시작하기</span></a></li>
+<li><a href="concepts.html"><span class="n">01</span><span>개념</span></a></li>
+<li><a href="install.html" aria-current="page"><span class="n">02</span><span>설치</span></a></li>
+<li class="toc-group">쓰기</li>
+<li><a href="daily-flow.html"><span class="n">03</span><span>하루 흐름</span></a></li>
+<li><a href="dashboard.html"><span class="n">04</span><span>관리 페이지</span></a></li>
+<li><a href="cli.html"><span class="n">05</span><span>CLI 명령 참고</span></a></li>
+<li class="toc-group">모듈</li>
+<li><a href="aidlc.html"><span class="n">06</span><span>AI-DLC 모듈</span></a></li>
+<li><a href="entire.html"><span class="n">07</span><span>Entire 모듈</span></a></li>
+<li><a href="modules.html"><span class="n">08</span><span>jira · notion · multi-harness</span></a></li>
+<li class="toc-group">운영과 팀</li>
+<li><a href="ops.html"><span class="n">09</span><span>배포 · 운영 · 지표</span></a></li>
+<li><a href="roles.html"><span class="n">10</span><span>역할별 활용 가이드</span></a></li>
+<li class="toc-group">옮기기와 도움</li>
+<li><a href="migration.html"><span class="n">11</span><span>옛 이름에서 옮기기</span></a></li>
+<li><a href="faq.html"><span class="n">12</span><span>문제 해결 · FAQ</span></a></li>
+</ol>
+</nav>
+<main id="main" tabindex="-1">
+<article>
+<p class="kicker">02 · 설치</p>
+<h1>설치</h1>
+<p class="lede">설치는 두 번 일어난다. 먼저 <strong>내 컴퓨터</strong>의 하네스에 킷 스킬(플러그인)을 깔고, 그 다음 <strong>리포</strong>마다 킷을 깐다. 리포에 까는 일은 플러그인 스킬 <code>/kns:bootstrap</code> 으로 해도 되고 CLI <code>knots-sync init</code> 으로 해도 된다. 둘은 같은 설치기를 부른다.</p>
+<nav class="on-page" aria-label="이 장의 절"><h2>이 장에서</h2><ol><li><a href="#layers">두 층의 스킬</a></li><li><a href="#before">준비물</a></li><li><a href="#claude">Claude Code</a></li><li><a href="#codex">Codex</a></li><li><a href="#kiro">Kiro</a></li><li><a href="#cursor">Cursor</a></li><li><a href="#cli">CLI — knots-sync · kns</a></li><li><a href="#init">리포에 깔기 — init</a></li><li><a href="#agents">하네스 고르기와 나중에 더하기</a></li><li><a href="#existing">이미 손으로 만든 하네스가 있는 리포</a></li><li><a href="#update">올리기 · 되살리기 · 지우기</a></li><li><a href="#check">설치 확인 목록</a></li><li><a href="#layers-ext">회사 팩과 개인 층(선택)</a></li></ol></nav>
+
+<h2 id="layers">두 층의 스킬</h2>
+<p>이름이 모두 <code>kns</code> 로 시작하지만 사는 곳이 다르다. 먼저 구분해 둔다.</p>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">층</th><th scope="col">스킬</th><th scope="col">사는 곳</th><th scope="col">언제</th></tr></thead>
+<tbody>
+<tr><td>킷 스킬(10종)</td><td><code>kns:bootstrap</code> · <code>kns:jvm-setup</code> · <code>kns:jvm-hexagonal</code> · <code>kns:jvm-layered</code> · <code>kns:jvm-layered-multimodule</code> · <code>kns:web-setup</code> · <code>kns:electron-setup</code> · <code>kns:jira-setup</code> · <code>kns:agent-add</code> · <code>kns:update</code></td><td>내 컴퓨터의 하네스 플러그인(<code>kns:</code> 네임스페이스). Kiro 는 <code>~/.kiro/skills/kns-*</code></td><td>리포에 골격을 깔거나 킷을 올릴 때</td></tr>
+<tr><td>프로젝트 스킬(15종)</td><td><code>kns-intent</code> · <code>kns-plans</code> · <code>kns-specify</code> · <code>kns-clarify</code> · <code>kns-checklist</code> · <code>kns-plan</code> · <code>kns-tasks</code> · <code>kns-analyze</code> · <code>kns-implement</code> · <code>kns-maintain</code> · <code>kns-review</code> · <code>kns-scan</code> · <code>kns-docs</code> · <code>kns-converge</code> · <code>kns-harness</code></td><td>리포 안(<code>.agents/skills/</code> 원본, 하네스 폴더에 복사본)</td><td>매일 개발할 때</td></tr>
+</tbody></table></div>
+<p>플러그인 스킬은 <code>kns:</code> 네임스페이스를 가져서 프로젝트 스킬과 부딪히지 않는다. 프로젝트 스킬에 <code>kns-</code> 를 붙인 것은 <code>/plan</code> · <code>/analyze</code> 같은 흔한 이름이 다른 플러그인과 부딪히지 않게 하려는 것이다.</p>
+
+<h2 id="before">준비물</h2>
+<ul>
+<li><strong>Node 18.3 이상</strong> — CLI 와 관리 페이지. 없으면 플러그인의 <code>kit.sh</code> 가 v1 설치 스크립트로 내려간다(아래 <a href="#cli">CLI</a>). 런타임 의존성은 0개다.</li>
+<li><strong>git</strong> — 승인자 신원(<code>user.email</code>)과 변경 범위 계산에 쓴다.</li>
+<li><strong>python3 · bash</strong> — 리포 스크립트(<code>scripts/verify.sh</code> · <code>scripts/harness/*.py</code>)가 Node 없이 돈다. 팀원 중 Node 가 없는 사람도 검증 · 승인 · 보드를 쓸 수 있다.</li>
+<li>쓰는 하네스 하나 이상 — Claude Code · Codex · Cursor · Kiro.</li>
+</ul>
+
+<h2 id="claude">Claude Code</h2>
+<ol class="steps">
+<li><h3>마켓플레이스를 더하고 플러그인을 깐다</h3>
+<pre class="cmd"><code><span class="c"># Claude Code 안에서. 로컬 경로로 등록</span>
+/plugin marketplace add /path/to/harness-starter-kit
+/plugin install kns@knots-sync
+
+<span class="c"># GitHub 에 올린 저장소라면</span>
+/plugin marketplace add &lt;owner&gt;/harness-starter-kit</code></pre></li>
+<li><h3>Claude Code 를 다시 켠다</h3><p>플러그인과 스킬 목록은 세션이 시작될 때 읽힌다. <code>/plugin</code> 으로 <code>kns</code> 가 보이는지 확인한다.</p></li>
+<li><h3>리포에 깐다</h3>
+<pre class="cmd"><code>/kns:bootstrap                          <span class="c"># 현재 폴더. 스택 · 변형은 판단 후 애매하면 묻는다</span>
+/kns:bootstrap ~/work/api --dry-run     <span class="c"># 미리보기</span>
+/kns:jvm-setup                          <span class="c"># JVM 전용 입구 — 아키텍처 8종 중 고르기</span>
+/kns:web-setup                          <span class="c"># 웹 프론트엔드 — 3종</span>
+/kns:electron-setup                     <span class="c"># Electron — 3종</span></code></pre>
+<p>자연어로도 된다: "kns:bootstrap 스킬로 이 리포에 하네스 골격을 깔아줘".</p></li>
+</ol>
+
+<h2 id="codex">Codex</h2>
+<pre class="cmd"><code><span class="p">$ </span>codex plugin marketplace add /path/to/harness-starter-kit
+<span class="p">$ </span>codex plugin add kns@knots-sync</code></pre>
+<p>Codex 플러그인 매니페스트에는 커맨드 칸이 없어 스킬로 부른다: <code>/skills</code> 목록에서 고르거나 <code>$kns:bootstrap</code>. 리포에 깐 뒤의 프로젝트 스킬은 <code>$kns-specify</code> 처럼 <code>$</code> 로 부른다. 확인은 <code>codex plugin list</code>.</p>
+<div class="note"><span class="box-title">Codex 스킬 경로</span><p>프로젝트 로컬 <code>.codex/prompts/</code> 는 Codex 가 찾는 자리가 아니다(유저 홈 전용이고 custom prompts 자체가 사라질 예정이다). 그래서 Codex 공식 프로젝트 스킬 경로인 <code>.agents/skills/</code> 를 쓴다 — 원본이 곧 Codex 스킬이다.</p></div>
+
+<h2 id="kiro">Kiro</h2>
+<p>Kiro 에는 플러그인 마켓플레이스가 없어서 킷 저장소의 <code>install-kiro.sh</code> 가 그 자리를 대신한다. 스킬 폴더를 통째로 <strong>복사</strong>하므로 설치 뒤에는 킷 저장소를 옮기거나 지워도 그대로 돈다.</p>
+<pre class="cmd"><code><span class="p">$ </span>bash install-kiro.sh                      <span class="c"># ~/.kiro/skills/ 에 킷 스킬 설치</span>
+<span class="p">$ </span>bash install-kiro.sh --dry-run            <span class="c"># 계획만</span>
+<span class="p">$ </span>bash install-kiro.sh --force              <span class="c"># 기존 것도 덮어쓴다(킷을 올렸을 때)</span>
+<span class="p">$ </span>bash install-kiro.sh --uninstall          <span class="c"># 이 스크립트가 깐 것만 지운다</span>
+<span class="p">$ </span>bash install-kiro.sh --home=/path/.kiro   <span class="c"># 대상 홈(환경 변수 KIRO_HOME 도 된다)</span></code></pre>
+<ul>
+<li>스킬은 <code>~/.kiro/skills/kns-&lt;명령&gt;/SKILL.md</code> 로 깔린다(예: <code>kns-bootstrap</code> 에는 <code>setup.sh</code> · <code>lib/</code> · <code>templates/</code> 까지 함께 간다). 옛 이름(<code>hx-*</code>) 설치 기록이 있으면 그 폴더만 치운다.</li>
+<li>Kiro 스킬 규약은 <code>&lt;홈&gt;/skills/&lt;스킬명&gt;/SKILL.md</code> 다. 한 겹 더 감싸면(<code>skills/knots-sync/skills/…</code>) 인식되지 않는다 — 저장소를 통째로 복사해 넣으면 이 함정에 빠진다.</li>
+<li>설치 기록은 <code>~/.kiro/.knots-sync-manifest.json</code> 에 남고, <code>--uninstall</code> 은 그 기록에 적힌 폴더만 지운다.</li>
+<li>세션 시작 때 읽히므로 설치 뒤 <code>kiro-cli</code> 를 다시 켠다.</li>
+</ul>
+<p>이 스크립트가 까는 것은 <strong>킷 스킬</strong>이다. 리포 쪽 Kiro 배선(<code>.kiro/steering</code> · <code>.kiro/skills</code> · <code>.kiro/agents</code> · <code>.kiro/hooks</code>)은 리포에 킷을 깔 때 <code>--agents kiro</code> 로 생긴다.</p>
+
+<h2 id="cursor">Cursor</h2>
+<p>Cursor 용 플러그인 경로는 따로 없다. 리포에 킷을 깔 때 하네스로 <code>cursor</code> 를 고르면 된다. CLI 는 킷 저장소나 다른 하네스의 플러그인 폴더에 있는 것을 쓴다(아래 <a href="#cli">CLI</a>).</p>
+<pre class="cmd"><code><span class="p">$ </span>knots-sync init --agents claude,cursor     <span class="c"># 새로 깔 때</span>
+<span class="p">$ </span>knots-sync add cursor                     <span class="c"># 이미 깐 리포에 더할 때</span></code></pre>
+<p>Cursor 는 <code>.cursor/commands/kns-*.md</code>(15개)와 <code>.cursor/rules/</code>(22개)를 받고, 채팅에서 <code>/kns-specify</code> 처럼 부른다.</p>
+<div class="unverified"><span class="box-title">Cursor 규칙의 globs</span><p>Cursor 규칙의 <code>globs</code> 쉼표 목록, Kiro <code>fileMatchPattern</code> 배열이 실제 도구에서 의도대로 걸리는지는 사람이 확인해야 할 항목으로 남아 있다.</p></div>
+
+<h2 id="cli">CLI — <code>knots-sync</code> · <code>kns</code></h2>
+<p>CLI 는 Node 파일 하나다(런타임 의존성 0). 패키지가 내는 실행 이름은 <code>knots-sync</code> · <code>kns</code> · <code>harness-kit</code>(옛 이름, 한동안) 셋이다.</p>
+<div class="warn"><span class="box-title">지금은 npx 로 부르지 않는다</span><p>npm 배포 전이라 <code>npx knots-sync</code> 가 같은 이름의 남의 패키지를 받을 수 있다. 결정 D3 에 따라 먼저 <code>npx github:&lt;owner&gt;/harness-starter-kit</code> 로 배포하고, v2.2 까지 명령이 그대로면 npm 에 올린다. 그 전에는 아래 둘 중 하나를 쓴다.</p></div>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">방법</th><th scope="col">명령</th><th scope="col">비고</th></tr></thead>
+<tbody>
+<tr><td>킷 저장소의 CLI 직접</td><td><code>node &lt;킷&gt;/plugins/kns/skills/bootstrap/bin/knots-sync.js &lt;명령&gt;</code></td><td>셸 별칭 <code>alias knots-sync='node …/knots-sync.js'</code> 를 권한다</td></tr>
+<tr><td>플러그인 안의 입구</td><td><code>bash &lt;플러그인&gt;/skills/bootstrap/kit.sh &lt;명령&gt;</code></td><td>Node 18.3 이상이면 CLI 를 그대로 부르고, 없으면 v1 스크립트로 내려간다(v2.0 동안만)</td></tr>
+</tbody></table></div>
+<p><code>kit.sh</code> 가 Node 없이 내려가는 길: <code>init</code> · <code>plan</code> → <code>setup.sh</code>(plan 은 <code>--dry-run</code>), <code>update</code> → <code>update.sh</code>, <code>add</code> → <code>add-agent.sh</code>. <code>remove</code> · <code>outdated</code> · <code>doctor</code> · <code>repair</code> · <code>uninstall</code> · <code>list</code> 는 CLI 에만 있어 exit 5 로 멈춘다. <code>kit.sh --which</code> 는 <code>cli</code> 또는 <code>legacy</code> 한 줄을 낸다.</p>
+
+<h2 id="init">리포에 깔기 — <code>init</code></h2>
+<p>순서는 늘 같다: <code>plan</code> 으로 보고 → <code>init</code> 으로 깔고 → <code>doctor</code> 로 확인하고 → 커밋한다. 실제 출력은 <a href="index.html#quickstart">10분 시작</a>에 있다.</p>
+<div class="table-wrap"><table>
+<caption><code>init</code> · <code>plan</code> 플래그(<code>knots-sync --help</code> 원문 기준)</caption>
+<thead><tr><th scope="col">플래그</th><th scope="col">뜻</th><th scope="col">생략하면</th></tr></thead>
+<tbody>
+<tr><td><code>--stack</code></td><td><code>jvm</code> · <code>python</code> · <code>go</code> · <code>web</code> · <code>electron</code></td><td>빌드 파일로 판단(<code>build.gradle.kts</code>/<code>pom.xml</code> → jvm, <code>pyproject.toml</code> → python, <code>go.mod</code> → go, <code>package.json</code>+electron 의존 → electron, <code>package.json</code> 만 → web)</td></tr>
+<tr><td><code>--arch</code></td><td>스택별 아키텍처 변형(아래 표)</td><td>기존 레이아웃에서 추론. 일회용 python 리포에서는 <code>hexagonal</code> 로 잡혔다</td></tr>
+<tr><td><code>--domain</code> · <code>--lang</code></td><td>도메인(<code>backend</code> · frontend …) · 언어(JVM 의 Kotlin/Java)</td><td>스택에서 정한다</td></tr>
+<tr><td><code>--agents</code></td><td>하네스 목록 <code>claude,codex,cursor,kiro</code> 또는 <code>all</code></td><td>리포 · 실행 환경에서 감지한다(Claude Code 세션 안에서 돌리면 <code>claude</code>). 감지하지 못하면 킷 기본 목록</td></tr>
+<tr><td><code>--modules</code></td><td>선택 모듈 목록 · <code>all</code> · <code>none</code></td><td>없음. 외부 도구 모듈(aidlc · entire)은 이름을 줄 때만 켠다</td></tr>
+<tr><td><code>--name</code> · <code>--slug</code> · <code>--package-ns</code> · <code>--protected-path</code> · <code>--token KEY=VALUE</code></td><td>템플릿 치환값</td><td>폴더 이름 등에서</td></tr>
+<tr><td><code>--issue-source kit|jira</code> · <code>--issue-prefix</code></td><td>이슈 키를 어디서 받나 · 킷이 만들 때의 접두</td><td><code>kit</code>, 접두는 프로젝트 이름에서(일회용 리포 <code>demo-app</code> 은 <code>DEMOAPP</code>)</td></tr>
+<tr><td><code>--base</code></td><td>기준 브랜치(<code>git.base</code>)</td><td><code>develop</code>(결정 D4)</td></tr>
+<tr><td><code>--adopt</code></td><td>손으로 만든 하네스가 있는 리포에 깔 때. 있던 파일을 <code>owner: user</code> 로 남긴다</td><td>—</td></tr>
+<tr><td><code>--force</code></td><td>있던 파일도 덮는다</td><td>덮지 않는다(<code>skip-user</code>)</td></tr>
+<tr><td><code>--no-register</code></td><td>전역 등록부에 더하지 않는다</td><td>등록한다</td></tr>
+<tr><td><code>--install-tools</code> · <code>--allow-unverified</code></td><td>외부 도구가 없을 때 사람 터미널에서만 설치 · 검증 범위 밖 판 허용</td><td>—</td></tr>
+<tr><td>공통</td><td><code>--cwd</code> <code>--dry-run</code> <code>--yes</code> <code>--json</code> <code>--templates</code> <code>--quiet</code> <code>--no-color</code></td><td>—</td></tr>
+</tbody></table></div>
+<div class="table-wrap"><table>
+<caption>스택과 아키텍처 변형</caption>
+<thead><tr><th scope="col">스택</th><th scope="col">변형</th><th scope="col">전용 입구</th></tr></thead>
+<tbody>
+<tr><td>jvm</td><td>hexagonal · hexagonal-nested · hexagonal-standalone · layered · layered-multimodule · modulith · feature · multimodule</td><td><code>/kns:jvm-setup</code> (레시피: <code>kns:jvm-hexagonal</code> · <code>kns:jvm-layered</code> · <code>kns:jvm-layered-multimodule</code>)</td></tr>
+<tr><td>python</td><td>hexagonal · layered · modular · django · ai-service</td><td><code>/kns:bootstrap</code></td></tr>
+<tr><td>go</td><td>hexagonal · layered · feature · flat</td><td><code>/kns:bootstrap</code></td></tr>
+<tr><td>web</td><td>nextjs-app · react-spa · feature-sliced</td><td><code>/kns:web-setup</code></td></tr>
+<tr><td>electron</td><td>main-renderer · feature · monorepo</td><td><code>/kns:electron-setup</code></td></tr>
+</tbody></table></div>
+<p>web · electron 은 frontend 도메인 규칙(디자인 시스템 · 접근성 · UI 상태 · 성능)을 함께 받는다. 변형을 고르는 기준은 <a href="../guides/02-choosing-architecture.md">아키텍처 선택 가이드</a>, JVM 레시피는 <a href="../guides/03-jvm-architecture-recipes.md">JVM 실전 레시피</a>에 있다.</p>
+
+<h3 id="what-installed">깔리고 나면</h3>
+<p>python · claude,codex 로 깐 일회용 리포의 맨 위 폴더다.</p>
+<pre><code>AGENTS.md              진입점 목차(모든 하네스가 읽는다)
+CLAUDE.md              @AGENTS.md + Claude 전용 킷 블록(knots-sync:begin … end)
+ARCHITECTURE.md
+.agents/               원본 — rules/ skills/ roles/ hooks.json docs/ knots-sync.json knots-sync.lock …
+.claude/               skills/ rules/ agents/ settings.json
+.codex/                agents/ config.toml hooks.json
+scripts/               verify.sh · new-feature.sh · new-intent.sh · board.sh · harness/ · hooks/ · git-hooks/
+tools/docs/            기능 문서 생성기
+docs/features/         기능 문서(설치 끝에 한 번 생성)
+.github/ · .gitlab-ci.yml · ci/   CI 템플릿(fast · affected · full)</code></pre>
+<p><code>AGENTS.md</code> 5,971바이트 + <code>CLAUDE.md</code> 751바이트였다(상한 24KB). 커밋할 것: 위 전부. 커밋하지 않을 것: <code>.agents/state/</code> · <code>.agents/reports/</code> · <code>.agents/local/</code>(<code>.gitignore</code> 에 들어간다).</p>
+<p>git 훅을 켜려면 <code>bash scripts/install-git-hooks.sh</code> 를 한 번 돌린다(pre-commit 의 승인 기록 검사 · pre-push 의 이슈 폴더 검사 등).</p>
+
+<h2 id="agents">하네스 고르기와 나중에 더하기</h2>
+<p>쓰는 하네스만 고른다. 고르지 않은 하네스의 폴더는 만들지 않는다.</p>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">하네스</th><th scope="col">리포에 생기는 것</th><th scope="col">프로젝트 스킬 부르기</th></tr></thead>
+<tbody>
+<tr><td>Claude Code</td><td><code>.claude/skills/kns-*</code>(복사본) · <code>.claude/rules/</code> · <code>.claude/agents/</code> · <code>settings.json</code> · <code>CLAUDE.md</code> 블록</td><td><code>/kns-specify</code></td></tr>
+<tr><td>Codex</td><td><code>.codex/agents/*.toml</code> · <code>config.toml</code> · <code>hooks.json</code>. 스킬은 <code>.agents/skills/</code></td><td><code>$kns-specify</code>(목록 <code>/skills</code>)</td></tr>
+<tr><td>Cursor</td><td><code>.cursor/commands/kns-*.md</code> · <code>.cursor/rules/</code></td><td><code>/kns-specify</code></td></tr>
+<tr><td>Kiro(IDE)</td><td><code>.kiro/steering/kns-*.md</code>(<code>inclusion: manual</code>) · 규칙 steering</td><td>슬래시 메뉴에서 고른다</td></tr>
+<tr><td>Kiro(CLI)</td><td><code>.kiro/skills/kns-*/SKILL.md</code> · <code>.kiro/agents/</code> · <code>.kiro/hooks/</code></td><td><code>/kns-specify</code></td></tr>
+</tbody></table></div>
+<div class="block"><span class="block-label"><span class="tag">실제 출력</span>knots-sync add cursor kiro --dry-run (create 줄 일부)</span>
+<pre><code>knots-sync add — /private/tmp/kns-guide-fx/demo-app
+  하네스 claude,codex → claude,codex,cursor,kiro · 모듈 none → none
+  create        .kiro/README.md
+  파일: create 1
+  create        .cursor/commands/kns-analyze.md
+  …</code></pre></div>
+<p>모두 켠 경우 Cursor 는 commands 15 · rules 22, Kiro 는 steering 37 · skills 15 · hooks 8 · agents 7 개를 받는다(일회용 리포의 <code>plan --agents all</code>). 빼려면 <code>knots-sync remove cursor</code> — 사람이 고치지 않은 그 하네스 몫만 지우고, 고친 파일을 남기면 exit 4 로 알린다. 플러그인 스킬 <code>/kns:agent-add</code> 도 같은 일을 한다.</p>
+
+<h2 id="existing">이미 손으로 만든 하네스가 있는 리포</h2>
+<p><code>init --adopt</code> 로 깐다. 있던 파일은 <code>owner: user</code> 로 남아 이후 <code>update</code> 가 건드리지 않는다. 그래도 두 파일은 한 번 바뀐다 — <code>CLAUDE.md</code> 에 킷 블록이 병합되고, 보드 블록(<code>BOARD:BEGIN</code>)이 있는 문서에 보드가 덧붙는다. 적용 뒤 <code>git diff --stat</code> 의 변경 파일이 이 둘뿐인지 눈으로 본다.</p>
+<pre class="cmd"><code><span class="p">$ </span>knots-sync init --adopt --dry-run     <span class="c"># 목록 검토</span>
+<span class="p">$ </span>knots-sync init --adopt               <span class="c"># 사람이 승인한 뒤</span>
+<span class="p">$ </span>knots-sync doctor --check             <span class="c"># exit 0 이면 끝</span></code></pre>
+<p>옛 이름(harness-kit)이나 v1 으로 깐 리포는 <code>init</code> 이 아니라 <code>update</code> 로 옮긴다 → <a href="migration.html">옛 이름에서 옮기기</a>.</p>
+
+<h2 id="update">올리기 · 되살리기 · 지우기</h2>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">하고 싶은 것</th><th scope="col">명령</th><th scope="col">동작</th></tr></thead>
+<tbody>
+<tr><td>새 판이 있나</td><td><code>knots-sync outdated [--check]</code></td><td>설치 · CLI · 소스 최신 태그를 비교. 소스에 닿지 못하면 "확인 못 함"과 exit 0. 기본 원격은 킷 저장소</td></tr>
+<tr><td>킷을 새 판으로</td><td><code>knots-sync update --dry-run</code> → <code>update</code>(또는 <code>/kns:update</code>)</td><td>고치지 않은 킷 파일은 바꾸고, 고친 파일은 <code>&lt;경로&gt;.new</code> 로 옆에 둔다. 충돌이 있으면 exit 4</td></tr>
+<tr><td>지워진 킷 파일 되살리기</td><td><code>knots-sync repair [--only missing,drifted,stale,merge]</code></td><td>같은 판으로 되살린다. 고친 파일은 그대로 둔다</td></tr>
+<tr><td>킷 걷어내기</td><td><code>knots-sync uninstall --dry-run</code> → <code>uninstall --yes</code></td><td>킷 소유이면서 고치지 않은 파일만 지운다. <code>--keep-state</code> · <code>--keep-packs</code></td></tr>
+<tr><td>Kiro 킷 스킬 올리기</td><td><code>bash install-kiro.sh --force</code></td><td>설치 기록의 폴더를 새 판으로</td></tr>
+</tbody></table></div>
+<p><code>.new</code> 병합은 <code>diff -u &lt;파일&gt; &lt;파일&gt;.new</code> 로 보고 필요한 줄만 원본에 옮긴 뒤 <code>.new</code> 를 지운다. 리포 <code>.gitignore</code> 가 <code>*.new</code> 를 무시하면 <code>git status</code> 에 안 보이니 <code>find . -name '*.new' -not -path './.git/*'</code> 로 센다. <code>verify.sh --fast</code> 가 남은 <code>.new</code> 를 경고한다.</p>
+
+<h2 id="check">설치 확인 목록</h2>
+<ul>
+<li>Claude Code: <code>/plugin</code> 에 <code>kns</code>. Codex: <code>codex plugin list</code>. Kiro: <code>ls ~/.kiro/skills/ | grep kns-</code>. 하네스를 다시 켰는가.</li>
+<li>리포: <code>knots-sync doctor --check</code> 가 exit 0 이고 <code>drifted 0 · missing 0</code>.</li>
+<li><code>knots-sync list</code> 가 스택 · 변형 · 하네스 · 모듈 · 이슈 키 · base 를 보여 준다.</li>
+<li><code>bash scripts/verify.sh --fast</code> 가 통과한다.</li>
+<li>에이전트 세션에서 <code>/kns-harness</code> 를 부르면 규칙 컨텍스트가 실린다.</li>
+</ul>
+<div class="block"><span class="block-label"><span class="tag">실제 출력</span>knots-sync list</span>
+<pre><code>knots-sync list — /private/tmp/kns-guide-fx/demo-app
+  킷 2.0.0-alpha.0 (메타 v2) · 설치 2026-11-24 · 갱신 2026-11-24
+  demo-app (demo-app) · 스택 python · 변형 hexagonal · 도메인 backend
+  하네스 claude, codex · 모듈 none · 팩 none
+  이슈 키 kit:DEMOAPP · base develop</code></pre></div>
+
+<h2 id="layers-ext">회사 팩과 개인 층(선택)</h2>
+<p>킷 위에 층을 더 얹을 수 있다. 우선순위는 킷 → 회사 팩 → 프로젝트 → 개인 순이다.</p>
+<ul>
+<li><strong>회사 팩</strong> — 여러 리포가 같이 쓰는 규칙 · 훅 · 검사 묶음. <code>knots-sync pack new &lt;이름&gt; --dir &lt;경로&gt; --from &lt;파일&gt;…</code> 로 프로젝트 파일에서 골격을 만들고, <code>knots-sync.json</code> 의 <code>packs</code> 에 적은 뒤 <code>knots-sync update --packs</code> 로 받는다. 팩끼리 같은 파일 · 훅 id 를 가지면 멈추고 사람이 정한다(exit 4).</li>
+<li><strong>개인 층</strong> — <code>.agents/local/</code>(커밋 안 함)의 개인 스킬 · Kiro 규칙 · 개인 훅. <code>knots-sync local sync</code> 로 하네스 폴더에 놓는다. 공유 원본과 이름이 같으면 놓지 않는다. 개인 층은 <code>roles</code> · <code>git.ide</code> 만 덮을 수 있고 게이트 · 승인자 · 검증 · 위험 설정은 무시된다.</li>
+</ul>
+
+</article>
+<nav class="pager" aria-label="이전 장 · 다음 장"><a class="prev" href="concepts.html" rel="prev"><small>← 이전</small>개념</a><a class="next" href="daily-flow.html" rel="next"><small>다음 →</small>하루 흐름</a></nav>
+</main>
+</div>
+<footer class="site-footer">knots-sync(약어 kns) 사용 안내서 · 정적 HTML · 외부 글꼴 · 스크립트 없음</footer>
+</body>
+</html>

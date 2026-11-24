@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="기획자 · 개발자 · 리뷰어 · 운영 · 도입 담당">
+<title>역할별 활용 가이드 — knots-sync 사용 안내서</title>
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="site-header">
+<a class="brand" href="index.html">knots-sync<span>사용 안내서</span></a>
+<span class="site-meta">CLI 2.0.0-alpha.0 기준 · 2026-11-24 · 저장소 harness-starter-kit</span>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="안내서 목차">
+<p class="toc-title">안내서 목차</p>
+<ol>
+<li class="toc-group">시작</li>
+<li><a href="index.html"><span class="n">00</span><span>시작하기</span></a></li>
+<li><a href="concepts.html"><span class="n">01</span><span>개념</span></a></li>
+<li><a href="install.html"><span class="n">02</span><span>설치</span></a></li>
+<li class="toc-group">쓰기</li>
+<li><a href="daily-flow.html"><span class="n">03</span><span>하루 흐름</span></a></li>
+<li><a href="dashboard.html"><span class="n">04</span><span>관리 페이지</span></a></li>
+<li><a href="cli.html"><span class="n">05</span><span>CLI 명령 참고</span></a></li>
+<li class="toc-group">모듈</li>
+<li><a href="aidlc.html"><span class="n">06</span><span>AI-DLC 모듈</span></a></li>
+<li><a href="entire.html"><span class="n">07</span><span>Entire 모듈</span></a></li>
+<li><a href="modules.html"><span class="n">08</span><span>jira · notion · multi-harness</span></a></li>
+<li class="toc-group">운영과 팀</li>
+<li><a href="ops.html"><span class="n">09</span><span>배포 · 운영 · 지표</span></a></li>
+<li><a href="roles.html" aria-current="page"><span class="n">10</span><span>역할별 활용 가이드</span></a></li>
+<li class="toc-group">옮기기와 도움</li>
+<li><a href="migration.html"><span class="n">11</span><span>옛 이름에서 옮기기</span></a></li>
+<li><a href="faq.html"><span class="n">12</span><span>문제 해결 · FAQ</span></a></li>
+</ol>
+</nav>
+<main id="main" tabindex="-1">
+<article>
+<p class="kicker">10 · 운영과 팀</p>
+<h1>역할별 활용 가이드</h1>
+<p class="lede">같은 킷을 쓰지만 사람마다 하는 일이 다르다. 이 장은 다섯 역할 — 기획자 · PM, 개발자, 리뷰어 · 리드, 운영 담당, 팀 도입 담당 — 이 하루와 단계마다 무엇을 하고, 어느 화면 · 명령을 쓰고, <strong>무엇을 사람이 승인해야 하며 왜 그런지</strong>를 적는다.</p>
+<nav class="on-page" aria-label="이 장의 절"><h2>이 장에서</h2><ol><li><a href="#matrix">게이트 × 역할 한눈에</a></li><li><a href="#pm">기획자 · PM</a></li><li><a href="#dev">개발자</a></li><li><a href="#review">리뷰어 · 리드</a></li><li><a href="#ops">운영 담당</a></li><li><a href="#lead">팀 도입 담당</a></li></ol></nav>
+
+<h2 id="matrix">게이트 × 역할 한눈에</h2>
+<p>승인자 그룹은 <code>knots-sync.json</code> 의 <code>approvers</code> · <code>groups</code> 로 정한다. 아래는 설계서의 예시 배치다. 그룹을 정하지 않으면 리포의 git 사용자 누구나 승인한다.</p>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">게이트</th><th scope="col">기획자 · PM(po)</th><th scope="col">개발자(dev)</th><th scope="col">리뷰어 · 리드(dev)</th><th scope="col">QA</th><th scope="col">운영(ops)</th></tr></thead>
+<tbody>
+<tr><td><span class="chip gate">codebase</span></td><td>읽는다</td><td><strong>승인</strong></td><td>읽는다</td><td>—</td><td>—</td></tr>
+<tr><td><span class="chip gate">intent</span></td><td><strong>승인</strong></td><td>질문에 답</td><td>—</td><td>—</td><td>—</td></tr>
+<tr><td><span class="chip gate">plans</span></td><td><strong>승인</strong></td><td>읽는다</td><td>—</td><td>—</td><td>—</td></tr>
+<tr><td><span class="chip floor">requirements</span></td><td><strong>승인</strong></td><td>읽는다</td><td>—</td><td>수용 기준 확인</td><td>—</td></tr>
+<tr><td><span class="chip floor">design</span></td><td>—</td><td><strong>승인</strong>(high 는 2명)</td><td>함께 승인</td><td>—</td><td>§13 확인</td></tr>
+<tr><td><span class="chip gate">tasks</span></td><td>—</td><td><strong>승인</strong></td><td>—</td><td>—</td><td>—</td></tr>
+<tr><td><span class="chip floor">mr</span></td><td>—</td><td>—</td><td><strong>승인</strong>(high 는 2명)</td><td>—</td><td>—</td></tr>
+<tr><td><span class="chip floor">done</span></td><td><strong>승인</strong></td><td>—</td><td>—</td><td><strong>승인</strong></td><td>—</td></tr>
+<tr><td><span class="chip gate">deploy</span></td><td>—</td><td>—</td><td>—</td><td>—</td><td><strong>승인</strong>(high 는 2명)</td></tr>
+</tbody></table></div>
+<div class="human">
+<span class="box-title">승인이 사람 몫인 이유</span>
+<p>게이트는 "다음 단계로 가도 된다"는 책임을 사람이 지는 자리다. 에이전트가 쓴 문서를 에이전트가 승인하면 게이트가 없는 것과 같다. 그래서 승인은 네 경로(관리 페이지 + PIN, 사람 터미널 <code>approve</code>, Jira 사람 전이, AI-DLC 확인 훅)로만 생기고, 승인은 문서의 sha256 에 묶여 문서가 바뀌면 다시 받아야 한다. 채팅에서 "좋아", "머지해", "배포해"라고 한 말은 어떤 말이든 승인이 아니다 — 대화의 지시로 커밋 · push 는 할 수 있어도 게이트 조건을 대신하지 못한다.</p>
+</div>
+
+<h2 id="pm">기획자 · PM</h2>
+<p>요구사항을 넣고, 질문에 답하고, Intent · 기획물 · requirements 를 승인하고, 완료를 확인한다. 에이전트 세션을 열지 않아도 대부분 관리 페이지에서 끝난다.</p>
+<h3>하루</h3>
+<ul>
+<li><strong>아침</strong> — 관리 페이지 <a href="dashboard.html#shell">홈</a>의 처리할 일에서 "내가 할 것"을 고른다. 내 차례 승인 · 내 직무의 열린 질문이 먼저 보인다.</li>
+<li><strong>새 요구사항이 오면</strong> — <a href="dashboard.html#intake">새 요구사항</a>에 제목 · 종류 · 본문 · 첨부(기획서 · 캡처)를 넣고 접수한다. Jira 에픽 · Notion 페이지라면 터미널에서 <code>knots-sync intake --from jira:&lt;키&gt;</code> · <code>--from notion:&lt;URL&gt;</code>. 접수 뒤 "설계 세션에 요청"을 고르거나 개발자에게 알린다.</li>
+<li><strong>질문이 오면</strong> — <a href="dashboard.html#questions">질문</a> 화면에서 권장안과 선택지별 영향을 읽고 고른다. 모르면 "other" 에 메모. 회의로 정할 일이면 몹 정리(<code>knots-sync mob start</code>)를 연다.</li>
+<li><strong>승인 요청이 오면</strong> — 문서를 끝까지 읽고 승인 문구를 남겨 승인하거나 "수정 요청"을 누른다. 같은 지적이 반복되면 "수정 요청을 규칙 후보로 남깁니다"를 켠다.</li>
+<li><strong>끝</strong> — 병합된 이슈를 검수하고 done 을 승인한다.</li>
+</ul>
+<h3>단계마다</h3>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">단계</th><th scope="col">내가 하는 일</th><th scope="col">어디서</th><th scope="col">승인?</th></tr></thead>
+<tbody>
+<tr><td>접수</td><td>무엇을 · 왜 · 누구에게 · 범위 밖</td><td>새 요구사항 · <code>intake</code></td><td>아니오(접수는 승인이 아니다)</td></tr>
+<tr><td>Intent 질문</td><td>범위 · UX · 우선순위 질문에 답</td><td>질문 · <code>answer</code></td><td>아니오</td></tr>
+<tr><td>Unit 분해</td><td>Unit · 의존 순서 · 프로필 · 위험 확인. 바꿀 것은 변경 제안</td><td>진행 → 흐름</td><td><strong>intent</strong></td></tr>
+<tr><td>기획물</td><td>요구사항 문서 · 화면 기획 · 와이어프레임 · 백로그 검토</td><td>문서 · 이슈 화면</td><td><strong>plans</strong></td></tr>
+<tr><td>requirements</td><td>스토리 · 수용 기준(EARS) · 정책 표 · 화면 표 · 성공 기준</td><td>이슈 → requirements 탭</td><td><strong>requirements</strong></td></tr>
+<tr><td>완료</td><td>동작 확인, 남은 일은 <code>/kns-converge</code> 로 남기게</td><td>이슈 → approvals</td><td><strong>done</strong></td></tr>
+<tr><td>운영 뒤</td><td>운영 기록의 다음 Intent 후보를 "요구사항으로"</td><td>운영</td><td>아니오</td></tr>
+</tbody></table></div>
+<div class="note"><span class="box-title">requirements 를 볼 때</span><p><code>[NEEDS CLARIFICATION: …]</code> 표지가 남아 있으면 승인이 거부된다. 표지가 있다는 것은 세션이 혼자 정하지 못한 것이 있다는 뜻이니, 질문으로 답하거나 문서를 고쳐 표지를 없앤다. 성공 기준(<code>SC-</code>)에 구현 기술이 들어가 있으면 되돌린다.</p></div>
+
+<h2 id="dev">개발자</h2>
+<p>설계 · 구현 세션을 열어 스킬을 부르고, codebase · design · tasks 를 승인하고, 검증을 돌려 MR 을 연다.</p>
+<h3>하루</h3>
+<ol>
+<li>관리 페이지 홈 또는 <code>knots-sync status</code> 로 처리할 일을 본다. 세션 목록에서 내 세션이 무엇을 들고 있는지 본다.</li>
+<li>작업 시작: 하네스를 열고 <code>/kns-harness</code>(규칙 컨텍스트). 같은 리포에서 다른 세션이 파일을 쓰고 있으면 <code>python3 scripts/harness/worktree.py new &lt;키&gt; --open</code>.</li>
+<li>단계 스킬을 부른다(아래 표). 세션이 <code>in-review</code> 로 올린 문서는 <strong>내가</strong> 읽고 승인한다 — 세션에게 "승인해"라고 하지 않는다.</li>
+<li>Bolt 마다 <code>bash scripts/verify.sh</code>, MR 전 <code>bash scripts/verify.sh --affected</code>. full 은 CI 에 맡긴다.</li>
+<li>끝: 커밋 · push. worktree 를 썼으면 <code>worktree.py done &lt;키&gt;</code> 로 바로 지운다.</li>
+</ol>
+<h3>단계마다</h3>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">단계</th><th scope="col">세션에서</th><th scope="col">내가</th><th scope="col">승인?</th></tr></thead>
+<tbody>
+<tr><td>Intent</td><td><code>/kns-intent &lt;INT&gt;</code>(설계 세션)</td><td>기술 질문(dev 직무)에 답</td><td>—</td></tr>
+<tr><td>현재 상태</td><td><code>/kns-intent</code> 가 역공학 · <code>current-state.md</code></td><td>바뀌면 안 되는 동작(<code>KEEP-n</code>)이 맞는지 확인</td><td><strong>codebase</strong></td></tr>
+<tr><td>이슈</td><td><code>/kns-specify --from-unit &lt;INT&gt;/&lt;U&gt;</code> · <code>/kns-clarify</code></td><td>계약 Unit 부터 여는지 확인</td><td>(기획자가 requirements)</td></tr>
+<tr><td>설계</td><td><code>/kns-plan</code> · <code>/kns-analyze</code></td><td>재사용 근거 · API · 인덱스 · 캐시 키 · 동시성 · §13 배포 · 롤백</td><td><strong>design</strong></td></tr>
+<tr><td>작업</td><td><code>/kns-tasks</code></td><td>Phase(Bolt) 크기 · <code>[P]</code> · 검증 명령</td><td><strong>tasks</strong>(켰으면)</td></tr>
+<tr><td>구현</td><td><code>/kns-implement</code> · <code>/kns-maintain</code></td><td>실패하는 시험 먼저, Bolt 끝마다 changed 검증</td><td>—</td></tr>
+<tr><td>문서</td><td><code>/kns-docs</code>(문서 세션)</td><td>기능 문서 검사 통과 확인</td><td>—</td></tr>
+<tr><td>MR</td><td>—</td><td><code>verify.sh --affected</code> · push · 리뷰 지적 수정</td><td>(리뷰어가 mr)</td></tr>
+</tbody></table></div>
+<div class="warn"><span class="box-title">막히는 것들</span><p>에이전트 세션의 <code>verify.sh --full</code>, base 브랜치 직접 push, 이슈 폴더 없이 <code>&lt;종류&gt;/&lt;키&gt;-&lt;이름&gt;</code> 브랜치 push, 승인 없이 <code>status: approved</code> · <code>state: completed</code> 로 바꾸는 쓰기, <code>approvals.md</code> 수정. 모두 의도한 막힘이다. 사람이 자기 터미널에서 할 일(승인 · full)은 자기 터미널에서 한다.</p></div>
+
+<h2 id="review">리뷰어 · 리드</h2>
+<p>리뷰 세션으로 MR 을 읽히고, 지적마다 수정 · 위험 수용을 정하고, mr 을 승인한다. 설계 승인에도 같이 들어간다.</p>
+<h3>MR 하나를 볼 때</h3>
+<ol class="steps">
+<li><h3>리뷰 세션을 연다</h3><p>기본 배치는 Codex(<code>roles.review.harness</code>). <code>$kns-review !123</code>(GitHub 은 <code>#45</code>). 세션은 체크아웃하지 않고 원격 diff · SDD 세 문서 · 규칙 · 스캔을 읽어 지적을 쓴다. 점검표: 요구 커버리지(RV-COV) · 설계 준수(RV-ADR) · 규칙(RV-RULE) · 경계 · 실패 경로(RV-EDGE) · 시험(RV-TEST) · 스캔 해석(RV-SCAN) · 문서(RV-DOC).</p></li>
+<li><h3>지적을 판단한다</h3><p>관리 페이지 <a href="dashboard.html#issue">이슈 → review</a> 또는 <code>knots-sync review decide &lt;키&gt; F-n --fix|--accept-risk --reason "…"</code>. 수정 필요는 구현 세션이 고치고 리뷰를 다시 돈다. 위험 수용은 <code>approvals.md</code> 에 남는다.</p></li>
+<li><h3>품질 게이트를 본다</h3><p><a href="dashboard.html#verify">검증</a> 화면 · <code>knots-sync quality --findings --new</code>. 새 CRITICAL · HIGH, 새 코드 중복률, 복잡도. 기준은 <code>.agents/quality-gate.json</code>.</p></li>
+<li><h3>mr 을 승인한다</h3><p>같은 head 의 affected 통과 · 품질 게이트 통과 · 열린 CRITICAL/HIGH 0 이 아니면 승인 자체가 거부된다(422). diff 가 <code>risk.highPaths</code> 에 걸리면 다른 승인자 1명이 더 필요하다.</p></li>
+</ol>
+<h3>리드로서 주기적으로</h3>
+<ul>
+<li>규칙 후보 정리: <code>knots-sync rules candidates</code> → 고른 것은 <code>rules promote RC-n</code>(MR), 아닌 것은 <code>rules reject RC-n --reason</code>. 14일 넘게 머문 후보가 홈에 뜬다.</li>
+<li>스킬 지도(<code>.agents/skill-map.json</code>) 관리: 팀이 단계마다 어떤 스킬을 쓸지. <a href="dashboard.html#skills">스킬</a> 화면에서 이름 겹침 · 미분류를 본다.</li>
+<li>품질 기준선(<code>.agents/quality-baseline.json</code>) 갱신은 사람만 한다. 에이전트는 이 파일을 쓰지 못한다.</li>
+</ul>
+<div class="note"><span class="box-title">MR 은 base 의 검증으로 판정한다</span><p>MR 이 <code>verify.sh</code> · <code>scripts/harness/</code> · 검증 설정을 고쳐도 판정은 base 쪽 것으로 한다. 검증을 느슨하게 바꾸는 변경이 자기 자신을 통과시키지 못하게 하려는 것이다. CI 진입 파일은 코드 소유자 승인을 건다.</p></div>
+
+<h2 id="ops">운영 담당</h2>
+<p>배포 기록을 검토하고 deploy 를 승인하고, 배포 뒤 운영 기록을 쓴다.</p>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">언제</th><th scope="col">하는 일</th><th scope="col">어디서</th></tr></thead>
+<tbody>
+<tr><td>design 승인 때</td><td>§13 배포 계획 · 롤백 판단 기준(숫자) · 운영 점검을 본다. 비어 있으면 design 이 승인되지 않는다</td><td>이슈 → design</td></tr>
+<tr><td>배포 전</td><td><code>knots-sync deploy plan &lt;키…&gt;</code> → <code>deploy check &lt;기록&gt;</code> 로 D1~D7 확인 → 롤백 시험 · CI full · 점검표</td><td>운영 화면 · 터미널</td></tr>
+<tr><td>승인</td><td>관리 페이지(PIN) 또는 <code>knots-sync approve deploy:&lt;기록&gt; --gate deploy --phrase "…"</code>. 롤백 시험을 못 했으면 <code>--waive-rollback "&lt;사유&gt;"</code>(high 는 불가)</td><td>사람 터미널</td></tr>
+<tr><td>배포</td><td>배포 시스템이 <code>deploy.py check --require-approved</code> 를 통과한 뒤 배포 → <code>deploy.py result</code></td><td>CI · 배포 시스템</td></tr>
+<tr><td>자동 검증 배포가 멈추면</td><td>원인을 고친 뒤 파이프라인을 수동 실행하며 <code>KNS_DEPLOY_RESUME=true</code></td><td>CI 플랫폼</td></tr>
+<tr><td>배포 뒤 1주 · 매월 · 장애</td><td><code>knots-sync ops new --topic …</code> 로 운영 기록. 목표 대비 실측 · 장애 · 다음 후보 · 배운 것</td><td>리포</td></tr>
+<tr><td>장애가 나면</td><td>운영 기록에 INC 를 쓰고 <code>intake --kind bug --from ops:&lt;기록&gt;#INC-n</code></td><td>터미널</td></tr>
+<tr><td>달마다</td><td><code>knots-sync metrics</code> 로 리드 타임 · 배포 실패율 · 복구 시간 · 승인 대기 · 재작업을 기준선과 비교</td><td>운영 화면 · 터미널</td></tr>
+</tbody></table></div>
+<div class="human"><span class="box-title">deploy 승인이 사람 몫인 이유</span><p>운영 배포는 되돌리기 가장 비싼 단계다. 승인은 배포 기록의 계획 구간 sha 에 묶이고, 운영 배포 작업이 배포 직전에 그 승인을 다시 검사한다. 계획이 바뀌면 승인은 오래된 것이 된다. 롤백 시험 면제는 승인하는 사람만 넣을 수 있다.</p></div>
+
+<h2 id="lead">팀 도입 담당</h2>
+<p>킷을 리포에 들이고 팀 규칙을 설정한다. 한 번 하고 끝나는 일과, 판을 올릴 때마다 하는 일이 있다.</p>
+<h3>처음 들일 때</h3>
+<ol class="steps">
+<li><h3>하네스와 역할을 정한다</h3><p>팀이 실제로 쓰는 하네스만 고른다(<code>--agents</code>). 역할 배치(<code>roles</code>)의 기본은 설계 · 구현 Claude Code, 리뷰 Codex, 문서 Kiro 다. 구현과 리뷰를 서로 다른 하네스로 나누는 것이 기본값이다.</p></li>
+<li><h3>설치하고 숫자를 잰다</h3><p><code>plan</code> → <code>init</code>(손으로 만든 하네스가 있으면 <code>--adopt</code>) → <code>doctor</code>. "세션마다 실리는 양"을 기록해 둔다 — 도입 전후 값을 MR 설명에 나란히 적는다. 진입 파일(<code>AGENTS.md</code> + <code>CLAUDE.md</code>)은 24KB 이하가 목표다.</p></li>
+<li><h3>승인자 그룹을 정한다</h3><p><code>knots-sync.json</code> 의 <code>groups</code>(git user.email 목록)와 <code>approvers</code>(게이트 → 그룹 · 이메일). 정하지 않으면 git 사용자 누구나 승인한다.</p></li>
+<li><h3>흐름 틀과 위험 경로</h3><p>하한 넷 밖의 게이트(codebase · intent · plans · tasks · deploy)를 <code>knots-sync flow gates</code> 로 켜고 끈다. <code>risk.highPaths</code>(인증 · 결제 · 마이그레이션 경로)와 <code>risk.highApprovals</code>(기본 2)를 정한다 — 프로젝트는 더 엄하게만 바꿀 수 있다.</p></li>
+<li><h3>검증 · CI · 브랜치 보호</h3><p><code>bash scripts/install-git-hooks.sh</code>. CI 템플릿(<code>.github/</code> · <code>.gitlab-ci.yml</code> · <code>ci/</code>)의 fast · affected · full 을 켠다. 서버 쪽 base 브랜치 보호는 사람이 켠다(<code>doctor</code> 가 안내). 정적 분석기는 <code>.agents/analyzers.json</code>, 품질 기준은 <code>quality-gate.json</code>.</p></li>
+<li><h3>모듈을 정한다</h3><p>AI-DLC · Entire 는 켜기 전에 세션 적재량과 push 정책을 보고 정한다(→ <a href="aidlc.html#when">AI-DLC 언제 쓰나</a>). Jira 를 쓰면 jira-workflow + <code>/kns:jira-setup</code>. 결정은 ADR(<code>.agents/docs/decisions/</code>)로 남긴다.</p></li>
+<li><h3>기준선을 남긴다</h3><p><code>knots-sync metrics --baseline</code> — 도입 커밋 앞 90일의 전달 지표. 나중에 "킷이 도움이 됐나"를 같은 계산으로 비교한다.</p></li>
+</ol>
+<h3>판을 올릴 때마다</h3>
+<ul>
+<li><code>knots-sync outdated --check</code> → <code>update --dry-run</code> 목록을 MR 로 검토 → 사람 승인 → <code>update</code> → <code>.new</code> 병합 → <code>doctor --check</code> exit 0 → CI full → 커밋 하나.</li>
+<li>사람마다 플러그인을 다시 설치하게 안내한다(<code>/plugin install kns@knots-sync</code>, Kiro 는 <code>install-kiro.sh --force</code>).</li>
+<li>회사 팩을 쓰면 <code>update --packs</code>.</li>
+</ul>
+<h3>각자 컴퓨터에서 정하는 것(커밋하지 않음)</h3>
+<ul>
+<li>대화 기록 읽기(사용량 · 프롬프트 기록): 기본 꺼짐. 켜려면 각자 <code>~/.config/knots-sync/config.json</code> 에 <code>"history": "on"</code>.</li>
+<li>개인 스킬 · 훅: <code>.agents/local/</code> 에 두고 <code>knots-sync local sync</code>. 게이트 · 승인자 · 검증 설정은 개인 층이 바꾸지 못한다.</li>
+<li>IDE: <code>git.ide</code>(code · idea)는 개인 층에서 덮을 수 있다.</li>
+</ul>
+<div class="token"><span class="box-title">도입 담당이 지켜볼 숫자</span><p>킷 자체는 모델을 부르지 않지만, 하네스 폴더에 깔리는 스킬 설명 · 역할 · 규칙은 세션마다 실린다. <code>doctor</code> 의 "세션마다 실리는 양"과 관리 페이지 하네스 화면의 "킷이 덧붙인 토큰"(세션 시작 평균 / 2,560바이트)을 도입 전후로 적는다. 늘어난 값은 사람이 받아들인 뒤 쓴다.</p></div>
+
+</article>
+<nav class="pager" aria-label="이전 장 · 다음 장"><a class="prev" href="ops.html" rel="prev"><small>← 이전</small>배포 · 운영 · 지표</a><a class="next" href="migration.html" rel="next"><small>다음 →</small>옛 이름에서 옮기기</a></nav>
+</main>
+</div>
+<footer class="site-footer">knots-sync(약어 kns) 사용 안내서 · 정적 HTML · 외부 글꼴 · 스크립트 없음</footer>
+</body>
+</html>

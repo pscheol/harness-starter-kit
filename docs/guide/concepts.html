@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="SDD 단계 · 게이트 · 승인 · Intent/Unit/Bolt · 역할과 하네스">
+<title>개념 — knots-sync 사용 안내서</title>
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="site-header">
+<a class="brand" href="index.html">knots-sync<span>사용 안내서</span></a>
+<span class="site-meta">CLI 2.0.0-alpha.0 기준 · 2026-11-24 · 저장소 harness-starter-kit</span>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="안내서 목차">
+<p class="toc-title">안내서 목차</p>
+<ol>
+<li class="toc-group">시작</li>
+<li><a href="index.html"><span class="n">00</span><span>시작하기</span></a></li>
+<li><a href="concepts.html" aria-current="page"><span class="n">01</span><span>개념</span></a></li>
+<li><a href="install.html"><span class="n">02</span><span>설치</span></a></li>
+<li class="toc-group">쓰기</li>
+<li><a href="daily-flow.html"><span class="n">03</span><span>하루 흐름</span></a></li>
+<li><a href="dashboard.html"><span class="n">04</span><span>관리 페이지</span></a></li>
+<li><a href="cli.html"><span class="n">05</span><span>CLI 명령 참고</span></a></li>
+<li class="toc-group">모듈</li>
+<li><a href="aidlc.html"><span class="n">06</span><span>AI-DLC 모듈</span></a></li>
+<li><a href="entire.html"><span class="n">07</span><span>Entire 모듈</span></a></li>
+<li><a href="modules.html"><span class="n">08</span><span>jira · notion · multi-harness</span></a></li>
+<li class="toc-group">운영과 팀</li>
+<li><a href="ops.html"><span class="n">09</span><span>배포 · 운영 · 지표</span></a></li>
+<li><a href="roles.html"><span class="n">10</span><span>역할별 활용 가이드</span></a></li>
+<li class="toc-group">옮기기와 도움</li>
+<li><a href="migration.html"><span class="n">11</span><span>옛 이름에서 옮기기</span></a></li>
+<li><a href="faq.html"><span class="n">12</span><span>문제 해결 · FAQ</span></a></li>
+</ol>
+</nav>
+<main id="main" tabindex="-1">
+<article>
+<p class="kicker">01 · 개념</p>
+<h1>개념</h1>
+<p class="lede">knots-sync 를 쓰기 전에 알아야 할 말은 많지 않다. 원본은 한 곳, 일은 SDD 단계를 따라 흐르고, 단계 사이에는 사람이 승인하는 게이트가 있다. 이 장은 그 뼈대를 그림으로 보여 준다.</p>
+<nav class="on-page" aria-label="이 장의 절"><h2>이 장에서</h2><ol><li><a href="#principles">일곱 가지 원칙</a></li><li><a href="#flow">흐름과 게이트</a></li><li><a href="#sdlc">이슈의 SDLC 여덟 단계</a></li><li><a href="#intent-unit-bolt">Intent · Unit · Bolt</a></li><li><a href="#approval">승인 — 누가, 어디서, 어떻게</a></li><li><a href="#harness">하네스와 역할</a></li><li><a href="#verify-levels">검증 레벨</a></li><li><a href="#ownership">원본 · 복사본 · 소유자</a></li></ol></nav>
+
+<h2 id="principles">일곱 가지 원칙</h2>
+<p>설계서의 공통 계약에서 사용자에게 보이는 것만 추렸다. 이 원칙이 명령과 화면의 동작을 정한다.</p>
+<ol>
+<li><strong>원본은 <code>.agents/</code> 한 곳이다.</strong> 하네스 폴더의 파일은 원본에서 만든 실제 파일이고, 복사본은 동기화 훅 · 보호 훅 · 배치 검사로 원본과 맞춘다. 하네스 폴더를 손으로 고치면 다음 <code>repair</code> 가 원본에서 다시 만든다.</li>
+<li><strong>완료 판정은 <code>scripts/verify.sh</code> 한 곳이다.</strong> 훅 · git 훅 · CI 는 이 스크립트를 부르기만 한다.</li>
+<li><strong>사람이 고친 파일과 다른 도구의 파일은 덮지 않는다.</strong> 킷 새 판이 사람이 고친 파일과 부딪히면 새 판을 <code>&lt;경로&gt;.new</code> 로 옆에 둔다.</li>
+<li><strong>외부 도구(AI-DLC · Entire)의 파일은 고치지 않는다.</strong> 킷은 그 파일을 <code>external:&lt;도구&gt;</code> 소유로 기록만 한다.</li>
+<li><strong>모듈 없이도 전 흐름이 돈다.</strong> AI-DLC · Entire 는 기본 꺼짐인 선택 모듈이다.</li>
+<li><strong>화면 없이도 모든 기능이 돈다.</strong> 관리 페이지는 CLI 와 같은 핵심 모듈을 부르는 화면일 뿐이다. 화면에만 있는 기능은 없다.</li>
+<li><strong>킷을 들여도 토큰이 늘지 않게 한다.</strong> 킷 자체는 모델을 부르지 않고, 세션에 덧붙이는 양에 상한을 둔다(세션 시작 훅 2,560바이트, 진입 파일 24KB). 사람이 연 세션의 모델 · effort 는 바꾸지 않는다. 모델 조절은 위임 작업(하위 에이전트)에만 한다.</li>
+</ol>
+
+<h2 id="flow">흐름과 게이트</h2>
+<p>요구사항 하나가 운영까지 가는 길이다. 마름모가 게이트, 즉 <strong>사람이 승인해야 다음 단계로 넘어가는 자리</strong>다. 속이 찬 마름모 넷(requirements · design · mr · done)은 줄일 수 없는 하한이고, 속이 빈 마름모는 팀이 흐름 틀(<code>flow.gates</code>)에서 켜고 끈다.</p>
+<figure class="diagram wide">
+<svg viewBox="0 0 960 470" role="img" aria-labelledby="flow-t flow-d">
+<title id="flow-t">SDD 흐름과 게이트</title>
+<desc id="flow-d">세 줄로 된 흐름도. 첫 줄 설계 단계: 요구사항 접수, codebase 게이트, Intent와 Unit, intent 게이트, 기획물, plans 게이트. 둘째 줄 이슈 단계: requirements 문서, requirements 게이트(하한), design 문서, design 게이트(하한), tasks 문서, tasks 게이트, 구현과 시험(Bolt마다 changed 검증). 셋째 줄 전달과 운영: 문서 반영(기능 문서), MR(affected 검증, 리뷰, 정적 분석), mr 게이트(하한), 병합, done 게이트(하한), 배포 기록, deploy 게이트, 운영 배포와 운영 기록. 운영 기록에서 점선이 요구사항 접수로 돌아가며 다음 Intent, bug 이슈, 규칙 후보가 된다.</desc>
+<defs><marker id="ah-flow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrow-head"/></marker></defs>
+<text x="20" y="34" class="t-title">설계 단계 · Intent 폴더</text>
+<text x="90" y="179" class="t-title">이슈 단계 · Unit = 이슈 · 브랜치 · MR</text>
+<text x="90" y="324" class="t-title">전달 · 운영</text>
+<g>
+<rect x="20" y="56" width="100" height="48" rx="6" class="n-design"/><text x="70" y="77" text-anchor="middle" class="t-strong">요구사항 접수</text><text x="70" y="93" text-anchor="middle" class="t-sub mono">intake.md</text>
+<polygon points="187,64 203,80 187,96 171,80" class="g-team"/><text x="187" y="114" text-anchor="middle" class="t-gate">codebase</text>
+<rect x="254" y="56" width="100" height="48" rx="6" class="n-design"/><text x="304" y="77" text-anchor="middle" class="t-strong">Intent · Unit</text><text x="304" y="93" text-anchor="middle" class="t-sub">intent.md 외</text>
+<polygon points="421,64 437,80 421,96 405,80" class="g-team"/><text x="421" y="114" text-anchor="middle" class="t-gate">intent</text>
+<rect x="488" y="56" width="100" height="48" rx="6" class="n-design"/><text x="538" y="77" text-anchor="middle" class="t-strong">기획물</text><text x="538" y="93" text-anchor="middle" class="t-sub mono">plans/</text>
+<polygon points="655,64 671,80 655,96 639,80" class="g-team"/><text x="655" y="114" text-anchor="middle" class="t-gate">plans</text>
+<path d="M120,80 H169" class="e" marker-end="url(#ah-flow)"/><path d="M203,80 H252" class="e" marker-end="url(#ah-flow)"/><path d="M354,80 H403" class="e" marker-end="url(#ah-flow)"/><path d="M437,80 H486" class="e" marker-end="url(#ah-flow)"/><path d="M588,80 H637" class="e" marker-end="url(#ah-flow)"/>
+<path d="M671,80 H930 V150 H70 V199" class="e" marker-end="url(#ah-flow)"/>
+</g>
+<g transform="translate(705 100)">
+<polygon points="8,0 16,8 8,16 0,8" class="g-floor"/><text x="24" y="13">줄일 수 없는 게이트(하한)</text>
+<polygon points="8,24 16,32 8,40 0,32" class="g-team"/><text x="24" y="37">팀이 켜고 끄는 게이트</text>
+</g>
+<g>
+<rect x="20" y="201" width="100" height="48" rx="6" class="n-design"/><text x="70" y="222" text-anchor="middle" class="t-strong">requirements</text><text x="70" y="238" text-anchor="middle" class="t-sub">무엇을 · 왜</text>
+<polygon points="187,209 203,225 187,241 171,225" class="g-floor"/><text x="187" y="259" text-anchor="middle" class="t-gate">requirements</text>
+<rect x="254" y="201" width="100" height="48" rx="6" class="n-design"/><text x="304" y="222" text-anchor="middle" class="t-strong">design</text><text x="304" y="238" text-anchor="middle" class="t-sub">어떻게</text>
+<polygon points="421,209 437,225 421,241 405,225" class="g-floor"/><text x="421" y="259" text-anchor="middle" class="t-gate">design</text>
+<rect x="488" y="201" width="100" height="48" rx="6" class="n-design"/><text x="538" y="222" text-anchor="middle" class="t-strong">tasks</text><text x="538" y="238" text-anchor="middle" class="t-sub">Bolt · 순서</text>
+<polygon points="655,209 671,225 655,241 639,225" class="g-team"/><text x="655" y="259" text-anchor="middle" class="t-gate">tasks</text>
+<rect x="722" y="201" width="100" height="48" rx="6" class="n-build"/><text x="772" y="222" text-anchor="middle" class="t-strong">구현 · 시험</text><text x="772" y="238" text-anchor="middle" class="t-sub">changed 검증</text>
+<path d="M120,225 H169" class="e" marker-end="url(#ah-flow)"/><path d="M203,225 H252" class="e" marker-end="url(#ah-flow)"/><path d="M354,225 H403" class="e" marker-end="url(#ah-flow)"/><path d="M437,225 H486" class="e" marker-end="url(#ah-flow)"/><path d="M588,225 H637" class="e" marker-end="url(#ah-flow)"/><path d="M671,225 H720" class="e" marker-end="url(#ah-flow)"/>
+<path d="M822,225 H930 V295 H70 V344" class="e" marker-end="url(#ah-flow)"/>
+</g>
+<g>
+<rect x="20" y="346" width="100" height="48" rx="6" class="n-ops"/><text x="70" y="367" text-anchor="middle" class="t-strong">문서 반영</text><text x="70" y="383" text-anchor="middle" class="t-sub">기능 문서(S7)</text>
+<rect x="137" y="346" width="100" height="48" rx="6" class="n-build"/><text x="187" y="367" text-anchor="middle" class="t-strong">MR</text><text x="187" y="383" text-anchor="middle" class="t-sub">affected · 리뷰</text>
+<polygon points="304,354 320,370 304,386 288,370" class="g-floor"/><text x="304" y="404" text-anchor="middle" class="t-gate">mr</text>
+<rect x="371" y="346" width="100" height="48" rx="6" class="n-build"/><text x="421" y="367" text-anchor="middle" class="t-strong">병합</text><text x="421" y="383" text-anchor="middle" class="t-sub">base 브랜치</text>
+<polygon points="538,354 554,370 538,386 522,370" class="g-floor"/><text x="538" y="404" text-anchor="middle" class="t-gate">done</text>
+<rect x="605" y="346" width="100" height="48" rx="6" class="n-ops"/><text x="655" y="367" text-anchor="middle" class="t-strong">배포 기록</text><text x="655" y="383" text-anchor="middle" class="t-sub mono">deploy plan</text>
+<polygon points="772,354 788,370 772,386 756,370" class="g-team"/><text x="772" y="404" text-anchor="middle" class="t-gate">deploy</text>
+<rect x="839" y="346" width="100" height="48" rx="6" class="n-ops"/><text x="889" y="367" text-anchor="middle" class="t-strong">운영 기록</text><text x="889" y="383" text-anchor="middle" class="t-sub">운영 배포 뒤</text>
+<path d="M120,370 H135" class="e" marker-end="url(#ah-flow)"/><path d="M237,370 H286" class="e" marker-end="url(#ah-flow)"/><path d="M320,370 H369" class="e" marker-end="url(#ah-flow)"/><path d="M471,370 H520" class="e" marker-end="url(#ah-flow)"/><path d="M554,370 H603" class="e" marker-end="url(#ah-flow)"/><path d="M705,370 H754" class="e" marker-end="url(#ah-flow)"/><path d="M788,370 H837" class="e" marker-end="url(#ah-flow)"/>
+<path d="M889,394 V440 H10 V80 H18" class="e-dash" marker-end="url(#ah-flow)"/>
+<text x="470" y="458" text-anchor="middle" class="t-sub">운영 기록 → 다음 Intent · bug 이슈 · 규칙 후보(점선)</text>
+</g>
+</svg>
+<figcaption><strong>그림 1.</strong> 흐름과 게이트. 색은 구간을 뜻한다: 파랑 = 설계, 황토 = 구현 · 검증, 청록 = 반영 · 운영. 관리 페이지의 게이트 레일도 같은 순서(Intent · 기획물 · 요구사항 · 설계 · tasks · MR · 완료 · 배포)로 그린다.</figcaption>
+</figure>
+
+<div class="table-wrap"><table>
+<caption>게이트 아홉 — 무엇을 승인하나</caption>
+<thead><tr><th scope="col">게이트</th><th scope="col">승인 대상</th><th scope="col">기본 승인자 그룹</th><th scope="col">줄일 수 있나</th><th scope="col">통과 조건(요약)</th></tr></thead>
+<tbody>
+<tr><td><span class="chip gate">codebase</span></td><td><code>current-state.md</code> + 참조 코드 모델</td><td>dev</td><td>팀 설정</td><td>기존 코드를 바꾸는 종류(feature · change · refactor)일 때만. 막는 질문 0</td></tr>
+<tr><td><span class="chip gate">intent</span></td><td><code>intent.md</code> + <code>units.json</code></td><td>po</td><td>팀 설정</td><td>막는 질문 0, <code>[NEEDS CLARIFICATION</code> 0, <code>intent.py check</code> 통과</td></tr>
+<tr><td><span class="chip gate">plans</span></td><td><code>plans/*.md</code> 전부</td><td>po</td><td>팀 설정</td><td>intent 승인, 기획물 필수 제목 통과</td></tr>
+<tr><td><span class="chip floor">requirements</span></td><td><code>requirements.md</code></td><td>po</td><td>하한</td><td>막는 질문 0, <code>[NEEDS CLARIFICATION</code> 0</td></tr>
+<tr><td><span class="chip floor">design</span></td><td><code>design.md</code></td><td>dev</td><td>하한</td><td>requirements 통과, 의존 계약 이슈의 design 통과, §13 배포 · 롤백 칸</td></tr>
+<tr><td><span class="chip gate">tasks</span></td><td><code>tasks.md</code></td><td>dev</td><td>팀 설정</td><td>design 통과</td></tr>
+<tr><td><span class="chip floor">mr</span></td><td>문서 없음(MR 자체)</td><td>dev</td><td>하한</td><td>같은 head 의 affected 검증 passed, 품질 게이트 passed, 열린 리뷰 CRITICAL · HIGH 0</td></tr>
+<tr><td><span class="chip floor">done</span></td><td>문서 없음(병합된 이슈)</td><td>qa · po</td><td>하한</td><td>mr 통과, 이슈 브랜치가 base 에 병합됨</td></tr>
+<tr><td><span class="chip gate">deploy</span></td><td>배포 기록의 계획 구간</td><td>ops</td><td>팀 설정</td><td>포함 이슈 done, 롤백 시험 또는 면제, 배포 커밋의 full 통과 등(→ <a href="ops.html#deploy-gate">deploy 게이트</a>)</td></tr>
+</tbody></table></div>
+<p>승인자 그룹(<code>po</code> · <code>dev</code> · <code>qa</code> · <code>ops</code>)은 <code>.agents/knots-sync.json</code> 의 <code>approvers</code> · <code>groups</code> 로 정한다. 둘 다 선택이다. 그 게이트의 승인자가 비어 있으면 <strong>이 리포의 git 사용자 누구나</strong> 승인할 수 있다. 신원은 그 체크아웃의 git <code>user.email</code> 이다. 회원 · 로그인은 없다.</p>
+<p>흐름 틀 바꾸기는 터미널 명령이고 MR 로 올린다: <code>knots-sync flow gates --add &lt;게이트&gt; --after &lt;게이트&gt;</code> · <code>--remove &lt;게이트&gt;</code>. 하한 넷은 빼지 못한다.</p>
+
+<h3 id="profile">일의 크기(프로필)와 위험</h3>
+<p>모든 일이 아홉 게이트를 다 지나지는 않는다. 접수할 때의 종류와 분해 판정으로 <strong>프로필</strong>이 정해지고, 프로필이 만드는 산출물의 게이트만 생긴다. 위험 등급은 승인 깊이를 정한다. 하한 넷은 이슈가 있는 모든 프로필에 있다.</p>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">프로필</th><th scope="col">언제</th><th scope="col">만드는 것</th></tr></thead>
+<tbody>
+<tr><td><code>trivial</code></td><td>바뀐 줄 20 이하, 새 · 지운 파일 0, 위험 경로 0</td><td>이슈 없이 <code>chore/&lt;이름&gt;</code> 브랜치와 MR(넘으면 affected 검증이 "이슈가 필요하다"로 실패)</td></tr>
+<tr><td><code>bug</code></td><td>접수 종류 bug</td><td>이슈 하나(재현 · 현재 · 기대 · 바뀌면 안 되는 동작)</td></tr>
+<tr><td><code>unit</code></td><td>feature · change 이고 분해 기준 넷 모두 미만</td><td>Intent(짧게) · current-state · 이슈 하나. 기획물 없음</td></tr>
+<tr><td><code>feature</code></td><td>feature · change 이고 분해 기준 하나 이상(스토리 ≥ 5 · 도메인 ≥ 2 · 사용자 유형 ≥ 3 · 외부 통합 ≥ 3)</td><td>전부</td></tr>
+<tr><td><code>product</code></td><td>접수 종류 product(처음부터 만드는 제품)</td><td>전부 + 걷는 뼈대 Unit</td></tr>
+<tr><td><code>refactor</code></td><td>접수 종류 refactor</td><td>Intent · current-state · 이슈, 특성 시험이 첫 Phase</td></tr>
+</tbody></table></div>
+<p>위험은 <code>low</code>(게이트마다 1명) · <code>medium</code>(1명, design 의 "사람이 볼 곳" 줄 필수) · <code>high</code>(권한 · 인증 · 결제 · 개인정보 · 되돌릴 수 없는 마이그레이션 등 — design · mr · deploy 에 <strong>서로 다른 승인자 2명</strong>, 롤백 시험 면제 불가)다. diff 가 <code>risk.highPaths</code> 에 걸리면 문서 값과 상관없이 <code>high</code> 로 본다.</p>
+
+<h2 id="sdlc">이슈의 SDLC 여덟 단계</h2>
+<p>이슈 하나는 <code>.agents/docs/issues/&lt;키&gt;-&lt;이름&gt;/</code> 폴더 하나, 브랜치 <code>&lt;종류&gt;/&lt;키&gt;-&lt;이름&gt;</code> 하나, MR 하나다. 폴더 안 문서는 단계에 들어갈 때만 생긴다.</p>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">단계</th><th scope="col">남는 것</th><th scope="col">스킬</th><th scope="col">게이트</th></tr></thead>
+<tbody>
+<tr><td>S1 분석</td><td>requirements — 스토리 · <code>R#.#</code> 수용 기준 · 성공 기준 <code>SC-</code></td><td><code>/kns-specify</code> · <code>/kns-clarify</code></td><td rowspan="2">requirements <code>approved</code></td></tr>
+<tr><td>S2 기획</td><td>requirements — 정책 표 <code>P-#</code> · 화면 표(없으면 "화면 없음")</td><td><code>/kns-specify</code> · <code>/kns-checklist</code></td></tr>
+<tr><td>S3 설계</td><td>design — 순서도 · 시퀀스 · 상태 · DB · 인덱스 · 캐시 키 · 동시성 · API · §13 배포 · 롤백</td><td><code>/kns-plan</code> · <code>/kns-analyze</code></td><td>Constitution Check · design <code>approved</code></td></tr>
+<tr><td>S4 계획</td><td><code>tasks.md</code>(<code>state: active</code>), Phase = Bolt</td><td><code>/kns-tasks</code></td><td>tasks(팀 설정)</td></tr>
+<tr><td>S5 구현</td><td>코드 · 시험</td><td><code>/kns-implement</code> · <code>/kns-maintain</code></td><td>changed 검증</td></tr>
+<tr><td>S6 테스트</td><td>tasks 의 <code>[VERIFICATION]</code> 기록</td><td><code>/kns-checklist</code> · <code>verify.sh</code></td><td>검증 레벨</td></tr>
+<tr><td>S7 문서 반영</td><td>기능 문서 원고 · 생성 HTML</td><td><code>/kns-docs</code></td><td>기능 문서 검사</td></tr>
+<tr><td>S8 완료</td><td><code>state: check</code> → 사람 검수 → <code>completed</code></td><td><code>/kns-converge</code>(남은 일)</td><td>done 승인</td></tr>
+</tbody></table></div>
+<p>문서 머리(frontmatter)의 <code>status</code> 는 <code>draft</code> → <code>in-review</code> → <code>approved</code> 로 간다. 에이전트는 <code>in-review</code> 까지만 올린다. <code>approved</code> 는 승인 경로만 바꾼다. 파일이 있다는 것이 승인은 아니다.</p>
+
+<h2 id="intent-unit-bolt">Intent · Unit · Bolt</h2>
+<p>요구사항이 크면 이슈 하나로 끝나지 않는다. knots-sync 는 AI-DLC 의 말을 빌려 세 층으로 나눈다.</p>
+<figure class="diagram wide">
+<svg viewBox="0 0 960 300" role="img" aria-labelledby="iub-t iub-d">
+<title id="iub-t">Intent, Unit, Bolt의 관계</title>
+<desc id="iub-d">맨 위에 Intent INT-7 결제 개편이 있다. 그 아래 Unit 넷이 의존 순서로 놓인다: U-4 API 결제 이벤트(계약, 먼저), U-1 결제수단 등록(이슈 SHOP-21), U-2 정산 주기와 지급, U-3 결제 실패 알림. U-1 아래에는 Bolt 셋이 있다: Phase 1 준비, Phase 2 정리 배치, Phase 3 시험.</desc>
+<defs><marker id="ah-iub" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrow-head"/></marker></defs>
+<rect x="300" y="14" width="360" height="54" rx="6" class="n-dark"/>
+<text x="480" y="37" text-anchor="middle" class="t-strong t-white">Intent · INT-7 결제 개편</text>
+<text x="480" y="56" text-anchor="middle" class="t-white" style="font-size:12px">intent.md + units.json · Jira 에픽에 대응</text>
+<path d="M480,68 V96 M150,96 H840 M150,96 V120 M380,96 V120 M610,96 V120 M840,96 V120" class="e"/>
+<rect x="55" y="120" width="190" height="62" rx="6" class="n-design"/><text x="185" y="143" text-anchor="middle" class="t-strong">U-4 API 결제 이벤트</text><text x="185" y="161" text-anchor="middle" class="t-sub">kind: contract · 먼저 만든다</text>
+<rect x="285" y="120" width="190" height="62" rx="6" class="n-build"/><text x="380" y="143" text-anchor="middle" class="t-strong">U-1 결제수단 등록</text><text x="380" y="161" text-anchor="middle" class="t-sub mono">SHOP-21 · feat/SHOP-21-…</text>
+<rect x="515" y="120" width="190" height="62" rx="6" class="n-plain"/><text x="610" y="143" text-anchor="middle" class="t-strong">U-2 정산 주기와 지급</text><text x="610" y="161" text-anchor="middle" class="t-sub">이슈 아직 없음</text>
+<rect x="745" y="120" width="190" height="62" rx="6" class="n-plain"/><text x="840" y="143" text-anchor="middle" class="t-strong">U-3 결제 실패 알림</text><text x="840" y="161" text-anchor="middle" class="t-sub">이슈 아직 없음</text>
+<path d="M245,151 H283" class="e-dash" marker-end="url(#ah-iub)"/><path d="M475,151 H513" class="e-dash" marker-end="url(#ah-iub)"/><path d="M705,151 H743" class="e-dash" marker-end="url(#ah-iub)"/>
+<text x="610" y="200" text-anchor="middle" class="t-sub">점선 = dependsOn(의존 순서)</text>
+<path d="M380,182 V214 M270,214 H490 M270,214 V232 M380,214 V232 M490,214 V232" class="e"/>
+<rect x="222" y="232" width="96" height="44" rx="6" class="n-sunken"/><text x="270" y="252" text-anchor="middle" class="t-strong" style="font-size:12px">Phase 1</text><text x="270" y="267" text-anchor="middle" class="t-sub">준비</text>
+<rect x="332" y="232" width="96" height="44" rx="6" class="n-sunken"/><text x="380" y="252" text-anchor="middle" class="t-strong" style="font-size:12px">Phase 2</text><text x="380" y="267" text-anchor="middle" class="t-sub">정리 배치</text>
+<rect x="442" y="232" width="96" height="44" rx="6" class="n-sunken"/><text x="490" y="252" text-anchor="middle" class="t-strong" style="font-size:12px">Phase 3</text><text x="490" y="267" text-anchor="middle" class="t-sub">시험</text>
+<text x="560" y="259" class="t-sub">← Bolt = tasks.md 의 Phase(수 시간~수 일)</text>
+</svg>
+<figcaption><strong>그림 2.</strong> Intent · Unit · Bolt. 관리 페이지의 "흐름" 화면이 이 그림을 <code>units.json</code> 의 <code>dependsOn</code> 으로 그린다(→ <a href="dashboard.html#flow">진행 · 흐름</a>).</figcaption>
+</figure>
+<dl class="defs">
+<dt>Intent</dt><dd>요구사항 하나를 정리한 설계 단위. Jira 에픽에 대응한다. 키는 <code>INT-&lt;n&gt;</code>(jira-workflow 를 켜면 에픽 키). 폴더 <code>.agents/docs/intents/&lt;키&gt;-&lt;이름&gt;/</code> 에 <code>intake.md</code> · <code>intent.md</code> · <code>questions.md</code> · <code>units.json</code> · <code>approvals.md</code> · <code>plans/</code> 가 산다.</dd>
+<dt>Unit</dt><dd>독립적으로 만들고 배포할 수 있는 작업 묶음. Unit 하나 = 이슈 하나 = SDD 폴더 하나 = 브랜치 · MR 하나. 도메인 사이 API · 이벤트는 <code>kind: contract</code> Unit 으로 먼저 만든다.</dd>
+<dt>Bolt</dt><dd>Unit 안의 작업 묶음. <code>tasks.md</code> 의 Phase 하나다. Bolt 가 끝날 때마다 changed 검증을 돈다.</dd>
+<dt>이슈 키</dt><dd>Unit 의 식별자. 형식 <code>^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5}$</code>. Jira 를 쓰면 Jira 키, 아니면 킷이 <code>&lt;접두&gt;-&lt;다음 번호&gt;</code> 로 만든다. 외부 이슈 번호를 지어내지 않는다.</dd>
+<dt>질문</dt><dd><code>questions.md</code> 의 <code>Q-n</code>. 선택지 2~4개 · 권장안 · 답할 직무(po · dev …) · 막는 게이트가 있다. 사람이 관리 페이지나 <code>knots-sync answer</code> 로 답한다.</dd>
+</dl>
+
+<h2 id="approval">승인 — 누가, 어디서, 어떻게</h2>
+<p>게이트 승인은 <strong>네 경로로만</strong> 생기고, 모두 <code>approvals.md</code> 에 덧붙이는 한 줄 기록으로 남는다. 에이전트는 이 파일을 쓰지 못한다(Claude Code 는 <code>permissions.deny</code> 에 <code>Edit(//**/approvals.md)</code>, 다른 하네스는 PreToolUse 훅, git pre-commit 은 기존 줄 변경을 거부).</p>
+<figure class="diagram wide">
+<svg viewBox="0 0 960 520" role="img" aria-labelledby="ap-t ap-d">
+<title id="ap-t">승인 흐름: 에이전트가 쓰고 사람이 PIN으로 승인한다</title>
+<desc id="ap-d">세 칸. 왼쪽 에이전트 세션은 문서를 쓰고 status를 in-review로 올린다. 에이전트 세션 안에서 연 관리 페이지는 읽기 전용이라 승인할 수 없고, 채팅에서 한 승인 말도 승인이 아니다. 오른쪽 사람은 자기 터미널에서 knots-sync dashboard를 열어 주소와 PIN을 받고, 브라우저에서 승인 문구를 넣고 승인하고 기록을 누른 뒤 PIN을 넣는다. 가운데 리포 파일 칸에서 서버가 승인자, NEEDS CLARIFICATION, sha, 앞 게이트를 검사하고 approvals.md에 덧붙이며 문서 status를 approved로 바꾼다. 다른 승인 경로로 knots-sync approve, Jira 사람 전이, AI-DLC 훅이 있다. 승인 뒤 세션에 알리는 것은 사람이 고를 때만이다.</desc>
+<defs>
+<marker id="ah-ap" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrow-head"/></marker>
+<marker id="ah-ap-h" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrow-head-human"/></marker>
+</defs>
+<text x="160" y="30" text-anchor="middle" class="t-title">에이전트 세션</text>
+<text x="480" y="30" text-anchor="middle" class="t-title">리포 파일</text>
+<text x="800" y="30" text-anchor="middle" class="t-title">사람(자기 터미널 · 브라우저)</text>
+<path d="M320,40 V505 M640,40 V505" class="e-dash"/>
+<rect x="30" y="50" width="260" height="60" rx="6" class="n-build"/><text x="160" y="75" text-anchor="middle" class="t-strong">① 문서를 쓴다</text><text x="160" y="94" text-anchor="middle" class="t-sub">머리 status 를 in-review 까지만 올린다</text>
+<rect x="350" y="50" width="260" height="60" rx="6" class="n-plain"/><text x="480" y="75" text-anchor="middle" class="t-strong mono">requirements.md</text><text x="480" y="94" text-anchor="middle" class="t-sub">status: in-review</text>
+<path d="M290,80 H348" class="e" marker-end="url(#ah-ap)"/>
+<rect x="30" y="150" width="260" height="60" rx="6" class="n-sunken"/><text x="160" y="175" text-anchor="middle" class="t-strong">세션 안에서 연 관리 페이지</text><text x="160" y="194" text-anchor="middle" class="t-sub">읽기 전용 · PIN 없음 · 승인 API 꺼짐</text>
+<text x="300" y="186" text-anchor="middle" class="t-gate" style="font-size:18px">✕</text>
+<rect x="30" y="250" width="260" height="60" rx="6" class="n-sunken"/><text x="160" y="275" text-anchor="middle" class="t-strong">채팅: "좋아, 승인해"</text><text x="160" y="294" text-anchor="middle" class="t-sub">어떤 말이든 승인이 아니다</text>
+<text x="300" y="286" text-anchor="middle" class="t-gate" style="font-size:18px">✕</text>
+<rect x="670" y="50" width="260" height="60" rx="6" class="n-human"/><text x="800" y="75" text-anchor="middle" class="t-strong">② knots-sync dashboard</text><text x="800" y="94" text-anchor="middle" class="t-sub">주소 → 표준 출력 · PIN → 표준 오류</text>
+<rect x="670" y="150" width="260" height="60" rx="6" class="n-human"/><text x="800" y="175" text-anchor="middle" class="t-strong">③ 승인 문구 → 승인하고 기록</text><text x="800" y="194" text-anchor="middle" class="t-sub">PIN 대화상자(탭마다 한 번)</text>
+<path d="M800,110 V148" class="e-human" marker-end="url(#ah-ap-h)"/>
+<rect x="670" y="250" width="260" height="78" rx="6" class="n-plain"/><text x="800" y="272" text-anchor="middle" class="t-strong">다른 승인 경로</text><text x="800" y="290" text-anchor="middle" class="t-sub mono">knots-sync approve(TTY · 키 재입력)</text><text x="800" y="305" text-anchor="middle" class="t-sub">Jira 사람 전이 → sync jira --approvals</text><text x="800" y="320" text-anchor="middle" class="t-sub">AI-DLC 훅 승인 → sync aidlc</text>
+<rect x="350" y="230" width="260" height="76" rx="6" class="n-plain"/><text x="480" y="253" text-anchor="middle" class="t-strong">④ 서버 · 스크립트가 검사</text><text x="480" y="271" text-anchor="middle" class="t-sub">승인자 그룹 · [NEEDS CLARIFICATION] 0</text><text x="480" y="287" text-anchor="middle" class="t-sub">문서 sha 같음 · 앞 게이트 통과</text>
+<path d="M670,180 H645 V255 H612" class="e-human" marker-end="url(#ah-ap-h)"/>
+<path d="M670,289 H612" class="e-human" marker-end="url(#ah-ap-h)"/>
+<rect x="350" y="350" width="260" height="60" rx="6" class="n-ops"/><text x="480" y="375" text-anchor="middle" class="t-strong mono">⑤ approvals.md 에 덧붙임</text><text x="480" y="394" text-anchor="middle" class="t-sub">+ 문서 status: approved</text>
+<path d="M480,306 V348" class="e" marker-end="url(#ah-ap)"/>
+<rect x="670" y="350" width="260" height="60" rx="6" class="n-human"/><text x="800" y="375" text-anchor="middle" class="t-strong">⑥ 세션에 요청(선택)</text><text x="800" y="394" text-anchor="middle" class="t-sub">사람이 고를 때만 간다</text>
+<path d="M610,380 H668" class="e" marker-end="url(#ah-ap)"/>
+<rect x="30" y="440" width="260" height="60" rx="6" class="n-build"/><text x="160" y="465" text-anchor="middle" class="t-strong">⑦ 한 줄 알림을 받고 다음 단계</text><text x="160" y="484" text-anchor="middle" class="t-sub">경로 · 요약만. 문서 내용은 보내지 않는다</text>
+<path d="M800,410 V470 H292" class="e-dash" marker-end="url(#ah-ap)"/>
+</svg>
+<figcaption><strong>그림 3.</strong> 승인 흐름. 빨간 선이 사람이 하는 일이다. 승인 · 수정 요청 · 질문 답 · 저장은 세션에 아무것도 보내지 않는다. 세션 알림은 사람이 "세션에 요청"을 누를 때만 간다.</figcaption>
+</figure>
+<div class="table-wrap"><table>
+<caption>승인 경로 넷</caption>
+<thead><tr><th scope="col">경로</th><th scope="col">방법</th><th scope="col">기록의 <code>경로</code> 줄</th></tr></thead>
+<tbody>
+<tr><td>관리 페이지</td><td>사람 터미널에서 연 서버의 "승인하고 기록" + PIN</td><td><code>dashboard</code></td></tr>
+<tr><td>사람 터미널</td><td><code>knots-sync approve &lt;키&gt; --gate &lt;게이트&gt; --phrase "…"</code>(Node 없는 리포는 <code>python3 scripts/harness/approve.py &lt;키&gt; &lt;게이트&gt; --phrase "…"</code>). TTY 가 아니면 exit 3, 마지막에 이슈 키를 다시 입력해 확인한다</td><td><code>terminal</code></td></tr>
+<tr><td>Jira(모듈을 켰을 때)</td><td>사람이 Jira 에서 한 승인 전이를 <code>knots-sync sync jira --approvals</code> 로 가져온다</td><td><code>jira</code></td></tr>
+<tr><td>AI-DLC(모듈을 켰을 때)</td><td>AI-DLC 의 사람 입력 확인 훅이 받은 승인을 <code>knots-sync sync aidlc</code> 가 옮긴다. 기록에 승인자가 있을 때만</td><td><code>aidlc</code></td></tr>
+</tbody></table></div>
+<div class="block"><span class="block-label"><span class="tag">형식</span><code>approvals.md</code> 한 기록(설계서 06 §3.7)</span>
+<pre><code>## 2026-11-23T14:05:12+09:00 · design · approved
+- 승인자: kim@example.com (Kim) · 그룹: dev
+- 대상: design.md · sha256: 9f1c2ab0…(64자)
+- 문구: "B안으로 반영해"
+- 경로: dashboard
+- 기록 ID: 01JDQ4ZK6B7Y0M9W2S3T4V5X6Y</code></pre></div>
+<p>승인은 문서의 <strong>sha256</strong> 에 묶인다. 승인 뒤 문서가 바뀌면 그 승인은 오래된(stale) 승인이 되고 다시 받아야 한다(머리의 <code>status</code> · <code>state</code> 줄만 바뀐 것은 셈하지 않는다). 승인 문구는 기록일 뿐이고 문구만으로 승인이 생기지는 않는다.</p>
+<div class="human">
+<span class="box-title">왜 이렇게까지 하나</span>
+<p>에이전트가 스스로 승인하면 게이트가 없는 것과 같다. 그래서 PIN 은 사람 터미널에만 나오고, 에이전트 세션 안에서 연 서버는 읽기 전용으로 뜨며(판정: <code>CLAUDECODE=1</code> 같은 하네스 변수 · 부모 프로세스), 훅이 에이전트의 <code>knots-sync approve|answer|review decide</code> 실행과 토큰 파일 읽기를 막는다. 같은 OS 사용자의 임의 프로세스까지는 막지 못한다 — 더 강한 증거가 필요한 게이트는 Jira 사람 전이나 MR 플랫폼 승인을 같이 쓴다.</p>
+</div>
+
+<h2 id="harness">하네스와 역할</h2>
+<p><strong>하네스</strong>는 Claude Code · Codex · Cursor · Kiro 같은 에이전트 실행 도구다. knots-sync 는 같은 원본을 각 하네스가 읽는 자리에 놓는다.</p>
+<figure class="diagram wide">
+<svg viewBox="0 0 960 470" role="img" aria-labelledby="pj-t pj-d">
+<title id="pj-t">원본 .agents 에서 네 하네스 폴더로의 배치</title>
+<desc id="pj-d">왼쪽 .agents 원본에는 rules, skills, roles, hooks.json, docs, knots-sync.json과 lock이 있다. 오른쪽 네 하네스로 화살표가 간다. .claude는 skills와 rules 복사, agents 생성, settings.json 훅과 deny 병합, CLAUDE.md 킷 블록. .codex는 agents toml 생성, config.toml과 hooks.json, 스킬은 .agents/skills를 그대로 읽는다. .cursor는 commands와 rules 생성. .kiro는 steering 생성, skills 복사, agents와 hooks 생성. 아래 띠: 어긋나면 배치 검사와 보호 훅이 알리고 repair가 원본에서 다시 만든다.</desc>
+<defs><marker id="ah-pj" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" class="arrow-head"/></marker></defs>
+<rect x="20" y="30" width="330" height="370" rx="8" class="n-dark"/>
+<text x="40" y="62" class="t-strong t-white" style="font-size:16px">.agents/ — 원본</text>
+<text x="40" y="100" class="t-white mono">rules/</text><text x="185" y="100" class="t-white" style="font-size:12px">규칙(paths 로 자동 로드)</text>
+<text x="40" y="132" class="t-white mono">skills/kns-*/</text><text x="185" y="132" class="t-white" style="font-size:12px">프로젝트 스킬 15종</text>
+<text x="40" y="164" class="t-white mono">roles/</text><text x="185" y="164" class="t-white" style="font-size:12px">역할 6종</text>
+<text x="40" y="196" class="t-white mono">hooks.json</text><text x="185" y="196" class="t-white" style="font-size:12px">훅 정의 한 곳</text>
+<text x="40" y="228" class="t-white mono">docs/</text><text x="185" y="228" class="t-white" style="font-size:12px">intents · issues · ops</text>
+<text x="40" y="260" class="t-white mono">knots-sync.json</text><text x="185" y="276" class="t-white" style="font-size:12px">설정 · 설치 기록</text>
+<text x="40" y="276" class="t-white mono">knots-sync.lock</text>
+<text x="40" y="330" class="t-white" style="font-size:12px">고칠 때는 여기만 고친다.</text>
+<text x="40" y="350" class="t-white" style="font-size:12px">하네스 폴더는 만들어진 결과다.</text>
+<rect x="560" y="20" width="380" height="86" rx="6" class="n-plain"/><text x="580" y="45" class="t-strong mono">.claude/ · CLAUDE.md</text><text x="580" y="66" class="t-sub">skills/kns-* · rules/ 복사, agents/ 역할 생성</text><text x="580" y="84" class="t-sub">settings.json 에 훅 · deny 병합, CLAUDE.md 킷 블록</text>
+<rect x="560" y="120" width="380" height="86" rx="6" class="n-plain"/><text x="580" y="145" class="t-strong mono">.codex/</text><text x="580" y="166" class="t-sub">agents/*.toml 생성, config.toml · hooks.json</text><text x="580" y="184" class="t-sub">스킬은 .agents/skills/ 를 그대로 읽는다($kns-…)</text>
+<rect x="560" y="220" width="380" height="86" rx="6" class="n-plain"/><text x="580" y="245" class="t-strong mono">.cursor/</text><text x="580" y="266" class="t-sub">commands/kns-*.md 생성(/kns-…)</text><text x="580" y="284" class="t-sub">rules/ 생성</text>
+<rect x="560" y="320" width="380" height="86" rx="6" class="n-plain"/><text x="580" y="345" class="t-strong mono">.kiro/</text><text x="580" y="366" class="t-sub">steering/ 생성(명령은 inclusion: manual), skills/ 복사</text><text x="580" y="384" class="t-sub">agents/ · hooks/ 생성</text>
+<path d="M350,215 C450,215 460,63 558,63" class="e" marker-end="url(#ah-pj)"/>
+<path d="M350,215 C450,215 460,163 558,163" class="e" marker-end="url(#ah-pj)"/>
+<path d="M350,215 C450,215 460,263 558,263" class="e" marker-end="url(#ah-pj)"/>
+<path d="M350,215 C450,215 460,363 558,363" class="e" marker-end="url(#ah-pj)"/>
+<text x="470" y="172" text-anchor="middle" class="t-sub">복사 · 생성 · 병합</text>
+<rect x="20" y="420" width="920" height="38" rx="6" class="n-sunken"/>
+<text x="480" y="444" text-anchor="middle" style="font-size:12px">어긋나면: 배치 검사(<tspan class="mono">check_layout.py</tspan>, verify --fast)가 알리고, <tspan class="mono">knots-sync repair</tspan> 가 원본에서 다시 만든다. 링크 · 포인터 파일은 쓰지 않는다</text>
+</svg>
+<figcaption><strong>그림 4.</strong> 원본과 하네스 폴더. 고른 하네스의 폴더만 만든다 — 네 하네스를 모두 쓸 필요는 없다(→ <a href="install.html#agents">하네스 고르기</a>).</figcaption>
+</figure>
+<p><strong>역할</strong>은 "누가 어떤 세션에서 무엇을 하나"다. 사람이 세션을 열고, 킷은 그 세션이 어떤 역할인지 알려 주고 경계를 지킨다. 기본 배치(결정 D7)는 아래와 같고 <code>knots-sync.json</code> 의 <code>roles</code> 로 바꾼다.</p>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">역할</th><th scope="col">기본 하네스</th><th scope="col">하는 일</th><th scope="col">쓰는 곳</th></tr></thead>
+<tbody>
+<tr><td><code>design</code></td><td>Claude Code</td><td><code>/kns-intent</code> · <code>/kns-plans</code> · <code>/kns-specify</code> · <code>/kns-plan</code></td><td>Intent 폴더 · 이슈 문서(승인 · 답 줄은 쓰지 않는다)</td></tr>
+<tr><td><code>implement</code></td><td>Claude Code</td><td><code>/kns-tasks</code> · <code>/kns-implement</code> · <code>/kns-maintain</code></td><td>코드 · 시험 · tasks</td></tr>
+<tr><td><code>review</code></td><td>Codex</td><td><code>/kns-review</code> · <code>/kns-scan</code>(읽는 세션)</td><td>지적 파일만(<code>findings.json</code>). 체크아웃하지 않고 원격 diff 를 읽는다</td></tr>
+<tr><td><code>docs</code></td><td>Kiro</td><td><code>/kns-docs</code></td><td>기능 문서 원고</td></tr>
+<tr><td>진행 판정</td><td>사람</td><td>게이트 승인 · 질문 답 · 리뷰 판단 · 세션에 요청</td><td><code>approvals.md</code> · <code>questions.md</code> 의 답</td></tr>
+</tbody></table></div>
+<p>같은 리포에서 파일을 쓰는 세션이 둘 이상이면 이슈마다 worktree 를 만든다: <code>python3 scripts/harness/worktree.py new &lt;키&gt;</code>. 자리는 리포 옆 <code>../&lt;리포&gt;.worktrees/&lt;키&gt;-&lt;이름&gt;/</code>, 리포당 3개까지, 끝나면 <code>done</code> 으로 바로 지운다.</p>
+
+<h2 id="verify-levels">검증 레벨</h2>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">레벨</th><th scope="col">범위</th><th scope="col">누가 부르나</th></tr></thead>
+<tbody>
+<tr><td><code>fast</code></td><td>구조 · SDD 상태 · 배치 검사 · 포맷(빌드 도구 없음). 1~2초</td><td>Stop 훅</td></tr>
+<tr><td><code>changed</code>(기본)</td><td>바꾼 파일 + 연결된 시험 · 정적 분석</td><td>Bolt 끝, 커밋 전, pre-push</td></tr>
+<tr><td><code>affected</code></td><td>바꾼 파일이 속한 모듈 + 그 모듈을 쓰는 모듈</td><td>MR 전, MR 파이프라인</td></tr>
+<tr><td><code>full</code></td><td>전체</td><td>CI 만. 에이전트 세션의 <code>--full</code> 은 훅이 막는다. 사람은 자기 터미널에서 돌릴 수 있다</td></tr>
+</tbody></table></div>
+
+<h2 id="ownership">원본 · 복사본 · 소유자</h2>
+<p><code>.agents/knots-sync.lock</code> 은 킷이 깐 파일마다 <strong>소유자</strong>와 sha256 을 적는다. 소유자가 <code>update</code> · <code>remove</code> · <code>uninstall</code> 의 동작을 정한다.</p>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">owner</th><th scope="col">누구 것</th><th scope="col">update</th><th scope="col">remove · uninstall</th></tr></thead>
+<tbody>
+<tr><td><code>kit</code></td><td>킷이 깐 파일</td><td>고치지 않았으면 새 판으로 바꾼다. 사람이 고쳤으면 새 판을 <code>.new</code> 로 옆에 둔다(exit 4)</td><td>고치지 않은 것만 지운다. 고친 것은 남기고 exit 4</td></tr>
+<tr><td><code>user</code></td><td>설치 전부터 있던 파일(<code>init --adopt</code> 로 받은 파일 포함)</td><td>건드리지 않는다</td><td>건드리지 않는다</td></tr>
+<tr><td><code>pack:&lt;이름&gt;</code></td><td>회사 팩이 준 파일</td><td><code>update --packs</code> 로만 바꾼다</td><td><code>uninstall</code> 은 함께 지운다(<code>--keep-packs</code> 면 남긴다)</td></tr>
+<tr><td><code>external:&lt;도구&gt;</code></td><td>AI-DLC · Entire 가 만든 파일 · 훅</td><td>기록만(<code>op: none</code>). 파일 · 훅 sha 를 바꾸지 않는다</td><td>지우지 않는다. 도구 쪽 명령은 사람이 실행한다</td></tr>
+</tbody></table></div>
+<p>사람이 고친 킷 파일은 <code>doctor</code> 에 <code>drifted</code> 로 보인다. 계속 고친 채 쓰려면 놔두고, 킷 판으로 돌리려면 그 파일을 지운 뒤 <code>knots-sync repair</code> 로 되살린다.</p>
+
+</article>
+<nav class="pager" aria-label="이전 장 · 다음 장"><a class="prev" href="index.html" rel="prev"><small>← 이전</small>시작하기</a><a class="next" href="install.html" rel="next"><small>다음 →</small>설치</a></nav>
+</main>
+</div>
+<footer class="site-footer">knots-sync(약어 kns) 사용 안내서 · 정적 HTML · 외부 글꼴 · 스크립트 없음</footer>
+</body>
+</html>
