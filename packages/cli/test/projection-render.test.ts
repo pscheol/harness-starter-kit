@@ -103,8 +103,9 @@ describe("역할(R3, 03 §3.6 · 12 §3.5)", () => {
     expect(renderCodexRole(worker, {}, spec)).toContain('sandbox_mode = "workspace-write"\n\ndeveloper_instructions = """\n# worker\n"""\n');
   });
 
-  it("Kiro json: prompt 에 본문, 자원에서 역할 원본을 뺀다, write 역할에 보호 훅", () => {
-    const e = JSON.parse(renderKiroRole(explorer, {}, spec));
+  it("Kiro json: prompt 에 본문, 자원에서 역할 원본을 뺀다, write 역할에 보호 훅(hooks.json 의 subagents 항목)", () => {
+    const roleHooks = { preToolUse: [{ matcher: "write", command: "x harness-protect-sources y", timeout_ms: 15000 }] };
+    const e = JSON.parse(renderKiroRole(explorer, {}, roleHooks));
     expect(e).toEqual({
       name: "explorer",
       description: "근거를 찾는다",
@@ -113,12 +114,13 @@ describe("역할(R3, 03 §3.6 · 12 §3.5)", () => {
       allowedTools: ["read"],
       resources: ["file://AGENTS.md", "file://.agents/rules/guardrails.md", "skill://.agents/skills/**/SKILL.md"],
     });
-    const w = JSON.parse(renderKiroRole(worker, {}, spec));
+    const w = JSON.parse(renderKiroRole(worker, {}, roleHooks));
     expect(w.tools).toEqual(["read", "shell", "write"]);
     expect(w.allowedTools).toEqual(["read", "write"]);
-    expect(w.hooks).toEqual(spec.kiroWriteHooks);
-    expect(JSON.parse(renderKiroRole(docs, {}, spec)).tools).toEqual(["read", "web"]);
-    expect(renderKiroRole(explorer, {}, spec).endsWith("}\n")).toBe(true);
+    expect(w.hooks).toEqual(roleHooks);
+    expect(JSON.parse(renderKiroRole(worker, {}, {})).hooks).toBeUndefined();
+    expect(JSON.parse(renderKiroRole(docs, {}, roleHooks)).tools).toEqual(["read", "web"]);
+    expect(renderKiroRole(explorer, {}, roleHooks).endsWith("}\n")).toBe(true);
   });
 
   it("TOML 문자열", () => {

@@ -16,9 +16,20 @@ from pathlib import Path  # noqa: E402
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
+from projection_hooks import (  # noqa: E402
+    HOOKS_REL,
+    HooksError,
+    kiro_cli_hooks,
+    kiro_ide_files,
+    kit_script_suffixes,
+    parse_hooks,
+    render_kiro_coordinator,
+    settings_hooks,
+)
 from projection_merge import (  # noqa: E402
     claude_md_want,
     codex_config_want,
+    codex_hooks_want,
     gitattributes_want,
     MERGERS,
     settings_want,
@@ -115,6 +126,9 @@ class Sources:
     roles: list = field(default_factory=list)
     policy: object = None
     deferred: set = field(default_factory=set)
+    hooks_text: str | None = None
+    hooks_data: bytes = b""
+    modules: list = field(default_factory=list)
 
 
 def load_sources(root: Path) -> Sources:
@@ -149,7 +163,22 @@ def load_sources(root: Path) -> Sources:
                     src.deferred.add(rel)
     policy = root / ".agents/model-policy.json"
     src.policy = parse_policy(policy.read_text(encoding="utf-8") if regular(policy) else None)
+    hooks = root / HOOKS_REL
+    if regular(hooks):
+        src.hooks_data = hooks.read_bytes()
+        src.hooks_text = src.hooks_data.decode("utf-8")
+        if has_pending_new(hooks):
+            src.deferred.add(HOOKS_REL)
+    modules = read_meta(root).get("modules")
+    src.modules = [m for m in modules if isinstance(m, str)] if isinstance(modules, list) else []
     return src
+
+
+def load_hooks(src: Sources, spec: dict) -> list[dict] | None:
+    try:
+        return parse_hooks(src.hooks_text, spec["hookMap"])
+    except HooksError as error:
+        raise ProjectionError(str(error)) from error
 
 
 # ── 원하는 작업(어댑터) ──────────────────────────────────────────────────────
@@ -198,6 +227,14 @@ def skill_data(skill) -> bytes:
 def build_wants(root: Path, spec: dict, tokens: dict, agents: list[str]) -> tuple[list[Want], list[dict]]:
     src = load_sources(root)
     findings: list[dict] = []
+    parsed = load_hooks(src, spec)
+    if parsed is None:
+        findings.append({"kind": "hooks-missing", "severity": "error", "path": HOOKS_REL,
+                         "hint": "훅 원본이 없어 하네스 훅을 만들지 않는다 — harness-kit repair 로 되살린다"})
+    hooks = parsed or []
+    hm = spec["hookMap"]
+    suffixes = kit_script_suffixes(hooks, hm)
+    d_hooks = {HOOKS_REL} & src.deferred
     skills = []
     for s in src.skills:
         if skill_model_problem(s):
@@ -221,8 +258,11 @@ def build_wants(root: Path, spec: dict, tokens: dict, agents: list[str]) -> tupl
         wants += [mirror_file(f".claude/rules/{stem(r.source)}.md", "claude", r, root, d) for r in src.rules]
         wants += [render(f".claude/agents/{stem(r.source)}.md", "claude", r.source, render_claude_role(r, f["claude"]), r.data, d) for r, f in roles]
         wants.append(Want("CLAUDE.md", "merge", "claude", kind="claude-md", merge=claude_md_want(spec)))
-        wants.append(Want(".claude/settings.json", "merge", "claude", kind="settings", merge=settings_want(spec, tokens)))
+        wants.append(Want(".claude/settings.json", "merge", "claude", kind="settings",
+                          merge=settings_want(spec, tokens, settings_hooks(hooks, "claude", hm, src.modules), suffixes)))
     if "codex" in agents:
+        wants.append(Want(".codex/hooks.json", "merge", "codex", kind="codex-hooks",
+                          merge=codex_hooks_want(settings_hooks(hooks, "codex", hm, src.modules), suffixes)))
         wants += [render(f".codex/agents/{stem(r.source)}.toml", "codex", r.source, render_codex_role(r, f["codex"], spec), r.data, d) for r, f in roles]
         live = [{"name": stem(r.source), "description": r.description} for r, _ in roles if r.source not in d]
         keep = [stem(r.source) for r, _ in roles if r.source in d]
@@ -234,7 +274,13 @@ def build_wants(root: Path, spec: dict, tokens: dict, agents: list[str]) -> tupl
         wants += [mirror_dir(f".kiro/skills/{stem(s.source)}", "kiro", s, d) for s in skills]
         wants += [render(f".kiro/steering/{stem(r.source)}.md", "kiro", r.source, render_kiro_rule(r), r.data, d) for r in src.rules]
         wants += [render(f".kiro/steering/{stem(s.source)}.md", "kiro", f"{s.source}/SKILL.md", render_kiro_skill_steering(s), skill_data(s), d | {f"{x}/SKILL.md" for x in d}) for s in skills]
-        wants += [render(f".kiro/agents/{stem(r.source)}.json", "kiro", r.source, render_kiro_role(r, f["kiro"], spec), r.data, d) for r, f in roles]
+        role_hooks = kiro_cli_hooks(hooks, hm, src.modules, subagents_only=True)
+        wants += [render(f".kiro/agents/{stem(r.source)}.json", "kiro", r.source, render_kiro_role(r, f["kiro"], role_hooks), r.data, d) for r, f in roles]
+        wants += [render(path, "kiro", HOOKS_REL, text, src.hooks_data, d_hooks) for path, text in kiro_ide_files(hooks, hm, src.modules)]
+        slug = tokens.get("PROJECT_SLUG") or ""
+        if slug and parsed is not None:
+            coordinator = render_kiro_coordinator(spec, tokens, kiro_cli_hooks(hooks, hm, src.modules))
+            wants.append(render(f".kiro/agents/{slug}.json", "kiro", HOOKS_REL, coordinator, src.hooks_data, d_hooks))
     wants.append(Want(".gitattributes", "merge", "core", kind="gitattributes", merge=gitattributes_want(spec, agents)))
     seen: set[str] = set()
     for w in wants:
@@ -283,8 +329,16 @@ def full_merge_want(kind: str, spec: dict, tokens: dict, src: Sources | None) ->
     """원하지 않게 된 병합 파일을 뺄 때 쓰는 '킷 전부' 조각."""
     if kind == "claude-md":
         return claude_md_want(spec)
-    if kind == "settings":
-        return settings_want(spec, tokens)
+    if kind in ("settings", "codex-hooks"):
+        hm = spec["hookMap"]
+        try:
+            hooks = (parse_hooks(src.hooks_text, hm) if src else None) or []
+        except HooksError:
+            hooks = []
+        modules = [h["module"] for h in hooks if h.get("module")]
+        if kind == "settings":
+            return settings_want(spec, tokens, settings_hooks(hooks, "claude", hm, modules), kit_script_suffixes(hooks, hm))
+        return codex_hooks_want(settings_hooks(hooks, "codex", hm, modules), kit_script_suffixes(hooks, hm))
     if kind == "codex-config":
         roles = [{"name": stem(r.source), "description": r.description} for r in (src.roles if src else [])]
         return codex_config_want(spec, roles)

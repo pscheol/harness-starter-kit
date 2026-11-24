@@ -11,6 +11,7 @@ import { loadLayout } from "../core/layout";
 import { AMBIGUOUS_REASON, resolvedLock } from "../core/legacy-lock";
 import { LOCK_REL, serializeLock } from "../core/lock";
 import { mergeMetaForUpdate, META_REL, serializeMeta } from "../core/meta";
+import { NOTICE_REL, planNotice, UPGRADE_FILE, type NoticeAction, type NoticePlan } from "../core/notice";
 import { MANIFEST_PATH, manifestContent } from "../core/plan";
 import { removeEmptyDirs, removeFile } from "../core/remove";
 import { retiredNote, type Selection } from "../core/selection";
@@ -214,7 +215,11 @@ export function runUpdate(ctx: Ctx): CommandResult {
   const entries = projection ? mergeEntries(plan.entries, projection.plan) : [...plan.entries, ...inst.lock.entries.filter((e) => PROJECTION_OPS.has(e.op))];
   const dryRun = bool(ctx.values, "dry-run");
   const w = writtenState(ctx, target, inst, entries, selection, tokens, loc.source, mergeBackups);
-  if (!dryRun) applyUpdate(target, plan, w, projection?.plan ?? null);
+  const notice = noticeFor(target, loc.dir, inst.meta.kit.version, today(ctx.io));
+  if (!dryRun) {
+    applyUpdate(target, plan, w, projection?.plan ?? null);
+    applyNotice(target, notice);
+  }
   const board: BoardResult = dryRun ? { status: "skipped", reason: "dry-run" } : refreshBoard(target, io.env, boardBlocker(plan));
 
   const keptModified = prune && plan.ops.some((o) => o.action === "orphan" && o.modified);
@@ -239,6 +244,7 @@ export function runUpdate(ctx: Ctx): CommandResult {
     merged,
     generated: w.manifest ? [{ path: MANIFEST_PATH, action: "create" }] : [],
     board,
+    notice: { path: NOTICE_REL, action: notice.action },
     state: [META_REL, LOCK_REL, ...(w.v1Backup ? [V1_LOCK_BACKUP] : [])],
   };
   if (projection) data.projection = projectionData(projection.plan, projection.findings);
@@ -250,9 +256,39 @@ export function runUpdate(ctx: Ctx): CommandResult {
     ...(droppedModules.length ? [`  ⚠ 킷에 없는 모듈을 뺀다: ${droppedModules.join(", ")}`] : []),
   ];
   const lines = humanLines(ctx, head, plan, shown, conflicts, dryRun, board, merged, `${MERGE_BACKUP_DIR}/${stamp}`);
+  const noticeLine = NOTICE_LINES[notice.action];
+  if (noticeLine) lines.splice(lines.length - 1, 0, `  ${noticeLine}`);
   if (projection) lines.splice(head.length + shown.length + 1, 0, ...projectionLines(projection.plan, projection.findings, ctx.quiet));
   else if (inst.lock.entries.some((e) => PROJECTION_OPS.has(e.op))) lines.splice(head.length + shown.length + 1, 0, "  배치: 이 템플릿에 projection.json 이 없다 — 배치 항목은 그대로 둔다");
   return { code, data, lines };
+}
+
+const NOTICE_LINES: Record<NoticeAction, string | null> = {
+  write: `업그레이드 공지: ${NOTICE_REL} (세션 시작 때 제목 한 줄이 붙는다, 30일 뒤 만료 — 커밋하면 동료도 받는다)`,
+  delete: `만료된 업그레이드 공지를 지웠다: ${NOTICE_REL}`,
+  "keep-human": `업그레이드 공지: ${NOTICE_REL} 가 사람이 만든 파일이라 쓰지 않았다`,
+  none: null,
+};
+
+/** 킷 UPGRADE.md 에서 이번 판 공지 계획(HK-24 design §7). */
+function noticeFor(target: string, templatesDir: string, from: string, day: string): NoticePlan {
+  const read = (file: string): string | null => {
+    try {
+      return fs.readFileSync(file, "utf8");
+    } catch {
+      return null;
+    }
+  };
+  return planNotice({ upgradeText: read(path.join(templatesDir, UPGRADE_FILE)), from, to: VERSION, today: day, existing: read(full(target, NOTICE_REL)) });
+}
+
+function applyNotice(target: string, notice: NoticePlan): void {
+  try {
+    if (notice.action === "write" && notice.text !== undefined) writeFileAtomic(full(target, NOTICE_REL), Buffer.from(notice.text, "utf8"), false);
+    else if (notice.action === "delete") removeFile(target, NOTICE_REL);
+  } catch (err) {
+    throw fsError(err, `쓰기 실패 ${NOTICE_REL}`);
+  }
 }
 
 /** copy 판정 뒤의 원본으로 배치를 판정한다(design §6.3). 템플릿에 배치 상수가 없으면 null — 배치 항목을 그대로 둔다. */

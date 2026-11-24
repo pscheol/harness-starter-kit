@@ -6,10 +6,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { CliError, EXIT } from "../core/errors";
+import type { HookMap } from "./hooks";
 
 export const SPEC_REL = "common/scripts/harness/projection.json";
 export const SPEC_SCHEMA = "harness-kit.projection/v1";
 
+/** 설정 병합에 넣는 훅 하나(hooks.json 에서 만든다, HK-24). */
 export interface HookSpec {
   id: string;
   event: string;
@@ -21,11 +23,13 @@ export interface HookSpec {
 export interface ProjectionSpec {
   schema: string;
   claudeBlock: string[];
-  claudeSettings: { deny: string[]; hooks: HookSpec[] } & Record<string, unknown>;
+  claudeSettings: { deny: string[] } & Record<string, unknown>;
+  hookMap: HookMap;
   codexConfig: { header: string[]; defaults: { table: string; key: string; line: string }[]; tables: { table: string; lines: string[] }[] };
   gitattributes: Record<string, string[]>;
-  kiroWriteHooks: unknown;
   readOnlyLine: string;
+  /** Kiro 조율 에이전트 본문(토큰 치환 전). hooks 는 hooks.json 에서 붙인다(HK-24) */
+  kiroCoordinator: Record<string, unknown>;
 }
 
 const FORBIDDEN_CLAUDE = new Set(["model", "effortLevel", "modelSettings", "maxEffortLevel", "fallbackModel", "availableModels", "advisorModel"]);

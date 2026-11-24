@@ -1,6 +1,7 @@
-/** 배치 원본 읽기 — `.agents/rules` · `skills` · `roles` · `model-policy.json`(HK-13 design §2 · §6.1). */
+/** 배치 원본 읽기 — `.agents/rules` · `skills` · `roles` · `model-policy.json` · `hooks.json`(HK-13 design §2 · §6.1, HK-24). */
 import { byteCompare } from "../core/fsx";
 import { sha256 } from "../core/hash";
+import { HOOKS_REL } from "./hooks";
 import { parsePolicy, parseRole, parseRule, parseSkill, type Policy, type Role, type Rule, type Skill, type SkillFile } from "./render";
 import type { RepoView } from "./view";
 
@@ -47,10 +48,15 @@ export interface Sources {
   policy: Policy;
   /** `.new` 대기 중인 원본(design §6.3 — 배치를 미룬다) */
   deferred: Set<string>;
+  /** `.agents/hooks.json` 내용(없으면 null) */
+  hooksText: string | null;
+  hooksData: Buffer;
+  /** 메타(`.agents/harness-kit.json`)의 modules — 모듈 훅 거르기 */
+  modules: string[];
 }
 
 export function loadSources(view: RepoView): Sources {
-  const src: Sources = { rules: [], skills: [], roles: [], policy: parsePolicy(null), deferred: new Set() };
+  const src: Sources = { rules: [], skills: [], roles: [], policy: parsePolicy(null), deferred: new Set(), hooksText: null, hooksData: Buffer.alloc(0), modules: [] };
   for (const e of view.list(".agents/rules") ?? []) {
     if (!e.name.endsWith(".md") || ignoredName(e.name) || e.kind !== "file") continue;
     const rel = `.agents/rules/${e.name}`;
@@ -71,5 +77,22 @@ export function loadSources(view: RepoView): Sources {
   }
   const policy = view.read(".agents/model-policy.json");
   src.policy = parsePolicy(policy === null ? null : policy.toString("utf8"));
+  if (view.kind(HOOKS_REL) === "file") {
+    src.hooksData = view.read(HOOKS_REL) as Buffer;
+    src.hooksText = src.hooksData.toString("utf8");
+    if (hasPendingNew(view, HOOKS_REL)) src.deferred.add(HOOKS_REL);
+  }
+  src.modules = metaModules(view.read(".agents/harness-kit.json"));
   return src;
+}
+
+function metaModules(raw: Buffer | null): string[] {
+  if (raw === null) return [];
+  try {
+    const meta = JSON.parse(raw.toString("utf8")) as unknown;
+    const modules = meta !== null && typeof meta === "object" && !Array.isArray(meta) ? (meta as Record<string, unknown>).modules : undefined;
+    return Array.isArray(modules) ? modules.filter((m): m is string => typeof m === "string") : [];
+  } catch {
+    return [];
+  }
 }

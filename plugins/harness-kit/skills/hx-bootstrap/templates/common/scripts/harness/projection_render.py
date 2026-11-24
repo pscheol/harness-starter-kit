@@ -328,7 +328,8 @@ def render_codex_role(r: Role, fields: dict, spec: dict) -> str:
     return "\n".join(lines) + "\n" + toml_multiline(instructions) + '"""\n'
 
 
-def render_kiro_role(r: Role, fields: dict, spec: dict) -> str:
+def render_kiro_role(r: Role, fields: dict, hooks: dict) -> str:
+    """hooks: 쓰기 역할에 넣는 Kiro CLI 훅(hooks.json 의 subagents 항목, HK-24)."""
     obj: dict = {
         "name": r.name,
         "description": r.description,
@@ -337,8 +338,8 @@ def render_kiro_role(r: Role, fields: dict, spec: dict) -> str:
         "allowedTools": ["read", "write"] if r.mode == "write" else ["read"],
         "resources": list(KIRO_RESOURCES),
     }
-    if r.mode == "write":
-        obj["hooks"] = spec["kiroWriteHooks"]
+    if r.mode == "write" and hooks:
+        obj["hooks"] = hooks
     obj.update(fields)
     return json.dumps(obj, ensure_ascii=False, indent=2) + "\n"
 

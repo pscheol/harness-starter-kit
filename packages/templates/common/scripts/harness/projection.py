@@ -127,10 +127,16 @@ def cmd_sync(args) -> int:
     def chosen(source: str | None) -> bool:
         return not changed or any(source and (c == source or c.startswith(source + "/") or source.startswith(c + "/")) for c in changed)
 
+    def merge_chosen(kind: str) -> bool:
+        # 역할이 바뀌면 config.toml 역할 표, 훅 원본이 바뀌면 settings · .codex/hooks.json 훅을 다시 맞춘다(HK-24).
+        if kind == "codex-config":
+            return True
+        return kind in ("settings", "codex-hooks") and any(c in (".agents/hooks.json", ".agents/model-policy.json") for c in changed)
+
     by_path = {e.path: e for e in entries}
     drifted: list[str] = []
     for w in wants:
-        if w.deferred or (w.op != "merge" and not chosen(w.source)) or (w.op == "merge" and changed and w.kind != "codex-config"):
+        if w.deferred or (w.op != "merge" and not chosen(w.source)) or (w.op == "merge" and changed and not merge_chosen(w.kind)):
             continue
         e = by_path.get(w.path)
         if w.op == "merge":

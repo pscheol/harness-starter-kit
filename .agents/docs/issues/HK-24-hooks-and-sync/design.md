@@ -105,7 +105,7 @@ Claude  [ENV ]bash "$CLAUDE_PROJECT_DIR"/scripts/hooks/dispatch.sh <id> <script>
 3. 스크립트는 `<루트>/<script>`, 없으면 `<자기 루트>/<script>`(옛 브랜치 worktree). 둘 다 없으면 exit 0.
 4. `HARNESS_ROOT` · `HARNESS_HOOK_ID` · `HARNESS_WORKTREE` · `HARNESS_MAIN_ROOT` 를 넘겨 부르고 표준 출력을 받는다. 표준 오류 · 종료 코드는 그대로 넘긴다.
 5. `maxOutputBytes` 가 0 보다 크고 출력이 넘으면 그 안의 마지막 줄바꿈까지 자른다.
-6. `<루트>/.agents/state/hook-output.jsonl` 에 `{"at","event","hook","bytes","truncated","exit"}` 한 줄을 덧붙인다(내용 없음, 06 §3.18). `.agents/state` 가 없으면 만들지 않고 건너뛴다. 파일이 256KiB 를 넘으면 마지막 1,000줄만 남긴다.
+6. **메인 루트**의 `.agents/state/hook-output.jsonl` 에 `{"at","event","hook","bytes","truncated","exit"}` 한 줄을 덧붙인다(내용 없음, 06 §3.18). worktree 세션도 한 곳에 모은다(세션 목록과 같은 자리). `.agents/state` 가 없으면 만들지 않고 건너뛴다(세션 시작 등록이 0700 으로 만든다). 파일이 256KiB 를 넘으면 마지막 1,000줄만 남긴다.
 
 `hook_root.py` 판정은 03 §3.10 그대로다: `cwd` 가 절대경로 폴더면 시작점, 위로 올라가며 `.agents/harness.json` 이나 `.agents/harness-kit.json` 이 있는 첫 폴더, 못 찾으면 fallback(stderr 한 줄). `git rev-parse --git-dir` 과 `--git-common-dir` 이 다르면 worktree.
 
@@ -115,7 +115,7 @@ Claude  [ENV ]bash "$CLAUDE_PROJECT_DIR"/scripts/hooks/dispatch.sh <id> <script>
 
 - `hook_paths.py`: 입력의 `tool_input` 경로 키(`file_path` · `notebook_path` · `path` · `targetFile` · `sourcePath` · `destinationPath`)와 `command` · `patch` · `input` 의 `*** Add|Update|Delete File|Move to:` 줄에서 경로를 뽑아 하네스 루트 상대 경로로 낸다(`cwd` 기준, 루트 밖은 버린다).
 - `sync-projection.sh`: 경로 중 `.agents/skills/` · `.agents/rules/` · `.agents/roles/` 아래나 `.agents/hooks.json` · `.agents/model-policy.json` 이 없으면 Python 배치를 띄우지 않고 끝낸다(0바이트). 있으면 `python3 scripts/harness/projection.py sync --root <루트> --changed <경로>…`(그 원본의 대상만 다시 만들고 lock 해시를 고친다). 성공 출력 0바이트, 실패하면 한 줄(200바이트 이하) + exit 0(훅이 턴을 막지 않는다. 남은 어긋남은 fast 검증의 `stale` 이 잡는다).
-- `protect-generated.sh` → `protect_generated.py`: lock 의 `mirror` · `render` 항목(폴더 mirror 는 그 아래 전부)과 경로가 겹치면 exit 2 와 `차단: <경로> 는 생성 파일이다. 원본 <from> 을 고친다(고친 뒤 동기화 훅이 다시 만든다).` lock 이 없거나 v1 이면 통과.
+- `protect-generated.sh` → `protect_generated.py`: lock 의 킷 `mirror` · `render` 항목(폴더 mirror 는 그 아래 전부)과 경로가 겹치면 exit 2 와 `차단: <경로> 는 생성 파일이다. 원본 <from> 을 고친다(고친 뒤 동기화 훅이 다시 만든다).` setup.sh 판 lock(v1 TSV)의 배치 줄에는 원본이 없어 지금 원본에서 원하는 작업을 다시 세워 원본을 찾는다. lock 이 없으면 통과.
 - 입력에 `.claude/` · `.codex/` · `.cursor/` · `.kiro/` 가 없으면 Python 을 띄우지 않는다(protect-approvals 와 같은 빠른 길).
 
 ## 6. 세션 시작 출력(R5 · 12 §3.8)
@@ -137,11 +137,11 @@ Claude  [ENV ]bash "$CLAUDE_PROJECT_DIR"/scripts/hooks/dispatch.sh <id> <script>
 
 - `packages/templates/UPGRADE.md`: `## <버전>` 절. 절마다 800자 이하(시험).
 - `update` 가 킷 판을 올릴 때(`meta.kitVersion` < 새 판) `from` 초과 `to` 이하 절을 판 순서로 모아 `.agents/harness-upgrade-notice.md` 를 쓴다(머리 `kitFrom` · `kitTo` · `date` · `expires = date + 30일`, 본문 `# 하네스 업데이트 <from> → <to>` + 절 내용). 모을 절이 없으면 쓰지 않는다.
-- 판 비교: `x.y.z` 정수 비교, `-` 뒤 꼬리는 그 판보다 앞(예: `2.0.0-alpha.0` < `2.0.0`).
-- 킷이 쓴 공지(머리에 `kitFrom` · `kitTo` 가 있는 파일)는 다음 `update` 가 새로 쓰거나 지운다. 사람이 만든 공지(머리 없음)는 건드리지 않는다. lock 에 넣지 않는다(update 마다 바뀌는 상태 파일).
+- 판 비교: `x.y.z` 정수 셋으로 하고 `-` · `+` 뒤 꼬리는 뗀다. `2.0.0-alpha.0` 으로 올린 사람도 `## 2.0.0` 절을 받고, 같은 판 안(alpha.0 → alpha.1)에서는 다시 받지 않는다. 이전 판을 못 읽으면(`unknown`) 쓰지 않는다.
+- 모을 절이 있으면 킷 공지를 새로 쓴다(이전 킷 공지를 바꾼다). 모을 절이 없으면 **만료된** 킷 공지만 지운다(만료 전 공지는 둔다). 사람이 만든 공지(머리에 `kitFrom` · `kitTo` 가 없는 파일)는 쓰지도 지우지도 않는다(`keep-human`). lock 에 넣지 않는다(update 마다 바뀌는 상태 파일). `--dry-run` 은 판정만 낸다.
 - `doctor`: 공지가 만료됐으면 정보 한 줄 `upgrade-notice-expired`.
 - `uninstall`: 킷이 쓴 공지를 지운다(사람이 만든 공지는 둔다).
-- `update.sh`(bash)도 같은 바이트를 쓴다(킷 판 `scripts/harness/upgrade_notice.py` 를 부른다). 날짜는 CLI 와 같은 `today`(시험은 `HARNESS_KIT_TODAY`).
+- `update.sh`(bash)도 같은 규칙 · 바이트로 쓴다(킷 판 `scripts/harness/upgrade_notice.py` 를 부른다). 날짜는 CLI 와 같은 `today`(시험은 `HARNESS_KIT_TODAY`). 단, 두 경로의 새 판 값이 다르다 — `update.sh` 는 `plugin.json` 판(지금 1.0.8), CLI 는 패키지 판(지금 2.0.0-alpha.0)이다. 그래서 공지 함수 동일성은 같은 입력 fixture 로 묶고(`notice.test.ts` 가 Python 을 부른다), 트리 동일성 시험에서는 공지 파일을 비교에서 뺀다. 판 값은 릴리스 스크립트(HK-22)가 하나로 맞춘다.
 
 ## 8. 이전(v1.0.8 · HK-13 판 설치본)
 
