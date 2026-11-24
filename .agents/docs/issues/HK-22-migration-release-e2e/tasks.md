@@ -142,3 +142,24 @@ created: 2026-11-24
 | T-B7 | 전체 시험 | — | 진행 |
 
 새 시험: `packages/cli/test/legacy-names.test.ts`(5개 — doctor 는 옮기지 않음 · update 가 옮김 · init 은 옛 메타를 설치로 봄 · hx- 스킬 지움/남김), `tests/test_install.py::test_update_moves_legacy_state_names`(update.sh), `tests/harness_scripts/test_check_external.py`(3개).
+
+## 두 구성 e2e — 사람 터미널 실행(2026-11-24)
+
+승인 단계(S3~S9)는 에이전트 세션에서 열리지 않아(관리 페이지 읽기 전용 — DB-R22) 사람 터미널에서 돌렸다. 대본은 승인 뒤 단계를 처음 지나가는 것이라 실행마다 다음 단계에서 멈췄고, 아래를 고쳐 끝까지 갔다.
+
+| 실행 | stub 통과 · 실패 · 건너뜀 | 멈춘 곳 → 고친 것 |
+|---|---|---|
+| 1 | 25 · 3 · 0 | S5 — from-unit 은 requirements 만 만든다 → design · tasks 는 앞 승인 뒤 `new-feature.sh --stage` 로(대본) |
+| 2 | 28 · 5 · 3 | **requirements 승인 불가 — 템플릿 안내문의 `[NEEDS CLARIFICATION`(킷)**, 이슈 뒤 `update` 마다 specs-index.md 충돌(킷), real 에서 aidlc 가 TTY 를 보고 멈춤(대본 — stdin 닫음) |
+| 3 | 44 · 7 · 3 | affected 검증 — 정적 분석기 · 검증 venv 없음(대본 — 가짜 gitleaks · semgrep, unittest 로 도는 pytest 대용), 체크포인트 트레일러(대본), **uninstall 이 보드 구간만 바뀐 파일을 남김(킷)** |
+| 4 | 62 · 7 · 5 | 기능 문서가 이슈 뒤 낡음 → 문서 반영 단계(대본), 두 번째 바퀴 develop 에서 시작(대본) |
+| 5 | 83 · 5 · 5 | **병합 뒤 done 승인 409 — 지우지 않은 로컬 이슈 브랜치(킷)**, **커밋으로 지운 파일을 '경로 모름'으로 봄(킷)** |
+| 6 | 57 · 8 · 3 | 배포 — 가짜 CI sha(대본), 킷 기본 deploy.json 을 덮어 update 충돌(대본) |
+| 7 | 95 · 2 · 5 | **지운 파일을 '검증 안 됨'으로 남김(킷)** |
+| 8 | **107 · 0 · 5** | 끝 |
+
+real(aidlc 2.11.4 · entire 0.13.4) 마지막 실행: **106 통과 · 실패 0 · 건너뜀 7**, 실제 홈 불변(`guard.real-home-untouched`) 통과. 건너뜀은 정한 것뿐이다: E8(운영 기록 → intake, 후속 — D10), real 의 E4(실제 체크포인트는 구현 하네스 세션 훅이 만든다 — D9).
+
+세션 적재량(real, claude): 킷만 10,202 B · 훅 13 / AI-DLC +73,333 B(규칙 1 · 스킬 설명 43 · 에이전트 14) · 훅 +17 / Entire 0 B · 훅 +10 / 합계 83,535 B. codex 8,376 B(모듈과 무관). 실행 시간: A 7.5초 · B-forward 24.6초 · B-reverse 25.4초(구성마다 다시 쌓는 시간 제외).
+
+e2e 로 찾은 킷 버그 5개(위 굵은 글씨)는 각각 시험을 더하고 고쳤다: `dashboard/src/clarify.ts` · `sdd_gates.has_clarify` · `intent.has_clarify`, `core/generated.ts`(update · uninstall), `repo.ts resolveIssueCheckout`(done), `verify_planner.deleted_from_git` · `widen_untested`.
