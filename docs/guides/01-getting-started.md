@@ -19,14 +19,14 @@
 
 ```bash
 /plugin marketplace add pscheol/harness-starter-kit
-/plugin install harness-kit@harness-starter-kit
+/plugin install kns@knots-sync
 ```
 
 ### Codex
 
 ```bash
 codex plugin marketplace add pscheol/harness-starter-kit
-codex plugin add harness-kit@harness-starter-kit
+codex plugin add kns@knots-sync
 ```
 
 로컬 경로로도 등록할 수 있다(`/plugin marketplace add /path/to/harness-starter-kit`).
@@ -64,24 +64,24 @@ codex plugin add harness-kit@harness-starter-kit
 ### 어느 스택이든
 
 ```
-/harness-kit:hx-bootstrap ~/work/my-api --dry-run
+/kns:bootstrap ~/work/my-api --dry-run
 ```
 
 ### JVM이면 전용 진입이 낫다
 
 ```
-/hx-jvm-setup
+/kns:jvm-setup
 ```
 
 아키텍처 8종을 **고르는 순서로** 묻고 언어(Kotlin/Java)까지 확정한 뒤 같은 설치기를 부른다.
 아키텍처가 이미 정해졌으면 자식 스킬을 바로 불러도 된다 —
-`/hx-jvm-hexagonal` · `/hx-jvm-layered` · `/hx-jvm-layered-multimodule`.
+`/kns:jvm-hexagonal` · `/kns:jvm-layered` · `/kns:jvm-layered-multimodule`.
 
 ### 웹·Electron도 전용 진입이 있다
 
 ```
-/hx-web-setup           # nextjs-app · react-spa · feature-sliced
-/hx-electron-setup      # main-renderer · feature · monorepo
+/kns:web-setup           # nextjs-app · react-spa · feature-sliced
+/kns:electron-setup      # main-renderer · feature · monorepo
 ```
 
 역시 고르는 순서로 묻고 같은 설치기를 부른다. 프론트엔드는 **컴파일 레벨의 레이어 강제가 없어서**
@@ -94,7 +94,7 @@ codex plugin add harness-kit@harness-starter-kit
 플러그인 없이 스크립트를 직접 돌릴 수도 있다.
 
 ```bash
-SKILL_DIR=~/.claude/plugins/.../skills/hx-bootstrap    # 또는 ~/.codex/plugins/...
+SKILL_DIR=~/.claude/plugins/.../skills/bootstrap    # 또는 ~/.codex/plugins/...
 
 STACK=jvm ARCH=hexagonal \
 PROJECT_NAME="My API" PROJECT_SLUG="my-api" \
@@ -119,7 +119,7 @@ bash "$SKILL_DIR/setup.sh" --stack=jvm --arch=hexagonal --list-agents ~/work/my-
 ```
 
 감지 결과와 에이전트별 파일 수를 보여준다(설치하지 않는다). **`.claude`·`.codex`·`.cursor`·`.kiro`
-를 전부 만들지 않는다** — 안 쓰는 디렉터리는 리포만 지저분하게 한다. 나중에 `/hx-agent-add` 로 더할 수 있다.
+를 전부 만들지 않는다** — 안 쓰는 디렉터리는 리포만 지저분하게 한다. 나중에 `/kns:agent-add` 로 더할 수 있다.
 
 설치 수 = **core** + 고른 것 + **상태 파일 2개**. core 와 `kiro` 는 스택군에 따라 다르다.
 
@@ -140,10 +140,10 @@ bash "$SKILL_DIR/setup.sh" --list-modules
 | 모듈 | 파일 | 켤 때 |
 |---|---|---|
 | `jira-workflow` | 10 | Jira 등 이슈 트래커를 에이전트가 직접 전이시킬 때 |
-| `platform-guards` | 4 | 프로젝트 고유 불변식을 grep 가드로 승격시킬 때 |
+| `multi-harness` | 9 | 여러 리포 · 단위 하네스에 공통 파일을 배포하고 게이트를 엮을 때 |
 
-기본은 `none` 이다. `--modules=jira-workflow,platform-guards` 처럼 명시해야 깔린다.
-모든 프로젝트가 이슈 트래커를 자동화하지도, 고유 불변식을 갖지도 않는다.
+기본은 `none` 이다. `--modules=jira-workflow` 처럼 명시해야 깔린다.
+모든 프로젝트가 이슈 트래커를 자동화하지는 않는다. 고유 불변식 가드(`scripts/run-guards.sh` · `scripts/guards/`)는 공통 층이라 늘 깔린다.
 
 ### 실제 설치
 
@@ -154,8 +154,8 @@ bash "$SKILL_DIR/setup.sh" --list-modules
 
 | 파일 | 무엇 | 왜 커밋하나 |
 |---|---|---|
-| `.agents/harness-kit.json` | 킷 버전·도메인·스택·변형·에이전트·모듈·치환값 | `/hx-agent-add`·`/hx-update` 가 다시 묻지 않는다 |
-| `.agents/harness-kit.lock` | 파일별 **설치 시점 원본 해시** | 업데이트가 "사용자가 고친 파일"을 가려낸다 |
+| `.agents/knots-sync.json` | 킷 버전·도메인·스택·변형·에이전트·모듈·치환값 | `/kns:agent-add`·`/kns:update` 가 다시 묻지 않는다 |
+| `.agents/knots-sync.lock` | 파일별 **설치 시점 원본 해시** | 업데이트가 "사용자가 고친 파일"을 가려낸다 |
 
 ---
 
@@ -202,33 +202,33 @@ import 해 보고 `bash scripts/verify.sh` 가 **실패하는지** 확인한다.
 
 ## ⑥ 첫 기능 — SDLC 단계형 SDD
 
-이제부터는 대상 리포에 깔린 `hx-*` 커맨드 11종을 쓴다. 이슈 하나가 아래 여덟 단계를 지나고, 단계마다 사용자 승인을 받는다.
+이제부터는 대상 리포에 깔린 `kns-*` 커맨드 11종을 쓴다. 이슈 하나가 아래 여덟 단계를 지나고, 단계마다 사용자 승인을 받는다.
 
 ```
-S1·S2 /hx-specify → (/hx-clarify · /hx-checklist) → S3 /hx-plan → S4 /hx-tasks → (/hx-analyze)
-      → S5·S6 /hx-implement → S7 /hx-docs → S8 완료(사용자 승인) → (/hx-converge)
+S1·S2 /kns-specify → (/kns-clarify · /kns-checklist) → S3 /kns-plan → S4 /kns-tasks → (/kns-analyze)
+      → S5·S6 /kns-implement → S7 /kns-docs → S8 완료(사용자 승인) → (/kns-converge)
 ```
 
-괄호 안은 선택 단계다. 작업 시작 전에 `/hx-harness` 로 규칙을 먼저 로드하면 컨텍스트가 잡히고,
-코드를 쓰거나 리팩터링할 때는 `/hx-maintain` 이 유지보수 기준을 적용한다.
+괄호 안은 선택 단계다. 작업 시작 전에 `/kns-harness` 로 규칙을 먼저 로드하면 컨텍스트가 잡히고,
+코드를 쓰거나 리팩터링할 때는 `/kns-maintain` 이 유지보수 기준을 적용한다.
 
 | 단계 | 커맨드 | 산출(`.agents/docs/<slug>-specs/issues/<key>/`) | 핵심 |
 |---|---|---|---|
-| S1 분석 | `/hx-specify` | `requirements.md` | 무엇을·왜. 스택·API·코드 얘기 금지 |
-| S2 기획 | `/hx-specify` · `/hx-clarify` · `/hx-checklist` | 같은 requirements 의 정책 표·화면 표 · `checklists/<도메인>.md` | 규칙과 강제 위치, 화면 상태 |
-| S3 설계 | `/hx-plan` | `design.md` | 어떻게 + 헌법 검사 · 순서도 · 상태 전이 · 쿼리→인덱스 · 캐시 · 동시성 |
-| S4 계획 | `/hx-tasks` · `/hx-analyze` | `tasks/active.md` | `T001 [P] [US1]` 실행 단위, Polish 에 문서 반영 |
-| S5·S6 구현·시험 | `/hx-implement` | 코드 · 시험 | Phase 순 구현, 변경마다 changed 검증 |
-| S7 문서 반영 | `/hx-docs` | `docs/features/_src/features/<ID>.md` · HTML | 원고 갱신 → `build` → `check` |
+| S1 분석 | `/kns-specify` | `requirements.md` | 무엇을·왜. 스택·API·코드 얘기 금지 |
+| S2 기획 | `/kns-specify` · `/kns-clarify` · `/kns-checklist` | 같은 requirements 의 정책 표·화면 표 · `checklists/<도메인>.md` | 규칙과 강제 위치, 화면 상태 |
+| S3 설계 | `/kns-plan` | `design.md` | 어떻게 + 헌법 검사 · 순서도 · 상태 전이 · 쿼리→인덱스 · 캐시 · 동시성 |
+| S4 계획 | `/kns-tasks` · `/kns-analyze` | `tasks/active.md` | `T001 [P] [US1]` 실행 단위, Polish 에 문서 반영 |
+| S5·S6 구현·시험 | `/kns-implement` | 코드 · 시험 | Phase 순 구현, 변경마다 changed 검증 |
+| S7 문서 반영 | `/kns-docs` | `docs/features/_src/features/<ID>.md` · HTML | 원고 갱신 → `build` → `check` |
 | S8 완료 | 사용자 승인 | `tasks/check.md` → `tasks/completed.md` | 승인 뒤에만 completed |
 
 **제품 폴더도 단계 문서도 설치 산출물이 아니다.** `<slug>-specs/` 는 첫 이슈에서 만들어지고,
 각 단계 문서는 그 단계에 들어갈 때 하나씩 생긴다. 키는 `<순번>-<종류>-<이름>`(예: `1-feat-folder-bookmark`)이다.
 
 ```bash
-bash scripts/new-feature.sh <product-slug> <name>                       # requirements — /hx-specify 가 대신 실행
-bash scripts/new-feature.sh <product-slug> <key> --stage=design         # requirements approved 뒤 — /hx-plan
-bash scripts/new-feature.sh <product-slug> <key> --stage=tasks          # design approved 뒤 — /hx-tasks
+bash scripts/new-feature.sh <product-slug> <name>                       # requirements — /kns-specify 가 대신 실행
+bash scripts/new-feature.sh <product-slug> <key> --stage=design         # requirements approved 뒤 — /kns-plan
+bash scripts/new-feature.sh <product-slug> <key> --stage=tasks          # design approved 뒤 — /kns-tasks
 bash scripts/check-sdd-prerequisites.sh <product-slug> <key> --stage=implement   # 실제 경로(BASE·REQUIREMENTS·DESIGN·TASKS) 출력
 ```
 
@@ -277,10 +277,10 @@ git hook 은 `bash scripts/install-git-hooks.sh`로 리포에 건다(새 클론�
 
 | 하고 싶은 것 | 커맨드 |
 |---|---|
-| 다른 에이전트도 쓰게 됐다(Cursor 추가 등) | `/hx-agent-add` |
-| 킷이 올라갔다 — 변경분 반영 | `/hx-update --dry-run` 먼저 |
+| 다른 에이전트도 쓰게 됐다(Cursor 추가 등) | `/kns:agent-add` |
+| 킷이 올라갔다 — 변경분 반영 | `/kns:update --dry-run` 먼저 |
 
-업데이트는 `.agents/harness-kit.lock` 의 설치 시점 해시로 **사용자가 고친 파일**을 가려낸다.
+업데이트는 `.agents/knots-sync.lock` 의 설치 시점 해시로 **사용자가 고친 파일**을 가려낸다.
 고친 파일은 덮지 않고 새 버전을 `.new` 로 옆에 둔다. 그래서 상태 파일 2종을 커밋해야 한다.
 
 ---
@@ -295,7 +295,7 @@ git hook 은 `bash scripts/install-git-hooks.sh`로 리포에 건다(새 클론�
 | 검증이 통과했는데 CI 가 실패한다 | 로컬은 changed 였다 | `bash scripts/verify.sh --full` |
 | 커밋해도 검증이 안 돈다 | git hook 을 안 걸었다 · 전역 `core.hooksPath` | `bash scripts/install-git-hooks.sh` |
 | 기능 문서 `check` 가 원고 없음으로 실패한다 | catalog 에 기능을 더하고 원고를 안 썼다 | `feature_docs.py brief <ID>` 로 시작해 원고 절 12개를 채운다 |
-| 제품 폴더가 비어 있다 | 설치는 폴더를 만들지 않는다 | `new-feature.sh` 또는 `/hx-specify` |
+| 제품 폴더가 비어 있다 | 설치는 폴더를 만들지 않는다 | `new-feature.sh` 또는 `/kns-specify` |
 | `--stage=design` 이 거부된다 | requirements 상태가 `approved` 가 아니다 | 승인 뒤 상태를 바꾸고 다시 |
 
 ## 관련 문서

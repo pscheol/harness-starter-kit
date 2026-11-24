@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S05 세션에 작업 요청 · knots-sync 관리 페이지</title>
+<link rel="stylesheet" href="assets/app.css">
+<style>
+  html, body { height: 100%; overflow: hidden; }
+  .behind { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; }
+  .sheet-in { display: grid; grid-template-rows: auto minmax(0, 1fr) auto; height: 100%; }
+  .s-head { display: flex; align-items: flex-start; gap: 12px; padding: 18px 22px 14px; border-bottom: 1px solid var(--rule); }
+  .s-head h2:focus { outline: none; }
+  .s-head h2 { font-size: var(--fs-xl); font-weight: 700; letter-spacing: -0.015em; }
+  .s-head p { margin-top: 3px; font-size: var(--fs-s); color: var(--ink-soft); }
+  .s-head .btn { margin-left: auto; }
+  .s-body { overflow: auto; padding: 16px 22px 20px; display: grid; gap: 18px; align-content: start; }
+  .s-foot { display: flex; align-items: center; gap: 8px; padding: 14px 22px; border-top: 1px solid var(--rule); background: var(--paper); }
+  .s-foot .primary-act { margin-left: auto; }
+  fieldset { margin: 0; padding: 0; border: 0; min-width: 0; }
+  legend { padding: 0; margin-bottom: 8px; font-size: var(--fs-s); font-weight: 700; color: var(--ink-soft); }
+  .opts { display: grid; gap: 6px; }
+  .opt { position: relative; display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 6px; cursor: pointer; transition: border-color var(--dur) var(--ease), background var(--dur) var(--ease); }
+  .opt:hover { border-color: var(--rule-strong); }
+  .opt input { margin: 3px 0 0; width: 16px; height: 16px; }
+  .opt:has(input:checked) { border-color: var(--ink); background: #f9fafc; outline: 1px solid var(--ink); outline-offset: -2px; }
+  .opt:has(input:disabled) { cursor: default; background: var(--paper); }
+  .opt .nm { display: flex; align-items: center; gap: 8px; font-family: var(--font-code); font-size: var(--fs-s); font-weight: 700; }
+  .opt .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; font-size: var(--fs-xs); color: var(--ink-faint); }
+  .opt .st { text-align: right; font-size: var(--fs-xs); color: var(--ink-soft); line-height: 1.45; }
+  .opt .st b { display: block; font-weight: 700; color: var(--ink); }
+  .opt .warn { color: var(--build-ink); }
+  .via { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; background: var(--paper); border-radius: 6px; font-size: var(--fs-xs); color: var(--ink-soft); }
+  .via .i { color: var(--ink-faint); margin-top: 1px; }
+  .req textarea { min-height: 64px; }
+  .req .under { display: flex; gap: 12px; margin-top: 6px; font-size: var(--fs-xs); color: var(--ink-faint); }
+  .req .under span:last-child { margin-left: auto; }
+  .tpl { margin: 0; padding: 10px 12px; border-radius: 6px; background: var(--paper); border: 1px solid var(--rule-soft); font-family: var(--font-code); font-size: 12.5px; line-height: 1.6; color: var(--ink); }
+  .fallback { display: grid; gap: 8px; }
+  .fb { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 12px; border: 1px solid var(--rule); border-radius: 6px; }
+  .fb .ic { display: grid; place-items: center; width: 32px; height: 32px; border-radius: 6px; background: var(--sunken); color: var(--ink-soft); }
+  .fb b { display: block; font-size: var(--fs-s); }
+  .fb span { font-size: var(--fs-xs); color: var(--ink-faint); }
+  .sent { display: grid; gap: 14px; }
+  .sent .big { display: flex; gap: 12px; align-items: flex-start; }
+  .sent .big .i { width: 28px; height: 28px; color: var(--ops); }
+  .sent h3 { font-size: var(--fs-l); }
+  .sent dl { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 6px 12px; margin: 0; font-size: var(--fs-s); }
+  .sent dt { color: var(--ink-faint); }
+  .sent dd { margin: 0; }
+  .sk-opt { display: grid; grid-template-columns: 18px 1fr 80px; gap: 10px; padding: 14px 12px; border: 1px solid var(--rule-soft); border-radius: 6px; }
+</style>
+</head>
+<body data-state="default">
+<iframe class="behind" src="S03-issue.html" title="뒤에 있는 이슈 화면" tabindex="-1" aria-hidden="true" inert></iframe>
+
+<dialog class="sheet" id="dispatch" aria-labelledby="d-title">
+  <div class="sheet-in">
+    <header class="s-head" data-co="1">
+      <div>
+        <h2 id="d-title" tabindex="-1">세션에 작업 요청</h2>
+        <p><span class="key">HDRV3D-12</span> requirements.md 저장 뒤 · 10:42</p>
+      </div>
+      <button class="btn ghost" type="button" data-close aria-label="닫기"><svg class="i"><use href="#i-x"/></svg></button>
+    </header>
+
+    <div class="s-body">
+      <!-- 읽기 전용: 에이전트 세션에서 연 서버 -->
+      <div data-state-show="readonly">
+        <div class="banner warn" role="status">
+          <svg class="i"><use href="#i-eye"/></svg>
+          <div><b>읽기 전용 · 에이전트 세션에서 실행.</b> 세션 요청도 쓰기라 여기서는 보내지 않는다. 사람이 터미널에서 연 관리 페이지에서 보낸다.</div>
+        </div>
+      </div>
+
+      <!-- 오류 -->
+      <div class="banner err" role="alert" data-state-show="error">
+        <svg class="i"><use href="#i-alert"/></svg>
+        <div><b>design-desk에 보내지 못했다(409).</b> 2초 안에 소켓에 연결하지 못했다. 세션이 끝났거나 Claude Code가 v2.1.224보다 낮다. 다른 길로 자동으로 바꾸지 않는다. 아래 두 길 중 하나를 고른다.</div>
+      </div>
+
+      <!-- 보냄 -->
+      <section class="sent" data-state-show="sent" aria-live="polite">
+        <div class="big"><svg class="i"><use href="#i-ok"/></svg><div><h3>design-desk 수신함에 보냈다</h3><p class="small soft">10:42:13 · 소켓 연결과 쓰기가 끝났다. 수신 확인 신호는 없어서, 세션 화면에서 새 턴이 시작됐는지 본다. 세션이 커밋하면 진행 화면에 보인다.</p></div></div>
+        <dl>
+          <dt>받은 세션</dt><dd><span class="mono">design-desk</span> · Claude Code · 설계 · HDRV3D-12</dd>
+          <dt>종류</dt><dd><span class="mono">doc-changed</span> · 덧붙인 말 1줄</dd>
+          <dt>보낸 길</dt><dd>세션 메시지 수신함 · 로컬 소켓</dd>
+          <dt>응답</dt><dd class="mono small">202 {method: "socket", status: "sent"}</dd>
+        </dl>
+        <div class="banner info"><svg class="i"><use href="#i-help"/></svg><div>세션은 이 글을 승인으로 치지 않는다. requirements 승인은 이슈 화면의 승인 버튼으로 따로 한다.</div></div>
+      </section>
+
+      <!-- 로딩 -->
+      <div data-state-show="loading" aria-busy="true">
+        <p class="small soft" style="margin-bottom:8px">세션 기록을 읽는 중이다 · <span class="path">.agents/state/sessions/</span></p>
+        <div class="opts"><div class="sk-opt"><span class="sk"></span><span class="sk" style="width:70%"></span><span class="sk"></span></div><div class="sk-opt"><span class="sk"></span><span class="sk" style="width:55%"></span><span class="sk"></span></div><div class="sk-opt"><span class="sk"></span><span class="sk" style="width:62%"></span><span class="sk"></span></div></div>
+      </div>
+
+      <!-- 비어 있음: 켜 둔 세션 없음 -->
+      <section data-state-show="empty">
+        <div class="empty" style="padding:4px 0 14px">
+          <h3>켜 둔 세션이 없다</h3>
+          <p>세션 시작 훅이 남긴 기록이 없거나 모두 끝났다. 새 세션을 열거나, 요청을 대기함에 두면 다음 세션이 시작할 때 훅이 건수와 첫 요청 한 줄만 보여 준다.</p>
+        </div>
+      </section>
+
+      <fieldset data-state-show="default error readonly" data-co="2">
+        <legend>받을 세션 · 살아 있는 세션 4개</legend>
+        <div class="opts">
+          <label class="opt">
+            <input type="radio" name="sess" value="design-desk" checked autofocus>
+            <div><div class="nm"><span class="dot idle"></span>design-desk <span class="tag ops" style="font-family:var(--font-text)">이 이슈 담당</span></div>
+              <div class="meta"><span class="harness"><b class="cc">C</b>Claude Code</span><span class="tag design">설계</span><span class="key">HDRV3D-12</span><span>메인 폴더</span></div></div>
+            <div class="st" data-state-show="default"><b>쉬는 중</b>새 턴으로 받는다</div>
+            <div class="st" data-state-show="error"><b style="color:var(--gate-ink)">응답 없음</b>10:42 소켓 거부</div>
+          </label>
+          <label class="opt">
+            <input type="radio" name="sess" value="api-worker">
+            <div><div class="nm"><span class="dot busy"></span>api-worker</div>
+              <div class="meta"><span class="harness"><b class="cc">C</b>Claude Code</span><span class="tag build">구현</span><span class="key">HDRV3D-21</span><span class="warn">다른 이슈를 맡고 있다</span></div>
+              <div class="meta"><span class="warn"><svg class="i s"><use href="#i-alert"/></svg> bypassPermissions 모드 · 요청이 사람 확인 대기로 묶인다</span></div></div>
+            <div class="st"><b>일하는 중</b>도구 호출 사이에 받는다</div>
+          </label>
+          <label class="opt">
+            <input type="radio" name="sess" value="review-codex" disabled>
+            <div><div class="nm"><span class="dot off"></span>review-codex</div>
+              <div class="meta"><span class="harness"><b class="cx">X</b>Codex</span><span class="tag build">리뷰</span><span>수신함 없음</span></div></div>
+            <div class="st">대기함으로만</div>
+          </label>
+          <label class="opt">
+            <input type="radio" name="sess" value="docs-kiro" disabled>
+            <div><div class="nm"><span class="dot off"></span>docs-kiro</div>
+              <div class="meta"><span class="harness"><b class="kr">K</b>Kiro</span><span class="tag ops">문서</span><span>수신함 없음</span></div></div>
+            <div class="st">대기함으로만</div>
+          </label>
+        </div>
+      </fieldset>
+
+      <div class="req field" data-state-show="default error empty readonly" data-co="3">
+        <span class="label flex">보낼 글 <span class="tag line" style="font-family:var(--font-code)">doc-changed</span><span class="muted xs" style="font-weight:500">저장 결과로 만든 한 줄</span></span>
+        <p class="tpl">[knots-sync 관리 페이지] HDRV3D-12 requirements.md 를 사람이 고쳤다(R2.3 · ## 요구사항, +1 -1줄, sha 7a02c1d). 경로: .agents/docs/issues/HDRV3D-12-upload-cleanup/requirements.md. 요청: 이 파일을 다시 읽고 design.md 를 맞춘다. 이 글은 승인이 아니다.</p>
+        <label for="req-text" style="margin-top:8px">덧붙일 말 <span class="muted" style="font-weight:500">(선택 · 300자 이하)</span></label>
+        <textarea id="req-text" rows="2">보관 기간을 줄인 이유는 11-18 업로드 큐 장애다. design §3.2 스케줄러 주기도 같이 본다.</textarea>
+        <div class="under"><span>한 줄 + 경로로 보낸다 · 문서 내용은 넣지 않는다 · 보내기를 누를 때만 간다</span><span>287 / 1,000자</span></div>
+      </div>
+
+      <p class="via" data-state-show="default error" data-co="4"><svg class="i s"><use href="#i-plug"/></svg><span>세션 메시지 수신함으로 보낸다. 같은 컴퓨터의 로컬 소켓만 쓰고 Anthropic 서버를 거치지 않는다. 받은 세션은 이 글을 다른 프로세스의 요청으로 다루고 권한 확인도 그대로 띄운다.</span></p>
+
+      <section class="fallback" data-state-show="default error empty" aria-labelledby="fb-title" data-co="5">
+        <h3 id="fb-title" class="small soft" style="font-weight:700">세션으로 못 보낼 때</h3>
+        <div class="fb"><span class="ic"><svg class="i"><use href="#i-terminal"/></svg></span><div><b>새 Claude 세션 열기</b><span>deep link(<span class="mono">claude-cli://open?cwd=…&amp;q=…</span>)로 새 터미널을 열고 글을 채운다. Enter는 사람이 누른다.</span></div><button class="btn sm" type="button" data-toast="새 터미널을 열었다 · 프롬프트가 채워졌다">열기</button></div>
+        <div class="fb"><span class="ic"><svg class="i"><use href="#i-inbox"/></svg></span><div><b>대기함에 두기</b><span>Codex · Kiro 세션도 쓴다. 다음 세션 시작 때 훅이 <span class="mono">대기 요청 N건(UNTRUSTED)</span>과 첫 요청 한 줄 + 경로(200바이트까지)만 싣고, 나머지는 <span class="mono">npx knots-sync dispatch list</span>로 보라고 적는다. 7일 뒤 만료.</span></div><button class="btn sm" type="button" data-toast="대기함에 두었다 · 다음 세션 시작 때 보인다">두기</button></div>
+      </section>
+    </div>
+
+    <footer class="s-foot" data-co="6">
+      <span class="xs muted" data-state-show="default error">보내면 홈의 오늘 기록에 남는다</span>
+      <span class="xs muted" data-state-show="readonly">읽기 전용이라 보내지 않는다</span>
+      <button class="btn" type="button" data-close data-state-show="default error empty loading readonly">취소</button>
+      <button class="btn go primary-act" type="button" id="sendBtn" data-state-show="default"><svg class="i"><use href="#i-send"/></svg>design-desk에 보내기</button>
+      <button class="btn go primary-act" type="button" id="retryBtn" data-state-show="error"><svg class="i"><use href="#i-refresh"/></svg>다시 보내기</button>
+      <button class="btn go primary-act" type="button" disabled data-state-show="loading">보내기</button>
+      <button class="btn go primary-act" type="button" disabled data-state-show="readonly">보낼 수 없음</button>
+      <a class="btn" href="S01-home.html" data-state-show="sent" style="margin-left:auto">홈으로</a>
+      <button class="btn primary" type="button" data-close data-state-show="sent">닫기</button>
+    </footer>
+  </div>
+</dialog>
+
+<script src="assets/app.js"></script>
+<script>
+document.addEventListener("hx:ready", function () {
+  var d = document.getElementById("dispatch");
+  if (document.body.getAttribute("data-state") === "readonly") document.querySelector(".behind").src = "S03-issue.html?state=readonly";
+  d.showModal();
+  var r = d.querySelector("input[autofocus]");
+  if (r && r.offsetParent) r.focus({ focusVisible: false });
+  else document.getElementById("d-title").focus({ focusVisible: false });
+  d.addEventListener("cancel", function (e) { e.preventDefault(); });
+  var send = document.getElementById("sendBtn");
+  send.addEventListener("click", function () { HX.setState("sent"); });
+  document.getElementById("retryBtn").addEventListener("click", function () { HX.setState("sent"); });
+  document.querySelectorAll('input[name="sess"]').forEach(function (r) {
+    r.addEventListener("change", function () {
+      send.lastChild.textContent = r.value + "에 보내기";
+    });
+  });
+});
+</script>
+</body>
+</html>

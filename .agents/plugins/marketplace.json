@@ -1,15 +1,15 @@
 {
-  "name": "harness-starter-kit",
+  "name": "knots-sync",
   "interface": {
-    "displayName": "Harness Starter Kit"
+    "displayName": "knots-sync"
   },
   "plugins": [
     {
-      "name": "harness-kit",
-      "version": "1.0.8",
+      "name": "kns",
+      "version": "2.0.0-alpha.0",
       "source": {
         "source": "local",
-        "path": "./plugins/harness-kit"
+        "path": "./plugins/kns"
       },
       "policy": {
         "installation": "AVAILABLE",

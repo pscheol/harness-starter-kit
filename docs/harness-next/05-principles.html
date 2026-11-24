@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>05 원칙·확장 — 하네스 다음 단계</title>
+  <meta name="description" content="harness-starter-kit가 AI-DLC 원칙 다섯 가지를 어떻게 지키는지, 채널톡 사례에서 가져올 것과 버릴 것, 사람이 맡는 일과 폴더의 주인, 이슈 키 규칙, 회사·팀·개인이 하네스를 고쳐 쓰는 층과 확장 지점.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../ai-dlc/assets/aidlc.css">
+  <link rel="stylesheet" href="assets/next.css">
+  <script src="../ai-dlc/assets/aidlc.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+  <header class="site-head">
+    <div class="phase-band" aria-hidden="true"><span></span><span></span><span></span></div>
+    <nav class="site-nav" aria-label="문서 목록">
+      <a class="home" href="index.html">하네스 다음 단계</a>
+      <ol>
+        <li><a href="01-diagnosis.html"><span class="num">01</span>진단</a></li>
+        <li><a href="02-direction.html"><span class="num">02</span>방향</a></li>
+        <li><a href="03-plan.html"><span class="num">03</span>계획</a></li>
+        <li><a href="04-usage.html"><span class="num">04</span>활용</a></li>
+        <li><a href="05-principles.html" aria-current="page"><span class="num">05</span>원칙·확장</a></li>
+      </ol>
+    </nav>
+  </header>
+
+  <main id="main" class="page">
+    <nav class="page-toc" aria-label="이 장의 절">
+      <p class="toc-title">이 장에서</p>
+      <ol>
+        <li><a href="#frame">방법론과 도구를 나눈다</a></li>
+        <li><a href="#principles">원칙 다섯 가지</a></li>
+        <li><a href="#channel">채널톡 사례: 가져올 것과 버릴 것</a></li>
+        <li><a href="#roles">사람 역할과 실행 배치</a></li>
+        <li><a href="#people">사람이 하는 일</a></li>
+        <li><a href="#folders">폴더와 주인</a></li>
+        <li><a href="#issue-key">이슈 키</a></li>
+        <li><a href="#jira">Jira를 AI-DLC에 맞추기</a></li>
+        <li><a href="#extend">하네스 고쳐 쓰기</a></li>
+      </ol>
+    </nav>
+
+    <article class="prose">
+      <h1 class="page-title">AI-DLC를 지키고, 각자 고쳐 쓰는 하네스</h1>
+      <p class="lede">킷은 AI-DLC 방법론을 구현하는 하네스다. AI-DLC 실행 도구(aidlc-workflows)를 켜든 끄든 원칙 다섯 가지는 킷이 지킨다. 이 장은 원칙마다 킷이 무엇으로 지키는지, 채널톡 사례에서 무엇을 가져오고 버리는지, 사람이 맡는 일과 폴더의 주인, 회사·팀·개인이 하네스를 고쳐 쓰는 방법을 적는다.</p>
+
+      <h2 id="frame">방법론과 도구를 나눈다</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th scope="col"></th><th scope="col">AI-DLC 방법론</th><th scope="col">aidlc-workflows 도구</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">무엇</th><td>세 단계, 대화 방향 역전, Unit·Bolt, 승인 게이트, 문서로 남는 맥락</td><td>원칙을 돌리는 엔진(2.x: 다섯 페이즈, 33개 스테이지)</td></tr>
+            <tr><th scope="row">킷에서</th><td>항상 지킨다. 킷의 흐름·명령·게이트가 곧 구현이다</td><td>선택 모듈(<code>flow.design = "aidlc"</code>). 켜면 설계 단계를 대신 돌린다</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>그래서 "AI-DLC를 개발 방법론으로 한다"는 말은 도구 설치와 별개다. 킷만 쓰는 리포도 AI-DLC로 일한다.</p>
+
+      <h2 id="principles">원칙 다섯 가지</h2>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col">원칙</th><th scope="col">킷이 지키는 방법</th><th scope="col">기계로 막는 것</th><th scope="col">빈 곳 → 보완</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">세 단계<br>(2.x 다섯 페이즈)</th><td>Initialization = <code>harness-kit init</code> · Ideation = 요구사항 접수 · Inception = <code>/hx-intent</code>와 기획물 · Construction = SDD와 검증 · Operations = 반영·배포·운영 기록</td><td>앞 문서가 approved가 아니면 다음 문서를 만들지 못한다(<code>check-sdd-prerequisites</code>)</td><td class="part">배포 계획·롤백·배포 승인이 없다 → P24</td></tr>
+            <tr><th scope="row">대화 방향 역전</th><td>단계 명령마다 AI가 먼저 계획·질문·대안을 내고 사람이 고른다. <code>/hx-clarify</code>는 질문 최대 5개에 선택지와 권장안, <code>/hx-plan</code>은 대안과 버린 이유(ADR), <code>/hx-tasks</code>는 작업 계획을 내고 승인을 받는다</td><td><code>[NEEDS CLARIFICATION]</code>이 남은 문서는 승인할 수 없다</td><td class="part">선택지를 눌러 답하는 화면이 없다 → P20 관리 페이지</td></tr>
+            <tr><th scope="row">Unit · Bolt</th><td>Unit = 이슈 하나 = SDD 폴더 하나 = 브랜치·MR 하나. Bolt = tasks의 Phase(수 시간~수 일). Bolt마다 바꾼 기능만 검증한다</td><td>브랜치 이름과 이슈 키의 대응(git 훅), 이슈 폴더당 tasks 한 벌</td><td class="part">Unit을 나눌지 정하는 기준 → P21, Bolt 진행 보기 → P20</td></tr>
+            <tr><th scope="row">승인 게이트</th><td>Intent·Unit → 기획물 → requirements → design → tasks 계획 → MR → 완료 → 배포. 단계마다 사람이 승인한다. 일의 크기와 위험에 따라 줄이는 것은 문서 분량이고, 승인은 건너뛰지 않는다</td><td>지금은 상태값만 본다. AI-DLC를 켜면 AI-DLC가 사람 입력을 훅으로 확인한다. 킷은 그 기록에 승인자가 있으면 <code>approvals.md</code>로 옮겨 승인으로 인정하고, 없으면 킷 경로로 승인받는다</td><td class="no">누가 언제 승인했는지 강제하지 못한다 → P23 <code>approvals.md</code>와 훅</td></tr>
+            <tr><th scope="row">맥락이 문서로</th><td>Intent·Unit, SDD 세 문서, 질문과 답, ADR, 승인 기록, 리뷰 결과, 인수인계, 운영 기록이 모두 리포에 남는다. Entire를 켜면 대화 원문까지</td><td>오래된 초안·미해결 질문 보고(<code>check-spec-freshness</code>)</td><td class="part">관리 페이지에서 저장한 문서도 그 이슈 브랜치에 커밋돼야 한다 → P20</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>다섯 가지 모두 흐름은 이미 있다. 약한 곳은 셋이다. 배포 단계, 승인을 사람이 실제로 했는지 강제하는 장치, 사람이 선택지를 고르고 답하는 화면이다. 각각 P24·P23·P20에서 채운다.</p>
+
+      <h2 id="channel">채널톡 사례: 가져올 것과 버릴 것</h2>
+      <p>02장의 하네스별 역할은 채널톡 사례에서 왔다. AI-DLC 기준으로 다시 거르면 반은 맞고 반은 어긋난다.</p>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col">채널톡이 한 것</th><th scope="col">AI-DLC와</th><th scope="col">킷에서</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>이슈마다 워커 세션</td><td class="yes">맞다. Unit마다 Bolt를 돌린다</td><td>가져온다: 이슈 하나 = 세션 하나</td></tr>
+            <tr><td>Claude가 쓰고 Codex가 리뷰</td><td class="yes">맞다. 사람 리뷰를 대신하지 않고 더한다</td><td>가져온다: 실행 배치 기본값</td></tr>
+            <tr><td>처리할 일을 한 화면에</td><td class="yes">맞다</td><td>가져온다: 관리 페이지 "처리할 일"</td></tr>
+            <tr><td>회고 제안을 규칙 파일 커밋으로</td><td class="yes">맞다. 배운 것을 규칙으로 되돌린다</td><td>가져온다: 운영 기록 → 규칙 변경 MR</td></tr>
+            <tr><td>병합 뒤 자동 배포·E2E, 두 번 실패하면 멈춤</td><td class="yes">맞다(Operations)</td><td>가져온다: CI 템플릿 선택 단계</td></tr>
+            <tr><td>사람은 요구사항이 모호할 때와 머지 직전 두 곳에서만 멈춘다</td><td class="no">어긋난다. 단계마다 승인한다</td><td>버린다. 04장의 같은 문장을 고쳤다</td></tr>
+            <tr><td>PM 세션이 병합·리뷰 요청·보류를 판정</td><td class="no">어긋난다. 판정은 사람이 한다</td><td>버린다. 관리 페이지는 모아서 보여 주기만 한다</td></tr>
+            <tr><td>별도 스펙 문서 없이 계획만 확정</td><td class="no">어긋난다. 문서가 다음 단계의 맥락이다</td><td>버린다. SDD 문서를 유지한다</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="roles">사람 역할과 실행 배치</h2>
+      <p>02장의 역할 표는 에이전트 작업을 어느 하네스가 돌리는지(실행 배치)다. AI-DLC가 말하는 역할은 사람의 역할이고, 승인 게이트마다 누가 승인하는지로 드러난다. 둘을 나눠 적는다.</p>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col">사람 역할</th><th scope="col"><span class="gate">승인하는 것</span></th><th scope="col">함께 일하는 실행 배치</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">PO</th><td>요구사항, 범위 밖, 우선순위, Unit 분해, 기획물</td><td>설계 세션(Claude Code, AI-DLC를 켰으면 AI-DLC)</td></tr>
+            <tr><th scope="row">개발자</th><td>design의 트레이드오프, tasks 계획, 리뷰 지적 판단, MR</td><td>구현 세션(Claude Code), 리뷰 세션(Codex)</td></tr>
+            <tr><th scope="row">QA</th><td>수용 기준이 시험 가능한지, 검증 결과, 완료</td><td>리뷰 세션, 스캐너, CI</td></tr>
+            <tr><th scope="row">운영</th><td>배포, 운영 기록, 다음 요구사항 선택</td><td>문서 세션(Kiro)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>한 사람이 여러 역할을 맡아도 된다. 게이트마다 승인할 수 있는 사람은 <code>harness-kit.json</code>의 <code>approvers</code>에 적고, 관리 페이지와 승인 기록이 그 목록을 따른다.</p>
+
+      <h2 id="people">사람이 하는 일</h2>
+      <p>사람은 결정을 한다. 초안 쓰기, 폴더 사이 복사, 보드·HTML 갱신, tasks 파일 옮기기는 에이전트와 도구가 한다.</p>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col">시점</th><th scope="col">사람이 하는 일</th><th scope="col">어디서</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">요구사항 접수</th><td>한두 문단으로 요구사항을 적는다</td><td>관리 페이지 "새 요구사항" 또는 Jira 이슈</td></tr>
+            <tr><th scope="row">설계 질문</th><td>AI가 낸 질문에 답하고 선택지를 고른다</td><td>관리 페이지 문서 화면(질문 파일)</td></tr>
+            <tr><th scope="row">Intent·Unit 승인</th><td>범위와 분해를 승인한다</td><td>관리 페이지 승인 버튼, 사람 터미널의 <code>harness-kit approve</code>, Jira 사람 전이. AI-DLC를 켜면 AI-DLC 안에서 한 승인도 인정한다. AI-DLC가 사람 입력을 직접 확인하므로, 킷이 그 기록을 <code>approvals.md</code>로 옮긴다(두 번 승인하지 않는다)</td></tr>
+            <tr><th scope="row">문서 승인</th><td>기획물·requirements·design·tasks 계획을 승인하거나 고쳐서 돌려보낸다</td><td>관리 페이지 승인 버튼, 사람 터미널의 <code>harness-kit approve</code>, Jira 사람 전이. 채팅에서 한 말은 승인이 아니다. 승인할 때 넣은 문구는 <code>approvals.md</code>에 누가·언제와 함께 남는다</td></tr>
+            <tr><th scope="row">리뷰 판단</th><td>지적을 받아들일지 거절할지 정한다</td><td>관리 페이지 검증 탭</td></tr>
+            <tr><th scope="row">병합 · 배포</th><td>MR을 승인하고 배포를 누른다</td><td>GitLab, 배포 시스템</td></tr>
+            <tr><th scope="row">규칙 변경</th><td>규칙·게이트 변경 MR을 승인한다</td><td>GitLab</td></tr>
+            <tr><th scope="row">운영</th><td>운영 기록을 보고 다음 요구사항을 고른다. worktree 정리를 승인한다</td><td>관리 페이지</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="folders">폴더와 주인</h2>
+      <p>내용마다 원본은 한 곳이다. AI-DLC 설계 문서는 AI-DLC 폴더에만, SDD는 이슈 폴더에만 두고 킷은 복사하지 않는다. HTML은 관리 페이지가 그때그때 렌더하고 커밋하지 않는다.</p>
+      <pre><code>&lt;repo&gt;/
+├── aidlc/spaces/&lt;space&gt;/intents/&lt;날짜-이름&gt;/   AI-DLC 엔진 소유(켰을 때만)
+├── .agents/
+│   ├── rules/ · skills/ · roles/ · hooks.json   킷 원본 + 회사 팩 + 프로젝트 확장
+│   ├── local/                                    개인 확장(커밋하지 않음)
+│   ├── docs/
+│   │   ├── intents/INT-7-payment-revamp/
+│   │   │   ├── intent.md 또는 intent.json        킷 설계 원본 / AI-DLC 경로 링크
+│   │   │   ├── units.json                        Unit 목록과 의존 순서
+│   │   │   └── plans/                            화면기획 · 디자인기획 · 백로그
+│   │   ├── issues/HDRV3D-12-upload-cleanup/      Unit 하나 = 이슈 하나 = SDD 한 벌
+│   │   │   ├── requirements.md · design.md · tasks.md
+│   │   │   └── review.md · approvals.md · handoff-*.md
+│   │   ├── decisions/                            ADR
+│   │   └── ops/                                  운영 기록
+│   └── state/ · reports/                         기계가 쓰는 것(커밋하지 않음)
+└── docs/features/                                병합 뒤 반영하는 기능 문서</code></pre>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col">폴더</th><th scope="col">주인</th><th scope="col">커밋</th><th scope="col">사람이 직접 고치나</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>aidlc/</code></td><td>AI-DLC 엔진</td><td>예</td><td>질문 답과 승인만(AI-DLC 방식대로)</td></tr>
+            <tr><td><code>.agents/rules</code> · <code>skills</code> · <code>roles</code></td><td>킷 · 회사 팩 · 팀</td><td>예</td><td>MR로만</td></tr>
+            <tr><td><code>.agents/local/</code></td><td>개인</td><td>아니오</td><td>자유</td></tr>
+            <tr><td><code>.agents/docs/intents/</code></td><td>설계 세션</td><td>예</td><td>요구사항·답·승인(관리 페이지)</td></tr>
+            <tr><td><code>.agents/docs/issues/</code></td><td>그 이슈의 세션</td><td>예(그 이슈 브랜치)</td><td>수정·승인(관리 페이지)</td></tr>
+            <tr><td><code>.agents/docs/decisions/</code></td><td>개발자</td><td>예</td><td>결정, 초안은 에이전트</td></tr>
+            <tr><td><code>.agents/state/</code> · <code>reports/</code></td><td>도구</td><td>아니오</td><td>아니오</td></tr>
+            <tr><td><code>docs/features/</code></td><td>문서 세션</td><td>예</td><td>검토만</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="issue-key">이슈 키</h2>
+      <ul>
+        <li><strong>Jira를 쓰면 Jira 키를 그대로 쓴다.</strong> 폴더 <code>issues/HDRV3D-12-upload-cleanup/</code>, 브랜치 <code>feat/HDRV3D-12-upload-cleanup</code>, worktree <code>HDRV3D-12-upload-cleanup</code>, MR·커밋 제목의 키가 모두 같다.</li>
+        <li><strong>Jira가 없으면 킷이 같은 모양으로 만든다.</strong> <code>&lt;프로젝트키&gt;-&lt;번호&gt;-&lt;짧은 이름&gt;</code>, 예: <code>KNOTS-17-desktop-parity</code>. 프로젝트키는 <code>harness-kit.json</code>의 <code>issueKey.prefix</code>, 번호는 기본 브랜치에 있는 가장 큰 번호 + 1이다. 같은 번호가 두 브랜치에서 생기면 MR 때 검사가 잡는다.</li>
+        <li>짧은 이름은 요구사항에서 영문 kebab-case로 만든다(3~5단어). 한글·공백·대문자는 쓰지 않는다.</li>
+        <li><code>jira-workflow</code> 모듈을 켜면 <code>/hx-intent</code>가 Unit마다 Jira 이슈를 만들고 받은 키로 폴더를 만든다.</li>
+        <li>지금의 영역 폴더(<code>&lt;영역&gt;-specs</code>)는 폴더가 아니라 requirements 머리의 <code>area:</code> 값이 되고, 보드와 관리 페이지가 이 값으로 묶어 보여 준다.</li>
+      </ul>
+
+      <h2 id="jira">Jira를 AI-DLC에 맞추기</h2>
+      <p>Jira를 쓰는 팀은 Jira 구조도 AI-DLC 단위와 승인 게이트에 맞춘다. 문서의 원본은 리포이고, Jira에는 상태·담당·링크를 둔다. Jira가 없어도 같은 상태표를 관리 페이지 보드가 쓴다.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th scope="col">AI-DLC</th><th scope="col">Jira</th><th scope="col">리포</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Intent</th><td>에픽</td><td><code>intents/&lt;Intent&gt;/</code>. 에픽 키를 Intent 키로 써도 된다</td></tr>
+            <tr><th scope="row">Unit</th><td>작업 항목(스토리 · 작업 · 버그). 이 키가 이슈 키다</td><td><code>issues/&lt;키&gt;-&lt;이름&gt;/</code>, 브랜치, MR</td></tr>
+            <tr><th scope="row">Bolt</th><td>하위 작업(선택, 작은 Unit은 생략)</td><td>tasks의 Phase</td></tr>
+            <tr><th scope="row">승인 게이트</th><td>상태 전이</td><td><code>approvals.md</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col">Jira 상태</th><th scope="col">킷 단계</th><th scope="col"><span class="gate">다음으로 넘어가는 조건</span></th></tr>
+          </thead>
+          <tbody>
+            <tr><td>백로그</td><td>Unit 목록에 있음</td><td>Unit 분해 승인(PO)</td></tr>
+            <tr><td>요구사항 작성</td><td>requirements draft</td><td>질문이 모두 풀림</td></tr>
+            <tr><td>요구사항 승인 대기</td><td>requirements in-review</td><td>PO 승인 → approved</td></tr>
+            <tr><td>설계</td><td>design draft · in-review</td><td>개발자 승인 → approved</td></tr>
+            <tr><td>구현 중</td><td>tasks active(Bolt 진행)</td><td>Bolt마다 바꾼 기능 검증 통과</td></tr>
+            <tr><td>검증</td><td>MR 열림, 리뷰 · 스캔 · affected 검증</td><td>MR 승인</td></tr>
+            <tr><td>완료</td><td>tasks completed</td><td>사용자 검수 승인</td></tr>
+            <tr><td>배포됨</td><td>운영 기록</td><td>배포 승인</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul>
+        <li>승인 상태로 옮기는 것은 사람만 한다. Jira 워크플로 조건으로 승인 전이를 사람 그룹으로 제한하고, 사람이 옮긴 기록(누가 · 언제)을 킷이 <code>approvals.md</code>로 가져온다.</li>
+        <li>단계가 바뀌면 킷이 Jira 상태와 링크(SDD 경로 · MR · 체크포인트)를 갱신한다. 지금 있는 <code>jira-workflow</code> 모듈을 이 대응으로 고친다(P21). 연결은 Atlassian Rovo MCP 서버나 Jira API로 한다.</li>
+        <li><strong>Agentic engineering 템플릿</strong>(Jira Cloud, 2026-07-15): 코딩 에이전트용 워크플로가 미리 깔린 공간 템플릿이다. 조직에 Rovo가 켜져 있어야 보인다. 만들 때 상태를 고르고 나중에 바꿀 수 있으므로, 템플릿으로 공간을 만든 뒤 위 상태표로 고친다. 템플릿의 기본 상태 목록은 Atlassian 문서에 없어서 만들어 보고 대응시킨다.</li>
+        <li>Jira에서는 작업 항목을 Claude Code·Cursor·Copilot에 바로 배정할 수 있다. 이렇게 배정된 에이전트도 리포의 <code>AGENTS.md</code>·규칙·검증 게이트를 따른다. 그 MR에도 같은 CI 검증과 승인 기록 검사를 걸어 로컬 하네스를 우회하지 못하게 한다.</li>
+      </ul>
+
+      <h2 id="extend">하네스 고쳐 쓰기</h2>
+      <p>회사마다, 팀마다, 사람마다 하네스에 더하고 싶은 것이 다르다. 킷은 고쳐 쓴 것을 네 층으로 나눠 업데이트가 지우지 않게 한다.</p>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col">층</th><th scope="col">누가</th><th scope="col">어디에</th><th scope="col">커밋</th><th scope="col">킷 업데이트 때</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">1 킷 기본</th><td>킷</td><td><code>.agents/</code>(주인 <code>kit</code>)</td><td>예</td><td>교체. 사람이 고친 파일은 <code>.new</code>로 옆에</td></tr>
+            <tr><th scope="row">2 회사 팩</th><td>회사·사업부</td><td>별도 git 리포나 npm 패키지. <code>packs</code>에 적으면 <code>.agents/</code>에 배치(주인 <code>pack:&lt;이름&gt;</code>)</td><td>예</td><td>팩 버전을 올릴 때만 같은 규칙으로 교체</td></tr>
+            <tr><th scope="row">3 프로젝트</th><td>리포 팀</td><td><code>.agents/</code> 안 팀 파일(주인 <code>user</code>)</td><td>예</td><td>건드리지 않는다</td></tr>
+            <tr><th scope="row">4 개인</th><td>개인</td><td><code>.agents/local/</code>, 사용자 스킬 폴더</td><td>아니오</td><td>건드리지 않는다</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <ul>
+        <li>같은 이름이면 프로젝트 → 회사 팩 → 킷 순으로 앞의 것이 이긴다.</li>
+        <li>개인 층은 더하기만 한다. 검증 게이트·승인 게이트·보호 경로를 끄거나 약하게 하는 개인 설정은 무시하고 <code>doctor</code>가 경고한다.</li>
+        <li>관리 페이지의 하네스 탭과 <code>doctor</code>가 고쳐 쓴 것(어느 층이 무엇을 덮었나)을 보여 준다.</li>
+        <li>여러 팀에 쓸모 있는 프로젝트 확장은 회사 팩으로, 회사 밖에도 쓸모 있으면 킷으로 올린다. knots의 역수출 도구(<code>kit_export</code>)가 하던 일을 이 경로로 정리한다.</li>
+      </ul>
+      <h3>확장 지점</h3>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col">더하고 싶은 것</th><th scope="col">넣는 곳</th><th scope="col">킷이 해 주는 일</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">규칙</th><td><code>.agents/rules/&lt;이름&gt;.md</code></td><td><code>AGENTS.md</code> 목차에 넣고 Kiro steering을 생성한다</td></tr>
+            <tr><th scope="row">스킬 · 명령</th><td><code>.agents/skills/&lt;이름&gt;/SKILL.md</code></td><td>하네스 네 곳에 자동 배치한다(복사·그대로 읽기)</td></tr>
+            <tr><th scope="row">역할(에이전트)</th><td><code>.agents/roles/&lt;이름&gt;.md</code></td><td>Claude·Codex·Kiro 역할 파일을 생성하고 역할 배정에 쓸 수 있게 한다</td></tr>
+            <tr><th scope="row">훅</th><td><code>.agents/hooks.json</code> 항목</td><td>하네스별 훅을 생성·병합한다</td></tr>
+            <tr><th scope="row">검증 단계</th><td><code>.agents/verify-checks.json</code>(지금 있음)</td><td>바뀐 경로가 맞으면 changed·affected 검증에서 실행한다</td></tr>
+            <tr><th scope="row">가드</th><td><code>scripts/guards/&lt;이름&gt;.sh</code>(지금 있음)</td><td>경고(0)로 시작해 위반이 0건이 되면 강제(1)로 올린다</td></tr>
+            <tr><th scope="row">SDD · 기획물 템플릿</th><td><code>.agents/docs/_spec-templates/</code></td><td>새 이슈와 기획물에 그대로 쓴다</td></tr>
+            <tr><th scope="row">승인 게이트</th><td><code>flow.gates</code></td><td>게이트를 더하는 것은 자유다. requirements · design · MR · 완료 네 게이트 밑으로는 줄이지 못한다</td></tr>
+            <tr><th scope="row">스킬 지도</th><td><code>.agents/skill-map.json</code></td><td>단계별 추천과 킷 명령의 스킬 사용에 반영한다</td></tr>
+            <tr><th scope="row">새 하네스</th><td>어댑터 파일 하나</td><td>Copilot·Gemini CLI·OpenCode 등을 그대로 읽기·복사·생성 규칙으로 붙인다(P18 어댑터 구조)</td></tr>
+            <tr><th scope="row">외부 도구</th><td>모듈</td><td>외부 경로 등록과 훅 병합 규칙을 정한다(P22)</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <nav class="pager" aria-label="이전·다음 장">
+        <a href="04-usage.html"><small>이전</small><span>04 활용</span></a>
+        <a class="next" href="index.html"><small>처음으로</small><span>요약</span></a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-foot">
+    <p>harness-starter-kit 문서 · 2026-11-23 기준 · 제안 단계이며 아직 구현되지 않았다.</p>
+  </footer>
+</body>
+</html>

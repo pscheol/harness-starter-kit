@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>03 계획 — 하네스 다음 단계</title>
+  <meta name="description" content="harness-starter-kit v2로 가는 여덟 단계(P17~P24)의 산출물·완료 기준·착수 전 확인, 기존 프로젝트(knots-platform, hr-vision-3d) 이전 절차, 위험과 대응, 릴리스 규칙.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../ai-dlc/assets/aidlc.css">
+  <link rel="stylesheet" href="assets/next.css">
+  <script src="../ai-dlc/assets/aidlc.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+  <header class="site-head">
+    <div class="phase-band" aria-hidden="true"><span></span><span></span><span></span></div>
+    <nav class="site-nav" aria-label="문서 목록">
+      <a class="home" href="index.html">하네스 다음 단계</a>
+      <ol>
+        <li><a href="01-diagnosis.html"><span class="num">01</span>진단</a></li>
+        <li><a href="02-direction.html"><span class="num">02</span>방향</a></li>
+        <li><a href="03-plan.html" aria-current="page"><span class="num">03</span>계획</a></li>
+        <li><a href="04-usage.html"><span class="num">04</span>활용</a></li>
+        <li><a href="05-principles.html"><span class="num">05</span>원칙·확장</a></li>
+      </ol>
+    </nav>
+  </header>
+
+  <main id="main" class="page">
+    <nav class="page-toc" aria-label="이 장의 절">
+      <p class="toc-title">이 장에서</p>
+      <ol>
+        <li><a href="#overview">순서와 버전</a></li>
+        <li><a href="#restructure">먼저: 구조 이동(v1.0.9)</a></li>
+        <li><a href="#now">지금 고칠 것: v1.1</a></li>
+        <li><a href="#p17">P17 CLI 엔진</a></li>
+        <li><a href="#p18">P18 배치 전환</a></li>
+        <li><a href="#p19">P19 worktree 운영</a></li>
+        <li><a href="#p20">P20 대시보드 · 스킬 목록</a></li>
+        <li><a href="#p21">P21 킷 설계 단계 · 기획물</a></li>
+        <li><a href="#p22">P22 선택 모듈</a></li>
+        <li><a href="#p23">P23 검증 확장</a></li>
+        <li><a href="#p24">P24 반영 · 운영 · 역수입</a></li>
+        <li><a href="#migrate">기존 프로젝트 이전</a></li>
+        <li><a href="#risks">위험과 대응</a></li>
+        <li><a href="#release">릴리스 규칙</a></li>
+        <li><a href="#next">바로 다음 할 일</a></li>
+      </ol>
+    </nav>
+
+    <article class="prose">
+      <h1 class="page-title">여덟 단계로 v2에 간다</h1>
+      <p class="lede">단계 번호는 <a href="../roadmap.md">roadmap.md</a>의 Phase 16(v1.0.8)에 이어 붙인다. 각 단계의 완료 기준은 숫자나 명령 결과로 적었고, 그 기준을 통과해야 다음 단계로 간다. 규모는 한 사람과 에이전트가 하는 기준의 추정이다.</p>
+
+      <h2 id="overview">순서와 버전</h2>
+      <figure class="diagram bleed">
+        <a href="diagrams/roadmap.svg"><img src="diagrams/roadmap.svg" width="1421" height="541" alt="결정 D3·D4·D7 뒤에 P17 CLI 엔진(v2.0.0-alpha), P18 배치 전환과 worktree 안전 훅(v2.0.0)이 이어진다. P18 다음에 P19 worktree 운영(v2.1), P20 대시보드·스킬 목록(v2.2), P21 킷 설계 단계·기획물·하네스별 역할(v2.3), P23 검증 확장(v2.5), hdr 이전이 갈라진다. P21 다음에 P22 선택 모듈 AI-DLC·Entire(v2.4)와 P24 반영·운영 기록·현장 역수입(v2.6)이 온다. knots 이전은 P22와 P24 뒤다" loading="lazy" decoding="async"></a>
+        <figcaption>단계 의존. 빨강은 사람 결정, 파랑은 v2.0을 이루는 기반, 앰버는 기능 단계, 청록은 기존 프로젝트 이전이다. P18 뒤의 P19·P20·P21·P23은 나란히 진행할 수 있다. P22 중 Entire 모듈은 설계 단계와 무관해 P18 뒤 언제든 만들 수 있다. <a href="diagrams/roadmap.mmd" download>편집 원본(.mmd)</a></figcaption>
+      </figure>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col">단계</th><th scope="col">버전</th><th scope="col">내용</th><th scope="col">규모</th><th scope="col">선행</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">지금 고칠 것</th><td>1.1</td><td>검증을 바꾼 기능만으로(affected 레벨, 에이전트의 full 차단), 이슈 단위 SDD 폴더와 키 규칙</td><td>M</td><td>없음</td></tr>
+            <tr><th scope="row">P17 CLI 엔진</th><td>2.0.0-alpha</td><td>Node CLI, lock v2, init · plan · add · update · doctor · repair · uninstall, bash와 결과 동일성</td><td>L</td><td>D3</td></tr>
+            <tr><th scope="row">P18 배치 전환</th><td>2.0.0</td><td>포인터 → 복사·생성·병합, 하네스 중립 훅, worktree를 따라가는 훅, 배치 검사</td><td>M</td><td>P17</td></tr>
+            <tr><th scope="row">P19 worktree 운영</th><td>2.1</td><td><code>wt</code> 명령, 리포 옆 자리, IDE 설정, 용량 상한, Claude worktree 훅, 브랜치 규칙, CI·MR 템플릿</td><td>M</td><td>P18 · D4</td></tr>
+            <tr><th scope="row">P20 대시보드 · 스킬 목록</th><td>2.2</td><td>로컬 대시보드(처리할 일 · 진행 · 문서 · 작업 공간 · 하네스 · 스킬), 스킬 스캐너와 스킬 지도</td><td>M</td><td>P18</td></tr>
+            <tr><th scope="row">P21 킷 설계 단계 · 기획물</th><td>2.3</td><td><code>/hx-intent</code>(Intent·질문·스토리·Unit 분해), Unit → SDD 다리, 기획물 4종, 하네스별 역할</td><td>L</td><td>P18 · P20 · D7</td></tr>
+            <tr><th scope="row">P22 선택 모듈</th><td>2.4</td><td>AI-DLC·Entire를 켜고 끄기, 버전 추적, AI-DLC → 공통 Unit 목록 어댑터, 공존·두 구성 시험</td><td>M</td><td>P21 · D6</td></tr>
+            <tr><th scope="row">P23 검증 확장</th><td>2.5</td><td>자체 리뷰 에이전트, 오픈소스 정적 분석과 품질 게이트, 승인 기록·강제</td><td>L</td><td>P18</td></tr>
+            <tr><th scope="row">P24 반영 · 운영 · 역수입</th><td>2.6</td><td>병합 뒤 문서 반영, 운영 기록 → 다음 Intent, 다층 단위 <code>sync</code>, 리포 간 조율</td><td>M</td><td>P21</td></tr>
+          </tbody>
+        </table>
+        <p class="caption">규모: M은 1~2주, L은 2~4주(추정). 버전은 릴리스 순서이고 작업은 의존이 허락하는 만큼 겹친다.</p>
+      </div>
+
+      <h2 id="restructure"><span class="phase-head">먼저: 킷 저장소 구조 이동 <span class="meta">v1.0.9 · S</span></span></h2>
+      <p>목표: 원본을 <code>packages/</code>로 옮기고 플러그인 폴더를 생성물로 바꾼다. 설치 결과는 v1.0.8과 같다(<a href="../design/02-cli-engine.md">설계 02 §3.1</a>).</p>
+      <h3>만들 것</h3>
+      <ul>
+        <li><code>git mv</code>만 하는 커밋: <code>plugins/harness-kit/skills/hx-bootstrap/templates/</code> → <code>packages/templates/</code>, <code>setup.sh</code> · <code>lib/</code> → <code>packages/legacy-setup/</code>, 설치 시험 → <code>tests/</code>.</li>
+        <li><code>pnpm-workspace.yaml</code>, 루트 <code>package.json</code>(private), <code>scripts/gen-plugins.mjs</code>: <code>packages/</code>에서 <code>plugins/harness-kit/</code>을 다시 만든다.</li>
+        <li><code>tests/test_generated.py</code>: 생성물과 원본이 바이트 단위로 같은지 본다. fast 검증 · CI에서 돈다.</li>
+      </ul>
+      <div class="done-when">
+        <p>완료 기준</p>
+        <ul class="checklist">
+          <li>이동 전후로 <code>setup.sh</code>를 같은 선택값으로 돌린 결과 폴더가 같다(diff 0).</li>
+          <li>마켓플레이스 경로 <code>./plugins/harness-kit</code>로 설치한 플러그인의 <code>/hx-bootstrap</code>이 그대로 돈다.</li>
+          <li><code>git log --follow packages/templates/common/agents-rules/git-workflow.md</code>가 이동 전 이력을 보인다.</li>
+        </ul>
+      </div>
+
+      <h2 id="now"><span class="phase-head">지금 고칠 것 <span class="meta">v1.1 · M</span></span></h2>
+      <p>목표: 지금 쓰는 리포에서 검증 시간을 바꾼 범위만큼으로 줄이고, SDD를 이슈 단위로 만든다. v2 엔진과 상관없이 지금 bash·Python 코드로 고친다.</p>
+      <h3>만들 것</h3>
+      <ul>
+        <li>검증 <code>affected</code> 레벨: 바꾼 파일이 속한 모듈과 그 모듈을 쓰는 모듈의 검사(Gradle <code>:모듈:check</code>, pnpm 워크스페이스 필터, Python 패키지 단위, Go 패키지 단위).</li>
+        <li>에이전트 세션의 <code>--full</code> 차단 훅(사람 터미널·CI는 그대로), 테스트를 못 찾을 때 full 권고 대신 affected로 넓히거나 미검증 보고.</li>
+        <li>여러 리포를 묶은 상위 게이트가 바뀐 도메인만 부르기, 단계별 소요 시간 기록(<code>.agents/state/verify-last.json</code>).</li>
+        <li>규칙·스킬·tasks 템플릿의 full 지시 정리("full 선택/이유" 칸 → "affected 결과 · CI full 링크").</li>
+        <li>이슈 단위 SDD: <code>new-feature.sh &lt;이슈키&gt; &lt;이름&gt;</code>(Jira 키, 없으면 <code>&lt;프로젝트키&gt;-&lt;번호&gt;</code> 생성), <code>issues/&lt;키&gt;-&lt;이름&gt;/</code>, <code>area:</code> 값, 보드의 영역별 묶음, <code>sdd-layout.py migrate --dry-run</code>.</li>
+        <li>브랜치 이름 규칙을 <code>&lt;종류&gt;/&lt;이슈키&gt;-&lt;이름&gt;</code>으로 개정.</li>
+      </ul>
+      <div class="done-when">
+        <p>완료 기준</p>
+        <ul class="checklist">
+          <li>knots 사본에서 파일 하나를 바꾼 작업의 changed 검증이 3분 안에, affected 검증이 15분 안에 끝난다.</li>
+          <li>에이전트 세션에서 <code>bash scripts/verify.sh --full</code>을 부르면 훅이 막고 안내를 출력한다(테스트).</li>
+          <li><code>new-feature.sh HDRV3D-12 upload-cleanup</code>이 <code>issues/HDRV3D-12-upload-cleanup/</code>을 만든다. 키 없이 부르면 <code>&lt;프로젝트키&gt;-&lt;다음 번호&gt;</code>가 붙는다.</li>
+          <li>knots 사본에서 <code>migrate --dry-run</code>이 영역 폴더 13곳의 이슈를 모두 목록으로 내고, 적용 뒤 보드 결과가 이전과 같다.</li>
+        </ul>
+      </div>
+
+      <h2 id="p17"><span class="phase-head">P17 CLI 엔진 <span class="meta">v2.0.0-alpha · L</span></span></h2>
+      <p>목표: 에이전트 세션 없이 <code>npx</code> 한 줄로 v1.0.8과 같은 결과를 설치하고, 점검·복구·제거까지 한다.</p>
+      <h3>만들 것</h3>
+      <ul>
+        <li>루트 <code>package.json</code>(<code>bin: harness-kit</code>, Node 18+). 템플릿은 지금 자리에 두고 패키지에 포함한다.</li>
+        <li><code>packages/cli/src/</code>(TypeScript → 단일 번들 <code>dist/cli.js</code>): 명령과 핵심 모듈(레이어 해석 · 토큰 치환 · 작업 목록 · 해시 · lock).</li>
+        <li><code>templates/layout.json</code>: <code>setup.sh</code> 안의 템플릿 폴더 → 설치 경로 매핑을 데이터로 꺼낸다.</li>
+        <li>lock v2 읽기·쓰기, v1(TSV) 읽기.</li>
+        <li>플러그인 스킬 <code>hx-bootstrap</code> · <code>hx-update</code> · <code>hx-agent-add</code>가 CLI를 부른다. Node가 없으면 <code>setup.sh</code>로 내려간다.</li>
+      </ul>
+      <div class="done-when">
+        <p>완료 기준</p>
+        <ul class="checklist">
+          <li>대표 조합 10개에서 <code>setup.sh</code>와 CLI의 설치 결과가 lock을 빼고 파일 목록·내용 모두 같다.</li>
+          <li>새 설치 직후 <code>doctor --check</code>가 exit 0.</li>
+          <li>킷 파일 하나를 고친 뒤 <code>update</code> → <code>.new</code> 생성, <code>uninstall</code> → 고친 파일 하나만 남는다.</li>
+          <li>v1 설치 fixture에서 <code>update</code>가 lock v1을 읽어 v2로 쓴다.</li>
+          <li>런타임 의존 패키지 0개(번들에 넣은 것 제외).</li>
+        </ul>
+      </div>
+
+      <h2 id="p18"><span class="phase-head">P18 배치 전환 <span class="meta">v2.0.0 · M</span></span></h2>
+      <p>목표: 손으로 유지하는 하네스 파일 78개를 0개로 만들고, 킷 훅이 worktree 안에서도 맞는 리포를 본다.</p>
+      <h3>착수 전 확인</h3>
+      <ol>
+        <li>Cursor·Copilot·Gemini CLI가 <code>.agents/skills/</code>를 읽는 최소 버전.</li>
+        <li>Kiro steering의 파일 참조 문법 지원 여부.</li>
+        <li>Claude Code에서 같은 이름의 skill과 command가 함께 있을 때 어느 쪽이 뜨는지.</li>
+      </ol>
+      <h3>만들 것</h3>
+      <ul>
+        <li>하네스 어댑터 4개(그대로 읽기 · 복사 · 생성 · 병합 작업 목록). 링크는 쓰지 않는다.</li>
+        <li><code>.agents/hooks.json</code>과 하네스별 훅 생성기, 역할 생성기(<code>.agents/roles/*.md</code> → Claude md · Codex toml · Kiro json).</li>
+        <li>킷 훅이 입력의 <code>cwd</code>로 대상 리포를 정하게 수정(보호 경로 · 세션 시작 · 검증 게이트).</li>
+        <li><code>CLAUDE.md</code>를 <code>@AGENTS.md</code> 가져오기와 Claude 전용 절로 줄인다.</li>
+        <li><code>scripts/harness/check_layout.py</code>와 <code>verify.sh</code> fast 연결, 진입 파일 24KB 경고, 링크 실패 시 복사 강등.</li>
+        <li>업그레이드 공지 파일과 SessionStart 주입.</li>
+        <li>확장 층: 회사 팩(<code>packs</code>)과 개인 층(<code>.agents/local/</code>) 배치, 같은 이름의 우선순위(프로젝트 → 팩 → 킷), 개인 층이 게이트를 끄는 설정은 무시하고 경고(<a href="05-principles.html#extend">05장</a>).</li>
+      </ul>
+      <div class="done-when">
+        <p>완료 기준</p>
+        <ul class="checklist">
+          <li>4개 하네스 설치 뒤 하네스 폴더의 모든 파일이 lock의 link · render · merge 항목이다.</li>
+          <li>규칙 원본 한 줄 수정 → fast 검증 실패(<code>stale</code>) → <code>repair</code> → 통과.</li>
+          <li>worktree에서 연 Claude 세션이 worktree의 보호 경로에 쓰려 하면 훅이 막는다(테스트).</li>
+          <li>릴리스 점검표 4건: Claude <code>/hx-plan</code>, Codex <code>$hx-plan</code>, Cursor <code>/hx-plan</code>, Kiro CLI 스킬 목록.</li>
+          <li>원본 스킬을 고치면 동기화 훅이 복사본을 다시 만들고, 복사본을 직접 고치면 훅이 막는다. <code>core.symlinks=false</code> 환경에서도 설치 결과가 같다.</li>
+          <li>회사 팩 파일이 킷 <code>update</code> 뒤에도 그대로다. 개인 층에서 검증 게이트를 끄는 설정을 넣으면 무시되고 <code>doctor</code>가 경고한다.</li>
+        </ul>
+      </div>
+
+      <h2 id="p19"><span class="phase-head">P19 worktree 운영 <span class="meta">v2.1 · M</span></span></h2>
+      <p>목표: 동시 구현의 변경이 섞이지 않고, 끝난 worktree가 남지 않고, IDE와 대시보드에서 보인다.</p>
+      <h3>착수 전 확인</h3>
+      <ol>
+        <li>submodule(도메인 리포) 안에서 <code>git worktree add</code>·<code>remove</code>가 문제없이 도는지.</li>
+        <li>IntelliJ에서 도메인 리포를 단독 프로젝트로 열 때 Worktrees 탭이 보이는지.</li>
+      </ol>
+      <h3>만들 것</h3>
+      <ul>
+        <li><code>scripts/harness/worktree.py</code>: <code>new</code>(<code>--docs</code>는 문서 폴더만) · <code>list</code> · <code>open</code> · <code>done</code> · <code>gc</code>. <code>harness-kit.json</code>의 <code>git</code> 절(<code>base</code> · <code>worktreeRoot</code> 기본 <code>../&lt;리포&gt;.worktrees</code> · <code>maxPerRepo</code> 기본 3 · <code>ide</code>).</li>
+        <li><code>.worktreeinclude</code> 템플릿, <code>.vscode/settings.json</code> 병합(<code>git.detectWorktrees</code>), Claude <code>WorktreeCreate</code>·<code>WorktreeRemove</code> 훅.</li>
+        <li>의존성 가져오기: pnpm·uv 안내, npm은 macOS APFS 복제. 포트 오프셋(<code>.env.worktree</code>).</li>
+        <li><code>git-workflow.md</code> 개정: worktree 규칙, base 설정, 이슈 키 브랜치, 병합하지 않는 <code>exp/</code>.</li>
+        <li>점유 CLI <code>prune</code>(완료 세션 7일, 공지 30일 제안), CI 템플릿 3종(GitHub Actions · GitLab CI · GoCD), MR/PR 템플릿.</li>
+      </ul>
+      <div class="done-when">
+        <p>완료 기준</p>
+        <ul class="checklist">
+          <li>임시 리포에서 구현 세션 둘이 각자 <code>wt new</code> → 커밋 → 서로의 변경이 상대 브랜치에 0줄 섞인다.</li>
+          <li><code>wt done</code>은 push 안 된 커밋이 있으면 지우지 않고, 끝났으면 지운다. 리포당 4번째 <code>wt new</code>는 거부한다.</li>
+          <li><code>wt new --docs</code>로 만든 worktree에는 문서 폴더만 있고, 늘어난 용량이 그 폴더 크기 이하다.</li>
+          <li><code>claude -w x</code>가 리포 옆 <code>.worktrees/</code>에 만들어진다(수동 점검).</li>
+          <li>macOS npm 프로젝트에서 <code>wt new</code> 직후 늘어난 용량이 소스 파일 크기 + 50MB 이하다(APFS 복제).</li>
+          <li>25MB 점유 상태 사본에 <code>prune</code> 뒤 보존 기한 밖 기록 0건. 세 CI 템플릿이 모두 <code>verify.sh</code>만 부른다.</li>
+        </ul>
+      </div>
+
+      <h2 id="p20"><span class="phase-head">P20 대시보드 · 스킬 목록 <span class="meta">v2.2 · M</span></span></h2>
+      <p>목표: 설치 뒤 문서와 진행 상황을 관리 페이지 하나에서 보고, 문서를 고쳐 저장·승인하고, 켜 둔 Claude 세션에 작업을 요청한다. 이 컴퓨터의 스킬을 단계별로 찾는다.</p>
+      <h3>착수 전 확인</h3>
+      <ol>
+        <li>Claude Code 세션 수신함 소켓으로 보내는 글의 형식과, 하네스 밖 프로세스가 보낸 글이 받아들여지는 조건.</li>
+      </ol>
+      <h3>만들 것</h3>
+      <ul>
+        <li><code>npx harness-kit dashboard</code>: Node 표준 HTTP 서버, 127.0.0.1 전용, 읽기 전용, Markdown 렌더러는 번들에 포함.</li>
+        <li>탭: 처리할 일 · 진행 · 문서 · 작업 공간 · 하네스 · 스킬. 검증·운영 탭은 자리만 두고 P23·P24에서 채운다.</li>
+        <li><code>verify.sh</code>가 마지막 결과를 <code>.agents/state/verify-last.json</code>에 남긴다.</li>
+        <li>스킬 스캐너: 위치별 <code>SKILL.md</code> frontmatter 읽기, 플러그인은 켜 둔 것의 최신 버전만, 이름 중복 표시, 하네스 연결.</li>
+        <li><code>.agents/skill-map.json</code> 기본값과 설명 낱말 추정, <code>npx harness-kit skills [--stage]</code>.</li>
+        <li><code>dashboard --export &lt;폴더&gt;</code>: 스킬 탭을 뺀 정적 HTML.</li>
+        <li>쓰기: 접속 토큰, 쓰기 범위(<code>.agents/docs/</code> 문서·승인 기록), 이슈 브랜치에 저장, 승인 버튼과 <code>approvers</code>, AI가 낸 질문에 선택지로 답하는 화면.</li>
+        <li>세션 등록(세션 시작 훅 → <code>.agents/state/sessions/</code>)과 작업 요청(수신함 소켓, 없으면 deep link·대기함).</li>
+      </ul>
+      <div class="done-when">
+        <p>완료 기준</p>
+        <ul class="checklist">
+          <li>SDD 이슈 20개 fixture에서 진행 탭의 상태가 <code>board.sh</code> 결과와 모두 같다.</li>
+          <li>문서 탭에서 SDD 세 문서·기능 문서·ADR이 렌더되어 열린다.</li>
+          <li>이 컴퓨터에서 스킬 탭의 위치별 개수가 같은 기준(중복 규칙 포함)의 <code>find</code> 결과와 같다.</li>
+          <li>서버가 127.0.0.1 밖에서 접속되지 않는다(테스트). 내보낸 HTML에 스킬 정보가 0건.</li>
+          <li>쓰기 범위 밖 경로로 저장하는 요청을 거부한다(테스트). 승인 버튼이 <code>approvals.md</code>에 승인자·시각·문구를 남긴다.</li>
+          <li>문서를 저장하고 세션을 고르면 켜 둔 Claude 세션이 요청을 받아 작업을 시작한다(수동 점검).</li>
+        </ul>
+      </div>
+
+      <h2 id="p21"><span class="phase-head">P21 킷 설계 단계 · 기획물 <span class="meta">v2.3 · L</span></span></h2>
+      <p>목표: AI-DLC·Entire 없이 요구사항 하나가 Intent → Unit → SDD 이슈 → 기획물까지 킷만으로 나오고, 하네스마다 역할이 나뉜다.</p>
+      <h3>만들 것</h3>
+      <ul>
+        <li><code>/hx-intent</code>: Intent 문서(목표 · 범위 밖 · 성공 지표 · 제약 · 처리할 일), 질문 파일 모드(선택지와 답할 직무, 여럿이 답한다), 스토리와 EARS 수용 기준, NFR·위험 레지스터, Unit 목록과 의존 순서, 계약 Unit 먼저.</li>
+        <li>공통 Intent·Unit 목록 형식(<code>intents/&lt;Intent&gt;/</code>)과 <code>/hx-specify --from-unit</code>. 계약 Unit의 design §6이 approved가 아니면 소비 Unit의 <code>/hx-plan</code>이 멈춘다.</li>
+        <li>기획물 4종 템플릿(와이어프레임은 HTML 원본, 나머지는 Markdown 원본 + HTML 렌더)과 <code>/hx-screen-plan</code> · <code>/hx-design-plan</code> · <code>/hx-backlog</code>. 스킬 지도에서 깔린 기획·디자인 스킬을 찾아 쓰고, 없으면 킷 템플릿을 쓴다.</li>
+        <li><code>jira-workflow</code> 모듈 개편: Intent = 에픽, Unit = 작업 항목, Bolt = 하위 작업, 승인 게이트 = 상태 전이(<a href="05-principles.html#jira">05장</a>). Unit마다 Jira 이슈를 만들고 받은 키로 SDD 폴더를 만든다. 사람이 Jira에서 승인 상태로 옮긴 기록을 <code>approvals.md</code>로 가져온다.</li>
+        <li><code>flow</code>·<code>roles</code> 설정과 역할 파일 생성(<code>designer</code>·<code>documenter</code> 새로), 세션 시작 훅의 역할 안내, 인수인계·에이전트 브리프 템플릿.</li>
+        <li>대시보드 진행·문서 탭에 Intent·Unit과 기획물 연결.</li>
+      </ul>
+      <div class="done-when">
+        <p>완료 기준</p>
+        <ul class="checklist">
+          <li>AI-DLC·Entire를 설치하지 않은 리포에서 예시 요구사항 하나 → Intent → Unit 3개와 의존 순서 → SDD 이슈 3개가 나오고 대시보드에 그 순서로 보인다.</li>
+          <li>계약 Unit이 approved가 아니면 소비 Unit의 <code>/hx-plan</code>이 멈추고 이유를 출력한다.</li>
+          <li>기획물 4종이 생기고 대시보드 문서 탭에서 열린다. 디자인 스킬이 깔린 장비와 안 깔린 장비에서 모두 동작한다.</li>
+          <li>백로그의 Unit 상태가 SDD 보드와 같다. <code>/hx-analyze</code>가 Intent ↔ 이슈 추적 누락을 보고한다.</li>
+        </ul>
+      </div>
+
+      <h2 id="p22"><span class="phase-head">P22 선택 모듈: AI-DLC · Entire <span class="meta">v2.4 · M</span></span></h2>
+      <p>목표: 두 도구를 원본 그대로 켜고 끄고 올릴 수 있고, 켜도 꺼도 킷 흐름이 그대로 돈다.</p>
+      <h3>착수 전 확인</h3>
+      <ol>
+        <li>AI-DLC v2에서 설계 단계까지만 돌리는 스코프가 있는지, 없으면 구현 쪽 스테이지 산출물의 경로와 형식.</li>
+        <li>AI-DLC Intent·Unit 산출물의 경로·형식(공통 Unit 목록 어댑터의 입력).</li>
+        <li>AI-DLC와 Entire가 하네스별로 넣는 훅 목록.</li>
+      </ol>
+      <h3>만들 것</h3>
+      <ul>
+        <li><code>add aidlc</code> · <code>remove aidlc</code>: 설치 확인 → 설계 하네스에 <code>aidlc config</code> → 생긴 파일을 외부 소유로 기록 → 훅 병합 → <code>flow.design = "aidlc"</code>. 끄면 킷 훅·등록만 빼고 <code>kit</code>으로 돌아간다.</li>
+        <li>AI-DLC 산출물 → 공통 Intent·Unit 목록 어댑터. <code>/hx-specify --from-unit</code>은 그대로 쓴다.</li>
+        <li><code>add entire</code> · <code>remove entire</code>: <code>entire enable</code> → 구현 하네스만 <code>entire agent add</code> → <code>.entire/settings.json</code> 기본값(커밋 연결, 비밀값 마스킹), push 기본값(D6), 커밋 트레일러 허용, GitLab squash 커밋 메시지 템플릿 안내, 대시보드 체크포인트 칸(GitLab에는 entire.io 웹 보기가 없다).</li>
+        <li><code>outdated</code>와 검증 버전 범위, <code>doctor</code>의 버전·훅·역할 불일치 검사.</li>
+        <li>두 구성 시험: 킷만 / 킷 + AI-DLC + Entire로 요구사항 하나를 운영 기록까지 돌리는 e2e fixture.</li>
+      </ul>
+      <div class="done-when">
+        <p>완료 기준</p>
+        <ul class="checklist">
+          <li>임시 리포에 킷 → AI-DLC → Entire 순서와 그 역순으로 설치한다. 킷 <code>update</code>·<code>uninstall</code> 뒤 다른 두 도구의 파일·훅 해시가 그대로다.</li>
+          <li>같은 요구사항을 킷 설계와 AI-DLC 설계로 각각 돌리면 Unit 목록 형식이 같고, <code>/hx-specify --from-unit</code> 결과의 항목 구성이 같다.</li>
+          <li>체크포인트가 구현 하네스 세션에만 생긴다(Codex 리뷰 세션 0건).</li>
+          <li><code>remove aidlc</code> · <code>remove entire</code> 뒤 두 구성 시험의 "킷만" 쪽이 통과한다. 지워진 산출물 파일은 0개다.</li>
+        </ul>
+      </div>
+
+      <h2 id="p23"><span class="phase-head">P23 검증 확장 <span class="meta">v2.5 · L</span></span></h2>
+      <p>목표: 코드 리뷰·보안 스캔·품질 조회·승인 기록이 MR마다 남고, 심각한 지적이 열려 있으면 승인할 수 없다.</p>
+      <h3>만들 것</h3>
+      <ul>
+        <li><code>/hx-review</code>(<code>reviewer</code> 역할, 기본 Codex): MR diff · SDD · 규칙 · 스캔 결과를 읽고 MR 코멘트와 로컬 보고서를 남긴다. 구현 세션이 처리 결과를 <code>review.md</code>로 정리해 커밋한다.</li>
+        <li><code>/hx-scan</code>과 스캐너 묶음(gitleaks · Semgrep CE · OSV-Scanner 또는 Trivy · 스택별 도구), SARIF를 <code>.agents/reports/</code>에. CI 템플릿에 스캔 단계.</li>
+        <li>정적 분석 조합(D8): 공통 층(Semgrep/Opengrep · gitleaks · OSV-Scanner/Trivy · jscpd · lizard)과 스택별 도구, SARIF 변환, 새로 생긴 문제만 막는 품질 게이트(<code>quality-gate.json</code> · <code>quality-baseline.json</code>), MR 요약 코멘트.</li>
+        <li>승인 기록 <code>approvals.md</code>, 승인 어휘 규칙, base 직접 push 금지 설정, 승인 기록 없는 <code>completed</code> 이동을 막는 훅.</li>
+        <li>시험 탐색 보강(knots <code>verify_native</code> · <code>verify_suites</code>), 대시보드 검증 탭.</li>
+      </ul>
+      <div class="done-when">
+        <p>완료 기준</p>
+        <ul class="checklist">
+          <li>fixture에 심은 결함 3종(비밀값, 문자열로 조립한 SQL, 알려진 취약 의존성)을 스캔이 모두 잡는다.</li>
+          <li>requirements의 <code>R#</code> 하나를 구현하지 않은 fixture에서 리뷰가 그 누락을 보고한다.</li>
+          <li>CRITICAL이 열린 상태에서 <code>verify.sh --full</code>이 실패한다. 승인 기록 없이 <code>completed</code>로 옮기면 훅이 막는다.</li>
+        </ul>
+      </div>
+
+      <h2 id="p24"><span class="phase-head">P24 반영 · 운영 · 역수입 <span class="meta">v2.6 · M</span></span></h2>
+      <p>목표: 병합 뒤 문서가 따라오고, 운영 기록이 다음 요구사항이 되고, 다층 리포를 킷 기능으로 관리한다.</p>
+      <h3>만들 것</h3>
+      <ul>
+        <li>병합 뒤 문서 반영 제안(<code>documenter</code> 역할, Kiro 훅 또는 CI), 운영 기록 템플릿, 운영 기록 → 다음 Intent 입력 경로(킷 <code>/hx-intent</code>, AI-DLC를 켰으면 AI-DLC), 대시보드 운영 탭.</li>
+        <li>배포 단계: design에 배포 계획·롤백 칸, 배포 승인 기록, 병합 뒤 자동 배포·E2E(두 번 실패하면 멈춤)를 CI 템플릿 선택 단계로.</li>
+        <li>CLI <code>sync</code>: <code>units.json</code>으로 공통 원본을 단위마다 배치, 단위별 lock, <code>sync --check</code>.</li>
+        <li><code>multi-harness</code> 모듈 보강: ABOUT, 리포 간 조율 규칙, 부모 SDD 목록 SHA 열, submodule 점검, 도메인 간 경로 가드.</li>
+      </ul>
+      <div class="done-when">
+        <p>완료 기준</p>
+        <ul class="checklist">
+          <li>병합 1건에서 기능 문서 갱신 제안이 생긴다. 운영 기록 1건에서 다음 요구사항 초안이 생긴다.</li>
+          <li>knots 사본에서 <code>sync.py --check</code>와 <code>harness-kit sync --check</code>의 결과가 단위 23곳 모두 같다.</li>
+          <li>hdr 형태 fixture에서 리포 두 개에 걸친 기능 하나를 계약 → 병렬 → 경계 검증 → 순서 커밋으로 끝낸다.</li>
+        </ul>
+      </div>
+
+      <h2 id="migrate">기존 프로젝트 이전</h2>
+      <h3>공통 절차</h3>
+      <ol class="steps">
+        <li><strong>점검</strong><code>npx harness-kit doctor</code>. 읽기만 한다.</li>
+        <li><strong>계획</strong><code>npx harness-kit update --dry-run</code>. 바뀔 파일과 <code>.new</code>가 생길 파일을 사람이 본다. <span class="gate">진행 승인</span></li>
+        <li><strong>적용</strong><code>update</code> → <code>.new</code> 파일을 하나씩 병합한다.</li>
+        <li><strong>검증</strong><code>bash scripts/verify.sh --full</code>과 <code>doctor --check</code>.</li>
+        <li><strong>커밋</strong>이전 커밋 하나로 남긴다. <span class="gate">커밋 승인</span></li>
+      </ol>
+      <p>knots 작업은 knots 작업 공간 규칙을 따른다(<code>~/knots-work/</code> 아래 worktree로만 만들고, 끝나면 같은 세션에서 지운다).</p>
+      <h3>hr-vision-3d (수제 하네스)</h3>
+      <ol>
+        <li>v2.0 뒤: <code>init --adopt --dry-run</code>. 이미 있는 파일은 모두 사용자 소유로 기록하고 없는 것만 설치한다.</li>
+        <li>v2.5 뒤: 승인 강제를 켜면서 <code>.claude/settings.local.json</code>의 <code>git push</code>·<code>git commit</code> 무조건 허용을 정리한다.</li>
+        <li>v2.6 뒤: submodule 두 곳의 규칙 사본을 <code>sync</code>로 합친다.</li>
+      </ol>
+      <h3>knots-platform (v1.0.7 + 별도 배포 도구 + AI-DLC)</h3>
+      <ol>
+        <li>v2.0 뒤: <code>doctor</code>로 현황만 본다(lock v1, 포인터, 외부 파일 362개, 단위 23곳).</li>
+        <li>v2.4 뒤: 루트 <code>update</code>. lock v2, 포인터 → 복사본, 역할 배정, 손으로 관리하던 루트 <code>.claude/settings.json</code>을 병합 대상으로. 이미 깔린 AI-DLC는 <code>add aidlc</code>로 외부 소유 등록하거나, 쓰지 않으면 <code>flow.design = "kit"</code>으로 두고 AI-DLC 훅을 정리한다(Intent 0건, 훅 17개).</li>
+        <li>v2.6 뒤: 단위. <code>sync --check</code>가 <code>sync.py --check</code>와 같아지면 <code>sync.py</code>를 내린다.</li>
+        <li>정리: 점유 상태 <code>prune</code>, 상시 컨텍스트 약 61KB를 기준 이하로 나눈다.</li>
+      </ol>
+
+      <h2 id="risks">위험과 대응</h2>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col">위험</th><th scope="col">신호</th><th scope="col">대응</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>AI-DLC·Entire 업데이트가 연동을 깬다</td><td><code>doctor</code> 버전 범위 밖, 다리 테스트 실패</td><td>검증한 버전 범위를 적고, 업데이트 뒤 공존·다리 fixture 테스트를 돌린다. 범위를 넓히는 것은 킷 패치 릴리스로</td></tr>
+            <tr><td>외부 모듈에 기대는 코드가 킷 본체에 섞인다</td><td>"킷만" 구성 시험 실패</td><td>모든 릴리스에서 두 구성 시험을 돌린다. 외부 도구 이름이 들어간 코드는 모듈 폴더 안에만 둔다(D1)</td></tr>
+            <tr><td>Node가 없는 개발 환경</td><td><code>npx</code> 실패</td><td>v2.0 동안 <code>setup.sh</code> 병행. 매일 쓰는 명령(<code>wt</code>, 배치 검사)은 Python</td></tr>
+            <tr><td>하네스의 스킬 탐색·worktree 동작이 바뀐다</td><td>릴리스 점검표 실패</td><td>어댑터를 하네스별 파일로 나누고 릴리스마다 점검</td></tr>
+            <tr><td>worktree가 다시 쌓인다</td><td>대시보드 용량 경고, <code>wt list</code></td><td>리포당 3개 상한, <code>wt done</code> 즉시 삭제, 주 1회 <code>wt gc</code> 목록 확인</td></tr>
+            <tr><td>스캐너 오탐으로 MR이 막힌다</td><td>같은 규칙의 반복 예외 요청</td><td>심각도 기준을 정하고, 예외는 사유와 함께 목록 파일에 남긴다</td></tr>
+            <tr><td>역할을 나누자 세션이 늘어 사람이 따라가지 못한다</td><td>이슈당 사람 개입 횟수 증가</td><td>대시보드 "처리할 일"으로 모으고, 개입 횟수를 재서 역할을 합치거나 나눈다</td></tr>
+            <tr><td>대시보드가 로컬 포트를 연다</td><td>—</td><td>127.0.0.1 전용, 읽기 전용, 명령 실행 없음</td></tr>
+            <tr><td>이전 중 사용자 수정이 사라진다</td><td>처리 안 된 <code>.new</code></td><td><code>--dry-run</code> 먼저, <code>.new</code>가 남으면 <code>verify.sh</code>가 경고</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="release">릴리스 규칙</h2>
+      <ul>
+        <li>버전은 <code>scripts/release.sh &lt;버전&gt;</code> 한 번으로 다섯 곳을 같이 올린다: <code>package.json</code>, 두 마켓플레이스 파일, 플러그인의 Claude·Codex 매니페스트.</li>
+        <li>설치 결과의 경로·형식이 바뀌면 major(v2.0), 명령·모듈이 늘면 minor, 템플릿 문구만 바뀌면 patch.</li>
+        <li>외부 도구의 검증 버전 범위를 넓히는 것은 patch로 낸다.</li>
+        <li>모든 릴리스는 두 구성(킷만 / 킷 + AI-DLC + Entire)의 e2e 시험을 통과해야 낸다.</li>
+        <li>결정이 확정되면 P17~P24를 <code>roadmap.md</code>로 옮기고, 각 단계의 설계는 그 절에 쓴다.</li>
+      </ul>
+
+      <h2 id="next">바로 다음 할 일</h2>
+      <ol class="steps">
+        <li><strong>v1.1 착수</strong>결정 없이 바로 시작한다: 검증 범위 줄이기와 이슈 단위 SDD.</li>
+        <li><strong>남은 결정</strong>D3 배포 경로, D4 base 기본값, D7 역할 기본값. D6 Entire 기록은 P22 전까지. <span class="gate">사람 결정</span></li>
+        <li><strong>P17 설계 승인</strong><code>roadmap.md</code> Phase 17 절에 명령 인자, lock v2 스키마, <code>layout.json</code> 형식, 동일성 테스트 조합 10개를 적고 승인받는다.</li>
+        <li><strong>착수 전 확인 모으기</strong>P18·P19·P20·P22의 확인 항목 9개를 P17과 나란히 확인하고 <code>docs/analysis/</code>에 출처·버전·날짜와 남긴다.</li>
+        <li><strong>knots에 <code>doctor</code> 시험</strong>alpha가 나오면 읽기 전용으로 돌려 lock v2가 현장 리포를 표현하는지 본다.</li>
+      </ol>
+
+      <nav class="pager" aria-label="이전·다음 장">
+        <a href="02-direction.html"><small>이전</small><span>02 방향</span></a>
+        <a class="next" href="04-usage.html"><small>다음</small><span>04 활용</span></a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-foot">
+    <p>harness-starter-kit 문서 · 2026-11-23 기준 · 제안 단계이며 아직 구현되지 않았다.</p>
+  </footer>
+</body>
+</html>

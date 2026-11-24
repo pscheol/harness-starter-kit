@@ -1,0 +1,68 @@
+# HARNESS STARTER KIT ({{PROJECT_NAME}}) — GoCD 검증 파이프라인(설계 09 §3.7). YAML config repo 플러그인(format_version 10)이 읽는다.
+#
+# 검증 task 는 bash -c 한 줄이고 scripts/verify.sh 만 부른다.
+#   harness-verify   material 이 바뀔 때: fast → affected(base 판 판정)
+#   harness-nightly  timer: full. 기준선 갱신은 사람이 base 브랜치에서 python3 scripts/harness/quality.py baseline --update
+# GoCD 에는 MR 개념이 없다. MR 브랜치는 브랜치 플러그인 재료(GitHub PR · GitLab MR SCM 플러그인)로 받고,
+# 병합 대상 브랜치를 KNS_BASE_BRANCH · KNS_BASE_REF 로 넘긴다. material URL · 브랜치는 팀이 바꾼다.
+# 실행 환경(런타임 · 분석기)은 에이전트 이미지 · resources 로 준비한다. 킷은 분석기를 설치하지 않는다.
+# 배포 단계(선택): scripts/harness/deploy.py 만 부른다(설계 14 §3.5). deploy-verify 는 병합(material 변경) 뒤 자동, deploy-production 은 수동 승인 stage 다.
+#   GoCD 에는 직전 실행을 묻는 API 호출 자리가 없어 이전 stage 산출물(.agents/reports/deploy/auto-verify-*.json)에서 연속 실패 수를 읽는다.
+#   첫 실행이나 산출물을 못 읽으면 stopped 로 끝난다 — 파이프라인 환경 변수 KNS_DEPLOY_RESUME=true 로 수동 실행한다. GoCD 에는 MR 요약 코멘트가 없어 결과는 S10 과 산출물로만 본다.
+format_version: 10
+pipelines:
+  harness-verify:
+    group: harness
+    label_template: "${COUNT}"
+    materials:
+      repo:
+        git: https://example.invalid/{{PROJECT_SLUG}}.git
+        branch: develop
+    environment_variables:
+      KNS_BASE_BRANCH: develop
+      KNS_BASE_REF: origin/develop
+    stages:
+      - fast:
+          jobs:
+            verify:
+              tasks:
+                - exec: { command: bash, arguments: ["-c", "bash scripts/verify.sh --fast"] }
+      - affected:
+          jobs:
+            verify:
+              artifacts:
+                - build: { source: .agents/reports, destination: harness-reports }
+              tasks:
+                - exec: { command: bash, arguments: ["-c", "git fetch --quiet origin \"+refs/heads/$KNS_BASE_BRANCH:refs/remotes/origin/$KNS_BASE_BRANCH\"; mkdir -p .agents/state; git show \"$KNS_BASE_REF:scripts/verify.sh\" > .agents/state/verify-base.sh || true; git show \"$KNS_BASE_REF:scripts/verify-entry.sh\" > .agents/state/verify-entry.sh || true; if [ -s .agents/state/verify-base.sh ] && grep -q -- --from-base .agents/state/verify-entry.sh; then bash .agents/state/verify-base.sh --from-base \"$KNS_BASE_REF\" --affected; else bash scripts/verify.sh --affected --bootstrap; fi"] }
+      - deploy-verify:
+          jobs:
+            deploy:
+              artifacts:
+                - build: { source: .agents/reports/deploy, destination: harness-deploy }
+              tasks:
+                - exec: { command: bash, arguments: ["-c", "python3 scripts/harness/deploy.py auto-verify"] }
+      - deploy-production:
+          approval:
+            type: manual
+          jobs:
+            deploy:
+              tasks:
+                - exec: { command: bash, arguments: ["-c", "python3 scripts/harness/deploy.py run --env production --record \"$KNS_DEPLOY_RECORD\""] }
+  harness-nightly:
+    group: harness
+    label_template: "${COUNT}"
+    timer:
+      spec: "0 0 18 * * ?"
+      only_on_changes: false
+    materials:
+      repo:
+        git: https://example.invalid/{{PROJECT_SLUG}}.git
+        branch: develop
+    stages:
+      - full:
+          jobs:
+            verify:
+              artifacts:
+                - build: { source: .agents/reports, destination: harness-reports }
+              tasks:
+                - exec: { command: bash, arguments: ["-c", "bash scripts/verify.sh --full"] }

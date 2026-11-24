@@ -1,0 +1,61 @@
+{
+  "schema": "knots-sync.module/v1",
+  "id": "entire",
+  "title": "Entire 대화 기록",
+  "summary": "구현 하네스에만 커밋별 체크포인트를 남긴다",
+  "kind": "external",
+  "requires": {
+    "kit": ">=2.0.0 <3.0.0",
+    "modules": [],
+    "tools": [
+      {
+        "name": "entire",
+        "versionCmd": ["entire", "--version"],
+        "rangeKey": "versions.entire",
+        "range": ">=0.13 <0.14",
+        "harnessNames": { "claude": "claude-code", "codex": "codex", "cursor": "cursor" },
+        "install": {
+          "darwin": ["brew", "install", "--cask", "entireio/tap/entire"],
+          "linux": ["sh", "-c", "curl -fsSL https://entire.com/install.sh | bash"],
+          "win32": null,
+          "doc": "https://github.com/entireio/cli#install",
+          "hint": ["Windows PowerShell: irm https://entire.com/install.ps1 | iex"]
+        },
+        "update": {
+          "darwin": ["brew", "upgrade", "--cask", "entireio/tap/entire"],
+          "linux": ["sh", "-c", "curl -fsSL https://entire.com/install.sh | bash"],
+          "win32": null
+        },
+        "latest": { "cmd": ["brew", "info", "--cask", "entireio/tap/entire", "--json=v2"], "json": "casks.0.version" }
+      }
+    ]
+  },
+  "conflicts": [],
+  "files": [
+    { "from": "agents-rules/entire-usage.md", "op": "copy" }
+  ],
+  "hooks": [],
+  "settings": [],
+  "externalPaths": [".entire/**"],
+  "externalHooks": ["entire hooks "],
+  "config": {
+    "set": { "flow.record": "entire" },
+    "unset": { "flow.record": "none" }
+  },
+  "steps": {
+    "add": [
+      { "run": ["entire", "enable", "--agent", "{implementHarnessName}", "--project"], "confirm": true },
+      { "call": "entire.pushPolicy" },
+      { "registerExternal": true },
+      { "applyKit": true },
+      { "setConfig": true },
+      { "doctor": "entire" }
+    ],
+    "remove": [
+      { "removeKit": true },
+      { "unsetConfig": true },
+      { "print": "기록을 끄려면 사람이 entire agent remove {implementHarnessName} 또는 entire disable(전부 지우려면 --uninstall)을 실행한다(킷은 실행하지 않는다). .entire/ 와 체크포인트 ref 는 그대로 남는다" }
+    ]
+  },
+  "doctor": ["tool-version", "implement-only", "trailer-allowed", "push-policy", "global-hooks-path", "gitlab-squash-template", "concurrent-sessions"]
+}

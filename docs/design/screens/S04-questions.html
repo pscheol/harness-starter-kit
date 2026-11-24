@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S04 질문 답하기 · knots-sync 관리 페이지</title>
+<link rel="stylesheet" href="assets/app.css">
+<style>
+  .qa { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; align-items: start; }
+  .ibar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+  .ibar h2 { font-size: var(--fs-l); }
+  .ibar .key { color: var(--design-ink); }
+  .ibar .path { margin-left: auto; }
+  .ql { list-style: none; padding: 6px; display: grid; gap: 2px; }
+  .ql a { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 2px 8px; padding: 9px 10px; border-radius: var(--r-ctl); color: var(--ink); }
+  .ql a:hover { background: #fafbfd; text-decoration: none; }
+  .ql a[aria-current="true"] { background: var(--sunken); }
+  .ql .no { font-family: var(--font-code); font-size: var(--fs-s); font-weight: 700; color: var(--ink-faint); }
+  .ql .t { font-size: var(--fs-s); font-weight: 600; line-height: 1.4; }
+  .ql .m { grid-column: 2; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: var(--fs-xs); color: var(--ink-faint); }
+  .ql .open .no { color: var(--gate-ink); }
+
+  .qd { padding: 20px 24px 22px; }
+  .qd h2 { font-size: var(--fs-xxl); font-weight: 700; letter-spacing: -0.02em; }
+  .qd h2 .no { font-family: var(--font-code); font-size: var(--fs-l); color: var(--gate-ink); margin-right: 8px; }
+  .qmeta { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 8px 0 14px; font-size: var(--fs-s); color: var(--ink-soft); }
+  .qmeta b { color: var(--ink); font-weight: 600; }
+  .bg { max-width: 76ch; font-size: var(--fs-m); line-height: 1.7; color: var(--ink); margin-bottom: 16px; }
+  .choices { display: grid; gap: 8px; }
+  .choice { display: grid; grid-template-columns: 18px 26px minmax(0, 1fr); gap: 10px; align-items: start; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 7px; cursor: pointer; transition: border-color var(--dur) var(--ease); }
+  .choice:hover { border-color: var(--rule-strong); }
+  .choice:has(input:checked) { border-color: var(--ink); outline: 1px solid var(--ink); outline-offset: -2px; background: #fbfcfd; }
+  .choice input { margin: 3px 0 0; width: 16px; height: 16px; }
+  .choice .letter { font-family: var(--font-code); font-weight: 700; font-size: var(--fs-l); color: var(--ink-soft); line-height: 1.3; }
+  .choice .ttl { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+  .choice .d { margin-top: 3px; font-size: var(--fs-s); color: var(--ink-soft); }
+  .choice .pc { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-top: 6px; font-size: var(--fs-xs); color: var(--ink-faint); }
+  .choice .pc b { font-weight: 700; color: var(--ink-soft); }
+  .why { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; margin-top: 10px; padding: 12px 14px; background: var(--design-wash); border-radius: 7px; font-size: var(--fs-s); }
+  .why .i { color: var(--design); margin-top: 2px; }
+  .why b { color: var(--design-ink); }
+  .why .src { display: block; margin-top: 4px; font-size: var(--fs-xs); color: var(--ink-soft); }
+  .opin { margin-top: 16px; }
+  .opin h3 { font-size: var(--fs-s); color: var(--ink-soft); margin-bottom: 6px; }
+  .op { display: grid; grid-template-columns: 18px minmax(0, 1fr); gap: 10px; padding: 8px 0; font-size: var(--fs-s); border-top: 1px solid var(--rule-soft); }
+  .op > .i { margin-top: 3px; color: var(--ink-faint); }
+  .op .m { color: var(--ink-faint); font-size: var(--fs-xs); }
+  fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+  .ans { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--rule); }
+  .ans .btns { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+  .ans .btns .tag { margin-right: auto; }
+  .ans .lab-row { display: flex; align-items: center; gap: 12px; }
+  .ans .lab-row .ident { margin-left: auto; }
+  .ans .foot { grid-column: 1 / -1; max-width: 76ch; font-size: var(--fs-xs); color: var(--ink-faint); }
+</style>
+</head>
+<body data-state="default">
+<a class="skip-link" href="#main">본문으로 건너뛰기</a>
+<div class="app">
+  <aside class="rail" data-nav="docs"></aside>
+  <div class="work">
+    <header class="topbar">
+      <div>
+        <nav class="crumb" aria-label="위치"><a href="S02-progress.html">진행</a><svg class="i s"><use href="#i-chev"/></svg><span>INT-7 결제 개편</span><svg class="i s"><use href="#i-chev"/></svg><span>questions.md</span></nav>
+        <h1>질문 답하기</h1>
+      </div>
+      <div class="top-meta">
+        <label class="search"><svg class="i"><use href="#i-search"/></svg><span class="sr-only">이슈 키나 문서 찾기</span><input type="text" placeholder="이슈 키 · 문서 찾기"><kbd>/</kbd></label>
+      </div>
+    </header>
+
+    <main id="main" class="content">
+      <div class="ibar" data-co="1">
+        <h2>결제 개편 <span class="key">INT-7</span></h2>
+        <span class="tag gate">미해결 2</span><span class="tag ops">답함 4</span>
+        <span class="small muted">질문은 설계 세션이 낸다 · 여럿이 답한다</span>
+        <span class="path">.agents/docs/intents/INT-7-payment-revamp/questions.md</span>
+      </div>
+
+      <div class="qa">
+        <nav class="panel" aria-label="질문 목록" data-co="2">
+          <div class="panel-head" style="padding-bottom:6px">
+            <div class="seg" data-single role="group" aria-label="질문 거르기">
+              <button type="button" aria-pressed="false">모두 <span class="n">6</span></button>
+              <button type="button" aria-pressed="true">미해결 <span class="n">2</span></button>
+              <button type="button" aria-pressed="false">내 차례 <span class="n">2</span></button>
+            </div>
+          </div>
+          <ol class="ql">
+            <li class="open"><a href="#" aria-current="true"><span class="no">Q3</span><span class="t">부분 환불을 정산에서 상계할까</span><span class="m"><span class="clar tag gate">NEEDS CLARIFICATION</span>po · U-2</span></a></li>
+            <li class="open"><a href="#"><span class="no">Q5</span><span class="t">결제 실패를 어느 채널로 알릴까</span><span class="m"><span class="tag gate">NEEDS CLARIFICATION</span>po · ops · U-3</span></a></li>
+            <li><a href="#"><span class="no">Q1</span><span class="t">결제수단 노출 순서</span><span class="m"><span class="tag ops">답함</span>김지윤 11-20</span></a></li>
+            <li><a href="#"><span class="no">Q2</span><span class="t">간편결제 제공사 범위</span><span class="m"><span class="tag ops">답함</span>한소희 11-20</span></a></li>
+            <li><a href="#"><span class="no">Q4</span><span class="t">정산 주기(주 1회 · 월 2회)</span><span class="m"><span class="tag ops">권장안 수락</span>김지윤 11-21</span></a></li>
+            <li><a href="#"><span class="no">Q6</span><span class="t">PG 장애 때 대체 PG로 넘길 기준</span><span class="m"><span class="tag ops">답함</span>이준호 11-21</span></a></li>
+          </ol>
+        </nav>
+
+        <section class="panel qd" aria-labelledby="q-title">
+          <div data-co="3">
+            <h2 id="q-title"><span class="no">Q3</span>부분 환불을 정산에서 상계할까, 따로 지급할까</h2>
+            <div class="qmeta">
+              <span>낸 곳 <b class="mono">design-desk</b> · /kns-intent · 11-22 16:10</span>
+              <span>답할 그룹 <b class="mono">po</b> · 이 체크아웃의 git 사용자가 들어 있다</span>
+              <span>기다리는 문서 <b>HDRV3D-22</b> requirements R3 · <b>HDRV3D-21</b> design §4</span>
+            </div>
+            <p class="bg">부분 환불이 정산 주기 안에 생기면 가맹점 지급액을 어떻게 맞출지 정해야 U-2 정산 requirements의 R3(지급 금액 계산)을 쓸 수 있다. 지금은 환불을 건별로 바로 돌려주고 정산과 따로 대사한다. 지난달 부분 환불은 1,284건, 건당 평균 18,400원이었다(운영 기록 2026-10).</p>
+          </div>
+
+          <fieldset data-co="4">
+            <legend class="sr-only">선택지</legend>
+            <div class="choices">
+              <label class="choice">
+                <input type="radio" name="q3" value="A" checked>
+                <span class="letter">A</span>
+                <span><span class="ttl">같은 정산 주기 안에서 상계한다 <span class="tag design" title="설계 세션(design-desk)이 questions.md에 적은 권장안">권장안 · 설계 세션</span></span>
+                  <span class="d">가맹점 지급액에서 그 주기의 환불액을 빼고 한 번에 지급한다.</span>
+                  <span class="pc"><span><b>좋은 점</b> 지급 건수와 송금 수수료가 준다</span><span><b>위험</b> 환불이 지급액보다 크면 다음 주기로 넘겨야 한다</span></span></span>
+              </label>
+              <label class="choice">
+                <input type="radio" name="q3" value="B">
+                <span class="letter">B</span>
+                <span><span class="ttl">지금처럼 따로 지급한다</span>
+                  <span class="d">환불은 건별로 바로 돌려주고, 정산은 매출만 계산한다.</span>
+                  <span class="pc"><span><b>좋은 점</b> 지금 운영 절차가 그대로다</span><span><b>위험</b> 대사 작업이 정산마다 두 번이다</span></span></span>
+              </label>
+              <label class="choice">
+                <input type="radio" name="q3" value="C">
+                <span class="letter">C</span>
+                <span><span class="ttl">금액으로 나눈다</span>
+                  <span class="d">10만 원 이하는 상계하고, 넘는 건은 따로 지급한다.</span>
+                  <span class="pc"><span><b>좋은 점</b> 큰 환불의 지급 지연을 막는다</span><span><b>위험</b> 규칙이 둘이라 정산 명세가 복잡하다</span></span></span>
+              </label>
+            </div>
+            <div class="why">
+              <svg class="i"><use href="#i-help"/></svg>
+              <div><b>A를 권하는 이유</b> <span class="xs soft">· 설계 세션이 질문을 낼 때 questions.md에 적었다</span><br> 결제수단 Unit(U-1)의 환불 API가 이미 건별 금액과 정산 주기 번호를 돌려준다. 상계하면 U-2 정산이 새 대사 작업 없이 그 값을 합치기만 하면 된다.
+                <span class="src">근거: HDRV3D-21 design.md §4 · 운영 기록 2026-10 · 추정 아님</span></div>
+            </div>
+          </fieldset>
+
+          <div class="opin" data-co="5">
+            <h3>다른 사람 의견 1</h3>
+            <div class="op"><svg class="i s" aria-hidden="true"><use href="#i-question"/></svg><div>B로 가면 정산 대사 쿼리가 두 배가 된다. A면 지급액이 음수가 되는 경우만 규칙을 정하면 된다. <span class="m">이준호 · 11-22 17:02 · 의견(답 아님, po 그룹 밖)</span></div></div>
+          </div>
+
+          <div class="ans" data-co="6">
+            <div class="field">
+              <div class="lab-row"><label for="ans-note">조건이나 이유 <span class="muted" style="font-weight:500">(선택)</span></label><p class="ident"><svg class="i s"><use href="#i-commit"/></svg><span>답한 사람 = git user.email <b>jiyoon.kim@acme.dev</b></span></p></div>
+              <textarea id="ans-note" rows="2">A로 한다. 지급액이 음수면 다음 주기로 넘기고, 두 주기 연속이면 따로 지급한다.</textarea>
+            </div>
+            <div class="btns">
+              <span class="tag ops" title="dashboard를 연 터미널에만 나온 PIN을 이 탭에서 한 번 넣었다"><svg class="i"><use href="#i-lock"/></svg>PIN 확인됨 · 이 탭</span>
+              <button class="btn" type="button">보류 · 회의 필요</button>
+              <button class="btn primary" type="button" data-toast="Q3 답을 저장했다 · jiyoon.kim@acme.dev · questions.md · 미해결 1 남음 · 세션에는 보내지 않았다"><svg class="i"><use href="#i-save"/></svg>답 저장</button>
+              <a class="btn" href="S05-dispatch.html" title="답을 저장한 뒤 design-desk에 answers-ready 한 줄을 보낼 시트를 연다"><svg class="i"><use href="#i-send"/></svg>저장하고 세션에 요청</a>
+            </div>
+            <p class="foot">questions.md의 Q3 아래에 고른 답 · 조건 · git user.email · 시각을 형식 그대로 적고 표시를 '답함'으로 바꾼다. 답할 그룹이 비어 있으면 이 리포 git 사용자 누구나 답한다. 내가 연 뒤 파일이 바뀌었으면 저장하지 않고 다시 보여 준다. requirements에 옮기는 일은 설계 세션이 한다. 답 저장은 세션에 아무것도 보내지 않는다. 마지막 질문에 답해도 마찬가지다. 알리려면 "저장하고 세션에 요청"을 고른다(answers-ready 한 줄 + 경로).</p>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+</div>
+<script src="assets/app.js"></script>
+</body>
+</html>

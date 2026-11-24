@@ -1,0 +1,32 @@
+%%{init: {"theme": "base", "fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "themeVariables": {"fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "fontSize": "16px", "primaryColor": "#ffffff", "primaryBorderColor": "#14213d", "primaryTextColor": "#14213d", "lineColor": "#46536b", "clusterBkg": "#f5f7fa", "clusterBorder": "#aeb9c7", "edgeLabelBackground": "#f5f7fa", "actorBkg": "#ffffff", "actorBorder": "#14213d", "actorTextColor": "#14213d", "actorLineColor": "#aeb9c7", "signalColor": "#46536b", "signalTextColor": "#14213d", "noteBkgColor": "#ffffff", "noteBorderColor": "#aeb9c7", "noteTextColor": "#14213d", "sequenceNumberColor": "#ffffff"}, "flowchart": {"curve": "basis", "padding": 18, "nodeSpacing": 36, "rankSpacing": 46}}}%%
+graph LR
+  subgraph L1["생애주기"]
+    direction TB
+    AIDLC["AI-DLC"] ~~~ BMAD["BMAD"]
+  end
+  subgraph L2["기능"]
+    direction TB
+    SK["Spec Kit"] ~~~ KR["Kiro"] ~~~ OS["OpenSpec"] ~~~ TS["Tessl · Agent OS"]
+  end
+  subgraph L3["작업 습관"]
+    direction TB
+    CC["Claude Code 권장"] ~~~ RPI["RPI"] ~~~ SP["Superpowers"] ~~~ CE["Compound"] ~~~ RL["Ralph loop"]
+  end
+  subgraph L4["기반"]
+    direction TB
+    CX["컨텍스트<br/>엔지니어링"] ~~~ HE["하네스<br/>엔지니어링"]
+  end
+  BMAD -- "Unit 하나를<br/>명세로" --> KR
+  OS -- "Bolt 하나를<br/>실행으로" --> SP
+  CE -- "규칙 · 린터<br/>검증 명령" --> CX
+  classDef inception fill:#e7eafb,stroke:#3046c5,stroke-width:2px,color:#14213d
+  classDef construction fill:#fbf1dc,stroke:#c98a12,stroke-width:2px,color:#14213d
+  classDef operations fill:#ddf2eb,stroke:#0b7a5e,stroke-width:2px,color:#14213d
+  classDef gate fill:#fbe6e9,stroke:#c8102e,stroke-width:2px,color:#c8102e
+  classDef plain fill:#ffffff,stroke:#14213d,stroke-width:2px,color:#14213d
+  classDef external fill:#ffffff,stroke:#6b778c,stroke-width:1.5px,stroke-dasharray:5 4,color:#46536b
+  classDef store fill:#f5f7fa,stroke:#6b778c,stroke-width:1.5px,color:#46536b
+  class AIDLC,BMAD inception
+  class SK,KR,OS,TS plain
+  class CC,RPI,SP,CE,RL construction
+  class CX,HE operations

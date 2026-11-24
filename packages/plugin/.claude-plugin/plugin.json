@@ -1,0 +1,28 @@
+{
+  "name": "kns",
+  "version": "2.0.0-alpha.0",
+  "description": "knots-sync — 백엔드·프론트엔드 리포에 에이전트 협업 골격을 스캐폴딩하는 스킬 모음",
+  "author": {
+    "name": "pscheol",
+    "email": "pscheol@gmail.com"
+  },
+  "keywords": [
+    "harness",
+    "scaffolding",
+    "agents-md",
+    "sdd",
+    "spec-driven-development",
+    "backend",
+    "frontend",
+    "jvm",
+    "python",
+    "go",
+    "web",
+    "electron",
+    "architecture"
+  ],
+  "license": "MIT",
+  "skills": [
+    "./skills/"
+  ]
+}

@@ -1,0 +1,40 @@
+%%{init: {"theme": "base", "fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "themeVariables": {"fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "fontSize": "16px", "primaryColor": "#ffffff", "primaryBorderColor": "#14213d", "primaryTextColor": "#14213d", "lineColor": "#46536b", "clusterBkg": "#f5f7fa", "clusterBorder": "#aeb9c7", "edgeLabelBackground": "#f5f7fa"}, "flowchart": {"curve": "basis", "padding": 18, "nodeSpacing": 36, "rankSpacing": 56}}}%%
+graph LR
+  subgraph SRC["원본 한 곳: .agents"]
+    S["skills/hx-*/SKILL.md<br/>명령 원본"]
+    R["rules/*.md<br/>규칙 원본"]
+    O["roles/*.md<br/>역할 원본"]
+    H["hooks.json<br/>훅 정의(하네스 중립)"]
+  end
+  CX["Codex · Cursor<br/>Copilot · Gemini CLI"]
+  CL["Claude Code<br/>.claude/skills/hx-* 복사본<br/>.claude/rules 복사본(paths 자동 로드)<br/>CLAUDE.md = @AGENTS.md"]
+  KI["Kiro<br/>.kiro/skills/hx-* 복사본<br/>.kiro/steering 생성(fileMatch)"]
+  CU["Cursor<br/>.cursor/rules/*.mdc 생성(globs)"]
+  RO["역할 파일 생성<br/>.claude/agents · .codex/agents<br/>.kiro/agents"]
+  ST["훅 배선<br/>.claude/settings.json 병합<br/>.codex/hooks.json · .kiro/hooks"]
+  L["harness-kit.lock<br/>작업 종류 · 해시 · 주인"]
+  D["doctor --check<br/>verify.sh fast 단계"]
+  S -- "그대로 읽음 · 추가 파일 0" --> CX
+  S -- "복사" --> CL
+  S -- "복사" --> KI
+  R -- "복사" --> CL
+  R -- "fileMatch로 생성" --> KI
+  R -- "globs로 생성" --> CU
+  O -- "형식 변환" --> RO
+  H -- "킷 몫만 병합 · 생성" --> ST
+  CL --> L
+  KI --> L
+  CU --> L
+  RO --> L
+  ST --> L
+  L -- "어긋나면 실패" --> D
+  classDef source fill:#e7eafb,stroke:#3046c5,stroke-width:2px,color:#14213d
+  classDef native fill:#ddf2eb,stroke:#0b7a5e,stroke-width:2px,color:#14213d
+  classDef made fill:#fbf1dc,stroke:#c98a12,stroke-width:2px,color:#14213d
+  classDef check fill:#fbe6e9,stroke:#c8102e,stroke-width:2px,color:#14213d
+  classDef store fill:#f5f7fa,stroke:#6b778c,stroke-width:1.5px,color:#46536b
+  class S,R,O,H source
+  class CX native
+  class CL,KI,CU,RO,ST made
+  class L store
+  class D check

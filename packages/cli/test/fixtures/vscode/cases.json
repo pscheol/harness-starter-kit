@@ -1,0 +1,297 @@
+[
+ {
+  "name": "create",
+  "cur": null,
+  "prev": [],
+  "merge": {
+   "ok": true,
+   "text": "{\n  \"git.detectWorktrees\": true\n}\n",
+   "keys": [
+    "jsonc:git.detectWorktrees"
+   ],
+   "created": true
+  },
+  "unmerge": {
+   "ok": true,
+   "text": "{\n}\n",
+   "empty": true
+  },
+  "missingAfterMerge": [],
+  "missingAfterUnmerge": [
+   "jsonc:git.detectWorktrees"
+  ]
+ },
+ {
+  "name": "empty-braces",
+  "cur": "{}",
+  "prev": [],
+  "merge": {
+   "ok": true,
+   "text": "{\n  \"git.detectWorktrees\": true\n}",
+   "keys": [
+    "jsonc:git.detectWorktrees"
+   ],
+   "created": false
+  },
+  "unmerge": {
+   "ok": true,
+   "text": "{\n}",
+   "empty": true
+  },
+  "missingAfterMerge": [],
+  "missingAfterUnmerge": [
+   "jsonc:git.detectWorktrees"
+  ]
+ },
+ {
+  "name": "empty-multiline",
+  "cur": "{\n}\n",
+  "prev": [],
+  "merge": {
+   "ok": true,
+   "text": "{\n  \"git.detectWorktrees\": true\n}\n",
+   "keys": [
+    "jsonc:git.detectWorktrees"
+   ],
+   "created": false
+  },
+  "unmerge": {
+   "ok": true,
+   "text": "{\n}\n",
+   "empty": true
+  },
+  "missingAfterMerge": [],
+  "missingAfterUnmerge": [
+   "jsonc:git.detectWorktrees"
+  ]
+ },
+ {
+  "name": "comment-and-key",
+  "cur": "{\n  // 탭 크기는 팀 규칙이다\n  \"editor.tabSize\": 2\n}\n",
+  "prev": [],
+  "merge": {
+   "ok": true,
+   "text": "{\n  // 탭 크기는 팀 규칙이다\n  \"editor.tabSize\": 2,\n  \"git.detectWorktrees\": true\n}\n",
+   "keys": [
+    "jsonc:git.detectWorktrees"
+   ],
+   "created": false
+  },
+  "unmerge": {
+   "ok": true,
+   "text": "{\n  // 탭 크기는 팀 규칙이다\n  \"editor.tabSize\": 2\n}\n",
+   "empty": false
+  },
+  "missingAfterMerge": [],
+  "missingAfterUnmerge": [
+   "jsonc:git.detectWorktrees"
+  ]
+ },
+ {
+  "name": "single-line",
+  "cur": "{\"a\": 1}",
+  "prev": [],
+  "merge": {
+   "ok": true,
+   "text": "{\"a\": 1,\n  \"git.detectWorktrees\": true\n}",
+   "keys": [
+    "jsonc:git.detectWorktrees"
+   ],
+   "created": false
+  },
+  "unmerge": {
+   "ok": true,
+   "text": "{\"a\": 1\n}",
+   "empty": false
+  },
+  "missingAfterMerge": [],
+  "missingAfterUnmerge": [
+   "jsonc:git.detectWorktrees"
+  ]
+ },
+ {
+  "name": "trailing-comma",
+  "cur": "{\n  \"a\": 1,\n}\n",
+  "prev": [],
+  "merge": {
+   "ok": true,
+   "text": "{\n  \"a\": 1,\n  \"git.detectWorktrees\": true\n}\n",
+   "keys": [
+    "jsonc:git.detectWorktrees"
+   ],
+   "created": false
+  },
+  "unmerge": {
+   "ok": true,
+   "text": "{\n  \"a\": 1\n}\n",
+   "empty": false
+  },
+  "missingAfterMerge": [],
+  "missingAfterUnmerge": [
+   "jsonc:git.detectWorktrees"
+  ]
+ },
+ {
+  "name": "four-spaces",
+  "cur": "{\n    \"a\": {\n        \"b\": [1, 2]\n    },\n    \"c\": \"}\"\n}\n",
+  "prev": [],
+  "merge": {
+   "ok": true,
+   "text": "{\n    \"a\": {\n        \"b\": [1, 2]\n    },\n    \"c\": \"}\",\n    \"git.detectWorktrees\": true\n}\n",
+   "keys": [
+    "jsonc:git.detectWorktrees"
+   ],
+   "created": false
+  },
+  "unmerge": {
+   "ok": true,
+   "text": "{\n    \"a\": {\n        \"b\": [1, 2]\n    },\n    \"c\": \"}\"\n}\n",
+   "empty": false
+  },
+  "missingAfterMerge": [],
+  "missingAfterUnmerge": [
+   "jsonc:git.detectWorktrees"
+  ]
+ },
+ {
+  "name": "tabs-and-block-comment",
+  "cur": "{\n\t/* 개인 설정 } { */\n\t\"a\": true // 끝 주석\n}\n",
+  "prev": [],
+  "merge": {
+   "ok": true,
+   "text": "{\n\t/* 개인 설정 } { */\n\t\"a\": true, // 끝 주석\n\t\"git.detectWorktrees\": true\n}\n",
+   "keys": [
+    "jsonc:git.detectWorktrees"
+   ],
+   "created": false
+  },
+  "unmerge": {
+   "ok": true,
+   "text": "{\n\t/* 개인 설정 } { */\n\t\"a\": true // 끝 주석\n}\n",
+   "empty": false
+  },
+  "missingAfterMerge": [],
+  "missingAfterUnmerge": [
+   "jsonc:git.detectWorktrees"
+  ]
+ },
+ {
+  "name": "nested-same-key",
+  "cur": "{\n  \"x\": { \"git.detectWorktrees\": false }\n}\n",
+  "prev": [],
+  "merge": {
+   "ok": true,
+   "text": "{\n  \"x\": { \"git.detectWorktrees\": false },\n  \"git.detectWorktrees\": true\n}\n",
+   "keys": [
+    "jsonc:git.detectWorktrees"
+   ],
+   "created": false
+  },
+  "unmerge": {
+   "ok": true,
+   "text": "{\n  \"x\": { \"git.detectWorktrees\": false }\n}\n",
+   "empty": false
+  },
+  "missingAfterMerge": [],
+  "missingAfterUnmerge": [
+   "jsonc:git.detectWorktrees"
+  ]
+ },
+ {
+  "name": "already-true-claimed",
+  "cur": "{\n  \"git.detectWorktrees\": true\n}\n",
+  "prev": [
+   "jsonc:git.detectWorktrees"
+  ],
+  "merge": {
+   "ok": true,
+   "text": "{\n  \"git.detectWorktrees\": true\n}\n",
+   "keys": [
+    "jsonc:git.detectWorktrees"
+   ],
+   "created": false
+  },
+  "unmerge": {
+   "ok": true,
+   "text": "{\n}\n",
+   "empty": true
+  },
+  "missingAfterMerge": [],
+  "missingAfterUnmerge": [
+   "jsonc:git.detectWorktrees"
+  ]
+ },
+ {
+  "name": "already-true-unclaimed",
+  "cur": "{\n  \"git.detectWorktrees\": true,\n  \"a\": 1\n}\n",
+  "prev": [],
+  "merge": {
+   "ok": true,
+   "text": "{\n  \"git.detectWorktrees\": true,\n  \"a\": 1\n}\n",
+   "keys": [],
+   "created": false
+  }
+ },
+ {
+  "name": "already-false",
+  "cur": "{\n  \"git.detectWorktrees\": false\n}\n",
+  "prev": [
+   "jsonc:git.detectWorktrees"
+  ],
+  "merge": {
+   "ok": true,
+   "text": "{\n  \"git.detectWorktrees\": false\n}\n",
+   "keys": [],
+   "created": false
+  }
+ },
+ {
+  "name": "broken",
+  "cur": "{\n  \"a\": \n",
+  "prev": [],
+  "merge": {
+   "ok": false,
+   "reason": ".vscode/settings.json 을 JSONC 객체로 읽지 못했다"
+  }
+ },
+ {
+  "name": "array-root",
+  "cur": "[1]",
+  "prev": [],
+  "merge": {
+   "ok": false,
+   "reason": ".vscode/settings.json 을 JSONC 객체로 읽지 못했다"
+  }
+ },
+ {
+  "name": "trailing-text",
+  "cur": "{} x",
+  "prev": [],
+  "merge": {
+   "ok": false,
+   "reason": ".vscode/settings.json 을 JSONC 객체로 읽지 못했다"
+  }
+ },
+ {
+  "name": "no-final-newline",
+  "cur": "{\n  \"a\": 1\n}",
+  "prev": [],
+  "merge": {
+   "ok": true,
+   "text": "{\n  \"a\": 1,\n  \"git.detectWorktrees\": true\n}",
+   "keys": [
+    "jsonc:git.detectWorktrees"
+   ],
+   "created": false
+  },
+  "unmerge": {
+   "ok": true,
+   "text": "{\n  \"a\": 1\n}",
+   "empty": false
+  },
+  "missingAfterMerge": [],
+  "missingAfterUnmerge": [
+   "jsonc:git.detectWorktrees"
+  ]
+ }
+]

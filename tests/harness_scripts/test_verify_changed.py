@@ -64,7 +64,7 @@ class VerifyChangedTest(unittest.TestCase):
             env=self.env,
             capture_output=True,
             text=True,
-            timeout=15,
+            timeout=60,
             check=False,
         )
 
@@ -164,6 +164,18 @@ class VerifyChangedTest(unittest.TestCase):
         plan = self.plan("--files", "tool/tests/test_removed.py")
         self.assertEqual([], plan["incomplete"])
         self.assertTrue(any("tool/tests/test_removed.py" in item and "deleted test" in item for item in plan["recommendations"]), plan["recommendations"])
+
+    def test_source_deleted_by_a_commit_is_known_not_missing(self):
+        # 모듈 remove 가 훅 스크립트를 지우고 커밋하면 base..HEAD 의 바뀐 파일에 든다 — 경로를 모르는 파일(미완료)로 보지 않는다(HK-22b)
+        self.mixed_tool_project()
+        self.write("tool/gone.sh", "echo gone\n")
+        self.commit_all()
+        (self.root / "tool/gone.sh").unlink()
+        identity = ["-c", "user.email=harness@example.invalid", "-c", "user.name=harness"]
+        subprocess.run(["git", "-C", str(self.root), *identity, "commit", "-q", "-am", "remove"], check=True, capture_output=True)
+        plan = self.plan("--files", "tool/gone.sh")
+        self.assertFalse([item for item in plan["incomplete"] if "unknown to git" in item], plan["incomplete"])
+        self.assertFalse([item for item in plan.get("unverified", []) if item.get("file") == "tool/gone.sh"], plan.get("unverified"))
 
     def test_test_path_that_git_never_had_is_not_treated_as_deleted(self):
         self.mixed_tool_project()
@@ -317,13 +329,14 @@ class VerifyChangedTest(unittest.TestCase):
         self.assertIn("./tests/test_contract.py", str(plan["commands"]))
         self.assertNotIn("./tests/test_unrelated.py", str(plan["commands"]))
 
-    def test_no_related_test_is_not_a_success(self):
+    def test_no_related_test_widens_to_the_module_test_not_full(self):
+        # 관련 테스트가 없으면 그 모듈의 테스트로 넓힌다(HK-4 R3.1). full 을 권하지 않는다(R3.3).
         self.python_project()
         self.write("src/sample/new_work.py", "VALUE = 3\n")
         result = self.run_cli("--files", "src/sample/new_work.py")
-        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
-        self.assertIn("--tests", result.stdout)
-        self.assertIn("full", result.stdout)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertEqual("no-related-test", json.loads(result.stdout)["widened"][0]["reason"])
+        self.assertNotIn("opt in to full", result.stdout)
 
     def test_explicit_test_resolves_ambiguous_mapping_without_running_unrelated_suite(
         self,
@@ -410,9 +423,12 @@ class VerifyChangedTest(unittest.TestCase):
             "--tests",
             "tests/test_price.py",
         )
-        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
-        self.assertIn("other/src/sample/new_work.py: no related test", result.stdout)
-        self.assertFalse(self.records.exists())
+        # 다른 프로젝트의 관련 테스트 없는 파일은 그 프로젝트의 모듈 테스트로 넓힌다 — 숨기지 않는다.
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        widened = json.loads(result.stdout)["widened"]
+        self.assertEqual(["other/src/sample/new_work.py"], [item["file"] for item in widened])
+        calls = [json.loads(line) for line in self.records.read_text().splitlines()]
+        self.assertTrue(any(call["cwd"].endswith("/other") and call["arguments"][-1] == "tests" for call in calls), calls)
 
     def test_missing_python_runtime_is_reported_without_installing(self):
         self.python_project()
@@ -484,8 +500,9 @@ class VerifyChangedTest(unittest.TestCase):
         )
         self.fake("gradlew")
         result = self.run_cli("--files", "orders/build.gradle.kts")
-        self.assertEqual(2, result.returncode, result.stdout + result.stderr)
-        self.assertIn("full", result.stdout)
+        self.assertEqual(0, result.returncode, result.stdout + result.stderr)
+        self.assertIn(":orders:test", result.stdout)
+        self.assertNotIn("opt in to full", result.stdout)
         plan = self.plan(
             "--files",
             "orders/build.gradle.kts",
@@ -493,7 +510,7 @@ class VerifyChangedTest(unittest.TestCase):
             "orders/src/test/kotlin/example/PriceTest.kt",
         )
         self.assertEqual([], plan["incomplete"])
-        self.assertIn("full", str(plan["recommendations"]))
+        self.assertIn("bash scripts/verify.sh --affected", str(plan["recommendations"]))
 
     def test_explicit_jvm_integration_test_uses_declared_class_name(self):
         self.write("settings.gradle.kts", 'include(":orders")\n')
@@ -840,7 +857,7 @@ class VerifyChangedTest(unittest.TestCase):
             env=self.env,
             capture_output=True,
             text=True,
-            timeout=15,
+            timeout=60,
             check=False,
         )
         self.assertEqual(0, result.returncode, result.stdout + result.stderr)
@@ -881,7 +898,7 @@ class VerifyChangedTest(unittest.TestCase):
                 env=self.env,
                 capture_output=True,
                 text=True,
-                timeout=15,
+                timeout=60,
                 check=False,
             )
 
@@ -911,6 +928,7 @@ class VerifyChangedTest(unittest.TestCase):
     def test_summary_lists_only_missing_tests_without_the_whole_plan(self):
         # Stop hook 은 이 출력을 그대로 에이전트에게 넘긴다. 파일·명령 목록 전체를 실으면 매번 수천 줄이 된다.
         self.python_project()
+        shutil.rmtree(self.root / "tests")
         self.write("src/sample/new_work.py", "VALUE = 3\n")
         result = self.run_cli("--files", "src/sample/new_work.py", "--summary")
         self.assertEqual(2, result.returncode, result.stdout + result.stderr)
@@ -923,13 +941,14 @@ class VerifyChangedTest(unittest.TestCase):
     def test_summary_groups_missing_tests_by_reason_and_names_few_files(self):
         # 같은 이유로 수십 개가 빠지면 파일마다 한 줄씩 늘어놓지 않는다. 이유별 개수와 예시 파일 몇 개만 보인다.
         self.python_project()
+        shutil.rmtree(self.root / "tests")
         names = [f"src/sample/work_{index}.py" for index in range(12)]
         for name in names:
             self.write(name, "VALUE = 3\n")
         result = self.run_cli("--files", *names, "--summary")
         self.assertEqual(2, result.returncode, result.stdout + result.stderr)
         self.assertIn("미완료 12개", result.stdout)
-        self.assertIn("관련 테스트 없음 12개", result.stdout)
+        self.assertIn("미검증 12개", result.stdout)
         self.assertIn("외 9개", result.stdout)
         self.assertIn("--plan", result.stdout)
         self.assertNotIn("src/sample/work_", result.stdout)

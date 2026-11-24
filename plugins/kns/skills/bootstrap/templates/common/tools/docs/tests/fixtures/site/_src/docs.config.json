@@ -1,0 +1,2 @@
+{"title": "데모 기능 명세", "databases": [{"id": "demo", "target": "app", "migrations": ["migrations"]}],
+ "units": [{"id": "demo-server", "kind": "jvm", "root": "kotlin", "openapi": [{"name": "api", "source": "openapi/demo.json"}]}]}

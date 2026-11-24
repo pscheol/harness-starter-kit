@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="막혔을 때 보는 곳">
+<title>문제 해결 · FAQ — knots-sync 사용 안내서</title>
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="site-header">
+<a class="brand" href="index.html">knots-sync<span>사용 안내서</span></a>
+<span class="site-meta">CLI 2.0.0-alpha.0 기준 · 2026-11-24 · 저장소 harness-starter-kit</span>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="안내서 목차">
+<p class="toc-title">안내서 목차</p>
+<ol>
+<li class="toc-group">시작</li>
+<li><a href="index.html"><span class="n">00</span><span>시작하기</span></a></li>
+<li><a href="concepts.html"><span class="n">01</span><span>개념</span></a></li>
+<li><a href="install.html"><span class="n">02</span><span>설치</span></a></li>
+<li class="toc-group">쓰기</li>
+<li><a href="daily-flow.html"><span class="n">03</span><span>하루 흐름</span></a></li>
+<li><a href="dashboard.html"><span class="n">04</span><span>관리 페이지</span></a></li>
+<li><a href="cli.html"><span class="n">05</span><span>CLI 명령 참고</span></a></li>
+<li class="toc-group">모듈</li>
+<li><a href="aidlc.html"><span class="n">06</span><span>AI-DLC 모듈</span></a></li>
+<li><a href="entire.html"><span class="n">07</span><span>Entire 모듈</span></a></li>
+<li><a href="modules.html"><span class="n">08</span><span>jira · notion · multi-harness</span></a></li>
+<li class="toc-group">운영과 팀</li>
+<li><a href="ops.html"><span class="n">09</span><span>배포 · 운영 · 지표</span></a></li>
+<li><a href="roles.html"><span class="n">10</span><span>역할별 활용 가이드</span></a></li>
+<li class="toc-group">옮기기와 도움</li>
+<li><a href="migration.html"><span class="n">11</span><span>옛 이름에서 옮기기</span></a></li>
+<li><a href="faq.html" aria-current="page"><span class="n">12</span><span>문제 해결 · FAQ</span></a></li>
+</ol>
+</nav>
+<main id="main" tabindex="-1">
+<article>
+<p class="kicker">12 · 옮기기와 도움</p>
+<h1>문제 해결 · FAQ</h1>
+<p class="lede">자주 막히는 자리와 이유다. 대부분은 의도한 막힘이고, 메시지가 다음 할 일을 알려 준다. 막히면 먼저 <code>knots-sync doctor</code> 와 종료 코드를 본다.</p>
+<nav class="on-page" aria-label="이 장의 절"><h2>이 장에서</h2><ol><li><a href="#approve">승인 · 관리 페이지</a></li><li><a href="#exit-codes">종료 코드</a></li><li><a href="#install">설치 · 업데이트</a></li><li><a href="#verify">검증 · 커밋</a></li><li><a href="#sessions">세션 · 토큰</a></li><li><a href="#worktree">worktree</a></li><li><a href="#more">더 볼 곳</a></li></ol></nav>
+
+<h2 id="approve">승인 · 관리 페이지</h2>
+<h3>관리 페이지에 승인 단추가 꺼져 있다 / "읽기 전용"이 뜬다</h3>
+<p>서버를 에이전트 세션 안에서 열었다(판정: <code>CLAUDECODE=1</code> 같은 하네스 변수나 부모 프로세스). 그 서버는 PIN 을 만들지 않고 승인 · 답 · 리뷰 판단 · 작업 요청을 끈다. <strong>자기 터미널</strong>에서 <code>knots-sync dashboard</code> 를 다시 연다. 같은 리포에 서버가 떠 있으면 새로 열지 않고 그 주소를 내니, 먼저 띄운 서버를 닫는다. 이 동작을 우회하는 방법(부모 프로세스 끊기 · 환경 변수 바꾸기)은 쓰지 않는다 — 에이전트가 스스로 승인하지 못하게 하는 장치다.</p>
+<h3>PIN 이 어디 있나</h3>
+<p>서버를 연 터미널의 표준 오류에 한 번 나온다(<code>승인 PIN: … — 이 터미널에만 보인다</code>). 파일 · 로그에 없다. 5번 틀리면 그 서버가 끝날 때까지 PIN API 가 막힌다 — 서버를 다시 연다.</p>
+<h3>승인하면 403 · 409 · 422 가 난다</h3>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">응답</th><th scope="col">뜻</th><th scope="col">할 일</th></tr></thead>
+<tbody>
+<tr><td>403 <code>not_an_approver</code></td><td>내 git <code>user.email</code> 이 그 게이트의 승인자 그룹에 없다</td><td>하네스 화면의 승인 권한 확인. 그룹은 <code>knots-sync.json</code> 의 <code>groups</code></td></tr>
+<tr><td>403 <code>pin_required</code> · <code>pin_locked</code> · <code>read_only</code></td><td>PIN 없음 · 5회 실패 · 읽기 전용 서버</td><td>위 두 질문</td></tr>
+<tr><td>409 <code>doc_changed</code></td><td>화면을 연 뒤 문서가 바뀌었다</td><td>다시 읽고 승인</td></tr>
+<tr><td>409(이미 승인)</td><td>같은 sha 로 이미 approved 기록이 있다</td><td>할 일 없음</td></tr>
+<tr><td>422</td><td><code>[NEEDS CLARIFICATION</code> 표지가 남았거나 앞 게이트 · MR 조건이 안 맞는다</td><td>패널의 미충족 줄을 본다(예: "같은 HEAD · 깨끗한 트리의 affected 검증 통과 기록이 없다")</td></tr>
+</tbody></table></div>
+<h3>에이전트에게 "승인해"라고 했는데 승인되지 않았다</h3>
+<p>맞다. 채팅의 말은 어떤 말이든 승인이 아니다. 에이전트는 <code>approvals.md</code> 를 쓰지 못하고, <code>knots-sync approve</code> 는 에이전트 세션에서 exit 3 이다. 승인은 사람이 관리 페이지(PIN)나 자기 터미널에서 한다.</p>
+<h3>승인했는데 다시 "승인 대기"가 됐다</h3>
+<p>승인 뒤 문서가 바뀌어 승인이 오래된(stale) 것이 됐다. 승인은 문서 sha256 에 묶인다(<code>status</code> · <code>state</code> 줄만 바뀐 것은 셈하지 않는다). 다시 읽고 승인한다. Intent 는 <code>intent.md</code> · <code>units.json</code> 둘 다 본다.</p>
+
+<h2 id="exit-codes">종료 코드</h2>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">코드</th><th scope="col">흔한 원인과 할 일</th></tr></thead>
+<tbody>
+<tr><td>1</td><td>검사 문제. <code>doctor --check</code> 오류, <code>deploy check</code> 조건, 비밀값이 든 접수, 기준선 불일치. 출력 줄이 무엇이 틀렸는지 말한다</td></tr>
+<tr><td>2</td><td>사용법. 명령 · 플래그 철자(<code>knots-sync &lt;명령&gt; --help</code>). 참고로 worktree 는 CLI 명령이 아니라 <code>python3 scripts/harness/worktree.py</code> 다</td></tr>
+<tr><td>3</td><td>리포 상태. 에이전트 세션에서 사람 전용 명령, TTY 가 아님. 자기 터미널에서 다시</td></tr>
+<tr><td>4</td><td>사람 판단 필요. <code>update</code> 충돌(<code>.new</code>), <code>remove</code> · <code>uninstall</code> 이 고친 파일을 남김, 외부 도구 판이 범위 밖(<code>--allow-unverified</code>), 이미 가져온 출처의 diff(<code>--yes</code>)</td></tr>
+<tr><td>5</td><td>실행 환경. 외부 도구 없음(설치 안내를 따른다), 포트 사용 중, Node 없이 CLI 전용 명령</td></tr>
+</tbody></table></div>
+
+<h2 id="install">설치 · 업데이트</h2>
+<h3><code>/kns:bootstrap</code> 이 보이지 않는다</h3>
+<p>플러그인 · 스킬 목록은 세션 시작 때 읽힌다. 하네스를 다시 켠다. Kiro 는 <code>~/.kiro/skills/kns-bootstrap/SKILL.md</code> 가 있는지(한 겹 더 감싼 <code>skills/kns/skills/…</code> 는 인식되지 않는다) 본다.</p>
+<h3><code>npx knots-sync</code> 가 이상한 패키지를 받는다</h3>
+<p>아직 npm 에 올리지 않았다. 킷 저장소의 <code>plugins/kns/skills/bootstrap/bin/knots-sync.js</code> 를 <code>node</code> 로 부르거나 별칭을 쓴다(→ <a href="install.html#cli">설치 · CLI</a>).</p>
+<h3>Node 를 지정했는데 "명령을 찾을 수 없다" · exit 126</h3>
+<p>asdf · nvm 같은 버전 관리자의 shim 은 <code>HOME</code> 을 바꾸면(일회용 HOME 시험) 실제 node 를 못 찾는다. 실제 실행 파일 경로(<code>asdf which node</code> 등)로 부른다.</p>
+<h3><code>update</code> 뒤 <code>.new</code> 파일이 생겼다</h3>
+<p>사람이 고친 킷 파일의 새 판이다. <code>diff -u &lt;파일&gt; &lt;파일&gt;.new</code> 로 보고 필요한 줄만 옮긴 뒤 <code>.new</code> 를 지운다. 계속 내 판을 쓰고 킷 판을 받지 않으려면 <code>update --forget &lt;경로&gt;</code>. <code>.gitignore</code> 가 <code>*.new</code> 를 숨기면 <code>find . -name '*.new' -not -path './.git/*'</code>.</p>
+<h3>하네스 폴더 파일을 고쳤더니 되돌아간다 / <code>drifted</code> 가 뜬다</h3>
+<p>하네스 폴더(<code>.claude/skills</code> · <code>.cursor/commands</code> …)는 원본에서 만든 결과다. 원본(<code>.agents/rules</code> · <code>.agents/skills</code> · <code>.agents/roles</code>)을 고치고 <code>knots-sync repair</code>(Node 없으면 <code>python3 scripts/harness/projection.py sync</code>). 배치 검사(<code>verify.sh --fast</code>)가 어긋남을 알린다. 나만 쓰는 스킬은 <code>.agents/local/</code> + <code>local sync</code>.</p>
+<h3><code>doctor</code> 가 <code>legacy-names</code> 를 알린다</h3>
+<p>옛 이름(harness-kit) 상태 파일을 읽었다. <code>knots-sync update</code> 가 새 이름으로 옮긴다(→ <a href="migration.html">옮기기</a>).</p>
+
+<h2 id="verify">검증 · 커밋</h2>
+<h3>에이전트가 <code>verify.sh --full</code> 을 못 돌린다</h3>
+<p>의도한 막힘이다. full 은 CI 몫이다. 에이전트는 MR 전에 <code>--affected</code> 를 쓴다. 사람은 자기 터미널에서 full 을 돌릴 수 있다.</p>
+<h3>push 가 막힌다</h3>
+<p>세 경우다. ① 브랜치 이름이 <code>&lt;종류&gt;/&lt;키&gt;-&lt;이름&gt;</code> 인데 커밋에 그 키의 이슈 폴더가 없다 → 이슈 폴더를 커밋한다. ② 에이전트 세션이 base 브랜치로 push → 이슈 브랜치로. ③ 서버 보호 브랜치.</p>
+<h3>MR 승인이 "affected 검증 통과 기록이 없다"로 막힌다</h3>
+<p>mr 게이트는 <strong>같은 head · 깨끗한 작업 트리</strong>의 affected 검증 통과 기록을 본다. 마지막 커밋 뒤 <code>bash scripts/verify.sh --affected</code> 를 다시 돌린다. 열린 CRITICAL · HIGH 리뷰 지적, 품질 게이트 실패도 같은 자리에서 막는다.</p>
+<h3>작은 수정인데 "이슈가 필요하다"로 실패한다</h3>
+<p><code>trivial</code> 판정(바뀐 줄 20 이하, 새 · 지운 파일 0, lock 파일 변경 0, 위험 경로 0)을 넘었다. 메시지가 기준을 말한다("바뀐 줄 57 &gt; 20"). 이슈를 연다.</p>
+
+<h2 id="sessions">세션 · 토큰</h2>
+<h3>킷을 깔았더니 토큰이 늘었나</h3>
+<p>킷 자체(CLI · 관리 페이지 · 훅 · 스크립트)는 모델을 부르지 않는다. 늘 수 있는 것은 세션마다 실리는 글(스킬 설명 · 역할 · 진입 파일 · 규칙)과 세션 시작 훅 출력이다. <code>doctor</code> 의 "세션마다 실리는 양"과 관리 페이지 하네스 화면의 "킷이 덧붙인 토큰"(세션 시작 평균 / 2,560바이트 상한)으로 잰다. 깐 직후 일회용 리포의 값은 Claude Code 10,206바이트(파일 23 · 훅 13), Codex 8,380바이트였다. AI-DLC 를 켜면 약 73KB 가 더 실린다.</p>
+<h3>사용량 화면이 비어 있다</h3>
+<p>대화 기록 읽기는 기본 꺼짐이다. 각자 <code>~/.config/knots-sync/config.json</code> 에 <code>"history": "on"</code>. 켜도 복사본을 남기지 않고 내보내기 · 커밋 · 세션 요청에 넣지 않는다. Kiro 는 기록 위치를 아직 읽지 못한다("자료 없음").</p>
+<h3>세션 요청이 세션에 안 간다</h3>
+<p>세션 등록(<code>knots-sync sessions</code>)에서 그 세션이 살아 있고 수신함이 있는지 본다. 없으면 대기함에 쌓이고 다음 세션 시작 · 프롬프트 때 한 줄로 보인다. 에이전트 세션 안에서는 <code>dispatch</code> 가 막힌다.</p>
+<div class="unverified"><span class="box-title">세션 연결 쪽</span><p>살아 있는 세션 소켓 전달 · deep link · Codex 대기함 표시, Codex · Kiro 훅 입력의 <code>cwd</code> 는 사람이 실제 세션에서 확인해야 할 항목이다. 이상하면 대기함(<code>dispatch list</code>)을 쓴다.</p></div>
+
+<h2 id="worktree">worktree</h2>
+<h3>worktree 를 언제 만드나</h3>
+<p>같은 리포에서 <strong>동시에 파일을 쓰는 세션이 둘 이상</strong>일 때만. 리포당 3개까지, 자리는 리포 옆 <code>../&lt;리포&gt;.worktrees/&lt;키&gt;-&lt;이름&gt;/</code>, 끝나면 바로 <code>worktree.py done &lt;키&gt;</code>. 끝의 정의는 변경 없음 + push 안 된 커밋 0 + 브랜치 병합. <code>worktree.py gc</code> 가 정리 대상을 보이고 <code>--apply</code> 로 지운다(사람이 실행).</p>
+<h3>submodule 이 있는 리포</h3>
+<p>상위 리포는 worktree 로 만들지 않는다. 도메인 리포 단위로만(<code>worktree.py new &lt;키&gt; --domain &lt;경로&gt;</code>).</p>
+
+<h2 id="more">더 볼 곳</h2>
+<ul>
+<li>설계 근거: <a href="../design/README.md">설계서 공통 계약</a> · <a href="../design/06-dashboard.md">06 관리 페이지</a> · <a href="../design/09-verification-quality.md">09 검증 · 품질</a> · <a href="../design/14-deploy-and-ops.md">14 배포 · 운영</a></li>
+<li>화면 원안: <a href="../design/screens/index.html">관리 페이지 화면기획서</a></li>
+<li>v2 방향: <a href="../harness-next/index.html">harness-next</a> · AI-DLC 방법론: <a href="../ai-dlc/index.html">AI-DLC 핸드북</a></li>
+<li>이전: <a href="../migration-guide.md">이전 안내서</a></li>
+<li>v1 스택 · 아키텍처 가이드: <a href="../guides/README.md">guides/</a></li>
+</ul>
+
+</article>
+<nav class="pager" aria-label="이전 장 · 다음 장"><a class="prev" href="migration.html" rel="prev"><small>← 이전</small>옛 이름에서 옮기기</a></nav>
+</main>
+</div>
+<footer class="site-footer">knots-sync(약어 kns) 사용 안내서 · 정적 HTML · 외부 글꼴 · 스크립트 없음</footer>
+</body>
+</html>

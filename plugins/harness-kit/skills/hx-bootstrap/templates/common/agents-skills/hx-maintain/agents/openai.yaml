@@ -1,4 +1,0 @@
-interface:
-  display_name: "hx-maintain"
-  short_description: "읽을 수 있는 코드와 변경 범위 검증"
-  default_prompt: "$hx-maintain 스킬로 요청한 신규 코드, 리팩터링 또는 리뷰를 진행해 주세요."

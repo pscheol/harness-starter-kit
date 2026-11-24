@@ -1,4 +1,0 @@
-interface:
-  display_name: "hx-implement"
-  short_description: "작업 구현과 검증"
-  default_prompt: "$hx-implement 스킬로 요청한 작업을 진행해 주세요."

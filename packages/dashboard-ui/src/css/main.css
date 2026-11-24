@@ -1,0 +1,8 @@
+/* 관리 페이지 스타일 진입(HK-26). esbuild 가 이 파일을 한 파일(app/main.css)로 묶는다 — 화면 CSP 가 <style> 요소를 막아서 CSS 는 늘 파일이다.
+ * 순서: astryx 초기화 → 컴포넌트 → 하네스 테마 → React Flow → 이 앱의 작은 보정(app.css). 앱 CSS 는 토큰만 쓴다. */
+@import "@astryxdesign/core/reset.css";
+@import "@astryxdesign/core/astryx.css";
+@import "../themes/harness/harness.css";
+@import "@xyflow/react/dist/style.css";
+@import "../../../flow-view/src/flow.css";
+@import "./app.css";

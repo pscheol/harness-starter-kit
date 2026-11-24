@@ -1,0 +1,19 @@
+{
+  "schema": "knots-sync.module/v1",
+  "id": "jira-workflow",
+  "title": "이슈 트래커 연동 작업 규약",
+  "summary": "한 세션 = 한 활성 티켓 · pull gate · ID 로 전이 · 에이전트는 review 까지",
+  "kind": "kit",
+  "requires": { "modules": [], "tools": [] },
+  "conflicts": [],
+  "files": "layer",
+  "hooks": [],
+  "settings": [],
+  "externalPaths": [],
+  "config": { "set": {}, "unset": {} },
+  "steps": {
+    "add": [{ "applyKit": true }, { "setConfig": true }],
+    "remove": [{ "removeKit": true }, { "unsetConfig": true }]
+  },
+  "doctor": []
+}

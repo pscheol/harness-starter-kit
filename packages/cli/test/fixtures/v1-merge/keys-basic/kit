@@ -1,0 +1,10 @@
+{
+  "schema": "knots-sync.verify-checks/v2",
+  "checks": {
+    "lint": {"cmd": "new lint", "paths": ["a", "b"]},
+    "test": {"cmd": "pytest"}
+  },
+  "list": [3],
+  "added": null,
+  "flag": true
+}

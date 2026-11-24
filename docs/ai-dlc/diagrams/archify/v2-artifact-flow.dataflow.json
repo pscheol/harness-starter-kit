@@ -1,0 +1,239 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "스테이지 산출물이 다음 입력이 되는 흐름",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1068,
+      640
+    ],
+    "views": [
+      {
+        "id": "spine",
+        "label": "의도에서 검증까지",
+        "focus": [
+          "intent",
+          "req",
+          "units",
+          "fspec",
+          "code",
+          "results"
+        ],
+        "note": "Intent가 요구사항, Unit, 기능 명세, 코드, 테스트 결과로 이어진다."
+      },
+      {
+        "id": "contract",
+        "label": "계약 경로",
+        "focus": [
+          "req",
+          "contract",
+          "code"
+        ],
+        "note": "Unit 사이 계약은 구현 전에 정해져 코드 생성의 입력이 된다."
+      },
+      {
+        "id": "feedback",
+        "label": "되돌림",
+        "focus": [
+          "results",
+          "feedback",
+          "intent"
+        ],
+        "note": "운영 지표와 장애가 다음 Intent의 입력이 된다."
+      }
+    ]
+  },
+  "stages": [
+    {
+      "label": "Ideation"
+    },
+    {
+      "label": "Inception · 요구"
+    },
+    {
+      "label": "Inception · 분해"
+    },
+    {
+      "label": "Construction"
+    },
+    {
+      "label": "검증 · 운영"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "intent",
+      "type": "external",
+      "label": "intent-statement.md",
+      "sublabel": "목표 · 범위 · 지표",
+      "stage": 0,
+      "row": 1,
+      "width": 150
+    },
+    {
+      "id": "req",
+      "type": "database",
+      "label": "requirements.md",
+      "sublabel": "스토리 · EARS · NFR",
+      "stage": 1,
+      "row": 1,
+      "width": 150
+    },
+    {
+      "id": "units",
+      "type": "database",
+      "label": "unit-of-work.md",
+      "sublabel": "Unit · 의존 DAG",
+      "stage": 2,
+      "row": 0,
+      "width": 150
+    },
+    {
+      "id": "contract",
+      "type": "database",
+      "label": "contract-summary.md",
+      "sublabel": "API · 이벤트 계약",
+      "stage": 2,
+      "row": 2,
+      "width": 150
+    },
+    {
+      "id": "fspec",
+      "type": "database",
+      "label": "functional-spec.md",
+      "sublabel": "엔티티 · 규칙",
+      "stage": 3,
+      "row": 0,
+      "width": 150
+    },
+    {
+      "id": "code",
+      "type": "backend",
+      "label": "코드 · 단위 테스트",
+      "sublabel": "traceability.json",
+      "stage": 3,
+      "row": 1,
+      "tag": "Unit마다",
+      "width": 150
+    },
+    {
+      "id": "results",
+      "type": "database",
+      "label": "test-results.md",
+      "sublabel": "검증 명령 결과",
+      "stage": 4,
+      "row": 1,
+      "width": 150
+    },
+    {
+      "id": "feedback",
+      "type": "database",
+      "label": "feedback-loop.md",
+      "sublabel": "SLO · 장애 · 비용",
+      "stage": 4,
+      "row": 2,
+      "width": 150
+    }
+  ],
+  "flows": [
+    {
+      "id": "intent-to-req",
+      "from": "intent",
+      "to": "req",
+      "label": "목표 · 범위",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "id": "req-to-units",
+      "from": "req",
+      "to": "units",
+      "label": "스토리 묶음",
+      "variant": "emphasis",
+      "route": "vertical-channel"
+    },
+    {
+      "id": "req-to-contract",
+      "from": "req",
+      "to": "contract",
+      "label": "통합 요구",
+      "route": "vertical-channel"
+    },
+    {
+      "id": "units-to-fspec",
+      "from": "units",
+      "to": "fspec",
+      "label": "Unit 범위",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "id": "fspec-to-code",
+      "from": "fspec",
+      "to": "code",
+      "label": "엔티티 · 규칙",
+      "variant": "emphasis",
+      "route": "vertical-channel"
+    },
+    {
+      "id": "contract-to-code",
+      "from": "contract",
+      "to": "code",
+      "label": "계약 스키마",
+      "route": "vertical-channel"
+    },
+    {
+      "id": "code-to-results",
+      "from": "code",
+      "to": "results",
+      "label": "검증 명령",
+      "variant": "emphasis",
+      "route": "straight"
+    },
+    {
+      "id": "results-to-feedback",
+      "from": "results",
+      "to": "feedback",
+      "label": "배포 후 지표",
+      "variant": "dashed",
+      "route": "straight",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelDy": 24
+    },
+    {
+      "id": "next-intent",
+      "from": "feedback",
+      "to": "intent",
+      "label": "다음 Intent의 입력",
+      "variant": "dashed",
+      "route": "bottom-channel"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "amber",
+      "title": "파일로 넘긴다",
+      "items": [
+        "각 스테이지 산출물을 다음 스테이지가 읽는다",
+        "앞 단계 제약이 요약 과정에서 빠지지 않는다"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "추적성",
+      "items": [
+        "traceability.json이 요구사항과 코드를 잇는다",
+        "단계 경계마다 끊긴 연결을 자동으로 찾는다"
+      ]
+    },
+    {
+      "dot": "cyan",
+      "title": "되돌림",
+      "items": [
+        "운영 지표와 장애가 다음 Intent가 된다"
+      ]
+    }
+  ]
+}

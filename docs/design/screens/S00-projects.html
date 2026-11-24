@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S00 전체 프로젝트 · knots-sync 관리 페이지</title>
+<link rel="stylesheet" href="assets/app.css">
+<style>
+  [hidden] { display: none !important; }
+  .topbar .src-label { display: flex; align-items: center; gap: 6px; margin-top: 1px; font-size: var(--fs-s); color: var(--ink-faint); }
+  .topbar .src-label .path { font-size: var(--fs-xs); }
+  .co-on .topbar .src-label { padding-left: 14px; }
+
+  .ws { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 16px; align-items: start; }
+
+  /* 처리할 일: 홈(S01)과 같은 줄 모양, 묶음 머리만 프로젝트 · 종류로 바뀐다 */
+  .q-head { padding-bottom: 6px; }
+  .q-head h2 { font-size: var(--fs-xl); }
+  .q-head .total { display: inline-grid; place-items: center; min-width: 26px; height: 24px; padding: 0 7px; margin-left: 2px; border-radius: 12px; background: var(--gate); color: #fff; font-size: var(--fs-s); font-weight: 700; }
+  .q-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 0 16px 10px; }
+  .q-tools .lbl { font-size: var(--fs-s); font-weight: 600; color: var(--ink-faint); }
+  .q-tools .grp { display: flex; align-items: center; gap: 8px; }
+  .q-tools .seg button .mono { font-size: var(--fs-xs); }
+  .q-group { border-top: 1px solid var(--rule-soft); }
+  .q-group > h3 {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 16px 4px;
+    font-size: var(--fs-s); font-weight: 700; color: var(--ink-soft);
+  }
+  .q-group > h3 .gpj { font-family: var(--font-code); color: var(--ink); }
+  .q-group > h3 .n { color: var(--ink-faint); font-weight: 600; }
+  .q-group > h3 .where { margin-left: auto; font-weight: 500; font-size: var(--fs-xs); color: var(--ink-faint); }
+  .q-group > h3 .where a { font-weight: 600; }
+  .q-row {
+    display: grid;
+    grid-template-columns: 14px 96px minmax(0, 1fr) auto 104px;
+    align-items: center;
+    gap: 12px;
+    padding: 7px 16px;
+    transition: background var(--dur) var(--ease);
+  }
+  .q-row:hover { background: #fafbfd; }
+  .q-row > .dia { width: 8px; height: 8px; }
+  .q-row .t { font-weight: 600; }
+  .q-row .t .tag { margin-left: 6px; }
+  .q-row .why { margin-top: 1px; font-size: var(--fs-s); color: var(--ink-soft); }
+  .q-row .why b { color: var(--gate-ink); font-weight: 700; }
+  .q-row .btn { justify-self: end; }
+  .q-row .pjt { font-family: var(--font-code); font-weight: 500; }
+  .q-row .why, .pj .why, .pj .err, .panel-foot, .facts-dl dd, .first li { text-wrap: pretty; }
+  .q-none { padding: 14px 16px 18px; font-size: var(--fs-s); color: var(--ink-soft); }
+  .sk-row { display: grid; grid-template-columns: 14px 96px 1fr 90px 104px; gap: 12px; align-items: center; padding: 14px 16px; }
+
+  /* 프로젝트 목록 */
+  .pj-list { list-style: none; }
+  .pj { padding: 11px 16px 12px; border-top: 1px solid var(--rule-soft); scroll-margin-top: 16px; }
+  .pj:target { background: #fafbfd; box-shadow: inset 3px 0 0 var(--ink); }
+  .pj-top { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .pj-top > .i { color: var(--ink-faint); }
+  .pj-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-code); font-size: var(--fs-m); font-weight: 700; }
+  .pj-top .btn { margin-left: auto; }
+  .pj .path { display: block; margin: 1px 0 8px 22px; }
+  .pj-m { display: grid; grid-template-columns: 1.1fr 1fr 1.15fr 0.8fr; gap: 4px 12px; margin: 0 0 0 22px; }
+  .pj-m div { min-width: 0; }
+  .pj-m dt { font-size: var(--fs-xs); color: var(--ink-faint); }
+  .pj-m dd { margin: 1px 0 0; font-size: var(--fs-s); }
+  /* 진행: 얇은 나눔 막대(단계별 이슈 수). 범례는 목록 머리에 한 번 */
+  .pj-seg { margin-top: 6px; }
+  .pj-lg { padding: 0 16px 10px; }
+  .pj-m .tag .i { width: 12px; height: 12px; margin-right: 0; }
+  .st-ok { color: var(--ops-ink); font-weight: 600; }
+  .st-bad { color: var(--gate-ink); font-weight: 700; }
+  .st-warn { color: var(--build-ink); font-weight: 600; }
+  .st-ok .i, .st-bad .i, .st-warn .i { width: 13px; height: 13px; vertical-align: -2px; margin-right: 3px; }
+
+  .sub-tg {
+    display: inline-flex; align-items: center; gap: 6px;
+    margin: 9px 0 0 18px; padding: 3px 6px;
+    border: 0; border-radius: var(--r-ctl); background: transparent;
+    color: var(--ink-soft); font: inherit; font-size: var(--fs-xs); font-weight: 600; cursor: pointer;
+  }
+  .sub-tg:hover { background: var(--sunken); color: var(--ink); }
+  .sub-tg .i { transition: transform var(--dur) var(--ease); }
+  .sub-tg[aria-expanded="true"] .i { transform: rotate(90deg); }
+  .subs { list-style: none; display: grid; grid-template-columns: 1fr 1fr; gap: 2px 16px; margin: 6px 0 0 22px; padding: 8px 10px; background: var(--paper); border-radius: var(--r-ctl); font-size: var(--fs-xs); }
+  .subs li { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+  .subs .mono { color: var(--ink); }
+  .subs .muted { margin-left: auto; white-space: nowrap; }
+  .subs .note { grid-column: 1 / -1; margin-top: 4px; color: var(--ink-faint); }
+
+  .pj.gone .pj-nm { color: var(--ink-soft); }
+  .pj.gone .why { margin: 0 0 8px 22px; font-size: var(--fs-s); color: var(--ink-soft); }
+  .cmd { display: flex; align-items: center; gap: 8px; margin-left: 22px; }
+  .cmd code { flex: 1; min-width: 0; padding: 4px 8px; border-radius: var(--r-ctl); background: var(--sunken); font-size: var(--fs-xs); color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pj.bad { background: #fffafa; }
+  .pj .err { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 6px; margin: 0 0 0 22px; font-size: var(--fs-s); color: var(--ink); }
+  .pj .err .i { color: var(--gate); margin-top: 2px; }
+  .pj .err .path { display: inline; margin: 0; }
+  .pj .err .act { display: block; margin-top: 6px; }
+
+  /* 세션: 이 컴퓨터 전체 */
+  .sess { list-style: none; padding: 0 8px 6px; }
+  .sess li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 6px 8px; border-radius: var(--r-ctl); }
+  .sess li:hover { background: #fafbfd; }
+  .sess .nm { font-family: var(--font-code); font-size: var(--fs-s); font-weight: 600; }
+  .sess .meta { display: flex; flex-wrap: wrap; gap: 4px 6px; align-items: center; margin-top: 2px; font-size: var(--fs-xs); color: var(--ink-faint); }
+  .sess .meta .pjt { font-family: var(--font-code); color: var(--ink-soft); }
+  .sess .st { font-size: var(--fs-xs); color: var(--ink-soft); text-align: right; }
+
+  /* 읽는 곳 · 보안 */
+  .facts-dl { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 8px 12px; margin: 0; padding: 0 16px 14px; font-size: var(--fs-s); }
+  .facts-dl dt { padding-top: 1px; font-size: var(--fs-xs); font-weight: 600; color: var(--ink-faint); }
+  .facts-dl dd { margin: 0; color: var(--ink-soft); }
+  .facts-dl dd b { color: var(--ink); font-weight: 600; }
+  .facts-dl code { font-size: var(--fs-xs); color: var(--ink); white-space: nowrap; }
+
+  /* 비어 있음 */
+  .first { display: grid; gap: 10px; padding: 8px 16px 18px; }
+  .first ol { list-style: none; display: grid; gap: 8px; counter-reset: s; }
+  .first li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; align-items: start; font-size: var(--fs-s); counter-increment: s; }
+  .first li::before { content: counter(s); display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: var(--sunken); font-size: var(--fs-xs); font-weight: 700; color: var(--ink-soft); }
+  .first code { display: inline-block; margin-top: 3px; padding: 2px 7px; border-radius: var(--r-ctl); background: var(--sunken); font-size: var(--fs-xs); color: var(--ink); }
+
+  @media (max-width: 1180px) {
+    .ws { grid-template-columns: minmax(0, 1fr) 340px; }
+    .q-row { grid-template-columns: 14px 88px minmax(0, 1fr) auto; }
+    .q-row > .kt { display: none; }
+    .pj-m { grid-template-columns: 1fr 1fr; }
+    .subs { grid-template-columns: 1fr; }
+    .sess li { grid-template-columns: 10px minmax(0, 1fr); }
+    .sess .st { grid-column: 2; text-align: left; }
+    .search { display: none; }
+  }
+</style>
+</head>
+<body data-state="default">
+<a class="skip-link" href="#main">본문으로 건너뛰기</a>
+<div class="app">
+  <aside class="rail" data-nav="all" data-co="10" data-co-pos="in"></aside>
+  <div class="work">
+    <header class="topbar">
+      <div>
+        <h1>전체 프로젝트</h1>
+        <p class="src-label" data-co="1"><svg class="i s" aria-hidden="true"><use href="#i-folder"/></svg><span><span data-state-show="default error loading">등록된 프로젝트 12</span><span data-state-show="empty">등록된 프로젝트 0</span> · <span class="path">~/.config/knots-sync/projects.json</span></span><span data-state-show="default error">· 10:52에 다시 읽었다</span></p>
+      </div>
+      <div class="top-meta">
+        <span class="tag line">쓰기 없음 · 쓰기는 프로젝트 안에서</span>
+        <label class="search"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span class="sr-only">프로젝트나 이슈 키 찾기</span><input type="text" placeholder="프로젝트 · 이슈 키 찾기"><kbd>/</kbd></label>
+      </div>
+    </header>
+
+    <main id="main" class="content">
+      <div class="ws">
+        <div class="stack-y">
+          <section class="panel lift" aria-labelledby="q-title" data-co="2">
+            <div class="panel-head q-head">
+              <h2 id="q-title">처리할 일 <span class="total" id="qTotal" data-state-show="default error">14</span></h2>
+              <div class="aside" data-state-show="default error"><span id="qScope">프로젝트 3곳 · 각 체크아웃의 git 사용자 기준</span></div>
+            </div>
+
+            <div class="q-tools" data-state-show="default error" data-co="3">
+              <div class="grp">
+                <span class="lbl" id="g-lbl">묶기</span>
+                <div class="seg" data-single role="group" aria-labelledby="g-lbl" id="groupSeg">
+                  <button type="button" aria-pressed="true" data-group="project">프로젝트별</button>
+                  <button type="button" aria-pressed="false" data-group="kind">종류별</button>
+                </div>
+              </div>
+              <div class="grp">
+                <span class="lbl" id="p-lbl">프로젝트</span>
+                <div class="seg" data-single role="group" aria-labelledby="p-lbl" id="projSeg">
+                  <button type="button" aria-pressed="true" data-p="all">모두 <span class="n" data-n="all">14</span></button>
+                  <button type="button" aria-pressed="false" data-p="knots-platform"><span class="mono">knots-platform</span> <span class="n" data-n="knots-platform">9</span></button>
+                  <button type="button" aria-pressed="false" data-p="hr-vision-3d"><span class="mono">hr-vision-3d</span> <span class="n" data-n="hr-vision-3d">3</span></button>
+                  <button type="button" aria-pressed="false" data-p="my-api"><span class="mono">my-api</span> <span class="n" data-n="my-api">2</span></button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 오류: 프로젝트 하나를 읽지 못함 -->
+            <div class="panel-body" data-state-show="error">
+              <div class="banner err" role="alert">
+                <svg class="i" aria-hidden="true"><use href="#i-alert"/></svg>
+                <div><b>hr-vision-3d를 읽지 못했다.</b> <span class="path">~/work/hr-vision-3d/.agents/state/</span> 읽기 권한 없음(EACCES). 그 프로젝트의 처리할 일이 빠졌다. 나머지 11곳은 10:52 기준이다.</div>
+                <div class="act"><button class="btn sm" type="button" data-toast="다시 읽었다 · hr-vision-3d는 아직 권한 없음"><svg class="i" aria-hidden="true"><use href="#i-refresh"/></svg>다시 읽기</button></div>
+              </div>
+            </div>
+
+            <!-- 로딩 -->
+            <div data-state-show="loading" aria-busy="true" aria-label="프로젝트를 읽는 중">
+              <div class="sk-row"><span class="sk" style="height:10px"></span><span class="sk"></span><span class="sk" style="width:70%"></span><span class="sk"></span><span class="sk"></span></div>
+              <div class="sk-row"><span class="sk" style="height:10px"></span><span class="sk"></span><span class="sk" style="width:55%"></span><span class="sk"></span><span class="sk"></span></div>
+              <div class="sk-row"><span class="sk" style="height:10px"></span><span class="sk"></span><span class="sk" style="width:62%"></span><span class="sk"></span><span class="sk"></span></div>
+              <div class="sk-row"><span class="sk" style="height:10px"></span><span class="sk"></span><span class="sk" style="width:48%"></span><span class="sk"></span><span class="sk"></span></div>
+              <div class="sk-row"><span class="sk" style="height:10px"></span><span class="sk"></span><span class="sk" style="width:58%"></span><span class="sk"></span><span class="sk"></span></div>
+              <p class="panel-foot">등록부를 읽고 프로젝트마다 문서 머리 · 승인 기록 · 검증 결과 · 질문 파일 · worktree 목록을 읽는 중이다. 먼저 읽은 프로젝트부터 채운다.</p>
+            </div>
+
+            <!-- 비어 있음: 등록부가 비었다 -->
+            <div data-state-show="empty">
+              <div class="empty" style="padding-bottom:8px">
+                <svg class="i" style="width:28px;height:28px;color:var(--design)" aria-hidden="true"><use href="#i-folder"/></svg>
+                <h3>등록된 프로젝트가 없다</h3>
+                <p>전체 프로젝트는 등록부에 있는 리포만 읽는다. 등록부에는 경로 · 이름 · 더한 날만 있고, 리포 안의 파일은 그 리포에서 읽는다.</p>
+              </div>
+              <div class="first">
+                <ol>
+                  <li><span>킷이 설치된 리포를 더한다<br><code>npx knots-sync projects add ~/work/knots-platform</code></span></li>
+                  <li><span>새 리포는 설치할 때 더해진다<br><code>npx knots-sync init</code></span></li>
+                  <li><span>등록부 없이 한 번만 훑어볼 때는 서버를 이렇게 연다<br><code>npx knots-sync dashboard --root ~/work</code></span></li>
+                </ol>
+              </div>
+            </div>
+
+            <div id="qList" data-state-show="default error"></div>
+          </section>
+        </div>
+
+        <div class="stack-y">
+          <section class="panel" aria-labelledby="pj-title" data-co="4">
+            <div class="panel-head"><h2 id="pj-title">프로젝트</h2><div class="aside"><span data-state-show="default error loading">12 · 더한 순서</span><span data-state-show="empty">0</span></div></div>
+
+            <p class="vz-legend pj-lg" data-state-show="default error" aria-label="진행 막대 범례"><span><i class="vz-sw todo"></i>백로그</span><span><i class="vz-sw design"></i>설계</span><span><i class="vz-sw build"></i>구현 · 검증</span><span><i class="vz-sw ops"></i>배포</span></p>
+
+            <div class="panel-body" data-state-show="loading" aria-busy="true">
+              <span class="sk" style="width:60%;margin:8px 0"></span><span class="sk" style="width:85%;margin:12px 0"></span>
+              <span class="sk" style="width:52%;margin:22px 0 8px"></span><span class="sk" style="width:80%;margin:12px 0"></span>
+              <span class="sk" style="width:46%;margin:22px 0 8px"></span><span class="sk" style="width:76%;margin:12px 0"></span>
+            </div>
+            <p class="panel-body small soft" data-state-show="empty">더한 프로젝트가 여기에 진행 · 검증 · 킷 버전 · doctor 경고와 함께 보인다.</p>
+
+            <ul class="pj-list" data-state-show="default error">
+              <li class="pj" id="p-knots-platform">
+                <div class="pj-top"><svg class="i" aria-hidden="true"><use href="#i-folder"/></svg><span class="pj-nm">knots-platform</span><span class="tag gate">처리할 일 9</span><a class="btn sm" href="S01-home.html">열기<svg class="i" aria-hidden="true"><use href="#i-chev"/></svg></a></div>
+                <span class="path">~/work/knots-platform · 11-02 더함</span>
+                <dl class="pj-m">
+                  <div><dt>진행</dt><dd>이슈 10 · 배포 2<div class="vz-seg pj-seg" role="img" aria-label="knots-platform 진행: 이슈 10 · 백로그 2, 설계 4, 구현 · 검증 2, 배포 2" data-total="10"><span class="todo" style="flex:2 1 0" data-n="백로그" data-v="2"></span><span class="design" style="flex:4 1 0" data-n="설계" data-v="4"></span><span class="build" style="flex:2 1 0" data-n="구현 · 검증" data-v="2"></span><span class="ops" style="flex:2 1 0" data-n="배포" data-v="2"></span></div></dd></div>
+                  <div><dt>검증</dt><dd><span class="tag gate"><svg class="i" aria-hidden="true"><use href="#i-fail"/></svg>실패 · 10:44</span></dd></div>
+                  <div><dt>킷</dt><dd>2.0.0 <span class="st-warn">· 2.0.1 있음</span></dd></div>
+                  <div><dt>doctor</dt><dd class="st-warn"><svg class="i" aria-hidden="true"><use href="#i-alert"/></svg>경고 2</dd></div>
+                </dl>
+                <button class="sub-tg" type="button" aria-expanded="false" aria-controls="knots-subs" id="subTg" data-co="5"><svg class="i s" aria-hidden="true"><use href="#i-chev"/></svg>도메인 리포 8개 · submodule</button>
+                <ul class="subs" id="knots-subs" hidden>
+                  <li><span class="mono">knots-api</span><span class="muted">develop</span></li>
+                  <li><span class="mono">knots-web</span><span class="muted">develop</span></li>
+                  <li><span class="mono">knots-desktop</span><span class="muted">develop</span></li>
+                  <li><span class="mono">knots-recorder</span><span class="muted">develop</span></li>
+                  <li><span class="mono">knots-media</span><span class="muted">develop</span></li>
+                  <li><span class="mono">knots-auth</span><span class="muted">develop</span></li>
+                  <li><span class="mono">knots-billing</span><span class="muted">develop</span></li>
+                  <li><span class="mono">knots-infra</span><span class="muted">develop</span></li>
+                  <li class="note">처리할 일 · 검증은 knots-platform에 묶어 센다. 등록부에는 각각 한 줄씩 있다.</li>
+                </ul>
+              </li>
+
+              <li class="pj" id="p-hr-vision-3d" data-state-show="default">
+                <div class="pj-top"><svg class="i" aria-hidden="true"><use href="#i-folder"/></svg><span class="pj-nm">hr-vision-3d</span><span class="tag gate">처리할 일 3</span><a class="btn sm" href="S01-home.html" title="시안에는 knots-platform 화면만 있다">열기<svg class="i" aria-hidden="true"><use href="#i-chev"/></svg></a></div>
+                <span class="path">~/work/hr-vision-3d · 10-14 더함</span>
+                <dl class="pj-m">
+                  <div><dt>진행</dt><dd>이슈 6 · 배포 3<div class="vz-seg pj-seg" role="img" aria-label="hr-vision-3d 진행: 이슈 6 · 설계 1, 구현 · 검증 2, 배포 3" data-total="6"><span class="design" style="flex:1 1 0" data-n="설계" data-v="1"></span><span class="build" style="flex:2 1 0" data-n="구현 · 검증" data-v="2"></span><span class="ops" style="flex:3 1 0" data-n="배포" data-v="3"></span></div></dd></div>
+                  <div><dt>검증</dt><dd><span class="tag gate"><svg class="i" aria-hidden="true"><use href="#i-fail"/></svg>실패 · 어제</span></dd></div>
+                  <div><dt>킷</dt><dd>1.0.8 <span class="st-warn">· v1 lock · update 필요</span></dd></div>
+                  <div><dt>doctor</dt><dd class="st-warn"><svg class="i" aria-hidden="true"><use href="#i-alert"/></svg>경고 1</dd></div>
+                </dl>
+              </li>
+              <li class="pj bad" id="p-hr-vision-3d-err" data-state-show="error">
+                <div class="pj-top"><svg class="i" aria-hidden="true"><use href="#i-folder"/></svg><span class="pj-nm">hr-vision-3d</span><span class="tag solid-gate">읽기 실패</span></div>
+                <span class="path">~/work/hr-vision-3d · 10-14 더함</span>
+                <p class="err"><svg class="i s" aria-hidden="true"><use href="#i-alert"/></svg><span><span class="path">.agents/state/</span> 읽기 권한 없음(EACCES). 처리할 일 · 진행 · 검증을 셀 수 없다. 터미널에서 <span class="mono">ls -ld</span>로 권한을 본다.<span class="act"><button class="btn sm" type="button" data-toast="다시 읽었다 · 아직 권한 없음"><svg class="i" aria-hidden="true"><use href="#i-refresh"/></svg>다시 읽기</button></span></span></p>
+              </li>
+
+              <li class="pj" id="p-my-api">
+                <div class="pj-top"><svg class="i" aria-hidden="true"><use href="#i-folder"/></svg><span class="pj-nm">my-api</span><span class="tag gate">처리할 일 2</span><a class="btn sm" href="S01-home.html" title="시안에는 knots-platform 화면만 있다">열기<svg class="i" aria-hidden="true"><use href="#i-chev"/></svg></a></div>
+                <span class="path">~/side/my-api · 11-19 더함</span>
+                <dl class="pj-m">
+                  <div><dt>진행</dt><dd>이슈 4 · 배포 2<div class="vz-seg pj-seg" role="img" aria-label="my-api 진행: 이슈 4 · 설계 1, 구현 · 검증 1, 배포 2" data-total="4"><span class="design" style="flex:1 1 0" data-n="설계" data-v="1"></span><span class="build" style="flex:1 1 0" data-n="구현 · 검증" data-v="1"></span><span class="ops" style="flex:2 1 0" data-n="배포" data-v="2"></span></div></dd></div>
+                  <div><dt>검증</dt><dd><span class="tag ops"><svg class="i" aria-hidden="true"><use href="#i-ok"/></svg>통과 · 09:12</span></dd></div>
+                  <div><dt>킷</dt><dd>2.0.1 <span class="muted">· 최신</span></dd></div>
+                  <div><dt>doctor</dt><dd class="st-ok"><svg class="i" aria-hidden="true"><use href="#i-ok"/></svg>통과</dd></div>
+                </dl>
+              </li>
+
+              <li class="pj gone" id="p-old-admin" data-co="6">
+                <div class="pj-top"><svg class="i" aria-hidden="true"><use href="#i-folder"/></svg><span class="pj-nm">old-admin</span><span class="tag line">없음</span></div>
+                <span class="path">~/work/old-admin · 09-02 더함</span>
+                <p class="why">폴더가 없다. 옮겼거나 지웠다. 등록부에서 저절로 지우지 않는다.</p>
+                <div class="cmd"><code>npx knots-sync projects remove old-admin</code><button class="btn sm" type="button" data-toast="명령을 복사했다 · 터미널에서 실행한다"><svg class="i" aria-hidden="true"><use href="#i-copy"/></svg>복사</button></div>
+              </li>
+            </ul>
+          </section>
+
+          <section class="panel" aria-labelledby="sess-title" data-co="7" data-state-show="default error">
+            <div class="panel-head"><h2 id="sess-title">켜 둔 세션</h2><div class="aside">5개 · 이 컴퓨터 전체</div></div>
+            <ul class="sess">
+              <li><span class="dot busy" title="일하는 중"></span><div><div class="nm">api-worker</div><div class="meta"><span class="pjt">knots-platform</span><span class="harness"><b class="cc">C</b>Claude Code</span><span class="tag build">구현</span><span class="key">HDRV3D-21</span></div></div><span class="st">일하는 중</span></li>
+              <li><span class="dot idle" title="쉬는 중"></span><div><div class="nm">design-desk</div><div class="meta"><span class="pjt">knots-platform</span><span class="harness"><b class="cc">C</b>Claude Code</span><span class="tag design">설계</span><span class="key">HDRV3D-12</span></div></div><span class="st">쉬는 중</span></li>
+              <li><span class="dot idle" title="쉬는 중"></span><div><div class="nm">vision-dev</div><div class="meta"><span class="pjt">hr-vision-3d</span><span class="harness"><b class="cc">C</b>Claude Code</span><span class="tag build">구현</span><span class="key">HRV-31</span></div></div><span class="st">쉬는 중</span></li>
+              <li><span class="dot off" title="수신함 없음"></span><div><div class="nm">review-codex</div><div class="meta"><span class="pjt">knots-platform</span><span class="harness"><b class="cx">X</b>Codex</span><span class="tag build">리뷰</span></div></div><span class="st">대기함 0</span></li>
+              <li><span class="dot off" title="수신함 없음"></span><div><div class="nm">docs-kiro</div><div class="meta"><span class="pjt">knots-platform</span><span class="harness"><b class="kr">K</b>Kiro</span><span class="tag ops">문서</span></div></div><span class="st">대기함 1</span></li>
+            </ul>
+            <p class="panel-foot">세션 메시지는 이 컴퓨터 전체 기준이라 다른 리포의 세션도 보인다. 요청은 그 프로젝트에 들어가서 사람이 골라 보낸다.</p>
+          </section>
+
+          <section class="panel" aria-labelledby="sec-title" data-co="8">
+            <div class="panel-head"><h2 id="sec-title">읽는 곳 · 보안</h2></div>
+            <dl class="facts-dl">
+              <dt>등록부</dt><dd><b>~/.config/knots-sync/projects.json</b> · 경로 · 이름 · 더한 날만 둔다. 다른 출처: <code>--root &lt;dir&gt;</code>(폴더 아래 훑기) · <code>--workspace &lt;file&gt;</code>(목록 파일)</dd>
+              <dt>접속</dt><dd>127.0.0.1에만 연다 · 접속 토큰 하나</dd>
+              <dt>쓰기</dt><dd>전체 프로젝트는 쓰지 않는다. 프로젝트에 들어가면 그 리포 안에서만 쓰고, 리포마다 쓰기 검사(허용 경로 · baseSha256 · PIN)를 따로 거친다.</dd>
+            </dl>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+<script>
+/* 진행 막대 조각: 마우스를 올리면 단계 · 수 · 몫. 값은 막대의 aria-label에도 모두 있다 */
+document.addEventListener("hx:ready", function () {
+  document.querySelectorAll(".pj-seg").forEach(function (bar) {
+    var total = Number(bar.getAttribute("data-total"));
+    var name = bar.closest(".pj").querySelector(".pj-nm").textContent;
+    bar.querySelectorAll("span").forEach(function (sp) {
+      var v = Number(sp.getAttribute("data-v"));
+      window.HXViz.bind(sp, function () {
+        return [name, [{ v: v + "건", n: sp.getAttribute("data-n"), key: sp.className.split(" ")[0] }, { v: Math.round(v / total * 100) + "%", n: "이슈 " + total + " 중", sub: true }]];
+      });
+    });
+  });
+});
+</script>
+<script>
+(function () {
+  var KIND = {
+    blocked: { n: "막힌 것", tag: "막힘", tone: "gate", where: "열린 CRITICAL·HIGH · 열려 있으면 MR을 승인할 수 없다" },
+    mine: { n: "승인 대기", tag: "승인 · 내 차례", tone: "gate", where: "그 체크아웃의 git 사용자가 승인자 · approvers가 비면 누구나" },
+    question: { n: "답할 질문", tag: "질문", tone: "gate", where: "[NEEDS CLARIFICATION]이 남으면 승인할 수 없다" },
+    others: { n: "다른 사람 승인 대기", tag: "다른 사람 승인", tone: "", where: "approvers에 그 체크아웃의 git 사용자가 없다" },
+    cleanup: { n: "정리 대기", tag: "정리", tone: "", where: "worktree · 정리는 터미널에서" },
+    doctor: { n: "하네스 점검", tag: "doctor", tone: "", where: "doctor 경고 · 고치는 명령은 터미널에서" }
+  };
+  var ORDER = ["blocked", "mine", "question", "others", "cleanup", "doctor"];
+  var PROJ = [
+    { id: "knots-platform", home: "S01-home.html", path: "~/work/knots-platform" },
+    { id: "hr-vision-3d", home: "S01-home.html", path: "~/work/hr-vision-3d", mock: true },
+    { id: "my-api", home: "S01-home.html", path: "~/side/my-api", mock: true }
+  ];
+  var ITEMS = [
+    { p: "knots-platform", k: "blocked", key: "HDRV3D-21", t: "결제수단 등록", badge: ["solid-gate", "CRITICAL 새로 1"], why: "품질 게이트 실패 · gitleaks · PG 시크릿 키 · changed 검증&nbsp;10:44", act: ["검증 보기", "S06-verify.html"] },
+    { p: "knots-platform", k: "blocked", key: "KNOTS-18", t: "녹화 품질 저하 수정", badge: ["gate", "리뷰 HIGH 1"], why: "MR !231 · 위험 수용인지 수정 필요인지 정한다", act: ["리뷰 판단", "S06-verify.html#review"] },
+    { p: "knots-platform", k: "mine", key: "HDRV3D-12", t: "업로드 임시 파일 정리", why: "<b>requirements 다시 승인</b> · R2.3을 고쳐 승인이 stale · approvers&nbsp;po", act: ["열어서 승인", "S03-issue.html", "approve"] },
+    { p: "knots-platform", k: "question", key: "INT-7", t: "결제 개편 · Q3 부분 환불 상계", why: "권장안 A · 답할 그룹 po · U-2 정산 requirements가 기다린다", act: ["답하기", "S04-questions.html"] },
+    { p: "knots-platform", k: "question", key: "INT-7", t: "결제 개편 · Q5 실패 알림 채널", why: "선택지 3개 · 답할 그룹 po · ops · U-3 알림이 기다린다", act: ["답하기", "S04-questions.html"] },
+    { p: "knots-platform", k: "others", key: "HDRV3D-22", t: "정산 주기와 지급", why: "<b>design 승인 대기</b> · 1일째 · approvers&nbsp;dev", act: ["열기", "S03-issue.html"] },
+    { p: "knots-platform", k: "cleanup", key: "KNOTS-17", t: "desktop-parity", why: "변경 없음 · 모두 push · 병합됨 · 1.9GB", act: ["명령 보기", "S07-workspace.html"] },
+    { p: "knots-platform", k: "cleanup", key: "HDRV3D-09", t: "upload-progress", why: "변경 없음 · 모두 push · 병합됨 · 1.2GB", act: ["명령 보기", "S07-workspace.html"] },
+    { p: "knots-platform", k: "doctor", key: "doctor", t: "Kiro steering 1개가 원본과 다르다", why: '<span class="path">.kiro/steering/git-workflow.md</span> · npx knots-sync repair', act: ["하네스 보기", "S09-harness.html"] },
+    { p: "hr-vision-3d", k: "blocked", key: "HRV-31", t: "포즈 추정 모델 교체", badge: ["solid-gate", "검증 실패"], why: "full 검증 실패 · 어제 22:10 · 회귀 시험&nbsp;3개", act: ["검증 보기", "S01-home.html"] },
+    { p: "hr-vision-3d", k: "mine", key: "HRV-28", t: "3D 뷰어 회전 제스처", why: "<b>design 승인 대기</b> · approvers 비어 있음 → 이 리포 git 사용자 누구나", act: ["열어서 승인", "S01-home.html", "approve"] },
+    { p: "hr-vision-3d", k: "question", key: "HRV-30", t: "측정 단위 표시", why: "[NEEDS CLARIFICATION] 1 · requirements R2 · 답할 그룹 비어 있음 → 누구나", act: ["답하기", "S01-home.html"] },
+    { p: "my-api", k: "mine", key: "API-15", t: "요청 한도 응답 머리", why: "<b>MR 승인 대기</b> · approvers 비어 있음 → 이 리포 git 사용자 누구나", act: ["열어서 승인", "S01-home.html", "approve"] },
+    { p: "my-api", k: "cleanup", key: "API-12", t: "rate-limit-store", why: "변경 없음 · 모두 push · 병합됨 · 0.4GB", act: ["명령 보기", "S01-home.html"] }
+  ];
+  var group = "project", only = "all", state = "default";
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function visible() {
+    return ITEMS.filter(function (it) {
+      if (state === "error" && it.p === "hr-vision-3d") return false;
+      return only === "all" || it.p === only;
+    });
+  }
+  function row(it) {
+    var k = KIND[it.k];
+    var mock = PROJ.filter(function (p) { return p.id === it.p; })[0].mock;
+    var side = group === "project"
+      ? '<span class="tag line kt">' + k.tag + "</span>"
+      : '<span class="tag line kt pjt">' + it.p + "</span>";
+    var badge = it.badge ? '<span class="tag ' + it.badge[0] + '">' + it.badge[1] + "</span>" : "";
+    var cls = it.act[2] === "approve" ? "btn approve sm" : "btn sm";
+    return '<div class="q-row"><span class="dia" aria-hidden="true"></span><span class="key">' + it.key + "</span>" +
+      '<div class="grow"><div class="t">' + esc(it.t) + badge + '</div><p class="why">' + it.why + "</p></div>" + side +
+      '<a class="' + cls + '" href="' + it.act[1] + '"' + (mock ? ' title="시안에는 knots-platform 화면만 있다"' : "") + ">" + it.act[0] + "</a></div>";
+  }
+  function render() {
+    var list = visible();
+    var html = "";
+    if (group === "project") {
+      PROJ.forEach(function (p) {
+        var rows = list.filter(function (it) { return it.p === p.id; })
+          .sort(function (a, b) { return ORDER.indexOf(a.k) - ORDER.indexOf(b.k); });
+        if (!rows.length) return;
+        html += '<div class="q-group"><h3><span class="gpj">' + p.id + '</span><span class="n">' + rows.length + '</span><span class="where">' + p.path +
+          ' · <a href="' + p.home + '"' + (p.mock ? ' title="시안에는 knots-platform 화면만 있다"' : "") + ">홈 열기</a></span></h3>" + rows.map(row).join("") + "</div>";
+      });
+    } else {
+      ORDER.forEach(function (kk) {
+        var rows = list.filter(function (it) { return it.k === kk; });
+        if (!rows.length) return;
+        html += '<div class="q-group"><h3>' + KIND[kk].n + ' <span class="n">' + rows.length + '</span><span class="where">' + KIND[kk].where + "</span></h3>" + rows.map(row).join("") + "</div>";
+      });
+    }
+    if (!html) html = '<p class="q-none">이 프로젝트에는 지금 처리할 일이 없다.</p>';
+    var box = document.getElementById("qList");
+    box.innerHTML = html;
+    var first = box.querySelector(".q-group > h3");
+    if (first) first.setAttribute("data-co", "9");
+    var all = ITEMS.filter(function (it) { return !(state === "error" && it.p === "hr-vision-3d"); }).length;
+    document.getElementById("qTotal").textContent = String(all);
+    if (window.__placeCallouts) window.__placeCallouts();
+  }
+
+  document.addEventListener("hx:ready", function (e) {
+    var q = e.detail || {};
+    state = document.body.getAttribute("data-state") || "default";
+    if (q.group === "kind") group = "kind";
+    if (PROJ.some(function (p) { return p.id === q.p; })) only = q.p;
+    document.querySelectorAll("#groupSeg button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-group") === group)); });
+    document.querySelectorAll("#projSeg button").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-p") === only)); });
+    if (state === "error") {
+      document.querySelector('[data-n="hr-vision-3d"]').textContent = "?";
+      document.querySelector('[data-n="all"]').textContent = "11";
+      document.getElementById("qScope").textContent = "프로젝트 2곳 · hr-vision-3d 읽기 실패";
+    }
+    render();
+    document.getElementById("groupSeg").addEventListener("segchange", function (ev) { group = ev.detail.getAttribute("data-group"); render(); });
+    document.getElementById("projSeg").addEventListener("segchange", function (ev) { only = ev.detail.getAttribute("data-p"); render(); });
+    var tg = document.getElementById("subTg"), subs = document.getElementById("knots-subs");
+    function setSubs(open) { tg.setAttribute("aria-expanded", String(open)); subs.hidden = !open; if (window.__placeCallouts) window.__placeCallouts(); }
+    tg.addEventListener("click", function () { setSubs(tg.getAttribute("aria-expanded") !== "true"); });
+    if (q.subs) setSubs(true);
+  });
+})();
+</script>
+</body>
+</html>

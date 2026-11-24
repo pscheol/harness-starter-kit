@@ -1,0 +1,30 @@
+{
+  "name": "@knots-sync/dashboard-ui",
+  "version": "2.0.0-alpha.0",
+  "private": true,
+  "description": "관리 페이지 화면 층(HK-26) — React + astryx 로 짜고 esbuild 로 미리 묶어 packages/dashboard/static/ 에 쓴다. 전부 devDependency 라 CLI 런타임 의존성은 0이다",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc --noEmit && vitest run"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@astryxdesign/cli": "0.7.17",
+    "@astryxdesign/core": "0.7.17",
+    "@astryxdesign/theme-neutral": "0.7.17",
+    "@stylexjs/stylex": "0.19.2",
+    "@types/node": "18.19.130",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "@xyflow/react": "12.9.2",
+    "esbuild": "0.28.2",
+    "lucide-react": "1.66.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "typescript": "5.9.3",
+    "vitest": "5.1.1"
+  }
+}

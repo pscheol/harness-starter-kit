@@ -1,0 +1,190 @@
+{
+  "schema": "knots-sync.hooks/v1",
+  "hooks": [
+    {
+      "id": "harness-session-start",
+      "event": "session-start",
+      "script": "scripts/hooks/session-start.sh",
+      "timeoutSec": 15,
+      "owner": "kit",
+      "env": {
+        "KNS_HARNESS": {
+          "claude": "claude",
+          "codex": "codex",
+          "kiro": "kiro"
+        }
+      },
+      "maxOutputBytes": 2560,
+      "title": "하네스 컨텍스트 주입",
+      "description": "세션 시작 때 하네스 안내 · 단위 안내 · 바뀌는 상태(대기함 · 점유 · 공지)를 2,560바이트 안에서 붙이고 세션을 등록한다"
+    },
+    {
+      "id": "harness-protect-sources",
+      "event": "pre-tool",
+      "tools": [
+        "write"
+      ],
+      "script": "scripts/hooks/protect-sources.sh",
+      "timeoutSec": 15,
+      "owner": "kit",
+      "floor": true,
+      "subagents": true,
+      "title": "보호 경로 쓰기 차단",
+      "description": "보호 경로({{PROTECTED_PATH}})에 쓰기를 시도하면 막는다"
+    },
+    {
+      "id": "harness-protect-generated",
+      "event": "pre-tool",
+      "tools": [
+        "write"
+      ],
+      "script": "scripts/hooks/protect-generated.sh",
+      "timeoutSec": 10,
+      "owner": "kit",
+      "subagents": true,
+      "title": "생성 파일 직접 편집 차단",
+      "description": "하네스 폴더의 생성 파일(.agents/ 원본에서 만든 복사본)을 직접 고치지 못하게 하고 원본 경로를 알린다"
+    },
+    {
+      "id": "harness-block-full-verify",
+      "event": "pre-tool",
+      "tools": [
+        "shell"
+      ],
+      "script": "scripts/hooks/block-full-verify.sh",
+      "timeoutSec": 15,
+      "owner": "kit",
+      "floor": true,
+      "title": "전체 검증(full) 차단",
+      "description": "에이전트 세션의 full 검증을 막는다. full 은 CI 가 돈다"
+    },
+    {
+      "id": "harness-protect-approvals",
+      "event": "pre-tool",
+      "tools": [
+        "write",
+        "shell"
+      ],
+      "script": "scripts/hooks/protect-approvals.sh",
+      "timeoutSec": 15,
+      "owner": "kit",
+      "floor": true,
+      "subagents": true,
+      "title": "승인 기록 · 완료 상태 보호",
+      "description": "승인 기록 · 기준선 · 관리 페이지 토큰 쓰기, 승인 명령 실행, done 승인 없는 완료, 승인 상태 변경을 막는다"
+    },
+    {
+      "id": "harness-sync-projection",
+      "event": "post-tool",
+      "tools": [
+        "write"
+      ],
+      "script": "scripts/hooks/sync-projection.sh",
+      "timeoutSec": 20,
+      "owner": "kit",
+      "subagents": true,
+      "maxOutputBytes": 200,
+      "title": "하네스 복사본 동기화",
+      "description": ".agents/skills · rules · roles · hooks.json 원본을 고치면 하네스 폴더의 복사본 · 생성물을 다시 만든다. 성공하면 출력이 없다"
+    },
+    {
+      "id": "harness-session-prompt",
+      "event": "user-prompt",
+      "script": "scripts/hooks/session-register.sh",
+      "timeoutSec": 15,
+      "owner": "kit",
+      "harnesses": [
+        "claude"
+      ],
+      "env": {
+        "KNS_HARNESS": {
+          "claude": "claude"
+        }
+      },
+      "maxOutputBytes": 512,
+      "title": "세션 상태 갱신(프롬프트)",
+      "description": "프롬프트를 받으면 세션 상태를 working 으로 바꾸고 이 세션 앞 대기 요청이 있을 때만 세 줄을 붙인다"
+    },
+    {
+      "id": "harness-verify-gate",
+      "event": "stop",
+      "script": "scripts/hooks/verify-gate.sh",
+      "timeoutSec": 180,
+      "owner": "kit",
+      "floor": true,
+      "env": {
+        "HARNESS_VERIFY_FAIL_EXIT": {
+          "kiro": "1"
+        }
+      },
+      "title": "검증 게이트 (changed)",
+      "description": "턴이 끝날 때 그 세션의 변경을 검증한다. 실패는 다음 턴에 고치도록 알린다"
+    },
+    {
+      "id": "harness-session-idle",
+      "event": "stop",
+      "script": "scripts/hooks/session-register.sh",
+      "timeoutSec": 15,
+      "owner": "kit",
+      "env": {
+        "KNS_HARNESS": {
+          "claude": "claude",
+          "codex": "codex",
+          "kiro": "kiro"
+        }
+      },
+      "title": "세션 상태 갱신(턴 끝)",
+      "description": "턴이 끝나면 세션 상태를 idle 로 바꾼다"
+    },
+    {
+      "id": "harness-subagent-cap",
+      "event": "subagent-stop",
+      "script": "scripts/hooks/subagent-result-cap.sh",
+      "timeoutSec": 10,
+      "owner": "kit",
+      "harnesses": [
+        "claude"
+      ],
+      "maxOutputBytes": 300,
+      "title": "위임 결과 크기 상한",
+      "description": "위임 역할의 마지막 응답이 limits.subagentResultMaxChars(6,000자)를 넘으면 끝내기를 막고 줄여 다시 끝내라고 알린다"
+    },
+    {
+      "id": "harness-session-end",
+      "event": "session-end",
+      "script": "scripts/hooks/session-register.sh",
+      "timeoutSec": 15,
+      "owner": "kit",
+      "harnesses": [
+        "claude"
+      ],
+      "env": {
+        "KNS_HARNESS": {
+          "claude": "claude"
+        }
+      },
+      "title": "세션 등록 지우기",
+      "description": "세션이 끝나면 세션 등록 파일을 지운다"
+    },
+    {
+      "id": "harness-worktree-create",
+      "event": "worktree-create",
+      "script": "scripts/hooks/worktree-create.sh",
+      "timeoutSec": 60,
+      "owner": "kit",
+      "harnesses": ["claude"],
+      "title": "worktree 만들기(WorktreeCreate)",
+      "description": "claude -w <이름> 으로 worktree 를 만들 때 정해진 자리(../<리포>.worktrees/)에 만들고 그 경로를 돌려준다. 이슈 키 이름은 design 승인 · 상한을 본다"
+    },
+    {
+      "id": "harness-worktree-remove",
+      "event": "worktree-remove",
+      "script": "scripts/hooks/worktree-remove.sh",
+      "timeoutSec": 60,
+      "owner": "kit",
+      "harnesses": ["claude"],
+      "title": "worktree 지우기(WorktreeRemove)",
+      "description": "끝 조건(커밋 · push · 다른 세션 없음)을 통과한 worktree 만 지우고 브랜치도 지운다. 아니면 폴더를 남긴다"
+    }
+  ]
+}

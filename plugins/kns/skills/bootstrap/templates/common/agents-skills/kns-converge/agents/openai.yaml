@@ -1,0 +1,4 @@
+interface:
+  display_name: "kns-converge"
+  short_description: "잔여 작업 회수"
+  default_prompt: "$kns-converge 스킬로 요청한 작업을 진행해 주세요."

@@ -7,6 +7,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -18,9 +19,8 @@ import unittest
 from pathlib import Path
 
 KIT = Path(__file__).resolve().parents[1]
-SETUP = KIT / "plugins/harness-kit/skills/hx-bootstrap/setup.sh"
-SYNC_COMMANDS = KIT / "plugins/harness-kit/skills/hx-bootstrap/tools/sync-commands.sh"
-UPDATE = KIT / "plugins/harness-kit/skills/hx-update/update.sh"
+SETUP = KIT / "plugins/kns/skills/bootstrap/setup.sh"
+UPDATE = KIT / "plugins/kns/skills/update/update.sh"
 HARNESS_TESTS = KIT / "tests/harness_scripts"
 STACKS = ("jvm", "python", "go", "web", "electron")
 TOKEN_RE = re.compile(r"\{\{(PROJECT_NAME|PROJECT_SLUG|PACKAGE_NS|SERVICE_NAME|PRIMARY_LANGUAGE|BUILD_TOOL|TEST_CMD|PROTECTED_PATH|UNIT_ID|UNIT_TITLE)\}\}")
@@ -33,6 +33,7 @@ def install(
     modules: str = "none",
     extra: tuple[str, ...] = (),
     env_extra: dict[str, str] | None = None,
+    setup: Path = SETUP,
 ) -> subprocess.CompletedProcess:
     env = {
         **os.environ,
@@ -43,7 +44,7 @@ def install(
         **(env_extra or {}),
     }
     return subprocess.run(
-        ["bash", str(SETUP), f"--stack={stack}", f"--agents={agents}", f"--modules={modules}", *extra, str(target)],
+        ["bash", str(setup), f"--stack={stack}", f"--agents={agents}", f"--modules={modules}", *extra, str(target)],
         env=env,
         capture_output=True,
         text=True,
@@ -83,7 +84,7 @@ class InstallTest(unittest.TestCase):
                     ".agents/rules/sdd-workflow.md",
                     ".agents/rules/session-collaboration.md",
                     ".agents/rules/code-maintenance.md",
-                    ".agents/skills/hx-docs/SKILL.md",
+                    ".agents/skills/kns-docs/SKILL.md",
                     ".agents/roles/reviewer.md",
                     ".agents/verify-checks.json",
                     "scripts/verify.sh",
@@ -98,7 +99,11 @@ class InstallTest(unittest.TestCase):
                     "tools/docs/schema-snapshot.sh",
                     "docs/features/_src/docs.config.json",
                     "docs/features/_src/catalog.json",
-                    ".claude/commands/hx-docs.md",
+                    ".claude/skills/kns-docs/SKILL.md",
+                    ".claude/rules/code-maintenance.md",
+                    ".kiro/steering/code-maintenance.md",
+                    ".cursor/rules/code-maintenance.mdc",
+                    ".gitattributes",
                     ".codex/config.toml",
                     ".kiro/hooks/harness-verify-gate.json",
                     ".kiro/agents/acme-notes.json",
@@ -136,19 +141,67 @@ class InstallTest(unittest.TestCase):
         root = self.installed("python", agents="claude")
         self.assertFalse((root / ".codex").exists())
         self.assertFalse((root / ".kiro").exists())
-        self.assertTrue((root / ".agents/skills/hx-specify/SKILL.md").is_file())
+        self.assertTrue((root / ".agents/skills/kns-specify/SKILL.md").is_file())
         git_init(root)
         result = subprocess.run([sys.executable, "scripts/check_harness.py"], cwd=root, capture_output=True, text=True, timeout=120)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_new_feature_scaffolds_issue_folder_with_sdlc_sections(self):
         root = self.installed("jvm")
-        result = subprocess.run(["bash", "scripts/new-feature.sh", "notes", "folder-bookmark"], cwd=root, capture_output=True, text=True, timeout=60)
+        command = ["bash", "scripts/new-feature.sh", "--next", "folder-bookmark", "--area", "notes"]
+        result = subprocess.run(command, cwd=root, capture_output=True, text=True, timeout=60)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        requirements = next((root / ".agents/docs/notes-specs/issues").glob("*-feat-folder-bookmark/requirements.md"))
+        requirements = root / ".agents/docs/issues/ACMENOTES-1-folder-bookmark/requirements.md"
         text = requirements.read_text()
+        self.assertTrue(text.startswith("---\nkey: ACMENOTES-1\narea: notes\ntype: feat\n"), text[:200])
         self.assertIn("### 정책 (S2 기획 · 필수)", text)
         self.assertIn("| 기능 문서 |", text)
+        self.assertNotRegex(text, r"(?m)^\|\s*상태\s*\|")
+        self.assertIn("### notes (새 1 · 옛 0)", (root / ".agents/docs/specs-index.md").read_text())
+
+    def test_fresh_install_board_is_current(self):
+        root = self.installed("python")
+        result = subprocess.run(["bash", "scripts/board.sh", "--check"], cwd=root, capture_output=True, text=True, timeout=60)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_meta_gets_v11_defaults_and_update_keeps_user_values(self):
+        root = self.installed("python")
+        meta_path = root / ".agents/knots-sync.json"
+        meta = json.loads(meta_path.read_text())
+        self.assertEqual({"source": "kit", "prefix": "ACMENOTES"}, meta["issueKey"])
+        self.assertEqual("develop", meta["git"]["base"])
+        self.assertIs(True, meta["verify"]["fullOnlyInCI"])
+        self.assertIn('"agents": ["claude", "codex", "cursor", "kiro"]', meta_path.read_text())
+        meta["issueKey"] = {"source": "jira", "prefix": "KNOTS"}
+        meta["git"] = {"base": "main", "worktreeRoot": "../{repo}.worktrees"}
+        meta["verify"] = {"fullOnlyInCI": False}
+        meta["team"] = {"owner": "platform", "labels": ["a", "b"]}
+        meta["tokens"]["CUSTOM_TOKEN"] = "keep"
+        meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2) + "\n")
+        result = subprocess.run(["bash", str(UPDATE), str(root)], capture_output=True, text=True, timeout=300)
+        self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
+        after = json.loads(meta_path.read_text())
+        self.assertEqual({"source": "jira", "prefix": "KNOTS"}, after["issueKey"])
+        self.assertEqual({"base": "main", "worktreeRoot": "../{repo}.worktrees"}, after["git"])
+        self.assertEqual({"fullOnlyInCI": False}, after["verify"])
+        self.assertEqual({"owner": "platform", "labels": ["a", "b"]}, after["team"])
+        self.assertEqual("keep", after["tokens"]["CUSTOM_TOKEN"])
+        self.assertEqual("acme-notes", after["tokens"]["PROJECT_SLUG"])
+        self.assertEqual(meta["installedAt"], after["installedAt"])
+        self.assertEqual(sorted(meta["agents"]), sorted(after["agents"]))
+        # update.sh · add-agent.sh 는 배열을 줄 단위 sed 로 읽는다(harness_meta_list).
+        self.assertRegex(meta_path.read_text(), r'"agents": \[[^\]\n]*\]')
+        self.assertRegex(meta_path.read_text(), r'"modules": \[[^\]\n]*\]')
+
+    def test_session_start_fixed_context_stays_within_budget(self):
+        # 토큰 예산(설계 README 원칙 10): 세션 시작 고정 안내는 v1.0.8 의 1,517바이트보다 길어지지 않는다.
+        source = (KIT / "packages/templates/common/scripts/hooks/session-start.sh").read_text(encoding="utf-8")
+        fixed = re.search(r"^cat <<'EOF'\n(.*?)^EOF$", source, re.S | re.M)
+        self.assertIsNotNone(fixed)
+        self.assertLessEqual(len(fixed[1].encode("utf-8")), 1517)
+        self.assertIn(".agents/docs/issues/", fixed[1])
+        self.assertIn("--affected", fixed[1])
+        self.assertNotIn("--full", fixed[1])
 
     def test_feature_docs_build_and_check_on_fresh_install(self):
         # 외부 스크립트(assets/vendor)는 받기 전이라 경고만 난다. 받은 뒤에는 잠금 파일의 sha256 으로 대조한다.
@@ -170,11 +223,15 @@ class InstallTest(unittest.TestCase):
         # 생성기는 SDD 이슈도 읽는다. changed 문서 규칙이 이슈 문서를 덮지 않으면 check 가 알린다.
         root = self.installed("python")
         git_init(root)
-        scaffold = subprocess.run(["bash", "scripts/new-feature.sh", "notes", "folder-bookmark"], cwd=root, capture_output=True, text=True, timeout=60)
+        command = ["bash", "scripts/new-feature.sh", "--next", "folder-bookmark", "--area", "notes"]
+        scaffold = subprocess.run(command, cwd=root, capture_output=True, text=True, timeout=60)
         self.assertEqual(scaffold.returncode, 0, scaffold.stdout + scaffold.stderr)
         for command in ("build", "check"):
             result = subprocess.run([sys.executable, "tools/docs/feature_docs.py", command], cwd=root, capture_output=True, text=True, timeout=120)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        # 새 구조 이슈가 백로그 화면에 보인다(HK-9 R9.2).
+        backlog = next((root / "docs/features").glob("*백로그*.html"))
+        self.assertIn("ACMENOTES-1-folder-bookmark", backlog.read_text(encoding="utf-8"))
 
     def test_feature_docs_tool_tests_pass_in_install(self):
         root = self.installed("go")
@@ -198,15 +255,25 @@ class InstallTest(unittest.TestCase):
         settings = json.loads((root / ".claude/settings.json").read_text())
         self.assertIn("Edit(//**/third_party/specs/**)", settings["permissions"]["deny"])
 
-    def test_command_pointers_match_skill_sources(self):
-        result = subprocess.run(["bash", str(SYNC_COMMANDS), "--check"], capture_output=True, text=True, timeout=60)
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+    def test_skill_and_rule_copies_match_sources(self):
+        # 손으로 맞추던 포인터(sync-commands.sh)는 없다. 설치가 원본에서 복사본 · 생성물을 만든다(HK-13 R1).
+        self.assertFalse((KIT / "scripts/sync-commands.sh").exists())
+        root = self.installed("go")
+        for skill in sorted((root / ".agents/skills").iterdir()):
+            for f in sorted(p for p in skill.rglob("*") if p.is_file()):
+                rel = f.relative_to(root / ".agents/skills").as_posix()
+                for harness in (".claude", ".kiro"):
+                    self.assertEqual((root / harness / "skills" / rel).read_bytes(), f.read_bytes(), f"{harness} {rel}")
+        for rule in sorted((root / ".agents/rules").glob("*.md")):
+            self.assertEqual((root / ".claude/rules" / rule.name).read_bytes(), rule.read_bytes(), rule.name)
+            self.assertIn(f"원본 .agents/rules/{rule.name}", (root / ".kiro/steering" / rule.name).read_text())
+        self.assertFalse((root / ".claude/commands").exists())
 
     def test_update_keeps_user_edits_as_new(self):
         root = self.installed("web")
         rule = root / ".agents/rules/sdd-workflow.md"
         rule.write_text(rule.read_text() + "\n사용자가 고친 줄\n")
-        lock = root / ".agents/harness-kit.lock"
+        lock = root / ".agents/knots-sync.lock"
         lock.write_text(lock.read_text().replace("\t.agents/rules/sdd-workflow.md", "\t.agents/rules/sdd-workflow.md"))
         pristine = root / ".agents/rules/writing-style.md"
         pristine_text = pristine.read_text()
@@ -216,6 +283,147 @@ class InstallTest(unittest.TestCase):
         result = subprocess.run(["bash", str(UPDATE), str(root)], capture_output=True, text=True, timeout=300)
         self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
         self.assertIn("사용자가 고친 줄", rule.read_text())
+
+    def test_update_moves_legacy_state_names(self):
+        # 이름 바꾸기 전(harness-kit) 리포: 상태 파일이 옛 이름이다. dry-run 은 옮기지 않고, update 가 새 이름으로 옮긴다(HK-22b).
+        root = self.installed("python", agents="claude")
+        pairs = ((".agents/knots-sync.json", ".agents/harness-kit.json"), (".agents/knots-sync.lock", ".agents/harness-kit.lock"))
+        for new, old in pairs:
+            (root / new).rename(root / old)
+        dry = subprocess.run(["bash", str(UPDATE), "--dry-run", str(root)], capture_output=True, text=True, timeout=300)
+        self.assertEqual(dry.returncode, 0, dry.stdout[-3000:] + dry.stderr[-3000:])
+        self.assertTrue(all((root / old).is_file() and not (root / new).exists() for new, old in pairs))
+        result = subprocess.run(["bash", str(UPDATE), str(root)], capture_output=True, text=True, timeout=300)
+        self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
+        self.assertTrue(all((root / new).is_file() and not (root / old).exists() for new, old in pairs))
+        self.assertIn("옛 이름 상태 파일", result.stdout)
+
+    def test_update_rebuilds_board_after_format_change(self):
+        # v1.0.8 리포: 옛 구조 이슈가 있고 specs-index.md 의 보드가 옛 형식이다(HK-9 R9.3).
+        root = self.installed("python")
+        issue = root / ".agents/docs/demo-specs/issues/1-feat-sample"
+        issue.mkdir(parents=True)
+        (issue / "requirements.md").write_text("# Requirements — 1-feat-sample\n\n| 상태 | approved |\n")
+        index = root / ".agents/docs/specs-index.md"
+        old_board = "\n## 전체 보드 (전 제품)\n\n| 📋 요구 (1) | 🎨 설계 (0) |\n|---|---|\n| `demo/1-feat-sample` | — |\n\n"
+        index.write_text(re.sub(r"(<!-- BOARD:BEGIN[^\n]*-->\n).*?(<!-- BOARD:END -->)", lambda m: m[1] + old_board + m[2], index.read_text(), flags=re.S))
+        git_init(root)
+        plans = ["bash", "scripts/check-exec-plan-status.sh"]
+        before = subprocess.run(plans, cwd=root, capture_output=True, text=True, timeout=60)
+        self.assertNotEqual(before.returncode, 0, "옛 형식 보드인데 fast 검사가 통과한다 — 시험 전제가 틀렸다")
+        result = subprocess.run(["bash", str(UPDATE), str(root)], capture_output=True, text=True, timeout=300)
+        self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
+        self.assertEqual(result.stdout.count("SDD 보드"), 1, result.stdout[-3000:])
+        after = subprocess.run(plans, cwd=root, capture_output=True, text=True, timeout=60)
+        self.assertEqual(after.returncode, 0, after.stdout + after.stderr)
+        self.assertIn("| 1 (옛) | sample | feat |", index.read_text())
+        again = subprocess.run(["bash", str(UPDATE), str(root)], capture_output=True, text=True, timeout=300)
+        self.assertNotIn("SDD 보드", again.stdout, "보드가 이미 맞으면 다시 만들지 않는다")
+
+    def test_pre_existing_files_are_not_replaced_by_update(self):
+        # 설치 전부터 있던 파일: 다르면 lock 해시 '-'(update 가 덮지 않고 .new), 킷 판과 같으면 그 해시(HK-12 R12.6).
+        same = self.installed("python", agents="claude") / ".agents/rules/writing-style.md"
+        root = self.tmp / "pre"
+        (root / ".agents/rules").mkdir(parents=True)
+        (root / "AGENTS.md").write_text("# 손으로 쓴 AGENTS\n")
+        shutil.copy2(same, root / ".agents/rules/writing-style.md")
+        result = install(root, "python", agents="claude")
+        self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
+        lock = (root / ".agents/knots-sync.lock").read_text().splitlines()
+        self.assertEqual(lock[1], "# pre-existing: -")
+        hashes = {line.split("\t")[3]: line.split("\t")[0] for line in lock if line and not line.startswith("#")}
+        self.assertEqual(hashes["AGENTS.md"], "-")
+        self.assertRegex(hashes[".agents/rules/writing-style.md"], r"^[0-9a-f]{64}$")
+        update = subprocess.run(["bash", str(UPDATE), str(root)], capture_output=True, text=True, timeout=300)
+        self.assertEqual(update.returncode, 0, update.stdout[-3000:] + update.stderr[-3000:])
+        self.assertEqual((root / "AGENTS.md").read_text(), "# 손으로 쓴 AGENTS\n")
+        self.assertTrue((root / "AGENTS.md.new").is_file())
+        self.assertRegex(update.stdout, r"update=0 +same=\d+ +conflict=1")
+
+    def test_update_with_legacy_lock_merges_instead_of_replacing(self):
+        # v1.0.8 lock(표시 줄 없음)은 미리 있던 파일을 그 파일 해시로 적었다. 가릴 수 없으니 문서는 킷 판 + 사람 줄로 합친다(HK-25 R1).
+        root = self.tmp / "legacy"
+        root.mkdir()
+        (root / "AGENTS.md").write_text("# 손으로 쓴 AGENTS\n")
+        result = install(root, "go", agents="codex")
+        self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
+        lock = root / ".agents/knots-sync.lock"
+        mine = hashlib.sha256((root / "AGENTS.md").read_bytes()).hexdigest()
+        lines = [line for line in lock.read_text().splitlines() if line != "# pre-existing: -"]
+        lock.write_text("\n".join(mine + line[line.index("\t"):] if line.endswith("\tAGENTS.md") else line for line in lines) + "\n")
+        update = subprocess.run(["bash", str(UPDATE), str(root)], capture_output=True, text=True, timeout=300)
+        self.assertEqual(update.returncode, 0, update.stdout[-3000:] + update.stderr[-3000:])
+        merged = (root / "AGENTS.md").read_text()
+        self.assertIn("HARNESS STARTER KIT", merged.splitlines()[0])
+        self.assertIn("<!-- knots-sync: 설치 전 내용(병합) -->\n# 손으로 쓴 AGENTS\n<!-- /knots-sync -->", merged)
+        self.assertFalse((root / "AGENTS.md.new").exists())
+        self.assertIn("v1 lock 첫 업데이트", update.stdout)
+        saved = list((root / ".agents/state/merge-backup").glob("*/AGENTS.md.orig"))
+        self.assertEqual([p.read_text() for p in saved], ["# 손으로 쓴 AGENTS\n"])
+        after = lock.read_text().splitlines()
+        self.assertEqual(after[1], "# pre-existing: -")
+        kit_sha = next(line.split("\t")[0] for line in after if line.endswith("\tAGENTS.md"))
+        self.assertRegex(kit_sha, r"^[0-9a-f]{64}$")
+
+    def test_overlap_later_layer_wins_on_install_and_update(self):
+        # common 과 모듈이 같은 경로를 깔면 첫 설치 · update 모두 뒤 레이어(모듈) 판이다(HK-10 R10.1).
+        # 킷 템플릿에는 그런 경로가 없어(HK-25 R2) 사본의 jira-workflow 모듈에 common 판 + 표시 줄을 둔다.
+        kit = self.tmp / "kit"
+        shutil.copytree(KIT / "plugins/kns", kit, symlinks=True)
+        mark = "\n# 뒤 레이어 판(HK-10)\n"
+        tpl = kit / "skills/bootstrap/templates"
+        module_copy = tpl / "optional/jira-workflow/scripts/run-guards.sh"
+        module_copy.parent.mkdir(parents=True, exist_ok=True)
+        module_copy.write_text((tpl / "common/scripts/run-guards.sh").read_text(encoding="utf-8") + mark, encoding="utf-8")
+        root = self.tmp / "python"
+        result = install(root, "python", agents="claude", modules="jira-workflow", setup=kit / "skills/bootstrap/setup.sh")
+        self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
+        guard = root / "scripts/run-guards.sh"
+        self.assertTrue(guard.read_text().endswith(mark), "첫 설치가 앞 레이어(common) 판을 깔았다")
+        lock_lines = [line for line in (root / ".agents/knots-sync.lock").read_text().splitlines() if line.endswith("\tscripts/run-guards.sh")]
+        self.assertEqual([line.split("\t")[1] for line in lock_lines], ["mod/jira-workflow"])
+        for run in (1, 2):
+            update = subprocess.run(["bash", str(kit / "skills/update/update.sh"), str(root)], capture_output=True, text=True, timeout=300)
+            self.assertEqual(update.returncode, 0, update.stdout[-3000:] + update.stderr[-3000:])
+            with self.subTest(run=run):
+                self.assertRegex(update.stdout, r"update=0 +same=\d+ +conflict=0")
+        self.assertEqual(sorted(p.relative_to(root).as_posix() for p in root.rglob("*.new")), [])
+        self.assertTrue(guard.read_text().endswith(mark))
+
+    def test_special_token_values_survive_install_and_update(self):
+        # & · | · \ 가 든 값은 sed 치환에서 깨졌다. 설치와 update 모두 글자 그대로 넣는다(HK-10 R10.2).
+        name = "A&B | C\\D"
+        root = self.installed("go", agents="claude", env_extra={"PROJECT_NAME": name})
+        self.assertIn(name, (root / "AGENTS.md").read_text())
+        self.assertEqual(json.loads((root / ".agents/harness.json").read_text())["title"], name)
+        self.assertEqual(json.loads((root / ".agents/knots-sync.json").read_text())["tokens"]["PROJECT_NAME"], name)
+        update = subprocess.run(["bash", str(UPDATE), str(root)], capture_output=True, text=True, timeout=300)
+        self.assertEqual(update.returncode, 0, update.stdout[-3000:] + update.stderr[-3000:])
+        self.assertRegex(update.stdout, r"new=0 +update=0 +same=\d+ +conflict=0")
+        self.assertEqual(sorted(p.relative_to(root).as_posix() for p in root.rglob("*.new")), [])
+
+
+    def test_review_and_approval_files_are_installed(self):
+        # HK-23: /kns-review · 승인 강제 파일은 하네스와 상관없이 깔린다. 하네스 복사본(.claude/skills · .kiro/steering)은 배치 엔진 몫이다.
+        for stack in ("python", "web"):
+            with self.subTest(stack=stack):
+                root = self.installed(stack)
+                for rel in (
+                    ".agents/skills/kns-review/SKILL.md",
+                    ".agents/rules/approval-vocabulary.md",
+                    "scripts/harness/approve.py",
+                    "scripts/harness/approvals.py",
+                    "scripts/harness/approvals_guard.py",
+                    "scripts/harness/sdd_gates.py",
+                    "scripts/harness/review.py",
+                    "scripts/harness/review_state.py",
+                    "scripts/harness/mr_comment.py",
+                    "scripts/hooks/protect-approvals.sh",
+                    "scripts/hooks/protect_approvals.py",
+                    ".kiro/hooks/harness-protect-approvals.json",
+                ):
+                    self.assertTrue((root / rel).is_file(), f"{stack}: {rel}")
+                self.assertTrue(os.access(root / "scripts/harness/approve.py", os.X_OK))
 
 
 class HarnessScriptTests(unittest.TestCase):
@@ -234,7 +442,8 @@ class HarnessScriptTests(unittest.TestCase):
             cwd=root,
             capture_output=True,
             text=True,
-            timeout=1200,
+            # 설치본 시험 묶음은 678개로 늘어 따로 돌려도 1,300~1,600초다(2026-11-24 실측). 1200초 제한은 늘 넘어 푸시 전 검사(pnpm test)를 막았다.
+            timeout=3000,
             env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
         )
         self.assertEqual(run.returncode, 0, run.stdout[-4000:] + run.stderr[-4000:])

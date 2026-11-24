@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="무엇이고 누구를 위한 것인가 · 10분 시작 · 안내서 지도">
+<title>knots-sync 사용 안내서</title>
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="site-header">
+<a class="brand" href="index.html">knots-sync<span>사용 안내서</span></a>
+<span class="site-meta">CLI 2.0.0-alpha.0 기준 · 2026-11-24 · 저장소 harness-starter-kit</span>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="안내서 목차">
+<p class="toc-title">안내서 목차</p>
+<ol>
+<li class="toc-group">시작</li>
+<li><a href="index.html" aria-current="page"><span class="n">00</span><span>시작하기</span></a></li>
+<li><a href="concepts.html"><span class="n">01</span><span>개념</span></a></li>
+<li><a href="install.html"><span class="n">02</span><span>설치</span></a></li>
+<li class="toc-group">쓰기</li>
+<li><a href="daily-flow.html"><span class="n">03</span><span>하루 흐름</span></a></li>
+<li><a href="dashboard.html"><span class="n">04</span><span>관리 페이지</span></a></li>
+<li><a href="cli.html"><span class="n">05</span><span>CLI 명령 참고</span></a></li>
+<li class="toc-group">모듈</li>
+<li><a href="aidlc.html"><span class="n">06</span><span>AI-DLC 모듈</span></a></li>
+<li><a href="entire.html"><span class="n">07</span><span>Entire 모듈</span></a></li>
+<li><a href="modules.html"><span class="n">08</span><span>jira · notion · multi-harness</span></a></li>
+<li class="toc-group">운영과 팀</li>
+<li><a href="ops.html"><span class="n">09</span><span>배포 · 운영 · 지표</span></a></li>
+<li><a href="roles.html"><span class="n">10</span><span>역할별 활용 가이드</span></a></li>
+<li class="toc-group">옮기기와 도움</li>
+<li><a href="migration.html"><span class="n">11</span><span>옛 이름에서 옮기기</span></a></li>
+<li><a href="faq.html"><span class="n">12</span><span>문제 해결 · FAQ</span></a></li>
+</ol>
+</nav>
+<main id="main" tabindex="-1">
+<article>
+<p class="kicker">00 · 시작하기</p>
+<h1>knots-sync 사용 안내서</h1>
+<p class="lede">knots-sync(약어 <code>kns</code>)는 팀이 쓰는 에이전트 하네스 킷이다. 규칙 · 스킬 · 훅을 한 벌로 두고 Claude Code · Codex · Cursor · Kiro 네 하네스에 같은 모양으로 깔며, 요구사항 하나를 사람 승인 게이트가 있는 SDD 흐름으로 끝까지 끌고 간다.</p>
+<nav class="on-page" aria-label="이 장의 절"><h2>이 장에서</h2><ol><li><a href="#what">무엇인가</a></li><li><a href="#who">누구를 위한 것인가</a></li><li><a href="#names">이름 정리</a></li><li><a href="#quickstart">10분 시작</a></li><li><a href="#status">이 판의 상태와 아직 확인하지 못한 것</a></li><li><a href="#map">안내서 지도</a></li></ol></nav>
+
+<h2 id="what">무엇인가</h2>
+<p>에이전트마다 규칙 파일을 따로 두면 내용이 조금씩 어긋난다. knots-sync 는 원본을 리포의 <code>.agents/</code> 한 곳에만 두고, 하네스 폴더(<code>.claude/</code> · <code>.codex/</code> · <code>.cursor/</code> · <code>.kiro/</code>)에는 그 원본에서 만든 <strong>실제 파일</strong>(복사 · 생성 · 병합)을 둔다. 심볼릭 링크나 "원본을 읽어라" 같은 포인터 파일은 쓰지 않는다.</p>
+<p>킷이 리포에 까는 것은 다섯 덩어리다.</p>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">덩어리</th><th scope="col">내용</th><th scope="col">자리</th></tr></thead>
+<tbody>
+<tr><th scope="row">규칙 · 스킬 · 역할</th><td>공통 규칙(SDD 워크플로 · git · 보안 · 승인 어휘 등), 프로젝트 스킬 15종(<code>kns-intent</code> · <code>kns-specify</code> · <code>kns-plan</code> …), 역할 6종(designer · planner · worker · reviewer · explorer · docs-researcher)</td><td><code>.agents/rules/</code> · <code>.agents/skills/</code> · <code>.agents/roles/</code></td></tr>
+<tr><th scope="row">SDD 기록</th><td>요구사항 접수 → Intent → Unit → 이슈별 requirements · design · tasks, 승인 기록 <code>approvals.md</code></td><td><code>.agents/docs/intents/</code> · <code>.agents/docs/issues/</code></td></tr>
+<tr><th scope="row">검증 게이트</th><td>단일 검증 입구 <code>scripts/verify.sh</code>(fast · changed · affected · full), 정적 분석 · 품질 게이트, 승인 스크립트</td><td><code>scripts/</code> · <code>scripts/harness/</code></td></tr>
+<tr><th scope="row">관리 페이지</th><td>내 컴퓨터(127.0.0.1)에서만 여는 웹 화면. 처리할 일 · 진행 · 문서 · 승인 · 검증 · 스킬 · 운영 · 사용량</td><td><code>knots-sync dashboard</code></td></tr>
+<tr><th scope="row">선택 모듈</th><td>AI-DLC(설계 도구) · Entire(대화 체크포인트) · jira-workflow · notion · multi-harness. 기본은 모두 꺼짐</td><td><code>knots-sync add &lt;모듈&gt;</code></td></tr>
+</tbody></table></div>
+<p>여기에 배포 기록 · 운영 기록 · 전달 지표 · 규칙 후보가 더해져, 운영에서 배운 것이 다음 요구사항과 규칙으로 돌아온다(→ <a href="ops.html">배포 · 운영 · 지표</a>).</p>
+
+<div class="token">
+<span class="box-title">킷은 모델을 부르지 않는다</span>
+<p>CLI · 관리 페이지 · 훅 · 스크립트는 어떤 모델 API 도 부르지 않는다. 글을 쓰는 일은 사람이 연 에이전트 세션 안에서만 일어난다. 킷이 세션에 덧붙이는 양에는 상한이 있다 — 세션 시작 훅 출력 합계 2,560바이트 이하, 늘 실리는 진입 파일(<code>AGENTS.md</code> · <code>CLAUDE.md</code>) 24KB 이하. 이 안내서를 쓰며 일회용 리포에 깐 직후 <code>doctor</code> 가 잰 값은 Claude Code 10,206바이트(훅 13개), Codex 8,380바이트(훅 8개)였다.</p>
+</div>
+
+<h2 id="who">누구를 위한 것인가</h2>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">사람</th><th scope="col">킷이 주는 것</th><th scope="col">먼저 볼 장</th></tr></thead>
+<tbody>
+<tr><td>기획자 · PM</td><td>요구사항 접수 화면, 질문에 답하는 화면, Intent · 기획물 · requirements 승인. 채팅으로 "좋아요" 한 말은 승인이 되지 않는다</td><td><a href="roles.html#pm">역할별 · 기획자</a>, <a href="dashboard.html#intake">새 요구사항</a></td></tr>
+<tr><td>개발자</td><td>이슈마다 한 폴더 · 한 브랜치 · 한 MR, 단계별 스킬(<code>/kns-plan</code> · <code>/kns-tasks</code> · <code>/kns-implement</code>), changed · affected 검증</td><td><a href="daily-flow.html">하루 흐름</a>, <a href="roles.html#dev">역할별 · 개발자</a></td></tr>
+<tr><td>리뷰어 · 리드</td><td><code>/kns-review</code> 지적 목록, 리뷰 판단(수정 필요 · 위험 수용), design · MR 승인, 품질 게이트</td><td><a href="roles.html#review">역할별 · 리뷰어</a>, <a href="dashboard.html#verify">검증 화면</a></td></tr>
+<tr><td>운영 담당</td><td>배포 기록 · deploy 승인 · 운영 기록 · 장애 → bug 이슈 · 전달 지표</td><td><a href="ops.html">배포 · 운영 · 지표</a></td></tr>
+<tr><td>팀 도입 담당</td><td>설치 · 하네스 고르기 · 승인자 그룹 · 흐름 틀(게이트) · 모듈 · 옛 리포 이전</td><td><a href="install.html">설치</a>, <a href="roles.html#lead">역할별 · 도입 담당</a>, <a href="migration.html">옮기기</a></td></tr>
+</tbody></table></div>
+
+<h2 id="names">이름 정리</h2>
+<p>2026-11-24 이름이 harness-kit 에서 knots-sync 로 바뀌었다. 저장소 이름(<code>harness-starter-kit</code>)은 그대로다. 문서와 화면에서 만나는 이름은 아래 다섯 가지다.</p>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">무엇</th><th scope="col">이름</th><th scope="col">예</th></tr></thead>
+<tbody>
+<tr><td>제품</td><td>knots-sync · 약어 kns</td><td>—</td></tr>
+<tr><td>CLI</td><td><code>knots-sync &lt;명령&gt;</code>(별칭 <code>kns</code>, 한동안 옛 <code>harness-kit</code> 도 같은 CLI)</td><td><code>knots-sync doctor</code></td></tr>
+<tr><td>플러그인 스킬(킷을 깔고 유지)</td><td><code>/kns:&lt;명령&gt;</code></td><td><code>/kns:bootstrap</code> · <code>/kns:update</code></td></tr>
+<tr><td>프로젝트 스킬(매일 개발)</td><td>Claude Code · Cursor · Kiro CLI 는 <code>/kns-&lt;명령&gt;</code>, Codex 는 <code>$kns-&lt;명령&gt;</code></td><td><code>/kns-specify</code> · <code>$kns-specify</code></td></tr>
+<tr><td>상태 파일</td><td><code>.agents/knots-sync.json</code>(설정) · <code>.agents/knots-sync.lock</code>(설치 기록). 둘 다 커밋한다</td><td>—</td></tr>
+</tbody></table></div>
+
+<h2 id="quickstart">10분 시작</h2>
+<p>빈 리포 하나에 킷을 깔고, 요구사항 하나를 접수하고, 관리 페이지를 여는 데까지다. 아래 출력은 이 안내서를 쓰며 일회용 폴더(<code>/tmp/…/demo-app</code>)와 일회용 HOME 에서 실제로 돌린 결과를 그대로 옮겼다.</p>
+
+<div class="warn">
+<span class="box-title">npm 에 아직 올리지 않았다</span>
+<p>지금 판(2.0.0-alpha.0)은 npm 에 없다. <code>npx knots-sync</code> 는 npm 에서 이름이 같은 남의 패키지를 받을 수 있으니 쓰지 않는다. 킷 저장소 안의 CLI 파일을 직접 부르거나 셸 별칭을 만든다. 관리 페이지와 이 안내서가 보여 주는 <code>npx knots-sync …</code> 는 아래 별칭으로 읽는다.</p>
+</div>
+
+<ol class="steps">
+<li>
+<h3>CLI 를 부를 수 있게 한다</h3>
+<p>Node 18.3 이상이 필요하다. 킷 저장소를 받은 경로를 넣어 별칭을 만든다.</p>
+<div class="block"><span class="block-label"><span class="tag input">입력</span>셸 설정에 한 줄</span>
+<pre class="cmd"><code><span class="p">$ </span>alias knots-sync='node /path/to/harness-starter-kit/plugins/kns/skills/bootstrap/bin/knots-sync.js'
+<span class="p">$ </span>knots-sync --help | head -1
+knots-sync 2.0.0-alpha.0 — 하네스 엔지니어링 스타터 킷</code></pre></div>
+<p>플러그인으로 설치했다면 같은 CLI 가 플러그인 폴더의 <code>skills/bootstrap/bin/knots-sync.js</code> 에도 있다. Node 가 없으면 <code>bash &lt;플러그인&gt;/skills/bootstrap/kit.sh &lt;명령&gt;</code> 이 v1 설치 스크립트로 내려간다(→ <a href="install.html#cli">설치 · CLI</a>).</p>
+</li>
+<li>
+<h3>무엇이 깔릴지 먼저 본다 — <code>plan</code></h3>
+<p><code>plan</code> 은 아무것도 쓰지 않는다. 스택은 빌드 파일로 판단하고(<code>pyproject.toml</code> → python), 하네스는 플래그로 고른다.</p>
+<div class="block"><span class="block-label"><span class="tag">실제 출력</span>knots-sync plan --stack python --agents claude,codex (create 줄 363개는 줄임)</span>
+<pre class="cmd"><code>knots-sync plan — /private/tmp/kns-guide-fx/demo-app
+  선택: python · hexagonal · backend · 하네스 claude,codex · 모듈 none
+  create    .agents/analyzers.json  [stacks/python]
+  create    .agents/deploy.json  [common]
+  …
+  skip-user README.md  [common]  사람이 둔 파일이다
+  파일: 생성 309 · 교체 0 · 같음 0 · 건너뜀(사람 파일) 1 · 하네스 제외 1 · 겹침 0
+  배치: create 54
+  상태 파일: .agents/knots-sync.json · .agents/knots-sync.lock · .agents/harness.json
+  (plan — 쓰지 않았다)</code></pre></div>
+<p>사람이 이미 둔 파일(<code>README.md</code>)은 덮지 않고 <code>skip-user</code> 로 남긴다.</p>
+</li>
+<li>
+<h3>깐다 — <code>init</code></h3>
+<div class="block"><span class="block-label"><span class="tag">실제 출력</span>knots-sync init --stack python --agents claude,codex --yes</span>
+<pre class="cmd"><code>knots-sync init — /private/tmp/kns-guide-fx/demo-app
+  선택: python · hexagonal · backend · 하네스 claude,codex · 모듈 none
+  파일: 생성 309 · 교체 0 · 같음 0 · 건너뜀(사람 파일) 1 · 하네스 제외 1 · 겹침 0
+  skip-user README.md  [common]  사람이 둔 파일이다
+  배치: create 54
+  상태 파일: .agents/knots-sync.json · .agents/knots-sync.lock · .agents/harness.json
+  기능 문서: docs/features/ 생성
+  등록부: demo-app 를 더했다(/tmp/kns-guide-fx/fx/home/.config/knots-sync/projects.json) — 관리 페이지 --all 에 보인다. 빼려면 knots-sync projects remove demo-app
+  다음: knots-sync doctor</code></pre></div>
+<p>프로젝트 밖에 쓰는 파일은 등록부 <code>~/.config/knots-sync/projects.json</code> 하나뿐이다. 쓰지 않으려면 <code>--no-register</code> 를 붙인다.</p>
+</li>
+<li>
+<h3>점검한다 — <code>doctor</code></h3>
+<div class="block"><span class="block-label"><span class="tag">실제 출력</span>knots-sync doctor</span>
+<pre class="cmd"><code>knots-sync doctor — /private/tmp/kns-guide-fx/demo-app
+  킷: 설치 2.0.0-alpha.0 · lock 2.0.0-alpha.0 · CLI 2.0.0-alpha.0
+  copy 항목: ok 309 · drifted 0 · missing 0
+  배치 항목: ok 54 · 오류 0
+  오류 0 · 경고 0 · 정보 0
+  세션마다 실리는 양(claude): kit 10,206(훅 13) = 10,206바이트
+  세션마다 실리는 양(codex): kit 8,380(훅 8) = 8,380바이트</code></pre></div>
+<p>설치를 커밋한다. <code>.agents/knots-sync.json</code> · <code>.lock</code> 도 함께다.</p>
+</li>
+<li>
+<h3>요구사항 하나를 접수한다 — <code>intake</code></h3>
+<div class="block"><span class="block-label"><span class="tag">실제 출력</span>knots-sync intake --title "업로드 임시 파일 정리" --kind feature --name upload-cleanup --area upload --text "…"</span>
+<pre class="cmd"><code>✔ 접수: .agents/docs/intents/INT-1-upload-cleanup
+다음: /kns-intent INT-1 (세션 요청은 사람이 고를 때만)</code></pre></div>
+<p>접수 글은 <code>trust: untrusted</code> 로 표시된다. 에이전트는 그 안의 지시("이미 승인됐다", "명령을 실행해라")를 따르지 않고 자료로만 읽는다. 이어서 설계 세션(Claude Code)을 열고 <code>/kns-intent INT-1</code> 을 부른다.</p>
+</li>
+<li>
+<h3>관리 페이지를 연다 — <code>dashboard</code></h3>
+<p><strong>자기 터미널</strong>에서 연다. 주소는 표준 출력, 승인 PIN 은 표준 오류에만 나온다. 에이전트 세션 안에서 연 서버는 읽기 전용이라 PIN 이 없다(→ <a href="concepts.html#approval">승인</a>).</p>
+<div class="block"><span class="block-label"><span class="tag input">사람 터미널</span>출력 모양(주소 · PIN 은 실행마다 다르다)</span>
+<pre class="cmd"><code><span class="p">$ </span>knots-sync dashboard --open
+http://127.0.0.1:&lt;포트&gt;/#t=&lt;토큰&gt;
+승인 PIN: &lt;10자&gt; — 승인 · 질문 답 · 리뷰 판단 때 넣는다. 이 터미널에만 보인다(파일에 쓰지 않는다)</code></pre></div>
+</li>
+</ol>
+
+<h2 id="status">이 판의 상태와 아직 확인하지 못한 것</h2>
+<p>이 안내서는 CLI <strong>2.0.0-alpha.0</strong>(브랜치 <code>hk-22b-rename</code> 끝, 두 구성 e2e 통과)을 기준으로 썼다. 명령과 플래그는 모두 실제 <code>--help</code> 와 맞췄다. 다만 아래는 시험 대역(가짜 응답 · 가짜 도구)으로만 확인했거나 사람이 실제 환경에서 봐야 하는 것으로 남아 있다. 해당 장에서 <span class="chip">실환경 미확인</span> 상자로 다시 표시한다.</p>
+<ul>
+<li>Jira · Notion 실제 연결(흉내 응답 시험만 했다).</li>
+<li>GitLab MR 요약 코멘트(가짜 <code>glab</code> 으로만 시험, GitHub 은 비공개 시험 저장소에서 확인).</li>
+<li>Entire 체크포인트가 살아 있는 구현 세션 훅에서 실제로 생기는 것(e2e real 모드의 E4 는 정해서 건너뜀).</li>
+<li>살아 있는 세션 소켓으로 작업 요청 전달 · deep link · Codex 대기함 표시, Codex · Kiro 훅 입력의 <code>cwd</code>.</li>
+<li>Claude Code <code>claude -w</code> 와 IDE 의 worktree 표시, Kiro <code>fileMatchPattern</code> 배열 · Cursor <code>globs</code> · Claude <code>paths</code> 가 Read 에도 걸리는지.</li>
+<li>설계 세션 한 바퀴(<code>/kns-intent</code> → 답 → intent 승인 → <code>/kns-plans</code> → <code>/kns-specify --from-unit</code>)를 사람이 실제로 도는 것, 관리 페이지 화면 모양의 사람 확인.</li>
+</ul>
+
+<h2 id="map">안내서 지도</h2>
+<ul class="map">
+<li><a href="concepts.html"><b>01 개념</b><span>SDD 여덟 단계 · 게이트 아홉 · 승인 네 경로 · Intent/Unit/Bolt · 원본과 복사본</span></a></li>
+<li><a href="install.html"><b>02 설치</b><span>Claude Code · Codex · Kiro · Cursor, 플러그인과 CLI, 하네스 추가 · 제거</span></a></li>
+<li><a href="daily-flow.html"><b>03 하루 흐름</b><span>접수 → Intent → 기획물 → 이슈 세 문서 → 구현 → 검증 → MR → 완료 → 배포 → 운영 기록</span></a></li>
+<li><a href="dashboard.html"><b>04 관리 페이지</b><span>스크린숏 28장으로 화면 하나하나와 조작</span></a></li>
+<li><a href="cli.html"><b>05 CLI 명령 참고</b><span>명령 34개의 도움말 원문 · 종료 코드 · 리포 스크립트</span></a></li>
+<li><a href="aidlc.html"><b>06 AI-DLC 모듈</b><span>언제 쓰나 · 켜고 끄기 · sync aidlc · 승인 · 세션 적재량 약 73KB</span></a></li>
+<li><a href="entire.html"><b>07 Entire 모듈</b><span>체크포인트 · 구현 하네스에만 · push 정책 · checkpoints 명령</span></a></li>
+<li><a href="modules.html"><b>08 jira · notion · multi-harness</b><span>모듈 공통 규칙과 세 모듈</span></a></li>
+<li><a href="ops.html"><b>09 배포 · 운영 · 지표</b><span>deploy 게이트 · 운영 기록 · 장애와 다음 Intent · 전달 지표 · 규칙 후보</span></a></li>
+<li><a href="roles.html"><b>10 역할별 활용 가이드</b><span>매일 · 단계마다 무엇을 하고 무엇을 승인하나</span></a></li>
+<li><a href="migration.html"><b>11 옛 이름에서 옮기기</b><span>harness-kit · v1 리포의 이전 7단계</span></a></li>
+<li><a href="faq.html"><b>12 문제 해결 · FAQ</b><span>종료 코드 · 읽기 전용 · .new · 막힌 승인</span></a></li>
+</ul>
+<p>더 깊은 설계 근거는 <a href="../design/README.md">설계서</a>(공통 계약 · 01~14장)와 <a href="../design/screens/index.html">관리 페이지 화면기획서</a>에 있다. 이 안내서는 "어떻게 쓰나"만 다룬다.</p>
+
+</article>
+<nav class="pager" aria-label="이전 장 · 다음 장"><a class="next" href="concepts.html" rel="next"><small>다음 →</small>개념</a></nav>
+</main>
+</div>
+<footer class="site-footer">knots-sync(약어 kns) 사용 안내서 · 정적 HTML · 외부 글꼴 · 스크립트 없음</footer>
+</body>
+</html>

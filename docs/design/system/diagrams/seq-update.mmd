@@ -1,0 +1,30 @@
+%%{init: {"theme": "base", "fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "themeVariables": {"fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "fontSize": "15px", "actorBkg": "#ffffff", "actorBorder": "#14213d", "actorTextColor": "#14213d", "actorLineColor": "#aeb9c7", "signalColor": "#46536b", "signalTextColor": "#14213d", "noteBkgColor": "#fbe6e9", "noteBorderColor": "#c8102e", "noteTextColor": "#14213d", "labelBoxBkgColor": "#f5f7fa", "labelBoxBorderColor": "#aeb9c7", "labelTextColor": "#14213d", "loopTextColor": "#14213d"}}}%%
+sequenceDiagram
+  autonumber
+  actor H as 사람(터미널)
+  participant CLI as npx knots-sync
+  participant T as 새 킷 템플릿 · 팩
+  participant L as knots-sync.lock
+  participant R as 리포 파일
+  participant V as verify.sh fast
+  rect rgba(251, 241, 220, 0.55)
+    H->>CLI: update --dry-run
+    CLI->>T: 층 해석 · 토큰 치환 → 원하는 내용 D
+    CLI->>L: 기준 해시 B · 주인 O
+    CLI->>R: 지금 파일 C
+    CLI-->>H: 작업 목록(new · update · conflict · skip-user …)
+    H->>CLI: update
+    CLI->>R: C = B면 교체 · C ≠ B면 경로.new · 주인 user · external · pack은 건너뜀
+    CLI->>L: lock v2 · kit.version
+    CLI-->>H: .new가 있으면 exit 4 · diff 목록
+    Note over H,R: 사람이 .new를 하나씩 병합
+  end
+  rect rgba(221, 242, 235, 0.6)
+    H->>CLI: doctor --check
+    CLI->>L: 항목마다 op · sha 비교
+    CLI-->>H: drifted · missing · stale · symlink-found · merge-missing
+    H->>CLI: repair
+    CLI->>R: missing 복원 · render 재생성 · 복사본 재생성 · 킷 키 재병합
+    Note over CLI,R: 사람이 고친 copy 파일(drifted)은 건드리지 않는다
+  end
+  V->>L: check_layout.py: doctor와 같은 규칙, 오류면 Stop 훅 실패

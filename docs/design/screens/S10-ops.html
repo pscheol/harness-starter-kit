@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S10 운영 기록 · knots-sync 관리 페이지</title>
+<link rel="stylesheet" href="assets/app.css">
+<style>
+  .og { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 16px; align-items: start; }
+  .log { list-style: none; padding: 0 16px 14px; }
+  .log li { display: grid; grid-template-columns: 52px 16px minmax(0, 1fr); gap: 10px; padding: 12px 0; border-top: 1px solid var(--rule-soft); }
+  .log time { font-family: var(--font-code); font-size: var(--fs-xs); color: var(--ink-faint); padding-top: 2px; }
+  .log .mk { margin-top: 6px; }
+  .log h3 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: var(--fs-m); }
+  .log p { margin-top: 3px; font-size: var(--fs-s); color: var(--ink-soft); }
+  .log dl { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 2px 10px; margin: 6px 0 0; font-size: var(--fs-s); }
+  .log dt { color: var(--ink-faint); font-size: var(--fs-xs); padding-top: 2px; }
+  .log dd { margin: 0; }
+  .cand { list-style: none; padding: 0 16px 12px; display: grid; gap: 8px; }
+  .cand li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 6px; font-size: var(--fs-s); }
+  .cand .t { font-weight: 700; }
+  .cand .m { grid-column: 1; display: flex; flex-wrap: wrap; gap: 6px; font-size: var(--fs-xs); color: var(--ink-faint); }
+  .cand .btn { grid-row: 1 / span 2; grid-column: 2; align-self: center; }
+  .newreq { padding: 0 16px 16px; display: grid; gap: 10px; }
+
+  /* 4 전달 지표: 다섯 지표의 작은 그림. 선 = 주마다 지난 30일 값, 점선 = 기준선(킷 도입 전 90일). 다섯 다 낮을수록 좋다 */
+  .dm { margin-bottom: 16px; }
+  .dm-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid var(--rule-soft); }
+  .dm-f { min-width: 0; padding: 10px 14px 8px 16px; border-right: 1px solid var(--rule-soft); }
+  .dm-f:last-child { border-right: 0; }
+  .dm-n { display: flex; align-items: baseline; gap: 6px; font-size: var(--fs-s); font-weight: 700; color: var(--ink-soft); }
+  .dm-n .tag { margin-left: auto; font-size: 12px; line-height: 16px; padding: 0 5px; }
+  .dm-v { margin-top: 2px; font-size: var(--fs-xl); font-weight: 700; letter-spacing: -0.01em; color: var(--ink); }
+  .dm-v small { margin-left: 4px; font-size: var(--fs-xs); font-weight: 500; color: var(--ink-faint); letter-spacing: 0; }
+  .dm-d { display: flex; align-items: flex-start; gap: 5px; min-height: 36px; margin-top: 2px; font-size: var(--fs-xs); line-height: 1.5; color: var(--ink-soft); text-wrap: pretty; }
+  .dm-d .i { flex: none; width: 13px; height: 13px; margin-top: 2px; }
+  .dm-d.ok .i { color: var(--ops); }
+  .dm-d.na .i { color: var(--ink-faint); }
+  .dm-f .vz { margin-top: 4px; }
+  .dm-foot { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; }
+  .dm-foot .vz-tv { margin-left: auto; }
+  @media (max-width: 1180px) {
+    .dm-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .dm-f:nth-child(3) { border-right: 0; }
+  }
+</style>
+</head>
+<body data-state="default">
+<a class="skip-link" href="#main">본문으로 건너뛰기</a>
+<div class="app">
+  <aside class="rail" data-nav="ops"></aside>
+  <div class="work">
+    <header class="topbar">
+      <div>
+        <h1>운영 기록</h1>
+        <p class="sub">배포 · 장애 · 운영 메모 · 다음 요구사항 후보 · <span class="path">.agents/docs/ops/</span></p>
+      </div>
+      <div class="top-meta">
+        <div class="seg" data-single role="group" aria-label="기간" id="periodSeg"><button type="button" aria-pressed="false" data-p="d7">7일</button><button type="button" aria-pressed="true" data-p="d30">30일</button><button type="button" aria-pressed="false" data-p="all">전체</button></div>
+      </div>
+    </header>
+
+    <main id="main" class="content">
+      <section class="panel dm" aria-labelledby="dm-title" data-co="4">
+        <div class="panel-head"><h2 id="dm-title">전달 지표</h2><div class="aside"><span id="dmPeriod">최근 30일</span> · 선은 주마다 지난 30일 · 점선 = 기준선(킷 도입 전 90일, git으로 계산) · 다섯 다 낮을수록 좋다</div></div>
+        <div class="dm-grid" id="dmGrid"></div>
+        <div class="panel-foot dm-foot"><span><span class="mono">npx knots-sync metrics</span> · <span class="path">.agents/reports/metrics/delivery-11-23.json</span> · 기준선 <span class="path">.agents/docs/ops/metrics-baseline.json</span></span><div id="dmTbl"></div></div>
+      </section>
+      <div class="og">
+        <section class="panel" aria-labelledby="log-title" data-co="1">
+          <div class="panel-head"><h2 id="log-title">기록</h2><div class="aside">배포 2 · 장애 1 · 메모 1</div></div>
+          <ol class="log">
+            <li><time>11-21</time><span class="dia ops mk"></span><div>
+              <h3>배포 · 데스크톱 기능 맞춤 <span class="key">KNOTS-17</span><span class="tag ops">v3.8.0</span></h3>
+              <dl><dt>승인</dt><dd>정민석 · 11-21 14:02 · <q>야간 배포 확인</q></dd><dt>영향</dt><dd>오류율 변화 없음 · 배포 뒤 24시간 감시 끝</dd></dl></div></li>
+            <li><time>11-18</time><span class="dia mk"></span><div>
+              <h3>장애 · 업로드 큐 적체 42분 <span class="tag solid-gate">SEV-2</span></h3>
+              <p>임시 조각 파일이 디스크를 92%까지 채워 업로드 워커가 멈췄다. 운영자가 <span class="path">tmp/uploads/</span>를 손으로 지워 풀었다.</p>
+              <dl><dt>후속</dt><dd><a href="S03-issue.html">HDRV3D-12 업로드 임시 파일 정리</a> · 요구사항 승인 대기</dd><dt>기록</dt><dd class="path">.agents/docs/ops/2026-11-18-upload-queue.md</dd></dl></div></li>
+            <li><time>11-17</time><span class="dia ops mk"></span><div>
+              <h3>배포 · 업로드 진행률 표시 <span class="key">HDRV3D-09</span><span class="tag ops">v3.7.2</span></h3>
+              <dl><dt>승인</dt><dd>정민석 · 11-17 10:30</dd></dl></div></li>
+            <li><time>11-04</time><span class="dot mk"></span><div>
+              <h3>운영 메모 · 임시 파일 평균 41GB</h3>
+              <p>매주 월요일 손으로 지운다. 지난 4주 평균 41GB, 최대 63GB.</p></div></li>
+          </ol>
+        </section>
+
+        <div class="stack-y">
+          <section class="panel" aria-labelledby="cd-title" data-co="2">
+            <div class="panel-head"><h2 id="cd-title">다음 요구사항 후보</h2><div class="aside">사람이 고른다</div></div>
+            <ul class="cand">
+              <li><span class="t">업로드 디스크 사용량 경보</span><span class="m"><span class="tag gate">장애 11-18 후속</span>운영</span><a class="btn sm" href="S11-intake.html">요구사항으로</a></li>
+              <li><span class="t">결제 실패 재시도 안내</span><span class="m"><span class="tag">VOC 23건</span>INT-7 U-3과 겹침</span><button class="btn sm" type="button">INT-7에 붙이기</button></li>
+              <li><span class="t">녹화 파일 보존 기간 설정</span><span class="m"><span class="tag">운영 메모</span>KNOTS-19 백로그와 같다</span><button class="btn sm" type="button">KNOTS-19 열기</button></li>
+            </ul>
+          </section>
+
+          <section class="panel" aria-labelledby="nr-title" data-co="3">
+            <div class="panel-head"><h2 id="nr-title">새 요구사항</h2></div>
+            <div class="newreq">
+              <p class="small soft">글과 첨부를 받아 Intent 폴더의 <span class="path">intake.md</span>로 남기는 일은 접수 화면에서 한다. 후보에서 "요구사항으로"를 누르면 제목과 출처가 채워진 채로 열린다.</p>
+              <div class="flex"><a class="btn primary" href="S11-intake.html"><svg class="i"><use href="#i-plus"/></svg>새 요구사항 접수</a><span class="xs muted">신규 프로젝트 · 신규 기능 · 기능 변경 · 버그</span></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+<script>
+/* 4 전달 지표(예시 데이터, 14 §3.10 계산). 실제 화면은 GET /api/v1/ops의 delivery(current · baseline · methodMismatch)를 읽는다.
+ * 주마다 지난 30일 값을 다시 계산해 선으로 잇는다. 기간 고르기는 큰 수와 비교 글을 바꾼다. */
+(function () {
+  "use strict";
+  var V = window.HXViz;
+  var WEEKS = ["10-05", "10-12", "10-19", "10-26", "11-02", "11-09", "11-16", "11-23"];
+  var PERIOD = { d7: "최근 7일", d30: "최근 30일", all: "킷 도입 뒤 전체" };
+  var M = [
+    { n: "리드 타임", unit: "일", sub: "접수 → 배포 · 중앙값", t: [4.2, 3.9, 3.8, 3.6, 3.4, 3.2, 3.0, 2.9], base: 4.0, y: 5,
+      p: { d7: [2.6, "배포 1"], d30: [2.9, "이슈 6"], all: [3.4, "이슈 23"] }, f: function (v) { return v.toFixed(1) + "일"; } },
+    { n: "배포 실패율", unit: "%", sub: "실패 · 되돌림 · 7일 안 장애", t: [25, 20, 20, 25, 0, 0, 0, 0], base: 12, y: 30,
+      p: { d7: [0, "배포 1"], d30: [0, "배포 2"], all: [9, "배포 11"] }, f: function (v) { return v + "%"; }, small: true },
+    { n: "복구 시간", unit: "시간", sub: "장애 후속 접수 → 복구 배포 · 중앙값", t: [3.5, 3.5, 3.5, 3.5, null, null, null, null], base: 5.2, y: 6,
+      p: { d7: [null, "장애 0"], d30: [null, "장애 1 · 11-18 복구 배포 전"], all: [3.5, "장애 2 · 1건 복구"] }, f: function (v) { return v.toFixed(1) + "시간"; } },
+    { n: "승인 대기 시간", unit: "시간", sub: "in-review → approved · 중앙값", t: [30, 26, 22, 19, 14, 11, 9, 7.5], base: null, y: 32,
+      p: { d7: [6.1, "승인 9"], d30: [7.5, "승인 31"], all: [13, "승인 84"] }, f: function (v) { return (Math.round(v * 10) / 10) + "시간"; }, mismatch: true },
+    { n: "재작업 비율", unit: "%", sub: "병합 뒤 30일 안 fix 이슈 · 병합 이슈 중", t: [17, 16, 15, 13, 12, 11, 10, 9], base: 18, y: 20,
+      p: { d7: [null, "병합 2 · 30일이 안 지남"], d30: [9, "병합 11"], all: [12, "병합 26"] }, f: function (v) { return v + "%"; } }
+  ];
+  var period = "d30";
+
+  function delta(m, v) {
+    if (m.base === null) return { cls: "na", ic: "help", t: "기준선 없음 · 도입 전에는 승인 기록이 없어 계산할 수 없다" };
+    if (v === null) return { cls: "na", ic: "clock", t: "아직 값 없음 · 기준선 " + m.f(m.base) };
+    var d = m.base - v;
+    var word = m.unit === "%" ? Math.round(d) + "%p 낮다" : m.f(d) + " 짧다";
+    return { cls: "ok", ic: "ok", t: "기준선 " + m.f(m.base) + "보다 " + word + (m.small ? " · 배포 수가 적어 흔들린다" : "") };
+  }
+
+  function draw() {
+    var grid = document.getElementById("dmGrid");
+    grid.textContent = "";
+    document.getElementById("dmPeriod").textContent = PERIOD[period];
+    M.forEach(function (m) {
+      var f = document.createElement("div"); f.className = "dm-f";
+      var nm = document.createElement("p"); nm.className = "dm-n"; nm.textContent = m.n;
+      if (m.mismatch) { var tg = document.createElement("span"); tg.className = "tag line"; tg.textContent = "계산 방법 다름"; nm.appendChild(tg); }
+      f.appendChild(nm);
+      var pv = m.p[period];
+      var v = document.createElement("p"); v.className = "dm-v"; v.textContent = pv[0] === null ? "—" : m.f(pv[0]);
+      var sm = document.createElement("small"); sm.textContent = pv[1]; v.appendChild(sm); f.appendChild(v);
+      var dl = delta(m, pv[0]);
+      var d = document.createElement("p"); d.className = "dm-d " + dl.cls;
+      d.insertAdjacentHTML("afterbegin", '<svg class="i" aria-hidden="true"><use href="#i-' + dl.ic + '"/></svg>');
+      var dt = document.createElement("span"); dt.textContent = dl.t; d.appendChild(dt); f.appendChild(d);
+      var host = document.createElement("div"); host.className = "vz"; f.appendChild(host);
+      grid.appendChild(f);
+      var last = m.t[m.t.length - 1];
+      V.line(host, {
+        h: 80, m: { l: 2, r: 40, t: 18, b: 18 }, values: m.t, y: { min: 0, max: m.y }, floor: true,
+        refs: m.base === null ? [] : [{ v: m.base, label: "기준선 " + m.f(m.base), at: "end" }],
+        xTicks: [[0, WEEKS[0], "start"], [WEEKS.length - 1, WEEKS[WEEKS.length - 1], "end", true]],
+        labels: WEEKS.map(function (w) { return w + "까지 30일"; }),
+        endLabel: last === null ? null : m.f,
+        fmt: function (x) { return m.f(x); }, name: m.n,
+        tip: function (i) {
+          var rows = [{ v: m.t[i] === null ? "—" : m.f(m.t[i]), n: m.n + (m.t[i] === null ? " · 그 30일 복구 배포 없음" : ""), key: "ink" }];
+          if (m.base !== null) rows.push({ v: m.f(m.base), n: "기준선", key: "ref" });
+          return rows;
+        },
+        label: m.n + " 8주 추이, " + m.t.map(function (x) { return x === null ? "없음" : m.f(x); }).join(", ") + (m.base === null ? ", 기준선 없음" : ", 기준선 " + m.f(m.base)) + ". 왼쪽 오른쪽 화살표로 주마다 본다."
+      });
+    });
+    var head = ["주(지난 30일)"].concat(M.map(function (m) { return m.n; }));
+    var rows = WEEKS.map(function (w, i) { return [w].concat(M.map(function (m) { return m.t[i] === null ? "—" : m.f(m.t[i]); })); });
+    rows.push(["기준선"].concat(M.map(function (m) { return m.base === null ? "없음" : m.f(m.base); })));
+    V.table(document.getElementById("dmTbl"), "전달 지표 8주", head, rows, [1, 2, 3, 4, 5]);
+  }
+  document.addEventListener("hx:ready", function () {
+    draw();
+    document.getElementById("periodSeg").addEventListener("segchange", function (e) { period = e.detail.getAttribute("data-p"); draw(); });
+  });
+  V.onResize(draw);
+})();
+</script>
+</body>
+</html>

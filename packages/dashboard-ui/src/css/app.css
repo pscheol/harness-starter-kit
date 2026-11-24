@@ -1,0 +1,340 @@
+/* astryx 컴포넌트에 없는 그림(게이트 레일 · 차트 · 문서 본문 · 흐름 캔버스)만 다룬다. 색 · 간격 · 글자는 모두 테마 토큰이다. */
+
+#page-title:focus {
+  outline: none;
+}
+
+/* 흐름 보기(packages/flow-view/src/flow.css)가 쓰는 옛 이름의 변수를 astryx 토큰으로 이어 준다 */
+.react-flow {
+  --raised: var(--color-background-card);
+  --sunken: var(--color-background-muted);
+  --ink: var(--color-text-primary);
+  --ink-soft: var(--color-text-secondary);
+  --ink-faint: var(--color-text-secondary);
+  --rule-strong: var(--color-border);
+  --design: var(--hk-design);
+  --build: var(--hk-build);
+  --ops: var(--hk-ops);
+  --gate: var(--hk-gate);
+  --design-wash: var(--color-info-muted);
+  --build-wash: var(--color-warning-muted);
+  --ops-wash: var(--color-success-muted);
+  --gate-wash: var(--color-error-muted);
+  --design-ink: var(--color-text-info);
+  --build-ink: var(--color-text-warning);
+  --ops-ink: var(--color-text-success);
+  --gate-ink: var(--color-text-error);
+  --font-text: var(--font-family-body);
+  --font-code: var(--font-family-code);
+}
+
+.hk-gate-rail {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  flex: none;
+}
+
+.hk-gate-label {
+  font-family: var(--font-family-body);
+  font-size: var(--text-supporting-size);
+  fill: var(--color-text-secondary);
+}
+
+.hk-gate-label-wait {
+  fill: var(--hk-gate);
+  font-weight: 600;
+}
+
+.hk-chart {
+  width: 100%;
+  min-width: 0;
+}
+
+.hk-chart svg {
+  display: block;
+  max-width: 100%;
+}
+
+.hk-chart-axis {
+  font-family: var(--font-family-code);
+  font-size: var(--text-supporting-size);
+  font-variant-numeric: tabular-nums;
+}
+
+.hk-spark,
+.hk-dots {
+  display: block;
+  flex: none;
+  max-width: 100%;
+}
+
+.hk-hbar {
+  display: grid;
+  grid-template-columns: minmax(5rem, 11rem) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--spacing-3);
+}
+
+.hk-hbar-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.hk-hbar-track,
+.hk-segbar {
+  display: block;
+  width: 100%;
+  height: var(--spacing-2);
+}
+
+/* 문서 본문(서버가 만든 Markdown HTML) */
+.hk-md {
+  color: var(--color-text-primary);
+  font-size: var(--text-body-size);
+  line-height: var(--text-body-leading);
+  overflow-wrap: anywhere;
+  max-width: 72ch;
+}
+
+.hk-md:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+.hk-md > * + * {
+  margin-block-start: var(--spacing-3);
+}
+
+.hk-md h1,
+.hk-md h2,
+.hk-md h3,
+.hk-md h4 {
+  font-family: var(--font-family-heading);
+  line-height: 1.3;
+  margin-block-start: var(--spacing-5);
+}
+
+.hk-md ul,
+.hk-md ol {
+  padding-inline-start: var(--spacing-5);
+}
+
+.hk-md ul {
+  list-style: disc;
+}
+
+.hk-md ol {
+  list-style: decimal;
+}
+
+.hk-md li + li {
+  margin-block-start: var(--spacing-1);
+}
+
+.hk-md code {
+  font-family: var(--font-family-code);
+  font-size: var(--text-code-size);
+  background: var(--color-background-muted);
+  border-radius: var(--radius-inner);
+  padding-inline: var(--spacing-1);
+}
+
+.hk-md pre {
+  overflow-x: auto;
+  background: var(--color-background-muted);
+  border-radius: var(--radius-element);
+  padding: var(--spacing-3);
+}
+
+.hk-md pre code {
+  background: none;
+  padding: 0;
+}
+
+.hk-md blockquote {
+  border-inline-start: 3px solid var(--color-border);
+  padding-inline-start: var(--spacing-3);
+  color: var(--color-text-secondary);
+}
+
+.hk-md table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.hk-md th,
+.hk-md td {
+  border: 1px solid var(--color-border);
+  padding: var(--spacing-1) var(--spacing-2);
+  text-align: start;
+}
+
+/* 흐름(S12): 캔버스 + 곁 칸. 좁으면 한 줄씩 쌓는다. */
+.hk-flow-main {
+  flex: 1 1 36rem;
+  min-width: 0;
+}
+
+.hk-flow-side {
+  flex: 1 1 22rem;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.hk-flow-canvas {
+  height: 28rem;
+  min-height: 20rem;
+  width: 100%;
+  border-block-end: 1px solid var(--color-border);
+}
+
+.hk-notice-body {
+  flex: 1 1 16rem;
+  min-width: 0;
+}
+
+.hk-form {
+  max-width: 40rem;
+  width: 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 색 설정(사용자 결정 2026-11-24): html[data-kns-palette] 가 메뉴 · 바탕 색을 정한다. 기본은 쿨 그레이(lib/palette.ts).
+   카드는 늘 흰색이다. 짙은 메뉴(navy · charcoal)는 메뉴 글자색도 바꾸고, 배지와 아래 카드는 그대로 둔다. */
+:root {
+  --kns-nav: #ffffff;
+  --kns-canvas: #f1f3f6;
+  --kns-nav-border: #e2e6ec;
+  --kns-nav-sel: #e8edff;
+  --kns-nav-sel-text: #2b3fbf;
+  --kns-nav-text: #1f2937;
+  --kns-nav-strong: #111827;
+  --kns-nav-muted: #6b7280;
+}
+
+:root[data-kns-palette="warm-gray"] {
+  --kns-nav: #ffffff;
+  --kns-canvas: #f3f1f0;
+  --kns-nav-border: #e7e3e1;
+  --kns-nav-sel: rgb(0 0 0 / 6%);
+  --kns-nav-sel-text: #000000;
+  --kns-nav-text: #1c1917;
+  --kns-nav-strong: #0c0a09;
+  --kns-nav-muted: #78716c;
+}
+
+:root[data-kns-palette="soft"] {
+  --kns-nav: #f6f6f7;
+  --kns-canvas: #ffffff;
+  --kns-nav-border: #e9e9ec;
+  --kns-nav-sel: #e7e7ea;
+  --kns-nav-sel-text: #000000;
+  --kns-nav-text: #202124;
+  --kns-nav-strong: #000000;
+  --kns-nav-muted: #77777e;
+}
+
+:root[data-kns-palette="navy"] {
+  --kns-nav: #14213d;
+  --kns-canvas: #f3f4f7;
+  --kns-nav-border: #14213d;
+  --kns-nav-sel: #2a3c66;
+  --kns-nav-sel-text: #ffffff;
+  --kns-nav-text: #c9d1e3;
+  --kns-nav-strong: #ffffff;
+  --kns-nav-muted: #8f9bb5;
+}
+
+:root[data-kns-palette="charcoal"] {
+  --kns-nav: #1c1c1e;
+  --kns-canvas: #f7f6f4;
+  --kns-nav-border: #1c1c1e;
+  --kns-nav-sel: #323236;
+  --kns-nav-sel-text: #ffffff;
+  --kns-nav-text: #d6d6db;
+  --kns-nav-strong: #ffffff;
+  --kns-nav-muted: #96969d;
+}
+
+.astryx-app-shell-sidenav,
+.astryx-side-nav {
+  background: var(--kns-nav);
+}
+
+.astryx-app-shell-sidenav {
+  border-inline-end: 1px solid var(--kns-nav-border);
+}
+
+.astryx-app-shell-sidenav + div,
+.astryx-app-shell-sidenav + div .astryx-layout-content {
+  background: var(--kns-canvas);
+}
+
+.astryx-side-nav-heading,
+.astryx-side-nav-heading * {
+  color: var(--kns-nav-strong);
+}
+
+.astryx-side-nav-heading span span:not(:first-child) {
+  color: var(--kns-nav-muted);
+}
+
+.astryx-side-nav-section span:not(.astryx-side-nav-item *),
+.astryx-side-nav .astryx-text:not(.astryx-card *),
+.astryx-side-nav svg:not(.astryx-card *, .astryx-side-nav-item *, .astryx-side-nav-heading *) {
+  color: var(--kns-nav-muted);
+}
+
+.astryx-side-nav-item,
+.astryx-side-nav-item :not(.astryx-badge, .astryx-badge *) {
+  color: var(--kns-nav-text);
+}
+
+.astryx-side-nav-item:hover:not([aria-current="page"]) {
+  background: color-mix(in oklab, var(--kns-nav-sel) 55%, transparent);
+}
+
+.astryx-side-nav-item[aria-current="page"] {
+  background: var(--kns-nav-sel);
+}
+
+.astryx-side-nav-item[aria-current="page"],
+.astryx-side-nav-item[aria-current="page"] :not(.astryx-badge, .astryx-badge *) {
+  color: var(--kns-nav-sel-text);
+}
+
+/* 색 설정 메뉴의 견본(메뉴 색 · 바탕 색) */
+.kns-swatch {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.kns-swatch i {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgb(0 0 0 / 15%);
+}
+
+.kns-swatch[data-p="cool-gray"] i:first-child { background: #ffffff; }
+.kns-swatch[data-p="cool-gray"] i:last-child { background: #f1f3f6; }
+.kns-swatch[data-p="warm-gray"] i:first-child { background: #ffffff; }
+.kns-swatch[data-p="warm-gray"] i:last-child { background: #f3f1f0; }
+.kns-swatch[data-p="soft"] i:first-child { background: #f6f6f7; }
+.kns-swatch[data-p="soft"] i:last-child { background: #ffffff; }
+.kns-swatch[data-p="navy"] i:first-child { background: #14213d; }
+.kns-swatch[data-p="navy"] i:last-child { background: #f3f4f7; }
+.kns-swatch[data-p="charcoal"] i:first-child { background: #1c1c1e; }
+.kns-swatch[data-p="charcoal"] i:last-child { background: #f7f6f4; }

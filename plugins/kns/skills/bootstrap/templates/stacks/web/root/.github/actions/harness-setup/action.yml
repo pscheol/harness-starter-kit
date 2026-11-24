@@ -1,0 +1,26 @@
+# HARNESS STARTER KIT ({{PROJECT_NAME}}) — CI 실행 환경 준비(Web). .github/workflows/harness-verify.yml 이 부른다.
+#
+# 검증은 하지 않는다(검증은 scripts/verify.sh 한 곳). 런타임 · 의존성 · 분석기 설치만 둔다.
+# 분석기(.agents/analyzers.json)는 킷이 설치하지 않는다. required 분석기(gitleaks · semgrep · osv-scanner)가 없으면 CI 검증이 실패한다.
+# 설치 예(팀이 버전을 고정해 아래 steps 에 더한다):
+#   - shell: bash
+#     run: pipx install semgrep==<판>
+#   - shell: bash
+#     run: go install github.com/google/osv-scanner/v2/cmd/osv-scanner@<판>
+#   gitleaks 는 릴리스 바이너리를 받아 PATH 에 둔다.
+name: harness-setup
+description: 하네스 검증 실행 환경(Web)
+runs:
+  using: composite
+  steps:
+    # 패키지 매니저 — 프로젝트가 쓰는 것 하나만 남긴다(락파일과 맞아야 한다).
+    - uses: pnpm/action-setup@v4
+    # Node — .agents/rules/tech.md 기준.
+    - uses: actions/setup-node@v4
+      with:
+        node-version: "22"
+        cache: pnpm
+    # 락파일 기준 재현 설치.
+    - name: 의존성 설치(frozen)
+      shell: bash
+      run: pnpm install --frozen-lockfile

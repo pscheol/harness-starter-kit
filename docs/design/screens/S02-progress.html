@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S02 진행 · knots-sync 관리 페이지</title>
+<link rel="stylesheet" href="assets/app.css">
+<style>
+  .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+  .toolbar .lbl { font-size: var(--fs-s); color: var(--ink-faint); font-weight: 600; }
+  .toolbar select { width: auto; min-width: 140px; }
+  .legend { display: flex; gap: 14px; margin-left: auto; font-size: var(--fs-xs); color: var(--ink-faint); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+
+  .board { --cols: 8; min-width: 0; }
+  .b-head, .b-lane-cells { display: grid; grid-template-columns: repeat(var(--cols), minmax(0, 1fr)); gap: 8px; }
+  .b-head { padding: 4px 0 8px; }
+  .col-h { position: relative; padding: 12px 8px 0 2px; }
+  .col-h .track { position: absolute; left: -8px; right: 0; top: 4px; height: 3px; background: var(--rule); }
+  .col-h:first-child .track { left: 0; }
+  .col-h.design .track { background: var(--design); }
+  .col-h.build .track { background: var(--build); }
+  .col-h.ops .track { background: var(--ops); }
+  .col-h h2 { display: flex; align-items: baseline; gap: 6px; margin-top: 2px; font-size: var(--fs-s); font-weight: 700; }
+  .col-h h2 .n { color: var(--ink-faint); font-weight: 600; }
+  .col-h .gate {
+    position: absolute; left: -9px; top: -1px; z-index: 1;
+    width: 13px; height: 13px; transform: translateX(-50%) rotate(45deg);
+    background: var(--raised); border: 2px solid var(--gate); border-radius: 2px;
+  }
+  .col-h .gate.wait { background: var(--gate); }
+  .col-h .gname { display: block; min-height: 30px; margin-top: 1px; font-size: var(--fs-xs); line-height: 15px; color: var(--ink-faint); }
+  .col-h .gname b { color: var(--gate-ink); font-weight: 700; }
+
+  .b-lane { margin-top: 6px; }
+  .b-lane > h2 {
+    display: flex; align-items: baseline; gap: 10px;
+    padding: 6px 2px 5px; font-size: var(--fs-m); font-weight: 700;
+    border-top: 1px solid var(--rule);
+  }
+  .b-lane > h2 .key { font-size: var(--fs-xs); color: var(--design-ink); }
+  .b-lane > h2 .meta { font-size: var(--fs-xs); color: var(--ink-faint); font-weight: 500; }
+  .b-lane > h2 a { margin-left: auto; font-size: var(--fs-xs); font-weight: 600; }
+  .cell { display: grid; gap: 6px; align-content: start; min-height: 64px; padding: 4px 0 4px 6px; box-shadow: inset 1px 0 0 var(--rule-soft); }
+  .cell.none { background: rgb(237 241 246 / 0.35); }
+
+  .card {
+    display: grid; gap: 4px;
+    padding: 7px 8px 8px;
+    background: var(--raised);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+  }
+  .card:hover { border-color: var(--rule-strong); box-shadow: var(--shadow-lift); }
+  .card[aria-pressed="true"] { border-color: var(--ink); outline: 1px solid var(--ink); outline-offset: -2px; }
+  .card .top { display: flex; align-items: center; gap: 6px; }
+  .card .top .u { margin-left: auto; font-family: var(--font-code); font-size: 11px; color: var(--ink-faint); }
+  .card .t { font-size: var(--fs-s); font-weight: 600; line-height: 1.35; }
+  .card .row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: var(--fs-xs); color: var(--ink-faint); }
+  .card .wait { display: flex; align-items: flex-start; gap: 6px; font-size: 11px; font-weight: 700; color: var(--gate-ink); }
+  .card .wait .dia { width: 7px; height: 7px; margin-top: 5px; }
+  .card .harness { font-size: var(--fs-xs); }
+  .card .harness b { width: 14px; height: 14px; font-size: 9px; }
+  .card .tag { font-size: 11px; line-height: 16px; padding: 0 5px; }
+  /* 계약 Unit: 점선 테두리(흐름 보기 S12와 같은 표지) */
+  .card.contract { border: 1.5px dashed var(--ink-soft); }
+  .chip-contract { display: inline-flex; align-items: center; padding: 0 5px; border: 1px dashed var(--ink-soft); border-radius: var(--r-chip); font-size: 11px; font-weight: 700; line-height: 16px; color: var(--ink); }
+
+  .detail { margin-top: 12px; }
+  .detail .meta { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; border-top: 1px solid var(--rule-soft); border-bottom: 1px solid var(--rule-soft); }
+  .detail .meta div { padding: 9px 16px; font-size: var(--fs-s); border-right: 1px solid var(--rule-soft); }
+  .detail .meta div:last-child { border-right: 0; }
+  .detail .meta dt { font-size: var(--fs-xs); color: var(--ink-faint); margin-bottom: 2px; }
+  .detail .meta dd { margin: 0; overflow-wrap: anywhere; }
+  .d-line { display: flex; flex-wrap: wrap; gap: 4px 18px; padding: 0 16px 10px; font-size: var(--fs-s); color: var(--ink-soft); }
+  .detail .tbl td { padding-top: 7px; padding-bottom: 7px; }
+  .bolt-st { display: inline-flex; align-items: center; gap: 6px; }
+
+  /* 8 Intent 줄의 남은 Bolt(14일 스파크라인) */
+  .b-lane > h2 .burn { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; font-size: var(--fs-xs); font-weight: 500; color: var(--ink-faint); }
+  .b-lane > h2 .burn b { color: var(--ink); font-weight: 700; }
+  .b-lane > h2 .burn .vz { width: 128px; }
+  .b-lane > h2 .burn + a { margin-left: 14px; }
+  .co-on .b-lane > h2 .burn { padding-left: 14px; }
+
+  /* 9 Intent 진행: 남은 Bolt 추이 + Unit별 Bolt */
+  .d-grid { display: grid; grid-template-columns: minmax(0, 1fr) 400px; align-items: start; }
+  .i-prog { padding: 10px 16px 12px; border-left: 1px solid var(--rule-soft); min-width: 0; }
+  .i-prog h3 { display: flex; align-items: baseline; gap: 8px; font-size: var(--fs-s); font-weight: 700; }
+  .i-prog h3 .key { font-size: var(--fs-xs); color: var(--design-ink); }
+  .i-prog h3 .aside { margin-left: auto; font-size: var(--fs-xs); font-weight: 500; color: var(--ink-faint); }
+  .i-prog .sum { margin-top: 2px; font-size: var(--fs-xs); color: var(--ink-soft); }
+  .i-prog .sum b { color: var(--ink); font-size: var(--fs-m); }
+  .u-bolts { list-style: none; display: grid; gap: 2px; margin-top: 6px; padding-top: 6px; border-top: 1px solid var(--rule-soft); }
+  .u-bolts li { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto 64px; gap: 8px; align-items: center; min-height: 24px; font-size: var(--fs-xs); }
+  .u-bolts .t { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+  .u-bolts .u { font-family: var(--font-code); color: var(--ink-faint); }
+  .u-bolts .n { color: var(--ink-soft); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .u-bolts .n b { color: var(--ink); }
+  .u-foot { margin-top: 6px; font-size: var(--fs-xs); color: var(--ink-faint); text-wrap: pretty; }
+  @media (max-width: 1180px) {
+    .d-grid { grid-template-columns: minmax(0, 1fr); }
+    .i-prog { border-left: 0; border-top: 1px solid var(--rule-soft); }
+    .b-lane > h2 .burn .vz { width: 96px; }
+  }
+</style>
+</head>
+<body data-state="default">
+<a class="skip-link" href="#main">본문으로 건너뛰기</a>
+<div class="app">
+  <aside class="rail" data-nav="progress"></aside>
+  <div class="work">
+    <header class="topbar">
+      <div>
+        <h1>진행</h1>
+        <p class="sub">Intent → Unit → 이슈 · 상태표는 Jira와 같다 · jira-workflow 켜짐, 10:40 동기화</p>
+      </div>
+      <div class="top-meta">
+        <div class="seg view-seg" role="group" aria-label="보기" data-co="7"><a aria-current="page">보드</a><a href="S12-workflow.html">흐름</a></div>
+        <label class="search"><svg class="i"><use href="#i-search"/></svg><span class="sr-only">이슈 키나 문서 찾기</span><input type="text" placeholder="이슈 키 · 문서 찾기"><kbd>/</kbd></label>
+      </div>
+    </header>
+
+    <main id="main" class="content">
+      <div class="toolbar" data-co="1">
+        <span class="lbl" id="group-lbl">묶기</span>
+        <div class="seg" data-single role="group" aria-labelledby="group-lbl" id="groupSeg">
+          <button type="button" aria-pressed="true" data-group="intent">Intent별</button>
+          <button type="button" aria-pressed="false" data-group="area">영역(area)별</button>
+        </div>
+        <label class="lbl" for="hsel">하네스</label>
+        <select id="hsel"><option>모두</option><option>Claude Code</option><option>Codex</option><option>Kiro</option></select>
+        <button class="btn sm" type="button" id="waitOnly" aria-pressed="false"><span class="dia" style="width:7px;height:7px"></span>사람 승인 대기만</button>
+        <div class="legend" aria-label="범례">
+          <span><span class="dia" style="background:#fff;border:2px solid var(--gate)"></span>사람이 승인하는 자리</span>
+          <span><span class="dia"></span>지금 기다림</span>
+          <span><span class="bolts"><i class="done"></i><i></i></span>Bolt 진행</span>
+        </div>
+      </div>
+
+      <div class="board" id="board" aria-label="진행 보드">
+        <div class="b-head" id="bhead" data-co="2"></div>
+        <div id="lanes"></div>
+      </div>
+
+      <section class="panel detail" aria-labelledby="d-title" data-co="5">
+        <div class="panel-head">
+          <span class="key" id="d-key">HDRV3D-21</span>
+          <h2 id="d-title">결제수단 등록</h2>
+          <span class="tag build">구현 중</span>
+          <span data-rail="intent:ok plans:ok requirements:ok design:ok tasks:ok mr:now"></span>
+          <div class="aside"><a class="btn sm" href="S03-issue.html">문서 열기</a><a class="btn sm" href="S06-verify.html">검증 보기</a></div>
+        </div>
+        <p class="d-line">
+          <span>INT-7 결제 개편 · U-1</span>
+          <span><span class="harness"><b class="cc">C</b></span> <span class="mono">api-worker</span> · 구현</span>
+          <span class="path">knots-platform.worktrees/HDRV3D-21-payment-methods</span>
+          <span class="path">feat/HDRV3D-21-payment-methods · MR 아직 없음</span>
+          <span>Jira <a href="#">HDRV3D-21 <svg class="i s"><use href="#i-ext"/></svg></a> 구현 중</span>
+        </p>
+        <div class="d-grid">
+        <table class="tbl" data-co="6">
+          <caption class="sr-only">Bolt 진행</caption>
+          <thead><tr><th>Bolt</th><th>작업 묶음</th><th>상태</th><th>마지막 changed 검증</th><th class="r">걸린 시간</th><th>끝난 때</th></tr></thead>
+          <tbody>
+            <tr><td class="mono">1</td><td>결제수단 모델 · 저장소</td><td><span class="bolt-st"><svg class="i s" style="color:var(--ops)"><use href="#i-ok"/></svg>completed</span></td><td>통과</td><td class="r">1분 32초</td><td class="muted">11-21 17:05</td></tr>
+            <tr><td class="mono">2</td><td>카드 등록 API · 검증 규칙</td><td><span class="bolt-st"><svg class="i s" style="color:var(--ops)"><use href="#i-ok"/></svg>completed</span></td><td>통과</td><td class="r">1분 48초</td><td class="muted">11-22 16:40</td></tr>
+            <tr><td class="mono">3</td><td>간편결제 연동(토스페이 · 카카오페이)</td><td><span class="bolt-st"><svg class="i s" style="color:var(--build-ink)"><use href="#i-clock"/></svg>active</span></td><td><span class="tag solid-gate">실패 · gitleaks CRITICAL 1</span></td><td class="r">2분 14초</td><td class="muted">10:44 실행</td></tr>
+            <tr><td class="mono">4</td><td>결제수단 화면 연결 · E2E</td><td class="muted">대기</td><td class="muted">—</td><td class="r muted">—</td><td class="muted">—</td></tr>
+          </tbody>
+        </table>
+        <div class="i-prog" data-co="9" id="iProg">
+          <h3><span id="ip-name">결제 개편</span> <span class="key" id="ip-key">INT-7</span><span class="aside">남은 Bolt · 14일</span></h3>
+          <p class="sum" id="ip-sum"></p>
+          <div class="vz" id="ip-chart"></div>
+          <ul class="u-bolts" id="ip-units" aria-label="Unit별 Bolt"></ul>
+          <p class="u-foot">tasks가 없는 Unit은 units.json의 추정 Bolt 수(빈 칸)로 센다. tasks가 승인되면 실제 Bolt 수로 바뀌어 범위가 늘거나 준다.</p>
+          <div id="ip-tbl"></div>
+        </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+<script>
+(function () {
+  var COLS = [
+    { n: "백로그", s: "" },
+    { n: "요구사항 작성", s: "design", g: "Intent·Unit 승인", who: "po" },
+    { n: "요구사항 승인 대기", s: "design" },
+    { n: "설계", s: "design", g: "requirements 승인", who: "po" },
+    { n: "구현 중", s: "build", g: "design · tasks 승인", who: "dev" },
+    { n: "검증", s: "build" },
+    { n: "완료", s: "ops", g: "MR · 완료 승인", who: "dev · qa" },
+    { n: "배포됨", s: "ops", g: "배포 승인", who: "누구나" }
+  ];
+  /* 기다리는 게이트: 그 칸 다음 경계 */
+  var CARDS = [
+    { key: "HDRV3D-23", t: "결제 실패 알림", intent: "INT-7", u: "U-3", area: "notify", col: 0, note: "Q5 답 대기" },
+    { key: "KNOTS-19", t: "로그 보존 설정", area: "recording", col: 0, kit: true },
+    { key: "HDRV3D-13", t: "업로드 감사 로그", intent: "INT-3", u: "U-3", area: "upload", col: 1, s: ["design-desk", "cc", "설계"], note: "질문 1 남음" },
+    { key: "HDRV3D-12", t: "업로드 임시 파일 정리", intent: "INT-3", u: "U-2", area: "upload", col: 2, s: ["design-desk", "cc", "설계"], wait: "requirements · po", gateAt: 3 },
+    { key: "HDRV3D-24", t: "API 결제 이벤트", intent: "INT-7", u: "U-4", area: "contract", col: 3, contract: true, note: "design 승인됨 · 다음 tasks" },
+    { key: "HDRV3D-22", t: "정산 주기와 지급", intent: "INT-7", u: "U-2", area: "settlement", col: 3, wait: "design · dev", gateAt: 4 },
+    { key: "HDRV3D-21", t: "결제수단 등록", intent: "INT-7", u: "U-1", area: "payment", col: 4, s: ["api-worker", "cc", "구현"], bolts: [2, 4], bad: "CRITICAL 1" },
+    { key: "KNOTS-18", t: "녹화 품질 저하 수정", area: "recording", col: 5, kit: true, s: ["review-codex", "cx", "리뷰"], mr: "MR !231", wait: "MR · dev", gateAt: 6, bad: "HIGH 1" },
+    { key: "HDRV3D-09", t: "업로드 진행률 표시", intent: "INT-3", u: "U-1", area: "upload", col: 7, note: "11-17 배포" },
+    { key: "KNOTS-17", t: "데스크톱 기능 맞춤", area: "desktop", col: 7, kit: true, note: "11-20 배포" }
+  ];
+  var INTENTS = [
+    { id: "INT-7", n: "결제 개편", meta: "Unit 4 · 계약 1 · AI-DLC 꺼짐(킷 설계)" },
+    { id: "INT-3", n: "업로드 정리", meta: "Unit 3 · 1개 배포됨" },
+    { id: null, n: "Intent 없음", meta: "Jira 연결 전 킷 키 · Unit 단독" }
+  ];
+  var AREAS = [
+    { id: "payment", n: "payment" }, { id: "settlement", n: "settlement" }, { id: "notify", n: "notify" }, { id: "contract", n: "contract" },
+    { id: "upload", n: "upload" }, { id: "recording", n: "recording" }, { id: "desktop", n: "desktop" }
+  ];
+  var HN = { cc: ["C", "Claude Code"], cx: ["X", "Codex"], kr: ["K", "Kiro"] };
+  /* 남은 Bolt(예시). 실제 화면은 날마다 tasks.md Bolt 표의 completed 수와 units.json 추정 Bolt 수로 다시 센다.
+   * S12 흐름 판(flow-src/data.js BURN)과 같은 값이다. */
+  var BURN = {
+    "INT-7": {
+      left: [10, 10, 10, 10, 10, 10, 10, 11, 11, 11, 11, 10, 9, 9],
+      notes: { 7: "범위 +1 · U-1 tasks 초안 Bolt 4개", 11: "Bolt 1 끝 · HDRV3D-21", 12: "Bolt 2 끝 · HDRV3D-21" },
+      ev: { i: 7, label: "범위 +1" },
+      units: [
+        { u: "U-4", k: "API 결제 이벤트", done: 0, all: 2, est: true },
+        { u: "U-1", k: "결제수단 등록", done: 2, all: 4, now: true },
+        { u: "U-2", k: "정산 주기와 지급", done: 0, all: 3, est: true },
+        { u: "U-3", k: "결제 실패 알림", done: 0, all: 2, est: true }
+      ]
+    },
+    "INT-3": {
+      left: [5, 5, 4, 4, 3, 3, 2, 2, 4, 4, 4, 4, 4, 4],
+      notes: { 2: "Bolt 끝 · HDRV3D-09", 4: "Bolt 끝 · HDRV3D-09", 6: "Bolt 끝 · HDRV3D-09", 8: "범위 +2 · 장애 후속 HDRV3D-12" },
+      ev: { i: 8, label: "범위 +2" },
+      units: [
+        { u: "U-1", k: "업로드 진행률 표시", done: 3, all: 3 },
+        { u: "U-2", k: "업로드 임시 파일 정리", done: 0, all: 2, est: true },
+        { u: "U-3", k: "업로드 감사 로그", done: 0, all: 2, est: true }
+      ]
+    }
+  };
+  var V = window.HXViz;
+  var DAYS = V.days(11, 23, 14);
+  function dname(d) { return d.m + "월 " + d.d + "일 " + d.w; }
+  function totals(b) {
+    var all = 0, done = 0;
+    b.units.forEach(function (u) { all += u.all; done += u.done; });
+    var fin = b.units.filter(function (u) { return u.done === u.all; }).length;
+    return { all: all, done: done, fin: fin };
+  }
+  function boltCells(u) {
+    var h = "";
+    for (var i = 0; i < u.all; i++) {
+      var c = i < u.done ? "done" : (u.now && i === u.done ? "now" : (u.est ? "est" : ""));
+      h += "<i" + (c ? ' class="' + c + '"' : "") + "></i>";
+    }
+    return h;
+  }
+  /* 8 Intent 줄 스파크라인 */
+  function drawLaneBurns() {
+    document.querySelectorAll(".burn .vz").forEach(function (host) {
+      var id = host.getAttribute("data-intent"), b = BURN[id];
+      V.line(host, {
+        h: 24, m: { l: 2, r: 6, t: 4, b: 4 }, values: b.left, y: { min: 0, max: 12 },
+        labels: DAYS.map(dname), fmt: function (v) { return "남은 Bolt " + v; },
+        label: id + " 남은 Bolt 14일, " + DAYS.map(function (d, i) { return d.m + "월 " + d.d + "일 " + b.left[i]; }).join(", ") + ". 왼쪽 오른쪽 화살표로 날마다 본다."
+      });
+    });
+  }
+  /* 9 선택한 이슈의 Intent 진행 */
+  function drawProg(intentId, name) {
+    var box = document.getElementById("iProg");
+    var b = BURN[intentId];
+    box.hidden = !b;
+    if (!b) return;
+    var t = totals(b);
+    document.getElementById("ip-name").textContent = name;
+    document.getElementById("ip-key").textContent = intentId;
+    var sum = document.getElementById("ip-sum");
+    sum.textContent = "";
+    var bb = document.createElement("b"); bb.textContent = String(t.all - t.done); sum.appendChild(bb);
+    sum.appendChild(document.createTextNode(" / " + t.all + " Bolt 남음 · 끝난 Unit " + t.fin + "/" + b.units.length + " · 14일 전 " + b.left[0]));
+    var last = b.left.length - 1;
+    V.line(document.getElementById("ip-chart"), {
+      h: 124, m: { l: 24, r: 26, t: 16, b: 20 }, values: b.left, step: true,
+      y: { min: 0, max: 12, ticks: [0, 4, 8, 12] },
+      labels: DAYS.map(dname),
+      xTicks: [[0, DAYS[0].m + "-" + DAYS[0].d, "start"], [7, DAYS[7].m + "-" + DAYS[7].d], [last, "오늘", "end", true]],
+      events: [b.ev],
+      endLabel: function (v) { return String(v); },
+      tip: function (i) {
+        var rows = [{ v: String(b.left[i]), n: "남은 Bolt", key: "ink" }];
+        if (b.notes[i]) rows.push({ v: "", n: b.notes[i], sub: true });
+        return rows;
+      },
+      label: intentId + " 남은 Bolt 14일 추이: " + b.left[0] + "에서 오늘 " + b.left[last] + ". " + b.ev.label + " " + DAYS[b.ev.i].m + "월 " + DAYS[b.ev.i].d + "일. 왼쪽 오른쪽 화살표로 날마다 본다."
+    });
+    document.getElementById("ip-units").innerHTML = b.units.map(function (u) {
+      var lbl = u.u + " " + u.k + " Bolt " + u.done + "/" + u.all + (u.est ? " 추정" : "");
+      return '<li><span class="u">' + u.u + '</span><span class="t">' + u.k + '</span><span class="bolts" role="img" aria-label="' + lbl + '">' + boltCells(u) +
+        '</span><span class="n"><b>' + u.done + "</b>/" + u.all + (u.est ? " 추정" : "") + "</span></li>";
+    }).join("");
+    V.table(document.getElementById("ip-tbl"), intentId + " 남은 Bolt", ["날", "남은 Bolt", "일"],
+      DAYS.map(function (d, i) { return [dname(d), String(b.left[i]), b.notes[i] || ""]; }), [1]);
+  }
+  var group = "intent", waitOnly = false, selected = "HDRV3D-21";
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+  function head() {
+    var waiting = {};
+    CARDS.forEach(function (c) { if (c.gateAt) waiting[c.gateAt] = (waiting[c.gateAt] || 0) + 1; });
+    document.getElementById("bhead").innerHTML = COLS.map(function (c, i) {
+      var n = CARDS.filter(function (x) { return x.col === i; }).length;
+      var g = c.g ? '<span class="gate' + (waiting[i] ? " wait" : "") + '" title="' + esc(c.g) + '"></span>' : "";
+      var gname = c.g ? '<span class="gname">' + esc(c.g) + "<br>" + c.who + (waiting[i] ? " · <b>" + waiting[i] + "건 대기</b>" : "") + "</span>" : '<span class="gname"></span>';
+      return '<div class="col-h ' + c.s + '"><span class="track"></span>' + g + gname + "<h2>" + c.n + ' <span class="n">' + n + "</span></h2></div>";
+    }).join("");
+  }
+
+  function card(c) {
+    if (waitOnly && !c.wait) return "";
+    var h = '<article class="card' + (c.contract ? " contract" : "") + '" tabindex="0" role="button" aria-pressed="' + (c.key === selected ? "true" : "false") + '" data-key="' + c.key + '">';
+    h += '<div class="top"><span class="key">' + c.key + "</span>" + (c.kit ? '<span class="tag line" title="킷이 만든 키">킷 키</span>' : "") + (c.u ? '<span class="u">' + c.u + "</span>" : "") + "</div>";
+    h += '<div class="t">' + esc(c.t) + "</div>";
+    if (c.wait) h += '<div class="wait"><span class="dia"></span><span>' + esc(c.wait) + " 승인 대기</span></div>";
+    if (c.bolts) {
+      var b = "";
+      for (var i = 0; i < c.bolts[1]; i++) b += "<i" + (i < c.bolts[0] ? ' class="done"' : i === c.bolts[0] ? ' class="now"' : "") + "></i>";
+      h += '<div class="row"><span class="bolts" aria-label="Bolt ' + c.bolts[1] + "개 중 " + c.bolts[0] + '개 끝">' + b + "</span>Bolt " + c.bolts[0] + "/" + c.bolts[1] + "</div>";
+    }
+    var row = [];
+    if (c.s) row.push('<span class="harness"><b class="' + c.s[1] + '" title="' + HN[c.s[1]][1] + '">' + HN[c.s[1]][0] + '</b><span class="mono">' + c.s[0] + "</span></span>");
+    if (c.mr) row.push('<span class="mono">' + c.mr + "</span>");
+    if (c.bad) row.push('<span class="tag solid-gate">' + c.bad + "</span>");
+    if (c.contract) row.push('<span class="chip-contract" title="계약 Unit · 다른 Unit이 이 계약을 쓴다">계약</span>');
+    else if (group === "intent") row.push('<span class="tag">' + c.area + "</span>");
+    else if (c.intent) row.push('<span class="tag design">' + c.intent + "</span>");
+    if (c.note) row.push("<span>" + esc(c.note) + "</span>");
+    if (row.length) h += '<div class="row">' + row.join("") + "</div>";
+    return h + "</article>";
+  }
+
+  function burnHead(id, gi) {
+    var t = totals(BURN[id]);
+    return '<span class="burn"' + (gi === 0 ? ' data-co="8"' : "") + '><span>남은 Bolt <b>' + (t.all - t.done) + "</b>/" + t.all + " · 끝난 Unit " + t.fin + "/" + BURN[id].units.length +
+      '</span><span class="vz" data-intent="' + id + '"></span></span>';
+  }
+  function lanes() {
+    var groups = group === "intent" ? INTENTS : AREAS;
+    var html = groups.map(function (g, gi) {
+      var cs = CARDS.filter(function (c) { return group === "intent" ? (c.intent || null) === g.id : c.area === g.id; });
+      if (!cs.length) return "";
+      var cells = COLS.map(function (_, i) {
+        var inner = cs.filter(function (c) { return c.col === i; }).map(card).join("");
+        return '<div class="cell' + (inner ? "" : " none") + '">' + inner + "</div>";
+      }).join("");
+      var title = group === "intent"
+        ? esc(g.n) + (g.id ? ' <span class="key">' + g.id + "</span>" : "") + ' <span class="meta">' + esc(g.meta) + "</span>" + (BURN[g.id] ? burnHead(g.id, gi) : "") + (g.id ? '<a href="S04-questions.html">Intent 문서 · 질문</a>' : "")
+        : '<span class="mono">area: ' + g.n + '</span> <span class="meta">이슈 ' + cs.length + "</span>";
+      return '<section class="b-lane"' + (gi === 0 ? ' data-co="3"' : "") + '><h2>' + title + '</h2><div class="b-lane-cells">' + cells + "</div></section>";
+    }).join("");
+    document.getElementById("lanes").innerHTML = html;
+    drawLaneBurns();
+    var first = document.querySelector('.card[data-key="HDRV3D-12"]');
+    if (first) first.setAttribute("data-co", "4");
+    document.querySelectorAll(".card").forEach(function (el) {
+      function pick() {
+        selected = el.getAttribute("data-key");
+        document.querySelectorAll(".card").forEach(function (x) { x.setAttribute("aria-pressed", x === el ? "true" : "false"); });
+        var c = CARDS.filter(function (x) { return x.key === selected; })[0];
+        document.getElementById("d-key").textContent = c.key;
+        document.getElementById("d-title").textContent = c.t;
+        var it = INTENTS.filter(function (x) { return x.id && x.id === c.intent; })[0];
+        drawProg(c.intent, it ? it.n : "");
+      }
+      el.addEventListener("click", pick);
+      el.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); pick(); } });
+    });
+  }
+
+  document.addEventListener("hx:ready", function () {
+    head(); lanes(); drawProg("INT-7", "결제 개편");
+    V.onResize(function () {
+      drawLaneBurns();
+      var c = CARDS.filter(function (x) { return x.key === selected; })[0];
+      var it = INTENTS.filter(function (x) { return x.id && x.id === c.intent; })[0];
+      drawProg(c.intent, it ? it.n : "");
+    });
+    document.getElementById("groupSeg").addEventListener("segchange", function (e) { group = e.detail.getAttribute("data-group"); lanes(); });
+    var w = document.getElementById("waitOnly");
+    w.addEventListener("click", function () { waitOnly = !waitOnly; w.setAttribute("aria-pressed", String(waitOnly)); lanes(); });
+  });
+})();
+</script>
+</body>
+</html>

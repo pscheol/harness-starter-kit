@@ -5,16 +5,16 @@
 # 플러그인 마켓플레이스가 없는 Kiro 에 킷 스킬을 전역 설치합니다.
 #
 #   Claude Code · Codex → 마켓플레이스로 설치하므로 이 스크립트가 필요 없습니다:
-#       /plugin marketplace add <킷_경로>  →  /plugin install harness-kit@harness-starter-kit
-#       codex plugin marketplace add <킷_경로>  →  codex plugin add harness-kit@harness-starter-kit
+#       /plugin marketplace add <킷_경로>  →  /plugin install kns@knots-sync
+#       codex plugin marketplace add <킷_경로>  →  codex plugin add kns@knots-sync
 #   Kiro               → 이 스크립트를 사용하십시오.
 #
 # 무엇이 설치되나 (리포 없이도 동작하도록 전부 복사합니다 — 포인터가 아닙니다):
 #   ~/.kiro/skills/<스킬>/     스킬 디렉터리를 통째로 복사합니다. SKILL.md 는 원본 그대로이며
-#                              hx-bootstrap 은 setup.sh · lib/ · templates/ 까지 함께 갑니다.
+#                              kns-bootstrap 은 setup.sh · lib/ · templates/ 까지 함께 갑니다.
 #
 #   Kiro 스킬 규약은 <홈>/skills/<스킬명>/SKILL.md 입니다. 프로젝트 레벨(.kiro/skills/)과 같은
-#   구조이며, 한 겹 더 감싸면(<홈>/skills/harness-kit/skills/…) 인식되지 않습니다.
+#   구조이며, 한 겹 더 감싸면(<홈>/skills/kns/skills/…) 인식되지 않습니다.
 #
 # 사용법:
 #   bash install-kiro.sh                      # ~/.kiro/skills 에 설치합니다
@@ -23,15 +23,17 @@
 #   bash install-kiro.sh --uninstall          # 이 스크립트가 설치한 것만 제거합니다
 #   bash install-kiro.sh --home=/path/.kiro   # 대상 홈을 지정합니다 (환경변수 KIRO_HOME 도 가능)
 #
-# 설치 상태는 <홈>/.harness-kit-manifest.json 에 남습니다. 제거할 때는 이 기록에 적힌
+# 설치 상태는 <홈>/.knots-sync-manifest.json 에 남습니다. 제거할 때는 이 기록에 적힌
 # 디렉터리만 지우므로 같은 폴더의 다른 스킬은 건드리지 않습니다.
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
 KIT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SKILLS_DIR="$KIT_DIR/plugins/harness-kit/skills"
-PLUGIN_JSON="$KIT_DIR/plugins/harness-kit/.claude-plugin/plugin.json"
-MANIFEST_NAME=".harness-kit-manifest.json"
+SKILLS_DIR="$KIT_DIR/plugins/kns/skills"
+PLUGIN_JSON="$KIT_DIR/plugins/kns/.claude-plugin/plugin.json"
+MANIFEST_NAME=".knots-sync-manifest.json"
+# 이름 바꾸기 전(harness-kit) 설치 기록 — 그때 깐 hx-* 스킬 폴더 목록이다(HK-22b)
+LEGACY_MANIFEST_NAME=".harness-kit-manifest.json"
 
 DRY_RUN=0
 FORCE=0
@@ -52,6 +54,7 @@ done
 [ -d "$SKILLS_DIR" ] || { echo "✖ 스킬 디렉터리를 찾을 수 없습니다: $SKILLS_DIR" >&2; exit 1; }
 
 MANIFEST="$KIRO_HOME/$MANIFEST_NAME"
+LEGACY_MANIFEST="$KIRO_HOME/$LEGACY_MANIFEST_NAME"
 DEST_ROOT="$KIRO_HOME/skills"
 
 KIT_VERSION="$(grep -m1 '"version"' "$PLUGIN_JSON" 2>/dev/null | sed 's/.*"version"[^"]*"\([^"]*\)".*/\1/')"
@@ -61,6 +64,7 @@ KIT_VERSION="${KIT_VERSION:-unknown}"
 # 매니페스트에 적힌 디렉터리만 지운다. 기록이 없으면 아무것도 지우지 않는다 —
 # skills/ 를 패턴으로 쓸어내면 다른 도구가 깐 스킬까지 날아간다.
 if [ "$UNINSTALL" = 1 ]; then
+  [ -f "$MANIFEST" ] || [ ! -f "$LEGACY_MANIFEST" ] || MANIFEST="$LEGACY_MANIFEST"
   if [ ! -f "$MANIFEST" ]; then
     echo "✖ 설치 기록이 없습니다: $MANIFEST" >&2
     exit 1
@@ -94,14 +98,49 @@ echo ""
 
 [ "$DRY_RUN" != 1 ] && mkdir -p "$DEST_ROOT"
 
+# 옛 이름(hx-*) 설치가 있으면 그 기록에 적힌 폴더만 치운다 — 새 이름(kns-*) 스킬과 같은 스킬이 두 번 잡히지 않게.
+if [ -f "$LEGACY_MANIFEST" ]; then
+  while IFS= read -r rel; do
+    [ -n "$rel" ] && [ -d "$KIRO_HOME/$rel" ] || continue
+    echo "  ✂ 옛 이름 스킬 치움  $rel/"
+    [ "$DRY_RUN" != 1 ] && rm -rf "${KIRO_HOME:?}/$rel"
+  done < <(sed -n 's/^ *"\(skills\/hx-[^"]*\)".*/\1/p' "$LEGACY_MANIFEST")
+  [ "$DRY_RUN" != 1 ] && rm -f "$LEGACY_MANIFEST"
+fi
+
+# 복사본의 스킬 이름 · 형제 스킬 경로를 Kiro 이름(kns-<명령>)으로 바꾼다. 플러그인 원본은 그대로다.
+kiro_names() {
+  python3 - "$1" "$SKILLS_DIR" <<'PY'
+import os, re, sys
+dest, src = sys.argv[1], sys.argv[2]
+names = sorted((d for d in os.listdir(src) if os.path.isfile(os.path.join(src, d, "SKILL.md"))), key=len, reverse=True)
+alt = "|".join(re.escape(n) for n in names)
+for top, _dirs, files in os.walk(dest):
+    if os.path.relpath(top, dest).split(os.sep)[0] == "templates":
+        continue
+    for f in files:
+        if not f.endswith((".md", ".sh", ".py")):
+            continue
+        p = os.path.join(top, f)
+        text = open(p, encoding="utf-8").read()
+        new = re.sub(rf"(?m)^name: ({alt})$", r"name: kns-\1", text)
+        new = re.sub(rf"\.\./({alt})(?=[/\"'`)\s]|$)", r"../kns-\1", new)
+        new = re.sub(rf"/kns:({alt})\b", r"/kns-\1", new)
+        if new != text:
+            open(p, "w", encoding="utf-8").write(new)
+PY
+}
+
 written=0
 skipped=0
 total_files=0
 installed_list=""
 
 for dir in "$SKILLS_DIR"/*/; do
-  skill="$(basename "$dir")"
+  base="$(basename "$dir")"
   [ -f "${dir}SKILL.md" ] || continue
+  # Kiro 에는 플러그인 네임스페이스(kns:)가 없어 폴더 · 이름에 kns- 를 붙인다(/kns-bootstrap).
+  skill="kns-$base"
 
   rel="skills/$skill"
   dest="$KIRO_HOME/$rel"
@@ -122,6 +161,7 @@ for dir in "$SKILLS_DIR"/*/; do
     (cd "$dir" && tar cf - .) | (cd "$dest" && tar xf -)
     find "$dest" -name '.DS_Store' -delete 2>/dev/null || true
     find "$dest" -name '*.sh' -exec chmod +x {} \;
+    kiro_names "$dest"
   fi
   written=$((written+1))
   total_files=$((total_files + count))
@@ -148,12 +188,12 @@ echo "✔ 완료: 스킬 ${written}개 설치, ${skipped}개 skip · 파일 ${to
 [ "$DRY_RUN" != 1 ] && echo "  설치 기록: $MANIFEST"
 echo ""
 echo "다음 단계:"
-echo "  1) kiro-cli 를 다시 켜시면 /hx-bootstrap · /hx-jvm-setup … 이 잡힙니다(세션 시작 때 로드됩니다)"
+echo "  1) kiro-cli 를 다시 켜시면 /kns-bootstrap · /kns-jvm-setup … 이 잡힙니다(세션 시작 때 로드됩니다)"
 echo "  2) 스택별 진입 스킬이 아키텍처 선택을 안내합니다"
-echo "       JVM /hx-jvm-setup(8종) · 웹 /hx-web-setup(3종) · Electron /hx-electron-setup(3종)"
-echo "       이슈 트래커를 연동하신다면 /hx-jira-setup (선택 모듈 jira-workflow 를 켠 리포에서)"
+echo "       JVM /kns-jvm-setup(8종) · 웹 /kns-web-setup(3종) · Electron /kns-electron-setup(3종)"
+echo "       이슈 트래커를 연동하신다면 /kns-jira-setup (선택 모듈 jira-workflow 를 켠 리포에서)"
 echo "  3) 스크립트를 직접 실행하셔도 됩니다(리포 없이 이 설치본만으로 동작합니다):"
-echo "       bash $DEST_ROOT/hx-bootstrap/setup.sh --agents=kiro --dry-run <대상_리포>"
+echo "       bash $DEST_ROOT/kns-bootstrap/setup.sh --agents=kiro --dry-run <대상_리포>"
 echo ""
 echo "  · 킷을 갱신하셨으면 다시 실행해 주십시오:  bash install-kiro.sh --force"
 echo "  · 제거하시려면:  bash install-kiro.sh --uninstall"

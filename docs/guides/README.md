@@ -30,8 +30,8 @@
 
 | 말 | 뜻 |
 |---|---|
-| **킷 스킬** | 플러그인이 제공. `harness-kit:` 네임스페이스가 붙는다. `hx-bootstrap` · `hx-jvm-*` · `hx-agent-add` · `hx-update` |
-| **프로젝트 스킬** | `hx-bootstrap` 이 대상 리포에 설치. SDLC 단계형 SDD 커맨드 11종(`hx-specify` … `hx-docs` · `hx-harness` · `hx-maintain`) |
+| **킷 스킬** | 플러그인이 제공. `kns:` 네임스페이스가 붙는다. `kns:bootstrap` · `kns-jvm-*` · `kns:agent-add` · `kns:update` |
+| **프로젝트 스킬** | `kns:bootstrap` 이 대상 리포에 설치. SDLC 단계형 SDD 커맨드 11종(`kns-specify` … `kns-docs` · `kns-harness` · `kns-maintain`) |
 | **변형(ARCH)** | 한 스택 안의 아키텍처 선택지. 바꾸면 4개 파일이 교체된다 |
 | **강제 수단** | 위반을 `scripts/verify.sh` 에서 **실패로 만드는** 장치(모듈 그래프 · ArchUnit/Konsist · import-linter · depguard) |
 | **exec-plan** | `tasks/{active,check,completed}/` 의 실행 계획. `completed/` 이동은 사람이 승인 |

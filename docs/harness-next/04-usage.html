@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>04 활용 — 하네스 다음 단계</title>
+  <meta name="description" content="harness-starter-kit를 실제 개발에 쓰는 법: 단계별 하네스와 사람의 몫, 새 프로젝트에 깔기, 요구사항 하나를 운영까지, 세션 배치, worktree·대시보드·내 스킬 쓰는 법, 여러 리포, AI-DLC·Entire를 켤 때와 끌 때, 팀 도입 순서, 지표. 지금 되는 것과 v2 뒤에 되는 것을 나눠 적었다.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="../ai-dlc/assets/aidlc.css">
+  <link rel="stylesheet" href="assets/next.css">
+  <script src="../ai-dlc/assets/aidlc.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+  <header class="site-head">
+    <div class="phase-band" aria-hidden="true"><span></span><span></span><span></span></div>
+    <nav class="site-nav" aria-label="문서 목록">
+      <a class="home" href="index.html">하네스 다음 단계</a>
+      <ol>
+        <li><a href="01-diagnosis.html"><span class="num">01</span>진단</a></li>
+        <li><a href="02-direction.html"><span class="num">02</span>방향</a></li>
+        <li><a href="03-plan.html"><span class="num">03</span>계획</a></li>
+        <li><a href="04-usage.html" aria-current="page"><span class="num">04</span>활용</a></li>
+        <li><a href="05-principles.html"><span class="num">05</span>원칙·확장</a></li>
+      </ol>
+    </nav>
+  </header>
+
+  <main id="main" class="page">
+    <nav class="page-toc" aria-label="이 장의 절">
+      <p class="toc-title">이 장에서</p>
+      <ol>
+        <li><a href="#split">단계별 하네스와 사람의 몫</a></li>
+        <li><a href="#start">새 프로젝트에 깔기</a></li>
+        <li><a href="#adopt">이미 하네스가 있는 리포</a></li>
+        <li><a href="#flow">요구사항 하나를 운영까지</a></li>
+        <li><a href="#sessions">세션 배치</a></li>
+        <li><a href="#dashboard">대시보드 쓰는 법</a></li>
+        <li><a href="#skills">내 스킬 쓰는 법</a></li>
+        <li><a href="#multirepo">여러 리포에 걸친 기능</a></li>
+        <li><a href="#aidlc">설계 단계: 킷만 · AI-DLC</a></li>
+        <li><a href="#entire">Entire 같이 쓰기</a></li>
+        <li><a href="#rollout">팀 도입 순서</a></li>
+        <li><a href="#measure">무엇을 재나</a></li>
+        <li><a href="#checklist">시작 전 점검표</a></li>
+      </ol>
+    </nav>
+
+    <article class="prose">
+      <h1 class="page-title">우리 하네스를 이렇게 쓴다</h1>
+      <p class="lede">이 장은 킷을 설치한 리포에서 일하는 방법을 적는다. 기본은 킷만 쓰는 구성이고, AI-DLC·Entire는 켰을 때 달라지는 점만 따로 적었다. 명령마다 <span class="tag now">지금</span>은 지금 되는 것, <span class="tag later">v2</span>는 <a href="03-plan.html">03장</a> 계획이 끝나야 되는 것이다. v2 명령이 아직 없을 때 같은 일을 손으로 하는 방법도 함께 적었다.</p>
+
+      <h2 id="split">단계별 하네스와 사람의 몫</h2>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col">단계</th><th scope="col">세션 · 하네스</th><th scope="col">하네스가 하는 것</th><th scope="col"><span class="gate">사람이 하는 것</span></th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">설계</th><td>설계 · Claude Code(AI-DLC는 켰을 때)</td><td>질문을 내고, 스토리·Unit 분해·기획물 초안을 만든다</td><td>범위 밖·수치·엣지 케이스에 답하고 Unit과 기획물을 승인한다</td></tr>
+            <tr><th scope="row">구현</th><td>구현 · Claude Code</td><td>SDD design·tasks를 쓰고 코드·테스트를 만든다. <code>verify.sh</code>가 실패하면 먼저 고친다</td><td>design의 트레이드오프를 고르고 승인한다</td></tr>
+            <tr><th scope="row">검증</th><td>리뷰 · Codex, 스캐너</td><td>MR을 리뷰하고 보안·품질 스캔 결과를 해석한다</td><td>동시성·권한·경계·실패 경로를 보고 MR을 승인한다</td></tr>
+            <tr><th scope="row">반영</th><td>문서 · Kiro</td><td>기능 문서·API 문서를 고치고 승인 기록을 남긴다</td><td>—</td></tr>
+            <tr><th scope="row">운영</th><td>문서 · Kiro, 사람</td><td>운영 기록을 정리해 다음 요구사항 초안을 만든다</td><td>배포를 누르고 다음 요구사항을 고른다</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>하네스 배정은 기본값이다. Kiro를 쓰지 않는 팀은 문서 세션도 Claude Code로 돌린다(<a href="02-direction.html#roles">02장 역할</a>).</p>
+
+      <h2 id="start">새 프로젝트에 깔기</h2>
+      <h3><span class="tag now">지금</span> 플러그인으로</h3>
+      <pre><code># Claude Code
+/plugin marketplace add &lt;owner&gt;/harness-starter-kit
+/plugin install harness-kit@harness-starter-kit
+/hx-bootstrap --dry-run          # 파일 목록만 본다
+/hx-bootstrap                    # 스택·변형은 리포를 보고 판단하고, 애매하면 묻는다
+
+# Codex: $hx-bootstrap  ·  Kiro: bash install-kiro.sh 뒤 hx-bootstrap 스킬</code></pre>
+      <h3><span class="tag later">v2</span> npx로</h3>
+      <pre><code>npx github:&lt;owner&gt;/harness-starter-kit#v2.3.0 init \
+    --stack=jvm --arch=hexagonal --agents=claude,codex,kiro --yes
+npx harness-kit doctor           # 배치·버전·역할 점검
+npx harness-kit dashboard        # 대시보드 열기
+
+# 선택: 원하는 팀만
+npx harness-kit add aidlc        # 설계 단계를 AI-DLC로. 없으면 설치 명령을 안내한다
+npx harness-kit add entire       # 구현 하네스에만 대화 기록을 켠다
+npx harness-kit remove aidlc     # 다시 킷 설계 단계로</code></pre>
+      <p>설치 뒤에는 네 파일을 채운다: <code>.agents/rules/product.md</code>, <code>ARCHITECTURE.md</code>, <code>.agents/rules/structure.md</code>, <code>scripts/verify.sh</code>의 빌드 단계. 그다음 <code>.agents/harness-kit.json</code>과 <code>.lock</code>까지 첫 커밋에 넣는다. 자세한 순서는 <a href="../guides/01-getting-started.md">시작 가이드</a>에 있다.</p>
+
+      <h2 id="adopt">이미 하네스가 있는 리포</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th scope="col">리포 상태</th><th scope="col">할 일</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">킷 v1로 설치됨</th><td><span class="tag now">지금</span> <code>/hx-update --dry-run</code> → 승인 → 적용 → <code>.new</code> 병합. <span class="tag later">v2</span> <code>doctor</code> → <code>update --dry-run</code> → <code>update</code>(<a href="03-plan.html#migrate">03장 이전 절차</a>)</td></tr>
+            <tr><th scope="row">직접 만든 하네스</th><td><span class="tag later">v2</span> <code>init --adopt</code>. 있는 파일은 모두 사용자 소유로 기록하고 없는 것만 깐다</td></tr>
+            <tr><th scope="row">AI-DLC·Entire가 먼저 깔림</th><td><span class="tag later">v2</span> <code>add aidlc</code>·<code>add entire</code>가 이미 있는 파일을 외부 소유로 등록하고 훅을 병합한다. <span class="tag now">지금</span>은 킷 업데이트 때 <code>.claude/settings.json</code>이 conflict로 잡히므로 <code>.new</code>를 손으로 병합한다</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="flow">요구사항 하나를 운영까지</h2>
+      <figure class="diagram bleed">
+        <a href="diagrams/lifecycle.svg"><img src="diagrams/lifecycle.svg" width="1992" height="284" alt="요구사항 접수에서 시작해 1 설계(킷 /hx-intent 또는 AI-DLC로 요구사항을 정리하고 문서·화면기획·디자인기획·백로그를 만든다), 범위·Unit 승인, 2 구현(Claude Code가 worktree에서 Unit마다 SDD로 만든다, 켰을 때 Entire가 커밋마다 대화를 기록한다), 3 검증(verify.sh, Codex 리뷰, 보안·품질 스캔, 실패나 지적이면 구현으로 돌아간다), MR 승인·병합, 4 반영(문서·승인 기록), 5 운영 기록(지표·장애)을 거쳐 다음 요구사항으로 돌아가는 흐름" loading="lazy" decoding="async"></a>
+        <figcaption>전체 흐름. 빨간 마름모는 사람이 승인하는 자리다. <a href="diagrams/lifecycle.mmd" download>편집 원본(.mmd)</a></figcaption>
+      </figure>
+      <ol class="steps">
+        <li><strong>요구사항을 받는다 <span class="tag later">v2</span></strong>설계 세션(Claude Code)에서 <code>/hx-intent</code>로 Intent 문서를 쓰고, AI가 내는 질문에 답하면 스토리와 Unit 분해가 나온다. AI-DLC를 켠 리포는 <code>/aidlc</code>로 같은 일을 하고 결과가 같은 Unit 목록으로 옮겨진다. <span class="gate">범위 · Unit 승인</span> 지금은 requirements §1·§2에 목표·범위 밖을 쓰고, 큰 기능은 이슈 여러 개로 나눠 계약을 담은 이슈부터 승인한다.</li>
+        <li><strong>기획물을 만든다 <span class="tag later">v2</span></strong><code>/hx-screen-plan</code> · <code>/hx-design-plan</code> · <code>/hx-backlog</code>로 화면기획·디자인기획·백로그를 만든다. 지금은 깔려 있는 스킬(<code>service-planning-agent</code>, <code>ui-ux-pro-max</code> 등)을 직접 부르고 결과를 이슈 폴더에 둔다. <span class="gate">기획물 승인</span></li>
+        <li><strong>Unit을 SDD 이슈로 <span class="tag later">v2</span></strong><code>/hx-specify --from-unit &lt;Unit 경로&gt;</code>. 폴더는 <code>issues/&lt;Jira 키 또는 킷이 만든 키&gt;-&lt;이름&gt;/</code>이다(<span class="tag later">v1.1</span>). 지금은 <code>bash scripts/new-feature.sh &lt;slug&gt; &lt;name&gt;</code> → <code>/hx-specify</code>로 같은 내용을 옮긴다. <span class="gate">requirements 승인</span></li>
+        <li><strong>설계와 작업 분해 <span class="tag now">지금</span></strong>구현 세션에서 <code>/hx-plan</code> → <span class="gate">design 승인</span> → <code>/hx-tasks</code>. 필요하면 <code>/hx-analyze</code>로 세 문서의 정합성을 본다.</li>
+        <li><strong>구현 <span class="tag now">지금</span></strong>구현 세션이 하나면 메인 폴더에서 기능 브랜치로 일한다. 같은 리포에 쓰는 세션이 이미 있으면 <code>wt new &lt;이슈키&gt;</code>(<span class="tag later">v2</span>)로 리포 옆 worktree에서 일한다. <code>/hx-implement</code>. Bolt(작업 묶음) 하나가 끝날 때마다 <code>bash scripts/verify.sh</code>(바꾼 기능만), MR 올리기 전에 <code>--affected</code>(<span class="tag later">v1.1</span>). 전체 검증은 CI가 돌고 에이전트는 돌리지 않는다.</li>
+        <li><strong>검증 <span class="tag later">v2</span></strong>리뷰 세션(Codex)이 <code>/hx-review</code>와 <code>/hx-scan</code>으로 MR을 본다. 구현 세션이 지적을 처리하고 <code>review.md</code>로 정리한다. 지금은 Codex 세션에서 킷 <code>reviewer</code> 역할로 diff와 SDD를 대조하고, 깔려 있는 <code>security-review</code>·<code>code-review</code> 스킬을 쓴다. <span class="gate">MR 승인</span></li>
+        <li><strong>반영 <span class="tag now">지금</span></strong>병합 뒤 문서 세션이 <code>/hx-docs</code>로 기능 문서를 고치고, 남은 일은 <code>/hx-converge</code>로 tasks에 다시 적는다. worktree는 <code>wt done</code>(<span class="tag later">v2</span>) 또는 <code>git worktree remove</code>로 지운다.</li>
+        <li><strong>운영 기록 <span class="tag later">v2</span></strong>배포 뒤 지표와 장애를 운영 기록에 적고, 거기서 다음 요구사항 초안을 만든다. 지금은 <code>tech-debt-tracker.md</code>에 적는다.</li>
+      </ol>
+
+      <h2 id="sessions">세션 배치</h2>
+      <p>리포 하나에서 기능 둘을 동시에 진행하는 날의 예다.</p>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col">세션</th><th scope="col">하네스</th><th scope="col">폴더</th><th scope="col">쓰는 것</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">구현 A</th><td>Claude Code</td><td><code>my-api/</code> 메인 폴더, <code>feat/PROJ-12-login</code></td><td>코드 · 테스트 · SDD</td></tr>
+            <tr><th scope="row">구현 B</th><td>Claude Code</td><td><code>my-api.worktrees/PROJ-15-token-expiry/</code></td><td>코드 · 테스트 · SDD</td></tr>
+            <tr><th scope="row">설계</th><td>Claude Code</td><td><code>my-api.worktrees/INT-8-plans/</code>(<code>--docs</code>, 문서 폴더만)</td><td>Intent · Unit 목록 · 기획물</td></tr>
+            <tr><th scope="row">리뷰</th><td>Codex</td><td><code>my-api/</code>에서 원격 브랜치 diff만 읽는다</td><td>MR 코멘트 · 로컬 보고서</td></tr>
+            <tr><th scope="row">문서</th><td>Kiro</td><td>병합 뒤 메인 폴더(구현 A가 끝난 뒤)</td><td>기능 문서 · 승인 기록</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Entire를 켰으면 구현 세션 둘(구현 A·B)만 대화가 기록된다. AI-DLC를 켰으면 설계 세션이 <code>/aidlc</code>를 쓴다.</p>
+      <ul>
+        <li>같은 리포에서 동시에 쓰는 세션은 3개까지로 시작한다(제안값). 검수 대기 MR이 쌓이면 줄인다. 세션이 늘면 사람이 따라가야 할 맥락이 AI보다 먼저 부족해진다(채널톡 사례).</li>
+        <li>사람이 승인하는 자리는 단계마다 있다(<a href="05-principles.html#principles">05장</a>). 일이 작으면 문서를 짧게 쓰고, 승인은 건너뛰지 않는다.</li>
+        <li>세션을 마칠 때 <code>wt done</code>. 주 1회 <code>wt gc</code>로 목록을 보고 사람이 <code>--apply</code>를 정한다.</li>
+        <li>IDE에서는 VS Code의 Source Control → Worktrees, IntelliJ의 Git 창 → Worktrees 탭, 또는 <code>wt open &lt;이슈키&gt;</code>로 연다. submodule 리포처럼 IDE가 못 보여 줄 때는 대시보드 작업 공간 탭에서 본다.</li>
+      </ul>
+
+      <h2 id="dashboard">대시보드 쓰는 법 <span class="tag later">v2</span></h2>
+      <ol class="steps">
+        <li><strong>연다</strong>리포에서 <code>npx harness-kit dashboard</code>. 터미널에 나온 로컬 주소를 브라우저로 연다.</li>
+        <li><strong>처리할 일부터</strong>맨 위 목록이 승인 대기 문서, 열린 CRITICAL·HIGH, 미해결 질문, 정리 대기 worktree다. 하루를 여기서 시작한다.</li>
+        <li><strong>진행</strong>Intent → Unit → SDD 이슈의 단계와 맡은 하네스를 본다. 멈춘 이슈가 어느 승인에서 기다리는지 보인다.</li>
+        <li><strong>문서</strong>기획물, SDD 세 문서, 기능 문서, ADR을 파일 경로를 몰라도 바로 연다.</li>
+        <li><strong>고쳐서 요청</strong>문서 화면에서 고쳐 저장하고, 맡길 세션을 고른다. 켜 둔 Claude 세션이 요청을 받아 일을 시작한다. 세션이 없으면 새 세션을 여는 링크가 뜬다.</li>
+        <li><strong>승인</strong>승인 버튼을 누르면 <code>approvals.md</code>에 내 이름·시각·문구가 남는다.</li>
+        <li><strong>공유</strong><code>dashboard --export &lt;폴더&gt;</code>로 만든 정적 HTML을 MR이나 팀 공간에 올린다. 스킬 탭은 빠진다.</li>
+      </ol>
+
+      <h2 id="skills">내 스킬 쓰는 법</h2>
+      <p><span class="tag now">지금</span> 이 컴퓨터에는 Claude 사용자 스킬 221개, <code>~/.agents/skills</code> 156개, Kiro 스킬 143개와 플러그인 스킬이 있다. 단계마다 쓸 만한 것을 직접 골라 부른다.</p>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col">단계</th><th scope="col">이 컴퓨터에 깔린 스킬 예</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">설계</th><td><code>service-planning-agent</code>(기획서·IA·화면 정의서), <code>pm-execution:create-prd</code>, <code>pm-execution:user-stories</code>, <code>ui-ux-pro-max</code>, <code>impeccable</code></td></tr>
+            <tr><th scope="row">구현</th><td><code>superpowers:test-driven-development</code>, <code>mattpocock-skills:tdd</code>, 스택별 패턴 스킬</td></tr>
+            <tr><th scope="row">검증</th><td><code>security-review</code>, <code>code-review:code-review</code>, <code>gstack-review</code>, <code>gstack-qa</code></td></tr>
+            <tr><th scope="row">반영</th><td><code>gstack-document-release</code>, <code>claude-md-management:revise-claude-md</code></td></tr>
+            <tr><th scope="row">운영</th><td><code>gstack-canary</code>, <code>gstack-retro</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p><span class="tag later">v2</span> <code>npx harness-kit skills --stage 설계</code>가 이 단계에서 쓸 수 있는 내 스킬과 쓸 수 있는 하네스를 보여 준다. 킷 명령(<code>/hx-screen-plan</code> 등)은 스킬 지도(<code>.agents/skill-map.json</code>)에서 깔린 스킬을 찾아 쓰고, 없으면 킷 템플릿을 쓴다. 지도에 없는 스킬을 단계에 연결하려면 그 파일에 한 줄을 더한다.</p>
+
+      <h2 id="multirepo">여러 리포에 걸친 기능</h2>
+      <p><span class="tag now">지금</span> <code>multi-harness</code> 모듈과 두 단계 커밋을 쓴다. 도메인 리포에서 커밋·push한 뒤 상위 리포에서 포인터를 올려 커밋하고, 리포마다 같은 브랜치 이름을 쓴다.</p>
+      <p><span class="tag later">v2</span> 순서를 정한다(P24).</p>
+      <ol class="steps">
+        <li><strong>계약 확정</strong>리포 사이에 오가는 API·이벤트를 상위 리포의 계약 이슈로 먼저 승인한다. <span class="gate">계약 승인</span></li>
+        <li><strong>리포마다 병렬</strong>도메인 리포마다 구현 세션을 하나씩 둔다. 리포가 다르면 worktree 없이 각자 폴더에서 동시에 일한다.</li>
+        <li><strong>경계 검증</strong>상위 리포에서 계약 테스트와 submodule 점검을 돌린다.</li>
+        <li><strong>순서대로 커밋</strong>제공하는 리포 → 소비하는 리포 → 상위 포인터 순으로 커밋하고 상위 SDD 목록의 SHA 열을 채운다.</li>
+      </ol>
+
+      <h2 id="aidlc">설계 단계: 킷만 · AI-DLC</h2>
+      <p>설계 단계만 두 방법 중 하나를 고르고, 그 뒤는 같다. 설정은 <code>harness-kit.json</code>의 <code>flow.design</code>이고 기본은 <code>kit</code>이다. AI-DLC 용어는 <a href="../ai-dlc/01-concepts.html">핸드북 01장</a>에 있다.</p>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col">자리</th><th scope="col">킷만(기본)</th><th scope="col">AI-DLC를 켰을 때</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">Intent · 질문 · 스토리</th><td><code>/hx-intent</code>, 질문 파일, EARS 수용 기준</td><td>AI-DLC 설계 단계(<code>/aidlc</code>)</td></tr>
+            <tr><th scope="row">Unit 분해 · 의존 순서</th><td><code>/hx-intent</code>가 Unit 목록을 쓴다</td><td>AI-DLC Unit을 킷 어댑터가 같은 형식의 목록으로 옮긴다</td></tr>
+            <tr><th scope="row">기획물</th><td colspan="2">킷 <code>/hx-screen-plan</code> · <code>/hx-design-plan</code> · <code>/hx-backlog</code>(설치된 스킬 활용). 두 경우 같다</td></tr>
+            <tr><th scope="row">구현 · 검증 · 반영 · 운영</th><td colspan="2">킷 SDD, <code>verify.sh</code>, 자체 리뷰, 스캔, 문서 반영, 운영 기록. 두 경우 같다</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>AI-DLC를 쓰다 끄려면 <code>npx harness-kit remove aidlc</code>. 킷이 병합한 훅과 등록만 빠지고 AI-DLC가 만든 문서는 남는다. 이미 만든 Unit 목록과 SDD 이슈는 그대로 이어서 쓴다.</p>
+
+      <h2 id="entire">Entire를 켤 때</h2>
+      <p>에이전트가 만든 코드의 "왜"를 나중에 추적해야 할 때 켠다. 리뷰에서 근거를 확인하거나 장애 원인을 찾을 때다. 구현 하네스에만 켠다. 끈 상태에서는 대화 원문이 남지 않고, 추적은 SDD 문서 · 커밋 메시지 · MR 링크와 인수인계 문서로 한다.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th scope="col">킷</th><th scope="col">Entire</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>tasks 작업 하나 완료 → 커밋</td><td>커밋 하나 = 체크포인트 하나, <code>Entire-Checkpoint</code> 트레일러</td></tr>
+            <tr><td>MR 본문의 SDD 링크</td><td>같은 칸에 체크포인트 ID</td></tr>
+            <tr><td>리뷰 · 장애 분석</td><td><code>entire why &lt;파일:줄&gt;</code>, <code>entire checkpoint explain &lt;id&gt;</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="aside caution">
+        <p class="aside-title">켜기 전에 세 가지</p>
+        <ul>
+          <li>원격이 공개 저장소면 대화 원문이 공개된다. 기록을 올리지 않거나 별도 원격을 쓴다.</li>
+          <li>같은 폴더에서 기록되는 세션이 둘이면 기록이 섞인다. 구현 하네스에만 켜고, 구현 세션이 둘이면 worktree로 나눈다.</li>
+          <li>0.x라 저장 방식과 명령이 바뀐다. 팀이 같은 버전을 쓴다.</li>
+        </ul>
+      </div>
+      <p><span class="tag now">지금</span>도 손으로 켤 수 있다: <code>entire enable</code> 뒤 <code>entire agent add claude-code</code>. 킷 업데이트 때 <code>.claude/settings.json</code>이 conflict로 잡히면 킷 훅 변경을 손으로 병합한다.</p>
+      <h3>GitLab · Sourcetree에서</h3>
+      <ul>
+        <li>gitlab.com 리포에서도 기록과 push가 된다. 체크포인트는 일반 git ref로 코드와 함께 올라간다.</li>
+        <li>GitLab 프로젝트 설정 → Merge requests → Squash commit message template을 <code>%{title} (%{reference})</code> 다음 줄에 <code>%{all_commits}</code>로 바꾼다. 기본값은 커밋 본문을 버려서 체크포인트 연결이 끊긴다.</li>
+        <li>기록을 다른 리포에 두려면 <code>entire configure --checkpoint-remote gitlab:&lt;그룹&gt;/&lt;리포&gt;</code>(v0.11.0+, gitlab.com만).</li>
+        <li>entire.io에서 체크포인트를 보는 화면은 GitHub 전용이다. GitLab 리포는 <code>entire checkpoint explain &lt;id&gt;</code>나 대시보드(<span class="tag later">v2</span>)로 본다.</li>
+        <li>Sourcetree로 커밋해도 git 훅이 돈다(훅이 <code>entire</code>를 절대 경로로 부른다). 처음 한 번 커밋 메시지에 <code>Entire-Checkpoint</code> 트레일러가 붙는지 확인한다.</li>
+      </ul>
+
+      <h2 id="rollout">팀 도입 순서</h2>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col">시기</th><th scope="col">할 일</th><th scope="col">다음으로 넘어가는 신호</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">지금</th><td>SDD 세 문서와 <code>verify.sh</code>로 기능 하나를 끝까지 한다. 리뷰를 Codex 세션으로 따로 돌려 본다</td><td>MR마다 SDD 링크와 리뷰 기록이 있다</td></tr>
+            <tr><th scope="row">v2.0</th><td>새 리포는 <code>npx … init</code>. 기존 리포는 <code>doctor</code>만</td><td><code>doctor --check</code> exit 0</td></tr>
+            <tr><th scope="row">v2.1</th><td>동시 구현을 <code>wt</code> 명령으로</td><td>섞인 커밋 0건, 끝난 뒤 남은 worktree 0개</td></tr>
+            <tr><th scope="row">v2.2</th><td>대시보드로 하루를 시작한다. 스킬 지도를 팀 스킬에 맞게 고친다</td><td>문서를 파일 경로로 찾는 일이 없어진다</td></tr>
+            <tr><th scope="row">v2.3</th><td>킷 설계 단계(<code>/hx-intent</code>)와 기획물로 큰 기능 하나를 끝까지 한다. 역할을 나눈다</td><td>요구사항 하나가 Intent → Unit → 기획물 → SDD 이슈까지 대시보드에서 이어진다</td></tr>
+            <tr><th scope="row">v2.4</th><td>원하는 팀만 AI-DLC·Entire 모듈을 켠다. Entire는 첫 1주 기록만</td><td>다른 도구의 훅·파일이 킷 업데이트 뒤에도 그대로다. 끄면 킷만 구성으로 돌아간다</td></tr>
+            <tr><th scope="row">v2.5 ~ v2.6</th><td>검증 확장, 반영·운영 기록을 차례로 켠다</td><td>요구사항 하나가 MR → 운영 기록까지 이어진다</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="measure">무엇을 재나</h2>
+      <p>바꾸기 전에 기준값을 잡는다. 수치는 git·로그·기록 파일에서 뽑고, 자기 보고로 받지 않는다.</p>
+      <div class="table-wrap bleed">
+        <table>
+          <thead>
+            <tr><th scope="col">지표</th><th scope="col">어디서</th><th scope="col">왜</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row">이슈당 사람 개입 횟수</th><td><code>approvals.md</code>, MR 수정 요청</td><td>세션을 늘리면 오히려 늘 수 있다(채널톡 사례)</td></tr>
+            <tr><th scope="row">리뷰 · 스캔 지적 수(심각도별)</th><td>리뷰 보고서, SARIF</td><td>스펙·규칙이 구현 전에 충분했는지 보여 준다</td></tr>
+            <tr><th scope="row">요구사항 → 병합 리드타임</th><td>Intent 생성 커밋 → 병합 커밋</td><td>견적에 쓰는 수치</td></tr>
+            <tr><th scope="row">MR 크기</th><td><code>git diff --stat</code></td><td>작은 배치일수록 AI 도입 효과가 커진다(DORA 2025)</td></tr>
+            <tr><th scope="row">남은 worktree 수 · 용량</th><td><code>wt list</code>, 대시보드</td><td>97개·109GB 재발을 막는다</td></tr>
+            <tr><th scope="row">상시 컨텍스트 크기</th><td><code>doctor</code></td><td>세션 비용은 세션에 실린 토큰 양으로 정해진다</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h2 id="checklist">시작 전 점검표</h2>
+      <ul class="checklist">
+        <li>전체 검증은 CI(야간·릴리스 전)에서 돌고, 로컬은 changed와 affected까지만 돌린다.</li>
+        <li>보호 경로와 비밀값 가드가 켜져 있다. 원격에서 base 브랜치 직접 push가 막혀 있다.</li>
+        <li>역할별 하네스 배정을 팀이 안다. 쓰는 하네스가 모두 같은 규칙 원본을 읽는다(<code>doctor</code>).</li>
+        <li>worktree 자리(<code>&lt;리포&gt;.worktrees/</code>)와 끝의 정의를 팀이 안다.</li>
+        <li>무엇을 승인으로 보는지 합의했다. 채팅에서 한 말은 어떤 말이든 승인이 아니다. 승인은 사람 터미널의 <code>harness-kit approve</code>, 관리 페이지 승인 버튼, Jira에서 사람이 한 승인 전이로만 하고, 그때 넣은 문구가 <code>approvals.md</code>에 승인과 함께 남는다.</li>
+        <li>Entire를 켠다면 원격 공개 여부를 확인했다.</li>
+      </ul>
+
+      <nav class="pager" aria-label="이전 장">
+        <a href="03-plan.html"><small>이전</small><span>03 계획</span></a>
+        <a class="next" href="05-principles.html"><small>다음</small><span>05 원칙·확장</span></a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-foot">
+    <p>harness-starter-kit 문서 · 2026-11-23 기준 · 제안 단계이며 아직 구현되지 않았다.</p>
+  </footer>
+</body>
+</html>

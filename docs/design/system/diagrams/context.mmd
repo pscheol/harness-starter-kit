@@ -1,0 +1,36 @@
+%%{init: {"theme": "base", "fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "themeVariables": {"fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "fontSize": "16px", "primaryColor": "#ffffff", "primaryBorderColor": "#14213d", "primaryTextColor": "#14213d", "lineColor": "#46536b", "clusterBkg": "#f5f7fa", "clusterBorder": "#aeb9c7", "edgeLabelBackground": "#f5f7fa"}, "flowchart": {"curve": "basis", "padding": 18, "nodeSpacing": 34, "rankSpacing": 70}}}%%
+graph LR
+  KIT["harness-starter-kit<br/>npm · git 태그 · 플러그인 마켓"]
+  PPL(["사람<br/>PO · 개발자 · QA · 운영"])
+  HAR["에이전트 세션<br/>Claude Code · Codex<br/>Cursor · Kiro"]
+  R["설치된 리포(하네스 루트)<br/>.agents 원본 · SDD 문서<br/>scripts/verify.sh · 훅<br/>관리 페이지 127.0.0.1"]
+  GIT["GitLab · GitHub<br/>브랜치 · MR"]
+  CI["CI<br/>GitLab CI · GoCD · Actions"]
+  JIRA["Jira (선택)"]
+  NOTION["Notion (선택)"]
+  AIDLC["AI-DLC (선택)"]
+  ENT["Entire (선택)"]
+  SA["정적 분석 도구<br/>Semgrep · gitleaks · OSV …"]
+  KIT -- "init · update<br/>파일 + lock" --> R
+  PPL -- "요구사항 · 답 · 승인<br/>터미널 · 관리 페이지" --> R
+  PPL -- "프롬프트" --> HAR
+  HAR -- "문서 · 코드 쓰기<br/>훅 · verify.sh" --> R
+  R -- "push · MR" --> GIT
+  GIT -- "파이프라인<br/>base판 verify.sh" --> CI
+  R <-- "상태 · 링크 ↔ 에픽 · 승인 전이" --> JIRA
+  R <-- "요구사항 가져오기" --> NOTION
+  R <-- "Intent · Unit · 승인 기록" --> AIDLC
+  R -- "체크포인트(구현 하네스만)" --> ENT
+  R -- "verify.sh가 실행 · SARIF 수집" --> SA
+  classDef gate fill:#fbe6e9,stroke:#c8102e,stroke-width:2px,color:#c8102e
+  classDef design fill:#e7eafb,stroke:#3046c5,stroke-width:2px,color:#14213d
+  classDef build fill:#fbf1dc,stroke:#c98a12,stroke-width:2px,color:#14213d
+  classDef ops fill:#ddf2eb,stroke:#0b7a5e,stroke-width:2px,color:#14213d
+  classDef plain fill:#ffffff,stroke:#14213d,stroke-width:2px,color:#14213d
+  classDef store fill:#f5f7fa,stroke:#6b778c,stroke-width:1.5px,color:#46536b
+  class PPL gate
+  class KIT build
+  class HAR plain
+  class R design
+  class GIT,CI ops
+  class JIRA,NOTION,AIDLC,ENT,SA store

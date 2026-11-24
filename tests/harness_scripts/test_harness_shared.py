@@ -143,28 +143,32 @@ class SharedHarnessTest(unittest.TestCase):
         self.assertFalse(marker.exists(), marker.read_text() if marker.exists() else "")
 
     def test_scaffold_follows_stage_order_and_approval(self):
-        self.assert_fails(self.scaffold("demo", "sample", "--stage=design"), "requirements")
-        self.assert_ok(self.scaffold("demo", "sample", "--legacy"))
-        requirement = self.root / ".agents/docs/demo-specs/requirements/1-feat-sample.md"
+        key = issue_prefix(self.root) + "-1"
+        issue = self.root / f".agents/docs/issues/{key}-sample-flow"
+        self.assert_fails(self.scaffold(key, "--stage=design"), key)
+        self.assert_ok(self.scaffold("--next", "sample-flow", "--area", "demo"))
+        requirement = issue / "requirements.md"
         self.assertTrue(requirement.is_file())
-        self.assertFalse((self.root / ".agents/docs/demo-specs/design/1-feat-sample.md").exists())
-        self.assert_fails(self.scaffold("demo", "sample", "--stage=design"), "approved")
+        self.assertFalse((issue / "design.md").exists())
+        self.assert_fails(self.scaffold(key, "--stage=design"), "approved")
         approve(requirement)
-        self.assert_ok(self.scaffold("demo", "sample", "--stage=design"))
-        self.assert_fails(self.scaffold("demo", "sample", "--stage=tasks"), "approved")
-        approve(self.root / ".agents/docs/demo-specs/design/1-feat-sample.md")
-        self.assert_ok(self.scaffold("demo", "sample", "--stage=tasks"))
+        self.assert_ok(self.scaffold(key, "--stage=design"))
+        self.assert_fails(self.scaffold(key, "--stage=tasks"), "approved")
+        approve(issue / "design.md")
+        self.assert_ok(self.scaffold(key, "--stage=tasks"))
+        self.assertTrue((issue / "tasks.md").is_file())
         self.assert_ok(self.run_script("bash", str(self.root / "scripts/board.sh"), "--check"))
 
     def test_scaffold_rejects_path_traversal(self):
         self.assert_fails(self.scaffold("../escape", "sample"), "slug")
         self.assert_fails(self.scaffold("demo", "../escape"), "이름")
 
-    def test_scaffold_does_not_recreate_task_waiting_for_review(self):
+    def test_scaffold_does_not_write_into_the_legacy_layout(self):
         self.write_feature("demo", "1-feat-sample", "check")
         approve(self.root / ".agents/docs/demo-specs/requirements/1-feat-sample.md")
         approve(self.root / ".agents/docs/demo-specs/design/1-feat-sample.md")
-        self.assert_fails(self.scaffold("demo", "1-feat-sample", "--stage=tasks"), "already in check")
+        self.assert_fails(self.scaffold("demo", "1-feat-sample", "--stage=tasks"), "읽기 전용")
+        self.assertFalse((self.root / ".agents/docs/demo-specs/tasks/active/1-feat-sample.md").exists())
 
     def test_task_state_must_match_its_folder(self):
         self.write_feature("demo", "1-feat-sample", "check", state="active")
@@ -256,18 +260,18 @@ class SharedHarnessTest(unittest.TestCase):
         self.track_note("../../outside.md", track=False)
         self.assert_ok(self.check())
 
-    def test_rule_without_kiro_pointer_fails(self):
+    def test_rule_without_kiro_steering_fails(self):
         rule = self.first_rule()
         (self.root / ".kiro/steering" / rule.name).unlink()
-        self.assert_fails(self.check(), "missing Kiro rule pointer")
+        self.assert_fails(self.check(), "missing Kiro steering")
 
     def test_kiro_pointer_without_rule_fails(self):
         (self.root / ".kiro/steering/orphan.md").write_text("---\ninclusion: always\n---\n원본: `.agents/rules/orphan.md`\n")
         self.assert_fails(self.check(), "orphan")
 
-    def test_skill_without_agent_pointers_fails(self):
-        (self.root / ".claude/commands/hx-plan.md").unlink()
-        self.assert_fails(self.check(), "missing canonical skill pointer")
+    def test_skill_without_agent_copy_fails(self):
+        shutil.rmtree(self.root / ".claude/skills/kns-plan")
+        self.assert_fails(self.check(), ".claude/skills/kns-plan/SKILL.md: missing skill copy")
 
     def test_kiro_resource_cannot_escape(self):
         agent = self.root / ".kiro/agents/worker.json"
@@ -351,14 +355,14 @@ class SharedHarnessTest(unittest.TestCase):
         self.assertIn("HARNESS_VERIFY_FAIL_EXIT=1", agent["stop"][0]["command"])
         workspace = {
             name: json.loads((self.root / f".kiro/hooks/{name}.json").read_text())["hooks"][0]["action"]["command"]
-            for name in ("harness-session-context", "harness-verify-gate")
+            for name in ("harness-session-start", "harness-verify-gate")
         }
         self.assertIn("HARNESS_VERIFY_FAIL_EXIT=1", workspace["harness-verify-gate"])
         for command in (agent["agentSpawn"][0]["command"], agent["stop"][0]["command"], *workspace.values()):
             self.assertIn('[ ! -f "$r/.agents/harness.json" ]', command)
         nested = self.root / "some/nested/dir"
         nested.mkdir(parents=True)
-        result = self.run_script("sh", "-c", workspace["harness-session-context"], cwd=nested)
+        result = self.run_script("sh", "-c", workspace["harness-session-start"], cwd=nested)
         self.assert_ok(result)
         self.assertIn(json.loads((self.root / ".agents/harness.json").read_text())["title"], result.stdout)
         (self.root / "scripts/verify.sh").write_text("#!/usr/bin/env bash\necho 실패\nexit 1\n")
@@ -410,7 +414,24 @@ class SharedHarnessTest(unittest.TestCase):
 
 
 def approve(path):
-    path.write_text(re.sub(r"^(\|\s*상태\s*\|)[^|\n]*\|", r"\1 approved |", path.read_text(), count=1, flags=re.M))
+    """옛 구조는 `| 상태 |` 행, 새 구조는 frontmatter 의 status 를 approved 로 바꾼다."""
+    text = path.read_text()
+    if text.startswith("---\n"):
+        path.write_text(re.sub(r"^status:.*$", "status: approved", text, count=1, flags=re.M))
+        return
+    path.write_text(re.sub(r"^(\|\s*상태\s*\|)[^|\n]*\|", r"\1 approved |", text, count=1, flags=re.M))
+
+
+def issue_prefix(root):
+    """설치 메타의 issueKey.prefix. 없으면 new-feature.sh 와 같은 규칙으로 PROJECT_SLUG · 단위 이름에서 만든다."""
+    meta = root / ".agents/knots-sync.json"
+    data = json.loads(meta.read_text()) if meta.is_file() else {}
+    prefix = data.get("issueKey", {}).get("prefix")
+    if prefix:
+        return prefix
+    slug = data.get("tokens", {}).get("PROJECT_SLUG") or json.loads((root / ".agents/harness.json").read_text()).get("unit", "")
+    derived = re.sub(r"^[0-9]+", "", re.sub(r"[^A-Z0-9]", "", slug.upper()))[:10]
+    return derived if len(derived) >= 2 else "ISSUE"
 
 
 if __name__ == "__main__":

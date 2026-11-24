@@ -1,0 +1,14 @@
+# HARNESS STARTER KIT ({{PROJECT_NAME}}) — GitLab CI 진입 파일. 검증 단계는 킷 템플릿에 있다.
+#
+# 이 파일과 ci/knots-sync.gitlab-ci.yml · scripts/verify.sh · scripts/harness/ · .agents/*.json 은
+# 코드 소유자 규칙(CODEOWNERS + 코드 소유자 승인)으로 승인자를 건다.
+include:
+  - local: ci/knots-sync.gitlab-ci.yml
+
+# 실행 환경은 공통 틀을 덮어 넣는다. 예(이미지 · 분석기 버전은 팀이 고정한다):
+# .knots-sync-setup:
+#   image: python:3.12
+#   variables:
+#     GIT_DEPTH: "0"
+#   before_script:
+#     - pip install uv semgrep && uv sync --frozen --dev

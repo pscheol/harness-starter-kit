@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="모든 명령의 도움말과 실제 출력">
+<title>CLI 명령 참고 — knots-sync 사용 안내서</title>
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="site-header">
+<a class="brand" href="index.html">knots-sync<span>사용 안내서</span></a>
+<span class="site-meta">CLI 2.0.0-alpha.0 기준 · 2026-11-24 · 저장소 harness-starter-kit</span>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="안내서 목차">
+<p class="toc-title">안내서 목차</p>
+<ol>
+<li class="toc-group">시작</li>
+<li><a href="index.html"><span class="n">00</span><span>시작하기</span></a></li>
+<li><a href="concepts.html"><span class="n">01</span><span>개념</span></a></li>
+<li><a href="install.html"><span class="n">02</span><span>설치</span></a></li>
+<li class="toc-group">쓰기</li>
+<li><a href="daily-flow.html"><span class="n">03</span><span>하루 흐름</span></a></li>
+<li><a href="dashboard.html"><span class="n">04</span><span>관리 페이지</span></a></li>
+<li><a href="cli.html" aria-current="page"><span class="n">05</span><span>CLI 명령 참고</span></a></li>
+<li class="toc-group">모듈</li>
+<li><a href="aidlc.html"><span class="n">06</span><span>AI-DLC 모듈</span></a></li>
+<li><a href="entire.html"><span class="n">07</span><span>Entire 모듈</span></a></li>
+<li><a href="modules.html"><span class="n">08</span><span>jira · notion · multi-harness</span></a></li>
+<li class="toc-group">운영과 팀</li>
+<li><a href="ops.html"><span class="n">09</span><span>배포 · 운영 · 지표</span></a></li>
+<li><a href="roles.html"><span class="n">10</span><span>역할별 활용 가이드</span></a></li>
+<li class="toc-group">옮기기와 도움</li>
+<li><a href="migration.html"><span class="n">11</span><span>옛 이름에서 옮기기</span></a></li>
+<li><a href="faq.html"><span class="n">12</span><span>문제 해결 · FAQ</span></a></li>
+</ol>
+</nav>
+<main id="main" tabindex="-1">
+<article>
+<p class="kicker">05 · CLI 명령 참고</p>
+<h1>CLI 명령 참고</h1>
+<p class="lede"><code>knots-sync</code>(별칭 <code>kns</code>)의 명령 34개를 묶음별로 정리했다. 회색 상자 안의 글은 이 안내서를 쓰며 실제로 돌린 <code>--help</code> 와 출력을 손대지 않고 옮긴 것이다(CLI 2.0.0-alpha.0). 각 명령의 <code>--help</code> 는 사용법 한 줄을 낸다.</p>
+<nav class="on-page" aria-label="이 장의 절"><h2>이 장에서</h2><ol><li><a href="#overview">전체 도움말과 종료 코드</a></li><li><a href="#install-cmds">설치 · 유지</a></li><li><a href="#view-cmds">보기 · 상태</a></li><li><a href="#human-cmds">사람만 하는 일</a></li><li><a href="#design-cmds">설계 · 흐름</a></li><li><a href="#ops-cmds">배포 · 운영 · 지표</a></li><li><a href="#module-cmds">모듈 · 맞추기 · 확장</a></li><li><a href="#scripts">리포 스크립트(Node 없이)</a></li><li><a href="#skills-ref">에이전트 스킬(프로젝트 스킬 15종)</a></li></ol></nav>
+
+<div class="warn"><span class="box-title">부르는 법</span><p>npm 배포 전이라 <code>npx knots-sync</code> 대신 킷 저장소의 <code>plugins/kns/skills/bootstrap/bin/knots-sync.js</code> 를 <code>node</code> 로 부르거나 별칭을 만든다(→ <a href="install.html#cli">설치 · CLI</a>). 관리 페이지가 복사해 주는 <code>npx knots-sync …</code> 명령도 같은 별칭으로 바꿔 읽는다.</p></div>
+
+<h2 id="overview">전체 도움말과 종료 코드</h2>
+<div class="block wide-block"><span class="block-label"><span class="tag">실제 출력</span>knots-sync --help</span>
+<pre><code>knots-sync 2.0.0-alpha.0 — 하네스 엔지니어링 스타터 킷
+
+사용법: knots-sync &lt;명령&gt; [플래그]
+
+명령:
+  init       킷을 리포에 설치한다(질문 또는 플래그)
+  plan       설치할 작업 목록만 출력한다(쓰지 않는다)
+  add        하네스 · 모듈을 켜고 그 몫만 깐다(예: add codex jira-workflow)
+  remove     하네스 · 모듈을 끄고 고치지 않은 그 몫만 지운다
+  update     킷을 새 판으로 올린다. 사람이 고친 파일은 &lt;경로&gt;.new 로 받는다
+  outdated   설치 · CLI · 소스 최신 태그 판을 비교한다. --check 면 새 판이 있을 때 exit 1
+  repair     지워진 킷 파일을 같은 판으로 되살린다. 고친 파일은 그대로 둔다
+  uninstall  킷 소유이면서 고치지 않은 파일을 지운다
+  doctor     설치 상태를 점검한다(읽기만). --check 면 오류가 있을 때 exit 1
+  list       설치 요약. --files 면 lock 항목
+  dashboard  관리 페이지 서버(127.0.0.1). --export &lt;폴더&gt; 는 정적 HTML, --all · --root · --workspace 는 여러 프로젝트
+  status     처리할 일 · 이슈 · 문서 · 검증 · 흐름(--json 은 관리 페이지 API 와 같다)
+  approve    사람 터미널 승인(approvals.md 에 덧붙인다). answer 질문 답 · review show|decide 리뷰 판단
+  sessions   켜 둔 세션. dispatch 세션에 작업 요청(사람이 고를 때만) · dispatch list|drop 대기함
+  units      Unit 변경 제안(propose · discard). flow gates 흐름 틀 · quality 품질 결과 · projects 등록부
+  skills     이 컴퓨터 · 리포의 스킬 목록(단계 · 하네스 · 이름 겹침). usage 토큰 사용량 · 킷이 덧붙인 양 · history 프롬프트 기록
+  pack       pack new &lt;이름&gt; --dir &lt;경로&gt; --from &lt;파일&gt;… — 프로젝트 파일로 회사 팩 골격을 만든다
+  local      local sync | list — 개인 층(.agents/local/)을 하네스 폴더에 배치한다(공유 lock 밖)
+  mob        몹 정리 세션 start | next | close | status(진행자 터미널, 회차를 닫아도 세션에 요청하지 않는다)
+  sync       맞추기 — sync aidlc [--intent &lt;AI-DLC 폴더&gt;] [--check] · sync jira [--approvals | --verify] · sync units [--check] [--unit &lt;id&gt;] [--adopt]
+  checkpoints  Entire 체크포인트 목록 · 설명(entire 모듈을 켠 리포)
+  intake     요구사항 접수 — 글 · 첨부를 Intent 폴더(bug 는 이슈 폴더)로 받는다(신뢰하지 않는 입력으로 표시). --from jira:&lt;키&gt;|notion:&lt;페이지&gt; 는 외부 출처, --from ops:&lt;운영 기록&gt;#INC-n|NX-n 은 운영 기록에서
+  deploy     배포 기록 plan · check · record · run · result(승인은 approve deploy:&lt;기록&gt; --gate deploy). 킷은 운영 배포 명령을 부를 뿐이다
+  ops        운영 기록 new · check(읽기는 status --ops)
+  metrics    전달 지표 5개(git · 승인 기록 · 배포 기록에서만 계산) · --baseline 기준선 · --verify-baseline
+  rules      규칙 후보 candidates · list · promote · reject(승격 · 거절은 사람 터미널만)
+
+공통 플래그: --cwd &lt;폴더&gt; --dry-run --yes --json --templates &lt;폴더&gt; --quiet --no-color --help
+init · plan: --stack --arch --domain --lang --agents &lt;목록|all&gt; --modules &lt;목록|all|none&gt;
+             --name --slug --package-ns --protected-path --token KEY=VALUE --issue-source kit|jira
+             --issue-prefix --base --adopt --force --no-register(등록부에 더하지 않는다) --install-tools --allow-unverified(외부 도구 모듈 aidlc · entire 는 이름을 줄 때만 켠다)
+add · remove: &lt;이름&gt;…(하네스 claude codex cursor kiro · 모듈 jira-workflow multi-harness aidlc entire notion)
+             add: --install-tools(도구가 없을 때 사람 터미널에서만 설치) --allow-unverified(검증 범위 밖 도구 버전을 허용)
+dashboard: --port --open --read-only --export &lt;폴더&gt; --all --root &lt;dir&gt; --workspace &lt;file&gt; · 관리 페이지 명령은 knots-sync &lt;명령&gt; --help
+update: --accept-all --prune --forget &lt;경로&gt;(반복) --to &lt;CLI 버전&gt; --packs(메타 packs 의 팩만 받아 깐다) --tools(켠 외부 도구의 지금 · 최신 버전을 보이고 사람이 고른 것만 올린다 · --allow-unverified) · outdated: --check --source &lt;git 원격&gt;
+repair: --only missing,drifted,stale,merge · uninstall: --keep-state --keep-packs
+종료 코드: 0 성공 · 1 검사 문제 · 2 사용법 · 3 리포 상태 · 4 사람 판단 필요 · 5 실행 환경 · 130 중단</code></pre></div>
+<div class="table-wrap"><table>
+<caption>종료 코드</caption>
+<thead><tr><th scope="col">코드</th><th scope="col">뜻</th><th scope="col">자주 보는 경우</th></tr></thead>
+<tbody>
+<tr><td><code>0</code></td><td>성공</td><td>—</td></tr>
+<tr><td><code>1</code></td><td>검사 문제</td><td><code>doctor --check</code> 오류, <code>deploy check</code> 조건 미충족, 비밀값이 든 접수, 기준선 재계산 불일치</td></tr>
+<tr><td><code>2</code></td><td>사용법</td><td>모르는 명령 · 플래그(<code>✖ 모르는 명령: …</code>)</td></tr>
+<tr><td><code>3</code></td><td>리포 상태</td><td>에이전트 세션에서 사람 전용 명령(approve · answer · review decide · dispatch · rules promote · mob), TTY 가 아님, 팩 검사 실패</td></tr>
+<tr><td><code>4</code></td><td>사람 판단 필요</td><td><code>update</code> 충돌(<code>.new</code>), <code>remove</code> · <code>uninstall</code> 이 고친 파일을 남김, 외부 도구 판이 검증 범위 밖, 이미 가져온 외부 출처의 diff</td></tr>
+<tr><td><code>5</code></td><td>실행 환경</td><td>외부 도구가 없음, 포트를 쓸 수 없음, Node 없이 CLI 전용 명령</td></tr>
+<tr><td><code>130</code></td><td>중단</td><td><kbd>Ctrl</kbd>+<kbd>C</kbd></td></tr>
+</tbody></table></div>
+<p>공통 플래그: <code>--cwd &lt;폴더&gt;</code>(다른 리포를 대상으로) · <code>--dry-run</code> · <code>--yes</code>(묻지 않음) · <code>--json</code>(기계가 읽는 출력, 관리 페이지 API 와 같은 모양) · <code>--templates &lt;폴더&gt;</code> · <code>--quiet</code> · <code>--no-color</code> · <code>--help</code>.</p>
+
+<h2 id="install-cmds">설치 · 유지</h2>
+<div class="block" id="cmd-init"><span class="block-label"><span class="tag">--help</span>knots-sync init</span><pre><code>knots-sync init [--stack S] [--arch A] [--agents claude,codex|all] [--modules m1,m2|all|none] [--yes] [--dry-run] [--json]</code></pre></div>
+<div class="block" id="cmd-plan"><span class="block-label"><span class="tag">--help</span>knots-sync plan</span><pre><code>knots-sync plan [init 과 같은 플래그] — 작업 목록만 출력한다</code></pre></div>
+<div class="block" id="cmd-add"><span class="block-label"><span class="tag">--help</span>knots-sync add</span><pre><code>knots-sync add &lt;하네스|모듈&gt;… [--dry-run] [--yes] [--install-tools] [--allow-unverified] [--json] — 그 몫만 깐다. 외부 도구 모듈(aidlc · entire)은 도구 확인 · 설치 안내 · 외부 명령 · 측정까지 한다. 도구가 없으면 exit 5, 검증 범위 밖이면 exit 4. 사람이 고친 매니페스트는 .new 로 받고 exit 4</code></pre></div>
+<div class="block" id="cmd-remove"><span class="block-label"><span class="tag">--help</span>knots-sync remove</span><pre><code>knots-sync remove &lt;하네스|모듈&gt;… [--dry-run] [--json] — 고치지 않은 그 몫만 지운다. 고친 파일을 남기면 exit 4</code></pre></div>
+<div class="block" id="cmd-update"><span class="block-label"><span class="tag">--help</span>knots-sync update</span><pre><code>knots-sync update [--dry-run] [--accept-all] [--prune] [--forget 경로]… [--to 버전] [--templates 폴더] [--json] — conflict 가 있으면 exit 4. update --packs 는 팩만(검사 실패 exit 3 · 팩 충돌 exit 4)</code></pre></div>
+<div class="block" id="cmd-outdated"><span class="block-label"><span class="tag">--help</span>knots-sync outdated</span><pre><code>knots-sync outdated [--check] [--source &lt;git 원격|경로&gt;] [--json] — 소스: --source &gt; KNOTS_SYNC_SOURCE &gt; lock kit.source. 닿지 못하면 &#x27;확인 못 함&#x27; 과 exit 0</code></pre></div>
+<div class="block" id="cmd-repair"><span class="block-label"><span class="tag">--help</span>knots-sync repair</span><pre><code>knots-sync repair [--dry-run] [--only missing,drifted,stale,merge] [--json] — 되살리지 못한 missing 이 있으면 exit 4</code></pre></div>
+<div class="block" id="cmd-uninstall"><span class="block-label"><span class="tag">--help</span>knots-sync uninstall</span><pre><code>knots-sync uninstall [--dry-run] [--yes] [--keep-state] [--keep-packs] [--json] — 고친 파일을 남기면 exit 4. TTY 가 아니면 --yes</code></pre></div>
+<div class="block" id="cmd-doctor"><span class="block-label"><span class="tag">--help</span>knots-sync doctor</span><pre><code>knots-sync doctor [--check] [--only 종류,…] [--json] — 종류: meta-invalid lock-invalid lock-v1 legacy-names version-mismatch missing drifted gitignore entry-size</code></pre></div>
+<div class="block" id="cmd-list"><span class="block-label"><span class="tag">--help</span>knots-sync list</span><pre><code>knots-sync list [--files] [--json]</code></pre></div>
+<div class="block"><span class="block-label"><span class="tag">실제 출력</span>knots-sync doctor(일회용 리포, 깐 직후)</span>
+<pre><code>knots-sync doctor — /private/tmp/kns-guide-fx/demo-app
+  킷: 설치 2.0.0-alpha.0 · lock 2.0.0-alpha.0 · CLI 2.0.0-alpha.0
+  copy 항목: ok 309 · drifted 0 · missing 0
+  배치 항목: ok 54 · 오류 0
+  오류 0 · 경고 0 · 정보 0
+  세션마다 실리는 양(claude): kit 10,206(훅 13) = 10,206바이트
+  세션마다 실리는 양(codex): kit 8,380(훅 8) = 8,380바이트</code></pre></div>
+<p><code>doctor --json</code> 의 <code>load</code> 는 하네스별로 쪼개 준다. 위 리포의 Claude Code 몫은 파일 23개(진입 2 · 스킬 설명 15 · 역할 6), 훅 13개(SessionStart 1 · PreToolUse 4 · PostToolUse 1 · UserPromptSubmit 1 · Stop 2 · SubagentStop 1 · SessionEnd 1 · WorktreeCreate 1 · WorktreeRemove 1)였다. <code>doctor --only</code> 로 볼 종류: <code>meta-invalid</code> · <code>lock-invalid</code> · <code>lock-v1</code> · <code>legacy-names</code> · <code>version-mismatch</code> · <code>missing</code> · <code>drifted</code> · <code>gitignore</code> · <code>entry-size</code>.</p>
+<div class="block"><span class="block-label"><span class="tag">실제 출력</span>knots-sync update --dry-run(같은 판이라 바꿀 것 없음)</span>
+<pre><code>knots-sync update — /private/tmp/kns-guide-fx/demo-app
+  킷: 2.0.0-alpha.0 → 2.0.0-alpha.0 · 메타 v2 · lock v2
+  선택: python · hexagonal · backend · 하네스 claude,codex · 모듈 none
+  skip-user     README.md
+  파일: 새로 0 · 되살림 0 · 교체 0 · 병합 0 · 같음 309 · 충돌 0 · 덮음(.bak) 0 · 킷에서 빠짐 0 · 지움 0 · 건너뜀 1 · 받지 않기로 함 0
+  배치: 바꿀 것 없음 (같음 54)
+  (dry-run — 쓰지 않았다)</code></pre></div>
+<div class="block"><span class="block-label"><span class="tag">실제 출력</span>knots-sync add jira-workflow --dry-run</span>
+<pre><code>knots-sync add — /private/tmp/kns-guide-fx/demo-app
+  하네스 claude,codex → claude,codex · 모듈 none → jira-workflow
+  파일: create 5
+  배치: create 4 (같음 54)
+  (dry-run — 쓰지 않았다)</code></pre></div>
+<p><code>update</code> 의 다른 플래그: <code>--accept-all</code>(충돌을 모두 킷 판으로) · <code>--prune</code>(킷에서 빠진 파일 지우기) · <code>--forget &lt;경로&gt;</code>(이 파일은 앞으로 받지 않음, 반복) · <code>--to &lt;CLI 버전&gt;</code> · <code>--packs</code>(팩만) · <code>--tools</code>(켠 외부 도구의 지금 · 최신 판을 보이고 사람이 고른 것만 올림).</p>
+
+<h2 id="view-cmds">보기 · 상태</h2>
+<div class="block" id="cmd-dashboard"><span class="block-label"><span class="tag">--help</span>knots-sync dashboard</span><pre><code>knots-sync dashboard [--port &lt;n&gt;] [--open] [--read-only] [--export &lt;폴더&gt;] [--all | --root &lt;dir&gt; | --workspace &lt;file&gt;] — 127.0.0.1 에만 연다. 주소는 stdout, 승인 PIN 은 stderr</code></pre></div>
+<div class="block" id="cmd-status"><span class="block-label"><span class="tag">--help</span>knots-sync status</span><pre><code>knots-sync status [--ops | --session | --intents | --intent &lt;INT&gt; [--gate codebase|plans] | --issues [--area --stage --intent] | --issue &lt;키&gt; | --doc &lt;경로&gt; | --verify [--issue] | --worktrees | --harness | --flow &lt;INT&gt; [--burn [--days n]] | --all] [--json]</code></pre></div>
+<div class="block" id="cmd-sessions"><span class="block-label"><span class="tag">--help</span>knots-sync sessions</span><pre><code>knots-sync sessions [--machine] [--json]</code></pre></div>
+<div class="block" id="cmd-skills"><span class="block-label"><span class="tag">--help</span>knots-sync skills</span><pre><code>knots-sync skills [--stage &lt;단계&gt;] [--harness &lt;h&gt;] [--conflicts] [--errors] [--all] [--no-user] [--refresh] [--json] — 읽기만 한다. 단계는 설계 · 구현 · 검증 · 반영 · 운영(영어도 된다)</code></pre></div>
+<div class="block" id="cmd-usage"><span class="block-label"><span class="tag">--help</span>knots-sync usage</span><pre><code>knots-sync usage [--days n] [--harness h] [--sources] | usage --now | usage --kit [--json] — 대화 기록 읽기가 꺼져 있으면(기본) 킷이 덧붙인 양(--kit)만 보인다</code></pre></div>
+<div class="block" id="cmd-history"><span class="block-label"><span class="tag">--help</span>knots-sync history</span><pre><code>knots-sync history [--q …] [--session &lt;id&gt;] [--role &lt;역할&gt;] [--json] — ~/.config/knots-sync/config.json 의 history 가 on 일 때만. 꺼져 있으면 exit 1(history_off)</code></pre></div>
+<div class="block" id="cmd-quality"><span class="block-label"><span class="tag">--help</span>knots-sync quality</span><pre><code>knots-sync quality [--findings [--issue &lt;키&gt;] [--severity S] [--new]] [--json]</code></pre></div>
+<div class="block" id="cmd-projects"><span class="block-label"><span class="tag">--help</span>knots-sync projects</span><pre><code>knots-sync projects list | add &lt;폴더&gt; | remove &lt;이름|경로&gt; [--json] — 등록부 ~/.config/knots-sync/projects.json</code></pre></div>
+<div class="block"><span class="block-label"><span class="tag">실제 출력</span>knots-sync status(관리 페이지 예시 리포)</span>
+<pre><code>처리할 일 9건
+  [1] 자동 검증 배포가 멈췄다(연속 실패 2회) — 플랫폼에서 파이프라인을 수동 실행하고 KNS_DEPLOY_RESUME=true 를 넣는다
+  [1] 품질 게이트 failed · 새 CRITICAL 1 — quality-gate-last.json
+  [1] SHOP-18 리뷰 지적 CRITICAL 0 · HIGH 1 — 열린 CRITICAL · HIGH 지적이 있으면 mr 승인 · full 이 막힙니다
+  [2] 2026-11-24-INT-7 deploy 승인 대기 — 승인하면 운영 배포 작업이 deploy.py check --require-approved 를 통과한다
+  [2] SHOP-12 requirements 승인 대기 — 승인자: po
+  [3] INT-7 답할 질문 1건 — 막는 게이트: intent
+  [4] 검증 failed: 메인 폴더 — 마지막 검증 기록이 통과가 아닙니다
+  [7] RC-1 규칙 후보가 23일째 proposed — 승격(rules promote) 또는 거절(rules reject)한다
+  [8] 하네스 점검 문제 1건 — lock-invalid 1
+단계: requirements 4</code></pre></div>
+<p><code>status</code> 의 조각 플래그(<code>--ops</code> · <code>--intents</code> · <code>--issues</code> · <code>--verify</code> · <code>--worktrees</code> · <code>--harness</code> · <code>--flow &lt;INT&gt;</code> …)는 관리 페이지 각 화면의 API 와 같은 JSON 을 낸다.</p>
+<div class="block" id="skills"><span class="block-label"><span class="tag">실제 출력</span>knots-sync skills --stage 설계(예시 HOME)</span>
+<pre><code>스킬 4개(전체 8) — 하네스: claude · codex · kiro
+이름                                 단계           출처       claude  codex   kiro    위치
+impeccable                         설계/screen-plan  지도       no      loaded  no      ~/.agents/skills/impeccable (이름 겹침)
+impeccable                         설계/screen-plan  지도       loaded  no      no      ~/.claude/skills/impeccable (이름 겹침)
+service-planning-agent             설계/screen-plan  지도       loaded  loaded  no      ~/.agents/skills/service-planning-agent
+kns-demo                           설계           머리       loaded  no      no      ~/.claude/skills/kns-demo
+이름 겹침
+  impeccable: ~/.agents/skills/impeccable · ~/.claude/skills/impeccable</code></pre></div>
+<div class="block"><span class="block-label"><span class="tag">실제 출력</span>knots-sync usage --days 7(예시 HOME, history: on)</span>
+<pre><code>토큰 7.1M (입력 428K · 출력 214K · 캐시 읽기 6M · 캐시 쓰기 428K) · 요청 84회 · 캐시 읽기 비율 88%
+하루 토큰
+  2026-11-18 957K
+  2026-11-19 1.2M
+  2026-11-20 1.3M
+  2026-11-21 1.5M
+  2026-11-22 660K
+  2026-11-23 528K
+  2026-11-24 990K
+이슈별 토큰
+  SHOP-21        6.1M
+  SHOP-12        957K
+읽는 곳
+  ~/.claude/projects/_/*.jsonl         read  파일 1 세션 2
+  ~/.codex/sessions/**                 read  파일 0 세션 0
+  Kiro                                 none  파일 0 세션 0 · 기록 위치 확인 필요 · 자료 없음</code></pre></div>
+<div class="block"><span class="block-label"><span class="tag">실제 출력</span>knots-sync projects list</span>
+<pre><code>acme-shop                /private/tmp/kns-guide-fx/fx/acme-shop
+old-admin                (missing) /private/tmp/kns-guide-fx/fx/gone-admin
+demo-app                 /private/tmp/kns-guide-fx/demo-app</code></pre></div>
+
+<h2 id="human-cmds">사람만 하는 일</h2>
+<p>아래 명령의 쓰기 동작은 사람 터미널에서만 된다. 에이전트 세션이면 exit 3, TTY 가 아니어도 exit 3 이다. 에이전트 하네스의 PreToolUse 훅도 이 명령들을 막는다.</p>
+<div class="block" id="cmd-approve"><span class="block-label"><span class="tag">--help</span>knots-sync approve</span><pre><code>knots-sync approve &lt;키&gt; --gate &lt;게이트&gt; --phrase &quot;&lt;문구&gt;&quot; [--changes-requested [--rule-candidate]] [--json] — 사람 터미널에서만(에이전트 세션 · TTY 아님은 exit 3). deploy: knots-sync approve deploy:&lt;배포 기록&gt; --gate deploy --phrase &quot;…&quot; [--waive-rollback &quot;&lt;사유&gt;&quot;]</code></pre></div>
+<div class="block" id="cmd-answer"><span class="block-label"><span class="tag">--help</span>knots-sync answer</span><pre><code>knots-sync answer &lt;INT|키&gt; --list | &lt;Q-n&gt; --choice &lt;A-D|other&gt; [--text …] [--by &lt;참석자 email&gt;] [--json] — 사람 터미널에서만. 몹 세션이 열려 있으면 --by 필요</code></pre></div>
+<div class="block" id="cmd-review"><span class="block-label"><span class="tag">--help</span>knots-sync review</span><pre><code>knots-sync review show &lt;키&gt; | review decide &lt;키&gt; &lt;F-n&gt; --fix|--accept-risk --reason … [--json] — decide 는 사람 터미널에서만</code></pre></div>
+<div class="block" id="cmd-dispatch"><span class="block-label"><span class="tag">--help</span>knots-sync dispatch</span><pre><code>knots-sync dispatch --to &lt;세션 id|키:역할|이름&gt; --kind &lt;종류&gt; --path &lt;파일&gt;… [--text …] [--via socket|deeplink|queue] | dispatch list | dispatch drop &lt;id&gt;</code></pre></div>
+<div class="block" id="cmd-mob"><span class="block-label"><span class="tag">--help</span>knots-sync mob</span><pre><code>knots-sync mob start &lt;INT&gt; --attendees a@x,b@y [--timebox 30] | mob next &lt;INT&gt; | mob close &lt;INT&gt; | mob status &lt;INT&gt; [--json] — 진행자 터미널(에이전트 세션은 exit 3)</code></pre></div>
+<div class="block" id="cmd-rules"><span class="block-label"><span class="tag">--help</span>knots-sync rules</span><pre><code>knots-sync rules candidates [--since 30d] | list | promote RC-&lt;n&gt; | reject RC-&lt;n&gt; --reason &quot;…&quot; [--json] — promote · reject 는 사람 터미널에서만(exit 3)</code></pre></div>
+<div class="block"><span class="block-label"><span class="tag">실제 출력</span>에이전트 세션에서 knots-sync approve INT-1 --gate intent --phrase "범위 확인. 승인합니다"</span>
+<pre><code>✖ 에이전트 세션에서는 할 수 없다(판정: CLAUDECODE=1). 사람이 자기 터미널에서 실행한다
+[exit 3]</code></pre></div>
+<p>사람 터미널의 <code>approve</code> 는 대상 문서 · sha · 게이트 조건 · <code>[NEEDS CLARIFICATION]</code> 을 관리 페이지와 같은 순서로 검사한 뒤 "확인하려면 이슈 키를 입력한다:"를 묻는다. 입력이 키와 다르면 exit 1 로 멈춘다. 배포 승인은 <code>approve deploy:&lt;배포 기록&gt; --gate deploy --phrase "…" [--waive-rollback "&lt;사유&gt;"]</code> 이다.</p>
+<div class="block"><span class="block-label"><span class="tag">실제 출력</span>knots-sync rules list · dispatch list(예시 리포)</span>
+<pre><code>RC-1 proposed .agents/rules/payment.md 출처 1건 · 23일
+01JDEMO0000000000000000001 doc-changed — [knots-sync 관리 페이지] SHOP-17 문서를 사람이 고쳤다. 이 글은 승인이 아니다.</code></pre></div>
+
+<h2 id="design-cmds">설계 · 흐름</h2>
+<div class="block" id="cmd-intake"><span class="block-label"><span class="tag">--help</span>knots-sync intake</span><pre><code>knots-sync intake --from ops:&lt;운영 기록&gt;#INC-&lt;n&gt;|NX-&lt;n&gt; [--kind bug] [--name &lt;영문-kebab&gt;] — 운영 기록의 장애 · 다음 Intent 후보에서 접수한다
+  knots-sync intake --from jira:&lt;키&gt;|notion:&lt;페이지 URL|id&gt; --name &lt;영문-kebab&gt; [--kind …] [--key &lt;Intent 키&gt;] [--depth n] [--yes] — 외부 출처를 같은 형식 · 제한 · 비밀값 검사로 가져온다. 이미 가져온 출처면 diff 만 보이고(exit 4) --yes 로 반영한다. 토큰은 환경 변수(JIRA_API_TOKEN · JIRA_USER_EMAIL · NOTION_TOKEN)만 읽는다
+  knots-sync intake --title &lt;제목&gt; --kind feature|change|refactor|product|bug --name &lt;영문-kebab&gt; [--area &lt;영역&gt;] [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]… [--json] — 비밀값이 든 글은 접수하지 않는다(exit 1)</code></pre></div>
+<div class="block" id="cmd-units"><span class="block-label"><span class="tag">--help</span>knots-sync units</span><pre><code>knots-sync units propose &lt;INT&gt; --add-dep U-a:U-b | --remove-dep U-a:U-b | --split U-n=제목1|제목2 | --merge U-a,U-b | --order U-a,U-b [--reason …] | units discard &lt;INT&gt;</code></pre></div>
+<div class="block" id="cmd-flow"><span class="block-label"><span class="tag">--help</span>knots-sync flow</span><pre><code>knots-sync flow gates [--add &lt;게이트&gt; --after &lt;게이트&gt; | --remove &lt;게이트&gt;] [--json]</code></pre></div>
+<div class="block"><span class="block-label"><span class="tag">실제 출력</span>knots-sync intake --title "업로드 임시 파일 정리" --kind feature --name upload-cleanup --area upload --text "…"</span>
+<pre><code>✔ 접수: .agents/docs/intents/INT-1-upload-cleanup
+다음: /kns-intent INT-1 (세션 요청은 사람이 고를 때만)</code></pre></div>
+
+<h2 id="ops-cmds">배포 · 운영 · 지표</h2>
+<div class="block" id="cmd-deploy"><span class="block-label"><span class="tag">--help</span>knots-sync deploy</span><pre><code>knots-sync deploy plan &lt;키…&gt; [--env production] [--tag v2.3.0] | check &lt;기록&gt; [--require-approved] [--waive &lt;사유&gt;] | record &lt;기록&gt; --from-ci &lt;URL|파일|폴더&gt; | run --env &lt;이름&gt; [--record &lt;기록&gt;] [--rollback-test] [--to-sha &lt;sha&gt;] | result &lt;기록&gt; --from &lt;파일&gt; [--json]</code></pre></div>
+<div class="block" id="cmd-ops"><span class="block-label"><span class="tag">--help</span>knots-sync ops</span><pre><code>knots-sync ops new --topic &lt;영문-kebab 2~5단어&gt; [--from YYYY-MM-DD] [--to YYYY-MM-DD] | ops check [--json] — 읽기는 knots-sync status --ops [--json]</code></pre></div>
+<div class="block" id="cmd-metrics"><span class="block-label"><span class="tag">--help</span>knots-sync metrics</span><pre><code>knots-sync metrics [--baseline [--force] [--adopted-at &lt;날짜|커밋&gt;]] [--verify-baseline] [--from YYYY-MM-DD --to YYYY-MM-DD] [--fill &lt;운영 기록&gt;] [--json] — 기준선 재계산 값이 다르면 exit 1</code></pre></div>
+<p>실제 출력(<code>deploy check</code> · <code>metrics</code>)은 <a href="ops.html">배포 · 운영 · 지표</a>에 있다.</p>
+
+<h2 id="module-cmds">모듈 · 맞추기 · 확장</h2>
+<div class="block" id="cmd-sync"><span class="block-label"><span class="tag">--help</span>knots-sync sync</span><pre><code>knots-sync sync aidlc [--intent &lt;AI-DLC Intent 폴더&gt;] [--key &lt;Intent 키&gt;] [--check] [--json] — AI-DLC 산출물을 intent.json · units.json 으로 옮긴다. 같은 입력이면 쓰지 않는다. --check 는 쓰지 않고 차이가 있으면 exit 1. sync jira [--approvals | --verify] [--issue &lt;키&gt; --to &lt;상태&gt;] [--dry-run] — Jira 와 맞춘다(jira-workflow 모듈, 에이전트 몫 전이만 · 승인 전이는 하지 않는다. --approvals 는 사람이 한 승인 전이를 approvals.md 로 가져온다. 모듈이 꺼져 있으면 exit 0). sync units [--check] [--unit &lt;id&gt;] [--adopt] — 배포 단위(tools/harness/units.json)에 공통 하네스를 복사한다. --check 줄 형식은 tools/harness/sync.py 와 같다</code></pre></div>
+<div class="block" id="cmd-checkpoints"><span class="block-label"><span class="tag">--help</span>knots-sync checkpoints</span><pre><code>knots-sync checkpoints [--issue &lt;키&gt;] [--json] | checkpoints &lt;체크포인트 id&gt; [--json] — Entire 체크포인트 목록(이슈 브랜치 커밋의 Entire-Checkpoint 트레일러) · 설명(entire checkpoint explain, 10초 제한)</code></pre></div>
+<div class="block" id="cmd-pack"><span class="block-label"><span class="tag">--help</span>knots-sync pack</span><pre><code>knots-sync pack new &lt;이름&gt; --dir &lt;경로&gt; [--from &lt;파일|폴더&gt;[#훅·검사 id]]… [--kit-range &quot;&gt;=2.0.0 &lt;3.0.0&quot;] [--json] — --dir 은 빈 폴더나 없는 경로</code></pre></div>
+<div class="block" id="cmd-local"><span class="block-label"><span class="tag">--help</span>knots-sync local</span><pre><code>knots-sync local sync [--dry-run] | local list [--json] — 개인 스킬 · Kiro 규칙 · 개인 훅(.claude/settings.local.json · .kiro/hooks/local-*). 공유 원본과 이름이 같으면 배치하지 않는다</code></pre></div>
+<div class="block"><span class="block-label"><span class="tag">실제 출력</span>knots-sync checkpoints(entire 모듈이 꺼진 리포)</span>
+<pre><code>entire 모듈이 꺼져 있습니다(knots-sync add entire)</code></pre></div>
+
+<h2 id="scripts">리포 스크립트(Node 없이)</h2>
+<p>리포에 깔린 Python · bash 스크립트는 Node 없이 돈다. 훅 · git 훅 · CI 가 부르는 것도 이쪽이다.</p>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">스크립트</th><th scope="col">하는 일</th></tr></thead>
+<tbody>
+<tr><td><code>bash scripts/verify.sh [--fast|--affected|--full] [--files …] [--tests …] [--plan] [--summary]</code></td><td>단일 검증 입구. 기본 changed. <code>--plan</code> 은 고른 명령만 JSON 으로(실행 안 함), <code>--summary</code> 는 짧게(Stop 훅용)</td></tr>
+<tr><td><code>bash scripts/new-feature.sh &lt;키|--next&gt; &lt;이름&gt; --area &lt;영역&gt; [--type …]</code> · <code>--stage=design|tasks</code></td><td>이슈 폴더와 단계 문서를 만든다(앞 단계 승인 뒤)</td></tr>
+<tr><td><code>bash scripts/new-intent.sh "&lt;요약&gt;" --name &lt;이름&gt; --kind &lt;종류&gt;</code></td><td>Intent 폴더를 만든다(<code>/kns-intent "&lt;요약&gt;"</code> 이 부른다)</td></tr>
+<tr><td><code>bash scripts/board.sh [--check] [--area &lt;영역&gt;] [--json]</code></td><td>SDD 보드(<code>.agents/docs/specs-index.md</code>)를 만든다. <code>--check</code> 는 읽기 전용</td></tr>
+<tr><td><code>bash scripts/check-sdd-prerequisites.sh &lt;키&gt; --stage=design|tasks|implement</code></td><td>단계 문서의 실제 경로를 출력한다(스킬이 경로를 추측하지 않게)</td></tr>
+<tr><td><code>python3 scripts/harness/approve.py &lt;키&gt; &lt;게이트&gt; --phrase "…" [--changes-requested [--rule-candidate]] [--risk-accepted|--fix-required] [--waive-rollback …]</code></td><td>사람 터미널 승인(Node 없는 리포)</td></tr>
+<tr><td><code>python3 scripts/harness/worktree.py new|list|open|done|gc</code></td><td>이슈 worktree. <code>new &lt;키&gt; [--docs] [--only 폴더] [--domain 경로] [--deps] [--open]</code>, <code>gc --apply</code> 는 끝난 것만 지운다</td></tr>
+<tr><td><code>python3 scripts/harness/intent.py next|check|backlog</code></td><td>Intent 다음 단계 판정 · 형식 검사 · 백로그 생성 구간</td></tr>
+<tr><td><code>python3 scripts/harness/review.py collect|publish|comment</code></td><td><code>/kns-review</code> 가 부르는 리뷰 자료 모으기 · 보고서 쓰기 · MR 코멘트</td></tr>
+<tr><td><code>python3 scripts/harness/deploy.py check|run|result|auto-verify</code></td><td>배포 승인 검사 · 실행 · 결과 기록 · 검증 환경 자동 배포(CI 가 부른다)</td></tr>
+<tr><td><code>python3 scripts/harness/delivery_metrics.py</code></td><td>전달 지표(Node 없는 CI)</td></tr>
+<tr><td><code>python3 scripts/harness/check_layout.py</code> · <code>projection.py sync</code></td><td>배치 검사 · 원본에서 하네스 폴더 다시 만들기(Node 없을 때의 <code>repair</code>)</td></tr>
+<tr><td><code>python3 scripts/harness/check_external.py --save|--snapshot &lt;파일&gt;</code></td><td>외부 도구 파일이 안 바뀌었는지 이전 전후 비교</td></tr>
+<tr><td><code>python3 scripts/sdd-layout.py migrate|rekey</code></td><td>옛 SDD 구조를 이슈 폴더로 옮기기 · 키 바꾸기</td></tr>
+<tr><td><code>bash scripts/install-git-hooks.sh</code></td><td>git 훅(pre-commit · pre-push) 켜기</td></tr>
+</tbody></table></div>
+<div class="block"><span class="block-label"><span class="tag">실제 출력</span>python3 scripts/harness/worktree.py --help</span>
+<pre><code>usage: worktree.py [-h] {new,list,open,done,gc,hook-create,hook-remove} ...
+
+worktree 운영(new · list · open · done · gc)
+
+positional arguments:
+  {new,list,open,done,gc,hook-create,hook-remove}
+    new                 이슈 worktree 를 만든다
+    list                worktree 목록
+    open                IDE 로 연다
+    done                끝난 worktree 를 지운다
+    gc                  정리 대상 목록(--apply 로 지운다)
+
+options:
+  -h, --help            show this help message and exit</code></pre></div>
+
+<h2 id="skills-ref">에이전트 스킬(프로젝트 스킬 15종)</h2>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">스킬</th><th scope="col">단계</th><th scope="col">하는 일</th><th scope="col">쓰나</th></tr></thead>
+<tbody>
+<tr><td><code>kns-harness</code></td><td>상시</td><td>작업 시작 때 하네스 규칙 컨텍스트를 로드한다</td><td>아니오</td></tr>
+<tr><td><code>kns-intent</code></td><td>설계</td><td>접수를 Intent 문서 · 질문 · Unit 목록으로. 한 번에 다음 한 단계</td><td>Intent 폴더</td></tr>
+<tr><td><code>kns-plans</code></td><td>설계</td><td><code>doc|screen|design|backlog &lt;Intent&gt;</code> — 기획물</td><td><code>plans/</code></td></tr>
+<tr><td><code>kns-specify</code></td><td>S1 · S2</td><td>requirements(<code>--from-unit INT/U-n</code> 으로 Unit 에서)</td><td>requirements</td></tr>
+<tr><td><code>kns-clarify</code></td><td>S2</td><td>모호성을 최대 5개 질문으로 해소</td><td>requirements 의 Clarifications</td></tr>
+<tr><td><code>kns-checklist</code></td><td>S2 · S6</td><td>요구 문장 품질 판정</td><td><code>checklists/</code></td></tr>
+<tr><td><code>kns-plan</code></td><td>S3</td><td>design + Constitution Check</td><td>design</td></tr>
+<tr><td><code>kns-analyze</code></td><td>S3 · S4</td><td>세 문서 교차 정합성 · 커버리지</td><td>아니오(리포트)</td></tr>
+<tr><td><code>kns-tasks</code></td><td>S4</td><td>design → 실행 가능한 tasks</td><td>tasks</td></tr>
+<tr><td><code>kns-implement</code></td><td>S5 · S6</td><td>Phase 순 구현 + 완료 게이트</td><td>코드 · 시험 · tasks</td></tr>
+<tr><td><code>kns-maintain</code></td><td>상시</td><td>패키지 책임 · 이름 · 조건식 · mapper · API 문서 · 선택 시험 기준</td><td>코드</td></tr>
+<tr><td><code>kns-review</code></td><td>MR</td><td>원격 diff · 세 문서 · 규칙 · 스캔을 읽고 지적을 <code>findings.json</code> 에</td><td>지적 파일만</td></tr>
+<tr><td><code>kns-scan</code></td><td>MR</td><td>정적 분석 새 문제를 묶고 오탐 근거를 찾는다</td><td>아니오</td></tr>
+<tr><td><code>kns-docs</code></td><td>S7</td><td>기능 문서 원고 · 배정 갱신, 생성 · 검사</td><td><code>docs/features</code></td></tr>
+<tr><td><code>kns-converge</code></td><td>S8</td><td>남은 일을 tasks 끝에 새 Phase 로(덧붙이기만)</td><td>tasks</td></tr>
+</tbody></table></div>
+<p>부르는 법: Claude Code · Cursor · Kiro CLI 는 <code>/kns-&lt;명령&gt;</code>, Codex 는 <code>$kns-&lt;명령&gt;</code>(목록 <code>/skills</code>), Kiro IDE 는 슬래시 메뉴. 킷 스킬(플러그인)은 <code>/kns:bootstrap</code> · <code>/kns:update</code> · <code>/kns:agent-add</code> · <code>/kns:jira-setup</code> · <code>/kns:jvm-setup</code> · <code>/kns:web-setup</code> · <code>/kns:electron-setup</code> 과 JVM 레시피 셋이다.</p>
+
+</article>
+<nav class="pager" aria-label="이전 장 · 다음 장"><a class="prev" href="dashboard.html" rel="prev"><small>← 이전</small>관리 페이지</a><a class="next" href="aidlc.html" rel="next"><small>다음 →</small>AI-DLC 모듈</a></nav>
+</main>
+</div>
+<footer class="site-footer">knots-sync(약어 kns) 사용 안내서 · 정적 HTML · 외부 글꼴 · 스크립트 없음</footer>
+</body>
+</html>

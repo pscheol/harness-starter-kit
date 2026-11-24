@@ -1,0 +1,17 @@
+{
+  "name": "harness-starter-kit",
+  "private": true,
+  "description": "knots-sync — 원본은 packages/, plugins/kns/ 은 생성물",
+  "engines": { "node": ">=18" },
+  "scripts": {
+    "build:ui": "pnpm -C packages/dashboard-ui build",
+    "build": "pnpm -C packages/cli build",
+    "test:cli": "pnpm -C packages/cli test",
+    "test:dashboard": "pnpm -C packages/dashboard test",
+    "test:ui": "pnpm -C packages/dashboard-ui test",
+    "gen": "pnpm build:ui && pnpm build && node scripts/gen-plugins.mjs",
+    "gen:check": "node scripts/gen-plugins.mjs --check",
+    "test": "python3 -m unittest discover -s tests -p \"test_*.py\"",
+    "test:e2e": "python3 -m unittest discover -s tests/e2e -p \"test_*.py\""
+  }
+}

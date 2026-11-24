@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI-DLC 핸드북 — AI가 일하고 사람이 결정하는 개발 생애주기</title>
+  <meta name="description" content="AWS AI-DLC(AI-Driven Development Life Cycle)의 개념, 실행 도구, 다른 AI 개발 방법론, 국내 사례, 적용과 설계 방법을 한국어로 정리한 핸드북.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="assets/aidlc.css">
+  <script src="assets/aidlc.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">본문으로 건너뛰기</a>
+  <header class="site-head">
+    <div class="phase-band" aria-hidden="true"><span></span><span></span><span></span></div>
+    <nav class="site-nav" aria-label="문서 목록">
+      <a class="home" href="index.html" aria-current="page">AI-DLC 핸드북</a>
+      <ol>
+        <li><a href="01-concepts.html"><span class="num">01</span>개념</a></li>
+        <li><a href="02-workflow.html"><span class="num">02</span>단계와 실행</a></li>
+        <li><a href="03-landscape.html"><span class="num">03</span>다른 방법론</a></li>
+        <li><a href="04-cases.html"><span class="num">04</span>사례</a></li>
+        <li><a href="05-apply.html"><span class="num">05</span>적용</a></li>
+        <li><a href="06-design.html"><span class="num">06</span>설계</a></li>
+      </ol>
+    </nav>
+  </header>
+
+  <main id="main" class="page">
+    <nav class="page-toc" aria-label="이 장의 절">
+      <p class="toc-title">이 장에서</p>
+      <ol>
+        <li><a href="#summary">한 장 요약</a></li>
+        <li><a href="#remember">다섯 가지만 기억한다면</a></li>
+        <li><a href="#read">읽는 순서</a></li>
+        <li><a href="#sources">출처</a></li>
+      </ol>
+    </nav>
+
+    <article class="prose">
+      <h1 class="page-title">AI가 일하고 사람이 결정한다</h1>
+      <p class="lede">AI-DLC(AI-Driven Development Life Cycle)는 AWS가 2025년에 내놓은 개발 방법론이다. 지금까지는 사람이 묻고 AI가 답했다. AI-DLC에서는 AI가 계획을 내밀고 질문을 던지며 사람이 답하고 승인한다. 회의실 예약 서비스를 만드는 장면으로 보면 이렇다.</p>
+
+      <figure class="reversal" aria-label="AI와 사람의 대화 예시">
+        <div class="turn ai">
+          <span class="who">AI</span>
+          <p class="said">회의실 예약을 Unit 셋으로 나누려 합니다. 카탈로그, 예약, 캘린더 동기화. 취소 마감은 시작 30분 전인가요, 1시간 전인가요?</p>
+        </div>
+        <div class="turn human">
+          <span class="who">사람</span>
+          <p class="said">30분 전으로. 캘린더 동기화는 이번엔 2순위로 미룬다.</p>
+        </div>
+        <div class="turn ai">
+          <span class="who">AI</span>
+          <p class="said">예약 Unit을 Bolt 둘로 계획했습니다. 완료는 동시 요청 20개 중 1개만 성공하는 테스트로 판정합니다. 승인할까요?</p>
+        </div>
+        <div class="turn human">
+          <span class="who">사람</span>
+          <p class="said">승인. 잠금 범위는 내가 직접 본다.</p>
+        </div>
+      </figure>
+
+      <p>이 짧은 대화에 AI-DLC가 다 들어 있다. AI가 의도를 Unit으로 쪼개고 모르는 것은 추측하지 않고 묻는다. 사람은 범위와 우선순위를 정하고 완료 기준을 승인하고 사람만 판단할 수 있는 곳(동시성)을 스스로 맡는다. 이 문서에서 빨간 마름모 <span class="gate">승인 지점</span>은 언제나 이렇게 사람이 결정하는 자리다.</p>
+
+      <figure class="diagram">
+        <a href="diagrams/lifecycle.svg"><img src="diagrams/lifecycle.svg" width="748" height="1005" style="max-width: 748px" alt="Intent에서 시작해 Inception(AI의 질문, 스토리·NFR·위험, Unit 분해·계약), 사람 승인, Construction(도메인 설계, 논리 설계·ADR, 코드·테스트), 사람 승인, Operations(배포, 관측·조치 제안)를 거쳐 운영에서 배운 것이 다음 Intent로 이어지는 흐름" loading="lazy" decoding="async"></a>
+        <figcaption>한눈에 보는 생애주기. 파란색은 Inception, 앰버는 Construction, 청록은 Operations, 빨간 마름모는 사람이 승인하는 자리다. 그림을 누르면 원본 크기로 열린다. <a href="diagrams/lifecycle.excalidraw" download>편집용 원본(.excalidraw)</a></figcaption>
+      </figure>
+
+      <h2 id="summary">한 장 요약</h2>
+      <dl class="terms">
+        <dt>무엇<small>정체</small></dt>
+        <dd>AWS의 Raja SP가 2025년 백서로 정의한 AI 네이티브 개발 방법론. 제품이 아니라 방법론이고 실행 도구는 기존 코딩 에이전트 위에 얹는 오픈소스다.</dd>
+        <dt>핵심<small>대화의 역전</small></dt>
+        <dd>AI가 계획하고 묻고 실행한다. 사람은 분기점마다 검증하고 결정하며 최종 책임을 진다.</dd>
+        <dt>단위<small>Intent · Unit · Bolt</small></dt>
+        <dd>의도(Intent)를 독립 배포할 수 있는 Unit으로 쪼개고 Unit을 시간~일 단위의 Bolt로 만든다. Bolt는 스프린트를 대신한다.</dd>
+        <dt>단계<small>3 → 5</small></dt>
+        <dd>개념은 <span class="tag inception">Inception</span> → <span class="tag construction">Construction</span> → <span class="tag operations">Operations</span>. 실행 도구 v2는 Initialization과 Ideation을 더한 5단계 33스테이지이고 일의 크기에 따라 스코프 11종 중 하나를 고른다.</dd>
+        <dt>의식<small>몹</small></dt>
+        <dd>Mob Elaboration: 팀이 한 화면을 보며 AI와 요구사항을 정교화한다. Mob Construction: 팀이 함께 설계 결정을 내리고 Bolt를 끝낸다.</dd>
+        <dt>설계<small>방법론 안에</small></dt>
+        <dd>도메인 설계(DDD)와 논리 설계(NFR 패턴 + ADR)가 단계 안에 들어 있다. 설계 문서가 곧 다음 단계 AI의 입력이다.</dd>
+        <dt>도구<small>aidlc-workflows</small></dt>
+        <dd><a href="https://github.com/awslabs/aidlc-workflows">awslabs/aidlc-workflows</a> v2.11.4(2026-11). Claude Code, Kiro, Codex CLI, Cursor, opencode, Copilot에서 <code>/aidlc</code>로 시작한다.</dd>
+        <dt>전제<small>없으면 효과 없음</small></dt>
+        <dd>빠른 빌드·테스트, 자동 보안 게이트, 결정 권한을 가진 사람. AI-DLC는 기존 관행을 증폭할 뿐 기반의 결함을 메우지 않는다.</dd>
+        <dt>맞는 곳<small>과 아닌 곳</small></dt>
+        <dd>트레이드오프가 많고 여러 팀이 걸친 시스템, 규제가 있는 조직, 기존 코드에 계속 기능을 얹는 곳. 혼자 하는 짧은 실험이나 한 줄 수정에는 오버헤드다.</dd>
+      </dl>
+
+      <h2 id="remember">다섯 가지만 기억한다면</h2>
+      <ul>
+        <li><strong>결정을 앞으로 당긴다.</strong> Inception의 정제가 Construction의 효율을 정한다. 계획이 오히려 속도를 높인다.</li>
+        <li><strong>계약을 먼저 쓴다.</strong> Unit이 둘 이상이면 API와 이벤트 계약을 구현 전에 승인한다. 병렬 개발일수록 중요하다.</li>
+        <li><strong>사람의 주의는 좁고 깊게.</strong> AI는 넓고 빠른 초안, 사람은 동시성·트랜잭션 경계·권한·실패 경로·레거시 호환.</li>
+        <li><strong>깊이는 크기와 위험으로 고른다.</strong> 모든 일에 전체 절차를 돌리면 문서는 쌓이고 승인은 형식이 된다.</li>
+        <li><strong>모든 것을 저장소에.</strong> 결정, 질문과 답, 설계, 승인 기록이 AI의 컨텍스트이자 팀의 기억이다.</li>
+      </ul>
+
+      <h2 id="read">읽는 순서</h2>
+      <ol class="steps">
+        <li><strong><a href="01-concepts.html">01 개념</a></strong>정의, 등장 배경, 10가지 원칙, 핵심 용어, 애자일과의 차이, 맞는 곳과 맞지 않는 곳.</li>
+        <li><strong><a href="02-workflow.html">02 단계와 실행</a></strong>세 단계의 산출물과 승인 지점, <code>aidlc-workflows</code> v1(규칙 파일 복사형)과 v2(엔진 설치형)의 스테이지·질문 파일·승인 게이트.</li>
+        <li><strong><a href="03-landscape.html">03 다른 방법론</a></strong>Spec Kit, Kiro, OpenSpec, BMAD, Claude Code 권장 흐름, RPI, Superpowers, Compound Engineering, Ralph loop, 하네스 엔지니어링을 층으로 나눠 비교.</li>
+        <li><strong><a href="04-cases.html">04 사례</a></strong>CJ올리브영(30명, 3일, 과제 5개)과 샐러드랩(4명, 매주 몹), 해설 글들에서 공통으로 나온 성공 조건과 실패 패턴.</li>
+        <li><strong><a href="05-apply.html">05 적용</a></strong>기반 점검, 역할, Intent 하나의 흐름, Mob Elaboration 진행법, Bolt 계획, 깊이 고르기, 도입 순서, 이 킷과의 대응.</li>
+        <li><strong><a href="06-design.html">06 설계</a></strong>Intent → EARS 수용 기준 → NFR·위험 → Unit 분해 → 계약 → 도메인 설계 → ADR까지, 회의실 예약 하나로 끝까지.</li>
+      </ol>
+      <p>바로 적용할 생각이라면 <a href="05-apply.html">05</a>와 <a href="06-design.html">06</a>부터 읽고 막히는 용어가 나오면 <a href="01-concepts.html#terms">01의 용어 사전</a>으로 돌아온다.</p>
+
+      <h2 id="sources">출처</h2>
+      <p>2026-11-21 기준으로 아래 자료를 끝까지 읽고 정리했다. 수치는 원문 그대로 옮겼고 기대치로 적힌 것은 본문에 그렇게 표시했다.</p>
+      <h3>AWS 공식과 백서</h3>
+      <ul>
+        <li><a href="https://aws.amazon.com/ko/blogs/tech/ai-driven-development-life-cycle/">AWS 기술 블로그, 「AI 주도 개발 라이프사이클: 소프트웨어 엔지니어링의 재구상」</a></li>
+        <li><a href="https://github.com/Seungwoo321/aidlc-docs/blob/main/ai-dlc-whitepaper-ko.md">AI-DLC 화이트페이퍼 한국어본</a></li>
+        <li><a href="https://www.ibm.com/kr-ko/think/topics/ai-dlc">IBM Think, 「AI-DLC: AI 기반 개발 라이프사이클」</a></li>
+        <li><a href="https://media.dedicatted.com/wp-content/uploads/2026/08/Dedicatted-AI-DLC-Guide-1.pdf">Dedicatted, 「From AI-assisted to AI-driven」</a> (AWS 공식 출판물 아님)</li>
+      </ul>
+      <h3>실행 도구</h3>
+      <ul>
+        <li><a href="https://github.com/awslabs/aidlc-workflows">awslabs/aidlc-workflows</a> (v2 <code>main</code>, v1 <code>v1</code> 브랜치)</li>
+        <li><a href="https://github.com/aws-samples/sample-aidlc-decisions-driven-skill">aws-samples/sample-aidlc-decisions-driven-skill</a></li>
+        <li><a href="https://github.com/choseungyoon/aidlc-claude-code-workshop">choseungyoon/aidlc-claude-code-workshop</a></li>
+      </ul>
+      <h3>국내 사례와 해설</h3>
+      <ul>
+        <li><a href="https://aws.amazon.com/ko/blogs/tech/cj-oliveyoung-aidlc-tech-blog/">CJ올리브영 AI-DLC 워크숍</a></li>
+        <li><a href="https://saladlab.co/career/tech-upsell-kim/">샐러드랩 Alpha-Town</a></li>
+        <li><a href="https://tech.cloud.nongshim.co.kr/blog/aws/ai/3930/">농심 NDS Cloud Tech Blog</a></li>
+        <li><a href="https://discuss.pytorch.kr/t/ai-dlc-claude-code-codex-feat-aws/12204">파이토치 한국 사용자 모임</a></li>
+        <li><a href="https://wikidocs.net/427525">위키독스 『함께해요 바이브 코딩』</a></li>
+        <li><a href="https://dogfootsleep.tistory.com/entry/AI-Driven-Development-Lifecycle-AI-DLC-%EB%9E%80-%EB%AC%B4%EC%97%87%EC%9D%B8%EA%B0%80">개발자 조한빈</a> · <a href="https://sddev.tistory.com/423">sddev</a> · <a href="https://feccle.tistory.com/577">Feccle</a></li>
+      </ul>
+      <h3>다른 방법론</h3>
+      <p>Spec Kit, Kiro, OpenSpec, Tessl, Agent OS, BMAD, Claude Code, HumanLayer, Superpowers, Compound Engineering, Ralph, Anthropic·OpenAI·martinfowler.com의 컨텍스트·하네스 엔지니어링 글, Thoughtworks Technology Radar. 링크는 <a href="03-landscape.html">03장</a> 끝에 있다.</p>
+
+      <nav class="pager" aria-label="다음 장">
+        <a class="next" href="01-concepts.html"><small>시작</small><span>01 개념</span></a>
+      </nav>
+    </article>
+  </main>
+
+  <footer class="site-foot">
+    <p>harness-starter-kit 문서 · 2026-11-21 기준으로 공개 자료를 정리했다.</p>
+  </footer>
+</body>
+</html>

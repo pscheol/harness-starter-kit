@@ -1,0 +1,28 @@
+%%{init: {"theme": "base", "fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "themeVariables": {"fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "fontSize": "16px", "primaryColor": "#ffffff", "primaryBorderColor": "#14213d", "primaryTextColor": "#14213d", "lineColor": "#46536b", "clusterBkg": "#f5f7fa", "clusterBorder": "#aeb9c7", "edgeLabelBackground": "#f5f7fa", "actorBkg": "#ffffff", "actorBorder": "#14213d", "actorTextColor": "#14213d", "actorLineColor": "#aeb9c7", "signalColor": "#46536b", "signalTextColor": "#14213d", "noteBkgColor": "#ffffff", "noteBorderColor": "#aeb9c7", "noteTextColor": "#14213d", "sequenceNumberColor": "#ffffff"}, "sequence": {"mirrorActors": false, "messageFontSize": 15, "actorFontSize": 16, "noteFontSize": 14, "boxMargin": 8}}}%%
+sequenceDiagram
+  autonumber
+  actor PO
+  actor T as 팀 (몹)
+  participant AI
+  participant R as 저장소
+  participant V as 검증 · 파이프라인
+  PO->>R: Intent를 쓴다 (목표 · 지표 · 범위)
+  AI->>R: 규칙 파일 · 역공학 문서를 읽는다
+  rect rgb(231, 234, 251)
+    Note over PO,AI: Mob Elaboration
+    AI->>T: 질문 · 스토리 · Unit 분해 · 계약 초안
+    T->>R: 답하고 고친다 · Unit 경계와 계약 승인
+  end
+  AI->>R: Bolt 계획 (작업 · 검증 명령)
+  T->>R: 계획과 검증 명령 승인
+  rect rgb(251, 241, 220)
+    Note over AI,V: Bolt
+    AI->>R: 도메인 설계 → 논리 설계 · ADR
+    T->>R: 엣지 케이스 · 트레이드오프 승인
+    AI->>R: 코드 · 테스트
+    AI->>V: 검증 명령 실행
+    V-->>AI: 실패하면 규칙 기준으로 먼저 고친다
+  end
+  T->>R: 사람이 볼 곳 리뷰 · 완료 승인
+  T->>V: 배포 구성 승인 · 롤아웃
+  V-->>PO: 운영 지표 · 장애 → 다음 Intent

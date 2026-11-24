@@ -1,0 +1,148 @@
+/* 하네스 다음 단계 — 핸드북 공용 스타일(../../ai-dlc/assets/aidlc.css) 위에 얹는 추가분.
+ * 색 의미는 핸드북과 같다: 파랑 = 원본·기반, 앰버 = 킷이 만들거나 바꾸는 것,
+ * 청록 = 새로 생기는 것·결과, 빨강 = 사람이 결정할 것.
+ */
+
+.tag.keep { background: transparent; color: var(--ink); border: 1px solid var(--ink); }
+.tag.change { background: var(--construction-wash); color: var(--construction-ink); }
+.tag.new { background: var(--operations-wash); color: var(--operations); }
+.tag.decide { background: var(--gate-wash); color: var(--gate); }
+.tag.now { background: var(--operations-wash); color: var(--operations); }
+.tag.later { background: var(--construction-wash); color: var(--construction-ink); }
+
+.status-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  margin: -0.5rem 0 2rem;
+  font-size: var(--step--1);
+  color: var(--ink-soft);
+}
+.status-line b {
+  color: var(--ink);
+}
+
+/* 결정 카드: 번호 · 질문 · 선택지 · 추천 */
+.decisions {
+  display: grid;
+  gap: 1rem;
+  margin: 1.25rem 0 2rem;
+  padding: 0;
+  list-style: none;
+}
+.decision {
+  margin: 0;
+  padding: 1rem 1.25rem 1.125rem;
+  background: var(--paper-raised);
+  border: 1px solid color-mix(in srgb, var(--gate) 22%, var(--rule));
+  border-radius: var(--radius-m);
+}
+.decision > h3 {
+  display: flex;
+  align-items: baseline;
+  gap: 0.625rem;
+  margin: 0 0 0.5rem;
+  font-size: var(--step-1);
+}
+.decision > h3 .id {
+  flex: none;
+  padding: 0.15em 0.55em;
+  font-family: var(--font-code);
+  font-size: var(--step--1);
+  font-weight: 700;
+  color: var(--gate);
+  background: var(--gate-wash);
+  border-radius: var(--radius-s);
+}
+.decision ul {
+  margin: 0.5rem 0;
+}
+.decision .pick {
+  margin: 0.625rem 0 0;
+  padding-top: 0.625rem;
+  border-top: 1px dashed var(--rule-strong);
+}
+.decision .pick b {
+  color: var(--gate);
+}
+.decision > h3 + .pick {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+.decision.done {
+  border-color: color-mix(in srgb, var(--operations) 26%, var(--rule));
+}
+.decision.done > h3 .id {
+  color: var(--operations);
+  background: var(--operations-wash);
+}
+.decision.done .pick b {
+  color: var(--operations);
+}
+
+/* 단계 카드 머리: Phase 번호 · 버전 · 규모 */
+.phase-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5rem 0.875rem;
+}
+.phase-head .meta {
+  font-size: var(--step--1);
+  font-weight: 600;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.done-when {
+  margin: 0.75rem 0 1.5rem;
+  padding: 0.875rem 1.125rem;
+  background: color-mix(in srgb, var(--operations-wash) 45%, var(--paper-raised));
+  border-radius: var(--radius-m);
+  border: 1px solid color-mix(in srgb, var(--operations) 22%, var(--rule));
+}
+.done-when > p:first-child {
+  margin: 0 0 0.375rem;
+  font-weight: 800;
+  color: var(--operations);
+}
+.done-when ul {
+  margin: 0;
+}
+
+td.yes { color: var(--operations); font-weight: 700; }
+td.no { color: var(--gate); font-weight: 700; }
+td.part { color: var(--construction-ink); font-weight: 700; }
+
+.cmd-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0;
+  margin: 1rem 0 1.75rem;
+  border-top: 2px solid var(--ink);
+}
+.cmd-grid dt,
+.cmd-grid dd {
+  margin: 0;
+  padding: 0.625rem 0;
+  border-bottom: 1px solid var(--rule);
+}
+.cmd-grid dt {
+  padding-right: 1.25rem;
+  font-family: var(--font-code);
+  font-size: var(--step--1);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+@media (max-width: 40rem) {
+  .cmd-grid {
+    grid-template-columns: 1fr;
+  }
+  .cmd-grid dt {
+    border-bottom: 0;
+    padding-bottom: 0;
+    white-space: normal;
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "title": "{{PROJECT_NAME}} 기능 명세",
+  "fingerprint_script": "tools/docs/schema-snapshot.sh",
+  "catalog_sql": "tools/docs/sql/catalog.sql",
+  "databases": [],
+  "units": [
+    {
+      "id": "{{PROJECT_SLUG}}",
+      "title": "{{PROJECT_NAME}}",
+      "kind": "other",
+      "root": "."
+    }
+  ]
+}

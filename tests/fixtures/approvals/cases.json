@@ -1,0 +1,2122 @@
+{
+  "schema": "knots-sync.approvals-fixture/v1",
+  "format": [
+    "approvals.md 파서 기대값(설계 06 §3.7, HK-23 design §2). Python(scripts/harness/approvals.py)과 관리 페이지 Node 파서가 같은 결과를 내야 한다.",
+    "cases[].expect: parse(입력) 결과. entries[] 칸은 모두 있다(없으면 null · false). errors 는 코드 정렬 · 중복 없음. 파일 오류는 {line, code}.",
+    "cases[].queries: approval_state(entries, gate, sha256|null, {approvers, groups}) → none · valid · stale · invalid.",
+    "cases[].reviews: review_decision(entries, id, fingerprint, {approvers, groups}) → 마지막 유효 기록의 판단(risk-accepted · fix-required) 또는 null. 승인자 검사는 approvers.mr.",
+    "docSha[]: approval_sha(문서 바이트) = 머리(첫 줄 --- 부터 다음 --- 까지)의 status: · state: 줄을 뺀 바이트의 sha256.",
+    "입력은 UTF-8 이고 줄 끝 \\r 은 떼고 읽는다. line 은 1부터 센 제목 줄 번호다."
+  ],
+  "errorCodes": [
+    "bad-approver",
+    "bad-entry-id",
+    "bad-heading",
+    "bad-rule-candidate",
+    "bad-target",
+    "bad-time",
+    "decision-mismatch",
+    "duplicate-entry-id",
+    "duplicate-field",
+    "field-not-allowed",
+    "missing-approver",
+    "missing-entry-id",
+    "missing-evidence",
+    "missing-path",
+    "missing-phrase",
+    "missing-source",
+    "missing-target",
+    "stray-line",
+    "unknown-field",
+    "unknown-gate",
+    "unknown-path"
+  ],
+  "cases": [
+    {
+      "name": "terminal-requirements",
+      "input": "inputs/terminal-requirements.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [],
+            "valid": true
+          }
+        ],
+        "errors": []
+      },
+      "queries": [
+        {
+          "gate": "requirements",
+          "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+          "approvers": null,
+          "groups": null,
+          "expect": "valid"
+        },
+        {
+          "gate": "requirements",
+          "sha256": "d9298a10d1b0735837dc4bd85dac641b0f3cef27a47e5d53a54f2f3f5b2fcffa",
+          "approvers": null,
+          "groups": null,
+          "expect": "stale"
+        },
+        {
+          "gate": "design",
+          "sha256": "a77de8a6daa1129516b14c8ca1e233a51a8414b202eac7c8acfbb9b485046ad4",
+          "approvers": null,
+          "groups": null,
+          "expect": "none"
+        },
+        {
+          "gate": "requirements",
+          "sha256": null,
+          "approvers": null,
+          "groups": null,
+          "expect": "valid"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "name": "dashboard-design",
+      "input": "inputs/dashboard-design.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "design",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "dev"
+            },
+            "target": {
+              "name": "design.md",
+              "sha256": "a77de8a6daa1129516b14c8ca1e233a51a8414b202eac7c8acfbb9b485046ad4",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "B안으로 반영해",
+            "path": "dashboard",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [],
+            "valid": true
+          }
+        ],
+        "errors": []
+      },
+      "queries": [
+        {
+          "gate": "design",
+          "sha256": "a77de8a6daa1129516b14c8ca1e233a51a8414b202eac7c8acfbb9b485046ad4",
+          "approvers": {
+            "design": [
+              "dev"
+            ]
+          },
+          "groups": {
+            "dev": [
+              "kim@example.com"
+            ]
+          },
+          "expect": "valid"
+        },
+        {
+          "gate": "design",
+          "sha256": "a77de8a6daa1129516b14c8ca1e233a51a8414b202eac7c8acfbb9b485046ad4",
+          "approvers": {
+            "design": [
+              "dev"
+            ]
+          },
+          "groups": {
+            "dev": [
+              "lee@example.com"
+            ]
+          },
+          "expect": "invalid"
+        },
+        {
+          "gate": "design",
+          "sha256": "a77de8a6daa1129516b14c8ca1e233a51a8414b202eac7c8acfbb9b485046ad4",
+          "approvers": {
+            "mr": [
+              "dev"
+            ]
+          },
+          "groups": {
+            "dev": [
+              "lee@example.com"
+            ]
+          },
+          "expect": "valid"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "name": "jira-mr",
+      "input": "inputs/jira-mr.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-24T10:00:00Z",
+            "gate": "mr",
+            "decision": "approved",
+            "approver": {
+              "email": "lee@example.com",
+              "name": "Lee",
+              "group": null
+            },
+            "target": {
+              "name": "feat/DEMO-1-upload",
+              "sha256": null,
+              "fingerprint": null,
+              "head": "4c1d9e0"
+            },
+            "phrase": null,
+            "path": "jira",
+            "entryId": "01JDS1A2B3C4D5E6F7G8H9JKMN",
+            "source": null,
+            "evidence": "changelog 10234",
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [],
+            "valid": true
+          }
+        ],
+        "errors": []
+      },
+      "queries": [
+        {
+          "gate": "mr",
+          "sha256": null,
+          "approvers": null,
+          "groups": null,
+          "expect": "valid"
+        },
+        {
+          "gate": "done",
+          "sha256": null,
+          "approvers": null,
+          "groups": null,
+          "expect": "none"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "name": "aidlc-done",
+      "input": "inputs/aidlc-done.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-25T09:00:00+09:00",
+            "gate": "done",
+            "decision": "approved",
+            "approver": {
+              "email": "park@example.com",
+              "name": null,
+              "group": null
+            },
+            "target": {
+              "name": "feat/DEMO-1-upload",
+              "sha256": null,
+              "fingerprint": null,
+              "head": "9f2e6d33a3717ee826353a404ba4618d1aeeb687"
+            },
+            "phrase": null,
+            "path": "aidlc",
+            "entryId": "01JDT0PQRSTVWXYZ0123456789",
+            "source": "aidlc",
+            "evidence": "aidlc-docs/audit.md",
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [],
+            "valid": true
+          }
+        ],
+        "errors": []
+      },
+      "queries": [
+        {
+          "gate": "done",
+          "sha256": null,
+          "approvers": null,
+          "groups": null,
+          "expect": "valid"
+        },
+        {
+          "gate": "done",
+          "sha256": null,
+          "approvers": {
+            "done": [
+              "qa"
+            ]
+          },
+          "groups": {
+            "qa": [
+              "lee@example.com"
+            ]
+          },
+          "expect": "invalid"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "name": "review-risk-accepted",
+      "input": "inputs/review-risk-accepted.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-24T09:40:02+09:00",
+            "gate": "review/F-3",
+            "decision": "risk-accepted",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "dev"
+            },
+            "target": {
+              "name": ".agents/reports/review/DEMO-1.md",
+              "sha256": null,
+              "fingerprint": "4a5abd840045",
+              "head": null
+            },
+            "phrase": "레거시 경로라 이번 MR에서는 고치지 않는다",
+            "path": "dashboard",
+            "entryId": "01JDS1A2B3C4D5E6F7G8H9JKMN",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [],
+            "valid": true
+          }
+        ],
+        "errors": []
+      },
+      "queries": [],
+      "reviews": [
+        {
+          "id": "F-3",
+          "fingerprint": "4a5abd840045decb8fee45efe9b2a592aa8ecd96ca38b003a35d5e8a8dbf1d2c",
+          "approvers": null,
+          "groups": null,
+          "expect": "risk-accepted"
+        },
+        {
+          "id": "F-3",
+          "fingerprint": "d8eb6f07df706608208a2f3d9c5926f16e37c628d028609a512ebf041def5307",
+          "approvers": null,
+          "groups": null,
+          "expect": null
+        },
+        {
+          "id": "F-4",
+          "fingerprint": "4a5abd840045decb8fee45efe9b2a592aa8ecd96ca38b003a35d5e8a8dbf1d2c",
+          "approvers": null,
+          "groups": null,
+          "expect": null
+        },
+        {
+          "id": "F-3",
+          "fingerprint": "4a5abd840045decb8fee45efe9b2a592aa8ecd96ca38b003a35d5e8a8dbf1d2c",
+          "approvers": {
+            "mr": [
+              "lee@example.com"
+            ]
+          },
+          "groups": {},
+          "expect": null
+        }
+      ]
+    },
+    {
+      "name": "review-fix-required-after-accept",
+      "input": "inputs/review-fix-required-after-accept.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-24T09:40:02+09:00",
+            "gate": "review/F-2",
+            "decision": "risk-accepted",
+            "approver": {
+              "email": "kim@example.com",
+              "name": null,
+              "group": null
+            },
+            "target": {
+              "name": ".agents/reports/review/DEMO-1.md",
+              "sha256": null,
+              "fingerprint": "d8eb6f07df706608208a2f3d9c5926f16e37c628d028609a512ebf041def5307",
+              "head": null
+            },
+            "phrase": "이번에는 둔다",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [],
+            "valid": true
+          },
+          {
+            "line": 12,
+            "at": "2026-11-24T11:00:00+09:00",
+            "gate": "review/F-2",
+            "decision": "fix-required",
+            "approver": {
+              "email": "lee@example.com",
+              "name": "Lee",
+              "group": null
+            },
+            "target": {
+              "name": ".agents/reports/review/DEMO-1.md",
+              "sha256": null,
+              "fingerprint": "d8eb6f07df706608208a2f3d9c5926f16e37c628d028609a512ebf041def5307",
+              "head": null
+            },
+            "phrase": "이번 MR에서 고친다",
+            "path": "dashboard",
+            "entryId": "01JDS1A2B3C4D5E6F7G8H9JKMN",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [],
+            "valid": true
+          }
+        ],
+        "errors": []
+      },
+      "queries": [],
+      "reviews": [
+        {
+          "id": "F-2",
+          "fingerprint": "d8eb6f07df706608208a2f3d9c5926f16e37c628d028609a512ebf041def5307",
+          "approvers": null,
+          "groups": null,
+          "expect": "fix-required"
+        }
+      ]
+    },
+    {
+      "name": "changes-requested-rule-candidate",
+      "input": "inputs/changes-requested-rule-candidate.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T15:00:00+09:00",
+            "gate": "design",
+            "decision": "changes-requested",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "dev"
+            },
+            "target": {
+              "name": "design.md",
+              "sha256": "a77de8a6daa1129516b14c8ca1e233a51a8414b202eac7c8acfbb9b485046ad4",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "동시성 절이 빠졌다",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": true,
+            "rollbackWaiver": null,
+            "errors": [],
+            "valid": true
+          }
+        ],
+        "errors": []
+      },
+      "queries": [
+        {
+          "gate": "design",
+          "sha256": "a77de8a6daa1129516b14c8ca1e233a51a8414b202eac7c8acfbb9b485046ad4",
+          "approvers": null,
+          "groups": null,
+          "expect": "none"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "name": "deploy-rollback-waiver",
+      "input": "inputs/deploy-rollback-waiver.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-25T18:00:00+09:00",
+            "gate": "deploy",
+            "decision": "approved",
+            "approver": {
+              "email": "lee@example.com",
+              "name": "Lee",
+              "group": "ops"
+            },
+            "target": {
+              "name": ".agents/docs/ops/deploys/2026-11-25-DEMO.md",
+              "sha256": "b7bd55c11b781b0ccc43aa6e57f9dadf0660e9d1d4e27e0979ee43a407d454ae",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "오늘 배포",
+            "path": "dashboard",
+            "entryId": "01JDV9ZYXWVTSRQPNMKJHGFEDC",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": "DB 변경 없음",
+            "errors": [],
+            "valid": true
+          }
+        ],
+        "errors": []
+      },
+      "queries": [
+        {
+          "gate": "deploy",
+          "sha256": "b7bd55c11b781b0ccc43aa6e57f9dadf0660e9d1d4e27e0979ee43a407d454ae",
+          "approvers": null,
+          "groups": null,
+          "expect": "valid"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "name": "three-entries-order",
+      "input": "inputs/three-entries-order.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [],
+            "valid": true
+          },
+          {
+            "line": 12,
+            "at": "2026-11-23T16:00:00+09:00",
+            "gate": "design",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "dev"
+            },
+            "target": {
+              "name": "design.md",
+              "sha256": "a77de8a6daa1129516b14c8ca1e233a51a8414b202eac7c8acfbb9b485046ad4",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "설계 확정",
+            "path": "terminal",
+            "entryId": "01JDS1A2B3C4D5E6F7G8H9JKMN",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [],
+            "valid": true
+          },
+          {
+            "line": 19,
+            "at": "2026-11-23T17:00:00+09:00",
+            "gate": "tasks",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "dev"
+            },
+            "target": {
+              "name": "tasks.md",
+              "sha256": "085154084c7427596104bc42f51f59f6d3ffd3d5f49f098210c20449fb7b2c71",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "계획 확정",
+            "path": "dashboard",
+            "entryId": "01JDT0PQRSTVWXYZ0123456789",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [],
+            "valid": true
+          }
+        ],
+        "errors": []
+      },
+      "queries": [
+        {
+          "gate": "tasks",
+          "sha256": "085154084c7427596104bc42f51f59f6d3ffd3d5f49f098210c20449fb7b2c71",
+          "approvers": null,
+          "groups": null,
+          "expect": "valid"
+        },
+        {
+          "gate": "design",
+          "sha256": "a77de8a6daa1129516b14c8ca1e233a51a8414b202eac7c8acfbb9b485046ad4",
+          "approvers": null,
+          "groups": null,
+          "expect": "valid"
+        },
+        {
+          "gate": "requirements",
+          "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+          "approvers": null,
+          "groups": null,
+          "expect": "valid"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "name": "header-only",
+      "input": "inputs/header-only.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [],
+        "errors": []
+      },
+      "queries": [
+        {
+          "gate": "requirements",
+          "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+          "approvers": null,
+          "groups": null,
+          "expect": "none"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "name": "chat-path",
+      "input": "inputs/chat-path.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "chat",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "unknown-path"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [
+        {
+          "gate": "requirements",
+          "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+          "approvers": null,
+          "groups": null,
+          "expect": "none"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "name": "missing-path",
+      "input": "inputs/missing-path.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": null,
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "missing-path"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [],
+      "reviews": []
+    },
+    {
+      "name": "missing-approver",
+      "input": "inputs/missing-approver.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": null,
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "missing-approver"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [],
+      "reviews": []
+    },
+    {
+      "name": "bad-approver",
+      "input": "inputs/bad-approver.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": null,
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "bad-approver"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [],
+      "reviews": []
+    },
+    {
+      "name": "bad-time",
+      "input": "inputs/bad-time.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-13-01T10:00:00+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "bad-time"
+            ],
+            "valid": false
+          },
+          {
+            "line": 12,
+            "at": "2026-11-23T10:00:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDS1A2B3C4D5E6F7G8H9JKMN",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "bad-time"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [
+        {
+          "gate": "requirements",
+          "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+          "approvers": null,
+          "groups": null,
+          "expect": "none"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "name": "bad-heading",
+      "input": "inputs/bad-heading.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 12,
+            "at": "2026-11-23T15:00:00+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDS1A2B3C4D5E6F7G8H9JKMN",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [],
+            "valid": true
+          }
+        ],
+        "errors": [
+          {
+            "line": 5,
+            "code": "bad-heading"
+          }
+        ]
+      },
+      "queries": [
+        {
+          "gate": "requirements",
+          "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+          "approvers": null,
+          "groups": null,
+          "expect": "valid"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "name": "unknown-gate",
+      "input": "inputs/unknown-gate.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "launch",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "unknown-gate"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [],
+      "reviews": []
+    },
+    {
+      "name": "decision-mismatch",
+      "input": "inputs/decision-mismatch.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "requirements",
+            "decision": "risk-accepted",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "decision-mismatch"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [],
+      "reviews": []
+    },
+    {
+      "name": "review-approved",
+      "input": "inputs/review-approved.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-24T09:40:02+09:00",
+            "gate": "review/F-1",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": null,
+              "group": null
+            },
+            "target": {
+              "name": ".agents/reports/review/DEMO-1.md",
+              "sha256": null,
+              "fingerprint": "4a5abd840045decb8fee45efe9b2a592aa8ecd96ca38b003a35d5e8a8dbf1d2c",
+              "head": null
+            },
+            "phrase": "좋다",
+            "path": "dashboard",
+            "entryId": "01JDS1A2B3C4D5E6F7G8H9JKMN",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "decision-mismatch"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [],
+      "reviews": [
+        {
+          "id": "F-1",
+          "fingerprint": "4a5abd840045decb8fee45efe9b2a592aa8ecd96ca38b003a35d5e8a8dbf1d2c",
+          "approvers": null,
+          "groups": null,
+          "expect": null
+        }
+      ]
+    },
+    {
+      "name": "short-sha",
+      "input": "inputs/short-sha.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": null,
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "bad-target"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [],
+      "reviews": []
+    },
+    {
+      "name": "doc-target-without-sha",
+      "input": "inputs/doc-target-without-sha.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": null,
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "bad-target"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [],
+      "reviews": []
+    },
+    {
+      "name": "bad-entry-id",
+      "input": "inputs/bad-entry-id.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDS…",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "bad-entry-id"
+            ],
+            "valid": false
+          },
+          {
+            "line": 12,
+            "at": "2026-11-23T15:00:00+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": null,
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "missing-entry-id"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [],
+      "reviews": []
+    },
+    {
+      "name": "duplicate-entry-id",
+      "input": "inputs/duplicate-entry-id.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [],
+            "valid": true
+          },
+          {
+            "line": 12,
+            "at": "2026-11-23T15:00:00+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "duplicate-entry-id"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [
+        {
+          "gate": "requirements",
+          "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+          "approvers": null,
+          "groups": null,
+          "expect": "valid"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "name": "jira-missing-evidence",
+      "input": "inputs/jira-missing-evidence.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-24T10:00:00Z",
+            "gate": "mr",
+            "decision": "approved",
+            "approver": {
+              "email": "lee@example.com",
+              "name": "Lee",
+              "group": null
+            },
+            "target": {
+              "name": "feat/DEMO-1-upload",
+              "sha256": null,
+              "fingerprint": null,
+              "head": "4c1d9e0"
+            },
+            "phrase": null,
+            "path": "jira",
+            "entryId": "01JDS1A2B3C4D5E6F7G8H9JKMN",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "missing-evidence"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [
+        {
+          "gate": "mr",
+          "sha256": null,
+          "approvers": null,
+          "groups": null,
+          "expect": "none"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "name": "aidlc-missing-source",
+      "input": "inputs/aidlc-missing-source.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-25T09:00:00+09:00",
+            "gate": "done",
+            "decision": "approved",
+            "approver": {
+              "email": "park@example.com",
+              "name": null,
+              "group": null
+            },
+            "target": {
+              "name": "feat/DEMO-1-upload",
+              "sha256": null,
+              "fingerprint": null,
+              "head": "4c1d9e0"
+            },
+            "phrase": null,
+            "path": "aidlc",
+            "entryId": "01JDT0PQRSTVWXYZ0123456789",
+            "source": null,
+            "evidence": "aidlc-docs/audit.md",
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "missing-source"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [
+        {
+          "gate": "done",
+          "sha256": null,
+          "approvers": null,
+          "groups": null,
+          "expect": "none"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "name": "rule-candidate-on-approved",
+      "input": "inputs/rule-candidate-on-approved.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": true,
+            "rollbackWaiver": null,
+            "errors": [
+              "field-not-allowed"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [],
+      "reviews": []
+    },
+    {
+      "name": "rollback-waiver-on-requirements",
+      "input": "inputs/rollback-waiver-on-requirements.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": "문서만 바뀜",
+            "errors": [
+              "field-not-allowed"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [],
+      "reviews": []
+    },
+    {
+      "name": "unknown-field",
+      "input": "inputs/unknown-field.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "unknown-field"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [],
+      "reviews": []
+    },
+    {
+      "name": "stray-line",
+      "input": "inputs/stray-line.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "stray-line"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [],
+      "reviews": []
+    },
+    {
+      "name": "missing-phrase",
+      "input": "inputs/missing-phrase.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": null,
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "missing-phrase"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [],
+      "reviews": []
+    },
+    {
+      "name": "duplicate-field",
+      "input": "inputs/duplicate-field.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "duplicate-field"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [],
+      "reviews": []
+    },
+    {
+      "name": "missing-target",
+      "input": "inputs/missing-target.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": null,
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "missing-target"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [],
+      "reviews": []
+    },
+    {
+      "name": "bad-rule-candidate",
+      "input": "inputs/bad-rule-candidate.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T15:00:00+09:00",
+            "gate": "design",
+            "decision": "changes-requested",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "dev"
+            },
+            "target": {
+              "name": "design.md",
+              "sha256": "a77de8a6daa1129516b14c8ca1e233a51a8414b202eac7c8acfbb9b485046ad4",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "다시",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "bad-rule-candidate"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [],
+      "reviews": []
+    },
+    {
+      "name": "crlf",
+      "input": "inputs/crlf.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [],
+            "valid": true
+          }
+        ],
+        "errors": []
+      },
+      "queries": [
+        {
+          "gate": "requirements",
+          "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+          "approvers": null,
+          "groups": null,
+          "expect": "valid"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "name": "no-title",
+      "input": "inputs/no-title.md",
+      "expect": {
+        "key": null,
+        "entries": [
+          {
+            "line": 1,
+            "at": "2026-11-23T14:05:12+09:00",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": "Kim",
+              "group": "po"
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "10762e1094dbeeaba59c58cec8a91b71b99f2063f7f1f20e5c0e3e635f42b2df",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "요구사항 확정",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [],
+            "valid": true
+          }
+        ],
+        "errors": []
+      },
+      "queries": [],
+      "reviews": []
+    },
+    {
+      "name": "two-design-approvals",
+      "input": "inputs/two-design-approvals.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-23T16:00:00+09:00",
+            "gate": "design",
+            "decision": "approved",
+            "approver": {
+              "email": "kim@example.com",
+              "name": null,
+              "group": null
+            },
+            "target": {
+              "name": "design.md",
+              "sha256": "a77de8a6daa1129516b14c8ca1e233a51a8414b202eac7c8acfbb9b485046ad4",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "1판",
+            "path": "terminal",
+            "entryId": "01JDQ4ZK6B7Y0M9W2S3T4V5X6Y",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [],
+            "valid": true
+          },
+          {
+            "line": 12,
+            "at": "2026-11-24T16:00:00+09:00",
+            "gate": "design",
+            "decision": "approved",
+            "approver": {
+              "email": "lee@example.com",
+              "name": null,
+              "group": null
+            },
+            "target": {
+              "name": "design.md",
+              "sha256": "424ecf39dbde37f74deb913dc60d03e9260624b2eb48f5379fcaa25d85171d71",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "2판",
+            "path": "dashboard",
+            "entryId": "01JDS1A2B3C4D5E6F7G8H9JKMN",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [],
+            "valid": true
+          }
+        ],
+        "errors": []
+      },
+      "queries": [
+        {
+          "gate": "design",
+          "sha256": "424ecf39dbde37f74deb913dc60d03e9260624b2eb48f5379fcaa25d85171d71",
+          "approvers": null,
+          "groups": null,
+          "expect": "valid"
+        },
+        {
+          "gate": "design",
+          "sha256": "a77de8a6daa1129516b14c8ca1e233a51a8414b202eac7c8acfbb9b485046ad4",
+          "approvers": null,
+          "groups": null,
+          "expect": "valid"
+        },
+        {
+          "gate": "design",
+          "sha256": "d9298a10d1b0735837dc4bd85dac641b0f3cef27a47e5d53a54f2f3f5b2fcffa",
+          "approvers": null,
+          "groups": null,
+          "expect": "stale"
+        },
+        {
+          "gate": "design",
+          "sha256": "424ecf39dbde37f74deb913dc60d03e9260624b2eb48f5379fcaa25d85171d71",
+          "approvers": {
+            "design": [
+              "kim@example.com"
+            ]
+          },
+          "groups": {},
+          "expect": "invalid"
+        },
+        {
+          "gate": "design",
+          "sha256": "a77de8a6daa1129516b14c8ca1e233a51a8414b202eac7c8acfbb9b485046ad4",
+          "approvers": {
+            "design": [
+              "KIM@example.com"
+            ]
+          },
+          "groups": {},
+          "expect": "valid"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "name": "approver-email-and-group",
+      "input": "inputs/approver-email-and-group.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-25T09:00:00+09:00",
+            "gate": "done",
+            "decision": "approved",
+            "approver": {
+              "email": "Lee@Example.com",
+              "name": "Lee",
+              "group": null
+            },
+            "target": {
+              "name": "feat/DEMO-1-upload",
+              "sha256": null,
+              "fingerprint": null,
+              "head": "4c1d9e0"
+            },
+            "phrase": "완료",
+            "path": "terminal",
+            "entryId": "01JDV9ZYXWVTSRQPNMKJHGFEDC",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [],
+            "valid": true
+          }
+        ],
+        "errors": []
+      },
+      "queries": [
+        {
+          "gate": "done",
+          "sha256": null,
+          "approvers": {
+            "done": [
+              "lee@example.com"
+            ]
+          },
+          "groups": {},
+          "expect": "valid"
+        },
+        {
+          "gate": "done",
+          "sha256": null,
+          "approvers": {
+            "done": [
+              "qa",
+              "po"
+            ]
+          },
+          "groups": {
+            "po": [
+              "lee@example.com"
+            ]
+          },
+          "expect": "valid"
+        },
+        {
+          "gate": "done",
+          "sha256": null,
+          "approvers": {
+            "done": [
+              "qa"
+            ]
+          },
+          "groups": {
+            "qa": [
+              "kim@example.com"
+            ]
+          },
+          "expect": "invalid"
+        },
+        {
+          "gate": "done",
+          "sha256": null,
+          "approvers": {
+            "done": []
+          },
+          "groups": {},
+          "expect": "valid"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "name": "jira-requirements-sha",
+      "input": "inputs/jira-requirements-sha.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-24T10:00:00Z",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "lee@example.com",
+              "name": "Lee",
+              "group": null
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "(jira)",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": null,
+            "path": "jira",
+            "entryId": "01JDS1A2B3C4D5E6F7G8H9JKMN",
+            "source": null,
+            "evidence": "changelog 10234",
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [],
+            "valid": true
+          }
+        ],
+        "errors": []
+      },
+      "queries": [
+        {
+          "gate": "requirements",
+          "sha256": null,
+          "approvers": null,
+          "groups": null,
+          "expect": "valid"
+        },
+        {
+          "gate": "requirements",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "approvers": null,
+          "groups": null,
+          "expect": "valid"
+        },
+        {
+          "gate": "design",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "approvers": null,
+          "groups": null,
+          "expect": "none"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "name": "jira-sha-on-terminal",
+      "input": "inputs/jira-sha-on-terminal.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-24T10:00:00Z",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "lee@example.com",
+              "name": "Lee",
+              "group": null
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "(jira)",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "확인",
+            "path": "terminal",
+            "entryId": "01JDS1A2B3C4D5E6F7G8H9JKMN",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "bad-target"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [
+        {
+          "gate": "requirements",
+          "sha256": null,
+          "approvers": null,
+          "groups": null,
+          "expect": "none"
+        }
+      ],
+      "reviews": []
+    }
+  ],
+  "docSha": [
+    {
+      "name": "doc-with-status",
+      "input": "docs/doc-with-status.md",
+      "expect": "6b6a989446419dcc411d45cd44ec7186aadd62c5e76801785a6048133aad7eaa"
+    },
+    {
+      "name": "tasks-with-state",
+      "input": "docs/tasks-with-state.md",
+      "expect": "c9f6d4d0fdcdc8da926b3c0535898a3c942993c82196fd2de4dbf8faf0f2cd8a"
+    },
+    {
+      "name": "no-frontmatter",
+      "input": "docs/no-frontmatter.md",
+      "expect": "0ae59f56ea69b06c62dbe6777648ed9a6b73b9954adad274a7cec11a116ccfef"
+    },
+    {
+      "name": "crlf-frontmatter",
+      "input": "docs/crlf-frontmatter.md",
+      "expect": "0f682a305138f939816a69fbb2d7850772b115be4be967ac4e8bb245ff820636"
+    }
+  ]
+}

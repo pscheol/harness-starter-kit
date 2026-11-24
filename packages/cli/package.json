@@ -1,0 +1,35 @@
+{
+  "name": "knots-sync",
+  "version": "2.0.0-alpha.0",
+  "description": "knots-sync CLI — 리포에 에이전트 협업 골격을 설치 · 점검한다",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pscheol/harness-starter-kit.git",
+    "directory": "packages/cli"
+  },
+  "license": "MIT",
+  "bin": {
+    "knots-sync": "dist/cli.js",
+    "kns": "dist/cli.js",
+    "harness-kit": "dist/cli.js"
+  },
+  "files": [
+    "dist/",
+    "templates/"
+  ],
+  "engines": {
+    "node": ">=18.3"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "tsc --noEmit && vitest run"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "18.19.130",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3",
+    "vitest": "5.1.1"
+  }
+}

@@ -1,0 +1,356 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>S12 진행 · 흐름 · knots-sync 관리 페이지</title>
+<link rel="stylesheet" href="assets/vendor/flow.css">
+<link rel="stylesheet" href="assets/app.css">
+<style>
+  /* React Flow 기본 스타일(assets/vendor/flow.css)은 @layer xyflow 안에 있어 아래 규칙이 이긴다. */
+
+  /* 캔버스 화면: 판(카드)으로 감싸지 않는다. 거르기 줄 · 캔버스 · 범례는 선으로 나누고,
+   * 오른쪽 판은 캔버스 옆에 붙은 측면 판이다. */
+  .content.flow-page { display: flex; flex-direction: column; overflow: hidden; padding: 0; }
+  .flow-root { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+  /* 1 거르기 줄 */
+  .f-bar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; min-height: 48px; padding: 8px 24px; background: var(--raised); border-bottom: 1px solid var(--rule); }
+  .f-filters { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; }
+  .f-bar .grp { display: flex; align-items: center; gap: 8px; }
+  .f-bar .lbl { font-size: var(--fs-s); font-weight: 600; color: var(--ink-faint); }
+  .f-bar .seg button[disabled] { color: var(--ink-faint); cursor: not-allowed; }
+  .f-bar .seg button[disabled][aria-pressed="true"] { box-shadow: none; background: transparent; }
+  .f-bar .result { display: flex; align-items: center; gap: 4px; font-size: var(--fs-s); color: var(--ink-soft); }
+  .f-bar .result:empty { display: none; }
+  .f-bar .result b { color: var(--ink); }
+  .f-bar .src { margin-left: auto; font-size: var(--fs-xs); color: var(--ink-faint); white-space: nowrap; }
+
+  .f-grid { position: relative; flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 320px; }
+  .f-canvas { display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; }
+  .f-flow { position: relative; flex: 1; min-height: 0; background: var(--paper); }
+
+  .react-flow {
+    --xy-background-color: var(--paper);
+    --xy-edge-label-background-color: var(--raised);
+    font-family: var(--font-text);
+    color: var(--ink);
+  }
+  .react-flow__node-unit { cursor: pointer; border-radius: var(--r-panel); }
+  .react-flow__node-unit:focus-visible { outline: 2px solid var(--design); outline-offset: 3px; border-radius: 9px; }
+  .react-flow__node-intent { cursor: default; }
+  .react-flow__handle { width: 1px; height: 1px; min-width: 0; min-height: 0; border: 0; }
+
+  /* 2 Intent 영역: 테두리 없는 옅은 바탕 + 머리 줄 */
+  .i-node { width: 100%; height: 100%; border-radius: var(--r-sheet); background: rgb(219 225 235 / 0.5); }
+  .i-head { display: flex; align-items: baseline; gap: 10px; padding: 14px 18px 10px; white-space: nowrap; }
+  .i-head .key { font-size: var(--fs-m); color: var(--design-ink); }
+  .i-head h2 { font-size: var(--fs-l); font-weight: 700; letter-spacing: -0.01em; }
+  .i-meta { font-size: var(--fs-xs); color: var(--ink-faint); }
+  .i-cnt { display: flex; align-items: center; gap: 14px; margin-left: auto; font-size: var(--fs-xs); font-weight: 700; color: var(--ink-soft); }
+  .i-c { display: inline-flex; align-items: center; gap: 6px; }
+  .i-c.gate { color: var(--gate-ink); }
+  .i-c .dia { width: 7px; height: 7px; }
+
+  /* 3 Unit 노드: 평평한 판 하나, 안에 판을 두지 않는다 */
+  .u-node {
+    box-sizing: border-box; width: 224px; height: 164px;
+    display: flex; flex-direction: column; gap: 3px;
+    padding: 10px 12px;
+    background: var(--raised); color: var(--ink);
+    border: 1px solid var(--rule-strong); border-radius: var(--r-panel);
+    transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease), opacity var(--dur) var(--ease);
+  }
+  .react-flow__node-unit:hover .u-node { border-color: var(--ink-faint); box-shadow: var(--shadow-lift); }
+  .u-node.is-sel, .react-flow__node-unit:hover .u-node.is-sel { border-color: var(--ink); box-shadow: 0 0 0 1px var(--ink), var(--shadow-lift); }
+  /* 거르기에서 빠진 노드: 흐리게 하되 글자는 AA 대비를 지킨다(투명도 대신 색을 뺀다) */
+  .u-node.is-dim { background: var(--paper); border-color: var(--rule); }
+  .u-node.contract.is-dim { border-color: var(--rule-strong); }
+  .u-node.is-dim, .u-node.is-dim .key, .u-node.is-dim .u-st, .u-node.is-dim .g-lbl, .u-node.is-dim .u-sess, .u-node.is-dim .chip-contract { color: var(--ink-faint); }
+  .u-node.is-dim .u-title { color: var(--ink-soft); }
+  .u-node.is-dim .tag, .u-node.is-dim .u-area { background: transparent; color: var(--ink-faint); box-shadow: inset 0 0 0 1px var(--rule); }
+  .u-node.is-dim .chip-contract { border-color: var(--rule-strong); }
+  .u-node.is-dim .harness b { background: var(--ink-faint); }
+  .u-node.is-dim .m, .u-node.is-dim .g-rail li::before, .u-node.is-dim .bolts, .u-node.is-dim .dia { filter: grayscale(1); opacity: 0.5; }
+  .u-top { display: flex; align-items: center; gap: 6px; min-width: 0; height: 20px; }
+  .u-id { font-family: var(--font-code); font-size: var(--fs-xs); color: var(--ink-faint); }
+  .u-area {
+    margin-left: auto; padding: 0 6px; border-radius: var(--r-chip);
+    background: var(--sunken); color: var(--ink-soft);
+    font-family: var(--font-code); font-size: var(--fs-xs); line-height: 18px; white-space: nowrap;
+  }
+  .u-title { font-size: var(--fs-m); font-weight: 700; line-height: 1.35; letter-spacing: -0.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .u-sess { display: flex; align-items: center; gap: 5px; min-height: 18px; font-size: var(--fs-xs); color: var(--ink-soft); white-space: nowrap; overflow: hidden; }
+  .u-prov { display: block; text-overflow: ellipsis; }
+  .flow-root .harness b { width: 16px; height: 16px; font-size: 11px; }
+
+  /* 4 계약 Unit · 계약 선: 점선 */
+  .u-node.contract { border: 1.5px dashed var(--ink-soft); }
+  .u-node.contract.is-sel, .react-flow__node-unit:hover .u-node.contract.is-sel { border: 2px dashed var(--ink); box-shadow: var(--shadow-lift); }
+  .chip-contract {
+    display: inline-flex; align-items: center; padding: 0 6px;
+    border: 1px dashed var(--ink-soft); border-radius: var(--r-chip);
+    font-size: var(--fs-xs); font-weight: 700; line-height: 16px; color: var(--ink);
+  }
+
+  /* 5 게이트 레일: 여덟 단계, 지금 자리만 이름을 쓴다 */
+  .g-rail { margin-top: 5px; height: 34px; }
+  .g-rail ol { list-style: none; display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); margin: 0; padding: 0; }
+  .g-rail li { position: relative; display: flex; align-items: center; justify-content: center; height: 14px; }
+  .g-rail li::before { content: ""; position: absolute; top: 6px; right: 50%; width: 100%; height: 2px; background: var(--rule); }
+  .g-rail li.first::before { display: none; }
+  .g-rail li.lit.design::before { background: var(--design); }
+  .g-rail li.lit.build::before { background: var(--build); }
+  .g-rail li.lit.ops::before { background: var(--ops); }
+  .g-rail .m { position: relative; }
+  .g-lbl { position: absolute; top: 17px; left: 50%; transform: translateX(-50%); font-size: var(--fs-xs); font-weight: 700; line-height: 16px; white-space: nowrap; color: var(--ink-soft); }
+  .g-rail li.first .g-lbl { left: 0; transform: none; }
+  .g-rail li.last .g-lbl { left: auto; right: 0; transform: none; }
+  .g-lbl.wait { color: var(--gate-ink); }
+  .g.design .g-lbl.now { color: var(--design-ink); }
+  .g.build .g-lbl.now { color: var(--build-ink); }
+  .g.ops .g-lbl.now { color: var(--ops-ink); }
+
+  /* 단계 표지: 마름모 = 사람이 승인하는 자리, 동그라미 = 작업 단계 */
+  .m { display: inline-block; flex: none; box-sizing: border-box; width: 10px; height: 10px; color: var(--rule-strong); }
+  .m.gate { transform: rotate(45deg); border-radius: 1.5px; }
+  .m.work { border-radius: 50%; }
+  .m.design { color: var(--design); }
+  .m.build { color: var(--build); }
+  .m.ops { color: var(--ops); }
+  .m.todo { background: var(--raised); border: 1.5px solid var(--rule-strong); }
+  .m.ok { background: currentColor; }
+  .m.now { background: currentColor; border: 2px solid currentColor; box-shadow: inset 0 0 0 1.5px var(--raised); }
+  .m.wait { width: 12px; height: 12px; background: var(--gate); box-shadow: 0 0 0 3px rgb(200 16 46 / 0.22); }
+  .m.lg { width: 11px; height: 11px; }
+  .m.lg.wait { width: 12px; height: 12px; }
+
+  .u-stat { display: flex; align-items: center; flex-wrap: wrap; gap: 3px 8px; margin-top: auto; font-size: var(--fs-xs); color: var(--ink-soft); }
+  .u-st { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; white-space: nowrap; }
+  .u-st.design { color: var(--design-ink); }
+  .u-st.build { color: var(--build-ink); }
+  .u-st.gate { color: var(--gate-ink); }
+  .u-st .dia { width: 7px; height: 7px; }
+  .u-sub { font-weight: 600; }
+  .u-bolt { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .u-bolt .bolts i { width: 10px; }
+  .u-stat .tag { padding: 0 5px; line-height: 16px; }
+
+  /* 의존 선 */
+  .react-flow__edge-path.e-dep { stroke: var(--ink-faint); stroke-width: 1.5; }
+  .react-flow__edge-path.e-contract { stroke: var(--ink-soft); stroke-width: 1.5; stroke-dasharray: 6 4; }
+  .react-flow__edge.e-hot .react-flow__edge-path { stroke: var(--ink); stroke-width: 2.25; }
+  .react-flow__edge.e-dim { opacity: 0.22; }
+  .e-label {
+    position: absolute; padding: 0 6px;
+    background: var(--raised); border: 1px solid var(--rule-strong); border-radius: var(--r-chip);
+    font-size: var(--fs-xs); font-weight: 600; line-height: 18px; color: var(--ink-soft);
+    white-space: nowrap; pointer-events: none;
+  }
+  .e-label.contract { border-style: dashed; border-color: var(--ink-soft); color: var(--ink); }
+  .e-label.hot { border-color: var(--ink); color: var(--ink); }
+  .e-label.dim { border-color: var(--rule); color: var(--ink-faint); }
+
+  /* 9~12 변경 제안(?state=proposal): 띠 · 편집 도구줄 · 파란 점선 · 오른쪽 판의 제안 */
+  .f-edit { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 14px; min-height: 46px; padding: 7px 24px; background: var(--raised); border-bottom: 1px solid var(--rule); }
+  .f-edit .lbl { font-size: var(--fs-s); font-weight: 600; color: var(--ink-faint); }
+  .f-tools button { display: inline-flex; align-items: center; gap: 5px; }
+  .f-tools .i { width: 14px; height: 14px; }
+  .f-hint { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--fs-xs); color: var(--ink-soft); }
+  .f-edit-act { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+  .f-chg { font-size: var(--fs-xs); color: var(--ink-soft); white-space: nowrap; }
+  .f-chg b { color: var(--design-ink); }
+  .f-tpl { padding-left: 10px; border-left: 1px solid var(--rule); font-size: var(--fs-xs); font-weight: 600; white-space: nowrap; }
+  .f-prop { display: flex; align-items: flex-start; gap: 10px; padding: 9px 24px; background: var(--design-wash); border-bottom: 1px solid #cdd4f4; font-size: var(--fs-s); }
+  .f-prop > .i { margin-top: 2px; color: var(--design); }
+  .f-prop b { color: var(--design-ink); }
+  .f-prop-sub { color: var(--ink-soft); }
+  .react-flow__edge-path.e-prop-path { stroke: var(--design); stroke-width: 1.75; stroke-dasharray: 6 4; }
+  .react-flow__edge-path.e-dep.e-cut-path { stroke: var(--ink-faint); stroke-dasharray: 2 5; }
+  .e-label.proposed { border: 1px dashed var(--design); color: var(--design-ink); font-weight: 700; }
+  .e-label.cut { border-style: dashed; color: var(--ink-soft); }
+  .u-node.is-prop { outline: 1.5px dashed var(--design); outline-offset: 3px; }
+  .u-stat .u-prop { background: var(--design-wash); color: var(--design-ink); }
+  .ln.proposed line { stroke: var(--design); stroke-dasharray: 5 3; }
+  .prop-list { list-style: none; display: grid; margin-bottom: 8px; }
+  .prop-list li { padding: 7px 0 8px; }
+  .prop-list li + li { border-top: 1px solid var(--rule-soft); }
+  .prop-op { display: inline-flex; align-items: center; gap: 5px; font-size: var(--fs-xs); font-weight: 700; }
+  .prop-op .i { width: 13px; height: 13px; }
+  .prop-op.add { color: var(--design-ink); }
+  .prop-op.remove { color: var(--ink-soft); }
+  .prop-t { margin-top: 2px; font-size: var(--fs-s); font-weight: 700; }
+  .prop-t .key { font-size: var(--fs-xs); }
+  .dp-foot .ident { margin-top: 2px; }
+
+  /* 6 미니맵 · 조절 단추 */
+  .f-dock { display: flex; align-items: flex-end; gap: 8px; margin: 12px; }
+  .f-dock > .react-flow__panel { position: static; margin: 0; transform: none; }
+  .react-flow__controls { overflow: hidden; border: 1px solid var(--rule); border-radius: var(--r-ctl); background: var(--raised); box-shadow: none; }
+  .react-flow__controls-button {
+    width: 32px; height: 32px; padding: 0;
+    border: 0; border-right: 1px solid var(--rule-soft);
+    background: var(--raised); color: var(--ink-soft);
+  }
+  .react-flow__controls-button:last-child { border-right: 0; }
+  .react-flow__controls-button:hover { background: var(--sunken); color: var(--ink); }
+  .react-flow__controls-button:focus-visible { outline-offset: -3px; border-radius: var(--r-ctl); }
+  .react-flow__controls-button:disabled { color: var(--rule-strong); cursor: not-allowed; }
+  .react-flow__controls-button svg { max-width: 13px; max-height: 13px; fill: currentColor; }
+  .react-flow__minimap { overflow: hidden; border: 1px solid var(--rule); border-radius: var(--r-ctl); background: var(--raised); }
+  .react-flow__attribution { margin: 8px 10px; padding: 1px 6px; border-radius: var(--r-chip); background: rgb(245 247 250 / 0.9); font-size: var(--fs-xs); }
+  .react-flow__attribution a { color: var(--ink-faint); }
+
+  /* 7 범례 */
+  .f-legend { padding: 9px 24px 10px; border-top: 1px solid var(--rule); background: var(--raised); font-size: var(--fs-xs); color: var(--ink-soft); }
+  .lg-wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 22px; }
+  .f-legend .lg { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+  .f-legend .lg > b { margin-right: 2px; color: var(--ink-faint); font-weight: 700; }
+  .lg-i { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+  .lg-i .m.wait { margin: 0 3px; }
+  .sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
+  .sw.design { background: var(--design); }
+  .sw.build { background: var(--build); }
+  .sw.ops { background: var(--ops); }
+  .ln line { stroke: var(--ink-faint); stroke-width: 1.5; }
+  .ln.contract line { stroke: var(--ink-soft); stroke-dasharray: 5 3; }
+
+  /* 8 오른쪽 판 */
+  .detail p, .f-msg p { text-wrap: pretty; }
+  .detail { display: flex; flex-direction: column; min-height: 0; overflow: hidden; background: var(--raised); border-left: 1px solid var(--rule); }
+  .dp-body { flex: 1; min-height: 0; overflow: auto; padding-bottom: 6px; }
+  .dp-head { position: relative; padding: 14px 16px 12px; border-bottom: 1px solid var(--rule-soft); }
+  .dp-keys { display: flex; align-items: center; gap: 6px; padding-right: 34px; }
+  .dp-head h2 { margin-top: 4px; font-size: var(--fs-xl); font-weight: 700; letter-spacing: -0.015em; }
+  .dp-head h2:focus { outline: none; }
+  .dp-head h2:focus-visible { outline: 2px solid var(--design); outline-offset: 3px; }
+  .dp-close { position: absolute; top: 10px; right: 10px; width: 28px; padding: 0; }
+  .dp-sub { margin-top: 3px; font-size: var(--fs-s); color: var(--ink-faint); }
+  .dp-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .dp-sec { padding: 12px 16px 4px; }
+  .dp-sec + .dp-sec { border-top: 1px solid var(--rule-soft); }
+  .dp-sec h3 { display: flex; align-items: baseline; gap: 6px; margin-bottom: 6px; font-size: var(--fs-s); font-weight: 700; color: var(--ink-soft); }
+  .dp-sec h3 .n { color: var(--ink-faint); font-weight: 600; }
+  .dp-sec h3 .h3-note { margin-left: auto; font-size: var(--fs-xs); font-weight: 600; color: var(--ink-faint); }
+  .dp-none { padding: 2px 0 8px; font-size: var(--fs-s); color: var(--ink-faint); }
+  .dp-hint { margin: 6px 0 8px; font-size: var(--fs-xs); line-height: 1.55; color: var(--ink-faint); }
+
+  .todo { list-style: none; display: grid; }
+  .todo li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 10px; align-items: start; padding: 7px 0 9px; }
+  .todo li + li { border-top: 1px solid var(--rule-soft); }
+  .todo .dia { width: 8px; height: 8px; margin-top: 6px; }
+  .todo-k { display: flex; align-items: baseline; gap: 6px; }
+  .todo-k .key { font-size: var(--fs-xs); }
+  .todo-t { font-size: var(--fs-s); font-weight: 700; line-height: 1.4; }
+  .todo-w { margin-top: 1px; font-size: var(--fs-xs); line-height: 1.5; color: var(--ink-soft); }
+
+  .steps { list-style: none; display: grid; margin-bottom: 8px; }
+  .steps li { display: grid; grid-template-columns: 14px 88px minmax(0, 1fr); gap: 8px; align-items: center; min-height: 26px; font-size: var(--fs-s); }
+  .steps li .m { justify-self: center; }
+  .st-n { font-weight: 600; }
+  .st-s { font-size: var(--fs-xs); line-height: 1.45; color: var(--ink-soft); }
+  .st-note { color: var(--ink-faint); }
+  .steps li.todo .st-n { color: var(--ink-soft); font-weight: 500; }
+  .steps li.now .st-s { color: var(--ink); font-weight: 700; }
+  .steps li.wait .st-n, .steps li.wait .st-s { color: var(--gate-ink); font-weight: 700; }
+  .steps li.wait .st-note { color: var(--gate-ink); font-weight: 500; }
+
+  .dp-dl { display: grid; grid-template-columns: 84px minmax(0, 1fr); gap: 7px 10px; margin: 0 0 10px; font-size: var(--fs-s); }
+  .dp-dl dt { padding-top: 1px; font-size: var(--fs-xs); color: var(--ink-faint); }
+  .dp-dl dd { margin: 0; min-width: 0; }
+  .dp-ref { display: block; }
+  .dp-more { display: block; margin-top: 2px; font-size: var(--fs-xs); color: var(--ink-soft); }
+  .dp-ref .key { margin-right: 2px; font-size: var(--fs-xs); }
+
+  .order { list-style: none; display: grid; gap: 1px; margin: 0 -8px; }
+  .order-b {
+    display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 1px 8px; width: 100%; padding: 6px 8px;
+    border: 0; border-radius: var(--r-ctl); background: transparent;
+    font: inherit; font-size: var(--fs-s); color: var(--ink); text-align: left; cursor: pointer;
+    transition: background var(--dur) var(--ease);
+  }
+  .order-b:hover { background: var(--sunken); }
+  .order-b .u-id { padding-top: 1px; }
+  .order-b .key { margin-right: 2px; font-size: var(--fs-xs); }
+  .order-t { font-weight: 600; }
+  .order-s { grid-column: 2; font-size: var(--fs-xs); color: var(--ink-faint); }
+  .order-s.build { color: var(--build-ink); }
+  .order-s.gate { color: var(--gate-ink); font-weight: 700; }
+  .order-s.design { color: var(--design-ink); }
+  .order-bolt { grid-column: 2; display: flex; align-items: center; gap: 6px; margin-top: 2px; font-size: var(--fs-xs); color: var(--ink-soft); }
+  .order-bn { font-variant-numeric: tabular-nums; }
+
+  /* 13 남은 일: 남은 Bolt 계단선(assets/viz.js) */
+  .burn-sum { font-size: var(--fs-xs); color: var(--ink-soft); }
+  .burn-sum b { font-size: var(--fs-m); color: var(--ink); }
+  .dp-burn .vz { margin-top: 4px; }
+
+  .dp-foot { display: grid; gap: 8px; padding: 12px 16px 14px; border-top: 1px solid var(--rule); background: var(--raised); }
+  .dp-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+  .dp-why { display: flex; align-items: flex-start; gap: 6px; font-size: var(--fs-xs); line-height: 1.5; color: var(--ink-soft); }
+  .dp-why .i { width: 14px; height: 14px; margin-top: 1px; color: var(--gate); }
+  .dp-sk { display: grid; gap: 14px; align-content: start; padding: 18px 16px; }
+
+  /* 상태 화면: 캔버스 자리에 같은 점 바탕 */
+  .f-dots {
+    position: relative; flex: 1; min-height: 0;
+    background-color: var(--paper);
+    background-image: radial-gradient(circle, #b6c0cd 1.1px, transparent 1.5px);
+    background-size: 20px 20px;
+  }
+  .f-center { display: grid; place-items: center; align-content: center; gap: 16px; padding: 24px; overflow: hidden; }
+  .f-msg { display: grid; justify-items: start; gap: 8px; max-width: 500px; padding: 20px 22px; border-radius: var(--r-panel); background: rgb(245 247 250 / 0.94); }
+  .f-msg h2 { font-size: var(--fs-l); }
+  .f-msg p { font-size: var(--fs-s); color: var(--ink-soft); }
+  .f-msg .banner .path { margin-top: 4px; }
+  .f-msg-act { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .f-msg-hint { font-size: var(--fs-xs); color: var(--ink-faint); }
+  .sk-stage { position: relative; }
+  .sk-region { position: absolute; left: 0; top: 0; border-radius: var(--r-sheet); background: rgb(219 225 235 / 0.5); }
+  .sk-node { position: absolute; display: grid; gap: 10px; align-content: start; padding: 14px 12px; border: 1px solid var(--rule); border-radius: var(--r-panel); background: var(--raised); }
+  .sk-note { padding: 4px 10px; border-radius: var(--r-ctl); background: var(--paper); font-size: var(--fs-s); color: var(--ink-soft); }
+
+  /* 화면기획서용 영역 번호(?co=1): 번호 표지가 첫 글자를 덮지 않게 비켜 둔다 */
+  .co-on .f-filters, .co-on .lg-wrap { padding-left: 16px; }
+
+  @media (max-width: 1180px) {
+    /* 좁은 화면: 고른 것이 없으면 캔버스가 다 쓰고, 고르면 판이 옆에 붙는다(캔버스를 덮지 않는다) */
+    .f-grid { grid-template-columns: minmax(0, 1fr); }
+    .f-grid.has-sel { grid-template-columns: minmax(0, 1fr) 320px; }
+    .detail.is-idle { display: none; }
+    .f-bar .src { display: none; }
+    .f-hint, .f-prop-sub { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .u-node, .order-b { transition: none; }
+  }
+</style>
+</head>
+<body data-state="default">
+<a class="skip-link" href="#main">본문으로 건너뛰기</a>
+<div class="app">
+  <aside class="rail" data-nav="progress"></aside>
+  <div class="work">
+    <header class="topbar">
+      <div>
+        <h1>진행</h1>
+        <p class="sub">Intent → Unit 의존 흐름 · 자리는 units.json의 dependsOn에서 계산 · jira-workflow 켜짐, 10:40 동기화</p>
+      </div>
+      <div class="top-meta">
+        <div class="seg view-seg" role="group" aria-label="보기"><a href="S02-progress.html">보드</a><a aria-current="page">흐름</a></div>
+        <label class="search"><svg class="i" aria-hidden="true"><use href="#i-search"/></svg><span class="sr-only">이슈 키나 문서 찾기</span><input type="text" placeholder="이슈 키 · 문서 찾기"><kbd>/</kbd></label>
+      </div>
+    </header>
+
+    <main id="main" class="content flow-page">
+      <div id="flow-root" class="flow-root"></div>
+      <noscript><p class="banner warn">흐름 보기는 JavaScript로 그린다. 보드(S02-progress.html)에서 같은 이슈를 볼 수 있다.</p></noscript>
+    </main>
+  </div>
+</div>
+<script src="assets/app.js"></script>
+<script src="assets/viz.js"></script>
+<script src="assets/vendor/flow.bundle.js"></script>
+</body>
+</html>

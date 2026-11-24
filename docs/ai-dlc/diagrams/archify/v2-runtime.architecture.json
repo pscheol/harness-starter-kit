@@ -1,0 +1,307 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "aidlc-workflows v2 런타임 구조",
+    "quality_profile": "showcase",
+    "views": [
+      {
+        "id": "routing",
+        "label": "흐름 결정",
+        "focus": [
+          "human",
+          "claude",
+          "conductor",
+          "engine",
+          "stages",
+          "state"
+        ],
+        "note": "엔진이 다음 스테이지를 정하고 스킬은 그 한 가지를 수행한다."
+      },
+      {
+        "id": "human-check",
+        "label": "사람 확인과 감사",
+        "focus": [
+          "claude",
+          "hooks",
+          "audit"
+        ],
+        "note": "훅이 사람의 실제 입력과 모든 결정을 감사 기록에 남긴다."
+      },
+      {
+        "id": "context",
+        "label": "에이전트와 컨텍스트",
+        "focus": [
+          "conductor",
+          "agents",
+          "memory"
+        ],
+        "note": "에이전트는 팀 규칙과 역공학 결과를 읽고 일한다."
+      }
+    ]
+  },
+  "components": [
+    {
+      "id": "human",
+      "type": "external",
+      "label": "사람",
+      "sublabel": "PO · 개발자",
+      "pos": [
+        40,
+        300
+      ],
+      "size": [
+        130,
+        64
+      ]
+    },
+    {
+      "id": "claude",
+      "type": "frontend",
+      "label": "Claude Code",
+      "sublabel": "하네스 세션",
+      "pos": [
+        250,
+        300
+      ],
+      "size": [
+        140,
+        64
+      ]
+    },
+    {
+      "id": "conductor",
+      "type": "backend",
+      "label": "aidlc 스킬",
+      "sublabel": "conductor",
+      "pos": [
+        470,
+        300
+      ],
+      "size": [
+        140,
+        64
+      ]
+    },
+    {
+      "id": "engine",
+      "type": "backend",
+      "label": "aidlc 엔진",
+      "sublabel": "결정적 라우팅",
+      "pos": [
+        690,
+        300
+      ],
+      "size": [
+        140,
+        64
+      ],
+      "tag": "33 스테이지"
+    },
+    {
+      "id": "hooks",
+      "type": "security",
+      "label": "훅",
+      "sublabel": "guard · human-turn · audit",
+      "pos": [
+        470,
+        100
+      ],
+      "size": [
+        180,
+        64
+      ]
+    },
+    {
+      "id": "agents",
+      "type": "backend",
+      "label": "에이전트 14개",
+      "sublabel": "product · architect · developer",
+      "pos": [
+        470,
+        500
+      ],
+      "size": [
+        190,
+        64
+      ]
+    },
+    {
+      "id": "stages",
+      "type": "database",
+      "label": "스테이지 정의",
+      "sublabel": "stages · protocols",
+      "pos": [
+        690,
+        500
+      ],
+      "size": [
+        140,
+        64
+      ]
+    },
+    {
+      "id": "audit",
+      "type": "database",
+      "label": "audit/",
+      "sublabel": "감사 이벤트",
+      "pos": [
+        930,
+        100
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "state",
+      "type": "database",
+      "label": "aidlc-state.md",
+      "sublabel": "스테이지 진행 상태",
+      "pos": [
+        930,
+        300
+      ],
+      "size": [
+        150,
+        64
+      ]
+    },
+    {
+      "id": "memory",
+      "type": "database",
+      "label": "memory · codekb",
+      "sublabel": "팀 규칙 · 역공학 결과",
+      "pos": [
+        930,
+        500
+      ],
+      "size": [
+        150,
+        64
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "aidlc 런타임 (.claude/)",
+      "wraps": [
+        "hooks",
+        "conductor",
+        "agents",
+        "engine",
+        "stages"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "저장소 aidlc/spaces/<space>/",
+      "wraps": [
+        "audit",
+        "state",
+        "memory"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "request",
+      "from": "human",
+      "to": "claude",
+      "label": "/aidlc 요청",
+      "variant": "emphasis"
+    },
+    {
+      "id": "run-skill",
+      "from": "claude",
+      "to": "conductor",
+      "label": "스킬 실행"
+    },
+    {
+      "id": "ask-next",
+      "from": "conductor",
+      "to": "engine",
+      "label": "다음 할 일?",
+      "variant": "emphasis"
+    },
+    {
+      "id": "update-state",
+      "from": "engine",
+      "to": "state",
+      "label": "상태 갱신"
+    },
+    {
+      "id": "read-stages",
+      "from": "engine",
+      "to": "stages",
+      "label": "스테이지 규칙",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "labelAt": [
+        760,
+        432
+      ]
+    },
+    {
+      "id": "delegate",
+      "from": "conductor",
+      "to": "agents",
+      "label": "서브에이전트 위임",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "events",
+      "from": "claude",
+      "to": "hooks",
+      "label": "모든 이벤트",
+      "variant": "security",
+      "fromSide": "top",
+      "toSide": "left"
+    },
+    {
+      "id": "record",
+      "from": "hooks",
+      "to": "audit",
+      "label": "HUMAN_TURN · 감사 기록",
+      "variant": "security"
+    },
+    {
+      "id": "read-memory",
+      "from": "memory",
+      "to": "agents",
+      "label": "팀 규칙 읽기",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "흐름 결정",
+      "items": [
+        "엔진이 다음 스테이지를 정한다",
+        "LLM은 스테이지 안의 실행 품질만 맡는다"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "사람 확인",
+      "items": [
+        "승인은 HUMAN_TURN 기록이 있어야 통과한다",
+        "무인 실행에서도 게이트는 기다린다"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "저장소 기록",
+      "items": [
+        "상태·감사·팀 규칙을 모두 커밋한다",
+        "감사 기록은 clone마다 나눠 병합 충돌이 없다"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+%%{init: {"theme": "base", "fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "themeVariables": {"fontFamily": "Apple SD Gothic Neo, AppleSDGothicNeo, Noto Sans KR, Malgun Gothic, sans-serif", "fontSize": "16px", "primaryColor": "#ffffff", "primaryBorderColor": "#14213d", "primaryTextColor": "#14213d", "lineColor": "#46536b", "clusterBkg": "#f5f7fa", "clusterBorder": "#aeb9c7", "edgeLabelBackground": "#f5f7fa"}, "flowchart": {"curve": "basis", "padding": 18, "nodeSpacing": 36, "rankSpacing": 56}}}%%
+graph LR
+  REQ["요구사항 접수"]
+  D1["1 설계<br/>킷 /hx-intent 또는 AI-DLC<br/>문서 · 화면기획 · 디자인기획 · 백로그"]
+  G1{"범위 · Unit 승인"}
+  IMP["2 구현<br/>Claude Code · worktree<br/>Unit마다 SDD"]
+  V["3 검증<br/>verify.sh · 리뷰(Codex)<br/>보안 · 품질 스캔"]
+  G2{"MR 승인 · 병합"}
+  DOC["4 반영<br/>문서 · 승인 기록"]
+  OPS["5 운영 기록<br/>지표 · 장애"]
+  ENT["Entire (선택)<br/>커밋마다 대화 기록"]
+  REQ --> D1 --> G1 --> IMP --> V
+  V -- "실패 · 지적" --> IMP
+  V --> G2 --> DOC --> OPS
+  OPS -. "다음 요구사항" .-> REQ
+  IMP -. "켰을 때 기록" .-> ENT
+  classDef gate fill:#fbe6e9,stroke:#c8102e,stroke-width:2px,color:#c8102e
+  classDef design fill:#e7eafb,stroke:#3046c5,stroke-width:2px,color:#14213d
+  classDef build fill:#fbf1dc,stroke:#c98a12,stroke-width:2px,color:#14213d
+  classDef ops fill:#ddf2eb,stroke:#0b7a5e,stroke-width:2px,color:#14213d
+  classDef plain fill:#ffffff,stroke:#14213d,stroke-width:2px,color:#14213d
+  classDef store fill:#f5f7fa,stroke:#6b778c,stroke-width:1.5px,color:#46536b
+  class G1,G2 gate
+  class REQ plain
+  class D1 design
+  class IMP,V build
+  class DOC,OPS ops
+  class ENT store

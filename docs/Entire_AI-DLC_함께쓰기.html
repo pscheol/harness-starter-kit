@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Entire와 AI-DLC, 함께 쓰기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gutter:clamp(24px,5.2vw,72px);
+  --paper:#fbfbfa; --panel:#f1f3f5; --code:#eef1f4;
+  --ink:#16202b; --ink2:#4a5563; --ink3:#6b7480; --rule:#dde1e6;
+  --init:#898781; --idea:#e87ba4; --inc:#2a78d6; --con:#eb6834; --ops:#1baf7a; --gate:#d03b3b;
+  --ent:#0f7b73; --ent-tint:#e9f5f3; --ent-line:#bfe1dc;
+  --link:#1f62b3;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;font-size:17px;line-height:1.75;word-break:keep-all;overflow-wrap:break-word}
+a{color:var(--link);text-underline-offset:3px}
+a:hover{text-decoration-thickness:2px}
+code,pre,kbd{font-family:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace}
+:not(pre)>code{font-size:.86em;background:var(--code);border-radius:5px;padding:1px 6px;white-space:nowrap}
+.card :not(pre)>code,.tbl :not(pre)>code,.answer :not(pre)>code,.note :not(pre)>code{white-space:normal;overflow-wrap:anywhere}
+::selection{background:#cfe0f3}
+:focus-visible{outline:3px solid #7fb0e8;outline-offset:2px;border-radius:4px}
+
+.hero{max-width:1240px;margin:0 auto;padding:60px var(--gutter) 8px}
+.hero-top{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:24px 56px;align-items:end}
+.hero h1{font-size:clamp(34px,5vw,58px);line-height:1.12;letter-spacing:-.02em;margin:0 0 14px;font-weight:700}
+.hero .sub{font-size:clamp(18px,2vw,23px);color:var(--ink2);margin:0 0 18px;line-height:1.5}
+.hero .lead{font-size:18px;color:var(--ink2);margin:0;max-width:40em}
+.meta{display:grid;grid-template-columns:auto 1fr;gap:6px 22px;margin:0;font-size:15px}
+.meta dt{font-weight:600}
+.meta dd{margin:0;color:var(--ink2)}
+
+.shell{display:grid;grid-template-columns:220px minmax(0,1fr);gap:0 44px;max-width:1240px;margin:0 auto;padding:0 var(--gutter)}
+nav.toc{position:sticky;top:0;align-self:start;max-height:100vh;overflow:auto;padding:36px 0 40px}
+nav.toc h2{font-size:14px;margin:0 0 10px;color:var(--ink2);font-weight:600}
+nav.toc ol{list-style:none;margin:0;padding:0;counter-reset:t}
+nav.toc li{counter-increment:t}
+nav.toc a{display:grid;grid-template-columns:26px 1fr;gap:8px;align-items:start;padding:5px 6px;border-radius:8px;color:var(--ink2);text-decoration:none;font-size:14.5px;line-height:1.45}
+nav.toc a::before{content:counter(t);display:inline-grid;place-items:center;width:24px;height:24px;border-radius:50%;border:2px solid var(--rule);font-size:12px;font-weight:600;color:var(--ink3);background:#fff}
+nav.toc a:hover{background:var(--panel);color:var(--ink)}
+nav.toc a[aria-current="true"]{color:var(--ink);font-weight:600}
+nav.toc a[aria-current="true"]::before{background:var(--ink);border-color:var(--ink);color:#fff}
+
+main{min-width:0;padding-bottom:80px}
+section.ch{padding-top:64px;scroll-margin-top:12px}
+.ch-num{display:inline-grid;place-items:center;min-width:1.55em;height:1.55em;padding:0 .3em;margin-right:.45em;border-radius:9px;background:var(--ent);color:#fff;font-size:.62em;font-weight:700;vertical-align:.22em;letter-spacing:0}
+h2{font-size:clamp(26px,3vw,34px);line-height:1.3;margin:0 0 18px;letter-spacing:-.01em}
+h3{font-size:24px;line-height:1.4;margin:40px 0 12px}
+h4,h3.h4{font-size:19px;line-height:1.45;margin:26px 0 8px}
+.prose{max-width:44em}
+.prose p{margin:0 0 16px}
+.prose ul,.prose ol{margin:0 0 18px;padding-left:1.3em}
+.prose li{margin:4px 0}
+.prose li::marker{color:var(--ink3)}
+.kicker{font-size:19px;color:var(--ink2);margin:0 0 22px;max-width:40em}
+
+.answers{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin:26px 0 10px}
+.answer{background:#fff;border:1px solid var(--rule);border-radius:14px;padding:20px 20px 18px}
+.answer .q{font-size:14px;font-weight:600;color:var(--ink3);margin:0 0 6px}
+.answer .a{font-size:20px;font-weight:700;line-height:1.4;margin:0 0 10px}
+.answer p{margin:0;font-size:15.5px;line-height:1.7;color:var(--ink2)}
+
+.fig{margin:28px 0 30px;background:#fff;border:1px solid var(--rule);border-radius:14px;padding:22px 22px 16px}
+.fig figcaption{font-size:15px;color:var(--ink2);margin-top:12px;line-height:1.65;max-width:52em}
+.fig figcaption b{color:var(--ink)}
+.scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.scroll-x > svg{min-width:760px}
+svg{display:block;width:100%;height:auto}
+svg text{font-family:"IBM Plex Sans KR",system-ui,sans-serif}
+
+.tbl{overflow-x:auto;margin:20px 0 26px;border:1px solid var(--rule);border-radius:12px}
+.tbl table{background:#fff}
+table{border-collapse:collapse;width:100%;font-size:15.5px;line-height:1.6}
+th,td{text-align:left;vertical-align:top;padding:11px 14px;border-bottom:1px solid #eceff2}
+thead th{background:var(--panel);font-weight:600;font-size:14.5px;color:var(--ink2);white-space:nowrap}
+tbody tr:last-child td,tbody tr:last-child th{border-bottom:0}
+tbody th{font-weight:600;white-space:nowrap}
+td.yes{color:#11734f;font-weight:600}
+td.no{color:var(--ink3)}
+td.warn{color:#a2391f;font-weight:600}
+.col-ai{border-left:3px solid var(--inc)}
+.col-en{border-left:3px solid var(--ent)}
+
+.note{border:1px solid var(--rule);border-radius:12px;padding:14px 18px;margin:20px 0;background:#f7f9fb;font-size:16px}
+.note p{margin:0 0 8px}.note p:last-child{margin:0}
+.note.warn{background:#fdf5f2;border-color:#f2d3c8}
+.note.ent{background:var(--ent-tint);border-color:var(--ent-line)}
+.note b.lbl{display:block;font-size:14px;margin-bottom:4px}
+
+.steps{list-style:none;margin:20px 0 10px;padding:0;counter-reset:s}
+.steps > li{position:relative;counter-increment:s;padding:0 0 26px 56px;margin:0}
+.steps > li::before{content:counter(s);position:absolute;left:0;top:0;width:34px;height:34px;border-radius:50%;background:var(--ent);color:#fff;font-weight:700;font-size:15px;display:grid;place-items:center}
+.steps > li::after{content:"";position:absolute;left:16px;top:40px;bottom:6px;width:2px;background:var(--ent-line)}
+.steps > li:last-child::after{display:none}
+.steps .h4{margin:3px 0 6px;font-size:19px}
+.steps p{margin:0 0 10px}
+.steps.ai > li::before{background:var(--inc)}
+.steps.ai > li::after{background:#cfe0f3}
+
+.code{position:relative;margin:10px 0 16px;max-width:52em}
+.code pre{margin:0;background:#16202b;color:#e7ecf2;border-radius:10px;padding:40px 18px 16px;overflow-x:auto;font-size:14px;line-height:1.65;tab-size:2}
+.code pre .c{color:#8e9aab}
+.code .copy{position:absolute;top:8px;right:8px;font:inherit;font-size:12.5px;color:#e7ecf2;background:#2b3746;border:1px solid #3c4a5c;border-radius:7px;padding:3px 10px;cursor:pointer}
+.code .copy:hover{background:#354457}
+
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:22px 0}
+.card{background:#fff;border:1px solid var(--rule);border-radius:14px;padding:18px 20px}
+.card .h4{margin:0 0 8px;font-size:18px}
+.card p{margin:0 0 8px;font-size:15.5px;line-height:1.7;color:var(--ink2)}
+.card p:last-child{margin:0}
+.card .ex{font-size:14.5px;color:var(--ink);background:var(--panel);border-radius:8px;padding:8px 11px}
+
+.tabs{margin:20px 0}
+.tablist{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--rule);margin-bottom:16px}
+.tablist button{font:inherit;font-size:15px;background:none;border:0;border-bottom:3px solid transparent;padding:8px 12px;color:var(--ink2);cursor:pointer;margin-bottom:-1px}
+.tablist button[aria-selected="true"]{color:var(--ink);font-weight:600;border-bottom-color:var(--ent)}
+.tabpanel[hidden]{display:none}
+
+details.recall{background:#fff;border:1px solid var(--rule);border-radius:12px;margin:10px 0;max-width:46em}
+details.recall summary{cursor:pointer;padding:13px 18px;font-weight:600;list-style:none;display:flex;gap:10px;align-items:flex-start}
+details.recall summary::-webkit-details-marker{display:none}
+details.recall summary::before{content:"";flex:none;width:9px;height:9px;margin-top:9px;border-right:2px solid var(--ink3);border-bottom:2px solid var(--ink3);transform:rotate(-45deg);transition:transform .15s}
+details.recall[open] summary::before{transform:rotate(45deg)}
+details.recall .ans{padding:0 18px 14px 37px;color:var(--ink2)}
+details.recall .ans p{margin:0}
+
+.src{font-size:15px}
+.src li{margin:6px 0}
+footer{max-width:1240px;margin:0 auto;padding:30px var(--gutter) 60px;color:var(--ink3);font-size:14.5px;border-top:1px solid var(--rule)}
+
+@media (max-width:1020px){
+  .shell{grid-template-columns:1fr;padding:0 var(--gutter)}
+  nav.toc{position:static;max-height:none;padding:24px 0 0;border-bottom:1px solid var(--rule)}
+  nav.toc ol{columns:2;column-gap:20px}
+  nav.toc li{break-inside:avoid}
+  .hero-top{grid-template-columns:1fr}
+  .answers{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:720px){
+  body{font-size:16.5px}
+  .hero{padding-top:36px}
+  nav.toc ol{columns:1}
+  .cards{grid-template-columns:minmax(0,1fr)}
+  .fig{padding:14px 12px 12px;border-radius:12px}
+  section.ch{padding-top:48px}
+  th,td{padding:9px 11px}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{transition:none!important}}
+@media print{
+  nav.toc,.code .copy{display:none}
+  .shell{display:block}
+  .fig,.tbl,.card{break-inside:avoid}
+  .tabpanel[hidden]{display:block}
+}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="hero-top">
+    <div>
+      <h1>Entire와 AI-DLC,<br>함께 쓰기</h1>
+      <p class="sub">AI-DLC는 일하는 순서와 결정을 정하고, Entire는 그 과정을 기록하고 검토합니다</p>
+      <p class="lead">Entire가 무엇이고 어떻게 쓰는지, AI-DLC와 무엇이 다른지, 두 도구를 한 프로젝트에서 같이 돌리는 순서와 그때 얻는 것을 정리했습니다. 「AI-DLC 학습 노선도」와 함께 읽는 별권입니다.</p>
+    </div>
+    <dl class="meta">
+      <dt>기준일</dt><dd>2026년 11월 22일</dd>
+      <dt>근거</dt><dd>Entire 공식 문서(docs.entire.com), AI-DLC 공식 문서와 저장소</dd>
+      <dt>분량</dt><dd>12개 절, 읽기 약 30분</dd>
+      <dt>대상</dt><dd>Claude Code로 AI-DLC를 써 봤거나 써 볼 개발자</dd>
+    </dl>
+  </div>
+</header>
+
+<div class="shell">
+<nav class="toc" aria-label="목차">
+  <h2>목차</h2>
+  <ol>
+    <li><a href="#s1">한눈에 보기</a></li>
+    <li><a href="#s2">Entire는 무엇인가</a></li>
+    <li><a href="#s3">Entire 사용법</a></li>
+    <li><a href="#s4">AI-DLC와 무엇이 다른가</a></li>
+    <li><a href="#s5">같이 쓸 수 있나</a></li>
+    <li><a href="#s6">함께 쓰는 설정 순서</a></li>
+    <li><a href="#s7">함께 쓰는 작업 흐름</a></li>
+    <li><a href="#s8">같이 쓰면 좋아지는 것</a></li>
+    <li><a href="#s9">활용 방법</a></li>
+    <li><a href="#s10">주의할 점</a></li>
+    <li><a href="#s11">스스로 점검하기</a></li>
+    <li><a href="#s12">출처</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<section class="ch" id="s1" aria-labelledby="s1-h">
+  <h2 id="s1-h"><span class="ch-num" aria-hidden="true">1</span>한눈에 보기</h2>
+  <p class="kicker">세 가지 질문에 먼저 짧게 답하고, 나머지 절에서 근거와 방법을 풀어 갑니다.</p>
+
+  <div class="answers">
+    <div class="answer">
+      <p class="q">둘은 서로 다른 구현 방법론인가?</p>
+      <p class="a">아니요, 층이 다릅니다</p>
+      <p>AI-DLC는 무엇을 왜 만들고 언제 누가 승인할지를 정하는 개발 방법론입니다. Entire는 에이전트가 쓴 코드와 그 과정을 저장하고 검토하는 Git 플랫폼입니다. 둘이 겹치는 곳은 코드 리뷰와 병합 구간 정도입니다.</p>
+    </div>
+    <div class="answer">
+      <p class="q">같이 쓰는 건 불가능한가?</p>
+      <p class="a">가능합니다</p>
+      <p>둘 다 Claude Code, Codex, Cursor, Copilot CLI, OpenCode를 지원하고, 저장소 안에서 쓰는 폴더도 대부분 다릅니다. 다만 공식 연동은 없고, 둘 다 <code>.claude/settings.json</code>에 훅을 넣기 때문에 설치 순서와 점검이 필요합니다.</p>
+    </div>
+    <div class="answer">
+      <p class="q">같이 쓰면 무엇이 좋아지나?</p>
+      <p class="a">결론과 과정이 함께 남습니다</p>
+      <p>사람이 승인한 요구사항과 설계(AI-DLC)에, 에이전트가 거기까지 간 대화와 도구 호출(Entire)이 커밋 단위로 붙습니다. 코드 리뷰 1차는 에이전트에 맡기고, 결정은 계속 사람이 합니다.</p>
+    </div>
+  </div>
+
+  <figure class="fig" style="max-width:1000px">
+    <div class="scroll-x">
+<svg viewBox="0 0 1000 392" role="img" aria-labelledby="f1t f1d">
+<title id="f1t">AI-DLC와 Entire의 층 구분</title>
+<desc id="f1d">위층은 AI-DLC 노선으로 Intent, Inception, 사람 승인, Construction, 사람 승인, Operations 순서로 진행한다. 아래층은 Entire로 Git 포지, Checkpoints, Trails, Gates가 있다. 승인한 문서와 대화는 커밋할 때 Checkpoints에 기록되고, 유닛 커밋을 push하면 Trails에서 평가되며, 병합 전에 Gates가 조건을 확인한다.</desc>
+<defs><marker id="m1" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L8 5L1 9" fill="none" stroke="#6b7480" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect x="20" y="20" width="960" height="162" rx="14" fill="#f4f8fd" stroke="#dde1e6"/>
+<text x="44" y="56" font-size="18" font-weight="700" fill="#16202b">AI-DLC</text>
+<text x="124" y="56" font-size="16" fill="#4a5563">무엇을 만들고, 어떤 순서로, 누가 승인하나</text>
+<path d="M80 106 H360" stroke="#2a78d6" stroke-width="9" stroke-linecap="round"/>
+<path d="M360 106 H760" stroke="#eb6834" stroke-width="9"/>
+<path d="M760 106 H950" stroke="#1baf7a" stroke-width="9" stroke-linecap="round"/>
+<circle cx="80" cy="106" r="27" fill="#16202b"/><text x="80" y="111" font-size="13.5" font-weight="600" fill="#fff" text-anchor="middle">Intent</text>
+<circle cx="220" cy="106" r="10" fill="#fff" stroke="#16202b" stroke-width="3.5"/>
+<text x="220" y="146" font-size="16" font-weight="600" fill="#16202b" text-anchor="middle">Inception</text>
+<text x="220" y="168" font-size="14.5" fill="#4a5563" text-anchor="middle">질문, 요구사항, 유닛</text>
+<rect x="351" y="90" width="18" height="32" rx="6" fill="#d03b3b"/><circle cx="360" cy="99" r="3.8" fill="#fff"/><circle cx="360" cy="113" r="3.8" fill="#fff"/>
+<text x="360" y="146" font-size="15.5" font-weight="600" fill="#a52a2a" text-anchor="middle">사람 승인</text>
+<circle cx="560" cy="106" r="10" fill="#fff" stroke="#16202b" stroke-width="3.5"/>
+<text x="560" y="146" font-size="16" font-weight="600" fill="#16202b" text-anchor="middle">Construction</text>
+<text x="560" y="168" font-size="14.5" fill="#4a5563" text-anchor="middle">유닛마다 설계, 코드, 검증</text>
+<rect x="751" y="90" width="18" height="32" rx="6" fill="#d03b3b"/><circle cx="760" cy="99" r="3.8" fill="#fff"/><circle cx="760" cy="113" r="3.8" fill="#fff"/>
+<text x="760" y="146" font-size="15.5" font-weight="600" fill="#a52a2a" text-anchor="middle">사람 승인</text>
+<circle cx="880" cy="106" r="10" fill="#fff" stroke="#16202b" stroke-width="3.5"/>
+<text x="880" y="146" font-size="16" font-weight="600" fill="#16202b" text-anchor="middle">Operations</text>
+<text x="880" y="168" font-size="14.5" fill="#4a5563" text-anchor="middle">배포, 운영</text>
+<circle cx="950" cy="106" r="9" fill="#16202b"/>
+<g stroke="#6b7480" stroke-width="1.7" stroke-dasharray="5 4"><line x1="360" y1="188" x2="360" y2="276" marker-end="url(#m1)"/><line x1="560" y1="188" x2="560" y2="276" marker-end="url(#m1)"/><line x1="760" y1="188" x2="760" y2="276" marker-end="url(#m1)"/></g>
+<g font-size="15" fill="#4a5563"><text x="372" y="226">커밋할 때 기록</text><text x="572" y="226">push할 때 평가</text><text x="772" y="226">병합 전 확인</text></g>
+<rect x="20" y="232" width="960" height="140" rx="14" fill="#eef7f5" stroke="#dde1e6"/>
+<text x="44" y="266" font-size="18" font-weight="700" fill="#0b5e58">Entire</text>
+<text x="118" y="266" font-size="16" fill="#4a5563">그 과정을 어떻게 남기고 검토하나</text>
+<g text-anchor="middle">
+<rect x="60" y="284" width="180" height="70" rx="10" fill="#fff" stroke="#0f7b73"/><text x="150" y="313" font-size="17" font-weight="600" fill="#0b5e58">Git 포지</text><text x="150" y="337" font-size="14.5" fill="#4a5563">미러, 호스팅, 리전</text>
+<rect x="270" y="284" width="180" height="70" rx="10" fill="#fff" stroke="#0f7b73"/><text x="360" y="313" font-size="17" font-weight="600" fill="#0b5e58">Checkpoints</text><text x="360" y="337" font-size="14.5" fill="#4a5563">세션을 커밋에 연결</text>
+<rect x="470" y="284" width="180" height="70" rx="10" fill="#fff" stroke="#0f7b73"/><text x="560" y="313" font-size="17" font-weight="600" fill="#0b5e58">Trails</text><text x="560" y="337" font-size="14.5" fill="#4a5563">push마다 자동 평가</text>
+<rect x="670" y="284" width="180" height="70" rx="10" fill="#fff" stroke="#0f7b73"/><text x="760" y="313" font-size="17" font-weight="600" fill="#0b5e58">Gates</text><text x="760" y="337" font-size="14.5" fill="#4a5563">사람, 에이전트, CI</text>
+</g>
+</svg>
+    </div>
+    <figcaption><b>그림 1.</b> 위는 일하는 순서(AI-DLC), 아래는 그 흔적을 담고 검토하는 플랫폼(Entire)입니다. AI-DLC의 승인은 결정을 확정하는 자리이고, Entire의 Gates는 코드를 병합하기 전에 조건을 확인하는 자리입니다. 둘은 서로를 대신하지 않고 위아래로 겹칩니다.</figcaption>
+  </figure>
+</section>
+
+<section class="ch" id="s2" aria-labelledby="s2-h">
+  <h2 id="s2-h"><span class="ch-num" aria-hidden="true">2</span>Entire는 무엇인가</h2>
+  <div class="prose">
+    <p>Entire는 GitHub CEO였던 Thomas Dohmke가 세운 회사이자 제품 이름입니다. 2026년 2월에 첫 제품인 Checkpoints CLI를 오픈소스로 내놓으며 시작했고, 10월 26일에는 Trails를 앞세운 Git 포지를 모든 개발자에게 열었습니다. 스스로를 “에이전트와 사람이 함께 일하는 Git 포지”라고 소개합니다.</p>
+    <p>출발점은 리뷰 병목입니다. 에이전트가 코드를 빨리 쓸수록 사람이 diff를 읽는 속도가 따라가지 못하고, 에이전트 세션이 끝나면 “왜 이렇게 짰는지”가 사라집니다. Entire는 이 두 문제를 각각 체크포인트(과정 기록)와 Trails(에이전트 평가 기반 리뷰)로 풉니다.</p>
+  </div>
+
+  <h3>네 덩어리로 나눠 보기</h3>
+  <div class="cards">
+    <div class="card">
+      <h3 class="h4">Checkpoints: 과정을 커밋에 붙인다</h3>
+      <p>내 컴퓨터에서 도는 CLI입니다(MIT 라이선스). 에이전트 훅과 Git 훅으로 프롬프트, 대화, 도구 호출, 바뀐 파일, 토큰 사용량을 모았다가, 커밋하는 순간 그 내용을 체크포인트로 저장합니다.</p>
+      <p>커밋 메시지에는 <code>Entire-Checkpoint</code> 트레일러가 붙고, 기록은 내 저장소 안의 별도 ref에 들어가므로 작업 브랜치는 깨끗하게 남습니다.</p>
+    </div>
+    <div class="card">
+      <h3 class="h4">Git 포지: 미러와 호스팅</h3>
+      <p>GitHub 저장소를 미러로 등록하면 에이전트가 가까운 리전에서 clone과 push를 합니다. push는 미러를 거쳐 GitHub로 가므로 기존 권한, 브랜치 보호, 리뷰 규칙이 그대로 적용됩니다.</p>
+      <p>Entire에 저장소를 직접 만들 수도 있고, 데이터 보관 리전을 고를 수 있습니다.</p>
+    </div>
+    <div class="card">
+      <h3 class="h4">Trails: 풀 리퀘스트를 대신하는 리뷰 단위</h3>
+      <p>작업의 의도, 코드, 에이전트 세션, 리뷰 근거를 시작부터 병합까지 한곳에 모읍니다. push마다 리뷰 에이전트가 클라우드 샌드박스에서 돌며 점수와 근거, 고칠 항목(Findings)을 남깁니다.</p>
+      <p>최근 다섯 번의 결과가 나란히 보여서, 에이전트가 쓴 코드가 안정됐는지 흐름으로 판단합니다. 병합 조건은 Gates로 정합니다.</p>
+    </div>
+    <div class="card">
+      <h3 class="h4">기억과 검색 (선택)</h3>
+      <p><b>Brain</b>은 저장된 세션, 체크포인트, 문서, 코드 맥락을 묶은 프로젝트 기억이라 Claude Code에서 Codex로 바꿔도 이전 맥락을 넘겨줄 수 있습니다. <b>entire-graph</b>는 함수와 타입이 어떻게 이어지는지 보여 주는 코드 지도입니다.</p>
+      <p>그 밖에 과거 작업 검색(search), 활동 요약(recap, dispatch)이 있습니다.</p>
+    </div>
+  </div>
+
+  <figure class="fig" style="max-width:1000px">
+    <div class="scroll-x">
+<svg viewBox="0 0 1000 284" role="img" aria-labelledby="f2t f2d">
+<title id="f2t">Entire의 구조</title>
+<desc id="f2d">내 컴퓨터에서 코딩 에이전트의 작업을 에이전트 훅이 세션으로 모으고, git commit 때 체크포인트로 저장한다. git push로 entire.com의 미러나 저장소에 올라가면 Trail에서 리뷰 에이전트가 채점하고 Gates가 병합 조건을 확인한다. Finding이 나오면 고친 뒤 다시 push한다. 체크포인트는 Brain과 entire-graph를 거쳐 다음 세션의 맥락이 된다.</desc>
+<defs><marker id="m2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L8 5L1 9" fill="none" stroke="#4a5563" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect x="20" y="20" width="452" height="244" rx="14" fill="none" stroke="#b9c1ca" stroke-dasharray="6 5"/>
+<text x="36" y="48" font-size="16" font-weight="600" fill="#4a5563">내 컴퓨터 (Entire CLI)</text>
+<rect x="498" y="20" width="482" height="244" rx="14" fill="none" stroke="#b9c1ca" stroke-dasharray="6 5"/>
+<text x="514" y="48" font-size="16" font-weight="600" fill="#4a5563">entire.com</text>
+<g text-anchor="middle">
+<rect x="34" y="68" width="132" height="70" rx="10" fill="#fff" stroke="#16202b"/><text x="100" y="97" font-size="16.5" font-weight="600" fill="#16202b">코딩 에이전트</text><text x="100" y="121" font-size="14.5" fill="#4a5563">Claude Code 등</text>
+<rect x="188" y="68" width="122" height="70" rx="10" fill="#eef7f5" stroke="#0f7b73"/><text x="249" y="97" font-size="16.5" font-weight="600" fill="#0b5e58">세션 수집</text><text x="249" y="121" font-size="14.5" fill="#4a5563">에이전트 훅</text>
+<rect x="332" y="68" width="126" height="70" rx="10" fill="#eef7f5" stroke="#0f7b73"/><text x="395" y="97" font-size="16.5" font-weight="600" fill="#0b5e58">체크포인트</text><text x="395" y="121" font-size="14.5" fill="#4a5563">커밋에 연결</text>
+<rect x="188" y="176" width="270" height="70" rx="10" fill="#fff" stroke="#0f7b73" stroke-dasharray="5 4"/><text x="323" y="205" font-size="16.5" font-weight="600" fill="#0b5e58">Brain, entire-graph (선택)</text><text x="323" y="229" font-size="14.5" fill="#4a5563">다음 세션에 넘길 맥락</text>
+<rect x="516" y="68" width="130" height="70" rx="10" fill="#eef7f5" stroke="#0f7b73"/><text x="581" y="97" font-size="16.5" font-weight="600" fill="#0b5e58">미러, 저장소</text><text x="581" y="121" font-size="14.5" fill="#4a5563">리전 선택</text>
+<rect x="670" y="68" width="140" height="70" rx="10" fill="#eef7f5" stroke="#0f7b73"/><text x="740" y="97" font-size="16.5" font-weight="600" fill="#0b5e58">Trail</text><text x="740" y="121" font-size="14.5" fill="#4a5563">에이전트가 채점</text>
+<rect x="834" y="68" width="130" height="70" rx="10" fill="#eef7f5" stroke="#0f7b73"/><text x="899" y="97" font-size="16.5" font-weight="600" fill="#0b5e58">Gates</text><text x="899" y="121" font-size="14.5" fill="#4a5563">병합 조건 확인</text>
+<rect x="670" y="176" width="140" height="70" rx="10" fill="#fff" stroke="#d03b3b"/><text x="740" y="205" font-size="16.5" font-weight="600" fill="#a52a2a">Findings</text><text x="740" y="229" font-size="14.5" fill="#4a5563">고친 뒤 다시 push</text>
+<rect x="834" y="176" width="130" height="70" rx="10" fill="#16202b"/><text x="899" y="205" font-size="16.5" font-weight="600" fill="#fff">병합</text><text x="899" y="229" font-size="14.5" fill="#d7dde4">미러는 GitHub PR</text>
+</g>
+<g stroke="#4a5563" stroke-width="1.7" fill="none">
+<line x1="168" y1="103" x2="184" y2="103" marker-end="url(#m2)"/>
+<line x1="312" y1="103" x2="328" y2="103" marker-end="url(#m2)"/>
+<line x1="460" y1="103" x2="512" y2="103" marker-end="url(#m2)"/>
+<line x1="648" y1="103" x2="666" y2="103" marker-end="url(#m2)"/>
+<line x1="812" y1="103" x2="830" y2="103" marker-end="url(#m2)"/>
+<line x1="899" y1="140" x2="899" y2="172" marker-end="url(#m2)"/>
+</g>
+<text x="486" y="92" font-size="14" fill="#4a5563" text-anchor="middle">push</text>
+<line x1="740" y1="140" x2="740" y2="172" stroke="#d03b3b" stroke-width="1.7" stroke-dasharray="5 4" marker-end="url(#m2)"/>
+<line x1="395" y1="140" x2="395" y2="172" stroke="#0f7b73" stroke-width="1.7" stroke-dasharray="5 4" marker-end="url(#m2)"/>
+<path d="M186 211 H100 V142" fill="none" stroke="#0f7b73" stroke-width="1.7" stroke-dasharray="5 4" marker-end="url(#m2)"/>
+</svg>
+    </div>
+    <figcaption><b>그림 2.</b> 왼쪽은 내 컴퓨터에서 도는 부분, 오른쪽은 entire.com에서 도는 부분입니다. <code>entire enable</code>은 왼쪽 기록만 켭니다. Trails, 리뷰 에이전트, Gates는 entire.com에서 따로 켜야 합니다.</figcaption>
+  </figure>
+
+  <h3>용어 정리</h3>
+  <div class="tbl"><table>
+    <thead><tr><th scope="col">용어</th><th scope="col">뜻</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Session</th><td>에이전트와 한 번 작업한 기록. 프롬프트, 대화, 도구 호출, 바뀐 파일, 토큰 사용량이 들어갑니다.</td></tr>
+      <tr><th scope="row">Checkpoint</th><td>세션 기록을 Git 커밋 하나에 연결한 것. 에이전트 턴마다가 아니라 커밋할 때 생깁니다. 세션 하나가 여러 커밋에 걸치거나, 커밋 하나에 세션 여러 개가 묶일 수 있습니다.</td></tr>
+      <tr><th scope="row">Trail</th><td>풀 리퀘스트를 대신하는 상위 단위. 제목, 설명, 유형, 우선순위, 담당자, 의도한 결과를 담습니다. 버그 리포트, 기능 요청, 에이전트의 계획에서 시작할 수 있고 여러 저장소에 걸칠 수 있습니다.</td></tr>
+      <tr><th scope="row">Change</th><td>Trail에 연결된 브랜치. 저장소마다 하나씩이고, 따로 리뷰하고 따로 병합합니다.</td></tr>
+      <tr><th scope="row">Agent (리뷰 에이전트)</th><td>Trail의 변경을 평가하는 AI 작업. 기본 제공은 Code review, Security review, Slop 세 가지이고 직접 만들 수도 있습니다.</td></tr>
+      <tr><th scope="row">Finding</th><td>리뷰 에이전트가 찾아낸 고칠 항목. 고치거나, 해결 처리하거나, 기각해야 병합 조건을 통과합니다.</td></tr>
+      <tr><th scope="row">Gate</th><td>병합 조건. Up to Date(기준 브랜치와 최신 상태), Human Review(사람 승인), Agent Review(남은 Finding), Checks(CI) 네 가지입니다.</td></tr>
+      <tr><th scope="row">Mirror</th><td>GitHub 저장소를 Entire 리전에 비춰 둔 사본. 에이전트는 미러로 clone과 pull을 하고, push는 미러를 거쳐 GitHub로 갑니다.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="note ent">
+    <b class="lbl">비용</b>
+    <p>공식 문서 기준으로 돈이 드는 것은 리뷰 에이전트 같은 Agent 사용뿐이고, 나머지 기능은 무료로 쓸 수 있습니다. Agent 사용료는 선불 크레딧에서 모델 토큰 단가대로 빠집니다. 직접 만든 리뷰 에이전트를 쓰려면 결제 수단을 등록해야 합니다. 가격은 바뀔 수 있으니 쓰기 전에 Billing 문서를 확인하세요.</p>
+  </div>
+</section>
+
+<section class="ch" id="s3" aria-labelledby="s3-h">
+  <h2 id="s3-h"><span class="ch-num" aria-hidden="true">3</span>Entire 사용법</h2>
+  <p class="kicker">설치부터 첫 Trail까지 순서대로 따라 할 수 있게 적었습니다. 명령은 공식 문서에 나온 그대로입니다. 4~7단계는 계정이 필요하고, 1~3단계는 혼자서도 됩니다.</p>
+
+  <ol class="steps">
+    <li>
+      <h3 class="h4">CLI 설치</h3>
+      <p>macOS, Linux, Windows를 지원하고 Git 2.25 이상이 필요합니다.</p>
+      <div class="code"><pre><code><span class="c"># macOS</span>
+brew install --cask entireio/tap/entire
+<span class="c"># Linux</span>
+curl -fsSL https://entire.com/install.sh | bash
+<span class="c"># Windows PowerShell</span>
+irm https://entire.com/install.ps1 | iex
+<span class="c"># 설치 확인</span>
+entire version</code></pre></div>
+    </li>
+    <li>
+      <h3 class="h4">저장소에서 켜기</h3>
+      <p>저장소 루트에서 에이전트를 지정해 켭니다. 에이전트 훅과 Git 훅이 설치되고 <code>.entire/settings.json</code>, <code>.entire/.gitignore</code>가 생깁니다. Claude Code는 2.1.78 이상이어야 기록되고, 훅을 설치한 뒤에는 Claude Code 세션을 새로 열어야 합니다.</p>
+      <div class="code"><pre><code>cd my-project
+entire enable -y --agent claude-code
+<span class="c"># 이미 켠 저장소에 에이전트를 하나 더 붙일 때</span>
+entire agent add codex
+entire agent list</code></pre></div>
+    </li>
+    <li>
+      <h3 class="h4">첫 체크포인트 만들기</h3>
+      <p>에이전트에게 작은 일을 시키고 평소처럼 커밋합니다. “이 커밋을 세션과 연결할까요?”라고 물으면 Enter를 누릅니다. <code>always</code>를 고르면 다음부터 묻지 않습니다.</p>
+      <div class="code"><pre><code>git add hello-entire.md
+git commit -m "Add first Entire checkpoint"
+entire checkpoint list
+entire status --detailed   <span class="c"># 세션이 안 보이면 entire doctor</span></code></pre></div>
+    </li>
+    <li>
+      <h3 class="h4">기록 들여다보기</h3>
+      <p>낯선 코드를 고치기 전에 그 코드가 왜 생겼는지 거슬러 올라갈 때 씁니다. blame과 why는 아직 실험 기능이라 출력 형식이 바뀔 수 있고, 줄 단위가 아니라 커밋 단위로 귀속을 알려 줍니다.</p>
+      <div class="code"><pre><code>entire blame src/main.js --line 279          <span class="c"># 그 줄의 커밋과 체크포인트</span>
+entire why src/main.js:279                   <span class="c"># 원래 프롬프트와 세션</span>
+entire checkpoint explain &lt;체크포인트ID&gt; --generate   <span class="c"># 의도와 결과 요약</span>
+entire session resume &lt;브랜치&gt;               <span class="c"># 그 브랜치 세션 이어서 열기</span></code></pre></div>
+    </li>
+    <li>
+      <h3 class="h4">GitHub 저장소를 미러로 등록</h3>
+      <p>로그인하고 Entire GitHub App이 저장소에 접근할 수 있게 한 뒤 미러를 만듭니다. <code>origin</code>은 그대로 GitHub를 가리키고 <code>entire</code> 원격이 하나 더 생깁니다.</p>
+      <div class="code"><pre><code>entire login
+entire repo mirror add          <span class="c"># 저장소와 리전 선택</span>
+entire repo remote add entire
+git fetch entire
+git push entire</code></pre></div>
+    </li>
+    <li>
+      <h3 class="h4">첫 Trail 만들기</h3>
+      <p>기준 브랜치에서 실행하면 제목으로 브랜치를 만들어 올리고 Trail에 연결합니다. 그 브랜치의 변경, 세션, 체크포인트는 자동으로 Trail에 붙습니다.</p>
+      <div class="code"><pre><code>entire trail create --title "My first Entire trail" --checkout
+entire trail show
+<span class="c"># 작업, 커밋 후</span>
+git push origin my-first-entire-trail</code></pre></div>
+    </li>
+    <li>
+      <h3 class="h4">리뷰 에이전트와 Gates 켜기 (웹)</h3>
+      <p>entire.com의 프로젝트에서 <b>Agents</b>로 들어가 기본 에이전트(Code review, Security review, Slop)를 켜거나 <b>New agent</b>로 직접 만듭니다. 이어서 저장소 <b>Settings → Gates</b>에서 병합 조건을 정합니다. Trails를 켠다고 리뷰 에이전트가 따라 켜지지는 않으니 둘 다 따로 설정해야 합니다.</p>
+    </li>
+  </ol>
+
+  <h3>더 써 볼 기능</h3>
+  <h3 class="h4">내 컴퓨터에서 교차 리뷰</h3>
+  <p class="prose">에이전트 두 개에게 같은 변경을 리뷰시키고 한 에이전트가 결과를 합칩니다. Trail을 쓰기 전에 혼자 연습하기 좋습니다.</p>
+  <div class="code"><pre><code>entire review --configure --set-agents codex,claude-code --set-judge codex --set-output local
+entire review general --prompt "Focus on risky state transitions and missing tests."
+entire recap --week --static     <span class="c"># 한 주 동안의 세션, 체크포인트, 토큰 사용 요약</span></code></pre></div>
+
+  <h3 class="h4">프로젝트 기억(Brain)과 코드 지도(entire-graph)</h3>
+  <p class="prose">설정하면 <code>AGENTS.md</code>와 <code>CLAUDE.md</code>에 관리 블록이 추가되고, 에이전트는 작업 전에 <code>entire brain brief</code>로 관련 맥락을 모읍니다. 기억은 기본적으로 내 컴퓨터에만 있고, <code>entire brain connect</code>를 해야 Entire 저장소와 동기화됩니다.</p>
+  <div class="code"><pre><code>entire plugin install brain
+entire plugin install graph
+entire brain setup
+entire graph setup
+entire brain status</code></pre></div>
+
+  <h3 class="h4">민감 정보 가리기</h3>
+  <p class="prose">체크포인트에는 프롬프트와 대화 원문이 들어가므로 무엇이 남는지 알고 써야 합니다. API 키, 액세스 토큰, 자격 증명이 든 URL, DB 접속 문자열, 개인 키는 기본으로 가려집니다. 개인정보(PII) 가리기는 기본으로 꺼져 있고, 사내 패턴은 직접 추가합니다(Go RE2 정규식). 아래 내용은 팀 공용이면 <code>.entire/settings.json</code>에, 나만 쓸 거면 <code>.entire/settings.local.json</code>에 넣습니다. <code>commit_linking</code>을 <code>always</code>로 두면 커밋할 때마다 연결 여부를 묻지 않습니다.</p>
+  <div class="code"><pre><code>{
+  "commit_linking": "always",
+  "redaction": {
+    "custom_redactions": {
+      "acme_token": "ACME_TOKEN_[A-Za-z0-9]{20,}"
+    }
+  }
+}</code></pre></div>
+
+  <h3>저장소에 생기는 것</h3>
+  <div class="tbl"><table>
+    <thead><tr><th scope="col">경로</th><th scope="col">커밋 여부</th><th scope="col">용도</th></tr></thead>
+    <tbody>
+      <tr><td><code>.entire/settings.json</code></td><td>커밋 (팀이 함께 쓸 때)</td><td>체크포인트 저장 방식, 팀 가리기 규칙 같은 공용 설정</td></tr>
+      <tr><td><code>.entire/settings.local.json</code></td><td>커밋 안 함</td><td>개인 설정, 개인 가리기 규칙</td></tr>
+      <tr><td><code>.entire/redactors/</code></td><td>커밋</td><td>팀 공용 가리기 규칙 묶음</td></tr>
+      <tr><td><code>.claude/</code>, <code>.codex/</code>, <code>.cursor/</code> 등</td><td>에이전트별</td><td>각 에이전트의 훅 설정. Claude Code는 <code>.claude/settings.json</code>에 훅을 추가하고 관계없는 설정은 그대로 둡니다.</td></tr>
+      <tr><td><code>refs/entire/checkpoints/…</code></td><td>작업 파일 아님</td><td>체크포인트 저장소(0.10.0 이후 기본). 코드와 함께 push됩니다. 그 전에 켠 저장소는 <code>entire/checkpoints/v1</code> 브랜치를 씁니다.</td></tr>
+      <tr><td><code>.git/entire-sessions/</code></td><td>Git 디렉터리 안</td><td>진행 중인 세션 상태</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="ch" id="s4" aria-labelledby="s4-h">
+  <h2 id="s4-h"><span class="ch-num" aria-hidden="true">4</span>AI-DLC와 무엇이 다른가</h2>
+  <div class="prose">
+    <p>질문을 바꿔 보면 차이가 선명해집니다. AI-DLC가 답하는 질문은 “이번 Intent에서 무엇을 어떤 순서로 정하고, 사람은 어디서 승인하는가”입니다. Entire가 답하는 질문은 “에이전트가 만든 변경을 어디에 남기고, 병합해도 되는지 어떻게 판단하는가”입니다.</p>
+    <p>예전 도구로 치면 AI-DLC는 스크럼이나 애자일 같은 일하는 방식에, Entire는 GitHub 같은 저장소와 리뷰 플랫폼에 가깝습니다. 스크럼과 GitHub 중 하나를 고르는 팀이 없듯이, 둘은 고르는 대상이 아니라 쌓는 대상입니다.</p>
+  </div>
+
+  <figure class="fig" style="max-width:1000px">
+    <div class="scroll-x">
+<svg viewBox="0 0 1000 246" role="img" aria-labelledby="f3t f3d">
+<title id="f3t">수명주기에서 두 도구가 맡는 구간</title>
+<desc id="f3d">AI-DLC는 Initialization, Ideation, Inception, Construction, Operation 다섯 페이즈 전체를 다룬다. Entire는 Inception 무렵 Trail을 만들 수 있고, 주로 Construction의 커밋, push, 리뷰, 병합을 다루며, Operation에서는 why와 blame으로 원인을 추적하는 데 쓰인다. 앞의 두 페이즈에는 해당 기능이 없다.</desc>
+<g font-size="15.5" font-weight="600" fill="#4a5563" text-anchor="middle">
+<text x="240" y="40">Initialization</text><text x="400" y="40">Ideation</text><text x="560" y="40">Inception</text><text x="720" y="40">Construction</text><text x="880" y="40">Operation</text>
+</g>
+<g stroke="#e3e7eb"><line x1="160" y1="56" x2="160" y2="226"/><line x1="320" y1="56" x2="320" y2="226"/><line x1="480" y1="56" x2="480" y2="226"/><line x1="640" y1="56" x2="640" y2="226"/><line x1="800" y1="56" x2="800" y2="226"/><line x1="960" y1="56" x2="960" y2="226"/></g>
+<text x="24" y="100" font-size="17" font-weight="700" fill="#1f4e8c">AI-DLC</text>
+<text x="24" y="122" font-size="14" fill="#4a5563">일하는 순서</text>
+<rect x="164" y="78" width="152" height="46" rx="8" fill="#898781"/>
+<rect x="324" y="78" width="152" height="46" rx="8" fill="#e87ba4"/>
+<rect x="484" y="78" width="152" height="46" rx="8" fill="#2a78d6"/>
+<rect x="644" y="78" width="152" height="46" rx="8" fill="#eb6834"/>
+<rect x="804" y="78" width="152" height="46" rx="8" fill="#1baf7a"/>
+<g font-size="14.5" fill="#fff" text-anchor="middle" font-weight="600">
+<text x="240" y="106">준비, 범위</text><text x="400" y="106">아이디어 구체화</text><text x="560" y="106">요구, 스토리, 유닛</text><text x="720" y="106">설계, 코드, 검증</text><text x="880" y="106">배포, 관측</text>
+</g>
+<text x="24" y="176" font-size="17" font-weight="700" fill="#0b5e58">Entire</text>
+<text x="24" y="198" font-size="14" fill="#4a5563">기록과 검토</text>
+<rect x="484" y="154" width="152" height="46" rx="8" fill="#fff" stroke="#0f7b73" stroke-dasharray="5 4"/>
+<rect x="644" y="154" width="152" height="46" rx="8" fill="#0f7b73"/>
+<rect x="804" y="154" width="152" height="46" rx="8" fill="#d8efeb" stroke="#0f7b73"/>
+<g font-size="14.5" text-anchor="middle" font-weight="600">
+<text x="560" y="182" fill="#0b5e58">Trail 만들기</text><text x="720" y="182" fill="#fff">체크포인트, Trails</text><text x="880" y="182" fill="#0b5e58">why, blame 추적</text>
+</g>
+<text x="240" y="182" font-size="14.5" fill="#6b7480" text-anchor="middle">해당 기능 없음</text>
+<text x="400" y="182" font-size="14.5" fill="#6b7480" text-anchor="middle">해당 기능 없음</text>
+</svg>
+    </div>
+    <figcaption><b>그림 3.</b> AI-DLC는 다섯 페이즈 전체에서 무엇을 언제 정할지를 다룹니다. Entire가 힘을 쓰는 곳은 코드가 커밋되는 Construction부터이고, 운영 중에는 기록을 거슬러 올라가는 데 쓰입니다. Trail은 계획 단계에서 만들 수 있지만, 그때 담기는 의도는 제목과 설명 정도라 AI-DLC Inception처럼 구조화된 요구사항은 아닙니다.</figcaption>
+  </figure>
+
+  <h3>항목별 비교</h3>
+  <div class="tbl"><table>
+    <thead><tr><th scope="col">항목</th><th scope="col" class="col-ai">AI-DLC</th><th scope="col" class="col-en">Entire</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">정체</th><td class="col-ai">개발 방법론, 그리고 이를 실행하는 오픈소스 엔진과 규칙(aidlc-workflows, MIT-0)</td><td class="col-en">Git 포지(호스팅, 리뷰, CI 연동)와 세션 기록 CLI(MIT)</td></tr>
+      <tr><th scope="row">핵심 질문</th><td class="col-ai">무엇을 왜 만들고, 어떤 순서로, 누가 승인하나</td><td class="col-en">에이전트가 어떻게 썼고, 그 변경을 병합해도 되나</td></tr>
+      <tr><th scope="row">작업 단위</th><td class="col-ai">Intent, Unit, Bolt</td><td class="col-en">Trail, Change, Commit, Checkpoint</td></tr>
+      <tr><th scope="row">남기는 기록</th><td class="col-ai">사람이 승인한 결과물: 요구사항, 스토리, 설계, 진행 상태(<code>aidlc-state.md</code>), 질문과 답변과 승인을 담은 감사 기록(<code>audit/</code>)</td><td class="col-en">과정의 원재료: 프롬프트, 대화, 도구 호출, 바뀐 파일, 토큰 사용량을 커밋마다</td></tr>
+      <tr><th scope="row">승인과 리뷰</th><td class="col-ai">스테이지마다 사람 승인 게이트. 사람의 실제 메시지가 있어야 열립니다</td><td class="col-en">push마다 리뷰 에이전트가 채점하고, 병합 전에 Gates(사람 승인, Finding, CI, 최신 상태)를 확인합니다</td></tr>
+      <tr><th scope="row">강제 방식</th><td class="col-ai">엔진이 다음 스테이지를 정하고, 훅이 에이전트의 도구 호출을 검사합니다</td><td class="col-en">기록 훅은 막지 않고 모으기만 합니다. 막는 일은 병합 시점의 Gates가 합니다</td></tr>
+      <tr><th scope="row">다루는 구간</th><td class="col-ai">준비부터 운영까지 다섯 페이즈</td><td class="col-en">주로 커밋부터 병합까지, 그리고 그 뒤의 추적</td></tr>
+      <tr><th scope="row">비용</th><td class="col-ai">무료. 쓰는 에이전트의 모델 비용만 듭니다</td><td class="col-en">리뷰 에이전트 같은 Agent 사용만 선불 크레딧으로 과금. 나머지는 무료</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Entire에도 작업 방식이 들어 있다</h3>
+  <div class="prose">
+    <p>Entire를 그냥 저장소로만 보면 놓치는 부분이 있습니다. Trails에는 “에이전트가 push하면 리뷰 에이전트가 채점하고, Finding을 고쳐 다시 push하고, 점수가 안정되면 병합한다”는 리뷰 순환이 들어 있습니다. 공식 문서도 Trail의 목적을 코딩 에이전트와 리뷰 에이전트 사이의 순환이 충분히 돌아 안정 상태에 이르렀는지 보여 주는 것이라고 설명합니다.</p>
+    <p>다만 이것은 코드 변경 하나를 다루는 리뷰 방식이지, 요구사항을 정하고 설계를 쪼개는 개발 수명주기 전체를 다루는 방법론은 아닙니다. 그래서 두 도구가 실제로 부딪치는 자리는 “리뷰와 승인” 한 곳뿐입니다.</p>
+  </div>
+
+  <div class="cards">
+    <div class="card">
+      <h3 class="h4">겹치는 곳 1. 맥락 보존</h3>
+      <p>AI-DLC는 결론을 남깁니다. “이 요구사항으로 정했고 누가 승인했다”가 문서로 남습니다. AI-DLC 2.x 세션 관리 문서에는 대화 원문이나 도구 호출 로그를 저장한다는 내용이 없습니다.</p>
+      <p>Entire는 과정을 남깁니다. 그 결론까지 어떤 프롬프트와 도구 호출을 거쳤는지가 커밋에 붙습니다. 그래서 둘은 서로의 빈자리를 채웁니다.</p>
+    </div>
+    <div class="card">
+      <h3 class="h4">겹치는 곳 2. 리뷰 철학</h3>
+      <p>AI-DLC는 “사람이 결정한다”를 원칙으로 게이트를 강제합니다. Trails는 사람이 diff를 다 읽는 부담을 에이전트 평가로 줄이려 합니다. 방향이 반대처럼 보입니다.</p>
+      <p>하지만 검토 대상이 다릅니다. AI-DLC 게이트는 요구사항, 설계, 유닛 완료 같은 결정을 승인하고, Trails는 push된 코드를 평가합니다. Trails의 Human Review 게이트로 사람 승인을 병합 조건에 넣을 수도 있습니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="ch" id="s5" aria-labelledby="s5-h">
+  <h2 id="s5-h"><span class="ch-num" aria-hidden="true">5</span>같이 쓸 수 있나</h2>
+  <div class="prose">
+    <p>쓸 수 있습니다. 두 도구 모두 같은 코딩 에이전트 위에서 동작하고, 한쪽은 일하는 순서를, 다른 쪽은 기록과 리뷰를 맡아 역할이 거의 겹치지 않습니다. 다만 두 가지는 알고 시작해야 합니다.</p>
+    <ul>
+      <li>두 회사가 만든 공식 연동은 없습니다. 2026년 11월 22일 기준으로 둘을 함께 쓴 공개 사례도 찾지 못했습니다. 아래 내용은 각 도구의 공식 문서를 맞춰 본 결과입니다.</li>
+      <li>둘 다 Claude Code의 <code>.claude/settings.json</code>에 훅을 넣습니다. 설치 순서를 지키고, 설치한 뒤 양쪽이 모두 살아 있는지 확인해야 합니다(6절).</li>
+    </ul>
+  </div>
+
+  <h3>어떤 에이전트에서 둘 다 되나</h3>
+  <div class="tbl"><table>
+    <thead><tr><th scope="col">코딩 에이전트</th><th scope="col" class="col-ai">AI-DLC 2.x</th><th scope="col" class="col-en">Entire CLI</th><th scope="col">함께 쓰기</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">Claude Code</th><td class="col-ai yes">지원. 훅으로 거부까지 가능해 가장 엄격</td><td class="col-en yes">지원 (2.1.78 이상)</td><td class="yes">권장 조합</td></tr>
+      <tr><th scope="row">Codex CLI</th><td class="col-ai yes">지원 (훅 신뢰 등록 필요)</td><td class="col-en yes">지원</td><td class="yes">가능</td></tr>
+      <tr><th scope="row">Cursor</th><td class="col-ai yes">지원 (거부는 되지만 강제력이 약함)</td><td class="col-en yes">지원</td><td class="yes">가능</td></tr>
+      <tr><th scope="row">GitHub Copilot CLI</th><td class="col-ai yes">지원</td><td class="col-en yes">지원</td><td class="yes">가능</td></tr>
+      <tr><th scope="row">OpenCode</th><td class="col-ai yes">지원</td><td class="col-en yes">지원</td><td class="yes">가능</td></tr>
+      <tr><th scope="row">Kiro CLI, Kiro IDE</th><td class="col-ai yes">지원</td><td class="col-en no">공식 문서의 지원 목록에 없음</td><td class="warn">확인 필요</td></tr>
+      <tr><th scope="row">Antigravity, Factory, Pi</th><td class="col-ai no">목록에 없음</td><td class="col-en yes">지원</td><td class="no">AI-DLC 쪽이 안 됨</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>누가 어떤 파일을 쓰나</h3>
+  <div class="tbl"><table>
+    <thead><tr><th scope="col">경로</th><th scope="col">쓰는 쪽</th><th scope="col">내용과 주의</th></tr></thead>
+    <tbody>
+      <tr><td><code>.claude/settings.json</code></td><td class="warn">둘 다</td><td>AI-DLC는 SessionStart, SessionEnd, PostToolUse, PreCompact, SubagentStop, Stop 훅을 넣습니다. Entire는 세션 경계, 프롬프트, 완료된 턴, 태스크 이벤트 훅을 넣고 관계없는 설정은 보존한다고 밝힙니다. AI-DLC 문서는 <code>aidlc config</code>가 기존 파일을 합치는지 덮어쓰는지 밝히지 않습니다. 그래서 AI-DLC를 먼저 깔고 Entire를 나중에 켭니다.</td></tr>
+      <tr><td><code>.claude/skills/aidlc/</code>, <code>.claude/agents/</code>, <code>.claude/CLAUDE.md</code>, <code>.claude/rules/aidlc.md</code></td><td>AI-DLC</td><td><code>/aidlc</code> 스킬, 서브에이전트 14개, 프로젝트 지시문</td></tr>
+      <tr><td><code>aidlc/spaces/&lt;space&gt;/intents/&lt;YYMMDD&gt;-&lt;label&gt;/</code></td><td>AI-DLC</td><td>Intent별 결과물, <code>aidlc-state.md</code>, <code>audit/</code></td></tr>
+      <tr><td><code>.entire/</code></td><td>Entire</td><td>설정, 가리기 규칙, 리뷰 러너 설정</td></tr>
+      <tr><td>Git 훅, <code>refs/entire/checkpoints/</code></td><td>Entire</td><td>커밋 연결과 체크포인트 저장</td></tr>
+      <tr><td>루트 <code>CLAUDE.md</code>, <code>AGENTS.md</code></td><td>Entire Brain (선택)</td><td>관리 블록을 추가합니다. AI-DLC의 <code>.claude/CLAUDE.md</code>와는 다른 파일이지만, Claude Code는 둘 다 읽으므로 지시가 서로 어긋나지 않는지 한 번 읽어 보세요.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>왜 서로 부딪치지 않나</h3>
+  <div class="prose">
+    <ul>
+      <li><b>훅이 하는 일이 다릅니다.</b> AI-DLC 훅은 워크플로가 돌 때만 움직이며 순서와 규칙을 지킵니다. Entire 훅은 막지 않고 기록만 합니다. Claude Code는 같은 이벤트에 등록된 훅을 모두 실행합니다.</li>
+      <li><b>기록이 겹치지 않고 이어집니다.</b> AI-DLC는 상태, 결과물, 감사 기록을 파일로 남기고, Entire는 그 파일을 만든 대화와 도구 호출을 커밋에 붙입니다. AI-DLC가 코드 생성(3.5 스테이지)을 서브에이전트로 돌려도, Entire는 서브에이전트 작업을 부모 세션에 귀속해 다음 체크포인트에 넣습니다.</li>
+      <li><b>커밋은 사람이 정합니다.</b> AI-DLC 세션 관리 문서에는 Git 커밋 이야기가 없고, Entire 체크포인트는 커밋할 때 생깁니다. 그래서 “언제 커밋하느냐”를 팀 규칙으로 정해 두면 두 도구의 단위가 맞물립니다(9절).</li>
+    </ul>
+  </div>
+</section>
+
+<section class="ch" id="s6" aria-labelledby="s6-h">
+  <h2 id="s6-h"><span class="ch-num" aria-hidden="true">6</span>함께 쓰는 설정 순서</h2>
+  <p class="kicker">Claude Code를 기준으로 했습니다. 핵심은 AI-DLC를 먼저 깔고 Entire를 나중에 켜는 것, 그리고 설치 뒤 두 쪽 훅이 모두 살아 있는지 확인하는 것입니다.</p>
+
+  <ol class="steps">
+    <li>
+      <h3 class="h4">준비</h3>
+      <p>Git 저장소와 Claude Code 2.1.78 이상이 필요합니다. 처음에는 실제 서비스 저장소 말고 작은 연습 저장소에서 해 보세요.</p>
+      <div class="code"><pre><code>claude --version
+git status</code></pre></div>
+    </li>
+    <li>
+      <h3 class="h4">두 도구 설치</h3>
+      <div class="code"><pre><code><span class="c"># AI-DLC (macOS, Linux, WSL)</span>
+curl -fsSL https://github.com/awslabs/aidlc-workflows/releases/latest/download/install.sh | sh
+<span class="c"># Entire (macOS는 brew install --cask entireio/tap/entire)</span>
+curl -fsSL https://entire.com/install.sh | bash</code></pre></div>
+    </li>
+    <li>
+      <h3 class="h4">AI-DLC를 먼저 프로젝트에 깔기</h3>
+      <div class="code"><pre><code>cd my-project
+aidlc config --harness claude
+aidlc doctor</code></pre></div>
+    </li>
+    <li>
+      <h3 class="h4">그다음 Entire 켜기</h3>
+      <p>Entire는 <code>.claude/settings.json</code>에 자기 훅을 추가하고 다른 설정은 보존합니다.</p>
+      <div class="code"><pre><code>entire enable -y --agent claude-code</code></pre></div>
+    </li>
+    <li>
+      <h3 class="h4">커밋 연결을 자동으로</h3>
+      <p>에이전트가 커밋하면 “세션과 연결할까요?” 질문에 답할 사람이 없을 수 있습니다. 팀 공용 설정에 넣어 두세요.</p>
+      <div class="code"><pre><code>// .entire/settings.json 에 추가
+"commit_linking": "always"</code></pre></div>
+    </li>
+    <li>
+      <h3 class="h4">두 쪽이 모두 살아 있는지 확인</h3>
+      <p><code>.claude/settings.json</code>을 열어 <code>aidlc engine hook …</code> 명령과 Entire 명령이 함께 들어 있는지 눈으로 봅니다. 그리고 Claude Code를 새로 열어야 새 훅이 적용됩니다.</p>
+      <div class="code"><pre><code>aidlc doctor
+entire agent list
+entire status --detailed
+claude          <span class="c"># 새 세션으로 시작</span></code></pre></div>
+    </li>
+    <li>
+      <h3 class="h4">(선택) 미러, Trails, Gates</h3>
+      <p>팀 리뷰까지 Entire로 하려면 미러를 만들고 리뷰 에이전트와 Gates를 켭니다(3절 5~7단계). 처음 몇 주는 기존 GitHub PR과 나란히 돌려 보세요.</p>
+    </li>
+  </ol>
+
+  <div class="note warn">
+    <b class="lbl">나중에 AI-DLC를 업데이트할 때</b>
+    <p><code>aidlc config</code>를 다시 실행했다면 Entire 훅이 남아 있는지 확인하세요. 빠졌으면 <code>entire agent add claude-code --force</code>로 다시 넣습니다. 반대로 AI-DLC 쪽이 이상하면 <code>aidlc doctor</code>부터 봅니다.</p>
+  </div>
+</section>
+
+<section class="ch" id="s7" aria-labelledby="s7-h">
+  <h2 id="s7-h"><span class="ch-num" aria-hidden="true">7</span>함께 쓰는 작업 흐름</h2>
+  <p class="kicker">Intent 하나를 처음부터 병합까지 따라가 봅니다. 사람, AI-DLC, 내 컴퓨터의 Entire CLI, entire.com이 각각 언제 움직이는지 보세요.</p>
+
+  <figure class="fig" style="max-width:1000px">
+    <div class="scroll-x">
+<svg viewBox="0 0 1000 412" role="img" aria-labelledby="f4t f4d">
+<title id="f4t">AI-DLC와 Entire를 함께 쓰는 작업 흐름</title>
+<desc id="f4d">1. 사람이 Intent를 설명하고 Trail을 만든다. 2. AI-DLC가 Inception에서 질문하고 요구사항과 유닛을 만든 뒤 사람이 승인한다. 3. 승인된 문서를 커밋하면 Entire CLI가 체크포인트를 만든다. 4. AI-DLC가 유닛마다 설계부터 검증까지 하고 사람이 유닛을 승인한다. 5. 유닛을 커밋하고 push하면 체크포인트가 함께 올라간다. 6. entire.com에서 리뷰 에이전트가 채점하고 Finding을 남기면 유닛 구현으로 돌아가 고쳐서 다시 push한다. 7. 사람 리뷰와 Gates를 통과하면 병합한다.</desc>
+<defs><marker id="m4" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L8 5L1 9" fill="none" stroke="#4a5563" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker><marker id="m4r" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1L8 5L1 9" fill="none" stroke="#d03b3b" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<rect x="20" y="30" width="960" height="90" fill="#fafafa"/>
+<rect x="20" y="120" width="960" height="90" fill="#f4f8fd"/>
+<rect x="20" y="210" width="960" height="90" fill="#f4faf8"/>
+<rect x="20" y="300" width="960" height="90" fill="#eaf5f2"/>
+<g stroke="#dde1e6"><line x1="20" y1="120" x2="980" y2="120"/><line x1="20" y1="210" x2="980" y2="210"/><line x1="20" y1="300" x2="980" y2="300"/><line x1="146" y1="30" x2="146" y2="390"/></g>
+<g font-size="16" font-weight="700"><text x="32" y="72" fill="#16202b">사람</text><text x="32" y="162" fill="#1f4e8c">AI-DLC</text><text x="32" y="252" fill="#0b5e58">Entire CLI</text><text x="32" y="342" fill="#0b5e58">entire.com</text></g>
+<g font-size="13.5" fill="#4a5563"><text x="32" y="184">Claude Code 안</text><text x="32" y="274">내 컴퓨터</text><text x="32" y="364">Trails, Gates</text></g>
+<g text-anchor="middle">
+<rect x="154" y="46" width="112" height="58" rx="9" fill="#fff" stroke="#16202b"/><text x="210" y="70" font-size="15" font-weight="600" fill="#16202b">① Intent</text><text x="210" y="91" font-size="13.5" fill="#4a5563">Trail 만들기</text>
+<rect x="274" y="136" width="112" height="58" rx="9" fill="#fff" stroke="#2a78d6"/><text x="330" y="160" font-size="15" font-weight="600" fill="#1f4e8c">② Inception</text><text x="330" y="181" font-size="13.5" fill="#4a5563">질문, 요구, 유닛</text>
+<rect x="394" y="226" width="112" height="58" rx="9" fill="#fff" stroke="#0f7b73"/><text x="450" y="250" font-size="15" font-weight="600" fill="#0b5e58">③ 커밋</text><text x="450" y="271" font-size="13.5" fill="#4a5563">체크포인트 1</text>
+<rect x="514" y="136" width="112" height="58" rx="9" fill="#fff" stroke="#eb6834"/><text x="570" y="160" font-size="15" font-weight="600" fill="#b4471b">④ 유닛 구현</text><text x="570" y="181" font-size="13.5" fill="#4a5563">설계부터 검증</text>
+<rect x="634" y="226" width="112" height="58" rx="9" fill="#fff" stroke="#0f7b73"/><text x="690" y="250" font-size="15" font-weight="600" fill="#0b5e58">⑤ 커밋, push</text><text x="690" y="271" font-size="13.5" fill="#4a5563">체크포인트 2</text>
+<rect x="754" y="316" width="112" height="58" rx="9" fill="#fff" stroke="#0f7b73"/><text x="810" y="340" font-size="15" font-weight="600" fill="#0b5e58">⑥ Trail 평가</text><text x="810" y="361" font-size="13.5" fill="#4a5563">점수, Finding</text>
+<rect x="880" y="316" width="98" height="58" rx="9" fill="#16202b" stroke="#16202b"/><text x="929" y="340" font-size="15" font-weight="600" fill="#fff">⑦ Gates</text><text x="929" y="361" font-size="13.5" fill="#d7dde4">통과하면 병합</text>
+</g>
+<g font-size="13.5" font-weight="600" text-anchor="middle">
+<rect x="296" y="61" width="68" height="28" rx="14" fill="#d03b3b"/><text x="330" y="80" fill="#fff">승인</text>
+<rect x="526" y="61" width="88" height="28" rx="14" fill="#d03b3b"/><text x="570" y="80" fill="#fff">유닛 승인</text>
+<rect x="882" y="61" width="96" height="28" rx="14" fill="#16202b"/><text x="930" y="80" fill="#fff">사람 리뷰</text>
+</g>
+<g fill="none" stroke="#4a5563" stroke-width="1.7">
+<path d="M210 106 V165 H270" marker-end="url(#m4)"/>
+<path d="M330 134 V93" marker-end="url(#m4)"/>
+<path d="M366 75 H450 V222" marker-end="url(#m4)"/>
+<path d="M508 255 H570 V198" marker-end="url(#m4)"/>
+<path d="M570 134 V93" marker-end="url(#m4)"/>
+<path d="M616 75 H690 V222" marker-end="url(#m4)"/>
+<path d="M690 286 V345 H750" marker-end="url(#m4)"/>
+<path d="M868 345 H876" marker-end="url(#m4)"/>
+<path d="M930 91 V312" marker-end="url(#m4)"/>
+</g>
+<path d="M810 314 V180 H630" fill="none" stroke="#d03b3b" stroke-width="1.7" stroke-dasharray="5 4" marker-end="url(#m4r)"/>
+<text x="750" y="171" font-size="13.5" fill="#a52a2a" text-anchor="middle">고쳐서 다시</text>
+</svg>
+    </div>
+    <figcaption><b>그림 4.</b> 빨간 알약은 AI-DLC의 사람 승인이고, 검은 알약은 Entire Gates의 사람 리뷰입니다. 빨간 점선은 리뷰 에이전트가 남긴 Finding을 고치러 유닛 구현으로 돌아가는 길입니다. 운영 중 문제가 생기면 체크포인트에서 거꾸로 올라가 원인을 찾습니다(8절).</figcaption>
+  </figure>
+
+  <ol class="steps">
+    <li>
+      <h3 class="h4">Intent를 Trail로 연다</h3>
+      <p>Intent 한 문장을 Trail 제목과 “의도한 결과” 칸에 그대로 씁니다. 기준 브랜치에서 실행하면 작업 브랜치가 생기고, 이후 세션과 체크포인트가 이 Trail에 붙습니다.</p>
+      <div class="code"><pre><code>entire trail create --title "회의실 예약 API" --type feature --checkout
+claude
+&gt; /aidlc 회의실 예약 REST API를 Spring Boot로 만들어줘</code></pre></div>
+    </li>
+    <li>
+      <h3 class="h4">Inception은 AI-DLC 방식 그대로</h3>
+      <p>AI-DLC가 질문하고, 요구사항, 스토리, 유닛을 만들고, 사람이 승인합니다. 이 구간에서 Entire는 끼어들지 않고 대화만 기록합니다.</p>
+    </li>
+    <li>
+      <h3 class="h4">승인한 문서를 커밋한다</h3>
+      <p>Inception 승인 직후 <code>aidlc/</code> 아래 결과물을 커밋합니다. 이 커밋의 체크포인트에는 요구사항을 만든 질문과 답변 대화가 붙어, 나중에 “이 요구사항은 어떤 대화에서 나왔나”를 바로 찾을 수 있습니다.</p>
+    </li>
+    <li>
+      <h3 class="h4">유닛마다 구현하고 승인한다</h3>
+      <p>AI-DLC가 유닛 설계, 코드, 검증을 하고, 검증 명령이 exit 0으로 끝나면 사람이 유닛을 승인합니다. 여기까지는 AI-DLC 규칙 그대로입니다.</p>
+    </li>
+    <li>
+      <h3 class="h4">유닛 하나를 커밋 하나로 push한다</h3>
+      <p>유닛이 승인되면 커밋하고 push합니다. 유닛 하나가 체크포인트 하나가 되므로, 리뷰도 추적도 유닛 단위로 할 수 있습니다.</p>
+    </li>
+    <li>
+      <h3 class="h4">리뷰 에이전트가 채점한다</h3>
+      <p>push마다 리뷰 에이전트가 점수와 Finding을 남깁니다. Finding을 고칠 때는 다시 AI-DLC로 돌아가 해당 유닛 안에서 고치고, 고친 내용을 커밋해 push합니다. 최근 다섯 번의 점수가 안정되는지 봅니다.</p>
+    </li>
+    <li>
+      <h3 class="h4">Gates를 통과하면 병합한다</h3>
+      <p>사람 리뷰, 남은 Finding, CI, 최신 상태 조건이 모두 통과하면 병합합니다. 미러 저장소라면 병합은 연결된 GitHub PR로 이뤄지고, GitHub 쪽 승인 규칙도 따로 지켜야 합니다.</p>
+    </li>
+  </ol>
+
+  <h3>개념끼리 짝 맞추기</h3>
+  <div class="tbl"><table>
+    <thead><tr><th scope="col" class="col-ai">AI-DLC</th><th scope="col" class="col-en">Entire</th><th scope="col">짝 맞추는 방법</th></tr></thead>
+    <tbody>
+      <tr><td class="col-ai">Intent</td><td class="col-en">Trail</td><td>Intent 하나에 Trail 하나. Intent 문장을 Trail의 의도한 결과 칸에 씁니다.</td></tr>
+      <tr><td class="col-ai">여러 저장소에 걸친 Intent</td><td class="col-en">한 Trail 안의 Change 여러 개</td><td>저장소마다 Change가 생기고 따로 병합됩니다.</td></tr>
+      <tr><td class="col-ai">Unit 완료 (exit 0 + 승인)</td><td class="col-en">커밋 1개 = 체크포인트 1개</td><td>유닛이 끝날 때만 커밋하는 규칙을 둡니다.</td></tr>
+      <tr><td class="col-ai">Bolt, 작업 세션</td><td class="col-en">Session</td><td>Entire가 자동으로 기록합니다.</td></tr>
+      <tr><td class="col-ai">사람 승인 게이트</td><td class="col-en">Gates의 Human Review</td><td>AI-DLC 게이트는 결정을, Human Review는 병합을 승인합니다. 둘 다 둡니다.</td></tr>
+      <tr><td class="col-ai">수용 기준, 비기능 요구사항</td><td class="col-en">리뷰 에이전트 지시문</td><td>요구사항 문서를 평가 기준으로 옮깁니다(9절).</td></tr>
+      <tr><td class="col-ai"><code>audit/</code> (질문, 답변, 승인)</td><td class="col-en">체크포인트의 대화 원문</td><td>무엇을 정했는지는 audit에서, 어떻게 만들었는지는 체크포인트에서 봅니다.</td></tr>
+      <tr><td class="col-ai"><code>/aidlc park</code>, <code>/aidlc --resume</code></td><td class="col-en"><code>entire session resume</code>, Brain</td><td>모델이나 에이전트를 바꿀 때 AI-DLC는 진행 위치를, Entire는 대화 맥락을 이어 줍니다.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="ch" id="s8" aria-labelledby="s8-h">
+  <h2 id="s8-h"><span class="ch-num" aria-hidden="true">8</span>같이 쓰면 좋아지는 것</h2>
+  <p class="kicker">하나만 쓸 때 비어 있던 자리를 다른 쪽이 채우는 경우만 골랐습니다.</p>
+  <div class="cards">
+    <div class="card">
+      <h3 class="h4">결론과 과정이 한 커밋에 묶인다</h3>
+      <p>AI-DLC만 쓰면 무엇을 정했는지는 남지만 에이전트가 어떻게 만들었는지는 사라집니다. Entire만 쓰면 과정은 남지만 그 작업이 어떤 승인된 요구사항에서 왔는지가 흐립니다.</p>
+      <p class="ex">장애 난 줄에서 <code>entire why</code> → 원래 프롬프트와 체크포인트 → 커밋 메시지의 REQ ID → AI-DLC 요구사항과 <code>audit/</code>에서 누가 왜 승인했는지까지 한 번에 따라갑니다.</p>
+    </div>
+    <div class="card">
+      <h3 class="h4">리뷰 부담은 줄고 결정은 사람에게 남는다</h3>
+      <p>요구사항, 설계, 유닛 완료 같은 결정은 계속 AI-DLC 게이트에서 사람이 승인하고, Trails 리뷰 에이전트가 코드의 1차 검토를 맡습니다. 사람은 Finding이 가리킨 곳과 점수가 흔들리는 곳만 깊게 봅니다.</p>
+      <p class="ex">diff 수천 줄을 다 읽는 대신 “Security 점수가 지난 push보다 떨어진 이유”부터 봅니다.</p>
+    </div>
+    <div class="card">
+      <h3 class="h4">의도 이탈을 기준을 갖고 잰다</h3>
+      <p>리뷰 에이전트가 Drift를 평가하려면 원래 의도가 글로 있어야 합니다. AI-DLC Inception이 만든 요구사항, 수용 기준, 비기능 목표가 바로 그 기준이 됩니다.</p>
+      <p class="ex">US-03의 수용 기준을 리뷰 에이전트 지시문에 넣으면 “기준마다 테스트가 있는가”를 push마다 확인합니다(9절).</p>
+    </div>
+    <div class="card">
+      <h3 class="h4">에이전트나 모델을 바꿔도 맥락이 이어진다</h3>
+      <p>AI-DLC는 park와 resume으로 진행 위치를 이어 주지만, 문서에 적히지 않은 대화 맥락은 넘어가지 않는다고 밝힙니다. Entire의 세션 재개와 Brain이 그 대화 맥락을 넘겨줍니다.</p>
+      <p class="ex">Claude Code로 Inception을 마치고 Codex로 유닛 하나를 맡길 때, 앞선 질문과 답변을 다시 설명하지 않아도 됩니다.</p>
+    </div>
+    <div class="card">
+      <h3 class="h4">운영에서 원인을 찾는 길이 짧아진다</h3>
+      <p>AI-DLC는 운영에서 얻은 신호를 다음 Intent의 입력으로 삼습니다. Entire 기록이 있으면 그 신호가 어떤 결정과 어떤 대화에서 나온 코드인지 바로 찾을 수 있습니다.</p>
+      <p class="ex"><code>entire blame</code> → <code>entire checkpoint explain --generate</code>로 의도와 결과를 확인하고, 고칠 범위를 새 Intent로 엽니다.</p>
+    </div>
+    <div class="card">
+      <h3 class="h4">회고 재료가 저절로 쌓인다</h3>
+      <p>AI-DLC는 스테이지 결과와 배운 규칙을 남기고(<code>/aidlc-session-cost</code>, <code>/aidlc-outcomes-pack</code>), Entire는 세션, 체크포인트, 토큰 사용을 요약합니다(<code>entire recap</code>).</p>
+      <p class="ex">“어느 스테이지에서 질문이 가장 많이 오갔고, 어느 유닛에서 Finding이 몰렸나”를 숫자로 보고 다음 Intent의 깊이를 조정합니다.</p>
+    </div>
+  </div>
+</section>
+
+<section class="ch" id="s9" aria-labelledby="s9-h">
+  <h2 id="s9-h"><span class="ch-num" aria-hidden="true">9</span>활용 방법</h2>
+  <p class="kicker">바로 가져다 쓸 수 있는 규칙과 설정 예시입니다. 공식 템플릿이 아니라 두 도구의 문서를 맞춰 이 문서에서 만든 예시이니, 팀에 맞게 고쳐 쓰세요.</p>
+
+  <h3>1. 커밋 규칙: 유닛 하나에 커밋 하나</h3>
+  <div class="prose">
+    <p>두 도구를 잇는 고리는 커밋입니다. AI-DLC는 커밋 시점을 정하지 않고, Entire는 커밋할 때 체크포인트를 만듭니다. 그래서 커밋 시점을 팀 규칙으로 못박으면 둘의 단위가 맞물립니다.</p>
+    <ul>
+      <li>Inception 승인 직후 결과물을 한 번 커밋합니다.</li>
+      <li>Construction에서는 유닛이 검증(exit 0)과 사람 승인을 통과했을 때만 커밋합니다.</li>
+      <li>커밋 메시지에 유닛 이름과 요구사항, 스토리 ID를 넣습니다. Entire의 why와 blame이 이 메시지까지 함께 보여 줍니다.</li>
+    </ul>
+  </div>
+  <div class="code"><pre><code>docs(inception): 회의실 예약 요구사항과 유닛 분해 승인 [intent 261122-room-booking]
+feat(U1): 예약 생성 API [REQ-RES-001, US-01]
+fix(U1): 같은 시간대 중복 예약 막기 [REQ-RES-003] (Trail Finding 반영)</code></pre></div>
+
+  <h3>2. “AI-DLC 추적 검사” 리뷰 에이전트 만들기</h3>
+  <p class="prose">entire.com의 <b>Agents → New agent</b>에서 아래처럼 만듭니다. 기본 제공 에이전트(Code review, Security review, Slop)와 함께 켜 두면, 일반 품질은 기본 에이전트가 보고 AI-DLC 요구사항과의 연결은 이 에이전트가 봅니다.</p>
+  <div class="tbl"><table>
+    <thead><tr><th scope="col">항목</th><th scope="col">설정 예</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">이름</th><td>AI-DLC 추적 검사</td></tr>
+      <tr><th scope="row">Harness, Model</th><td><code>claude</code> 등 팀이 쓰는 것. 지시문이 문서를 많이 읽으므로 timeout을 넉넉히</td></tr>
+      <tr><th scope="row">Signal</th><td>값 유형 boolean, 극성 <code>lower_is_better</code> (true면 문제 있음)</td></tr>
+      <tr><th scope="row">Trigger</th><td>Trail branch pushed</td></tr>
+      <tr><th scope="row">경로 필터</th><td><code>src/**</code> 처럼 기능 코드에만. 문서만 바뀐 push에는 돌지 않게 해서 비용을 아낍니다</td></tr>
+    </tbody>
+  </table></div>
+  <div class="code"><pre><code>이 저장소는 AI-DLC로 개발한다. 승인된 요구사항, 스토리, 설계는
+aidlc/spaces/*/intents/*/ 아래 문서에 있다. 이번 push의 변경을 다음 기준으로 평가하라.
+
+1. 바뀐 기능 코드가 어떤 요구사항 ID(REQ-…)나 스토리 ID(US-…)에 해당하는지
+   커밋 메시지와 문서에서 찾는다. 해당 ID가 없는 기능 변경은 Finding으로 남긴다.
+2. 해당 스토리의 수용 기준(Given/When/Then)마다 대응하는 테스트가 있는지 본다.
+   없는 기준은 Finding으로 남긴다.
+3. 승인된 요구사항이나 설계 문서에 없는 동작이 추가됐으면 의도 이탈로 Finding을 남긴다.
+4. 비기능 요구사항(NFR-…)의 수치 목표를 어길 것으로 보이는 코드는 Finding으로 남긴다.
+
+하나라도 해당하면 true, 아니면 false로 답한다.
+각 Finding에는 근거가 된 문서 경로와 ID를 적는다.</code></pre></div>
+
+  <h3>3. 상황별 Gates 설정 예</h3>
+  <div class="tbl"><table>
+    <thead><tr><th scope="col">상황</th><th scope="col">Up to Date</th><th scope="col">Human Review</th><th scope="col">Agent Review</th><th scope="col">Checks</th></tr></thead>
+    <tbody>
+      <tr><th scope="row">혼자 학습</th><td>끔</td><td>끔 (AI-DLC 게이트로 충분)</td><td>high만 막음</td><td>테스트 하나</td></tr>
+      <tr><th scope="row">팀 개발</th><td>켬</td><td>1명, 작성자 제외, push하면 승인 초기화</td><td>medium 이상 막음</td><td>필수 빌드, 테스트</td></tr>
+      <tr><th scope="row">보안, 규제가 중요한 서비스</th><td>켬</td><td>2명, 작성자 제외, push하면 초기화</td><td>low까지 막음</td><td>보안 점검 포함, 우회 권한 최소화</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>4. 도입 단계</h3>
+  <div class="tabs" data-tabs>
+    <div class="tablist" role="tablist" aria-label="도입 단계">
+      <button role="tab" id="tab-a" aria-controls="pan-a" aria-selected="true">1주차: 기록만</button>
+      <button role="tab" id="tab-b" aria-controls="pan-b" aria-selected="false" tabindex="-1">2~3주차: Trails 병행</button>
+      <button role="tab" id="tab-c" aria-controls="pan-c" aria-selected="false" tabindex="-1">4주차부터: Gates와 기억</button>
+    </div>
+    <div class="tabpanel prose" role="tabpanel" id="pan-a" aria-labelledby="tab-a">
+      <ul>
+        <li>연습 저장소에 AI-DLC와 Entire Checkpoints만 켭니다. 계정도 비용도 필요 없습니다.</li>
+        <li>“유닛 하나에 커밋 하나” 규칙을 손에 익힙니다.</li>
+        <li>주말에 커밋 하나를 골라 <code>entire why</code>와 <code>entire checkpoint explain</code>으로 거꾸로 따라가 봅니다. AI-DLC 문서의 어느 요구사항과 이어지는지 확인합니다.</li>
+      </ul>
+    </div>
+    <div class="tabpanel prose" role="tabpanel" id="pan-b" aria-labelledby="tab-b" hidden>
+      <ul>
+        <li>미러를 만들고 기본 리뷰 에이전트 세 개를 켭니다.</li>
+        <li>기존 GitHub PR 리뷰는 그대로 유지하고, Trails 결과와 나란히 비교합니다.</li>
+        <li>Finding마다 “사람 리뷰에서도 잡았을까, 쓸모 있었나”를 짧게 적어 둡니다. 이 기록이 Gates 기준을 정하는 근거가 됩니다.</li>
+      </ul>
+    </div>
+    <div class="tabpanel prose" role="tabpanel" id="pan-c" aria-labelledby="tab-c" hidden>
+      <ul>
+        <li>2~3주차 기록을 보고 Gates를 켭니다(3번 표).</li>
+        <li>AI-DLC 추적 검사 에이전트를 추가합니다(2번).</li>
+        <li>여러 에이전트를 오가거나 저장소가 크면 Brain과 entire-graph를 붙입니다. 이때 AI-DLC의 학습 규칙(<code>memory/</code>)과 Brain 기억이 서로 다른 말을 하지 않는지 가끔 확인합니다.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="note ent">
+    <b class="lbl">혼자 개발하거나 공부 중이라면</b>
+    <p>1주차 단계만으로도 얻는 것이 큽니다. AI-DLC로 요구사항과 설계를 정하고 Entire Checkpoints로 과정을 남기면, 몇 주 뒤의 내가 “그때 왜 이렇게 했지”를 바로 찾을 수 있습니다. Trails와 리뷰 에이전트는 팀 리뷰가 병목이 될 때 붙여도 늦지 않습니다.</p>
+  </div>
+</section>
+
+<section class="ch" id="s10" aria-labelledby="s10-h">
+  <h2 id="s10-h"><span class="ch-num" aria-hidden="true">10</span>주의할 점</h2>
+  <div class="prose">
+    <ul>
+      <li><b>공식 연동이 없습니다.</b> 둘을 함께 쓴 공개 사례를 찾지 못했으니, 실제 서비스 저장소에 넣기 전에 연습 저장소에서 6절 순서를 먼저 돌려 보세요.</li>
+      <li><b>설정 파일을 나눠 씁니다.</b> 두 도구 모두 <code>.claude/settings.json</code>에 훅을 넣습니다. AI-DLC를 업데이트하거나 <code>aidlc config</code>를 다시 돌린 뒤에는 Entire 훅이 남아 있는지 확인합니다.</li>
+      <li><b>대화 원문이 저장소에 올라갑니다.</b> 체크포인트에는 프롬프트와 대화가 들어가고 코드와 함께 push됩니다. 비밀 값은 기본으로 가려지지만 개인정보 가리기는 꺼져 있고, 이미지 내용은 검사하지 않습니다. 고객 데이터를 프롬프트에 붙여 넣는 습관이 있다면 가리기 규칙부터 정하세요.</li>
+      <li><b>비용이 양쪽에서 듭니다.</b> AI-DLC는 스테이지가 많아 토큰을 꽤 쓰고, 리뷰 에이전트는 push마다 돕니다. 경로 필터와 트리거로 리뷰 에이전트가 도는 범위를 좁히세요.</li>
+      <li><b>승인이 플랫폼마다 따로입니다.</b> 미러 저장소에서 Entire의 승인은 GitHub 승인을 대신하지 않고, GitHub 브랜치 규칙이 따로 병합을 막을 수 있습니다.</li>
+      <li><b>실험 기능이 섞여 있습니다.</b> <code>entire blame</code>, <code>entire why</code>는 실험 기능이라 출력이 바뀔 수 있고, 줄 단위가 아니라 커밋 단위로 귀속합니다. <code>entire investigate</code>도 실험 단계입니다.</li>
+      <li><b>Kiro는 아직 짝이 안 맞습니다.</b> AI-DLC는 Kiro를 지원하지만 Entire 공식 문서의 지원 에이전트 목록에는 Kiro가 없습니다. 함께 쓰려면 Claude Code를 권합니다.</li>
+      <li><b>둘 다 빨리 바뀝니다.</b> Entire는 2026년 2월에 첫 제품을 냈고 10월에 포지를 열었습니다. AI-DLC 2.x도 몇 주 간격으로 새 버전이 나옵니다. 이 문서의 명령은 2026년 11월 22일 기준이니, 쓰기 전에 공식 문서를 한 번 더 보세요.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="ch" id="s11" aria-labelledby="s11-h">
+  <h2 id="s11-h"><span class="ch-num" aria-hidden="true">11</span>스스로 점검하기</h2>
+  <p class="kicker">답을 펼치기 전에 먼저 소리 내어 답해 보세요.</p>
+  <details class="recall"><summary>AI-DLC와 Entire가 각각 답하는 질문은 무엇인가?</summary>
+    <div class="ans"><p>AI-DLC는 “무엇을 왜 만들고, 어떤 순서로 정하고, 누가 승인하나”에, Entire는 “에이전트가 만든 변경을 어디에 남기고, 병합해도 되는지 어떻게 판단하나”에 답합니다. 방법론과 플랫폼이라 층이 다릅니다.</p></div></details>
+  <details class="recall"><summary>Entire 체크포인트는 언제 생기고, 무엇이 들어 있나?</summary>
+    <div class="ans"><p>에이전트 턴마다가 아니라 커밋할 때 생깁니다. 프롬프트, 대화, 도구 호출, 바뀐 파일, 토큰 사용량이 들어가고, 커밋 메시지의 <code>Entire-Checkpoint</code> 트레일러로 커밋과 이어집니다.</p></div></details>
+  <details class="recall"><summary>한 저장소에 둘을 설치할 때 순서와 그 이유는?</summary>
+    <div class="ans"><p>AI-DLC(<code>aidlc config</code>)를 먼저, Entire(<code>entire enable</code>)를 나중에 합니다. 둘 다 <code>.claude/settings.json</code>에 훅을 넣는데, Entire는 다른 설정을 보존한다고 밝히고 AI-DLC 문서는 합치는지 덮어쓰는지 밝히지 않기 때문입니다. 설치 뒤 <code>aidlc doctor</code>, <code>entire agent list</code>, <code>entire status --detailed</code>로 확인합니다.</p></div></details>
+  <details class="recall"><summary>AI-DLC의 승인 게이트와 Entire의 Human Review 게이트는 무엇이 다른가?</summary>
+    <div class="ans"><p>AI-DLC 게이트는 요구사항, 설계, 유닛 완료 같은 결정을 승인합니다. Entire의 Human Review는 코드 변경을 병합해도 되는지 승인합니다. 대상이 다르니 둘 다 둡니다.</p></div></details>
+  <details class="recall"><summary>리뷰 에이전트의 의도 이탈 평가를 쓸모 있게 만드는 AI-DLC 결과물은?</summary>
+    <div class="ans"><p>Inception의 요구사항, 스토리의 수용 기준, 비기능 목표입니다. 이것을 리뷰 에이전트 지시문에 넣으면 “의도”가 막연한 설명이 아니라 ID가 붙은 기준이 됩니다.</p></div></details>
+</section>
+
+<section class="ch" id="s12" aria-labelledby="s12-h">
+  <h2 id="s12-h"><span class="ch-num" aria-hidden="true">12</span>출처</h2>
+  <div class="prose src">
+    <h3 class="h4">Entire 공식 문서와 저장소</h3>
+    <ul>
+      <li><a href="https://docs.entire.com/quickstart">Quickstart</a>, <a href="https://docs.entire.com/installation">Installation</a>, <a href="https://docs.entire.com/agents/setup">Set Up an Agent</a>, <a href="https://docs.entire.com/agents/claude-code">Claude Code</a></li>
+      <li><a href="https://docs.entire.com/guides/checkpoints/capture-checkpoints">Capture Sessions and Their Checkpoints</a>, <a href="https://docs.entire.com/guides/checkpoints/checkpoint-storage">Session Storage</a>, <a href="https://docs.entire.com/guides/configuration/entire-files">Entire-Generated Files</a></li>
+      <li><a href="https://docs.entire.com/guides/trails/overview">Trails Overview</a>, <a href="https://docs.entire.com/guides/trails/agents">Trail Agents</a>, <a href="https://docs.entire.com/guides/trails/gates">Gates</a></li>
+      <li><a href="https://docs.entire.com/learn/investigate-why-code-exists">Investigate Why Code Exists</a>, <a href="https://docs.entire.com/learn/review-and-recap-agent-work">Run Cross-Agent Reviews</a></li>
+      <li><a href="https://docs.entire.com/guides/brain/overview">Brain</a>, <a href="https://docs.entire.com/guides/graph/overview">entire-graph</a>, <a href="https://docs.entire.com/guides/configuration/privacy-and-redaction">Privacy and Redaction</a>, <a href="https://docs.entire.com/billing">Billing</a>, <a href="https://docs.entire.com/faq">FAQ</a></li>
+      <li><a href="https://github.com/entireio/cli">entireio/cli (GitHub, MIT)</a></li>
+    </ul>
+    <h3 class="h4">Entire 관련 보도</h3>
+    <ul>
+      <li><a href="https://www.axios.com/2026/02/10/former-github-ceo-ai-coding-startup">Axios, Former GitHub CEO launches AI coding startup (2026-02-10)</a></li>
+      <li><a href="https://thenewstack.io/entire-trails-agentic-code-review/">The New Stack, Entire Trails agentic code review (2026-10)</a></li>
+    </ul>
+    <h3 class="h4">AI-DLC</h3>
+    <ul>
+      <li><a href="https://github.com/awslabs/aidlc-workflows">awslabs/aidlc-workflows (README, 2.11.1 기준)</a></li>
+      <li><a href="https://awslabs.github.io/aidlc-workflows/reference/14-claude-features/">Harness Primitives Mapping: Claude Code</a>, <a href="https://awslabs.github.io/aidlc-workflows/guide/11-session-management/">Session Management</a></li>
+      <li>「AI-DLC 학습 노선도」 6장(공식 도구), 11장(설계 예제)</li>
+    </ul>
+  </div>
+</section>
+
+</main>
+</div>
+
+<footer>
+  <p>기준일 2026년 11월 22일. 명령과 화면 이름은 이날의 공식 문서를 따랐습니다. 9절의 커밋 규칙, 리뷰 에이전트 지시문, Gates 설정은 두 도구의 문서를 바탕으로 이 문서에서 만든 예시이며 공식 템플릿이 아닙니다.</p>
+</footer>
+
+<script>
+(function(){
+  // table of contents: highlight the section in view
+  var links = [].slice.call(document.querySelectorAll('nav.toc a'));
+  var map = {};
+  links.forEach(function(a){ map[a.getAttribute('href').slice(1)] = a; });
+  if ('IntersectionObserver' in window) {
+    var current = null;
+    var io = new IntersectionObserver(function(es){
+      es.forEach(function(e){
+        if (e.isIntersecting) {
+          if (current) current.removeAttribute('aria-current');
+          current = map[e.target.id];
+          if (current) current.setAttribute('aria-current', 'true');
+        }
+      });
+    }, { rootMargin: '-35% 0px -60% 0px' });
+    document.querySelectorAll('section.ch').forEach(function(s){ io.observe(s); });
+  }
+
+  // copy buttons on code blocks
+  document.querySelectorAll('.code').forEach(function(box){
+    var pre = box.querySelector('pre'); if (!pre) return;
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'copy'; b.textContent = '복사';
+    b.setAttribute('aria-label', '코드 복사');
+    box.appendChild(b);
+    b.addEventListener('click', function(){
+      var text = pre.innerText;
+      function done(ok){ b.textContent = ok ? '복사됨' : '직접 선택하세요'; setTimeout(function(){ b.textContent = '복사'; }, 1600); }
+      function fallback(){
+        try {
+          var r = document.createRange(); r.selectNodeContents(pre);
+          var s = window.getSelection(); s.removeAllRanges(); s.addRange(r);
+          done(document.execCommand && document.execCommand('copy'));
+        } catch (e) { done(false); }
+      }
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(function(){ done(true); }, fallback);
+        else fallback();
+      } catch (e) { fallback(); }
+    });
+  });
+
+  // tabs
+  document.querySelectorAll('[data-tabs]').forEach(function(root){
+    var tabs = [].slice.call(root.querySelectorAll('[role="tab"]'));
+    function select(t){
+      tabs.forEach(function(x){
+        var on = x === t;
+        x.setAttribute('aria-selected', on ? 'true' : 'false');
+        x.tabIndex = on ? 0 : -1;
+        document.getElementById(x.getAttribute('aria-controls')).hidden = !on;
+      });
+    }
+    tabs.forEach(function(t, i){
+      t.addEventListener('click', function(){ select(t); });
+      t.addEventListener('keydown', function(e){
+        var n = null;
+        if (e.key === 'ArrowRight') n = tabs[(i + 1) % tabs.length];
+        if (e.key === 'ArrowLeft') n = tabs[(i - 1 + tabs.length) % tabs.length];
+        if (e.key === 'Home') n = tabs[0];
+        if (e.key === 'End') n = tabs[tabs.length - 1];
+        if (n) { e.preventDefault(); select(n); n.focus(); }
+      });
+    });
+  });
+})();
+</script>
+</body>
+</html>

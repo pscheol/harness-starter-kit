@@ -1,0 +1,4 @@
+# 생성물 — packages/ 에서 node scripts/gen-plugins.mjs 가 만든다. MR diff 에서 접힌다.
+plugins/kns/** linguist-generated=true
+# 줄 끝(CRLF) 사례를 그대로 둔다 — 승인 기록 파서 fixture.
+tests/fixtures/approvals/** -text
