@@ -58,7 +58,9 @@ created: 2026-11-24
 - `pnpm -C packages/dashboard test`: 94개 통과.
 - `node scripts/gen-plugins.mjs --check`: 생성물 일치(파일 415개).
 - 설치본 시험(setup.sh python 설치본 + `scripts/tests`): 492개 중 491 통과 → IDE 훅 이름 하나 고친 뒤 그 시험 통과. 새 시험 `test_dispatch`(9) · `test_session_start_budget`(7) · `test_sync_projection`(7).
-- 킷 시험 전체: (아래 줄)
+- 킷 시험 전체(merge 커밋 `ce5b176`): `python3 -m unittest discover -s tests -p "test_*.py"` 114개 OK(1,469초). 처음 돌렸을 때 13건 실패 → 공지 파일 비교 제외 · `{{kit:KEY}}` 로 고친 뒤 통과.
+- 설치본 시험 전체(같은 커밋, setup.sh python 설치본): 492개 OK(716초).
+- 새 CLI 설치본(`init --stack python --agents all`)의 `verify.sh --fast` 통과 — 이슈 키 접두 수정(`82aa3db`, ACME-NOTES → ACMENOTES) 뒤.
 
 ### 토큰 · 크기
 
