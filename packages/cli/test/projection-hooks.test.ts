@@ -38,6 +38,12 @@ describe("공용 fixture(TS = Python 기대값)", () => {
     expect(ids("codex", [])).not.toContain("harness-g-stop");
     expect(ids("codex", [])).not.toContain("harness-e-prompt");
     expect(ids("codex", [])).not.toContain("harness-h-end");
+    // HK-15: worktree 이벤트는 Claude 에만 있다(WorktreeCreate · WorktreeRemove)
+    const claudeWt = settingsHooks(fixtureHooks, "claude", map, []).filter((h) => h.id.includes("-wt-"));
+    expect(claudeWt.map((h) => [h.id, h.event])).toEqual([["harness-i-wt-create", "WorktreeCreate"], ["harness-j-wt-remove", "WorktreeRemove"]]);
+    expect(ids("codex", []).filter((id) => id.includes("-wt-"))).toEqual([]);
+    expect(kiroIdeFiles(fixtureHooks, map, []).some((f) => f.path.includes("-wt-"))).toBe(false);
+    expect(JSON.stringify(kiroCliHooks(fixtureHooks, map, []))).not.toContain("harness-i-wt-create");
     // 쓰기 + 셸: 하네스 도구 이름을 이어 붙이고 겹치는 이름은 한 번만(Codex write 에 Bash 가 이미 있다)
     expect(settingsHooks(fixtureHooks, "codex", map, []).find((h) => h.id === "harness-b-guard")?.matcher).toBe("apply_patch|Bash");
     // Kiro CLI matcher 는 도구 하나 — 도구마다 항목

@@ -10,6 +10,7 @@ import json
 import re
 
 from projection_render import toml_string
+from projection_vscode import merge as merge_vscode, missing as missing_vscode, unmerge as unmerge_vscode
 
 CLAUDE_BEGIN = "<!-- harness-kit:begin claude"
 CLAUDE_END = "<!-- harness-kit:end claude -->"
@@ -563,7 +564,8 @@ MERGERS = {
     "codex-hooks": (merge_codex_hooks, unmerge_codex_hooks, missing_codex_hooks),
     "codex-config": (merge_codex_config, unmerge_codex_config, missing_codex_config),
     "gitattributes": (merge_gitattributes, unmerge_gitattributes, missing_gitattributes),
+    "vscode-settings": (merge_vscode, unmerge_vscode, missing_vscode),
 }
 
 MERGE_KIND = {"CLAUDE.md": "claude-md", ".claude/settings.json": "settings", ".codex/hooks.json": "codex-hooks", ".codex/config.toml": "codex-config",
-              ".gitattributes": "gitattributes"}
+              ".gitattributes": "gitattributes", ".vscode/settings.json": "vscode-settings"}

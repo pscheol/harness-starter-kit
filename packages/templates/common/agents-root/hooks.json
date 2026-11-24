@@ -113,6 +113,26 @@
       "env": { "HX_HARNESS": { "claude": "claude" } },
       "title": "세션 등록 지우기",
       "description": "세션이 끝나면 세션 등록 파일을 지운다"
+    },
+    {
+      "id": "harness-worktree-create",
+      "event": "worktree-create",
+      "script": "scripts/hooks/worktree-create.sh",
+      "timeoutSec": 60,
+      "owner": "kit",
+      "harnesses": ["claude"],
+      "title": "worktree 만들기(WorktreeCreate)",
+      "description": "claude -w <이름> 으로 worktree 를 만들 때 정해진 자리(../<리포>.worktrees/)에 만들고 그 경로를 돌려준다. 이슈 키 이름은 design 승인 · 상한을 본다"
+    },
+    {
+      "id": "harness-worktree-remove",
+      "event": "worktree-remove",
+      "script": "scripts/hooks/worktree-remove.sh",
+      "timeoutSec": 60,
+      "owner": "kit",
+      "harnesses": ["claude"],
+      "title": "worktree 지우기(WorktreeRemove)",
+      "description": "끝 조건(커밋 · push · 다른 세션 없음)을 통과한 worktree 만 지우고 브랜치도 지운다. 아니면 폴더를 남긴다"
     }
   ]
 }

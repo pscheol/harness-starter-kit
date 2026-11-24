@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 717a2d28a3fb14563a7566cb4d46ca9bd5d81e577432029fa97af107fee190c5 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 49585ad9b1906e1ac523288933718a1870159f7dfa9dd1aa61c6de36f86d86e5 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -1637,6 +1637,169 @@ function skillModelProblem(s) {
   return (Object.hasOwn(s.fm, "model") || Object.hasOwn(s.fm, "effort")) && fmStr(s.fm, "context") !== "fork";
 }
 
+// src/projection/vscode.ts
+var VSCODE_KEY = "git.detectWorktrees";
+var VSCODE_LOCK_KEY = "jsonc:git.detectWorktrees";
+var LINE_BODY = '"git.detectWorktrees": true';
+var PUNCT = "{}[],:";
+var SPACE = " 	\r\n\uFEFF";
+var DEFAULT_INDENT = "  ";
+var vscodeSettingsWant = () => ({ key: VSCODE_KEY, value: "true" });
+var fail = (reason) => ({ ok: false, reason });
+function tokenize(text2) {
+  const toks = [];
+  let i = 0;
+  let comment = false;
+  const n = text2.length;
+  while (i < n) {
+    const c = text2[i];
+    if (SPACE.includes(c)) i += 1;
+    else if (text2.startsWith("//", i)) {
+      comment = true;
+      const end = text2.indexOf("\n", i);
+      i = end < 0 ? n : end + 1;
+    } else if (text2.startsWith("/*", i)) {
+      comment = true;
+      const end = text2.indexOf("*/", i + 2);
+      if (end < 0) return null;
+      i = end + 2;
+    } else if (c === '"') {
+      let j = i + 1;
+      while (j < n && text2[j] !== '"') j += text2[j] === "\\" ? 2 : 1;
+      if (j >= n) return null;
+      toks.push({ kind: "str", start: i, end: j + 1 });
+      i = j + 1;
+    } else if (PUNCT.includes(c)) {
+      toks.push({ kind: c, start: i, end: i + 1 });
+      i += 1;
+    } else {
+      let j = i;
+      while (j < n && !SPACE.includes(text2[j]) && !PUNCT.includes(text2[j]) && text2[j] !== '"' && !text2.startsWith("//", j) && !text2.startsWith("/*", j)) j += 1;
+      toks.push({ kind: "lit", start: i, end: j });
+      i = j;
+    }
+  }
+  return { toks, comment };
+}
+function scan(text2) {
+  const tokenized = tokenize(text2);
+  if (tokenized === null) return null;
+  const { toks, comment } = tokenized;
+  if (!toks.length || toks[0].kind !== "{") return null;
+  let depth = 0;
+  let close = -1;
+  for (let index = 0; index < toks.length; index += 1) {
+    const kind = toks[index].kind;
+    if (kind === "{" || kind === "[") depth += 1;
+    else if (kind === "}" || kind === "]") {
+      depth -= 1;
+      if (depth === 0) {
+        close = index;
+        break;
+      }
+      if (depth < 0) return null;
+    }
+  }
+  if (close < 0 || toks[close].kind !== "}" || close !== toks.length - 1) return null;
+  const members = [];
+  let pos = 1;
+  while (pos < close) {
+    const t = toks[pos];
+    if (t.kind === ",") {
+      pos += 1;
+      continue;
+    }
+    if (t.kind !== "str" || pos + 2 >= close || toks[pos + 1].kind !== ":") return null;
+    let key;
+    try {
+      key = JSON.parse(text2.slice(t.start, t.end));
+    } catch {
+      return null;
+    }
+    let local = 0;
+    let j = pos + 2;
+    while (j < close) {
+      const k = toks[j].kind;
+      if (k === "{" || k === "[") local += 1;
+      else if (k === "}" || k === "]") local -= 1;
+      else if (k === "," && local === 0) break;
+      j += 1;
+    }
+    members.push({ key, kidx: pos, ks: t.start, vs: toks[pos + 2].start, ve: toks[j - 1].end, jidx: j });
+    pos = j;
+  }
+  return { toks, comment, close, members };
+}
+var findMember = (s) => [...s.members].reverse().find((m) => m.key === VSCODE_KEY);
+var isTrue = (text2, m) => text2.slice(m.vs, m.ve) === "true";
+var lineStart = (text2, index) => index === 0 ? 0 : text2.lastIndexOf("\n", index - 1) + 1;
+function indentOf(text2, s) {
+  const first = s.members[0];
+  if (!first) return DEFAULT_INDENT;
+  const prefix = text2.slice(lineStart(text2, first.ks), first.ks);
+  return prefix !== "" && prefix.trim() === "" ? prefix : DEFAULT_INDENT;
+}
+function blankAfter(text2, index) {
+  const end = text2.indexOf("\n", index);
+  const rest = end < 0 ? text2.slice(index) : text2.slice(index, end);
+  if (rest.trim() !== "") return -1;
+  return end < 0 ? text2.length : end + 1;
+}
+var vscodeSettings = {
+  merge(cur, _want, prev = []) {
+    if (cur === null) return { ok: true, text: '{\n  "git.detectWorktrees": true\n}\n', keys: [VSCODE_LOCK_KEY], created: true };
+    const s = scan(cur);
+    if (s === null) return fail(".vscode/settings.json 을 JSONC 객체로 읽지 못했다");
+    const found = findMember(s);
+    if (found) return { ok: true, text: cur, keys: isTrue(cur, found) && prev.includes(VSCODE_LOCK_KEY) ? [VSCODE_LOCK_KEY] : [], created: false };
+    const closeAt = s.toks[s.close].start;
+    const edits = [];
+    if (s.close > 1 && s.toks[s.close - 1].kind !== ",") edits.push([s.toks[s.close - 1].end, 0, ","]);
+    const line = indentOf(cur, s) + LINE_BODY;
+    const closeLine = lineStart(cur, closeAt);
+    if (closeLine > s.toks[0].start && cur.slice(closeLine, closeAt).trim() === "") edits.push([closeLine, 1, `${line}
+`]);
+    else edits.push([closeAt, 1, `
+${line}
+`]);
+    let text2 = cur;
+    for (const [at, , piece] of [...edits].sort((a, b) => b[0] - a[0] || b[1] - a[1])) text2 = text2.slice(0, at) + piece + text2.slice(at);
+    return { ok: true, text: text2, keys: [VSCODE_LOCK_KEY], created: false };
+  },
+  unmerge(cur, keys) {
+    const s = scan(cur);
+    if (!keys.includes(VSCODE_LOCK_KEY)) return { ok: true, text: cur, empty: s !== null && !s.members.length && !s.comment };
+    if (s === null) return fail(".vscode/settings.json 을 JSONC 객체로 읽지 못했다");
+    const found = findMember(s);
+    if (!found || !isTrue(cur, found)) return { ok: true, text: cur, empty: false };
+    let start = found.ks;
+    let end = found.ve;
+    const next = s.toks[found.jidx];
+    const trailing = next.kind === ",";
+    if (trailing) end = next.end;
+    const ownLine = cur.slice(lineStart(cur, start), start).trim() === "";
+    const after = blankAfter(cur, end);
+    if (ownLine && after >= 0) {
+      start = lineStart(cur, start);
+      end = after;
+    } else if (ownLine) start = lineStart(cur, start);
+    const edits = [];
+    const before = s.toks[found.kidx - 1];
+    if (!trailing && found.kidx > 1 && before?.kind === ",") edits.push([before.start, before.end]);
+    edits.push([start, end]);
+    let text2 = cur;
+    for (const [at, stop] of [...edits].sort((a, b) => b[0] - a[0])) text2 = text2.slice(0, at) + text2.slice(stop);
+    const rest = scan(text2);
+    return { ok: true, text: text2, empty: rest !== null && !rest.members.length && !rest.comment };
+  },
+  missing(cur, keys) {
+    if (!keys.includes(VSCODE_LOCK_KEY)) return [];
+    const s = scan(cur);
+    const found = s ? findMember(s) : void 0;
+    return !found || !isTrue(cur, found) ? [VSCODE_LOCK_KEY] : [];
+  }
+};
+
 // src/projection/merge.ts
 var CLAUDE_BEGIN = "<!-- harness-kit:begin claude";
 var CLAUDE_END = "<!-- harness-kit:end claude -->";
@@ -1651,9 +1814,10 @@ var MERGE_KIND = {
   ".claude/settings.json": "settings",
   ".codex/hooks.json": "codex-hooks",
   ".codex/config.toml": "codex-config",
-  ".gitattributes": "gitattributes"
+  ".gitattributes": "gitattributes",
+  ".vscode/settings.json": "vscode-settings"
 };
-var fail = (reason) => ({ ok: false, reason });
+var fail2 = (reason) => ({ ok: false, reason });
 var isBlank = (l) => l.trim() === "";
 function splitLines(text2) {
   const lines2 = text2.split("\n");
@@ -1698,7 +1862,7 @@ var claudeMd = {
     if (cur === null) return { ok: true, text: joinLines([AGENTS_LINE, "", ...block2]), keys: ["line:@AGENTS.md", "block:claude"], created: true };
     let lines2 = splitLines(cur);
     const found = findBlock(lines2, CLAUDE_BEGIN, CLAUDE_END);
-    if (found === "unclosed") return fail("CLAUDE.md 킷 블록의 끝 표지가 없다");
+    if (found === "unclosed") return fail2("CLAUDE.md 킷 블록의 끝 표지가 없다");
     const hasLine = lines2.some((l) => l === AGENTS_LINE);
     const keys = [];
     if (found !== null) {
@@ -1719,7 +1883,7 @@ var claudeMd = {
   unmerge(cur, keys) {
     let lines2 = splitLines(cur);
     const found = findBlock(lines2, CLAUDE_BEGIN, CLAUDE_END);
-    if (found === "unclosed") return fail("CLAUDE.md 킷 블록의 끝 표지가 없다");
+    if (found === "unclosed") return fail2("CLAUDE.md 킷 블록의 끝 표지가 없다");
     if (found !== null && keys.includes("block:claude")) lines2 = [...lines2.slice(0, found[0]), ...lines2.slice(found[1] + 1)];
     if (keys.includes("line:@AGENTS.md") && lines2.includes(AGENTS_LINE)) lines2.splice(lines2.indexOf(AGENTS_LINE), 1);
     lines2 = stripTrailingBlank(lines2);
@@ -1741,14 +1905,14 @@ var gitattributes = {
     if (cur === null) return { ok: true, text: joinLines(block2), keys: ["block:generated"], created: true };
     let lines2 = splitLines(cur);
     const found = findBlock(lines2, GEN_BEGIN, GEN_END);
-    if (found === "unclosed") return fail(".gitattributes 킷 블록의 끝 표지가 없다");
+    if (found === "unclosed") return fail2(".gitattributes 킷 블록의 끝 표지가 없다");
     lines2 = found === null ? appendBlock(lines2, block2) : [...lines2.slice(0, found[0]), ...block2, ...lines2.slice(found[1] + 1)];
     return { ok: true, text: joinLines(lines2), keys: ["block:generated"], created: false };
   },
   unmerge(cur) {
     let lines2 = splitLines(cur);
     const found = findBlock(lines2, GEN_BEGIN, GEN_END);
-    if (found === "unclosed") return fail(".gitattributes 킷 블록의 끝 표지가 없다");
+    if (found === "unclosed") return fail2(".gitattributes 킷 블록의 끝 표지가 없다");
     if (Array.isArray(found)) lines2 = [...lines2.slice(0, found[0]), ...lines2.slice(found[1] + 1)];
     lines2 = stripTrailingBlank(lines2);
     return { ok: true, text: joinLines(lines2), empty: allBlank(lines2) };
@@ -1901,25 +2065,25 @@ function missingHooks(data, keys, want) {
 var settings = {
   merge(cur, want, prev = []) {
     const parsed2 = cur === null ? {} : parseObject(cur);
-    if (typeof parsed2 === "string") return fail(parsed2);
+    if (typeof parsed2 === "string") return fail2(parsed2);
     const data = { ...parsed2 };
     const perms = data.permissions;
-    if (perms !== void 0 && !isObj3(perms)) return fail("permissions 가 객체가 아니다");
+    if (perms !== void 0 && !isObj3(perms)) return fail2("permissions 가 객체가 아니다");
     const deny = isObj3(perms) ? perms.deny : void 0;
-    if (deny !== void 0 && !Array.isArray(deny)) return fail("permissions.deny 가 배열이 아니다");
-    if (data.hooks !== void 0 && !isObj3(data.hooks)) return fail("hooks 가 객체가 아니다");
+    if (deny !== void 0 && !Array.isArray(deny)) return fail2("permissions.deny 가 배열이 아니다");
+    if (data.hooks !== void 0 && !isObj3(data.hooks)) return fail2("hooks 가 객체가 아니다");
     const prevDeny = prev.filter((k) => k.startsWith("permissions.deny:")).map((k) => k.slice("permissions.deny:".length));
     const newDeny = (deny ?? []).filter((v) => !(typeof v === "string" && prevDeny.includes(v) && !want.deny.includes(v)));
     for (const v of want.deny) if (!newDeny.includes(v)) newDeny.push(v);
     if (deny !== void 0 || newDeny.length) data.permissions = { ...perms ?? {}, deny: newDeny };
     const error = mergeHooks(data, want, prev);
-    if (error) return fail(error);
+    if (error) return fail2(error);
     const keys = [...want.deny.map((v) => `permissions.deny:${v}`), ...hookKeys(want)];
     return { ok: true, text: dump(data), keys, created: cur === null };
   },
   unmerge(cur, keys, want) {
     const parsed2 = parseObject(cur);
-    if (typeof parsed2 === "string") return fail(parsed2);
+    if (typeof parsed2 === "string") return fail2(parsed2);
     const data = { ...parsed2 };
     unmergeHooks(data, keys, want);
     const denyVals = keys.filter((k) => k.startsWith("permissions.deny:")).map((k) => k.slice("permissions.deny:".length));
@@ -1949,15 +2113,15 @@ var settings = {
 var codexHooks = {
   merge(cur, want, prev = []) {
     const parsed2 = cur === null ? {} : parseObject(cur);
-    if (typeof parsed2 === "string") return fail(parsed2);
+    if (typeof parsed2 === "string") return fail2(parsed2);
     const data = { ...parsed2 };
     const error = mergeHooks(data, want, prev);
-    if (error) return fail(error);
+    if (error) return fail2(error);
     return { ok: true, text: dump(data), keys: hookKeys(want), created: cur === null };
   },
   unmerge(cur, keys, want) {
     const parsed2 = parseObject(cur);
-    if (typeof parsed2 === "string") return fail(parsed2);
+    if (typeof parsed2 === "string") return fail2(parsed2);
     const data = { ...parsed2 };
     unmergeHooks(data, keys, want);
     return { ok: true, text: dump(data), empty: Object.keys(data).length === 0 };
@@ -2100,7 +2264,8 @@ var MERGERS = {
   settings,
   "codex-hooks": codexHooks,
   "codex-config": codexConfig,
-  gitattributes
+  gitattributes,
+  "vscode-settings": vscodeSettings
 };
 function mergeWith(kind, cur, want, prev) {
   return MERGERS[kind].merge(cur, want, prev);
@@ -2460,10 +2625,14 @@ function buildContext(args) {
   if (parsed2 === null) findings.unshift({ kind: "hooks-missing", severity: "error", path: HOOKS_REL, hint: "훅 원본이 없어 하네스 훅을 만들지 않는다 — harness-kit repair 로 되살린다" });
   return { ...args, sources, skills, roles, rules: sources.rules, hooks: parsed2 ?? [], hooksPresent: parsed2 !== null, findings };
 }
+function wantsVscode(ctx) {
+  return ctx.view.kind(".vscode") === "dir";
+}
 function wantedOps(ctx) {
   const wants = [];
   for (const a of ADAPTERS) if (ctx.agents.includes(a.id)) wants.push(...a.plan(ctx));
   wants.push({ op: "merge", path: ".gitattributes", harness: "core", kind: "gitattributes", want: gitattributesWant(ctx.spec, ctx.agents) });
+  if (wantsVscode(ctx)) wants.push({ op: "merge", path: ".vscode/settings.json", harness: "core", kind: "vscode-settings", want: vscodeSettingsWant() });
   const seen = /* @__PURE__ */ new Set();
   for (const w of wants) {
     if (seen.has(w.path)) throw new CliError(EXIT.STATE, `배치 경로가 겹친다: ${w.path}`, "같은 이름의 규칙 · 스킬 원본 중 하나의 이름을 바꾼다");
@@ -2536,6 +2705,7 @@ function fullMergeWant(kind, spec, tokens, sources) {
     return codexHooksWant(settingsHooks(hooks, "codex", spec.hookMap, modules), suffixes);
   }
   if (kind === "codex-config") return codexConfigWant(spec, (sources?.roles ?? []).map((r) => ({ name: r.source.slice(r.source.lastIndexOf("/") + 1, -".md".length), description: r.description })));
+  if (kind === "vscode-settings") return vscodeSettingsWant();
   return gitattributesWant(spec, ALL_HARNESSES);
 }
 function differing(w, cur) {
@@ -8710,7 +8880,7 @@ function activeHarnesses(p) {
   const list2 = Array.isArray(a) ? a.filter((x) => typeof x === "string" && HARNESSES.includes(x)) : [];
   return list2.length ? list2 : ["claude"];
 }
-async function scan(p, opts) {
+async function scan2(p, opts) {
   const repo = p.root;
   const home = p.home;
   const specs = [...projectRoots(repo, home)];
@@ -8868,8 +9038,8 @@ async function stampOf(p, opts) {
 }
 async function skillsInventory(p, opts = {}) {
   const o = { user: opts.user ?? true, refresh: opts.refresh ?? false };
-  if (o.refresh) return scan(p, o);
-  return p.cache.get(`skills:${o.user}`, await stampOf(p, o), () => scan(p, o), TTL_MS);
+  if (o.refresh) return scan2(p, o);
+  return p.cache.get(`skills:${o.user}`, await stampOf(p, o), () => scan2(p, o), TTL_MS);
 }
 function filterInventory(inv, q2) {
   const stage = q2.stage ? STAGE_ALIAS[q2.stage] ?? q2.stage : null;

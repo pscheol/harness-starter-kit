@@ -15,6 +15,7 @@ import { removeEmptyDirs } from "../core/remove";
 import { FLOOR_HOOKS } from "../core/floor";
 import { HOOKS_REL, HooksError, kitScriptSuffixes, mergeHookDocs, settingsHooks, type HookDef } from "./hooks";
 import { claudeMdWant, codexConfigWant, codexHooksWant, gitattributesWant, MERGE_KIND, mergeWith, settingsWant, unmergeWith, type MergeKind, type MergeWant } from "./merge";
+import { vscodeSettingsWant } from "./vscode";
 import { resolveModel, skillModelProblem } from "./render";
 import { ignoredName, loadSources, treeSha, walkView, type Sources } from "./sources";
 import type { ProjectionSpec } from "./spec";
@@ -54,11 +55,17 @@ export function buildContext(args: { view: RepoView; spec: ProjectionSpec; token
   return { ...args, sources, skills, roles, rules: sources.rules, hooks: parsed ?? [], hooksPresent: parsed !== null, findings };
 }
 
+/** VS Code 를 쓰는 리포인가: `.vscode/` 폴더가 있다(HK-15 design §6). git.ide 기본값(code)만으로는 만들지 않는다. */
+export function wantsVscode(ctx: Pick<ProjectionContext, "view">): boolean {
+  return ctx.view.kind(".vscode") === "dir";
+}
+
 /** 깐 하네스 어댑터의 작업 + .gitattributes. 같은 배치 경로가 둘이면 exit 3. */
 export function wantedOps(ctx: ProjectionContext): Want[] {
   const wants: Want[] = [];
   for (const a of ADAPTERS) if (ctx.agents.includes(a.id)) wants.push(...a.plan(ctx));
   wants.push({ op: "merge", path: ".gitattributes", harness: "core", kind: "gitattributes", want: gitattributesWant(ctx.spec, ctx.agents) });
+  if (wantsVscode(ctx)) wants.push({ op: "merge", path: ".vscode/settings.json", harness: "core", kind: "vscode-settings", want: vscodeSettingsWant() });
   const seen = new Set<string>();
   for (const w of wants) {
     if (seen.has(w.path)) throw new CliError(EXIT.STATE, `배치 경로가 겹친다: ${w.path}`, "같은 이름의 규칙 · 스킬 원본 중 하나의 이름을 바꾼다");
@@ -193,6 +200,7 @@ export function fullMergeWant(kind: MergeKind, spec: ProjectionSpec, tokens: Rec
     return codexHooksWant(settingsHooks(hooks, "codex", spec.hookMap, modules), suffixes);
   }
   if (kind === "codex-config") return codexConfigWant(spec, (sources?.roles ?? []).map((r) => ({ name: r.source.slice(r.source.lastIndexOf("/") + 1, -".md".length), description: r.description })));
+  if (kind === "vscode-settings") return vscodeSettingsWant();
   return gitattributesWant(spec, ALL_HARNESSES);
 }
 

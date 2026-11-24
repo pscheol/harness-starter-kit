@@ -62,6 +62,19 @@ SDD    .agents/docs/issues/KNOTS-21-cursor-decode-error/
 
 운영 장애로 즉시 고쳐야 하면 수정을 먼저 하고 같은 PR 안에서 세 문서를 채운다. 문서 없는 병합은 없다.
 
+## worktree — 둘째 쓰기 세션부터
+
+같은 리포에서 파일을 쓰는 세션이 둘 이상일 때만 worktree 를 쓴다. 리뷰 · 스캔처럼 읽기만 하는 세션은 만들지 않고 원격 브랜치 diff 를 읽는다. 첫 쓰기 세션은 메인 폴더에서 일한다.
+
+- 만들기: `python3 scripts/harness/worktree.py new <이슈키>` — 자리는 `../<리포>.worktrees/<이슈키>-<이름>/`, 브랜치는 `<종류>/<이슈키>-<이름>`(시작점 `origin/<git.base>`). `git clone` · 폴더 복사로 작업 공간을 만들지 않는다. 원본과 연결이 없어 끝났는지 알 수 없고, 지우면 push 안 된 커밋이 같이 사라진다.
+- 구현 worktree 는 그 이슈의 `design.md` 가 `approved` 일 때만 만든다. 문서만 쓰면 `--docs`(sparse: `.agents/` · `docs/` · `scripts/` 와 루트 파일).
+- 리포당 `git.maxPerRepo`(기본 3)개까지. 넘으면 만들지 않고(exit 3) 끝낸 것을 `done` 으로 지우라고 알린다. submodule 을 가진 상위 리포는 도메인 리포 안에서 만들거나 `--domain <경로>` 를 준다.
+- 앱 포트: `.env.worktree` 가 worktree 번호 × 100 만큼 민 포트(`SERVER_PORT=8280` 등)를 쓴다. 앱 · compose 설정이 `.env` 다음에 이 파일을 읽어야 한다.
+- 끝: 변경이 모두 커밋되고 push 되면 끝이다. `git status --porcelain` 이 비고 `git rev-list --count HEAD --not --remotes` 가 0 이면 `python3 scripts/harness/worktree.py done <이슈키>` 로 지운다(다른 세션이 쓰는 중이거나 부른 폴더가 그 worktree 안이면 지우지 않는다).
+- 끝내지 못하고 세션을 마칠 때는 남긴 worktree 와 이유(push 안 된 커밋 · 커밋 안 된 변경)를 사용자에게 알린다.
+- 정리: `worktree.py list` 로 상태를 본다. `worktree.py gc` 는 목록만 낸다. `gc --apply` 는 사람이 시킬 때만 실행한다.
+- Claude Code `claude -w <이름>` 은 같은 자리에 만든다(이슈 키가 아닌 이름은 `_agents/<이름>/`).
+
 ## 베이스 브랜치
 
 ```text

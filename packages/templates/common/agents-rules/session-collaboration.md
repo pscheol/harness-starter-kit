@@ -54,6 +54,12 @@ python3 scripts/session-coordination.py acknowledge --session claude-PROJ-125 --
 - Secret·토큰·키·개인 데이터·소스 본문을 공지에 넣지 않는다. 이슈 ID·배정 경로·현재 상태·검증 요약과 문서 위치만 공유한다.
 - 이 저장소는 세션 협의를 돕는다. 서로 다른 체크아웃·PC·앱 대화에 메시지를 전송하지 않으며, 상대 프로세스를 중단하거나 기능 코드를 수정하지 않는다. 기존 Claude·Kiro 세션에는 공지를 보관하되 조회·적용했다고 단정하지 않는다. 진행 중인 세션은 규칙 변경 공지를 확인한 뒤 다음 수정부터 적용하고, 이미 작업 중인 기능을 일괄 정리하지 않는다.
 
+## worktree 와 세션
+
+- 둘째 쓰기 세션부터 `python3 scripts/harness/worktree.py new <이슈키>` 로 worktree 를 만든다. 세션 등록 기록의 `cwd` 가 worktree 안이면 `worktree.py list` · `done` 이 그 worktree 를 쓰는 세션으로 센다(마지막 갱신 10분 안이면 `done` 이 지우지 않는다).
+- `worktree.py gc` 는 목록만 낸다. `gc --apply` 는 사람이 시킬 때만 실행한다. 다른 세션의 worktree 를 `done` 으로 지우지 않는다.
+- 끝내지 못한 worktree(커밋 안 된 변경 · push 안 된 커밋)는 세션을 마칠 때 이유와 함께 사용자에게 알린다.
+
 ## 변경 기준선과 선택 검증
 
 등록·추가 점유 시 내용과 파일 모드의 해시를 저장한다. `changed-files --session <ID> --json`은 현재 점유 범위에서 그 기준선 이후 바뀐·추가된·삭제된 경로만 정렬해서 `{root, session, files}`로 출력한다. 등록 전에 있던 dirty 변경과 점유 밖 변경은 포함하지 않는다. 기존 점유를 넓힐 때도 기존 변경의 기준선을 유지한다.
