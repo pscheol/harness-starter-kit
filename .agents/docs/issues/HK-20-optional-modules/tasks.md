@@ -115,3 +115,17 @@ created: 2026-11-24
 | 킷 python 전체(`unittest discover -s tests`) | 120 통과(`test_multi_harness_module` 의 모듈 시험 83개에 `test_cross_repo.py` 포함) |
 | 설치본 시험(`<설치>/scripts/tests`) | 624 통과(새 `test_intake` · `test_from_unit` 항목 포함) |
 | 실제 서비스 | 호출하지 않았다(모의 HTTP 서버만). 사람이 확인할 것은 design.md HK-20b §7 |
+
+### HK-20b 를 통합 브랜치에 합친 뒤(2026-11-24, HK-21 · HK-22a 위)
+
+충돌 6곳을 풀었다. `intake.md` 의 `source` 줄은 HK-21(운영 기록 접수)과 HK-20b(jira · notion 접수)가 서로 다른 형식으로 썼는데, 설계 14 §3.9 가 가리키는 10 §3.6 형식(JSON 한 줄) 하나로 맞추고 운영 기록 시험 두 곳의 기대를 고쳤다. `intake --from` 은 `ops:` 면 운영 기록, 아니면 jira · notion 으로 간다.
+
+| 시험 | 결과 |
+|---|---|
+| `pnpm -C packages/cli test` | 516 통과 |
+| `pnpm -C packages/dashboard test` | 163 중 162 통과 · 1 시간 초과(`projects.test.ts --root`, 부하 — 단독 재실행 통과) |
+| `pnpm test:ui` | 33 통과 |
+| `pnpm test:e2e`(stub) | 5 통과 |
+| 설치본 시험(`scripts/tests`) | 672 통과(1,300초) |
+| 킷 python 전체(137개) | 136 통과 · 1 시간 초과(`test_harness_scripts_suite_passes_in_install` — 같은 설치본 묶음을 위 줄에서 따로 돌려 통과) |
+| `node scripts/gen-plugins.mjs --check` | 생성물 일치(484개) |
