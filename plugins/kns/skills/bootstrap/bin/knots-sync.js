@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// knots-sync 2.0.0-alpha.0 · src-sha256 9da2cf27583ee6775986b8d7ecf1893b3274296b264adf2f69ed3882f41474ae · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// knots-sync 2.0.0-alpha.0 · src-sha256 4f10be505da97dc74620e40dc454b6a764548aa97a15db69d3df94d5d866d7fb · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -3795,6 +3795,22 @@ function untracked(p, w, cur) {
 function sideState(ctx, rel2) {
   return existing(full4(ctx.target, rel2)).kind;
 }
+var GENERATED_BLOCK = /(<!-- ([A-Z]+):BEGIN[^\n]*-->)[\s\S]*?(<!-- \2:END -->)/g;
+function withoutGenerated(text4) {
+  return text4.replace(GENERATED_BLOCK, "$1$3");
+}
+function generatedOnly(ctx, p, w) {
+  if (!p.endsWith(".md")) return false;
+  let cur;
+  try {
+    cur = import_node_fs14.default.readFileSync(full4(ctx.target, p), "utf8");
+  } catch {
+    return false;
+  }
+  if (!GENERATED_BLOCK.test(cur)) return false;
+  GENERATED_BLOCK.lastIndex = 0;
+  return withoutGenerated(cur) === withoutGenerated(w.content.toString("utf8"));
+}
 function modifiedFile(ctx, p, e, w) {
   const keepB = { path: p, op: "copy", owner: "kit", sha256: e.sha256 ?? null, layer: w.layer };
   if (ctx.acceptAll) {
@@ -3822,6 +3838,7 @@ function judge(ctx, forget, p, e, w) {
   if (cur.kind === "none") return { op: withD(p, w, "restore"), entry: kitEntry2(p, w) };
   if (cur.sha === w.sha256) return { op: withD(p, w, "same"), entry: kitEntry2(p, w) };
   if (e.sha256 && cur.sha === e.sha256) return { op: withD(p, w, "update"), entry: kitEntry2(p, w) };
+  if (generatedOnly(ctx, p, w)) return { op: withD(p, w, "same", { reason: "생성 구간(보드)만 다르다 — 그대로 둔다" }), entry: kitEntry2(p, w) };
   return modifiedFile(ctx, p, e, w);
 }
 function wanted(input) {
@@ -8807,11 +8824,19 @@ function stateIndex(id) {
   return BOARD_STATES.findIndex((s3) => s3.id === id);
 }
 
-// ../dashboard/src/readers/issues.ts
-var CLARIFY = "[NEEDS CLARIFICATION";
+// ../dashboard/src/clarify.ts
+var MARKER = /\[NEEDS CLARIFICATION:[^\]\n]*\]/g;
+var CODE_SPAN = /`[^`\n]*`/g;
 function clarifyCount(text4) {
-  return text4.split(CLARIFY).length - 1;
+  let n = 0;
+  for (const line of text4.split("\n")) n += (line.replace(CODE_SPAN, "").match(MARKER) ?? []).length;
+  return n;
 }
+function hasClarify(text4) {
+  return clarifyCount(text4) > 0;
+}
+
+// ../dashboard/src/readers/issues.ts
 function bolts(text4) {
   const lines3 = text4.split(/\r?\n/);
   let total = 0;
@@ -11586,7 +11611,6 @@ async function approveDeploy(p, id, decision, phrase, body, via) {
 var import_node_fs46 = __toESM(require("node:fs"));
 var import_node_path51 = __toESM(require("node:path"));
 var BUNDLE_GATES = ["codebase", "plans"];
-var CLARIFY2 = "[NEEDS CLARIFICATION";
 var STATUSES = ["draft", "in-review", "approved"];
 async function gateInfo(p, root, key, gate) {
   const own = import_node_path51.default.join(root, "scripts/harness/intent_gate.py");
@@ -11640,7 +11664,7 @@ async function approveBundle(p, gate, key, decision, phrase, body, via) {
   if (gate === "codebase" && !STATUSES.includes(status2 ?? "")) throw new ApiError(422, "gate_precondition", `current-state.md 머리 status 가 ${status2 ?? "없음"} 입니다`, { reasons: [`status ${status2 ?? "없음"}`] });
   if (decision === "approved") {
     if (files.every((f) => approvalState(entries, gate, f.approvalSha256, p.policy()) === "valid")) throw new ApiError(409, "already_approved", "같은 내용으로 승인한 기록이 있습니다");
-    const unclear = files.filter((f) => f.path.endsWith(".md") && import_node_fs46.default.readFileSync(import_node_path51.default.join(co.root, f.path), "utf8").includes(CLARIFY2));
+    const unclear = files.filter((f) => f.path.endsWith(".md") && hasClarify(import_node_fs46.default.readFileSync(import_node_path51.default.join(co.root, f.path), "utf8")));
     if (unclear.length) throw new ApiError(422, "needs_clarification", `${unclear.map((f) => f.name).join(", ")} 에 [NEEDS CLARIFICATION 가 남았습니다`);
     if (info.stale.length) throw new ApiError(422, "model_stale", "역공학 문서가 오래됐습니다 — /kns-intent 가 codebase_scan.py 로 갱신한 뒤 승인합니다", { stale: info.stale });
     if (info.reasons.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건이 맞지 않습니다`, { reasons: info.reasons });
@@ -11670,7 +11694,6 @@ async function approveBundle(p, gate, key, decision, phrase, body, via) {
 }
 
 // ../dashboard/src/writers/approvals.ts
-var CLARIFY3 = "[NEEDS CLARIFICATION";
 var LOG = ".agents/state/approvals-log.jsonl";
 var DOC_FILES = { requirements: "requirements.md", design: "design.md", tasks: "tasks.md" };
 function riskOfFolder(abs) {
@@ -11799,7 +11822,7 @@ async function postApproval(p, body, via) {
     if (decision === "approved" && state === "valid") throw new ApiError(409, "already_approved", `${gate}: 같은 내용(sha ${aSha.slice(0, 12)})으로 승인한 기록이 있습니다`);
     const me = ((await gitUser(co.root, p.env)).email ?? "").toLowerCase();
     if (decision === "approved" && state === "partial" && me && approversOf(entries, gate, aSha).has(me)) throw new ApiError(409, "already_approved", `${gate}: 이미 승인했습니다 — risk: high 는 다른 승인자 한 명이 더 승인합니다(DS-R26)`, { need });
-    if (decision === "approved" && text4.includes(CLARIFY3)) throw new ApiError(422, "needs_clarification", `${DOC_FILES[gate]} 에 [NEEDS CLARIFICATION 가 남았습니다`);
+    if (decision === "approved" && hasClarify(text4)) throw new ApiError(422, "needs_clarification", `${DOC_FILES[gate]} 에 [NEEDS CLARIFICATION 가 남았습니다`);
     if (body.docSha256 !== sha2562(bytes)) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 문서가 바뀌었습니다. 다시 읽고 승인합니다", { currentSha256: sha2562(bytes) });
     targetRef = { name: DOC_FILES[gate], sha256: aSha };
     if (decision === "approved" && status2 !== "approved" && gate !== "tasks") {
@@ -11841,7 +11864,7 @@ async function approveIntent(p, key, decision, phrase, body, via) {
   const aSha = approvalSha(bytes);
   if (!["draft", "in-review", "approved"].includes(status2 ?? "")) throw new ApiError(422, "gate_precondition", `intent.md 머리 status 가 ${status2 ?? "없음"} 입니다`, { reasons: [`status ${status2 ?? "없음"}`] });
   if (decision === "approved" && approvalState(entries, "intent", aSha, p.policy()) === "valid" && !proposalOf(info.abs)) throw new ApiError(409, "already_approved", "같은 내용으로 승인한 기록이 있습니다");
-  if (decision === "approved" && text4.includes(CLARIFY3)) throw new ApiError(422, "needs_clarification", "intent.md 에 [NEEDS CLARIFICATION 가 남았습니다");
+  if (decision === "approved" && hasClarify(text4)) throw new ApiError(422, "needs_clarification", "intent.md 에 [NEEDS CLARIFICATION 가 남았습니다");
   if (body.docSha256 !== sha2562(bytes)) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 intent.md 가 바뀌었습니다", { currentSha256: sha2562(bytes) });
   if (decision === "approved") {
     const reasons = [];

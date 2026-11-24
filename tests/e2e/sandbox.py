@@ -124,7 +124,8 @@ class Sandbox:
     # ── 실행 ──
 
     def run(self, *argv: str, cwd: Path | None = None, check: bool = True, env: dict | None = None, timeout: int = 600) -> subprocess.CompletedProcess:
-        r = subprocess.run(list(argv), cwd=cwd or self.repo, env={**self.env, **(env or {})}, capture_output=True, text=True, timeout=timeout)
+        # stdin 은 닫는다: 사람 터미널에서 돌리면 외부 도구(aidlc 등)가 TTY 를 보고 묻는 화면을 띄워, 출력을 잡힌 채로 멈춘다(시간 초과).
+        r = subprocess.run(list(argv), cwd=cwd or self.repo, env={**self.env, **(env or {})}, stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=timeout)
         if check and r.returncode != 0:
             raise RuntimeError(f"{' '.join(argv)[:160]} → exit {r.returncode}\n{r.stdout[-1500:]}\n{r.stderr[-1500:]}")
         return r

@@ -11,6 +11,7 @@ codebase · intent · plans 게이트는 intent_gate.py, deploy 는 deploy_gate.
 import argparse
 import fnmatch
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -26,6 +27,13 @@ from harness.sdd_keys import split_folder  # noqa: E402
 ISSUE_GATES = ("requirements", "design", "tasks", "mr", "done")
 DOC_FILES = {"requirements": "requirements.md", "design": "design.md", "tasks": "tasks.md"}
 CLARIFY = "[NEEDS CLARIFICATION"
+# 미해결 표지는 콜론이 있고 코드(백틱) 밖에 있는 `[NEEDS CLARIFICATION: <질문>]` 뿐이다. 템플릿 안내문은 세지 않는다(sdd_commands.py analyze 와 같은 규칙, HK-22b).
+CLARIFY_MARKER = re.compile(r"\[NEEDS CLARIFICATION:[^\]\n]*\]")
+CODE_SPAN = re.compile(r"`[^`\n]*`")
+
+
+def has_clarify(text):
+    return any(CLARIFY_MARKER.search(CODE_SPAN.sub("", line)) for line in text.splitlines())
 VERIFY_RECORD = ".agents/state/verify-last.json"
 GATE_RESULT = ".agents/reports/quality-gate-last.json"
 
@@ -115,7 +123,7 @@ def doc_reasons(issue, gate, own):
     if fields is None:
         return [f"{DOC_FILES[gate]} 가 없다"]
     reasons = []
-    if CLARIFY in data.decode("utf-8", "replace"):
+    if has_clarify(data.decode("utf-8", "replace")):
         reasons.append(f"{DOC_FILES[gate]} 에 {CLARIFY} 가 남았다")
     if not own:
         return reasons

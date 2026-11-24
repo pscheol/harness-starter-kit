@@ -28,6 +28,15 @@ from harness import approvals  # noqa: E402
 from harness.sdd_frontmatter import parse as parse_frontmatter  # noqa: E402
 from harness.sdd_keys import name_problems  # noqa: E402
 
+# 미해결 표지는 콜론이 있고 코드(백틱) 밖에 있는 `[NEEDS CLARIFICATION: <질문>]` 뿐이다(sdd_gates.has_clarify 와 같은 규칙, HK-22b)
+CLARIFY_MARKER = re.compile(r"\[NEEDS CLARIFICATION:[^\]\n]*\]")
+CODE_SPAN = re.compile(r"`[^`\n]*`")
+
+
+def has_clarify(text: str) -> bool:
+    return any(CLARIFY_MARKER.search(CODE_SPAN.sub("", line)) for line in text.splitlines())
+
+
 INTENTS = ".agents/docs/intents"
 TEMPLATES = ".agents/docs/_spec-templates/intent"
 PLANS_TEMPLATES = ".agents/docs/_spec-templates/plans"
@@ -345,7 +354,7 @@ def check(folder: Path) -> dict:
         if head.get("risk") not in ("low", "medium", "high"):
             problems.append("intent.md: risk 는 low · medium · high")
         for number, line in enumerate(intent_text.splitlines(), 1):
-            if "[NEEDS CLARIFICATION" in line:
+            if has_clarify(line):
                 notes.append(f"intent.md:{number}: [NEEDS CLARIFICATION — intent 게이트 앞 조건")
     qpath = folder / "questions.md"
     if qpath.is_file():

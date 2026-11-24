@@ -150,6 +150,30 @@ function sideState(ctx: Ctx, rel: string): "none" | "file" | "other" {
   return existing(full(ctx.target, rel)).kind;
 }
 
+/** 스크립트가 다시 만드는 구간(`<!-- BOARD:BEGIN … -->` ~ `<!-- BOARD:END -->`, DOMAINS 도 같다)을 비운 글. */
+const GENERATED_BLOCK = /(<!-- ([A-Z]+):BEGIN[^\n]*-->)[\s\S]*?(<!-- \2:END -->)/g;
+
+function withoutGenerated(text: string): string {
+  return text.replace(GENERATED_BLOCK, "$1$3");
+}
+
+/**
+ * 생성 구간만 다른가(HK-22b): SDD 보드(specs-index.md)는 이슈를 만들 때마다 scripts/board.sh 가 다시 쓴다.
+ * 그 구간을 뺀 글이 새 판과 같으면 사람이 고친 파일로 보지 않는다(update 마다 .new 충돌이 나지 않게). 보드는 update 끝에 다시 만든다.
+ */
+function generatedOnly(ctx: Ctx, p: string, w: Want): boolean {
+  if (!p.endsWith(".md")) return false;
+  let cur: string;
+  try {
+    cur = fs.readFileSync(full(ctx.target, p), "utf8");
+  } catch {
+    return false;
+  }
+  if (!GENERATED_BLOCK.test(cur)) return false;
+  GENERATED_BLOCK.lastIndex = 0;
+  return withoutGenerated(cur) === withoutGenerated(w.content.toString("utf8"));
+}
+
 function modifiedFile(ctx: Ctx, p: string, e: LockEntry, w: Want): Judged {
   const keepB: LockEntry = { path: p, op: "copy", owner: "kit", sha256: e.sha256 ?? null, layer: w.layer };
   if (ctx.acceptAll) {
@@ -178,6 +202,7 @@ function judge(ctx: Ctx, forget: Set<string>, p: string, e: LockEntry | undefine
   if (cur.kind === "none") return { op: withD(p, w, "restore"), entry: kitEntry(p, w) };
   if (cur.sha === w.sha256) return { op: withD(p, w, "same"), entry: kitEntry(p, w) };
   if (e.sha256 && cur.sha === e.sha256) return { op: withD(p, w, "update"), entry: kitEntry(p, w) };
+  if (generatedOnly(ctx, p, w)) return { op: withD(p, w, "same", { reason: "생성 구간(보드)만 다르다 — 그대로 둔다" }), entry: kitEntry(p, w) };
   return modifiedFile(ctx, p, e, w);
 }
 

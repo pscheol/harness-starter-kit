@@ -12,6 +12,7 @@ import { parseLoose } from "../frontmatter";
 import { ISSUE_GATES, type Project } from "../project";
 import { branches, type Checkout, checkouts, FOLDER, gitStamp, ISSUE_BRANCH } from "../repo";
 import { git, gitOut, isObj, python, readJson, rel, sha256 } from "../util";
+import { clarifyCount } from "../clarify";
 
 export interface GateResult {
   gate: string;
@@ -97,11 +98,7 @@ export interface VerifySummary {
   slowestStep: string | null;
 }
 
-const CLARIFY = "[NEEDS CLARIFICATION";
-
-export function clarifyCount(text: string): number {
-  return text.split(CLARIFY).length - 1;
-}
+export { clarifyCount };
 
 /** tasks.md 의 Bolt(= Phase 제목) 수와 모든 작업이 체크된 Phase 수. */
 export function bolts(text: string): { total: number; done: number } {

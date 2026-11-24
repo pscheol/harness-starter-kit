@@ -16,9 +16,9 @@ import { type Checkout, FOLDER, gitUser, resolveIntentCheckout, resolveIssueChec
 import { atomicWrite, ensureDir, gitOut, isObj, nowText, python, rel, sha256, ulid } from "../util";
 import { approveDeploy } from "./deploy";
 import { approveBundle, BUNDLE_GATES, type BundleGate } from "./intent-gates";
+import { hasClarify } from "../clarify";
 
 export type Via = "dashboard" | "terminal";
-const CLARIFY = "[NEEDS CLARIFICATION";
 const LOG = ".agents/state/approvals-log.jsonl";
 const DOC_FILES: Record<string, string> = { requirements: "requirements.md", design: "design.md", tasks: "tasks.md" };
 
@@ -168,7 +168,7 @@ export async function postApproval(p: Project, body: unknown, via: Via): Promise
     if (decision === "approved" && state === "valid") throw new ApiError(409, "already_approved", `${gate}: 같은 내용(sha ${aSha.slice(0, 12)})으로 승인한 기록이 있습니다`);
     const me = ((await gitUser(co.root, p.env)).email ?? "").toLowerCase();
     if (decision === "approved" && state === "partial" && me && approversOf(entries, gate, aSha).has(me)) throw new ApiError(409, "already_approved", `${gate}: 이미 승인했습니다 — risk: high 는 다른 승인자 한 명이 더 승인합니다(DS-R26)`, { need });
-    if (decision === "approved" && text.includes(CLARIFY)) throw new ApiError(422, "needs_clarification", `${DOC_FILES[gate]} 에 [NEEDS CLARIFICATION 가 남았습니다`);
+    if (decision === "approved" && hasClarify(text)) throw new ApiError(422, "needs_clarification", `${DOC_FILES[gate]} 에 [NEEDS CLARIFICATION 가 남았습니다`);
     if (body.docSha256 !== sha256(bytes)) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 문서가 바뀌었습니다. 다시 읽고 승인합니다", { currentSha256: sha256(bytes) });
     targetRef = { name: DOC_FILES[gate] as string, sha256: aSha };
     if (decision === "approved" && status !== "approved" && gate !== "tasks") {
@@ -212,7 +212,7 @@ async function approveIntent(p: Project, key: string, decision: string, phrase: 
   const aSha = approvalSha(bytes);
   if (!["draft", "in-review", "approved"].includes(status ?? "")) throw new ApiError(422, "gate_precondition", `intent.md 머리 status 가 ${status ?? "없음"} 입니다`, { reasons: [`status ${status ?? "없음"}`] });
   if (decision === "approved" && approvalState(entries, "intent", aSha, p.policy()) === "valid" && !proposalOf(info.abs)) throw new ApiError(409, "already_approved", "같은 내용으로 승인한 기록이 있습니다");
-  if (decision === "approved" && text.includes(CLARIFY)) throw new ApiError(422, "needs_clarification", "intent.md 에 [NEEDS CLARIFICATION 가 남았습니다");
+  if (decision === "approved" && hasClarify(text)) throw new ApiError(422, "needs_clarification", "intent.md 에 [NEEDS CLARIFICATION 가 남았습니다");
   if (body.docSha256 !== sha256(bytes)) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 intent.md 가 바뀌었습니다", { currentSha256: sha256(bytes) });
   if (decision === "approved") {
     const reasons: string[] = [];

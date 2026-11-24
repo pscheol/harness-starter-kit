@@ -12,10 +12,10 @@ import type { Project } from "../project";
 import { type Checkout, resolveIntentCheckout } from "../repo";
 import { nowText, python, sha256, ulid } from "../util";
 import { appendLog, approver, type ApprovalResult, type Via, type Write, writeAll } from "./approvals";
+import { hasClarify } from "../clarify";
 
 export type BundleGate = "codebase" | "plans";
 export const BUNDLE_GATES: readonly string[] = ["codebase", "plans"];
-const CLARIFY = "[NEEDS CLARIFICATION";
 const STATUSES = ["draft", "in-review", "approved"];
 
 interface GateInfo {
@@ -92,7 +92,7 @@ export async function approveBundle(p: Project, gate: BundleGate, key: string, d
   if (gate === "codebase" && !STATUSES.includes(status ?? "")) throw new ApiError(422, "gate_precondition", `current-state.md 머리 status 가 ${status ?? "없음"} 입니다`, { reasons: [`status ${status ?? "없음"}`] });
   if (decision === "approved") {
     if (files.every((f) => approvalState(entries, gate, f.approvalSha256, p.policy()) === "valid")) throw new ApiError(409, "already_approved", "같은 내용으로 승인한 기록이 있습니다");
-    const unclear = files.filter((f) => f.path.endsWith(".md") && fs.readFileSync(path.join(co.root, f.path), "utf8").includes(CLARIFY));
+    const unclear = files.filter((f) => f.path.endsWith(".md") && hasClarify(fs.readFileSync(path.join(co.root, f.path), "utf8")));
     if (unclear.length) throw new ApiError(422, "needs_clarification", `${unclear.map((f) => f.name).join(", ")} 에 [NEEDS CLARIFICATION 가 남았습니다`);
     if (info.stale.length) throw new ApiError(422, "model_stale", "역공학 문서가 오래됐습니다 — /kns-intent 가 codebase_scan.py 로 갱신한 뒤 승인합니다", { stale: info.stale });
     if (info.reasons.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건이 맞지 않습니다`, { reasons: info.reasons });

@@ -75,3 +75,23 @@ describe("옛 hx- 킷 스킬", () => {
   });
 });
 
+
+describe("생성 구간(보드)만 다른 킷 파일", () => {
+  const INDEX = "# 보드\n\n<!-- BOARD:BEGIN — scripts/board.sh 가 생성합니다. -->\n(비어 있음)\n<!-- BOARD:END -->\n\n끝\n";
+  const files = { ...BASIC_FILES, "common/agents-docs/specs-index.md": INDEX };
+
+  it("보드 구간만 바뀌었으면 update 가 충돌로 보지 않고 그대로 둔다. 구간 밖을 고쳤으면 .new 로 받는다", async () => {
+    const { target, templates, cli } = await installedFixture({ files });
+    const file = path.join(target, ".agents/docs/specs-index.md");
+    const board = INDEX.replace("(비어 있음)", "| DEMO-1 | 요구 |");
+    fs.writeFileSync(file, board);
+    const r = await cli("update", ["--json", "--templates", templates]);
+    expect(r.code, r.stdout + r.stderr).toBe(0);
+    expect(fs.readFileSync(file, "utf8")).toBe(board);
+    expect(exists(target, ".agents/docs/specs-index.md.new")).toBe(false);
+    fs.writeFileSync(file, `${board}사람이 더한 줄\n`);
+    const again = await cli("update", ["--json", "--templates", templates]);
+    expect(again.code).toBe(4);
+    expect(exists(target, ".agents/docs/specs-index.md.new")).toBe(true);
+  });
+});
