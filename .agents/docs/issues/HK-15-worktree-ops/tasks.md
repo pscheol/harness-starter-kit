@@ -54,15 +54,17 @@ design.md §2 표 참고. 요약: `.env.worktree` 는 끝 조건 변경 수에�
 ## 검증 기록
 
 - `pnpm -C packages/cli build` → `node scripts/gen-plugins.mjs` → `--check` 일치(파일 427개).
-- `pnpm -C packages/cli test`: 432개 통과(34 파일).
-- `pnpm -C packages/dashboard test`: 94개 통과.
-- 킷 Python 시험 `tests.test_template_wording tests.test_generated tests.test_projection_hooks tests.test_layer_files tests.test_vscode_merge`: 33개 OK. manifest 수 행 갱신(core 256 → 266 · 270, 공통 253).
-- 설치본(`--stack=python --agents=all --modules=none`) `test_worktree`: NewTest 28 · ListTest 5 · OpenTest 5 · DoneTest 14 · GcTest 5 · HookTest 13 · DomainTest 7 = 77개 OK.
+- `pnpm -C packages/cli test`: 433개 통과(34 파일).
+- `pnpm -C packages/dashboard test`: 94개 통과(마지막 변경 뒤 다시 돌림).
+- 킷 Python 시험 `tests.test_template_wording tests.test_generated tests.test_projection_hooks tests.test_layer_files tests.test_vscode_merge`: 33개 OK. manifest 수 행 갱신(`jvm · python · go` 255 → 266 · 전부 268, `web · electron` 259 → 270 · 전부 272, `templates/common/` 242 → 253).
+- 설치본(`--stack=python --agents=all --modules=none`) `test_worktree`: NewTest 28 · ListTest 5 · OpenTest 5 · DoneTest 14 · GcTest 5 · HookTest 13 · DomainTest 7 = 77개 OK(전체 설치본 시험 안에서 다시 통과).
 - 설치본 시험 전체 · 킷 시험 전체: 아래 "전체 시험".
 
 ## 전체 시험
 
-(아래에 결과를 적는다)
+- 설치본 시험 전체(`setup.sh --stack=python --agents=all --modules=none` 설치본 + `scripts/tests`): **571개 OK**(922초). worktree 시험 77개(점유 기록 prune 포함)를 포함한다.
+- 킷 시험 전체 `python3 -B -m unittest discover -s tests -p "test_*.py"`: **120개 OK**(1,799초). 이 안에서 `test_install` 이 설치본 시험 전체를 한 번 더 돌린다.
+- 처음 킷 시험 전체를 돌렸을 때 3건이 깨졌고 고쳤다: ① `test_harness_scripts_suite_passes_in_install` 시간 초과(1,200초) — 내 시험이 사용자 컴퓨터의 git 전역 훅(`core.hooksPath`)을 타서 시험마다 7초가 걸렸다 → 시험 git 에 `core.hooksPath=/dev/null`(시험 하나 7.8초 → 0.6초). ② `test_cli_update_parity.test_05` · ③ `test_projection_upgrade.test_both_updates_give_the_same_tree` — CLI 가 `git.ide: code` 를 기본으로 적어서 `.vscode/` 가 없는 모든 리포에 `.vscode/settings.json` 이 생겼고 bash 설치본과 트리가 달라졌다 → 병합 조건을 `.vscode/` 폴더가 있을 때로 줄였다(design §2).
 
 ## 확인 필요(사람)
 
