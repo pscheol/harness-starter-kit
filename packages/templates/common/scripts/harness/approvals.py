@@ -313,6 +313,8 @@ def render_entry(entry):
     if phrase:
         lines.append(f'- 문구: "{phrase}"')
     lines.append(f"- 경로: {entry['path']}")
+    if entry.get("evidence"):
+        lines.append(f"- 근거: {entry['evidence']}")
     if entry.get("ruleCandidate"):
         lines.append("- 규칙 후보: 예")
     if entry.get("rollbackWaiver"):

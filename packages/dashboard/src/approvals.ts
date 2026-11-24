@@ -362,6 +362,8 @@ export interface NewEntry {
   phrase?: string | null;
   path: string;
   entryId: string;
+  /** 경로 jira · aidlc 의 근거 줄(`changelog <id>` 등) */
+  evidence?: string | null;
   ruleCandidate?: boolean;
   rollbackWaiver?: string | null;
 }
@@ -378,6 +380,7 @@ export function renderEntry(entry: NewEntry): string {
   const lines = [`## ${entry.at} · ${entry.gate} · ${entry.decision}`, `- 승인자: ${who}`, `- 대상: ${parts.join(" · ")}`];
   if (phrase) lines.push(`- 문구: "${phrase}"`);
   lines.push(`- 경로: ${entry.path}`);
+  if (entry.evidence) lines.push(`- 근거: ${entry.evidence}`);
   if (entry.ruleCandidate) lines.push("- 규칙 후보: 예");
   if (entry.rollbackWaiver) lines.push(`- 롤백 면제: ${entry.rollbackWaiver}`);
   lines.push(`- 기록 ID: ${entry.entryId}`);
