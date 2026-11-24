@@ -27,7 +27,8 @@ from harness.sdd_issues import find_issue  # noqa: E402
 REVIEW = re.compile(r"^review/(F-\d+)$")
 BRANCH_KEY = re.compile(r"(?:^|/)([A-Z][A-Z0-9]{1,9}-[0-9]+)-")
 LOG = ".agents/state/approvals-log.jsonl"
-LATER = {"codebase": "HK-19", "intent": "HK-19", "plans": "HK-19", "deploy": "HK-21"}
+LATER = {"deploy": "HK-21"}
+INTENT_GATES = ("intent", "codebase", "plans")
 
 
 class Refusal(Exception):
@@ -101,6 +102,8 @@ def locate(key):
 def check_gate(issue, gate):
     if REVIEW.match(gate) or gate in sdd_gates.ISSUE_GATES:
         return
+    if gate in INTENT_GATES:
+        raise Refusal(f"{gate} 는 Intent 폴더 게이트다 — npx harness-kit approve <INT> --gate {gate} 로 한다(관리 페이지와 같은 처리)", 2)
     if gate in LATER:
         raise Refusal(f"{gate} 게이트 승인은 이 판에 없다({LATER[gate]})", 2)
     raise Refusal(f"모르는 게이트: {gate} (requirements · design · tasks · mr · done · review/F-n)", 2)

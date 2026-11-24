@@ -41,6 +41,10 @@ export async function runApprove(ctx: Ctx): Promise<CommandResult> {
       const doc = (await callApi(p, "GET", "/docs", { query: { path: `${intent.dir}/intent.md` } })).data as { sha256: string };
       docSha256 = doc.sha256;
       shown = `${intent.dir}/intent.md · sha ${doc.sha256.slice(0, 12)}`;
+    } else if (gate === "codebase" || gate === "plans") {
+      const b = (await callApi(p, "GET", `/intents/${key}/gates`, { query: { gate } })).data as { files: { path: string; approvalSha256: string }[]; sha256: string };
+      docSha256 = b.sha256;
+      shown = b.files.map((f) => `${f.path} · sha ${f.approvalSha256.slice(0, 12)}`).join("\n  ") || "대상 파일 없음";
     } else shown = "브랜치 head";
     const user = await p.user();
     const ok = await confirmKey(ctx, key, [`승인: ${key} · ${gate} · ${decision}`, `- 대상: ${shown}`, `- 승인자: ${user.email ?? "git user.email 없음"}`, `- 문구: "${phrase.replace(/\s+/g, " ").trim()}"`]);

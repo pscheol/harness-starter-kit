@@ -99,7 +99,7 @@ const COMMAND_HELP: Record<string, string> = {
   repair: "harness-kit repair [--dry-run] [--only missing,drifted,stale,merge] [--json] — 되살리지 못한 missing 이 있으면 exit 4\n",
   uninstall: "harness-kit uninstall [--dry-run] [--yes] [--keep-state] [--keep-packs] [--json] — 고친 파일을 남기면 exit 4. TTY 가 아니면 --yes\n",
   dashboard: "harness-kit dashboard [--port <n>] [--open] [--read-only] [--export <폴더>] [--all | --root <dir> | --workspace <file>] — 127.0.0.1 에만 연다. 주소는 stdout, 승인 PIN 은 stderr\n",
-  status: "harness-kit status [--session | --intents | --intent <INT> | --issues [--area --stage --intent] | --issue <키> | --doc <경로> | --verify [--issue] | --worktrees | --harness | --flow <INT> | --all] [--json]\n",
+  status: "harness-kit status [--session | --intents | --intent <INT> [--gate codebase|plans] | --issues [--area --stage --intent] | --issue <키> | --doc <경로> | --verify [--issue] | --worktrees | --harness | --flow <INT> | --all] [--json]\n",
   projects: "harness-kit projects list | add <폴더> | remove <이름|경로> [--json] — 등록부 ~/.config/harness-kit/projects.json\n",
   approve: 'harness-kit approve <키> --gate <게이트> --phrase "<문구>" [--changes-requested [--rule-candidate]] [--json] — 사람 터미널에서만(에이전트 세션 · TTY 아님은 exit 3)\n',
   answer: "harness-kit answer <INT|키> --list | <Q-n> --choice <A-D|other> [--text …] [--json] — 사람 터미널에서만\n",

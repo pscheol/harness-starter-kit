@@ -76,6 +76,7 @@ export const COMMAND_OPTIONS: Record<string, OptSpec> = {
     worktrees: { type: "boolean" },
     harness: { type: "boolean" },
     flow: { type: "string" },
+    gate: { type: "string" },
     all: { type: "boolean" },
     ops: { type: "boolean" },
   },

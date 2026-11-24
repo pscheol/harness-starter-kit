@@ -55,6 +55,7 @@ export async function runStatus(ctx: Ctx): Promise<CommandResult> {
   }
   if (str(v, "issue") !== undefined) return run(ctx, "GET", `/issues/${encodeURIComponent(str(v, "issue") as string)}`, {}, jsonLines);
   if (bool(v, "intents")) return run(ctx, "GET", "/intents", {}, jsonLines);
+  if (str(v, "intent") !== undefined && str(v, "gate") !== undefined) return run(ctx, "GET", `/intents/${encodeURIComponent(str(v, "intent") as string)}/gates`, { query: { gate: str(v, "gate") as string } }, jsonLines);
   if (str(v, "intent") !== undefined) return run(ctx, "GET", `/intents/${encodeURIComponent(str(v, "intent") as string)}`, {}, jsonLines);
   return run(ctx, "GET", "/overview", {}, overviewLines);
 }

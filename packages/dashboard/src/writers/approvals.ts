@@ -13,11 +13,12 @@ import { parseQuestions } from "../questions";
 import { readSessions } from "../readers/sessions";
 import { type Checkout, FOLDER, gitUser, resolveIntentCheckout, resolveIssueCheckout } from "../repo";
 import { atomicWrite, ensureDir, gitOut, isObj, nowText, python, rel, sha256, ulid } from "../util";
+import { approveBundle, BUNDLE_GATES, type BundleGate } from "./intent-gates";
 
 export type Via = "dashboard" | "terminal";
 const CLARIFY = "[NEEDS CLARIFICATION";
 const LOG = ".agents/state/approvals-log.jsonl";
-const LATER: Record<string, string> = { codebase: "HK-19", plans: "HK-19", deploy: "HK-21" };
+const LATER: Record<string, string> = { deploy: "HK-21" };
 const DOC_FILES: Record<string, string> = { requirements: "requirements.md", design: "design.md", tasks: "tasks.md" };
 
 export function issueFolder(root: string, key: string): string {
@@ -34,13 +35,13 @@ export function issueFolder(root: string, key: string): string {
   return `.agents/docs/issues/${found[0]}`;
 }
 
-interface Write {
+export interface Write {
   file: string;
   data: Buffer | null;
 }
 
 /** 파일들을 차례로 쓰고 하나라도 실패하면 앞 파일을 원래 바이트로 되돌린다(06 §3.7 9단계). */
-function writeAll(writes: Write[]): void {
+export function writeAll(writes: Write[]): void {
   const done: { file: string; before: Buffer | null }[] = [];
   try {
     for (const w of writes) {
@@ -68,7 +69,7 @@ function writeAll(writes: Write[]): void {
   }
 }
 
-function appendLog(root: string, record: Record<string, unknown>): void {
+export function appendLog(root: string, record: Record<string, unknown>): void {
   const file = path.join(root, LOG);
   ensureDir(path.dirname(file), 0o700);
   const ignore = path.join(path.dirname(file), ".gitignore");
@@ -76,7 +77,7 @@ function appendLog(root: string, record: Record<string, unknown>): void {
   fs.appendFileSync(file, `${JSON.stringify(record)}\n`, { mode: 0o600 });
 }
 
-async function approver(p: Project, co: Checkout, gate: string): Promise<{ email: string; name: string | null; group: string | null }> {
+export async function approver(p: Project, co: Checkout, gate: string): Promise<{ email: string; name: string | null; group: string | null }> {
   const u = await gitUser(co.root, p.env);
   if (!u.email) throw new ApiError(403, "not_an_approver", "git config user.email 이 비었다 — 승인자는 이 체크아웃의 git 사용자다");
   const policy = p.policy();
@@ -120,8 +121,9 @@ export async function postApproval(p: Project, body: unknown, via: Via): Promise
   if (Object.hasOwn(LATER, gate)) throw new ApiError(422, "gate_precondition", `${gate} 게이트 승인은 이 판에 없다(${LATER[gate]})`, { later: LATER[gate], reasons: [`${LATER[gate]} 에서 제공한다`] });
   const phrase = phraseOf(body);
   const target = isObj(body.target) ? body.target : {};
-  if (gate === "intent") {
-    if (typeof target.intent !== "string") throw bad("intent 게이트는 target.intent 가 필요하다");
+  if (gate === "intent" || BUNDLE_GATES.includes(gate)) {
+    if (typeof target.intent !== "string") throw bad(`${gate} 게이트는 target.intent 가 필요하다`);
+    if (gate !== "intent") return approveBundle(p, gate as BundleGate, target.intent, decision, phrase, body, via);
     return approveIntent(p, target.intent, decision, phrase, body, via);
   }
   if (!ISSUE_GATES.includes(gate)) throw new ApiError(422, "gate_not_in_flow", `모르는 게이트: ${gate}`);
@@ -196,10 +198,18 @@ async function approveIntent(p: Project, key: string, decision: string, phrase: 
     } catch {
       // 질문 파일 없음
     }
-    const check = path.join(co.root, "scripts/harness/intent_check.py");
+    const check = path.join(co.root, "scripts/harness/intent.py");
     if (fs.existsSync(check)) {
-      const r = await python(co.root, p.env, [check, info.abs], 60_000);
-      if (r.code !== 0) reasons.push(`intent_check.py 실패: ${(r.stderr.trim().split("\n").pop() ?? "").slice(0, 200)}`);
+      const r = await python(co.root, p.env, [check, "check", info.abs, "--json"], 60_000);
+      if (r.code !== 0) {
+        let problems: string[] = [];
+        try {
+          problems = ((JSON.parse(r.stdout) as { problems?: string[] }).problems ?? []).slice(0, 10);
+        } catch {
+          problems = [(r.stderr.trim().split("\n").pop() ?? "intent.py check 실패").slice(0, 200)];
+        }
+        reasons.push(...problems.map((x) => `intent.py check: ${x}`));
+      }
     }
     if (reasons.length) throw new ApiError(422, "gate_precondition", "intent 게이트 조건이 맞지 않는다", { reasons });
   }

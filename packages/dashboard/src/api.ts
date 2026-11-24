@@ -18,6 +18,7 @@ import { issueFolder, postApproval, postReviewDecision, type Via } from "./write
 import { dropQueued, postDispatch } from "./writers/dispatch";
 import { getDoc, putDoc } from "./writers/docs";
 import { postIntake } from "./writers/intake";
+import { getGateBundle } from "./writers/intent-gates";
 import { deleteProposal, postProposal } from "./writers/proposals";
 
 export interface ApiRequest {
@@ -96,6 +97,7 @@ export const ROUTES: Route[] = [
       return ok(intentModel(p, findIntent(p.root, r.params.key as string), issues));
     },
   },
+  { method: "GET", path: "/intents/{key}/gates", cli: "status --intent <INT> --gate codebase|plans", handler: async (p, r) => ok(await getGateBundle(p, r.params.key as string, q(r, "gate") ?? "")) },
   stub("GET", "/intents/{key}/burn", "HK-18", "status --flow <INT> --burn(HK-18)", "남은 Bolt 계단선"),
   { method: "GET", path: "/issues", cli: "status --issues [--area --stage --intent]", handler: issueList },
   { method: "GET", path: "/issues/{key}", cli: "status --issue <키>", handler: async (p, r) => ok(publicIssue(await oneIssue(p, r.params.key as string))) },
