@@ -197,11 +197,15 @@ export async function postApproval(p: Project, body: unknown, via: Via): Promise
 async function approveIntent(p: Project, key: string, decision: string, phrase: string, body: Record<string, unknown>, via: Via): Promise<ApprovalResult> {
   const co = await resolveIntentCheckout(p, key);
   const info = findIntent(co.root, key);
-  const intentFile = path.join(info.abs, "intent.md");
+  // AI-DLC 를 켠 Intent 는 intent.md 가 없고 intent.json(링크)뿐이다 — 그 문서가 승인 대상이다(from_unit.py 와 같은 규칙, HK-22).
+  const mdFile = path.join(info.abs, "intent.md");
+  const linkOnly = !fs.existsSync(mdFile) && fs.existsSync(path.join(info.abs, "intent.json"));
+  const intentFile = linkOnly ? path.join(info.abs, "intent.json") : mdFile;
+  const docName = linkOnly ? "intent.json" : "intent.md";
   if (!fs.existsSync(intentFile)) throw notFound("intent.md 가 없습니다");
   const bytes = fs.readFileSync(intentFile);
   const text = bytes.toString("utf8");
-  const status = parseLoose(text)?.status ?? null;
+  const status = linkOnly ? "draft" : (parseLoose(text)?.status ?? null);
   const approvalsFile = path.join(info.abs, "approvals.md");
   const current = fs.existsSync(approvalsFile) ? fs.readFileSync(approvalsFile, "utf8") : null;
   const entries = current ? parseApprovals(current).entries : [];
@@ -246,12 +250,12 @@ async function approveIntent(p: Project, key: string, decision: string, phrase: 
     writes.push({ file: path.join(info.abs, "units.proposed.json"), data: null });
   }
   let statusChanged: string | null = null;
-  if (decision === "approved" && status !== "approved") {
+  if (decision === "approved" && status !== "approved" && !linkOnly) {
     writes.push({ file: intentFile, data: Buffer.from(setField(text, "status", "approved"), "utf8") });
     statusChanged = `${status ?? "없음"}→approved`;
   }
   const at = nowText();
-  const made: NewEntry[] = [{ at, gate: "intent", decision, approver: who, target: { name: "intent.md", sha256: aSha }, phrase, path: via, entryId: ulid(), ruleCandidate: decision === "changes-requested" && body.ruleCandidate === true }];
+  const made: NewEntry[] = [{ at, gate: "intent", decision, approver: who, target: { name: docName, sha256: aSha }, phrase, path: via, entryId: ulid(), ruleCandidate: decision === "changes-requested" && body.ruleCandidate === true }];
   if (unitsBytes) made.push({ at, gate: "intent", decision, approver: who, target: { name: "units.json", sha256: sha256(unitsBytes) }, phrase, path: via, entryId: ulid() });
   writes.unshift({ file: approvalsFile, data: Buffer.from(appendedText(current, key, made), "utf8") });
   writeAll(writes);

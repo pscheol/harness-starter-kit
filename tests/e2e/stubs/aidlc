@@ -1,0 +1,41 @@
+#!/usr/bin/env python3
+"""가짜 aidlc(e2e-stub, 설계 11 §3.4) — 받은 인자를 $E2E_LOG 에 적고, config 가 하네스 폴더에 AI-DLC 모양의 파일 · 훅을 만든다."""
+import json
+import os
+import sys
+from pathlib import Path
+
+args = sys.argv[1:]
+log = os.environ.get("E2E_LOG")
+if log:
+    with open(log, "a", encoding="utf-8") as handle:
+        handle.write("aidlc " + " ".join(args) + "\n")
+
+
+def add_hook(file, event, command):
+    path = Path(file)
+    data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    data.setdefault("hooks", {}).setdefault(event, []).append({"matcher": "", "hooks": [{"type": "command", "command": command}]})
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+cmd = args[0] if args else ""
+if cmd == "--version":
+    print("aidlc 2.11.4 (runtime 2.11.4)")
+elif cmd == "config":
+    for rel in (".claude/aidlc-common/stages", ".claude/skills/aidlc", ".claude/rules", ".claude/agents", "aidlc/spaces/default/memory"):
+        Path(rel).mkdir(parents=True, exist_ok=True)
+    Path(".claude/CLAUDE.md").write_text("@.claude/rules/aidlc.md\n\n# AI-DLC\n", encoding="utf-8")
+    Path(".claude/rules/aidlc.md").write_text("# aidlc 규칙\n본문\n", encoding="utf-8")
+    Path(".claude/skills/aidlc/SKILL.md").write_text("---\nname: aidlc\ndescription: >\n  AI-DLC 시작 · 재개.\n---\n본문\n", encoding="utf-8")
+    Path(".claude/agents/aidlc-architect-agent.md").write_text("---\nname: aidlc-architect-agent\ndescription: 아키텍트\n---\n", encoding="utf-8")
+    Path(".claude/aidlc-common/stages/x.md").write_text("stage\n", encoding="utf-8")
+    Path("aidlc/spaces/default/memory/project.md").write_text("# memory\n", encoding="utf-8")
+    add_hook(".claude/settings.json", "SessionStart", "aidlc engine hook session-start")
+    add_hook(".claude/settings.json", "PreToolUse", "aidlc engine hook guard-tool-call")
+    print("configured")
+elif cmd == "doctor":
+    print("0 problems")
+elif cmd == "update" and len(args) > 1 and args[1] == "--check":
+    print(json.dumps({"data": {"latestVersion": "2.11.4"}}))
