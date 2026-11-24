@@ -31,7 +31,7 @@ export interface PageProps {
 /** 이동한 뒤 h1 로 초점을 옮긴다(화면 읽기 프로그램 · 키보드). 초점 링은 제목 글자 폭에만 걸린다. */
 function usePageFocus(title: string): void {
   useEffect(() => {
-    document.title = `${title} · harness-kit 관리 페이지`;
+    document.title = `${title} · harnessync 관리 페이지`;
     const h1 = document.getElementById("page-title");
     if (h1) {
       h1.tabIndex = -1;

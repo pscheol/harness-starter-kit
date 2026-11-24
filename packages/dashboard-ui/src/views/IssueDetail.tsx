@@ -305,7 +305,7 @@ function DocPanel({ issue, name, onDoc, reload }: { issue: Loose; name: string; 
         </HStack>
         {d.checkout?.branch ? (
           <Muted size="xsm">
-            저장하면 {d.checkout.kind === "branch" ? "(체크아웃 없음 — 저장할 수 없다)" : `${d.checkout.path ?? ""} 의`} <Code>{d.checkout.branch}</Code> 에 쓴다. 커밋은 그 이슈의 세션이 한다.
+            저장하면 {d.checkout.kind === "branch" ? "(체크아웃 없음 — 저장할 수 없다)" : `${!d.checkout.path || d.checkout.path === "." ? "메인 폴더" : d.checkout.path} 의`} <Code>{d.checkout.branch}</Code> 에 쓴다. 커밋은 그 이슈의 세션이 한다.
           </Muted>
         ) : null}
         <ServerHtml html={d.html} />
