@@ -19,6 +19,18 @@ HARNESS_LOCK_REL=".agents/knots-sync.lock"
 HARNESS_LEGACY_META_REL=".agents/harness-kit.json"
 HARNESS_LEGACY_LOCK_REL=".agents/harness-kit.lock"
 
+# 두 파일이 생성 구간(<!-- 이름:BEGIN … --> ~ <!-- 이름:END -->, SDD 보드 등) 밖에서 같은가(HK-22b, CLI core/generated.ts 와 같은 규칙).
+# 이슈를 만들 때마다 board.sh 가 그 구간을 다시 쓰므로 그것만 다르면 사람이 고친 파일이 아니다. python3 가 있어야 한다. 사용: harness_same_outside_generated <지금 파일> <킷 판>
+harness_same_outside_generated() {
+  case "$1" in *.md) ;; *) return 1 ;; esac
+  python3 - "$1" "$2" <<'PY'
+import re, sys
+block = re.compile(r"(<!-- ([A-Z]+):BEGIN[^\n]*-->)[\s\S]*?(<!-- \2:END -->)")
+cur, kit = (open(p, encoding="utf-8", errors="replace").read() for p in sys.argv[1:3])
+sys.exit(0 if block.search(cur) and block.sub(r"\1\3", cur) == block.sub(r"\1\3", kit) else 1)
+PY
+}
+
 # META · LOCK 경로를 정한다. 새 이름이 없고 옛 이름만 있으면 쓰기 모드는 새 이름으로 옮기고(mv),
 # dry-run 은 옮기지 않고 옛 파일을 읽는다. 사용: harness_state_paths <대상> <dry-run 0|1>
 harness_state_paths() {

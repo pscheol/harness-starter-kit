@@ -172,6 +172,13 @@ process_file() {
     return 0
   fi
 
+  # 생성 구간(SDD 보드)만 새 판과 다르면 고친 파일로 보지 않는다 — 그대로 두고 보드는 끝에 다시 만든다(HK-22b, CLI 와 같은 규칙)
+  if [ "$HAVE_PY" = 1 ] && harness_same_outside_generated "$dest" "$tmp"; then
+    n_same=$((n_same+1))
+    harness_lock_append "$NEW_LOCK" "$new_sha" "$layer" "$owner" "$dest_rel"
+    return 0
+  fi
+
   # lock 에 기록이 없으면(구버전 설치·수동 편집) 수정 여부를 확인할 길이 없다.
   # 사용자 작업을 지우는 쪽보다 conflict 로 보고하는 쪽이 안전하다.
   local unsure=""

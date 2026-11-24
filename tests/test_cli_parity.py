@@ -408,7 +408,8 @@ class CliBundleTest(unittest.TestCase):
         pkg = json.loads((cli_dist.CLI_DIR / "package.json").read_text(encoding="utf-8"))
         self.assertEqual(pkg["dependencies"], {})
         self.assertEqual(pkg["engines"]["node"], ">=18.3")  # util.parseArgs 가 18.3 부터 있다
-        self.assertEqual(pkg["bin"], {"knots-sync": "dist/cli.js"})
+        # 별칭 kns 와 옛 이름 harness-kit 도 같은 CLI 다(이름 바꾸기 결정, HK-22b)
+        self.assertEqual(pkg["bin"], {"knots-sync": "dist/cli.js", "kns": "dist/cli.js", "harness-kit": "dist/cli.js"})
         self.assertEqual(pkg["name"], "knots-sync")
 
     def test_bundle_requires_only_node_builtins(self):

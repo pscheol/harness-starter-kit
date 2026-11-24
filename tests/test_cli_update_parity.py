@@ -537,9 +537,9 @@ class CliUpdateParityTest(unittest.TestCase):
 
     def test_08_board_rebuilt_like_update_sh(self):
         o, j = self.ran("08-board-rebuild")
-        # 옛 형식 보드는 킷 파일(specs-index.md)을 고친 것이라 두 쪽 모두 .new 를 받는다. 보드는 그 뒤에 다시 만든다.
-        self.assertEqual(o.cli_run.returncode, 4)
-        self.assertEqual([c["path"] for c in j["conflicts"]], [".agents/docs/specs-index.md"])
+        # 보드 구간(BOARD:BEGIN~END)만 다른 킷 파일(specs-index.md)은 고친 파일로 보지 않는다 — 두 쪽 모두 .new 없이 보드를 다시 만든다(HK-22b).
+        self.assertEqual(o.cli_run.returncode, 0)
+        self.assertEqual([c["path"] for c in j["conflicts"]], [])
         self.assertIn("SDD 보드", o.sh_run.stdout)
         self.assert_same_tree(o)
         self.assertEqual(j["board"], {"status": "rebuilt"})
