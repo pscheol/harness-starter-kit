@@ -442,7 +442,8 @@ class HarnessScriptTests(unittest.TestCase):
             cwd=root,
             capture_output=True,
             text=True,
-            timeout=1200,
+            # 설치본 시험 묶음은 678개로 늘어 따로 돌려도 1,300~1,600초다(2026-11-24 실측). 1200초 제한은 늘 넘어 푸시 전 검사(pnpm test)를 막았다.
+            timeout=3000,
             env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
         )
         self.assertEqual(run.returncode, 0, run.stdout[-4000:] + run.stderr[-4000:])
