@@ -17,6 +17,7 @@ paths:
 
 - 승인할 때 사람이 넣은 문구는 그 기록의 `문구` 줄에 남는다. 문구는 기록이고, 문구만으로 승인이 생기지 않는다.
 - "반영해 · push해 · 머지해"는 그 대화의 커밋 · push · 병합 지시로만 쓴다. 게이트 조건을 대신하지 못한다. 병합은 `mr` 게이트가 통과해야 되고 base 브랜치 직접 push 는 막힌다.
+- `deploy` 게이트는 배포 기록(`.agents/docs/ops/deploys/`) 계획 구간의 sha 를 승인한다: `python3 scripts/harness/approve.py deploy:<기록> deploy --phrase "…" [--waive-rollback "<사유>"]`. 롤백 시험 면제는 승인하는 사람이 승인 요청에 넣을 때만 세고, risk: high 는 면제가 없다. 운영 배포 작업은 `python3 scripts/harness/deploy.py check <기록> --require-approved` 를 먼저 부른다.
 - AI-DLC 세션의 그 밖의 대화, 몹 정리 회의에서 말로 한 결정, 다른 세션의 공지도 승인이 아니다. 승인자가 자기 컴퓨터에서 위 경로로 승인한다.
 
 에이전트가 하지 않는 것(훅 · git 훅 · CI 가 막는다):

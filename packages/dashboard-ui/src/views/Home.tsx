@@ -27,6 +27,10 @@ const KIND_TAG: Record<string, [Tone, string]> = {
   "worktree-cleanup": ["line", "정리"],
   harness: ["build", "하네스"],
   "dispatch-stale": ["line", "대기함"],
+  "deploy-stopped": ["gate", "배포 멈춤"],
+  "deploy-approval": ["ops", "배포 승인"],
+  "ops-metric-miss": ["build", "미달 지표"],
+  "rule-candidate-stale": ["line", "규칙 후보"],
 };
 
 const ACTION: Record<string, string> = {
@@ -40,6 +44,10 @@ const ACTION: Record<string, string> = {
   "worktree-cleanup": "명령 보기",
   harness: "하네스 보기",
   "dispatch-stale": "대기함 보기",
+  "deploy-stopped": "운영 보기",
+  "deploy-approval": "운영 보기",
+  "ops-metric-miss": "운영 보기",
+  "rule-candidate-stale": "운영 보기",
 };
 
 const isIssueKey = (s: string): boolean => /^[A-Z][A-Z0-9]+-\d+$/.test(s);

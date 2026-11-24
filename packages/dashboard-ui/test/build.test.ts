@@ -87,7 +87,7 @@ describe("크기 예산(R14)", () => {
     const rest = jsFiles().filter((f) => !flow.includes(f));
     const total = rest.reduce((s, f) => s + gz(f), 0);
     // 목표 300KB, 이 시험은 지금 값에서 크게 늘지 않게 지키는 상한이다(design §4 에 실측값)
-    expect(total).toBeLessThan(520 * 1024);
+    expect(total).toBeLessThan(524 * 1024); // HK-21: S10 운영 화면을 채워 520KB → 524KB(532916 바이트로 시작)
     expect(fs.statSync(path.join(STATIC, "app/main.css")).size).toBeLessThan(420 * 1024);
   });
 });

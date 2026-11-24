@@ -69,6 +69,95 @@ write(root, `${INT}/units.json`, { schema: "harness-kit.units/v1", intent: { key
   { id: "U-3", title: "결제 실패 알림", kind: "feature", area: "notify", dependsOn: ["U-2"], order: 4, issue: null, planned: true, stories: ["S-7"] },
 ] });
 write(root, `${INT}/questions.md`, "---\ntarget: INT-7\nstatus: open\nround: 1\n---\n\n# 질문\n\n## Q-3 · 범위 · 답할 직무: po · 막는 게이트: intent\n부분 환불을 이번 범위에 넣는가?\n\n- A. 넣는다 — 영향: U-2 정산이 부분 금액을 다룬다\n- B. 뺀다 — 영향: 전액 환불만 다룬다\n- C. 다음 Intent — 영향: 백로그에 묶는다\n- 권장: B — 근거: 정산 계약이 아직 없다\n- 답:\n\n## Q-5 · UX · 답할 직무: po · 막는 게이트: plans\n실패 알림을 어디로 보내는가?\n\n- A. 이메일 — 영향: 템플릿 하나\n- B. 앱 푸시 — 영향: 알림 서버 연동\n- 권장: A — 근거: 이미 있다\n- 답:\n");
+
+// 운영(S10, HK-21): 배포 기록 2건 · 운영 기록 1건(장애 1 · 후보 2) · 규칙 후보 1 · 자동 검증 배포(멈춤) · 기준선
+const deployRecord = (key, state, issues, risk, result) =>
+  `${fm({ kind: "deploy", key, env: "production", state, issues: `[${issues.join(", ")}]`, commit: "{ base: develop, sha: 4c1d9e0 }", tag: "null", risk, created: "2026-11-20" })}
+# 배포 — ${key}
+
+<!-- PLAN:BEGIN -->
+## 1. 포함 Unit
+| 이슈 | Unit | design §13 sha | 병합 커밋 |
+|---|---|---|---|
+| ${issues[0]} | U-1 결제수단 등록 | 1a2b3c4d5e6f | 77c0e1a |
+
+## 4. 롤백
+- 시험: ${state === "succeeded" ? "passed · env verify · https://ci.example/pipelines/812 · 2026-11-19T16:20:00+09:00" : "none"}
+
+## 5. 배포 점검
+| 항목 | 이슈 | 상태 |
+|---|---|---|
+| 로그 | ${issues[0]} | 체크 |
+
+## 6. 검증
+- full: ${state === "succeeded" ? "passed · sha 4c1d9e0 · https://ci.example/pipelines/810" : "none"}
+- quality-gate: ${state === "succeeded" ? "passed · sha 4c1d9e0" : "none"}
+<!-- PLAN:END -->
+
+## 7. 결과
+<!-- RESULT:BEGIN -->
+| 단계 | 시작 | 끝 | 결과 | 근거 |
+|---|---|---|---|---|
+${result}
+상태: ${state}
+<!-- RESULT:END -->
+`;
+write(root, ".agents/docs/ops/deploys/2026-11-20-KNOTS-19.md", deployRecord("KNOTS-19", "succeeded", ["KNOTS-19"], "medium", "| deploy | 2026-11-20T10:05:12+09:00 | 2026-11-20T10:09:40+09:00 | ok | pipeline 815 |\n"));
+write(root, ".agents/docs/ops/deploys/2026-11-24-INT-7.md", deployRecord("INT-7", "planned", ["KNOTS-21"], "high", ""));
+write(root, ".agents/docs/ops/records/2026-11-23-payment-v1-week1.md", `${fm({ kind: "ops-record", topic: "payment-v1-week1", period: "{ from: 2026-11-16, to: 2026-11-22 }", created: "2026-11-23" })}
+## 1. 목표 대비 실측
+| ID | 지표 | 목표 | 실측 | 판정 | 출처 |
+|---|---|---|---|---|---|
+| INT-6 SC-1 | 결제 실패율 | ≤ 0.5% | 0.42% | 충족 | https://grafana.example/d/pay?from=1763218800000&to=1763823600000 |
+| KNOTS-19 NFR-1 | 결제 API p95 | ≤ 300ms | 340ms | 미달 | ci:artifacts/perf.json |
+
+## 3. 장애
+### INC-1 · 등급 2 · 2026-11-21
+- 감지: 알람 · 2026-11-21T14:10+09:00
+- 영향: 카드 결제 일부 실패(약 40분)
+- 원인 배포: ops/deploys/2026-11-20-KNOTS-19.md
+- 조치: 플래그 끄기
+- 런북: 런북 없음
+- 후속 이슈:
+
+## 5. 다음 Intent 후보
+| ID | 후보 | 근거 | 종류 | 접수 |
+|---|---|---|---|---|
+| NX-1 | 결제 API p95 개선 | KNOTS-19 NFR-1 | change | — |
+| NX-2 | 결제 실패 알림 개선 | INC-1 | feature | — |
+
+## 6. 배운 것
+| ID | 내용 | 규칙 후보 |
+|---|---|---|
+| L-1 | PG 토큰 만료 설정을 배포 전에 확인하지 않았다 | .agents/rules/payment.md |
+`);
+write(root, ".agents/docs/rule-candidates/RC-1-ops-payment-v1-week1-l-1.md", `---
+id: RC-1
+status: proposed
+target: .agents/rules/payment.md
+sources:
+  - { type: ops, ref: "ops/records/2026-11-23-payment-v1-week1.md#L-1" }
+created: 2026-11-01
+mr: null
+---
+
+# RC-1 PG 토큰 만료 설정을 design §13.3 에 적는다
+
+## 제안 규칙
+
+(규칙 파일에 들어갈 문장)
+
+## 근거
+
+- 운영 기록 L-1
+
+## 적용하지 않는 경우
+
+`);
+write(root, ".agents/deploy.json", { schema: "harness-kit.deploy/v1", envs: { verify: { kind: "verification", url: "https://verify.example.internal" }, production: { kind: "production" } }, commands: {}, autoVerify: { enabled: true, env: "verify", maxConsecutiveFailures: 2, timeoutSec: 1800 } });
+write(root, ".agents/reports/deploy/auto-verify-4c1d9e0.json", { schema: "harness-kit.auto-verify/v1", sha: "4c1d9e0", env: "verify", status: "stopped", reason: "연속 2회 실패 — 사람이 HX_DEPLOY_RESUME=true 로 파이프라인을 수동 실행해야 다시 배포한다", steps: [], consecutiveFailures: 2, lastPassedSha: "77c0e1a", seq: 3, startedAt: "2026-11-24T09:00:00+09:00", finishedAt: "2026-11-24T09:00:05+09:00" });
+write(root, ".agents/docs/ops/metrics-baseline.json", { schema: "harness-kit.delivery-baseline/v1", range: { from: "2026-08-25", to: "2026-11-23", base: "develop", headSha: "a1b2c3d" }, inputDigest: "sha256:demo", metrics: {
+  leadTimeHours: { median: 96.5, p85: 210, n: 41, method: "git" }, changeFailureRate: { value: 0.12, n: 17, method: "git" }, mttrHours: { median: 5.2, p85: null, n: 2, method: "git" }, approvalWaitHours: { median: null, p85: null, n: 0, method: "unavailable" }, reworkRate: { value: 0.18, n: 41, method: "git" } }, createdAt: "2026-11-23T12:00:00+09:00" });
 git("init", "-q", "-b", "develop");
 git("config", "user.email", "jiyoon@acme.dev");
 git("config", "user.name", "김지윤");

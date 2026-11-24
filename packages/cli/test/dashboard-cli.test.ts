@@ -78,6 +78,7 @@ function fixture(): Repo {
 
 const PAIRS: [string, string[]][] = [
   ["/api/v1/session", ["status", "--session"]],
+  ["/api/v1/ops", ["status", "--ops"]],
   ["/api/v1/overview", ["status"]],
   ["/api/v1/issues", ["status", "--issues"]],
   ["/api/v1/issues?area=upload", ["status", "--issues", "--area", "upload"]],
@@ -254,12 +255,8 @@ describe("쓰기 명령", () => {
     expect(usage.code).toBe(2);
   });
 
-  it("범위 밖 명령은 exit 2 와 제공 이슈", async () => {
+  it("history 는 꺼져 있으면 history_off, 켜면 읽는다", async () => {
     const repo = fixture();
-    for (const [cmd, stage] of [["deploy", "P24"]] as const) {
-      const r = await cli([cmd], repo);
-      expect([cmd, r.code, r.stderr.includes(stage)]).toEqual([cmd, 2, true]);
-    }
     fs.rmSync(path.join(repo.home, ".config/harness-kit/config.json"));
     const off = await cli(["history", "--json"], repo);
     expect([off.code, off.json.error.code]).toEqual([1, "history_off"]);

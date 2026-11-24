@@ -4,7 +4,7 @@
     python3 scripts/harness/sdd_gates.py check <이슈키> [--json]     게이트마다 통과 · 안 된 이유 · 앞 조건
     python3 scripts/harness/sdd_gates.py check --all                 이슈 폴더 전부(JSON, 관리 페이지)
 
-codebase · intent · plans 게이트는 intent_gate.py, deploy 는 이 판에 없다. risk: high 이슈의 design · mr 은 서로 다른 승인자 2명(DS-R26). 머리에 `legacy` 가 있는 문서(옮긴 옛 이슈)는
+codebase · intent · plans 게이트는 intent_gate.py, deploy 는 deploy_gate.py 다. risk: high 이슈의 design · mr 은 서로 다른 승인자 2명(DS-R26). 머리에 `legacy` 가 있는 문서(옮긴 옛 이슈)는
 기록 없이 머리 값으로 통과한다. 승인 sha 는 approvals.approval_sha(머리 status · state 줄을 뺀 sha256)다.
 """
 
@@ -19,7 +19,7 @@ sys.dont_write_bytecode = True
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from harness import approvals  # noqa: E402
+from harness import approvals, rollout  # noqa: E402
 from harness.sdd_frontmatter import parse as parse_frontmatter  # noqa: E402
 from harness.sdd_keys import split_folder  # noqa: E402
 
@@ -191,6 +191,14 @@ def merged_reasons(issue):
     return [f"base({issue.base}) 에 이 이슈가 병합되지 않았다"]
 
 
+def rollout_reasons(issue):
+    """design §13 "배포 · 롤백" 이 차 있는가(설계 14 DO-R1, rollout.py). 옛 템플릿 design 은 건너뛴다."""
+    data = issue.doc("design")[2]
+    if data is None:
+        return []
+    return [f"design §13: {problem}" for problem in rollout.problems(data.decode("utf-8", "replace"))]
+
+
 def preconditions(issue, gate):
     """그 게이트를 승인하기 전에 맞아야 하는 조건(자기 기록 제외)."""
     reasons = []
@@ -205,6 +213,8 @@ def preconditions(issue, gate):
         reasons.append(f"{before} 게이트를 통과하지 않았다" + (f": {first[0]}" if first else ""))
     if gate in DOC_FILES:
         reasons += doc_reasons(issue, gate, own=False)
+    if gate == "design":
+        reasons += rollout_reasons(issue)
     if gate == "mr":
         reasons += verify_reasons(issue) + review_reasons(issue)
     return reasons

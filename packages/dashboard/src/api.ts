@@ -14,6 +14,7 @@ import { GATE_FLOOR, type Project } from "./project";
 import { machineSessions, type Projects, projectsList, projectsOverview } from "./projects";
 import { publicIssue } from "./readers/issues";
 import { publicSession, readQueue, readSessions } from "./readers/sessions";
+import { readOps } from "./readers/ops";
 import { readFindings, readReview, readSummary, readVerify, readWorktrees } from "./readers/state";
 import { checkouts } from "./repo";
 import { filterInventory, skillsInventory } from "./skills";
@@ -91,13 +92,6 @@ async function oneIssue(p: Project, key: string) {
   if (!i) throw notFound(`이슈가 없습니다: ${key}`);
   return i;
 }
-
-const stub = (method: Route["method"], path: string, stage: string, cli: string, what: string): Route => ({
-  method, path, stub: stage, cli,
-  handler: async () => {
-    throw notImplemented(stage, what);
-  },
-});
 
 export const ROUTES: Route[] = [
   { method: "GET", path: "/session", cli: "status --session", handler: async (p, r) => ok(await sessionInfo(p, r.mode)) },
@@ -212,7 +206,7 @@ export const ROUTES: Route[] = [
   { method: "DELETE", path: "/dispatch/queue/{id}", cli: "dispatch drop <id>", handler: async (p, r) => ok(dropQueued(p, r.params.id as string)) },
   { method: "GET", path: "/checkpoints", cli: "checkpoints [--issue <키>]", handler: async (p, r) => ok(await checkpointsList(p, q(r, "issue"))) },
   { method: "GET", path: "/checkpoints/{id}", cli: "checkpoints <id>", handler: async (p, r) => ok(await checkpointExplain(p, r.params.id as string)) },
-  stub("GET", "/ops", "HK-21", "status --ops(HK-21)", "운영 기록"),
+  { method: "GET", path: "/ops", cli: "status --ops", handler: async (p) => ok(await readOps(p)) },
   {
     method: "GET", path: "/flow", cli: "status --flow <INT>",
     handler: async (p, r) => {

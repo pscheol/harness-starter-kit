@@ -7,6 +7,7 @@ import { parseQuestions } from "./questions";
 import { fileStamp } from "./cache";
 import { DEFAULT_GATES, type DoctorSummary, GATE_FLOOR, type Project } from "./project";
 import { type IssueModel, readIssues } from "./readers/issues";
+import { opsTodos } from "./readers/ops";
 import { readQueue, readSessions, type SessionFull } from "./readers/sessions";
 import { readSummary, readVerify, readWorktrees } from "./readers/state";
 import { checkouts, gitStatus } from "./repo";
@@ -137,6 +138,7 @@ export async function todos(p: Project, loaded: Loaded): Promise<Todo[]> {
   const gate = summary.gate as { status?: string } | null;
   const findings = summary.findings as { new?: Record<string, number>; at?: string } | null;
   if (gate?.status === "failed" && (findings?.new?.CRITICAL ?? 0) > 0) out.push({ rank: 1, kind: "quality-blocker", target: ".", title: `품질 게이트 failed · 새 CRITICAL ${findings?.new?.CRITICAL ?? 0}`, reason: "quality-gate-last.json", since: findings?.at ?? iso(null), link: "/verify", mine: false });
+  out.push(...(await opsTodos(p)));
   return out.sort((a, b) => a.rank - b.rank || Date.parse(a.since) - Date.parse(b.since) || (a.target < b.target ? -1 : a.target > b.target ? 1 : 0));
 }
 

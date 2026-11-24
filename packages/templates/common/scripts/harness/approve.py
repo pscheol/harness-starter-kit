@@ -5,6 +5,7 @@
     python3 scripts/harness/approve.py <이슈키> review/F-<n> (--risk-accepted | --fix-required) --phrase "<문구>"
 
 게이트: requirements · design · tasks · mr · done · review/F-<n>.
+    python3 scripts/harness/approve.py deploy:<배포 기록> deploy --phrase "<문구>" [--waive-rollback "<사유>"]   deploy 게이트(설계 14 §3.4)
 exit: 0 기록함 · 1 조건 · 확인 실패 · 2 사용법 · 3 에이전트 세션 또는 TTY 아님.
 채팅에서 한 말은 승인이 아니다. 이 명령은 사람이 자기 터미널에서 이슈 키를 직접 입력해야 기록한다. 커밋은 사람이 한다.
 """
@@ -19,7 +20,7 @@ from pathlib import Path
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from harness import approvals, review_state, sdd_gates  # noqa: E402
+from harness import approvals, deploy_gate, deploy_record, review_state, sdd_gates  # noqa: E402
 from harness.agent_session import agent_session  # noqa: E402
 from harness.sdd_frontmatter import update as update_frontmatter  # noqa: E402
 from harness.sdd_issues import find_issue  # noqa: E402
@@ -27,7 +28,6 @@ from harness.sdd_issues import find_issue  # noqa: E402
 REVIEW = re.compile(r"^review/(F-\d+)$")
 BRANCH_KEY = re.compile(r"(?:^|/)([A-Z][A-Z0-9]{1,9}-[0-9]+)-")
 LOG = ".agents/state/approvals-log.jsonl"
-LATER = {"deploy": "HK-21"}
 INTENT_GATES = ("intent", "codebase", "plans")
 
 
@@ -55,6 +55,7 @@ def parse_options(argv):
     decision.add_argument("--risk-accepted", action="store_true")
     decision.add_argument("--fix-required", action="store_true")
     parser.add_argument("--rule-candidate", action="store_true")
+    parser.add_argument("--waive-rollback", help="deploy 게이트: 롤백 시험 없이 승인하는 사유(10자 이상, risk: high 는 면제 없음)")
     options = parser.parse_args(argv)
     review = REVIEW.match(options.gate)
     if review:
@@ -104,8 +105,6 @@ def check_gate(issue, gate):
         return
     if gate in INTENT_GATES:
         raise Refusal(f"{gate} 는 Intent 폴더 게이트다 — npx harness-kit approve <INT> --gate {gate} 로 한다(관리 페이지와 같은 처리)", 2)
-    if gate in LATER:
-        raise Refusal(f"{gate} 게이트 승인은 이 판에 없다({LATER[gate]})", 2)
     raise Refusal(f"모르는 게이트: {gate} (requirements · design · tasks · mr · done · review/F-n)", 2)
 
 
@@ -196,8 +195,69 @@ def write_all(root, folder, issue, entry, doc_path):
         raise Refusal(f"기록을 쓰지 못해 되돌렸다: {error}", 1) from error
 
 
+def run_deploy(options):
+    """deploy 게이트(설계 14 §3.4): 배포 기록 계획 구간의 sha256 을 포함 이슈마다 approvals.md 에 같은 내용으로 덧붙인다."""
+    if options.gate != "deploy" or options.decision != "approved":
+        raise Refusal("deploy:<배포 기록> 은 --gate deploy 승인만 받는다", 2)
+    root = sdd_gates.harness_root(Path.cwd())
+    if root is None:
+        raise Refusal("하네스 루트(.agents/harness-kit.json)를 찾지 못했다", 2)
+    try:
+        record = deploy_record.load(deploy_record.resolve(root, options.key.split(":", 1)[1]))
+    except FileNotFoundError as error:
+        raise Refusal(str(error), 2) from error
+    result = deploy_gate.check(root, record, waive=options.waive_rollback)
+    if not result["ok"]:
+        reasons = "\n".join(f"  - {line}" for line in deploy_gate.lines(result))
+        raise Refusal(f"deploy 게이트 조건이 맞지 않는다({', '.join(result['failed'])}):\n{reasons}", 1)
+    issues = [sdd_gates.Issue(root, find_issue(root, key)) for key in record.issues]
+    policy = issues[0].policy
+    approver = approver_of(root, "deploy", policy)
+    for issue in issues:
+        need = approvals.need_of(issue.meta, record.risk, "deploy")
+        state = approvals.approval_state(issue.entries, "deploy", record.sha, issue.policy, need)
+        if state == "valid":
+            raise Refusal(f"deploy: 이미 같은 계획(sha {record.sha[:12]})으로 승인한 기록이 있다", 1)
+        if state == "partial" and approver["email"].lower() in approvals.approvers_of(issue.entries, "deploy", record.sha):
+            raise Refusal("deploy: 이미 승인했다 — risk: high 는 다른 승인자 한 명이 더 승인한다(DS-R26)", 1)
+    waiver = deploy_gate.waiver_text(options.waive_rollback) if result["rollbackWaived"] else None
+    at = approvals.now_text()
+    entry = deploy_gate.approval_entry(record, approver, options.phrase, at, "terminal", approvals.new_entry_id(), waiver)
+    summary = [f"승인: {record.id} · deploy · approved", f"- 대상: {entry['target']['name']} · sha {record.sha[:12]}", f"- 포함 이슈: {', '.join(record.issues)} · risk {record.risk}",
+               f"- 승인자: {approver['email']}" + (f" · 그룹: {approver['group']}" if approver["group"] else ""), f"- 문구: \"{' '.join(options.phrase.split())}\""]
+    if waiver:
+        summary.append(f"- 롤백 면제: {waiver}")
+    confirm(record.id, summary)
+    written, log = [], root / LOG
+    try:
+        for issue in issues:
+            target = issue.folder / "approvals.md"
+            original = target.read_bytes() if target.exists() else None
+            entry_id = entry["entryId"]
+            approvals.atomic_write(target, approvals.appended_text(original.decode("utf-8") if original is not None else None, issue.key, entry).encode("utf-8"))
+            written.append((target, original))
+            log.parent.mkdir(parents=True, exist_ok=True)
+            if not (log.parent / ".gitignore").exists():
+                (log.parent / ".gitignore").write_text("*\n", encoding="utf-8")
+            with open(log, "a", encoding="utf-8") as handle:
+                handle.write(json.dumps({"entryId": entry_id, "target": issue.folder.relative_to(root).as_posix(), "gate": "deploy", "sha256": record.sha, "at": at, "path": "terminal"}, ensure_ascii=False) + "\n")
+    except OSError as error:
+        for target, original in reversed(written):
+            if original is None:
+                target.unlink(missing_ok=True)
+            else:
+                approvals.atomic_write(target, original)
+        raise Refusal(f"기록을 쓰지 못해 되돌렸다: {error}", 1) from error
+    names = " ".join((issue.folder / "approvals.md").relative_to(root).as_posix() for issue in issues)
+    print(f"기록: {len(issues)}개 이슈 approvals.md · 계획 sha {record.sha[:12]}")
+    print(f"커밋은 사람이 한다: git add {names}")
+    return 0
+
+
 def run(options):
     refuse_agents()
+    if options.key.startswith("deploy:"):
+        return run_deploy(options)
     root, folder, branch = locate(options.key)
     issue = sdd_gates.Issue(root, folder)
     check_gate(issue, options.gate)

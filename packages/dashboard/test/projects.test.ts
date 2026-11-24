@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { ROUTES } from "../src/api";
 import { call, cleanEnv, commitAll, makeRepo, serve, snapshotTree, tmpDir, writeFile, writeIssue } from "./helpers";
 
 function registry(home: string, paths: string[]): void {
@@ -108,11 +109,7 @@ describe("대화 기록은 기본 꺼짐(DB-R28)", () => {
     }
   });
 
-  it("범위 밖 API 는 501 과 제공 이슈를 낸다", async () => {
-    const srv = await serve(makeRepo());
-    for (const [route, stage, method] of [["ops", "HK-21", "GET"]] as const) {
-      const r = await call(srv, method, `/api/v1/${route}`);
-      expect([route, r.status, r.json.error.code, r.json.error.details.stage]).toEqual([route, 501, "not_implemented", stage]);
-    }
+  it("범위 밖 API(501 stub)가 더는 없다 — 설계의 모든 경로를 제공한다(HK-20 · HK-21 까지)", () => {
+    expect(ROUTES.filter((r) => r.stub).map((r) => `${r.method} ${r.path}`)).toEqual([]);
   });
 });

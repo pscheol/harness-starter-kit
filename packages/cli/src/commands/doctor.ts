@@ -13,6 +13,7 @@ import { isKitNotice, NOTICE_REL, noticeExpired } from "../core/notice";
 import { sourceWarnings } from "../core/packs";
 import { LOCAL_CONFIG, LOCAL_MODEL_POLICY, readLocalConfig, readLocalModelPolicy, SETTINGS_LOCAL } from "../core/local";
 import { loadInstalled } from "../core/installed";
+import { DEPLOY_KINDS, deployFindings } from "./doctor-deploy";
 import { overridesLines, overridesReport } from "./doctor-overrides";
 import { isSafeRelPath } from "../core/plan";
 import { compareSemver, VERSION } from "../core/version";
@@ -36,7 +37,7 @@ export interface Finding {
 export const FLOOR_KINDS = ["gate-floor", "floor-hook-missing", "floor-override", "full-allowed", "approvers"];
 export const PACK_KINDS = ["pack-unpinned", "pack-local-path"];
 export const LOCAL_KINDS = ["personal-ignored", "personal-weakens", "local-invalid"];
-export const DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "version-mismatch", "missing", "drifted", "gitignore", "entry-size", "upgrade-notice-expired", ...FLOOR_KINDS, ...PACK_KINDS, ...LOCAL_KINDS, ...PROJECTION_KINDS, ...MODULE_KINDS];
+export const DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "version-mismatch", "missing", "drifted", "gitignore", "entry-size", "upgrade-notice-expired", ...FLOOR_KINDS, ...PACK_KINDS, ...LOCAL_KINDS, ...DEPLOY_KINDS, ...PROJECTION_KINDS, ...MODULE_KINDS];
 export const GITIGNORE_NEEDS = [".agents/state/", ".agents/local/", ".agents/reports/"];
 export const ENTRY_FILES = ["AGENTS.md", "CLAUDE.md"];
 export const ENTRY_LIMIT = 24 * 1024;
@@ -254,6 +255,7 @@ function collect(ctx: Ctx, target: string, day: string): Collected {
   const layout = lock ? layoutFindings(target, lock.entries.filter((e) => isSafeRelPath(e.path))) : [];
   findings.push(...layout.map((f) => ({ kind: f.kind, severity: f.severity, path: f.path, hint: f.hint })));
   for (const f of [gitignoreFinding(target), entrySizeFinding(target), noticeFinding(target, day)]) if (f) findings.push(f);
+  findings.push(...deployFindings(target));
   findings.push(...floorFindings(target, metaRead.status === "ok" ? (metaRead.meta as unknown as Record<string, unknown>) : null));
   let load: Measure[] | undefined;
   if (meta && lock) {

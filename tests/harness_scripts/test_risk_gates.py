@@ -4,6 +4,7 @@
 """
 
 import json
+import re
 import subprocess
 import sys
 import unittest
@@ -30,6 +31,9 @@ class RiskGateTest(SddCase):
         self.assert_ok(self.scaffold("DEMO-1", "--stage=design"))
         self.set_field(self.folder / "design.md", "status", "approved")
         self.put(self.folder / "design.md", "status", "approved")
+        # design §13 은 새 템플릿이면 승인 앞 조건이다(설계 14 DO-R1) — 이 시험은 위험 두 사람 승인만 본다
+        design = self.folder / "design.md"
+        design.write_text(re.sub(r"## 13\. 배포 · 롤백.*?(?=\n## 14\.)", "## 13. 배포 · 롤백 (Migration / Rollout)\n\n배포 없음: 시험용 설계\n", design.read_text(encoding="utf-8"), flags=re.S), encoding="utf-8")
 
     def put(self, path, field, value):
         text = update(path.read_text(encoding="utf-8"), {field: value})

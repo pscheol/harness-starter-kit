@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
+import { RESERVED } from "../src/commands/reserved";
 import { BASIC_FILES, CLI_DIR, fixtureTemplates, json, readTree, run, tmpDir, writeTree } from "./helpers";
 
 const VERSION = (JSON.parse(fs.readFileSync(path.join(CLI_DIR, "package.json"), "utf8")) as { version: string }).version;
@@ -60,16 +61,12 @@ describe("진입점", () => {
     expect(r.stderr).toContain("pack new");
   });
 
-  it.each([
-    ["deploy", "P24"],
-  ])("예약 명령 %s 는 exit 2 와 제공 단계 %s", async (cmd, stage) => {
-    const r = await run([cmd]);
-    expect(r.code).toBe(2);
-    expect(r.stderr).toContain(stage);
-    const j = await run([cmd, "--json"]);
-    expect(j.code).toBe(2);
-    expect(json(j).error).toMatchObject({ code: 2 });
-    expect(json(j).error.message).toContain(stage);
+  it("예약 명령이 더는 없다 — 설계의 명령을 모두 제공하고, 모르는 명령은 exit 2(HK-20 · HK-21 까지)", async () => {
+    expect(Object.keys(RESERVED)).toEqual([]);
+    const r = await run(["nosuch"]);
+    expect([r.code, r.stderr.includes("모르는 명령")]).toEqual([2, true]);
+    const j = await run(["nosuch", "--json"]);
+    expect([j.code, json(j).error.code]).toEqual([2, 2]);
   });
 
   it("Node 18.3 미만이면 exit 5 와 필요한 버전(util.parseArgs 는 18.3 부터)", async () => {

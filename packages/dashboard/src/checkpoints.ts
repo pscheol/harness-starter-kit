@@ -44,13 +44,13 @@ async function revExists(p: Project, ref: string): Promise<boolean> {
 }
 
 export async function checkpointsList(p: Project, issue: string | null): Promise<Record<string, unknown>> {
-  if (issue !== null && !KEY.test(issue)) throw bad(`이슈 키 형식이 아니다: ${issue}`);
-  if (!enabled(p)) return { enabled: false, issue, branch: null, checkpoints: [], note: "entire 모듈이 꺼져 있다(harness-kit add entire)" };
+  if (issue !== null && !KEY.test(issue)) throw bad(`이슈 키 형식이 아닙니다: ${issue}`);
+  if (!enabled(p)) return { enabled: false, issue, branch: null, checkpoints: [], note: "entire 모듈이 꺼져 있습니다(harness-kit add entire)" };
   let branch: string | null = null;
   if (issue) {
     const all = await branches(p);
     branch = all.find((b) => /^[a-z]+\//.test(b) && b.slice(b.indexOf("/") + 1).startsWith(`${issue}-`)) ?? null;
-    if (!branch) return { enabled: true, issue, branch: null, base: p.base(), checkpoints: [], note: "이슈 브랜치가 없다" };
+    if (!branch) return { enabled: true, issue, branch: null, base: p.base(), checkpoints: [], note: "이슈 브랜치가 없습니다" };
   } else branch = (await gitOut(p.loc.top, p.env, "rev-parse", "--abbrev-ref", "HEAD")) ?? "HEAD";
   const base = p.base();
   const range = (await revExists(p, `origin/${base}`)) ? `origin/${base}..${branch}` : (await revExists(p, base)) ? `${base}..${branch}` : `-n${LOG_LIMIT} ${branch}`;
@@ -78,11 +78,11 @@ function cleanText(s: string): string {
 }
 
 export async function checkpointExplain(p: Project, id: string): Promise<Record<string, unknown>> {
-  if (!ID.test(id)) throw bad(`체크포인트 id 형식이 아니다: ${id}`);
-  if (!enabled(p)) return { enabled: false, id, available: false, reason: "entire 모듈이 꺼져 있다" };
+  if (!ID.test(id)) throw bad(`체크포인트 id 형식이 아닙니다: ${id}`);
+  if (!enabled(p)) return { enabled: false, id, available: false, reason: "entire 모듈이 꺼져 있습니다" };
   const r = await run("entire", ["checkpoint", "explain", id], { cwd: p.loc.top, env: p.env, timeout: EXPLAIN_TIMEOUT });
   const missing = r.code !== 0 && /ENOENT|not found|command not found/i.test(r.stderr + String(r.code));
-  if (missing || (r.code === 1 && r.stdout === "" && r.stderr === "")) return { enabled: true, id, available: false, reason: "entire 를 실행하지 못했다(없거나 10초 안에 끝나지 않았다)" };
+  if (missing || (r.code === 1 && r.stdout === "" && r.stderr === "")) return { enabled: true, id, available: false, reason: "entire 를 실행하지 못했습니다(없거나 10초 안에 끝나지 않았습니다)" };
   const text = cutBytes(cleanText(r.stdout || r.stderr), EXPLAIN_LIMIT);
   return { enabled: true, id, available: true, ok: r.code === 0, truncated: Buffer.byteLength(r.stdout) > EXPLAIN_LIMIT, text, untrusted: true };
 }

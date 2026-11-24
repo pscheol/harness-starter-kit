@@ -12,6 +12,8 @@
 | `checklists/_template.md` | 요구사항 품질 판정 체크리스트 | `issues/<키>-<이름>/checklists/<focus>.md` | `/hx-checklist` |
 | `tasks/_template.md` | 실행 가능한 작업 체크리스트 | `issues/<키>-<이름>/tasks.md` | `/hx-tasks` (`--stage=tasks`) |
 | `tasks/README.md` | 완료 게이트(`state`: active→check→completed) 규약 | 복사하지 않는다(참고 문서) | — |
+| `ops/deploy.md` | 배포 기록 모양(계획 구간 · 결과 구간) | `ops/deploys/<날짜>-<키>.md` — `deploy.py plan` 이 만든다 | 배포 직전 |
+| `ops/record.md` | 운영 기록(실측 · 장애 · 다음 Intent 후보 · 배운 것) | `ops/records/<날짜>-<주제>.md` — `harness-kit ops new` 가 만든다 | 배포 뒤 1주 · 매월 · 장애마다 |
 
 ## 규칙
 

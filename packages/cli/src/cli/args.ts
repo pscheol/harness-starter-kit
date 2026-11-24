@@ -88,7 +88,7 @@ export const COMMAND_OPTIONS: Record<string, OptSpec> = {
     days: { type: "string" },
   },
   projects: {},
-  approve: { gate: { type: "string" }, phrase: { type: "string" }, "changes-requested": { type: "boolean" }, "rule-candidate": { type: "boolean" } },
+  approve: { gate: { type: "string" }, phrase: { type: "string" }, "changes-requested": { type: "boolean" }, "rule-candidate": { type: "boolean" }, "waive-rollback": { type: "string" } },
   answer: { list: { type: "boolean" }, choice: { type: "string" }, text: { type: "string" }, by: { type: "string" } },
   mob: { attendees: { type: "string" }, timebox: { type: "string" } },
   review: { fix: { type: "boolean" }, "accept-risk": { type: "boolean" }, reason: { type: "string" } },
@@ -122,12 +122,17 @@ export const COMMAND_OPTIONS: Record<string, OptSpec> = {
   // 외부 도구 모듈의 어댑터 · 체크포인트(HK-20, 설계 10 §3.2 · §3.3)
   sync: { intent: { type: "string" }, check: { type: "boolean" }, key: { type: "string" } },
   checkpoints: { issue: { type: "string" } },
+  // 배포 · 운영(HK-21, 설계 14)
+  deploy: { env: { type: "string" }, tag: { type: "string" }, "require-approved": { type: "boolean" }, waive: { type: "string" }, "from-ci": { type: "string" }, from: { type: "string" }, record: { type: "string" }, "rollback-test": { type: "boolean" }, "to-sha": { type: "string" } },
+  ops: { topic: { type: "string" }, from: { type: "string" }, to: { type: "string" } },
+  metrics: { baseline: { type: "boolean" }, force: { type: "boolean" }, "verify-baseline": { type: "boolean" }, from: { type: "string" }, to: { type: "string" }, fill: { type: "string" }, "adopted-at": { type: "string" } },
+  rules: { since: { type: "string" }, reason: { type: "string" } },
   // 설계 단계(HK-19, 설계 08)
-  intake: { title: { type: "string" }, kind: { type: "string" }, name: { type: "string" }, area: { type: "string" }, text: { type: "string" }, "text-file": { type: "string" }, attach: { type: "string", multiple: true }, link: { type: "string", multiple: true } },
+  intake: { from: { type: "string" }, title: { type: "string" }, kind: { type: "string" }, name: { type: "string" }, area: { type: "string" }, text: { type: "string" }, "text-file": { type: "string" }, attach: { type: "string", multiple: true }, link: { type: "string", multiple: true } },
 };
 
 /** 위치 인자(이름 · 하위 명령 · 키)를 받는 명령. 나머지는 위치 인자를 거부한다(대상 폴더는 --cwd). */
-const POSITIONAL = new Set(["add", "remove", "projects", "approve", "answer", "review", "dispatch", "units", "flow", "pack", "local", "mob", "sync", "checkpoints"]);
+const POSITIONAL = new Set(["add", "remove", "projects", "approve", "answer", "review", "dispatch", "units", "flow", "pack", "local", "mob", "sync", "checkpoints", "deploy", "ops", "rules"]);
 
 export type Values = Record<string, string | boolean | string[] | undefined>;
 
