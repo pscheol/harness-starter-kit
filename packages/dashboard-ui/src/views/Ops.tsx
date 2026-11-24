@@ -1,4 +1,4 @@
-// S10 운영(설계 14 §3.12): 배포 기록 · 장애 · 운영 기록 · 다음 요구사항 후보 · 전달 지표 · 자동 검증 배포 · 규칙 후보. 읽기만 한다.
+// S10 운영(설계 14 §3.12): 배포 기록 · 장애 · 운영 기록 · 다음 요구사항 후보 · 전달 지표 · 자동 검증 배포 · 규칙 후보. 읽기만 한다(화면 문구는 합니다체).
 // 장애 → bug 이슈와 후보 → Intent 는 새 요구사항(S11) 접수로 보낸다. 규칙 승격 · 거절은 명령을 복사해 사람이 터미널에서 한다.
 import { Button } from "@astryxdesign/core/Button";
 import { HStack, VStack } from "@astryxdesign/core/Stack";
@@ -59,7 +59,7 @@ const recordName = (path: string): string => path.split("/").pop()?.replace(/\.m
 
 export default function Ops({ route: _route }: { route: Route }) {
   const { state, reload } = useLoad<[Loose]>(() => [get("/ops")], []);
-  const sub = "배포 기록 · 운영 기록 · 전달 지표 · 규칙 후보. 읽기만 한다";
+  const sub = "배포 기록 · 운영 기록 · 전달 지표 · 규칙 후보. 읽기만 합니다";
   const crumbs = [{ label: "운영" }, { label: "운영" }];
   if (state.status === "loading") return <Page title="운영" sub={sub} crumbs={crumbs}><Loading rows={5} /></Page>;
   if (state.status === "error") return <Page title="운영" sub={sub} crumbs={crumbs}><ErrorBlock error={state.error} retry={reload} /></Page>;
@@ -81,12 +81,12 @@ export default function Ops({ route: _route }: { route: Route }) {
   return (
     <Page title="운영" sub={sub} crumbs={crumbs} tools={<Button label="새 요구사항" size="sm" href="/intake" />}>
       <VStack gap={5}>
-        {data.unavailable ? <Notice kind="warn" title="이 프로젝트의 킷이 오래됐다. ">{String(data.unavailable)}</Notice> : null}
+        {data.unavailable ? <Notice kind="warn" title="이 프로젝트의 킷이 오래되었습니다. ">운영 기록을 읽는 스크립트가 없습니다. 터미널에서 npx harness-kit update 로 킷을 올려 주세요.</Notice> : null}
         <HStack gap={4} wrap="wrap" align="stretch">
           <Stat label="배포 기록" value={deploys.length} unit="건" hint={waiting ? `승인 대기 ${waiting}건` : "승인 대기 없음"} />
-          <Stat label="장애" value={incidents.length} unit="건" hint={incidents.filter((i) => !i.followUp).length ? `후속 이슈 없는 장애 ${incidents.filter((i) => !i.followUp).length}건` : "모두 후속 이슈가 있다"} />
+          <Stat label="장애" value={incidents.length} unit="건" hint={incidents.filter((i) => !i.followUp).length ? `후속 이슈 없는 장애 ${incidents.filter((i) => !i.followUp).length}건` : "모두 후속 이슈가 있습니다"} />
           <Stat label="자동 검증 배포" value={AUTO[auto.status]?.[1] ?? String(auto.status ?? "—")} hint={auto.enabled ? `연속 실패 ${auto.consecutiveFailures ?? 0}회` : "deploy.json autoVerify 꺼짐"} />
-          <Stat label="규칙 후보" value={rules.filter((r) => r.status === "proposed").length} unit="건 제안됨" hint={rules.some((r) => r.status === "proposed" && r.ageDays > 14) ? "14일 넘은 후보가 있다" : undefined} />
+          <Stat label="규칙 후보" value={rules.filter((r) => r.status === "proposed").length} unit="건 제안됨" hint={rules.some((r) => r.status === "proposed" && r.ageDays > 14) ? "14일 넘은 후보가 있습니다" : undefined} />
         </HStack>
 
         <TwoCol
@@ -110,7 +110,7 @@ export default function Ops({ route: _route }: { route: Route }) {
                       ]}
                     />
                   ) : (
-                    <Empty title="배포 기록이 없다" text="배포할 이슈를 병합하고 done 까지 끝내면 plan 으로 만든다." actions={<CommandBox cmd="npx harness-kit deploy plan <이슈 · Intent 키>" />} />
+                    <Empty title="배포 기록이 없습니다" text="배포할 이슈를 병합하고 done 까지 끝낸 뒤 plan 으로 만듭니다." actions={<CommandBox cmd="npx harness-kit deploy plan <이슈 · Intent 키>" />} />
                   )}
                 </Panel>
                 <Panel title="장애" flush>
@@ -124,11 +124,11 @@ export default function Ops({ route: _route }: { route: Route }) {
                         { key: "grade", header: "등급", renderCell: (r: Loose) => <Tag tone={r.grade <= 2 ? "gate" : "build"} label={`등급 ${r.grade}`} /> },
                         { key: "date", header: "날짜", renderCell: (r: Loose) => <Text>{r.date}</Text> },
                         { key: "cause", header: "원인 배포", renderCell: (r: Loose) => <Text>{r.cause ? recordName(String(r.cause)) : "—"}</Text> },
-                        { key: "follow", header: "후속 이슈", renderCell: (r: Loose) => (r.followUp ? <Button label={String(r.followUp)} size="sm" href={`/issues/${r.followUp}`} /> : <Muted>없음 — bug 로 접수한다</Muted>) },
+                        { key: "follow", header: "후속 이슈", renderCell: (r: Loose) => (r.followUp ? <Button label={String(r.followUp)} size="sm" href={`/issues/${r.followUp}`} /> : <Muted>없음 — bug 로 접수해 주세요</Muted>) },
                       ]}
                     />
                   ) : (
-                    <Empty title="장애 기록이 없다" />
+                    <Empty title="장애 기록이 없습니다" />
                   )}
                 </Panel>
                 <Panel title="운영 기록" flush aside={<Muted size="xsm">.agents/docs/ops/records/</Muted>}>
@@ -145,10 +145,10 @@ export default function Ops({ route: _route }: { route: Route }) {
                       ]}
                     />
                   ) : (
-                    <Empty title="운영 기록이 없다" text="배포 뒤 1주 · 매월 · 장애마다 만든다. 목표 값은 ops new 가 채운다." actions={<CommandBox cmd="npx harness-kit ops new --topic <영문-주제>" />} />
+                    <Empty title="운영 기록이 없습니다" text="배포 뒤 1주 · 매월 · 장애마다 만듭니다. 목표 값은 ops new 가 채워 줍니다." actions={<CommandBox cmd="npx harness-kit ops new --topic <영문-주제>" />} />
                   )}
                 </Panel>
-                {runbookMissing ? <Muted>런북 확인 없음 — 기존 코드에 배포했다면 운영 기록 §4 를 채운다.</Muted> : null}
+                {runbookMissing ? <Muted>런북 확인 없음 — 기존 코드에 배포했다면 운영 기록 §4 를 채워 주세요.</Muted> : null}
               </Section>
 
               <Section title="다음 요구사항 후보" meta="운영 기록 §5 — 접수는 새 요구사항(S11)에서">
@@ -173,7 +173,7 @@ export default function Ops({ route: _route }: { route: Route }) {
                       ]}
                     />
                   ) : (
-                    <Empty title="후보가 없다" text="목표에 못 미친 지표나 배운 것에서 운영 기록 §5 에 적는다." />
+                    <Empty title="후보가 없습니다" text="목표에 못 미친 지표나 배운 것에서 운영 기록 §5 에 적습니다." />
                   )}
                 </Panel>
                 {openCandidates.length ? <Muted>{`접수하지 않은 후보 ${openCandidates.length}건`}</Muted> : null}
@@ -204,20 +204,19 @@ export default function Ops({ route: _route }: { route: Route }) {
                   ]}
                 />
                 <VStack gap={2} padding={4}>
-                  {mismatch.size ? <Notice kind="warn" title="계산 방법 다름. ">{`${METRICS.filter((m) => mismatch.has(m.id)).map((m) => m.label).join(" · ")} — 기준선과 계산 방법이 달라 숫자만 나란히 비교하지 않는다.`}</Notice> : null}
-                  <Muted size="xsm">git · 승인 기록 · 배포 기록에서만 계산한다. 사람이 적은 숫자는 쓰지 않는다.</Muted>
+                  {mismatch.size ? <Notice kind="warn" title="계산 방법 다름. ">{`${METRICS.filter((m) => mismatch.has(m.id)).map((m) => m.label).join(" · ")} — 기준선과 계산 방법이 달라 숫자만 나란히 비교하지 않습니다.`}</Notice> : null}
+                  <Muted size="xsm">git · 승인 기록 · 배포 기록에서만 계산합니다. 사람이 적은 숫자는 쓰지 않습니다.</Muted>
                   <CommandBox cmd="npx harness-kit metrics" />
                 </VStack>
               </Panel>
 
               <Panel title="자동 검증 배포" aside={tag(AUTO, String(auto.status ?? "off"))}>
                 <VStack gap={2}>
-                  <Text size="sm">{auto.enabled ? `연속 실패 ${auto.consecutiveFailures ?? 0}회 · 마지막 통과 ${auto.lastPassedSha ?? "없음"}` : "꺼져 있다. .agents/deploy.json 의 autoVerify.enabled 로 켠다."}</Text>
+                  <Text size="sm">{auto.enabled ? `연속 실패 ${auto.consecutiveFailures ?? 0}회 · 마지막 통과 ${auto.lastPassedSha ?? "없음"}` : "꺼져 있습니다. .agents/deploy.json 의 autoVerify.enabled 로 켭니다."}</Text>
                   {auto.status === "stopped" ? (
-                    <Notice kind="err" title="멈췄다. ">{String(auto.reason ?? auto.resume ?? "")}</Notice>
+                    <Notice kind="err" title="멈췄습니다. ">{`연속 실패 ${auto.consecutiveFailures ?? 0}회로 배포를 멈췄습니다. 사람이 파이프라인을 수동으로 실행하면서 HX_DEPLOY_RESUME=true 를 넣어야 다시 배포합니다.`}</Notice>
                   ) : null}
-                  {auto.resume ? <Muted>{String(auto.resume)}</Muted> : null}
-                  {auto.lastRun ? <Muted size="xsm">{`마지막 실행 ${dayOf(auto.lastRun)}`}</Muted> : null}
+                                    {auto.lastRun ? <Muted size="xsm">{`마지막 실행 ${dayOf(auto.lastRun)}`}</Muted> : null}
                 </VStack>
               </Panel>
 
@@ -235,7 +234,7 @@ export default function Ops({ route: _route }: { route: Route }) {
                     ]}
                   />
                 ) : (
-                  <Empty title="규칙 후보가 없다" text="승인 때 '규칙 후보'로 표시하거나, 같은 점검의 수용 지적이 이슈 2개 이상에서 반복되면 생긴다." />
+                  <Empty title="규칙 후보가 없습니다" text="승인할 때 '규칙 후보'로 표시하거나, 같은 점검의 수용 지적이 이슈 2개 이상에서 반복되면 생깁니다." />
                 )}
                 <VStack gap={2} padding={4}>
                   {rules.filter((r) => r.status === "proposed").slice(0, 1).map((r) => (
@@ -245,7 +244,7 @@ export default function Ops({ route: _route }: { route: Route }) {
                     </VStack>
                   ))}
                   <CommandBox cmd="npx harness-kit rules candidates" label="후보 찾기 명령 복사" />
-                  <Muted size="xsm">승격 · 거절은 사람이 자기 터미널에서 한다. 규칙 파일은 MR 로 바꾼다.</Muted>
+                  <Muted size="xsm">승격 · 거절은 사람이 자기 터미널에서 합니다. 규칙 파일은 MR 로 바꿉니다.</Muted>
                 </VStack>
               </Panel>
             </>
