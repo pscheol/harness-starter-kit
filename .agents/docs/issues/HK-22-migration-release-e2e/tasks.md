@@ -128,3 +128,17 @@ created: 2026-11-24
 | `pnpm -C packages/dashboard test` | 158 중 157 통과 · 1 시간 초과(`projects.test.ts --root`, 부하) — 그 파일만 다시 돌려 4 통과 |
 | `tests.test_release` + `tests.test_generated` | 27 통과 |
 | e2e stub `unittest`(`pnpm test:e2e` 로 새로 묶음 — 킷 `discover -s tests` 는 `tests/e2e` 를 줍지 않는다) | 5 통과 |
+
+## HK-22b 이름 바꾸기
+
+| ID | 작업 | 근거 | 상태 |
+|---|---|---|---|
+| T-B1 | 기계적 이름 바꾸기(471개 파일 내용 · 47개 파일 이동 · 플러그인 폴더 `plugins/kns`) | design §7 | done |
+| T-B2 | 옛 상태 파일 · schema 읽기, 쓰기 명령이 새 이름으로 옮기기, `doctor legacy-names`, 고치지 않은 `hx-*` 킷 스킬 지우기 | design §7 | done |
+| T-B3 | Node 없는 경로(`update.sh` · `add-agent.sh` · `setup.sh`)의 옛 상태 파일 옮기기 | design §7 | done |
+| T-B4 | Kiro 설치기 `kns-<명령>` · 옛 설치 치우기, 플러그인 `commands/` 빼기 | design §7 | done |
+| T-B5 | `check_external.py` | 설계 11 §3.9 | done |
+| T-B6 | README · CHANGELOG · 이전 안내서 1.1 · ROADMAP | — | done |
+| T-B7 | 전체 시험 | — | 진행 |
+
+새 시험: `packages/cli/test/legacy-names.test.ts`(5개 — doctor 는 옮기지 않음 · update 가 옮김 · init 은 옛 메타를 설치로 봄 · hx- 스킬 지움/남김), `tests/test_install.py::test_update_moves_legacy_state_names`(update.sh), `tests/harness_scripts/test_check_external.py`(3개).

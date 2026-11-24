@@ -77,3 +77,31 @@ created: 2026-11-24
 - **승인 API 가 열리는 사람 터미널 · CI 에서 `python3 tests/e2e/two_configs.py --mode stub` 와 `--mode real` 을 한 번씩 돌려, S3~S9(E2 · E3 · E4 · E9)의 결과를 본다.** 이 이슈를 만든 세션은 에이전트 세션이라 그 단계들이 `skip` 이었다. 특히 `mr` · `done` · `deploy` 승인의 앞 조건은 fixture 를 추정으로 만들어 첫 실행에서 실패할 수 있다(실패 이유가 `note` 에 나온다).
 - `release.sh` 를 실제로 한 번 돌려 보기(`HK_RELEASE_*` 없이): 커밋 · 로컬 태그까지 가고 push 는 하지 않는다.
 - 복사본이 `feat/speech-recognition-redesign` 의 마지막 커밋이라 knots 에서 `sync.py` · `units.json` 이 없다(설계 11 K3 의 23곳 비교는 하지 못했다). `develop` 기준으로 다시 본다.
+
+## 7. HK-22b — 이름 바꾸기(harness-kit → knots-sync)
+
+근거: 사용자 결정 2026-11-24(ROADMAP 결정 줄). 범위는 "전부". 설치된 프로젝트(knots 등)는 나중에 update 로 옮긴다.
+
+| 바꾼 것 | 새 이름 | 옛 이름 호환 |
+|---|---|---|
+| CLI · npm | `knots-sync`, bin `knots-sync` · `kns` · `harness-kit`(한동안) | bin 별칭 |
+| 플러그인 | `kns`(`plugins/kns/`), 스킬 폴더 `bootstrap` · `update` …(→ `/kns:bootstrap`) | 없음 — 사람이 다시 설치 |
+| 플러그인 `commands/` 세 개 | 뺐다 | 플러그인 이름이 `kns` 가 되면 `/kns:bootstrap` 이 스킬과 겹친다 |
+| 마켓플레이스 | `knots-sync`(Claude · Codex) | 없음 |
+| 프로젝트 스킬 | `kns-<명령>` | 고치지 않은 옛 `hx-*` 킷 스킬은 update 가 `--prune` 없이 지운다(세션에 두 번 실리지 않게). 고친 것은 `orphan` |
+| Kiro 전역 스킬 | `~/.kiro/skills/kns-<명령>`(이름 · 형제 경로를 복사본에서 바꾼다) | `install-kiro.sh` 가 옛 설치 기록의 `hx-*` 폴더를 치운다 |
+| 상태 파일 | `.agents/knots-sync.{json,lock}` | 읽기 명령은 옛 파일을 읽고 `doctor` 가 `legacy-names`(info)로 알린다. 쓰기 명령(init 검사 · update · repair · add · remove · uninstall)과 `update.sh` · `add-agent.sh` · `setup.sh` 가 쓰기 처음에 옮긴다(rename). dry-run 은 옮기지 않는다 |
+| schema | `knots-sync.<이름>/vN` | 메타 `harness-kit/v2` · lock `harness-kit.lock/v2` 를 읽는다(v2-alpha). 다른 schema 는 v2 에만 있었다(v1 에는 없다 — `main` 에서 확인) |
+| 설정 폴더 · 환경 변수 | `~/.config/knots-sync/`, `KNOTS_SYNC_*` · `KNS_*` | 없음(v2 에만 있었다, 이 컴퓨터에 `~/.config/harness-kit` 없음) |
+| 관리 페이지 | 이름 knots-sync, CSS · 속성 `kns-` | 색 설정 localStorage `hx-palette` 를 한 번 읽는다 |
+| 스킬 metadata | `kns-stages` | `hx-stages` 도 읽는다 |
+
+바꾸지 않은 것과 이유:
+
+- GitHub 저장소 이름 `harness-starter-kit`(사람 결정), 파일 머리 표지 `HARNESS STARTER KIT`(v1 병합이 킷 파일을 알아보는 열쇠 — `v1-merge.ts` `KIT_HEADER`), v1 lock 머리 줄 `# harness-kit lock v1`(v1 읽기).
+- "하네스 엔지니어링" 개념 이름: `scripts/harness/`, 훅 id `harness-*`(설치본 settings 병합 키), `harness-lib.sh`.
+- 지난 이슈 기록 `.agents/docs/issues/HK-*`, `docs/analysis` · `docs/harness-next` · `docs/ai-dlc` · `docs/roadmap.md`(역사 · 외부 자료). 이슈 키 `HK-n` 과 임시 파일 표지 `.hk-`.
+
+방법: `/tmp/rename/rename.py`(규칙 표를 순서대로 적용, 다시 돌려도 같다) → 손으로 고친 곳(플러그인 · 마켓플레이스 이름 `kns`, bin 별칭, 옛 이름 호환 코드, Kiro 설치기) → 생성물(`plugins/kns`, 화면 번들)을 다시 만든다.
+
+같이 넣은 것: `scripts/harness/check_external.py`(설계 11 §3.9 — HK-22a 가 "없다"고 적은 것). lock 의 `external:*` 파일 sha256 을 `--save` 로 적고 `--snapshot` 으로 비교한다. 기록 파일(`*.log`, `logs/`)은 뺀다(§4 발견 3).
