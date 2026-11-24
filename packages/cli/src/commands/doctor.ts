@@ -8,6 +8,7 @@ import { lstatOrNull } from "../core/fsx";
 import { sha256File } from "../core/hash";
 import { LOCK_REL, readLock, type LockV2 } from "../core/lock";
 import { META_REL, readMeta, type MetaV2 } from "../core/meta";
+import { FLOOR_HOOKS, missingFloorGates } from "../core/floor";
 import { isKitNotice, NOTICE_REL, noticeExpired } from "../core/notice";
 import { isSafeRelPath } from "../core/plan";
 import { compareSemver, VERSION } from "../core/version";
@@ -25,7 +26,8 @@ export interface Finding {
   detail?: Record<string, unknown>;
 }
 
-export const DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "version-mismatch", "missing", "drifted", "gitignore", "entry-size", ...PROJECTION_KINDS];
+export const FLOOR_KINDS = ["gate-floor", "floor-hook-missing", "floor-override", "full-allowed", "approvers"];
+export const DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "version-mismatch", "missing", "drifted", "gitignore", "entry-size", "upgrade-notice-expired", ...FLOOR_KINDS, ...PROJECTION_KINDS];
 export const GITIGNORE_NEEDS = [".agents/state/", ".agents/local/", ".agents/reports/"];
 export const ENTRY_FILES = ["AGENTS.md", "CLAUDE.md"];
 export const ENTRY_LIMIT = 24 * 1024;
@@ -142,6 +144,47 @@ interface Collected {
   projection?: { ok: number; errors: number };
 }
 
+const isObjAny = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === "object" && !Array.isArray(v);
+const EMAIL = /^[^@\s]+@[^@\s]+$/;
+
+/** 게이트 하한 · 하한 훅 · full 허용 · approvers 형식(설계 04 §3.8, HK-14 design §6). raw: 메타 원문(모르는 키 포함). */
+function floorFindings(target: string, raw: Record<string, unknown> | null): Finding[] {
+  const out: Finding[] = [];
+  const flow = raw && isObjAny(raw.flow) ? raw.flow : null;
+  const missingGates = missingFloorGates(flow?.gates);
+  if (missingGates.length) out.push({ kind: "gate-floor", severity: "error", path: META_REL, hint: `flow.gates 에 하한 게이트 ${missingGates.join(" · ")} 가 없다. 하한은 빼지 못한다(check-sdd-prerequisites 는 설정과 상관없이 검사한다)`, detail: { missing: missingGates } });
+  let hooks: unknown = null;
+  try {
+    hooks = JSON.parse(fs.readFileSync(path.join(target, ".agents/hooks.json"), "utf8"));
+  } catch {
+    hooks = null;
+  }
+  if (isObjAny(hooks) && Array.isArray(hooks.hooks)) {
+    const ids = new Set(hooks.hooks.map((h) => (isObjAny(h) ? h.id : null)));
+    const gone = FLOOR_HOOKS.filter((id) => !ids.has(id));
+    if (gone.length) out.push({ kind: "floor-hook-missing", severity: "error", path: ".agents/hooks.json", hint: `하한 훅 ${gone.join(" · ")} 가 없다. harness-kit repair 로 되살린다`, detail: { missing: gone } });
+  }
+  const verify = raw && isObjAny(raw.verify) ? raw.verify : null;
+  if (verify?.fullOnlyInCI === false) out.push({ kind: "full-allowed", severity: "warn", path: META_REL, hint: "verify.fullOnlyInCI 가 false 다. 에이전트 세션의 full 차단은 그대로지만 사람 · git hook 의 full 이 열린다(팀 결정이면 MR 로 남긴다)" });
+  out.push(...approverFindings(raw));
+  return out;
+}
+
+/** approvers 는 선택이다. 비면 git 사용자 누구나(README §5). 형식이 틀리거나 없는 그룹을 가리키면 경고. */
+function approverFindings(raw: Record<string, unknown> | null): Finding[] {
+  if (!raw || raw.approvers === undefined) return [];
+  const groups = isObjAny(raw.groups) ? raw.groups : {};
+  const bad: string[] = [];
+  if (!isObjAny(raw.approvers)) bad.push("approvers 는 게이트 → 이름 목록 객체다");
+  else
+    for (const [gate, names] of Object.entries(raw.approvers)) {
+      if (!Array.isArray(names) || names.some((n) => typeof n !== "string")) bad.push(`approvers.${gate} 는 문자열 목록이다`);
+      else for (const n of names as string[]) if (!EMAIL.test(n) && !Object.hasOwn(groups, n)) bad.push(`approvers.${gate}: 그룹 '${n}' 이 groups 에 없다`);
+    }
+  for (const [name, members] of Object.entries(groups)) if (!Array.isArray(members) || members.some((m) => typeof m !== "string")) bad.push(`groups.${name} 는 이메일 목록이다`);
+  return bad.length ? [{ kind: "approvers", severity: "warn", path: META_REL, hint: bad.join(" · "), detail: { problems: bad } }] : [];
+}
+
 /** update 가 쓴 업그레이드 공지가 만료됐다(03 §3.11 5단계). 세션 시작 훅은 이미 붙이지 않는다. */
 function noticeFinding(target: string, day: string): Finding | null {
   let text: string;
@@ -178,6 +221,7 @@ function collect(target: string, day: string): Collected {
   const layout = lock ? layoutFindings(target, lock.entries.filter((e) => isSafeRelPath(e.path))) : [];
   findings.push(...layout.map((f) => ({ kind: f.kind, severity: f.severity, path: f.path, hint: f.hint })));
   for (const f of [gitignoreFinding(target), entrySizeFinding(target), noticeFinding(target, day)]) if (f) findings.push(f);
+  findings.push(...floorFindings(target, metaRead.status === "ok" ? (metaRead.meta as unknown as Record<string, unknown>) : null));
   const projectionTotal = lock ? lock.entries.filter((e) => PROJECTION_OPS.has(e.op) && e.owner === "kit").length : 0;
   const projectionBad = new Set(layout.filter((f) => f.severity === "error" && !f.path.startsWith(".agents/")).map((f) => f.path)).size;
   return { meta, lock, ok: copy.ok, findings, projection: { ok: Math.max(0, projectionTotal - projectionBad), errors: layout.filter((f) => f.severity === "error").length } };

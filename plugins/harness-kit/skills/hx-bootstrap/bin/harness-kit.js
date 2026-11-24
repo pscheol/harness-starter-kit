@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 c2a3cc1e6e88613107432a22e476eea8255a1d5cc5c01888b18a195c64473bb0 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 517daf5a9f91ea0ea04ab21cfcc1abfb0f7e91cc81d0581d1a51853347b91420 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -5353,10 +5353,17 @@ async function gitStatus(root, env) {
   return { dirty: s.code === 0 ? s.stdout.trim().length > 0 : false, unpushed: u === null ? null : Number(u) };
 }
 
+// src/core/floor.ts
+var GATE_FLOOR = ["requirements", "design", "mr", "done"];
+var FLOOR_HOOKS = ["harness-protect-sources", "harness-block-full-verify", "harness-verify-gate", "harness-protect-approvals"];
+function missingFloorGates(gates) {
+  if (!Array.isArray(gates)) return [];
+  return GATE_FLOOR.filter((g) => !gates.includes(g));
+}
+
 // ../dashboard/src/project.ts
 var DEFAULT_GATES2 = ["codebase", "intent", "plans", "requirements", "design", "tasks", "mr", "done", "deploy"];
 var ISSUE_GATES = ["requirements", "design", "tasks", "mr", "done"];
-var GATE_FLOOR = ["requirements", "design", "mr", "done"];
 function projectIdOf(dir) {
   let p = import_node_path26.default.resolve(dir);
   try {
@@ -7991,7 +7998,8 @@ function layoutFindings(target, entries) {
 }
 
 // src/commands/doctor.ts
-var DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "version-mismatch", "missing", "drifted", "gitignore", "entry-size", ...PROJECTION_KINDS];
+var FLOOR_KINDS = ["gate-floor", "floor-hook-missing", "floor-override", "full-allowed", "approvers"];
+var DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "version-mismatch", "missing", "drifted", "gitignore", "entry-size", "upgrade-notice-expired", ...FLOOR_KINDS, ...PROJECTION_KINDS];
 var GITIGNORE_NEEDS = [".agents/state/", ".agents/local/", ".agents/reports/"];
 var ENTRY_FILES = ["AGENTS.md", "CLAUDE.md"];
 var ENTRY_LIMIT = 24 * 1024;
@@ -8089,6 +8097,42 @@ function parseOnly(raw) {
   if (unknown.length) throw usageError(`모르는 검사 종류: ${unknown.join(" ")}`, `사용 가능: ${DOCTOR_KINDS.join(" ")}`);
   return only;
 }
+var isObjAny = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+var EMAIL = /^[^@\s]+@[^@\s]+$/;
+function floorFindings(target, raw) {
+  const out = [];
+  const flow = raw && isObjAny(raw.flow) ? raw.flow : null;
+  const missingGates = missingFloorGates(flow?.gates);
+  if (missingGates.length) out.push({ kind: "gate-floor", severity: "error", path: META_REL, hint: `flow.gates 에 하한 게이트 ${missingGates.join(" · ")} 가 없다. 하한은 빼지 못한다(check-sdd-prerequisites 는 설정과 상관없이 검사한다)`, detail: { missing: missingGates } });
+  let hooks = null;
+  try {
+    hooks = JSON.parse(import_node_fs37.default.readFileSync(import_node_path41.default.join(target, ".agents/hooks.json"), "utf8"));
+  } catch {
+    hooks = null;
+  }
+  if (isObjAny(hooks) && Array.isArray(hooks.hooks)) {
+    const ids = new Set(hooks.hooks.map((h) => isObjAny(h) ? h.id : null));
+    const gone = FLOOR_HOOKS.filter((id) => !ids.has(id));
+    if (gone.length) out.push({ kind: "floor-hook-missing", severity: "error", path: ".agents/hooks.json", hint: `하한 훅 ${gone.join(" · ")} 가 없다. harness-kit repair 로 되살린다`, detail: { missing: gone } });
+  }
+  const verify = raw && isObjAny(raw.verify) ? raw.verify : null;
+  if (verify?.fullOnlyInCI === false) out.push({ kind: "full-allowed", severity: "warn", path: META_REL, hint: "verify.fullOnlyInCI 가 false 다. 에이전트 세션의 full 차단은 그대로지만 사람 · git hook 의 full 이 열린다(팀 결정이면 MR 로 남긴다)" });
+  out.push(...approverFindings(raw));
+  return out;
+}
+function approverFindings(raw) {
+  if (!raw || raw.approvers === void 0) return [];
+  const groups = isObjAny(raw.groups) ? raw.groups : {};
+  const bad4 = [];
+  if (!isObjAny(raw.approvers)) bad4.push("approvers 는 게이트 → 이름 목록 객체다");
+  else
+    for (const [gate, names] of Object.entries(raw.approvers)) {
+      if (!Array.isArray(names) || names.some((n) => typeof n !== "string")) bad4.push(`approvers.${gate} 는 문자열 목록이다`);
+      else for (const n of names) if (!EMAIL.test(n) && !Object.hasOwn(groups, n)) bad4.push(`approvers.${gate}: 그룹 '${n}' 이 groups 에 없다`);
+    }
+  for (const [name, members] of Object.entries(groups)) if (!Array.isArray(members) || members.some((m) => typeof m !== "string")) bad4.push(`groups.${name} 는 이메일 목록이다`);
+  return bad4.length ? [{ kind: "approvers", severity: "warn", path: META_REL, hint: bad4.join(" · "), detail: { problems: bad4 } }] : [];
+}
 function noticeFinding(target, day) {
   let text;
   try {
@@ -8121,6 +8165,7 @@ function collect(target, day) {
   const layout2 = lock ? layoutFindings(target, lock.entries.filter((e) => isSafeRelPath(e.path))) : [];
   findings.push(...layout2.map((f) => ({ kind: f.kind, severity: f.severity, path: f.path, hint: f.hint })));
   for (const f of [gitignoreFinding(target), entrySizeFinding(target), noticeFinding(target, day)]) if (f) findings.push(f);
+  findings.push(...floorFindings(target, metaRead.status === "ok" ? metaRead.meta : null));
   const projectionTotal = lock ? lock.entries.filter((e) => PROJECTION_OPS.has(e.op) && e.owner === "kit").length : 0;
   const projectionBad = new Set(layout2.filter((f) => f.severity === "error" && !f.path.startsWith(".agents/")).map((f) => f.path)).size;
   return { meta, lock, ok: copy.ok, findings, projection: { ok: Math.max(0, projectionTotal - projectionBad), errors: layout2.filter((f) => f.severity === "error").length } };
