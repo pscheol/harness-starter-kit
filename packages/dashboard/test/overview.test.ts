@@ -1,7 +1,6 @@
 /**
  * 읽기 · 데이터 모델 · 처리할 일 · 보드 일치 · 응답 시간(06 §3.2~§3.4, DB-R6 · R24, 완료 기준 1 · 12).
  */
-import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { call, commitAll, git, makeRepo, python, readFile, serve, writeFile, writeIssue } from "./helpers";

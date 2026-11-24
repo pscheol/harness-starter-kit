@@ -263,7 +263,10 @@ CLI 명령은 `api.ts` 의 같은 처리 함수를 HTTP 없이 부르고, `--jso
 | DB-R23 기존 주소 출력 | 에이전트 세션이면 토큰 없는 주소 | 토큰 파일 읽기를 훅이 막는데 명령 출력으로 새면 같은 구멍이다 |
 | 06 §3.4 rank 4 `auto-verify-stopped` · 8 `ops-followup` · 9 `jira-conflict` | 넣지 않는다 | 원본(14 · 10)이 아직 없다 |
 | 06 §3.5 `/skills` · `/usage*` · `/history` · `/intake` · `/ops` · `/checkpoints*` · `/burn` | 501 `not_implemented` + `details.stage`(HK-18 · 19 · 20 · 21). `/history` 는 꺼져 있으면 404 `history_off` | 범위가 다른 이슈다. 경로는 둔다 |
-| 06 §3.5 표에 없음 | `DELETE /dispatch/queue/{id}` · `GET /flow/gates` · `GET /healthz` | CLI `dispatch drop` · `flow gates` 의 API 짝, DB-R23 응답 확인 |
+| 06 §3.5 표에 없음 | `DELETE /dispatch/queue/{id}` · `GET /flow/gates`, 토큰 없는 `GET /healthz`(데이터 없음, `{ok: true}`) | CLI `dispatch drop` · `flow gates` 의 API 짝, DB-R23 은 토큰 없이 서버가 응답하는지 본다 |
+| DB-R5 쓰기 요청은 모두 `Content-Type: application/json` | 본문 없는 `DELETE` 는 Content-Type 을 보지 않는다(Origin · 토큰은 본다) | 브라우저 fetch 의 본문 없는 DELETE 에는 Content-Type 이 없다. 쿠키가 없어 CSRF 경로가 없다(§3.14) |
+| 06 §3.15 PreToolUse 훅이 `harness-kit approve\|answer\|review decide` 를 막는다(HK-23 은 approve · review decide 만) | 훅에 `harness-kit answer`(`--list` 는 통과) · 답 · 리뷰 판단 API 경로를 더했다 | 06 §3.15 문장 그대로다 |
+| 06 §3.4 since | 시각이 없는 항목(doctor · worktree 상한)의 since 는 메타 파일 시각 | 같은 입력이면 API 와 CLI `--json` 이 같아야 한다(§3.15) |
 | 06 §3.15 `approve <키> --gate … [--comment …]` | `--comment` 대신 `--changes-requested` · `--rule-candidate`(approve.py 와 같은 플래그) | 승인 기록에 메모 칸이 없다 |
 | 06 §3.16 `split` · `merge` 의 반영 규칙(설계에 없음) | split: 원래 Unit `planned: false`, 새 Unit 들이 kind · area · dependsOn 을 받고 첫 Unit 이 스토리를 받으며 원래 Unit 에 의존하던 Unit 은 새 Unit 전부에 의존. merge: 앞 Unit 이 뒤 Unit 의 스토리 · 의존을 받고 뒤 Unit `planned: false` | id 를 지우지 않는다(08 §3.5) |
 | 06 §3.17 `init` 이 등록부에 더한다 | 이 이슈는 `projects add\|remove` 만 쓴다 | 시험 · 기존 설치 흐름이 사용자 폴더를 쓰게 된다. 이전 도구(HK-22)와 같이 넣는다 |
