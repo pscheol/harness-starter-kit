@@ -12,6 +12,8 @@ import { FLOOR_HOOKS, missingFloorGates } from "../core/floor";
 import { isKitNotice, NOTICE_REL, noticeExpired } from "../core/notice";
 import { sourceWarnings } from "../core/packs";
 import { LOCAL_CONFIG, readLocalConfig, SETTINGS_LOCAL } from "../core/local";
+import { loadInstalled } from "../core/installed";
+import { overridesLines, overridesReport } from "./doctor-overrides";
 import { isSafeRelPath } from "../core/plan";
 import { compareSemver, VERSION } from "../core/version";
 import { layoutFindings, PROJECTION_KINDS } from "../projection/check";
@@ -269,6 +271,12 @@ function findingLine(f: Finding): string {
 
 export function runDoctor(ctx: Ctx): CommandResult {
   const target = targetOf(ctx);
+  if (str(ctx.values, "only") === "overrides") {
+    // 덮어쓰기 보고(04 §3.10) — 경로 · 항목마다 이긴 층. 하한 위반이 있고 --check 면 exit 1
+    const report = overridesReport(ctx, target, loadInstalled(target, "doctor"));
+    const code = bool(ctx.values, "check") && report.floorViolations.length ? EXIT.CHECK : EXIT.OK;
+    return { code, data: { command: "doctor", target, only: "overrides", ...report }, lines: [`harness-kit doctor --only overrides — ${target}`, ...overridesLines(report)] };
+  }
   const only = parseOnly(str(ctx.values, "only"));
   const c = collect(target, today(ctx.io));
   const findings = only ? c.findings.filter((f) => only.includes(f.kind)) : c.findings;
