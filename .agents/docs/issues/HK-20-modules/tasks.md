@@ -58,4 +58,12 @@ created: 2026-11-24
 
 ## 시험 결과
 
-(마지막에 채운다)
+| 시험 | 결과 |
+|---|---|
+| `pnpm -C packages/cli test`(tsc + vitest) | 40 파일 · 479 통과(새 시험 `modules-engine` 25 · `modules-aidlc-sync` 8 · `modules-checkpoints` 3 포함) |
+| `pnpm -C packages/dashboard test` | 17 파일 · 148 통과(처음 한 번은 다른 시험이 동시에 돌아 시간 초과 2건 — 단독 재실행 통과) |
+| `pnpm test:ui` | 화면 파일을 건드리지 않아 돌리지 않았다 |
+| `node scripts/gen-plugins.mjs --check` | 생성물 일치(파일 461개). `tests.test_generated` 10 통과 |
+| 킷 python 전체(`unittest discover -s tests`) | 120 중 114 통과. 실패 5(`test_generated` — 시험 중 소스를 고쳐 생성물이 낡았다, 다시 만든 뒤 10 통과) + 오류 1(`test_install` 의 설치본 시험이 동시에 도는 다른 시험 때문에 1,200초 제한 초과 — 같은 설치본 시험을 단독으로 돌려 아래 621 통과) |
+| 설치본 시험(`<설치>/scripts/tests`, 새 `test_aidlc_intent.py` 포함) | 621 통과(1,165초) |
+| 실제 도구 e2e | 위 표 — 두 순서 모두 달라진 외부 항목 0 |
