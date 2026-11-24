@@ -3,6 +3,8 @@ packages:
 
 # esbuild 설치 스크립트는 플랫폼 바이너리를 확인한다(packages/cli 빌드, HK-8).
 allowBuilds:
+  '@astryxdesign/cli': false
+  '@astryxdesign/core': false
   esbuild: true
 
 # packages/cli 는 Node 18 API 만 쓰도록 @types/node 18 로 타입 검사한다.

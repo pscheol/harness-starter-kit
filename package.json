@@ -4,10 +4,12 @@
   "description": "하네스 엔지니어링 스타터 킷 — 원본은 packages/, plugins/harness-kit/ 은 생성물",
   "engines": { "node": ">=18" },
   "scripts": {
+    "build:ui": "pnpm -C packages/dashboard-ui build",
     "build": "pnpm -C packages/cli build",
     "test:cli": "pnpm -C packages/cli test",
     "test:dashboard": "pnpm -C packages/dashboard test",
-    "gen": "pnpm build && node scripts/gen-plugins.mjs",
+    "test:ui": "pnpm -C packages/dashboard-ui test",
+    "gen": "pnpm build:ui && pnpm build && node scripts/gen-plugins.mjs",
     "gen:check": "node scripts/gen-plugins.mjs --check",
     "test": "python3 -m unittest discover -s tests -p \"test_*.py\""
   }

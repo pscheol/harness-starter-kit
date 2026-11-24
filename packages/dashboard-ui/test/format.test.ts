@@ -1,8 +1,7 @@
 /** 화면 공용 순수 함수(static/js/format.js). DOM 이 없어 node 에서 그대로 시험한다. */
 import { describe, expect, it } from "vitest";
 
-// @ts-expect-error 화면 코드는 JS 모듈(타입 선언 없음)이다
-const F = (await import("../static/js/format.js")) as Record<string, any>;
+const F = (await import("../src/lib/format")) as Record<string, any>;
 
 describe("표시 형식", () => {
   it("fmtTokens · fmtBytes · fmtMs · pct", () => {

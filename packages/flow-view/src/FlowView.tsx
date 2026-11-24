@@ -80,7 +80,7 @@ export function FlowView({ data, selectedId, labels, onSelect }: FlowViewProps) 
     >
       <Background gap={24} />
       <Controls showInteractive={false} aria-label={labels.controls} />
-      <MiniMap pannable zoomable ariaLabel={labels.minimap} nodeColor={() => "#aeb9c7"} nodeStrokeColor={() => "#46536b"} nodeStrokeWidth={2} maskColor="rgb(20 33 61 / 0.08)" />
+      <MiniMap pannable zoomable ariaLabel={labels.minimap} style={{ width: 150, height: 96 }} nodeColor={() => "#aeb9c7"} nodeStrokeColor={() => "#46536b"} nodeStrokeWidth={2} maskColor="rgb(20 33 61 / 0.08)" />
     </ReactFlow>
   );
 }
