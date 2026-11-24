@@ -1,5 +1,5 @@
 /**
- * 읽기 명령(설계 06 §3.15): status · sessions · quality · history · flow gates. --json 은 같은 REST 경로의 data 와 같다.
+ * 읽기 명령(설계 06 §3.15): status · sessions · quality · flow gates(skills · usage · history 는 skills.ts). --json 은 같은 REST 경로의 data 와 같다.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -43,6 +43,7 @@ export async function runStatus(ctx: Ctx): Promise<CommandResult> {
   }
   if (bool(v, "ops")) return run(ctx, "GET", "/ops", {}, jsonLines);
   if (bool(v, "session")) return run(ctx, "GET", "/session", {}, jsonLines);
+  if (str(v, "flow") !== undefined && bool(v, "burn")) return run(ctx, "GET", `/intents/${encodeURIComponent(str(v, "flow") as string)}/burn`, { query: str(v, "days") ? { days: str(v, "days") as string } : {} }, jsonLines);
   if (str(v, "flow") !== undefined) return run(ctx, "GET", "/flow", { query: { intent: str(v, "flow") as string } }, jsonLines);
   if (str(v, "doc") !== undefined) return run(ctx, "GET", "/docs", { query: { path: str(v, "doc") as string } }, (d) => [String(d.markdown ?? "")]);
   if (bool(v, "verify")) return run(ctx, "GET", "/verify", { query: str(v, "issue") ? { issue: str(v, "issue") as string } : {} }, jsonLines);
@@ -83,10 +84,6 @@ export async function runQuality(ctx: Ctx): Promise<CommandResult> {
     return run(ctx, "GET", "/reports/findings", { query }, jsonLines);
   }
   return run(ctx, "GET", "/reports/summary", {}, jsonLines);
-}
-
-export async function runHistory(ctx: Ctx): Promise<CommandResult> {
-  return run(ctx, "GET", "/history", {}, jsonLines);
 }
 
 /** flow gates [--add <g> --after <g> | --remove <g>]. 바닥 넷(requirements · design · mr · done) 아래로 줄이면 exit 1(04 §3.8). */
