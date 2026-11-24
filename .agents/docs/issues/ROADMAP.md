@@ -20,7 +20,7 @@
 - `init` 은 전체 프로젝트 등록부에 자동 등록하고 `--no-register` 로 끈다.
 - `outdated` 기본 원격은 `https://github.com/pscheol/harness-starter-kit.git`.
 - `pack new --dir` 은 사람이 명시한 경로면 리포 밖도 쓴다(빈 폴더 · 없는 경로만, 리포 `.agents/` 안은 거부).
-- 새 제품 이름은 **harnessync**(하네스싱크, 접두사 후보 `hs-`). 바꾸는 범위(제품 이름만 · CLI 와 패키지까지 · 전부)는 나중에 정한다. 이름 변경은 HK-22 릴리스에서 한다(npm · GitHub 이름은 2026-11-24 비어 있음, 상표 미확인).
+- 새 제품 이름은 **knots-sync**(약어 `kns`, 아래 결정 2026-11-24 — 처음 고른 harnessync 는 버렸다). 범위는 전부이고 HK-22 마지막(HK-22b)에서 한 번에 바꾼다.
 - HK-14 는 설계 04 와 다르게 주인별 훅 · 검사 파일(`hooks.d` · `verify-checks.d`), 개인 스킬 복사, Codex 개인 스킬 · Claude 개인 규칙 미배치로 간다.
 
 ## 이슈
@@ -49,16 +49,16 @@
 | HK-17 | P20 | 관리 페이지 서버(REST · 읽기 · 쓰기 규칙 · 승인 · 질문 · 세션 · 작업 요청 · 내보내기) | 06 §3.1~§3.15 | HK-13 | 끝 |
 | HK-18 | P20 | 관리 페이지 화면 · 흐름 보기(React Flow) · 전체 프로젝트 · 기록 · 사용량 · 스킬 목록 | 06 §3.16~§3.19 · 07 · screens | HK-17 | 끝(화면 층은 HK-26 이 바꾼다) |
 | HK-19 | P21 | 킷 설계 단계: 접수(intake) · /hx-intent · Unit 목록 · 질문 · 기획물 · 역할 | 08 · 12 | HK-17 | 끝 |
-| HK-26 | P20 보강 | 관리 페이지 화면 층을 React 19 + astryx 로(서버 · API · CLI 그대로, 릴리스 때 정적 번들) | 사용자 결정 · 06 | HK-18 | 진행 |
-| HK-20 | P22 | 선택 모듈: module.json · aidlc · entire(실제 설치 시험) · jira-workflow 개편 · notion · 모듈 토큰 측정 | 10 | HK-12 · HK-19 | 대기 |
-| HK-21 | P24 | 배포 · 운영 기록 · 전달 지표 · 규칙 후보 | 14 | HK-16 · HK-19 | 대기 |
-| HK-22 | 전 단계 | v1 → v2 이전 도구 · 릴리스 스크립트 · 두 구성 e2e(킷만 / 모두 켬) · knots · hdr 복사본 실측 | 11 · 13 | 전부 | 대기 |
+| HK-26 | P20 보강 | 관리 페이지 화면 층을 React 19 + astryx 로(서버 · API · CLI 그대로, 릴리스 때 정적 번들) | 사용자 결정 · 06 | HK-18 | 끝(사람 확인 남음) |
+| HK-20 | P22 | 선택 모듈: module.json · aidlc · entire(실제 설치 시험) · jira-workflow 개편 · notion · 모듈 토큰 측정 | 10 | HK-12 · HK-19 | 진행(HK-20a 끝 · HK-20b 진행) |
+| HK-21 | P24 | 배포 · 운영 기록 · 전달 지표 · 규칙 후보 | 14 | HK-16 · HK-19 | 끝 |
+| HK-22 | 전 단계 | v1 → v2 이전 도구 · 릴리스 스크립트 · 두 구성 e2e(킷만 / 모두 켬) · knots · hdr 복사본 실측 | 11 · 13 | 전부 | 진행(HK-22a 릴리스 · e2e · 이전 진행, HK-22b 이름 바꾸기는 마지막) |
 
 ## 진행 방식
 
-- 슬롯 A: HK-11(끝) → HK-16(끝) → HK-23(끝) → HK-17(끝) → HK-18(끝) → HK-19(끝) → HK-21
-- 슬롯 C: HK-26(관리 페이지 화면 astryx 전환, 서브에이전트)
-- 슬롯 B: HK-9/10(끝) → HK-12(끝) → HK-13(끝) → HK-25(끝) → HK-24(끝) → HK-14(끝) → HK-15(끝) → HK-20 → HK-22
+- 슬롯 A: HK-11(끝) → HK-16(끝) → HK-23(끝) → HK-17(끝) → HK-18(끝) → HK-19(끝) → HK-21(끝)
+- 슬롯 C: HK-26(끝, 관리 페이지 화면 astryx 전환)
+- 슬롯 B: HK-9/10(끝) → HK-12(끝) → HK-13(끝) → HK-25(끝) → HK-24(끝) → HK-14(끝) → HK-15(끝) → HK-20a(끝) → HK-20b · HK-22a(진행) → HK-22b(이름 바꾸기)
 - HK-12는 HK-9 · HK-10과 같은 파일(플러그인 문서 · setup.sh · CLI 겹침)을 건드려서 HK-9/10을 합친 뒤에 띄운다. 합친 뒤 HK-11 update 동일성 시험이 HK-9의 update.sh 보드 재생성 · HK-10 겹침 순서를 따라가는지 HK-12에서 맞춘다.
 - 합칠 때마다 깨끗한 worktree에서 시험 전체(`pnpm -C packages/cli test` · `node scripts/gen-plugins.mjs --check` · `python3 -m unittest discover -s tests -p "test_*.py"`)를 돌린다.
 
