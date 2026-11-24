@@ -127,6 +127,36 @@ class FromUnitTest(SddCase):
         self.set_field(contract / "design.md", "status", "approved")
         self.assert_ok(self.scaffold("DEMO-2", "--stage=design"))
 
+    def test_unit_repo_puts_the_issue_in_the_domain_folder_and_contract_stays_in_the_parent(self):
+        domain = self.root / "domains/api"
+        shutil.copytree(self.root / "scripts", domain / "scripts", ignore=shutil.ignore_patterns("tests", "__pycache__"))
+        (domain / ".agents/docs").mkdir(parents=True)
+        shutil.copytree(self.root / ".agents/docs/_spec-templates", domain / ".agents/docs/_spec-templates")
+        shutil.copy2(self.root / ".agents/harness-kit.json", domain / ".agents/harness-kit.json")
+        (self.root / "tools/harness").mkdir(parents=True, exist_ok=True)
+        (self.root / "tools/harness/units.json").write_text(json.dumps({"schema": "harness-kit.deploy-units/v1", "units": [{"id": "knots-api", "path": "domains/api", "stack": "jvm"}]}))
+        data = json.loads((self.intent / "units.json").read_text(encoding="utf-8"))
+        for unit in data["units"]:
+            unit["repo"] = "knots-api"
+        (self.intent / "units.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        code, contract = self.from_unit("INT-1/U-1")
+        self.assertEqual(0, code, contract)
+        self.assertEqual((".", ".agents/docs/issues/DEMO-1-payment-contract/requirements.md"), (contract["repo"], contract["path"]))
+        code, feature = self.from_unit("INT-1/U-2")
+        self.assertEqual(0, code, feature)
+        self.assertEqual("domains/api", feature["repo"])
+        self.assertTrue(feature["path"].startswith("domains/api/.agents/docs/issues/"), feature["path"])
+        self.assertTrue((self.root / feature["path"]).is_file())
+        again = self.from_unit("INT-1/U-2")[1]
+        self.assertEqual(("existing", feature["path"].rsplit("/", 1)[0]), (again["action"], again["path"]))
+        data = json.loads((self.intent / "units.json").read_text(encoding="utf-8"))
+        data["units"][1]["repo"] = "nope"
+        data["units"][1]["issue"] = None
+        (self.intent / "units.json").write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        code, bad = self.from_unit("INT-1/U-2")
+        self.assertEqual(3, code)
+        self.assertIn("nope", bad["error"])
+
     def test_jira_module_needs_a_work_item_key(self):
         meta = self.root / ".agents/harness-kit.json"
         data = json.loads(meta.read_text())

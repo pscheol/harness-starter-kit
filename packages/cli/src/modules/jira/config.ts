@@ -53,7 +53,8 @@ export function readTracker(root: string): TrackerConfig | null {
   if (!fs.existsSync(file)) return null;
   let doc: Record<string, unknown>;
   try {
-    doc = parseYaml(fs.readFileSync(file, "utf8"));
+    // 주석만 있는 줄은 yaml-lite 가 들여쓰기 판정에 쓰지 않도록 미리 뺀다
+    doc = parseYaml(fs.readFileSync(file, "utf8").split("\n").filter((l) => !/^\s*#/.test(l) && l.trim() !== "").join("\n"));
   } catch (err) {
     throw new CliError(EXIT.STATE, `${TRACKER_FILE} 를 읽지 못했다: ${err instanceof Error ? err.message : String(err)}`, "hx-jira-setup 스킬로 다시 채운다");
   }

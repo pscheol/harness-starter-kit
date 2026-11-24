@@ -10,9 +10,7 @@ import { resolveCandidates } from "./resolve";
 import { isRetiredModule, type Selection } from "./selection";
 
 /** 나중 단계 모듈. 이번 판에서는 이름만 알아보고 exit 2 와 제공 단계를 낸다. */
-export const LATER_MODULES: Record<string, string> = {
-  notion: "HK-20b(접수 출처 모듈, 설계 10 §3.6)",
-};
+export const LATER_MODULES: Record<string, string> = {};
 
 export interface Names {
   harnesses: string[];

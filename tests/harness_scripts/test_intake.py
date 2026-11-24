@@ -102,6 +102,43 @@ class IntakeTest(SddCase):
         self.assertTrue((self.root / out["folder"] / "requirements.md").is_file())
         self.assertTrue((self.root / out["folder"] / "intake.md").is_file())
 
+    def source(self, ref="DEMO-40", version="v1"):
+        path = self.base / "source.json"
+        path.write_text(json.dumps({"type": "jira", "ref": ref, "url": f"https://jira.example/browse/{ref}", "version": version}), encoding="utf-8")
+        return str(path)
+
+    def test_external_source_is_recorded_and_a_second_import_shows_a_diff_before_overwriting(self):
+        args = ("--title", "결제 개편", "--kind", "feature", "--name", "payment-revamp", "--key", "DEMO-40", "--source-json", self.source())
+        code, out = self.intake(*args, "--text", "첫 본문\n")
+        self.assertEqual((0, "created", ".agents/docs/intents/DEMO-40-payment-revamp"), (code, out["action"], out["folder"]))
+        intake = self.root / out["folder"] / "intake.md"
+        text = intake.read_text(encoding="utf-8")
+        self.assertIn("trust: untrusted", text)
+        source = json.loads(next(line for line in text.splitlines() if line.startswith("source: "))[len("source: "):])
+        self.assertEqual(("jira", "DEMO-40", "v1"), (source["type"], source["ref"], source["version"]))
+        self.assertIn("importedAt", source)
+        # 같은 출처 · 같은 글: 변화 없음(새 폴더를 만들지 않는다)
+        code, again = self.intake(*args, "--text", "첫 본문\n")
+        self.assertEqual((0, "same"), (code, again["action"]))
+        self.assertEqual(1, len(list((self.root / ".agents/docs/intents").iterdir())))
+        # 글이 바뀌면 diff 만 낸다(exit 4 — intake() 는 exit 0 만 JSON 으로 읽으므로 직접 부른다)
+        run = subprocess.run([sys.executable, "-B", "scripts/harness/intake.py", "new", "--json", *args, "--text", "둘째 본문\n"], cwd=self.root, env=self.env, capture_output=True, text=True, timeout=120)
+        self.assertEqual(4, run.returncode, run.stderr)
+        data = json.loads(run.stdout)
+        self.assertEqual("diff", data["action"])
+        self.assertTrue(any(line.startswith("+둘째 본문") for line in data["diff"]))
+        self.assertEqual(text, intake.read_text(encoding="utf-8"), "--apply 없이는 덮어쓰지 않는다")
+        code, applied = self.intake(*args, "--text", "둘째 본문\n", "--apply")
+        self.assertEqual((0, "updated"), (code, applied["action"]))
+        self.assertIn("둘째 본문", intake.read_text(encoding="utf-8"))
+        self.assertEqual(next(l for l in text.splitlines() if l.startswith("submittedAt:")), next(l for l in intake.read_text(encoding="utf-8").splitlines() if l.startswith("submittedAt:")))
+
+    def test_external_source_text_goes_through_the_same_secret_scan(self):
+        code, out = self.intake("--title", "x", "--kind", "feature", "--name", "leak-case", "--key", "DEMO-41", "--source-json", self.source("DEMO-41"), "--text", f"키 {AWS_LIKE}")
+        self.assertNotEqual(0, code)
+        self.assertIn("비밀값", out)
+        self.assertFalse((self.root / ".agents/docs/intents").exists() and any((self.root / ".agents/docs/intents").iterdir()))
+
     def test_bad_link_and_kind(self):
         code, out = self.intake("--title", "x", "--kind", "feature", "--name", "linky", "--link", "javascript:alert(1)")
         self.assertNotEqual(0, code)
