@@ -68,8 +68,8 @@
 
 | 스택군 | core | claude | codex | cursor | kiro | 전부 고를 때 |
 |---|---|---|---|---|---|---|
-| `jvm` · `python` · `go` | 256 | 0 | 1 | 0 | 1 | **258** |
-| `web` · `electron` (`frontend` 도메인 +4 core) | 260 | 0 | 1 | 0 | 1 | **262** |
+| `jvm` · `python` · `go` | 255 | 0 | 1 | 0 | 1 | **257** |
+| `web` · `electron` (`frontend` 도메인 +4 core) | 259 | 0 | 1 | 0 | 1 | **261** |
 
 하네스 폴더 파일은 설치가 `.agents/` 원본에서 만든다(배치 — mirror · render · merge, 모듈 없음 기준):
 
@@ -130,7 +130,7 @@
 
 ## 공통 vs 스택별 (무엇이 어디에 있나)
 
-| 영역 | `templates/common/` (243개) | `templates/domains/frontend/` (8개 · web·electron 만) | `templates/stacks/<stack>/` (변형 무관 14개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
+| 영역 | `templates/common/` (242개) | `templates/domains/frontend/` (8개 · web·electron 만) | `templates/stacks/<stack>/` (변형 무관 14개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
 |---|---|---|---|---|
 | 진입점 | `README.md` | — | `AGENTS.md` · `.gitignore` · `.github/actions/harness-setup/action.yml` | `root/ARCHITECTURE.md` |
 | 규칙 | `agent-harness.md` · `sdd-workflow.md` · `product.md` · `writing-style.md` · `design-principles.md` · `reuse-before-new.md` · `verification-ladder.md` · `pr-review-policy.md` · `git-workflow.md` · `platform-invariants.md` · **`code-maintenance.md`** · **`session-collaboration.md`** · **`approval-vocabulary.md`** | `design-system.md` · `accessibility.md` · `ui-state.md` · `frontend-performance.md` | `code-comments.md` · `api-standards.md` · `security.md` · `reliability.md` · `quality-score.md` · `guardrails.md` | `agents-rules/structure.md` · `agents-rules/tech.md` |
@@ -217,6 +217,9 @@
 | `scripts/board.sh` | SDD 보드(`specs-index.md`의 영역별 표)를 문서 머리로 다시 만든다. `--check` 는 어긋나면 실패, `--area <영역>` 은 그 표만 | — | 도구 |
 | `scripts/hooks/{session-start.sh,session-context.py,protect-sources.sh,verify-gate.sh}` | 에이전트 공용 hook 본문 — 세션 컨텍스트 주입(2,560바이트 안) · 보호 경로 쓰기 차단 · 턴 끝 changed 검증 | — | 인간 |
 | `.agents/hooks.json` | **훅 원본** — 킷 훅 id · 이벤트 · 도구 · 스크립트 · 하네스별 환경변수 · 출력 상한. 하네스별 훅 설정은 배치가 여기서 만든다 | — | 인간 |
+| `.agents/hooks.d/<팩>.json` · `project.json` · `.agents/verify-checks.d/…` | 팩(`update --packs` 가 깐다) · 프로젝트(사람이 둔다)의 훅 · 검사. 배치 · 검증이 킷 파일 뒤에 합쳐 읽는다 — 프로젝트는 같은 id 를 덮지만 하한 훅은 덮지 못한다 | — | 팩 · 인간 |
+| `.agents/local/`(gitignore) | 개인 층 — `harness-kit.local.json`(roles · git.ide 만) · 개인 스킬 · 규칙 · 훅. `harness-kit local sync` 가 하네스 폴더에 배치하고 개인 lock · `.git/info/exclude` 에 적는다 | — | 개인 |
+| `scripts/harness/floor.py` | 게이트 하한(requirements · design · mr · done)과 하한 훅 — 설정 · 팩 · 개인 층으로 바꿀 수 없다(CLI core/floor.ts 와 같은 값) | — | 도구 |
 | `scripts/hooks/{dispatch.sh,hook_root.py,hook_paths.py}` | 모든 킷 훅의 입구 — 입력 `cwd` 로 하네스 루트(worktree) 판정 · 출력 상한 자르기 · 실행 기록(`.agents/state/hook-output.jsonl`, 내용 없음) · 쓰는 경로 뽑기 | — | 인간 |
 | `scripts/hooks/{sync-projection.sh,protect-generated.sh,protect_generated.py}` | 원본(`.agents/skills · rules · roles · hooks.json`)을 고치면 복사본을 다시 만든다(출력 없음) · 생성 파일 직접 편집을 막고 원본 경로를 알린다 | — | 인간 |
 | `scripts/harness/upgrade_notice.py` | 업그레이드 공지 — `update.sh` 가 킷 `UPGRADE.md` 의 이번 판 절로 `.agents/harness-upgrade-notice.md` 를 쓴다(CLI 와 같은 바이트) | — | 도구 |

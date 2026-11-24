@@ -33,6 +33,12 @@
 
 ## 3. 설계
 
+> **구현 메모(HK-14, 2026-11-24, 사용자 결정)** — 이 장과 다르게 구현한 세 가지. 자세한 이유는 [HK-14 design §1](../../.agents/docs/issues/HK-14-extension-layers/design.md).
+> 1. 항목 단위 파일(§3.1 · §3.7)은 한 파일 안 항목 병합 대신 **주인별 파일**이다: 킷 `.agents/hooks.json` · `verify-checks.json`, 팩 `.agents/hooks.d/<팩>.json` · `verify-checks.d/<팩>.json`, 프로젝트 `…d/project.json`. 읽는 쪽이 이 순서로 합치고, 프로젝트는 같은 id 를 덮지만 하한 훅은 덮지 못한다.
+> 2. 개인 스킬(§3.6)은 링크가 아니라 **복사**로 배치한다(03 §4 와 같은 이유). 개인 lock · `.git/info/exclude` 블록은 그대로다.
+> 3. Codex 개인 스킬 · Claude 개인 규칙은 배치하지 않고 doctor 정보만 낸다(§6 확인 전).
+> 팩끼리 같은 경로 · id 는 이 장대로 멈춘다(exit 4). `pack new --dir` 은 사람이 명시한 경로면 리포 밖에도 쓴다.
+
 ### 3.1 이름과 경로
 
 층 비교는 설치 경로로 한다. 이름이 경로를 정하므로 이름이 같으면 경로가 같다.

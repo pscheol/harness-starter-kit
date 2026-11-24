@@ -11,6 +11,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
+sys.dont_write_bytecode = True  # 템플릿 폴더에 __pycache__ 를 만들지 않는다(manifest 파일 수 시험)
 KIT = Path(__file__).resolve().parents[1]
 SCRIPTS = KIT / "packages/templates/common/scripts"
 sys.path.insert(0, str(SCRIPTS / "harness"))
