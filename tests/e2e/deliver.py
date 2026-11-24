@@ -165,11 +165,11 @@ def deploy(sb: Sandbox, config: str, report: Report, intent_key: str, tag: str) 
         raise Skip("deploy plan 실패")
     record = json.loads(r.stdout)["record"]
     record_id = Path(record).stem
-    sha = sb.git("rev-parse", "--short=12", "HEAD")
+    # 가짜 CI 결과는 기록이 가리키는 커밋(머리 commit.sha = origin/base)에서 돈 것으로 적는다(D4). deploy.json 은 킷 기본값(verify · production)을 그대로 쓴다
+    head = re.search(r"^commit: \{ base: [^,]+, sha: ([0-9a-f]+) \}", sb.read(record), re.M)
+    sha = head[1] if head else sb.git("rev-parse", "--short=12", "HEAD")
     text = sb.read(record).replace("- full: none", f"- full: passed · sha {sha} · https://ci.example/1").replace("- quality-gate: none", f"- quality-gate: passed · sha {sha}")
     sb.write(record, text)
-    deploy_cfg = {"schema": "knots-sync.deploy/v1", "envs": {"verify": {"kind": "verification"}, "production": {"kind": "production"}}, "commands": {}, "autoVerify": {"enabled": False}}
-    sb.write(".agents/deploy.json", json.dumps(deploy_cfg))
     sb.commit("docs: 배포 기록")
     check = sb.py("deploy.py", "check", record_id, "--json", check=False)
     plan_sha = json.loads(check.stdout).get("planSha256", "") if check.stdout.strip().startswith("{") else ""
