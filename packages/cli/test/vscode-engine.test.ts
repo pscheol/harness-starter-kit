@@ -65,6 +65,20 @@ describe(".vscode/settings.json 병합", () => {
     expect(readText(target, ".vscode/settings.json")).toBe(own);
   });
 
+  it("doctor: 새 설치는 오류 0, 사람이 줄을 지우면 merge-missing, repair 가 되살린다", async () => {
+    const { target, cli } = await initWith(projectionTemplates(), "all", { pre });
+    const ok = await cli("doctor", ["--check", "--json"]);
+    expect(ok.code, ok.stdout).toBe(0);
+    fs.writeFileSync(path.join(target, ".vscode/settings.json"), SETTINGS);
+    const bad = await cli("doctor", ["--check", "--json"]);
+    expect(bad.code).toBe(1);
+    expect(bad.stdout).toContain("merge-missing");
+    expect(bad.stdout).toContain(".vscode/settings.json");
+    const fixed = await cli("repair", ["--json"]);
+    expect(fixed.code, fixed.stdout).toBe(0);
+    expect(readText(target, ".vscode/settings.json")).toContain('"git.detectWorktrees": true');
+  });
+
   it("TS ↔ Python: plan 기록이 같다", async () => {
     const templates = projectionTemplates();
     const { target } = await initWith(templates, "all", { pre });

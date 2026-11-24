@@ -89,7 +89,21 @@ def worktree_list(cwd):
                 current["bare"] = True
             elif line.startswith("prunable"):
                 current["prunable"] = True
+    if items:
+        items[0]["path"] = main_tree(items[0]["path"])
     return items
+
+
+def main_tree(path):
+    """submodule 은 첫 worktree 줄이 작업 트리가 아니라 `.git/modules/<이름>` 이다. 그때는 core.worktree 로 작업 트리를 찾는다."""
+    folder = Path(path)
+    if not (folder / "HEAD").is_file() or (folder / ".git").exists():
+        return path
+    code, out, _ = run_git(folder, "config", "--file", str(folder / "config"), "core.worktree")
+    if code != 0 or not out.strip():
+        return path
+    tree = Path(out.strip())
+    return str(tree if tree.is_absolute() else Path(os.path.normpath(str(folder / tree))))
 
 
 def git_version():

@@ -3,6 +3,7 @@
 지우는 일은 끝 조건(커밋 · push · 다른 세션 · 부른 폴더)을 모두 통과한 worktree 에만 한다. gc 는 기본이 목록이다.
 """
 
+import json
 import os
 import shutil
 import subprocess
@@ -311,6 +312,26 @@ def unknown_folders(ctx, known, recorded):
     return out
 
 
+def prune_coordination(ctx, apply):
+    """점유 저장소(state.json)의 보존 기한 밖 세션 · 공지(05 §3.10). 저장소가 없으면 None. 실패는 경고만 낸다."""
+    script = ctx.super / "scripts/session-coordination.py"
+    if not script.is_file() or not (ctx.super / ".agents/coordination/state.json").is_file():
+        return None
+    arguments = [sys.executable, "-B", str(script), "--root", str(ctx.super), "prune", "--sessions-days", str(state.SESSION_DAYS), "--notices-days", "30"]
+    if not apply:
+        arguments.append("--dry-run")
+    try:
+        result = subprocess.run(arguments, capture_output=True, text=True, timeout=60, check=False)
+        if result.returncode != 0:
+            warn(f"점유 기록 정리 실패: {result.stderr.strip()[:200]}")
+            return None
+        data = json.loads(result.stdout.strip().splitlines()[-1])
+    except (OSError, subprocess.TimeoutExpired, ValueError, IndexError) as error:
+        warn(f"점유 기록 정리 실패: {error}")
+        return None
+    return {key: data[key] for key in ("sessionsRemoved", "noticesRemoved", "sessionsKept", "noticesKept") if key in data}
+
+
 def gc(ctx, apply=False):
     removable, kept, orphans = [], [], []
     for rel, record in state.all_records(ctx):
@@ -337,6 +358,9 @@ def gc(ctx, apply=False):
         "orphanRecords": [str(state.record_path(ctx, rel)) for rel in orphans],
         "unknownFolders": [{"path": str(path), "empty": empty} for path, empty in unknown], "staleSessions": len(stale),
     }
+    coordination = prune_coordination(ctx, apply)
+    if coordination is not None:
+        result["coordination"] = coordination
     if not apply:
         return result
     removed, failed = [], []
@@ -378,6 +402,9 @@ def render_gc(result):
         lines.append(f"  git 이 모르는 {'빈 ' if item['empty'] else ''}폴더: {item['path']}" + ("" if item["empty"] else " (파일이 있어 남긴다)"))
     if result["staleSessions"]:
         lines.append(f"  7일 지난 세션 기록 {result['staleSessions']}개")
+    coordination = result.get("coordination")
+    if coordination and (coordination["sessionsRemoved"] or coordination["noticesRemoved"]):
+        lines.append(f"  점유 기록: 세션 {coordination['sessionsRemoved']}개 · 공지 {coordination['noticesRemoved']}개가 보존 기한(세션 7일 · 공지 30일) 밖이다")
     if len(lines) == 1:
         lines.append("  정리할 것이 없다")
     for item in result.get("failed", []):

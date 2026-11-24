@@ -23,10 +23,11 @@ created: 2026-11-24
 | `scripts/harness/worktree_prepare.py`(새) | `.worktreeinclude` · 의존성 · `.env.worktree` · sparse · `df` |
 | `scripts/harness/worktree_create.py`(새) | `new` 알고리즘(05 §3.3) · 훅 create(이슈 · 임시) |
 | `scripts/harness/worktree_finish.py`(새) | `done` · `gc` · 훅 remove · `list` · `open` |
+| `scripts/session-coordination.py prune` · `harness/coordination_prune.py`(새) | 점유 저장소(`state.json`)에서 heartbeat 7일 · 공지 30일 밖 기록을 지운다(05 §3.10). `gc` 가 부른다: 목록은 `--dry-run`, `--apply` 는 지운다 |
 | `scripts/hooks/worktree-create.sh` · `worktree-remove.sh`(새) | 디스패처가 부르는 훅 스크립트. `worktree.py hook-create` · `hook-remove` 로 넘긴다 |
 | `agents-root/hooks.json` | `harness-worktree-create` · `harness-worktree-remove`(Claude 만) |
 | `scripts/harness/projection.json` | `hookMap.events` 에 `worktree-create` · `worktree-remove`(Claude 만) |
-| `root/.worktreeinclude`(새) · 스택별 `.gitignore` | 복사 목록 템플릿 · `.env.worktree` 무시 |
+| `root/.worktreeinclude`(새) | 복사 목록 템플릿. 스택별 `.gitignore` 는 이미 `.env.*` 를 무시하므로 `.env.worktree` 항목을 더하지 않는다 |
 | `projection_merge.py` · `projection_wants.py` / `merge.ts` · `engine.ts` | 병합 종류 `vscode-settings`: `.vscode/settings.json` 에 `git.detectWorktrees: true`(R6.1) |
 | `agents-rules/git-workflow.md` · `session-collaboration.md` | worktree 규칙 · 끝내지 못했을 때 알림 · `gc --apply` 는 사람이 시킬 때만 |
 
@@ -41,7 +42,6 @@ CLI(`npx harness-kit`)에 명령을 더하지 않는다. 설계 05 · README §7
 | §3.5 `.worktreeinclude` 패턴 | gitignore 문법 중 `*` · `**` · `?` · 앞 `/`(루트 고정) · 끝 `/`(폴더) · `!`(제외)를 지원한다. 문자 클래스는 `fnmatch` 규칙 | 표준 라이브러리만 쓴다. 후보는 `git ls-files -oi --exclude-standard --directory`(무시된 폴더는 들어가지 않는다)에서 뽑으므로 무시 판정은 git 이 한다 |
 | §3.6 의존성 단위 | `git ls-files` 가 아는 `pnpm-lock.yaml` · `uv.lock` · `package-lock.json` · `Cargo.toml` 위치(sparse 로 빠진 폴더 제외)다. `.agents/harness.json` 표지를 읽지 않는다 | 표지가 없는 단일 리포도 같은 규칙으로 돈다 |
 | §3.10 세션의 `worktree` 객체 | 만들지 않고 세션 기록의 `cwd` 가 P 아래인지로 센다 | HK-17 형식이 이미 `cwd` · `checkout` 을 가진다. 필드를 늘리면 세션 시작 훅 출력 예산 시험을 다시 묶어야 한다 |
-| §3.12 · §5 #6 `session-coordination.py prune` | 이 이슈에 넣지 않는다. `gc --apply` 는 세션 기록(`state/sessions/*.json`, 7일)만 지운다 | 점유 저장소(knots 사본 `state.json`)의 시각 필드를 확인한 뒤 따로 더한다(05 §6). 05 §5 의 6번이 남는다 |
 | §3.13 `claude -w "#1234"` 이름 | 임시 이름에서 `[A-Za-z0-9._-]` 밖의 글자를 `-` 로 바꾸고 `#` 로 시작하면 `pr-` 를 붙인다 | `name` 값이 확인되지 않았다(05 §6). 어떤 값이 와도 폴더 이름으로 안전하게 만든다 |
 | §3.8 `wt list` 대상 | 기본은 지금 리포의 worktree, `--all` 은 S 의 모든 기록. root 밖 worktree 는 `외부` 로 한 줄만 | 05 §3.8 에 대상 범위 문장이 없어 정한다 |
 
@@ -79,14 +79,13 @@ JSONC 문자열을 줄 단위로 고친다(주석 · 다른 키 · 들여쓰기�
 
 - 파일이 없으면 만든다(`createdByKit`). 있고 키가 최상위에 없으면 마지막 항목 뒤에(쉼표가 필요하면 붙여) 한 줄을 더한다.
 - 키가 이미 있으면 값이 무엇이든 건드리지 않는다. 사람이 `false` 로 둔 것은 사람 뜻이다. 값이 `true` 이고 이전 lock 에 우리가 적은 키였으면 계속 적는다.
-- 빼기: 우리가 더한 줄(키가 `true`)만 지운다. 파일이 킷이 만든 것이고 다른 항목 · 주석이 없으면 파일을 지운다. 사람이 마지막 항목 뒤에 쉼표를 둔 채 우리가 더한 줄을 지우면 그 쉼표는 남는다(JSONC 에서 유효).
+- 빼기: 우리가 더한 줄(키가 `true`)만 지운다. 파일이 킷이 만든 것이고 다른 항목 · 주석이 없으면 파일을 지운다. 우리 줄이 마지막이고 뒤에 쉼표가 없으면 앞 항목의 쉼표도 함께 지운다(더하기 → 빼기가 원래 바이트로 돌아온다). 사람이 원래 후행 쉼표를 두었던 파일은 그 쉼표 하나가 사라진다(JSONC 에서 유효).
 - 읽을 수 없는 JSONC 면 충돌이고 파일은 그대로다. Python · TS 는 같은 스캐너 알고리즘을 쓴다(동일성 시험).
 
 ## 7. 시험(RED 먼저)
 
 | 시험 | 내용 |
 |---|---|
-| `tests/harness_scripts/test_worktree.py`(설치본) | 임시 리포 + 로컬 bare origin. new(자리 · 브랜치 · upstream 없음 · 상한 3 → exit 3 · design 미승인 exit 1 · `--docs` sparse · `.worktreeinclude` · 포트 +200 · 상태 기록) · list(JSON · 변경 · 안올림 · 세션) · done(clean · push 안 됨 exit 1 · 세션 사용 중 · push 뒤 삭제 · 브랜치 삭제) · gc(목록만 · apply · 임시 · 고아 기록) · hook-create · hook-remove · 도메인(submodule) worktree · open(가짜 `code`) |
-| `tests/harness_scripts/test_worktree_hooks.py` | 디스패처를 거친 WorktreeCreate · Remove 입력(JSON)으로 출력 · 종료 코드 |
-| `packages/cli/test/vscode-merge.test.ts` · `tests/test_vscode_merge.py` | JSONC 병합 · 빼기 · 충돌 · TS = Python 같은 바이트 |
+| `tests/harness_scripts/test_worktree.py`(설치본) | 임시 리포 + 로컬 bare origin. new(자리 · 브랜치 · upstream 없음 · 상한 3 → exit 3 · design 미승인 exit 1 · `--docs` sparse · `.worktreeinclude` · 포트 +200 · 상태 기록) · list(JSON · 변경 · 안올림 · 세션) · done(clean · push 안 됨 exit 1 · 세션 사용 중 · push 뒤 삭제 · 브랜치 삭제) · gc(목록만 · apply · 임시 · 고아 기록) · hook-create · hook-remove(디스패처를 거친 WorktreeCreate · Remove 입력 JSON) · 도메인(submodule) worktree · open(가짜 `code` · `idea`) |
+| `packages/cli/test/vscode-merge.test.ts` · `vscode-engine.test.ts` · `tests/test_vscode_merge.py` | JSONC 병합 · 빼기 · 충돌 · 공용 fixture 로 TS = Python 같은 바이트 · init · update · uninstall · plan 동일성 |
 | 기존 | `projection-parity` · `projection-merge` · `projection-hooks`(fixture 에 새 이벤트) · 세션 시작 예산 · 템플릿 문구 시험 |

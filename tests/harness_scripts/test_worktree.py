@@ -62,6 +62,7 @@ class WorktreeCase(unittest.TestCase):
         self.main.mkdir()
         shutil.copytree(ROOT / "scripts/harness", self.main / "scripts/harness", ignore=shutil.ignore_patterns("__pycache__"))
         shutil.copytree(ROOT / "scripts/hooks", self.main / "scripts/hooks", ignore=shutil.ignore_patterns("__pycache__"))
+        shutil.copy2(ROOT / "scripts/session-coordination.py", self.main / "scripts/session-coordination.py")
         for name in ("hooks.json",):
             if (ROOT / ".agents" / name).is_file():
                 (self.main / ".agents").mkdir(exist_ok=True)
@@ -185,8 +186,8 @@ class NewTest(WorktreeCase):
         self.assertIn(".agents", names)
         self.assertIn("docs", names)
         self.assertNotIn("src", names)
-        self.assertEqual("true", git(path, "config", "--get", "core.sparseCheckout", check=False) or "true")
         # 메인 폴더의 sparse 설정은 바뀌지 않는다(05 §6)
+        self.assertIn(git(self.main, "config", "--get", "core.sparseCheckout", check=False), ("", "false"))
         self.assertEqual("", git(self.main, "sparse-checkout", "list", check=False))
         self.assertTrue((self.main / "src/app.py").is_file())
         self.assertTrue(self.record("ACME-1-alpha-work")["docsOnly"])
@@ -370,8 +371,8 @@ class ListTest(WorktreeCase):
         result = self.wt("list", HARNESS_WT_MIN_FREE_GB="99999999")
         self.assertIn("디스크 여유", result.stdout + result.stderr)
         result = self.wt("list", HARNESS_WT_WARN_GB="0.0000001")
-        self.assertIn("20GB" if False else "합계", result.stdout)
-        self.assertRegex(result.stdout + result.stderr, "경고|⚠")
+        self.assertIn("합계", result.stdout)
+        self.assertRegex(result.stdout + result.stderr, "합계 .*GB 가 .*GB 를 넘었다")
 
     def test_size_is_cached_and_refresh_size_remeasures(self):
         a = Path(self.new("ACME-1")["path"])
@@ -613,6 +614,36 @@ class GcTest(WorktreeCase):
         self.assertTrue((self.root / "has-files/x.txt").exists())
         self.assertNotIn("ACME-1-alpha-work", git(self.main, "worktree", "list"))
 
+    def test_prunes_coordination_records_outside_retention(self):
+        write(self.main / ".agents/harness.json", json.dumps({"unit": "proj"}))
+        now = time.time()
+
+        def session(sid, age_days):
+            stamp = now - age_days * 86400
+            return {"id": sid, "client": "claude", "issue": "ACME-1", "status": "active", "registered_at": stamp, "heartbeat_at": stamp,
+                    "expires_at": stamp + 1800, "ttl_seconds": 1800, "files": [], "baseline": {}}
+
+        def notice(nid, age_days, sender=None, target=None, ack=()):
+            return {"id": nid * 32, "sender": sender, "target": target, "message": "m", "created_at": now - age_days * 86400,
+                    "acknowledged_by": list(ack), "trust": "untrusted"}
+
+        state_file = self.main / ".agents/coordination/state.json"
+        write(state_file, json.dumps({"version": 1, "sessions": {"old": session("old", 10), "new": session("new", 0.1)}, "notices": [
+            notice("a", 40, sender="new"), notice("b", 1, target="old"), notice("c", 1, sender="old", ack=["old", "new"]), notice("d", 1, sender="new"),
+        ]}))
+        before = json.loads(state_file.read_text(encoding="utf-8"))
+        listed = json.loads(self.wt("gc", "--json").stdout)
+        self.assertEqual({"sessionsRemoved": 1, "noticesRemoved": 2, "sessionsKept": 1, "noticesKept": 2}, listed["coordination"])
+        self.assertEqual(before, json.loads(state_file.read_text(encoding="utf-8")))  # 목록만: 내용은 그대로
+        self.assertEqual(0, self.wt("gc", "--apply").returncode)
+        after = json.loads(state_file.read_text(encoding="utf-8"))
+        self.assertEqual(["new"], list(after["sessions"]))
+        self.assertEqual(["c" * 32, "d" * 32], [n["id"] for n in after["notices"]])
+        self.assertEqual((None, ["new"]), (after["notices"][0]["sender"], after["notices"][0]["acknowledged_by"]))
+        status = subprocess.run([sys.executable, "-B", str(self.main / "scripts/session-coordination.py"), "--root", str(self.main), "status"],
+                                capture_output=True, text=True, env=clean_env())
+        self.assertEqual(0, status.returncode, status.stderr)
+
     def test_gc_does_not_touch_the_cargo_target_dir(self):
         (self.root / ".cargo-target").mkdir(parents=True)
         (self.root / ".cargo-target/keep").write_text("1", encoding="utf-8")
@@ -779,7 +810,7 @@ class DomainTest(WorktreeCase):
         self.assertEqual("feat/ACME-1-alpha-work", git(path, "rev-parse", "--abbrev-ref", "HEAD"))
         rec = self.record("dom/ACME-1-alpha-work")
         self.assertEqual("dom", rec["repo"])
-        self.assertEqual("", git(self.main, "status", "--porcelain", "--ignore-submodules=none"))
+        self.assertEqual("?? scratch.txt", git(self.main, "status", "--porcelain", "--ignore-submodules=none"))  # scratch.txt 는 시험 준비물
 
     def test_domain_done_prints_the_pointer_hint_and_super_repo_stays_clean(self):
         path = Path(json.loads(self.wt("new", "ACME-1", "--domain", "dom", "--json").stdout)["path"])
@@ -788,7 +819,7 @@ class DomainTest(WorktreeCase):
         self.assertFalse(path.exists())
         self.assertIn("git -C", result.stdout)
         self.assertIn("add dom", result.stdout)
-        self.assertEqual("", git(self.main, "status", "--porcelain"))
+        self.assertEqual("?? scratch.txt", git(self.main, "status", "--porcelain"))
 
     def test_running_inside_the_domain_repo_needs_no_domain_option(self):
         result = self.wt("new", "ACME-3", "--json", cwd=self.main / "dom")
