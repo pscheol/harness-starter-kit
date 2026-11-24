@@ -90,14 +90,18 @@ function rich(list: unknown): string {
   return a(list)
     .map((x) => {
       const r = o(x);
-      let t = s(r.plain_text);
+      const raw = s(r.plain_text);
+      const lead = /^\s*/.exec(raw)?.[0] ?? "";
+      const trail = raw.trim() ? (/\s*$/.exec(raw)?.[0] ?? "") : "";
+      let t = raw.trim();
+      if (!t) return raw;
       const ann = o(r.annotations);
       if (ann.code === true) t = `\`${t}\``;
       if (ann.bold === true) t = `**${t}**`;
       if (ann.italic === true) t = `*${t}*`;
       if (ann.strikethrough === true) t = `~~${t}~~`;
       const href = s(r.href);
-      return href ? `[${t}](${href})` : t;
+      return `${lead}${href ? `[${t}](${href})` : t}${trail}`;
     })
     .join("");
 }
@@ -199,9 +203,13 @@ async function takeFile(block: Obj, ctx: Ctx): Promise<string> {
 async function render(blocks: Obj[], ctx: Ctx, indent: string, level: number): Promise<string[]> {
   const out: string[] = [];
   let n = 0;
+  let listOpen = false;
   for (const b of blocks) {
     const t = s(b.type);
     const body = o(b[t]);
+    const isList = ["bulleted_list_item", "numbered_list_item", "to_do", "toggle"].includes(t);
+    if (!isList && listOpen && out.length && out[out.length - 1] !== "") out.push("");
+    listOpen = isList;
     const text = rich(body.rich_text);
     n = t === "numbered_list_item" ? n + 1 : 0;
     const kids = b.has_children === true && !["child_page", "child_database", "table"].includes(t) ? await ctx.api.children(s(b.id)) : [];

@@ -52,7 +52,9 @@ class CrossRepoTest(unittest.TestCase):
         (self.root / 'tools/harness').mkdir(parents=True)
         shutil.copy2(TOOL / 'gates.py', self.root / 'tools/harness/gates.py')
         (self.root / 'tools/harness/units.json').write_text(json.dumps({'schema': 'harness-kit.deploy-units/v1', 'units': [
-            {'id': 'app', 'path': DOMAINS[0], 'stack': 'electron', 'packages': ['@acme/api']}, {'id': 'api', 'path': DOMAINS[1], 'stack': 'jvm'}]}))
+            {'id': 'root', 'path': '.', 'stack': 'monorepo'}, {'id': 'app', 'path': DOMAINS[0], 'stack': 'electron', 'packages': ['@acme/api']}, {'id': 'api', 'path': DOMAINS[1], 'stack': 'jvm'}]}))
+        (self.root / '.agents').mkdir()
+        (self.root / '.agents/harness.json').write_text(json.dumps({'unit': 'root', 'stack': 'monorepo'}))
         (self.root / 'scripts/harness').mkdir(parents=True)
         shutil.copy2(REPO_SCRIPTS / 'harness/check_submodules.py', self.root / 'scripts/harness/check_submodules.py')
         (self.root / '.agents/docs').mkdir(parents=True)
@@ -90,7 +92,7 @@ class CrossRepoTest(unittest.TestCase):
         text = (self.root / '.agents/docs/specs-index.md').read_text()
         self.assertIn(f'| {sha[DOMAINS[0]][:7]} |', text)
         self.assertIn(f'| {sha[DOMAINS[1]][:7]} |', text)
-        self.assertIn('| domains/api | domains/app |'.replace('| domains/api | domains/app |', 'domains/api | domains/app'), text)
+        self.assertIn('| 이슈 | 단계 | domains/api | domains/app | 병합 |', text)
         self.assertIn('2026-11-24', text)
         # 다시 적어도 행은 하나, 손으로 쓴 앞부분은 그대로
         self.assertEqual(0, self.check('--record', 'KNOTS-17').returncode)
@@ -135,14 +137,13 @@ class CrossRepoTest(unittest.TestCase):
             shutil.copy2(REPO_SCRIPTS / name, self.root / 'scripts' / name)
         for name in ('harness', 'hooks'):
             shutil.copytree(REPO_SCRIPTS / name, self.root / 'scripts' / name, ignore=shutil.ignore_patterns('__pycache__', '*.pyc'), dirs_exist_ok=True)
-        for path in DOMAINS:
-            verify = self.root / path / 'scripts/verify.sh'
-            verify.parent.mkdir(parents=True, exist_ok=True)
-            verify.write_text('#!/usr/bin/env bash\necho "검증 passed(affected) — 하위"\n')
-            verify.chmod(0o755)
+        verify = self.root / DOMAINS[0] / 'scripts/verify.sh'   # api 에는 두지 않는다(작업 트리를 더럽혀 바뀐 도메인이 된다)
+        verify.parent.mkdir(parents=True, exist_ok=True)
+        verify.write_text('#!/usr/bin/env bash\necho "검증 passed(affected) — 하위"\n')
+        verify.chmod(0o755)
         self.git(self.root, 'update-ref', 'refs/remotes/origin/develop', self.git(self.root, 'rev-parse', 'HEAD'))
-        # api 는 건드리지 않고(초기화 안 된 척 deinit), app 만 바뀐 상태에서 push 하지 않은 포인터를 만든다
-        run(['git', 'submodule', 'deinit', '-q', '-f', DOMAINS[1]], self.root, self.env)
+        # api 는 바뀐 것이 없지만 브랜치 이슈 키가 어긋나 있다(바뀐 도메인만 검사하므로 잡히지 않아야 한다). app 은 push 하지 않은 포인터를 만든다
+        self.git(self.root / DOMAINS[1], 'checkout', '-q', '-B', 'feat/KNOTS-99-other')
         self.commit_domain(DOMAINS[0], 'feature.md', push=False)
         self.git(self.root, 'add', DOMAINS[0])
         plan = run([sys.executable, str(self.root / 'scripts/verify-changed.py'), '--level', 'affected', '--plan'], self.root, self.env, check=False)
@@ -152,9 +153,11 @@ class CrossRepoTest(unittest.TestCase):
         self.assertEqual(1, len(guards))
         self.assertIn(DOMAINS[0], guards[0]['arguments'])
         self.assertNotIn(DOMAINS[1], ' '.join(guards[0]['arguments']))
-        run_result = run([sys.executable, str(self.root / 'scripts/verify-changed.py'), '--level', 'affected'], self.root, self.env, check=False)
-        self.assertNotEqual(0, run_result.returncode, run_result.stdout + run_result.stderr)
-        self.assertIn('[pointer]', run_result.stdout + run_result.stderr)
+        # 계획의 명령을 그대로 부르면 app 의 앞선 포인터를 잡고, 계획에 없는 api 는 부르지 않았지만 부르면 브랜치 키 어긋남을 잡는다
+        called = run(guards[0]['arguments'], guards[0]['cwd'], self.env, check=False)
+        self.assertEqual(1, called.returncode, called.stdout + called.stderr)
+        self.assertIn('[pointer]', called.stdout)
+        self.assertIn('[branch]', self.check('--domain', DOMAINS[1]).stdout)
 
 
 @unittest.skipUnless((REPO_SCRIPTS / 'run-guards.sh').is_file() and (REPO_SCRIPTS / 'guards/no-cross-domain-paths.sh').is_file(), '설치본의 가드에서 돈다')

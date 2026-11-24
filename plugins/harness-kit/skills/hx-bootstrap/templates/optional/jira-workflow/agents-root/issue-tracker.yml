@@ -47,6 +47,39 @@ transitionIds:
   inProgressToInReview: TBD
   inProgressToTodo: TBD      # 착수 철회(락 해제와 함께)
 
+# ── v2: 킷 단계 ↔ Jira 상태(설계 10 §3.4) ─────────────────────────────────
+# 킷 단계 여덟 개를 이 프로젝트 워크플로의 상태 ID 에 맞춘다(hx-jira-setup 이 REST 로 읽어 채운다).
+# 위 statusIds · transitionIds 는 /hx-issue 의 v1 단품 조작용으로 그대로 둔다(inReview = verifying).
+statusMap:
+  backlog: TBD
+  requirements-draft: TBD
+  requirements-review: TBD
+  design: TBD
+  implementing: TBD
+  verifying: TBD
+  done: TBD
+  deployed: TBD
+
+# 사람만 하는 전이: "<이전 상태 ID>>이동 상태 ID": 게이트 이름. 이 전이는 에이전트도 `sync jira` 도 하지 않는다(MD-R14).
+# 사람이 Jira 에서 옮긴 기록만 `npx harness-kit sync jira --approvals` 가 approvals.md 로 가져온다.
+approvalTransitions: {}
+  # "<requirements-review ID>><design ID>": requirements
+  # "<design ID>><implementing ID>": design
+  # "<verifying ID>><done ID>": done
+  # "<done ID>><deployed ID>": deploy
+
+issueTypes: { contract: Task, integration: Task, feature: Story, bug: Bug, bolt: Sub-task }
+
+# harness-kit.json 의 groups → Jira 그룹. 워크플로 조건(승인 전이를 그 그룹만)에 쓴다.
+groupMap: { po: jira-po, dev: jira-dev, qa: jira-qa, ops: jira-ops }
+
+# 동기화 수단: rest | mcp | none. none 이면 `sync jira` 는 아무것도 하지 않고, 보드는 킷 단계의 여덟 상태로 돈다(MD-R15).
+sync:
+  method: none
+  mcpServer: TBD             # method=mcp
+  restTokenEnv: JIRA_API_TOKEN    # 환경 변수 이름만. 값은 절대 쓰지 않는다
+  restUserEnv: JIRA_USER_EMAIL
+
 # ── 에이전트 동시 작업 방지 락 ─────────────────────────────────────────────
 # 규약 원본: .agents/rules/issue-agent-lock.md
 lock:
@@ -59,7 +92,7 @@ lock:
 # ── 에이전트가 넘지 않는 선 ────────────────────────────────────────────────
 # 여기를 넓히기 전에 왜 필요한지 .agents/docs/decisions/ 에 남긴다.
 agentBoundary:
-  maxStatus: inReview        # 여기까지만 전이한다. done/close 는 사람의 판단이다
+  maxStatus: verifying       # 여기까지만 전이한다(= v1 inReview). 승인 전이(approvalTransitions) · done/close 는 사람의 판단이다
   mayComment: true
   mayAssign: false           # 담당자 변경은 사람이 한다
   mayClose: false

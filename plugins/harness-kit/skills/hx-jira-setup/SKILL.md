@@ -86,6 +86,18 @@ GET {baseUrl}/rest/api/3/issue/{issueKey}/transitions
 **같은 워크플로를 쓰는 티켓이어야 한다.** 이슈 타입마다 워크플로가 다르면 타입별로 값이 갈린다 —
 그 경우 사용자와 상의해 주 사용 타입 기준으로 채우고, 그 사실을 파일 주석에 남긴다.
 
+### 4a. v2 — 여덟 상태 · 승인 전이 · 동기화(`statusMap` `approvalTransitions` `sync`)
+
+`jira-workflow` v2 는 킷 단계 여덟 개(백로그 · 요구사항 작성 · 요구사항 승인 대기 · 설계 · 구현 중 · 검증 · 완료 · 배포됨)를 Jira 상태 ID 에 맞춘다.
+
+1. `statusMap` 의 여덟 키(`backlog` `requirements-draft` `requirements-review` `design` `implementing` `verifying` `done` `deployed`)에 3번에서 조회한 **상태 ID** 를 넣는다. 이름이 아니라 ID 다.
+2. `approvalTransitions` 에 **사람만 하는 전이**를 `"<이전 상태 ID>><이동 상태 ID>": <게이트>` 로 적는다. 기본 네 개: 요구사항 승인 대기 → 설계(`requirements`), 설계 → 구현 중(`design`), 검증 → 완료(`done`), 완료 → 배포됨(`deploy`). 이 전이는 에이전트도 `sync jira` 도 하지 않는다.
+3. Jira 워크플로 조건에서 위 네 전이를 `groupMap` 의 그룹(`jira-po` · `jira-dev` · `jira-qa` · `jira-ops`)만 하게 건다. 그룹 구성원은 `harness-kit.json` 의 `groups` 와 같은 사람이다(설정 화면 작업은 사람이 한다).
+4. `sync.method` 를 `rest`(승인 가져오기 · 상태 맞추기) · `mcp`(세션의 `/hx-issue` 만) · `none` 중 하나로 정한다. `rest` 면 `restTokenEnv`(기본 `JIRA_API_TOKEN`) · `restUserEnv`(기본 `JIRA_USER_EMAIL`) 환경 변수 **이름**만 적는다.
+5. `npx harness-kit sync jira --dry-run` 으로 어떤 전이가 일어날지 먼저 본다. 승인 가져오기는 `npx harness-kit sync jira --approvals --dry-run`.
+
+`sync.method: none`(기본)이거나 모듈이 꺼져 있어도 킷 흐름과 보드는 같은 여덟 상태로 돈다.
+
 ### 5. 락 (`lock`)
 
 | `mode` | 어떻게 | 고르는 기준 |
@@ -100,7 +112,7 @@ GET {baseUrl}/rest/api/3/issue/{issueKey}/transitions
 
 ### 6. 에이전트 경계 (`agentBoundary`)
 
-기본값을 그대로 쓰기를 권한다 — `maxStatus: inReview` · `mayAssign/mayClose/mayEditDescription/mayCreate: false`.
+기본값을 그대로 쓰기를 권한다 — `maxStatus: verifying`(v1 의 inReview 와 같은 자리) · `mayAssign/mayClose/mayEditDescription/mayCreate: false`.
 
 - 넓히려면 **왜 필요한지 `.agents/docs/decisions/` 에 ADR 을 남긴다.**
 - `mayCreate: true` 로 켜도 에이전트는 **사용자가 명시적으로 요청할 때만** 티켓을 만든다.

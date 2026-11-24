@@ -187,7 +187,7 @@ function notionHandler(m: NotionMock): Handler {
         block("b4", "code", { rich_text: [rt("print(1)")], language: "python" }),
         block("b5", "table", { table_width: 2 }, true),
         block("b6", "image", { type: "file", file: { url: `${m.s3.url}/img/diagram.png?sig=1` }, caption: [] }),
-        block("b7", "child_page", { title: "부록" }),
+        block(CHILD, "child_page", { title: "부록" }),
         block("b8", "to_do", { rich_text: [rt("검토")], checked: true }),
       ] } };
     }
@@ -223,7 +223,7 @@ describe("intake --from notion:<페이지>", () => {
     expect(intake).toContain("| 종류 | 변경 |");
     expect(intake).toContain("| 담당 | Kim |");
     expect(intake).toContain("### 목표");
-    expect(intake).toContain("토큰 **결제** [ 링크](https://example.com/x)");
+    expect(intake).toContain("토큰 **결제** [링크](https://example.com/x)");
     expect(intake).toContain("- 카드\n  - 해외 카드");
     expect(intake).toContain("```python\nprint(1)\n```");
     expect(intake).toContain("| 항목 | 값 |\n|---|---|\n| 한도 | 100 |");

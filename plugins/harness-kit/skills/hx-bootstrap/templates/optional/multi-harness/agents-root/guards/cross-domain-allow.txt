@@ -1,0 +1,3 @@
+# 도메인 간 경로 가드 예외(scripts/guards/no-cross-domain-paths.sh, 설계 10 §3.5).
+# 한 줄에 `<상위 리포 기준 파일 경로 또는 글롭>  <사유>` 를 적는다. 사유가 없으면 그 줄이 위반이다.
+# 예: domains/app/docs/migration.md  마이그레이션 문서가 API 도메인 경로를 설명한다

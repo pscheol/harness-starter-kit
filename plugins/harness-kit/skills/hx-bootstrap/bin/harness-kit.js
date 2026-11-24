@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 5fffc781630298cd4b7cdf8fa4d81e300cbdea2f234a47709db8563b61c469b0 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 b1357ca945ab33f767bbb97017f87e0c76f31b412ab440346e05810bd7a40cc1 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -672,10 +672,22 @@ var COMMAND_OPTIONS = {
   pack: { dir: { type: "string" }, from: { type: "string", multiple: true }, "kit-range": { type: "string" } },
   local: {},
   // 외부 도구 모듈의 어댑터 · 체크포인트(HK-20, 설계 10 §3.2 · §3.3)
-  sync: { intent: { type: "string" }, check: { type: "boolean" }, key: { type: "string" } },
+  sync: {
+    intent: { type: "string" },
+    check: { type: "boolean" },
+    key: { type: "string" },
+    // sync jira(설계 10 §3.4) · sync units(설계 10 §3.5)
+    approvals: { type: "boolean" },
+    verify: { type: "boolean" },
+    issue: { type: "string" },
+    to: { type: "string" },
+    "mr-url": { type: "string" },
+    unit: { type: "string", multiple: true },
+    adopt: { type: "boolean" }
+  },
   checkpoints: { issue: { type: "string" } },
   // 설계 단계(HK-19, 설계 08)
-  intake: { title: { type: "string" }, kind: { type: "string" }, name: { type: "string" }, area: { type: "string" }, text: { type: "string" }, "text-file": { type: "string" }, attach: { type: "string", multiple: true }, link: { type: "string", multiple: true } }
+  intake: { from: { type: "string" }, depth: { type: "string" }, key: { type: "string" }, title: { type: "string" }, kind: { type: "string" }, name: { type: "string" }, area: { type: "string" }, text: { type: "string" }, "text-file": { type: "string" }, attach: { type: "string", multiple: true }, link: { type: "string", multiple: true } }
 };
 var POSITIONAL = /* @__PURE__ */ new Set(["add", "remove", "projects", "approve", "answer", "review", "dispatch", "units", "flow", "pack", "local", "mob", "sync", "checkpoints"]);
 function parseCommandArgs(command, argv2) {
@@ -709,8 +721,8 @@ function list(values, key) {
 var import_node_crypto = __toESM(require("node:crypto"));
 var import_node_fs = __toESM(require("node:fs"));
 var import_node_path = __toESM(require("node:path"));
-function byteCompare(a, b) {
-  return Buffer.compare(Buffer.from(a, "utf8"), Buffer.from(b, "utf8"));
+function byteCompare(a3, b) {
+  return Buffer.compare(Buffer.from(a3, "utf8"), Buffer.from(b, "utf8"));
 }
 function walkFiles(dir) {
   const out = [];
@@ -794,19 +806,19 @@ function strList(v, what) {
   return [...v];
 }
 function strMap(v, what) {
-  const o = obj(v, what);
-  for (const [k, x] of Object.entries(o)) str2(x, `${what}.${k}`);
-  return { ...o };
+  const o3 = obj(v, what);
+  for (const [k, x] of Object.entries(o3)) str2(x, `${what}.${k}`);
+  return { ...o3 };
 }
 function stackSpec(v, what) {
-  const o = obj(v, what);
-  const domain = o.domain === null || o.domain === void 0 ? null : str2(o.domain, `${what}.domain`);
+  const o3 = obj(v, what);
+  const domain = o3.domain === null || o3.domain === void 0 ? null : str2(o3.domain, `${what}.domain`);
   let lang = null;
-  if (o.lang !== void 0) {
-    const l = obj(o.lang, `${what}.lang`);
+  if (o3.lang !== void 0) {
+    const l = obj(o3.lang, `${what}.lang`);
     lang = Object.fromEntries(Object.entries(l).map(([k, x]) => [k, strMap(x, `${what}.lang.${k}`)]));
   }
-  return { domain, defaultArch: str2(o.defaultArch, `${what}.defaultArch`), tokens: strMap(o.tokens ?? {}, `${what}.tokens`), lang };
+  return { domain, defaultArch: str2(o3.defaultArch, `${what}.defaultArch`), tokens: strMap(o3.tokens ?? {}, `${what}.tokens`), lang };
 }
 function globToRegExp(glob) {
   let re = "";
@@ -827,12 +839,12 @@ function globToRegExp(glob) {
   return new RegExp(`^${re}$`);
 }
 function parseLayout(raw) {
-  const o = obj(raw, "layout");
-  if (o.schema !== LAYOUT_SCHEMA) throw bad(`schema 가 ${LAYOUT_SCHEMA} 가 아니다 (${String(o.schema)})`);
-  if (o.overlap !== "first" && o.overlap !== "last") throw bad("overlap 은 first 또는 last");
-  if (!Array.isArray(o.layers) || o.layers.length === 0) throw bad("layers 가 비었다");
-  if (!Array.isArray(o.segments) || o.segments.length === 0) throw bad("segments 가 비었다");
-  const layers2 = o.layers.map((l, i) => {
+  const o3 = obj(raw, "layout");
+  if (o3.schema !== LAYOUT_SCHEMA) throw bad(`schema 가 ${LAYOUT_SCHEMA} 가 아니다 (${String(o3.schema)})`);
+  if (o3.overlap !== "first" && o3.overlap !== "last") throw bad("overlap 은 first 또는 last");
+  if (!Array.isArray(o3.layers) || o3.layers.length === 0) throw bad("layers 가 비었다");
+  if (!Array.isArray(o3.segments) || o3.segments.length === 0) throw bad("segments 가 비었다");
+  const layers2 = o3.layers.map((l, i) => {
     const x = obj(l, `layers[${i}]`);
     if (x.each !== void 0 && x.each !== "modules") throw bad(`layers[${i}].each 는 modules 만 된다`);
     return {
@@ -843,52 +855,52 @@ function parseLayout(raw) {
       each: x.each === "modules" ? "modules" : null
     };
   });
-  const segments = o.segments.map((s, i) => {
-    const x = obj(s, `segments[${i}]`);
+  const segments = o3.segments.map((s3, i) => {
+    const x = obj(s3, `segments[${i}]`);
     const harness = x.harness === null ? null : str2(x.harness, `segments[${i}].harness`);
     return { from: str2(x.from, `segments[${i}].from`), to: str2(x.to, `segments[${i}].to`), harness };
   });
-  const stacksRaw = obj(o.stacks, "stacks");
-  const executable = strList(o.executable, "executable");
-  const detectRaw = obj(o.harnessDetect ?? {}, "harnessDetect");
+  const stacksRaw = obj(o3.stacks, "stacks");
+  const executable = strList(o3.executable, "executable");
+  const detectRaw = obj(o3.harnessDetect ?? {}, "harnessDetect");
   return {
     schema: LAYOUT_SCHEMA,
-    ignore: strList(o.ignore, "ignore"),
-    overlap: o.overlap,
+    ignore: strList(o3.ignore, "ignore"),
+    overlap: o3.overlap,
     layers: layers2,
     segments,
-    pathTokens: strMap(o.pathTokens ?? {}, "pathTokens"),
+    pathTokens: strMap(o3.pathTokens ?? {}, "pathTokens"),
     executable,
     executableRe: executable.map(globToRegExp),
-    tokens: strList(o.tokens, "tokens"),
-    harnesses: strList(o.harnesses, "harnesses"),
+    tokens: strList(o3.tokens, "tokens"),
+    harnesses: strList(o3.harnesses, "harnesses"),
     harnessDetect: Object.fromEntries(
       Object.entries(detectRaw).map(([k, v]) => {
         const d = obj(v, `harnessDetect.${k}`);
         return [k, { dirs: strList(d.dirs ?? [], `harnessDetect.${k}.dirs`), env: strList(d.env ?? [], `harnessDetect.${k}.env`) }];
       })
     ),
-    defaultHarnesses: strList(o.defaultHarnesses ?? [], "defaultHarnesses"),
-    modules: strList(o.modules, "modules"),
-    externalModules: o.externalModules === void 0 ? [] : strList(o.externalModules, "externalModules"),
-    domains: strList(o.domains, "domains"),
-    defaultStack: str2(o.defaultStack, "defaultStack"),
+    defaultHarnesses: strList(o3.defaultHarnesses ?? [], "defaultHarnesses"),
+    modules: strList(o3.modules, "modules"),
+    externalModules: o3.externalModules === void 0 ? [] : strList(o3.externalModules, "externalModules"),
+    domains: strList(o3.domains, "domains"),
+    defaultStack: str2(o3.defaultStack, "defaultStack"),
     stacks: Object.fromEntries(Object.entries(stacksRaw).map(([k, v]) => [k, stackSpec(v, `stacks.${k}`)])),
-    stackFallback: stackSpec(o.stackFallback ?? { defaultArch: "hexagonal" }, "stackFallback"),
-    tokenDefaults: strMap(o.tokenDefaults ?? {}, "tokenDefaults")
+    stackFallback: stackSpec(o3.stackFallback ?? { defaultArch: "hexagonal" }, "stackFallback"),
+    tokenDefaults: strMap(o3.tokenDefaults ?? {}, "tokenDefaults")
   };
 }
 function loadLayout(templatesDir) {
   const file = import_node_path2.default.join(templatesDir, "layout.json");
-  let text3;
+  let text4;
   try {
-    text3 = import_node_fs3.default.readFileSync(file, "utf8");
+    text4 = import_node_fs3.default.readFileSync(file, "utf8");
   } catch {
     throw new CliError(EXIT.ENV, `layout.json 이 없다: ${file}`);
   }
   let raw;
   try {
-    raw = JSON.parse(text3);
+    raw = JSON.parse(text4);
   } catch (err) {
     throw bad(err instanceof Error ? err.message : String(err));
   }
@@ -973,46 +985,46 @@ function serializeLock(lock) {
   const entries = [...byPath.keys()].sort(byteCompare).map((p) => orderEntry(byPath.get(p)));
   return formatJson({ schema: LOCK_SCHEMA, kit: lock.kit, packs: lock.packs, entries });
 }
-function v1LabelToLayer(label) {
-  if (label === "common") return "common";
-  if (label === "frontend" || label === "backend") return `domains/${label}`;
-  if (label.startsWith("mod/")) return `optional/${label.slice(4)}`;
-  const slash = label.indexOf("/");
-  if (slash > 0) return `stacks/${label.slice(0, slash)}/arch/${label.slice(slash + 1)}`;
-  return `stacks/${label}`;
+function v1LabelToLayer(label2) {
+  if (label2 === "common") return "common";
+  if (label2 === "frontend" || label2 === "backend") return `domains/${label2}`;
+  if (label2.startsWith("mod/")) return `optional/${label2.slice(4)}`;
+  const slash = label2.indexOf("/");
+  if (slash > 0) return `stacks/${label2.slice(0, slash)}/arch/${label2.slice(slash + 1)}`;
+  return `stacks/${label2}`;
 }
-function v1ProjectionEntry(sha, label, rel2) {
-  if (label === "merge+") return { path: rel2, op: "merge", owner: "kit", createdByKit: true };
-  if (label === "merge") return { path: rel2, op: "merge", owner: "kit" };
-  return { path: rel2, op: label, owner: "kit", sha256: sha === "-" ? null : sha };
+function v1ProjectionEntry(sha2, label2, rel2) {
+  if (label2 === "merge+") return { path: rel2, op: "merge", owner: "kit", createdByKit: true };
+  if (label2 === "merge") return { path: rel2, op: "merge", owner: "kit" };
+  return { path: rel2, op: label2, owner: "kit", sha256: sha2 === "-" ? null : sha2 };
 }
-function parseV1(text3) {
+function parseV1(text4) {
   const seen = /* @__PURE__ */ new Map();
-  const lines3 = text3.split("\n");
+  const lines3 = text4.split("\n");
   for (let i = 1; i < lines3.length; i += 1) {
     const line = lines3[i].replace(/\r$/, "");
     if (line === "" || line.startsWith("#")) continue;
     const cols = line.split("	");
     if (cols.length !== 4 || cols.some((c) => c === "")) throw new Error(`v1 lock ${i + 1}번째 줄: 칸이 4개가 아니다`);
-    const [sha, label, , rel2] = cols;
-    if (V1_PROJECTION.has(label)) {
-      seen.set(rel2, v1ProjectionEntry(sha, label, rel2));
+    const [sha2, label2, , rel2] = cols;
+    if (V1_PROJECTION.has(label2)) {
+      seen.set(rel2, v1ProjectionEntry(sha2, label2, rel2));
       continue;
     }
-    const layer = v1LabelToLayer(label);
+    const layer = v1LabelToLayer(label2);
     const prev = seen.get(rel2);
-    seen.set(rel2, { path: rel2, op: "copy", owner: "kit", sha256: prev ? prev.sha256 ?? null : sha === "-" ? null : sha, layer });
+    seen.set(rel2, { path: rel2, op: "copy", owner: "kit", sha256: prev ? prev.sha256 ?? null : sha2 === "-" ? null : sha2, layer });
   }
   const entries = [...seen.keys()].sort(byteCompare).map((p) => seen.get(p));
   return { schema: LOCK_SCHEMA, kit: { version: null, source: null }, packs: [], entries };
 }
-function parseV2(text3) {
-  const raw = JSON.parse(text3);
+function parseV2(text4) {
+  const raw = JSON.parse(text4);
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) throw new Error("최상위가 객체가 아니다");
-  const o = raw;
-  if (o.schema !== LOCK_SCHEMA) throw new Error(`모르는 schema: ${String(o.schema)}`);
-  if (!Array.isArray(o.entries)) throw new Error("entries 가 배열이 아니다");
-  const entries = o.entries.map((e, i) => {
+  const o3 = raw;
+  if (o3.schema !== LOCK_SCHEMA) throw new Error(`모르는 schema: ${String(o3.schema)}`);
+  if (!Array.isArray(o3.entries)) throw new Error("entries 가 배열이 아니다");
+  const entries = o3.entries.map((e, i) => {
     if (e === null || typeof e !== "object") throw new Error(`entries[${i}] 가 객체가 아니다`);
     const x = e;
     if (typeof x.path !== "string" || typeof x.op !== "string" || typeof x.owner !== "string") {
@@ -1022,32 +1034,32 @@ function parseV2(text3) {
     if (x.sha256 !== void 0 && x.sha256 !== null && typeof x.sha256 !== "string") throw new Error(`entries[${i}].sha256 형식`);
     return x;
   });
-  const kit = o.kit && typeof o.kit === "object" ? o.kit : {};
+  const kit = o3.kit && typeof o3.kit === "object" ? o3.kit : {};
   return {
     schema: LOCK_SCHEMA,
     kit: { version: typeof kit.version === "string" ? kit.version : null, source: typeof kit.source === "string" ? kit.source : null },
-    packs: Array.isArray(o.packs) ? o.packs : [],
+    packs: Array.isArray(o3.packs) ? o3.packs : [],
     entries
   };
 }
-function parseLockText(text3) {
-  if (text3.startsWith(V1_HEADER)) {
-    const marked = text3.split("\n").some((l) => l.replace(/\r$/, "") === V1_MARK);
-    return { format: "v1", lock: parseV1(text3), ambiguous: !marked };
+function parseLockText(text4) {
+  if (text4.startsWith(V1_HEADER)) {
+    const marked = text4.split("\n").some((l) => l.replace(/\r$/, "") === V1_MARK);
+    return { format: "v1", lock: parseV1(text4), ambiguous: !marked };
   }
-  if (text3.trim() === "") throw new Error("비어 있다");
-  return { format: "v2", lock: parseV2(text3), ambiguous: false };
+  if (text4.trim() === "") throw new Error("비어 있다");
+  return { format: "v2", lock: parseV2(text4), ambiguous: false };
 }
 function readLock(file) {
-  let text3;
+  let text4;
   try {
-    text3 = import_node_fs4.default.readFileSync(file, "utf8");
+    text4 = import_node_fs4.default.readFileSync(file, "utf8");
   } catch (err) {
     if (err.code === "ENOENT") return { status: "missing" };
     return { status: "invalid", error: err instanceof Error ? err.message : String(err) };
   }
   try {
-    return { status: "ok", ...parseLockText(text3) };
+    return { status: "ok", ...parseLockText(text4) };
   } catch (err) {
     return { status: "invalid", error: err instanceof Error ? err.message : String(err) };
   }
@@ -1202,16 +1214,16 @@ function fromV2(m) {
   };
 }
 function readMeta(file) {
-  let text3;
+  let text4;
   try {
-    text3 = import_node_fs5.default.readFileSync(file, "utf8");
+    text4 = import_node_fs5.default.readFileSync(file, "utf8");
   } catch (err) {
     if (err.code === "ENOENT") return { status: "missing" };
     return { status: "invalid", error: err instanceof Error ? err.message : String(err) };
   }
   let raw;
   try {
-    raw = JSON.parse(text3);
+    raw = JSON.parse(text4);
   } catch (err) {
     return { status: "invalid", error: `JSON 해석 실패: ${err instanceof Error ? err.message : String(err)}` };
   }
@@ -1263,18 +1275,18 @@ function resolveCandidates(layout2, templatesDir, sel, tokens) {
         excludedByHarness += 1;
         continue;
       }
-      const list3 = byDest.get(dest) ?? [];
-      list3.push({ dest, src: `${dir}/${rel2}`, layer: dir, harness });
-      byDest.set(dest, list3);
+      const list4 = byDest.get(dest) ?? [];
+      list4.push({ dest, src: `${dir}/${rel2}`, layer: dir, harness });
+      byDest.set(dest, list4);
     }
   }
   const winners = [];
   const overlaps = [];
   for (const dest of [...byDest.keys()].sort(byteCompare)) {
-    const list3 = byDest.get(dest);
-    const winner = layout2.overlap === "first" ? list3[0] : list3[list3.length - 1];
+    const list4 = byDest.get(dest);
+    const winner = layout2.overlap === "first" ? list4[0] : list4[list4.length - 1];
     winners.push(winner);
-    if (list3.length > 1) overlaps.push({ path: dest, layers: list3.map((c) => c.layer), winner: winner.layer });
+    if (list4.length > 1) overlaps.push({ path: dest, layers: list4.map((c) => c.layer), winner: winner.layer });
   }
   return { winners, overlaps, excludedByHarness };
 }
@@ -1343,11 +1355,11 @@ function check(h, i, map, seen) {
   }
   return h;
 }
-function parseHooks(text3, map) {
-  if (text3 === null) return null;
+function parseHooks(text4, map) {
+  if (text4 === null) return null;
   let data;
   try {
-    data = JSON.parse(text3);
+    data = JSON.parse(text4);
   } catch (err) {
     throw new HooksError(`hooks.json 을 해석할 수 없다: ${err instanceof Error ? err.message : String(err)}`);
   }
@@ -1423,20 +1435,20 @@ function kitScriptSuffixes(hooks, map) {
   const names = [];
   for (const script of [...(hooks ?? []).map((h) => h.script), ...(map.legacyScripts ?? []).map((n) => `scripts/hooks/${n}`)]) if (!names.includes(script)) names.push(script);
   const out = [];
-  for (const script of names) for (const s of [script, `_ ${script.slice(script.lastIndexOf("/") + 1)}`]) if (!out.includes(s)) out.push(s);
+  for (const script of names) for (const s3 of [script, `_ ${script.slice(script.lastIndexOf("/") + 1)}`]) if (!out.includes(s3)) out.push(s3);
   return out;
 }
 var HOOKS_DIR = ".agents/hooks.d";
 var PROJECT_HOOKS = "project.json";
 function hookDocPaths(names) {
   const enc2 = (n) => Buffer.from(n, "utf8");
-  return names.filter((n) => n.endsWith(".json") && !n.startsWith(".")).sort((a, b) => Number(a === PROJECT_HOOKS) - Number(b === PROJECT_HOOKS) || Buffer.compare(enc2(a), enc2(b))).map((n) => `${HOOKS_DIR}/${n}`);
+  return names.filter((n) => n.endsWith(".json") && !n.startsWith(".")).sort((a3, b) => Number(a3 === PROJECT_HOOKS) - Number(b === PROJECT_HOOKS) || Buffer.compare(enc2(a3), enc2(b))).map((n) => `${HOOKS_DIR}/${n}`);
 }
 function mergeHookDocs(docs, map, floor) {
   const hooks = [];
   const findings = [];
-  for (const { rel: rel2, text: text3 } of docs) {
-    const items = parseHooks(text3, map) ?? [];
+  for (const { rel: rel2, text: text4 } of docs) {
+    const items = parseHooks(text4, map) ?? [];
     const project = rel2 === `${HOOKS_DIR}/${PROJECT_HOOKS}`;
     const index = new Map(hooks.map((h, i) => [h.id, i]));
     for (const item of items) {
@@ -1455,11 +1467,11 @@ function mergeHookDocs(docs, map, floor) {
 // src/projection/frontmatter.ts
 var FM_KEY = /^([A-Za-z0-9_-]+):(.*)$/;
 var LIST_ITEM = /^\s+-\s?(.*)$/;
-function splitFrontmatter(text3) {
-  if (!text3.startsWith("---\n")) return { block: null, body: text3 };
-  const end = text3.indexOf("\n---\n", 3);
-  if (end < 0) return { block: null, body: text3 };
-  return { block: end >= 4 ? text3.slice(4, end) : "", body: text3.slice(end + 5) };
+function splitFrontmatter(text4) {
+  if (!text4.startsWith("---\n")) return { block: null, body: text4 };
+  const end = text4.indexOf("\n---\n", 3);
+  if (end < 0) return { block: null, body: text4 };
+  return { block: end >= 4 ? text4.slice(4, end) : "", body: text4.slice(end + 5) };
 }
 function splitFlow(inner) {
   const parts = [];
@@ -1480,8 +1492,8 @@ function splitFlow(inner) {
   if (cur.trim() || parts.length) parts.push(cur);
   return parts.map((p) => p.trim()).filter((p) => p !== "");
 }
-function strip(s) {
-  return s.replace(/^[\s]+|[\s]+$/g, "");
+function strip(s3) {
+  return s3.replace(/^[\s]+|[\s]+$/g, "");
 }
 function scalar(raw) {
   const v = strip(raw);
@@ -1496,9 +1508,9 @@ function scalar(raw) {
   if (v.length >= 2 && v[0] === "'" && v[v.length - 1] === "'") return v.slice(1, -1).split("''").join("'");
   return v;
 }
-function parseFrontmatter(block2) {
+function parseFrontmatter(block3) {
   const out = {};
-  const lines3 = block2.split("\n");
+  const lines3 = block3.split("\n");
   let i = 0;
   while (i < lines3.length) {
     const line = lines3[i];
@@ -1517,12 +1529,12 @@ function parseFrontmatter(block2) {
     } else if (raw.startsWith("[") && raw.endsWith("]")) {
       out[key] = splitFlow(raw.slice(1, -1)).map(scalar);
     } else if (raw.startsWith("{") && raw.endsWith("}")) {
-      const table = {};
+      const table2 = {};
       for (const p of splitFlow(raw.slice(1, -1))) {
         const at = p.indexOf(":");
-        if (at >= 0) table[scalar(p.slice(0, at))] = scalar(p.slice(at + 1));
+        if (at >= 0) table2[scalar(p.slice(0, at))] = scalar(p.slice(at + 1));
       }
-      out[key] = table;
+      out[key] = table2;
     } else out[key] = scalar(raw);
   }
   return out;
@@ -1554,9 +1566,9 @@ function basename(p) {
 function decode(data) {
   return data.toString("utf8");
 }
-function parsed(text3) {
-  const { block: block2, body } = splitFrontmatter(text3);
-  return { fm: block2 === null ? {} : parseFrontmatter(block2), body, hasBlock: block2 !== null };
+function parsed(text4) {
+  const { block: block3, body } = splitFrontmatter(text4);
+  return { fm: block3 === null ? {} : parseFrontmatter(block3), body, hasBlock: block3 !== null };
 }
 function parseRule(source, data) {
   const bytes = typeof data === "string" ? Buffer.from(data, "utf8") : data;
@@ -1565,10 +1577,10 @@ function parseRule(source, data) {
   return { name: basename(source).slice(0, -".md".length), source, data: bytes, paths: paths.length ? paths : null, body };
 }
 function parseSkill(source, files) {
-  const list3 = Array.isArray(files) ? files : [...files].map(([rel2, f]) => ({ rel: rel2, bytes: f.bytes, executable: f.executable }));
-  const data = list3.find((f) => f.rel === "SKILL.md")?.bytes ?? Buffer.alloc(0);
+  const list4 = Array.isArray(files) ? files : [...files].map(([rel2, f]) => ({ rel: rel2, bytes: f.bytes, executable: f.executable }));
+  const data = list4.find((f) => f.rel === "SKILL.md")?.bytes ?? Buffer.alloc(0);
   const { fm, body } = parsed(decode(data));
-  return { name: fmStr(fm, "name") || basename(source), source, files: list3, description: fmStr(fm, "description"), body, fm };
+  return { name: fmStr(fm, "name") || basename(source), source, files: list4, description: fmStr(fm, "description"), body, fm };
 }
 function parseRole(source, data) {
   const bytes = typeof data === "string" ? Buffer.from(data, "utf8") : data;
@@ -1588,10 +1600,10 @@ function parseRole(source, data) {
 function isObject(v) {
   return v !== null && typeof v === "object" && !Array.isArray(v);
 }
-function parsePolicy(text3) {
+function parsePolicy(text4) {
   let raw = null;
   try {
-    raw = text3 === null ? null : JSON.parse(text3);
+    raw = text4 === null ? null : JSON.parse(text4);
   } catch {
     raw = null;
   }
@@ -1653,20 +1665,20 @@ fileMatchPattern: ${pattern}
   return `${head}${genMd(r.source)}
 ${r.body}`;
 }
-function renderCursorCommand(s) {
+function renderCursorCommand(s3) {
   return `---
-description: ${s.description}
+description: ${s3.description}
 ---
-${genMd(`${s.source}/SKILL.md`)}
-${s.body}`;
+${genMd(`${s3.source}/SKILL.md`)}
+${s3.body}`;
 }
-function renderKiroSkillSteering(s) {
+function renderKiroSkillSteering(s3) {
   return `---
 inclusion: manual
-description: ${s.description}
+description: ${s3.description}
 ---
-${genMd(`${s.source}/SKILL.md`)}
-${s.body}`;
+${genMd(`${s3.source}/SKILL.md`)}
+${s3.body}`;
 }
 function claudeTools(tools) {
   return CLAUDE_TOOLS.filter(([k]) => tools.includes(k)).flatMap(([, names]) => names);
@@ -1676,8 +1688,8 @@ function kiroTools(tools) {
   for (const [k, name] of KIRO_TOOLS) if (tools.includes(k) && !out.includes(name)) out.push(name);
   return out;
 }
-function withNewline(text3) {
-  return text3 === "" || text3.endsWith("\n") ? text3 : `${text3}
+function withNewline(text4) {
+  return text4 === "" || text4.endsWith("\n") ? text4 : `${text4}
 `;
 }
 function renderClaudeRole(r, fields) {
@@ -1729,8 +1741,8 @@ function renderKiroRole(r, fields, hooks) {
   return `${JSON.stringify(obj2, null, 2)}
 `;
 }
-function skillModelProblem(s) {
-  return (Object.hasOwn(s.fm, "model") || Object.hasOwn(s.fm, "effort")) && fmStr(s.fm, "context") !== "fork";
+function skillModelProblem(s3) {
+  return (Object.hasOwn(s3.fm, "model") || Object.hasOwn(s3.fm, "effort")) && fmStr(s3.fm, "context") !== "fork";
 }
 
 // src/projection/vscode.ts
@@ -1742,26 +1754,26 @@ var SPACE = " 	\r\n\uFEFF";
 var DEFAULT_INDENT = "  ";
 var vscodeSettingsWant = () => ({ key: VSCODE_KEY, value: "true" });
 var fail = (reason) => ({ ok: false, reason });
-function tokenize(text3) {
+function tokenize(text4) {
   const toks = [];
   let i = 0;
   let comment = false;
-  const n = text3.length;
+  const n = text4.length;
   while (i < n) {
-    const c = text3[i];
+    const c = text4[i];
     if (SPACE.includes(c)) i += 1;
-    else if (text3.startsWith("//", i)) {
+    else if (text4.startsWith("//", i)) {
       comment = true;
-      const end = text3.indexOf("\n", i);
+      const end = text4.indexOf("\n", i);
       i = end < 0 ? n : end + 1;
-    } else if (text3.startsWith("/*", i)) {
+    } else if (text4.startsWith("/*", i)) {
       comment = true;
-      const end = text3.indexOf("*/", i + 2);
+      const end = text4.indexOf("*/", i + 2);
       if (end < 0) return null;
       i = end + 2;
     } else if (c === '"') {
       let j = i + 1;
-      while (j < n && text3[j] !== '"') j += text3[j] === "\\" ? 2 : 1;
+      while (j < n && text4[j] !== '"') j += text4[j] === "\\" ? 2 : 1;
       if (j >= n) return null;
       toks.push({ kind: "str", start: i, end: j + 1 });
       i = j + 1;
@@ -1770,15 +1782,15 @@ function tokenize(text3) {
       i += 1;
     } else {
       let j = i;
-      while (j < n && !SPACE.includes(text3[j]) && !PUNCT.includes(text3[j]) && text3[j] !== '"' && !text3.startsWith("//", j) && !text3.startsWith("/*", j)) j += 1;
+      while (j < n && !SPACE.includes(text4[j]) && !PUNCT.includes(text4[j]) && text4[j] !== '"' && !text4.startsWith("//", j) && !text4.startsWith("/*", j)) j += 1;
       toks.push({ kind: "lit", start: i, end: j });
       i = j;
     }
   }
   return { toks, comment };
 }
-function scan(text3) {
-  const tokenized = tokenize(text3);
+function scan(text4) {
+  const tokenized = tokenize(text4);
   if (tokenized === null) return null;
   const { toks, comment } = tokenized;
   if (!toks.length || toks[0].kind !== "{") return null;
@@ -1808,7 +1820,7 @@ function scan(text3) {
     if (t.kind !== "str" || pos + 2 >= close || toks[pos + 1].kind !== ":") return null;
     let key;
     try {
-      key = JSON.parse(text3.slice(t.start, t.end));
+      key = JSON.parse(text4.slice(t.start, t.end));
     } catch {
       return null;
     }
@@ -1826,51 +1838,51 @@ function scan(text3) {
   }
   return { toks, comment, close, members };
 }
-var findMember = (s) => [...s.members].reverse().find((m) => m.key === VSCODE_KEY);
-var isTrue = (text3, m) => text3.slice(m.vs, m.ve) === "true";
-var lineStart = (text3, index) => index === 0 ? 0 : text3.lastIndexOf("\n", index - 1) + 1;
-function indentOf(text3, s) {
-  const first = s.members[0];
+var findMember = (s3) => [...s3.members].reverse().find((m) => m.key === VSCODE_KEY);
+var isTrue = (text4, m) => text4.slice(m.vs, m.ve) === "true";
+var lineStart = (text4, index) => index === 0 ? 0 : text4.lastIndexOf("\n", index - 1) + 1;
+function indentOf(text4, s3) {
+  const first = s3.members[0];
   if (!first) return DEFAULT_INDENT;
-  const prefix = text3.slice(lineStart(text3, first.ks), first.ks);
+  const prefix = text4.slice(lineStart(text4, first.ks), first.ks);
   return prefix !== "" && prefix.trim() === "" ? prefix : DEFAULT_INDENT;
 }
-function blankAfter(text3, index) {
-  const end = text3.indexOf("\n", index);
-  const rest = end < 0 ? text3.slice(index) : text3.slice(index, end);
+function blankAfter(text4, index) {
+  const end = text4.indexOf("\n", index);
+  const rest = end < 0 ? text4.slice(index) : text4.slice(index, end);
   if (rest.trim() !== "") return -1;
-  return end < 0 ? text3.length : end + 1;
+  return end < 0 ? text4.length : end + 1;
 }
 var vscodeSettings = {
   merge(cur, _want, prev = []) {
     if (cur === null) return { ok: true, text: '{\n  "git.detectWorktrees": true\n}\n', keys: [VSCODE_LOCK_KEY], created: true };
-    const s = scan(cur);
-    if (s === null) return fail(".vscode/settings.json 을 JSONC 객체로 읽지 못했다");
-    const found = findMember(s);
+    const s3 = scan(cur);
+    if (s3 === null) return fail(".vscode/settings.json 을 JSONC 객체로 읽지 못했다");
+    const found = findMember(s3);
     if (found) return { ok: true, text: cur, keys: isTrue(cur, found) && prev.includes(VSCODE_LOCK_KEY) ? [VSCODE_LOCK_KEY] : [], created: false };
-    const closeAt = s.toks[s.close].start;
+    const closeAt = s3.toks[s3.close].start;
     const edits = [];
-    if (s.close > 1 && s.toks[s.close - 1].kind !== ",") edits.push([s.toks[s.close - 1].end, 0, ","]);
-    const line = indentOf(cur, s) + LINE_BODY;
+    if (s3.close > 1 && s3.toks[s3.close - 1].kind !== ",") edits.push([s3.toks[s3.close - 1].end, 0, ","]);
+    const line = indentOf(cur, s3) + LINE_BODY;
     const closeLine = lineStart(cur, closeAt);
-    if (closeLine > s.toks[0].start && cur.slice(closeLine, closeAt).trim() === "") edits.push([closeLine, 1, `${line}
+    if (closeLine > s3.toks[0].start && cur.slice(closeLine, closeAt).trim() === "") edits.push([closeLine, 1, `${line}
 `]);
     else edits.push([closeAt, 1, `
 ${line}
 `]);
-    let text3 = cur;
-    for (const [at, , piece] of [...edits].sort((a, b) => b[0] - a[0] || b[1] - a[1])) text3 = text3.slice(0, at) + piece + text3.slice(at);
-    return { ok: true, text: text3, keys: [VSCODE_LOCK_KEY], created: false };
+    let text4 = cur;
+    for (const [at, , piece] of [...edits].sort((a3, b) => b[0] - a3[0] || b[1] - a3[1])) text4 = text4.slice(0, at) + piece + text4.slice(at);
+    return { ok: true, text: text4, keys: [VSCODE_LOCK_KEY], created: false };
   },
   unmerge(cur, keys) {
-    const s = scan(cur);
-    if (!keys.includes(VSCODE_LOCK_KEY)) return { ok: true, text: cur, empty: s !== null && !s.members.length && !s.comment };
-    if (s === null) return fail(".vscode/settings.json 을 JSONC 객체로 읽지 못했다");
-    const found = findMember(s);
+    const s3 = scan(cur);
+    if (!keys.includes(VSCODE_LOCK_KEY)) return { ok: true, text: cur, empty: s3 !== null && !s3.members.length && !s3.comment };
+    if (s3 === null) return fail(".vscode/settings.json 을 JSONC 객체로 읽지 못했다");
+    const found = findMember(s3);
     if (!found || !isTrue(cur, found)) return { ok: true, text: cur, empty: false };
     let start = found.ks;
     let end = found.ve;
-    const next = s.toks[found.jidx];
+    const next = s3.toks[found.jidx];
     const trailing = next.kind === ",";
     if (trailing) end = next.end;
     const ownLine = cur.slice(lineStart(cur, start), start).trim() === "";
@@ -1880,18 +1892,18 @@ ${line}
       end = after;
     } else if (ownLine) start = lineStart(cur, start);
     const edits = [];
-    const before = s.toks[found.kidx - 1];
+    const before = s3.toks[found.kidx - 1];
     if (!trailing && found.kidx > 1 && before?.kind === ",") edits.push([before.start, before.end]);
     edits.push([start, end]);
-    let text3 = cur;
-    for (const [at, stop] of [...edits].sort((a, b) => b[0] - a[0])) text3 = text3.slice(0, at) + text3.slice(stop);
-    const rest = scan(text3);
-    return { ok: true, text: text3, empty: rest !== null && !rest.members.length && !rest.comment };
+    let text4 = cur;
+    for (const [at, stop] of [...edits].sort((a3, b) => b[0] - a3[0])) text4 = text4.slice(0, at) + text4.slice(stop);
+    const rest = scan(text4);
+    return { ok: true, text: text4, empty: rest !== null && !rest.members.length && !rest.comment };
   },
   missing(cur, keys) {
     if (!keys.includes(VSCODE_LOCK_KEY)) return [];
-    const s = scan(cur);
-    const found = s ? findMember(s) : void 0;
+    const s3 = scan(cur);
+    const found = s3 ? findMember(s3) : void 0;
     return !found || !isTrue(cur, found) ? [VSCODE_LOCK_KEY] : [];
   }
 };
@@ -1915,8 +1927,8 @@ var MERGE_KIND = {
 };
 var fail2 = (reason) => ({ ok: false, reason });
 var isBlank = (l) => l.trim() === "";
-function splitLines(text3) {
-  const lines3 = text3.split("\n");
+function splitLines(text4) {
+  const lines3 = text4.split("\n");
   if (lines3.length && lines3[lines3.length - 1] === "") lines3.pop();
   return lines3;
 }
@@ -1944,18 +1956,18 @@ function findBlock(lines3, begin, end) {
   }
   return e < 0 ? "unclosed" : [b, e];
 }
-function appendBlock(lines3, block2) {
+function appendBlock(lines3, block3) {
   const out = [...lines3];
   if (out.length && !isBlank(out[out.length - 1])) out.push("");
-  return [...out, ...block2];
+  return [...out, ...block3];
 }
 function claudeMdWant(spec) {
   return { block: [...spec.claudeBlock] };
 }
 var claudeMd = {
   merge(cur, want, prev = []) {
-    const block2 = want.block;
-    if (cur === null) return { ok: true, text: joinLines([AGENTS_LINE, "", ...block2]), keys: ["line:@AGENTS.md", "block:claude"], created: true };
+    const block3 = want.block;
+    if (cur === null) return { ok: true, text: joinLines([AGENTS_LINE, "", ...block3]), keys: ["line:@AGENTS.md", "block:claude"], created: true };
     let lines3 = splitLines(cur);
     const found = findBlock(lines3, CLAUDE_BEGIN, CLAUDE_END);
     if (found === "unclosed") return fail2("CLAUDE.md 킷 블록의 끝 표지가 없다");
@@ -1964,14 +1976,14 @@ var claudeMd = {
     if (found !== null) {
       const [b, e] = found;
       const insert = hasLine ? [] : [AGENTS_LINE, ""];
-      lines3 = [...lines3.slice(0, b), ...insert, ...block2, ...lines3.slice(e + 1)];
+      lines3 = [...lines3.slice(0, b), ...insert, ...block3, ...lines3.slice(e + 1)];
       if (!hasLine || prev.includes("line:@AGENTS.md")) keys.push("line:@AGENTS.md");
     } else {
       if (!hasLine) {
         lines3 = appendBlock(lines3, [AGENTS_LINE, ""]);
         keys.push("line:@AGENTS.md");
       } else if (prev.includes("line:@AGENTS.md")) keys.push("line:@AGENTS.md");
-      lines3 = appendBlock(lines3, block2);
+      lines3 = appendBlock(lines3, block3);
     }
     keys.push("block:claude");
     return { ok: true, text: joinLines(lines3), keys, created: false };
@@ -1997,12 +2009,12 @@ function gitattributesWant(spec, agents) {
 }
 var gitattributes = {
   merge(cur, want) {
-    const block2 = want.lines;
-    if (cur === null) return { ok: true, text: joinLines(block2), keys: ["block:generated"], created: true };
+    const block3 = want.lines;
+    if (cur === null) return { ok: true, text: joinLines(block3), keys: ["block:generated"], created: true };
     let lines3 = splitLines(cur);
     const found = findBlock(lines3, GEN_BEGIN, GEN_END);
     if (found === "unclosed") return fail2(".gitattributes 킷 블록의 끝 표지가 없다");
-    lines3 = found === null ? appendBlock(lines3, block2) : [...lines3.slice(0, found[0]), ...block2, ...lines3.slice(found[1] + 1)];
+    lines3 = found === null ? appendBlock(lines3, block3) : [...lines3.slice(0, found[0]), ...block3, ...lines3.slice(found[1] + 1)];
     return { ok: true, text: joinLines(lines3), keys: ["block:generated"], created: false };
   },
   unmerge(cur) {
@@ -2029,11 +2041,11 @@ var isObj3 = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 function commandOf(h) {
   return isObj3(h) && typeof h.command === "string" ? h.command : null;
 }
-function rstrip(s) {
-  return s.replace(/\s+$/, "");
+function rstrip(s3) {
+  return s3.replace(/\s+$/, "");
 }
-function escapeRe(s) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+function escapeRe(s3) {
+  return s3.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 function hasId(cmd, id) {
   return new RegExp(`(?:^|\\s)${escapeRe(id)}(?:\\s|$)`).test(cmd);
@@ -2045,13 +2057,13 @@ function isKitHook(h, ids2, suffixes) {
   const cmd = commandOf(h);
   if (cmd === null) return false;
   const tail = rstrip(cmd);
-  return ids2.some((i) => hasId(cmd, i)) || suffixes.some((s) => tail.endsWith(s));
+  return ids2.some((i) => hasId(cmd, i)) || suffixes.some((s3) => tail.endsWith(s3));
 }
 function hookMatches(h, id, script) {
   const cmd = commandOf(h);
   if (cmd === null) return false;
   const tail = rstrip(cmd);
-  return hasId(cmd, id) || scriptSuffixes(script).some((s) => tail.endsWith(s));
+  return hasId(cmd, id) || scriptSuffixes(script).some((s3) => tail.endsWith(s3));
 }
 function stripHooks(arr, isKit) {
   const out = [];
@@ -2230,7 +2242,7 @@ var codexHooks = {
 };
 function codexConfigWant(spec, roles, keep = []) {
   const cc = spec.codexConfig;
-  const ordered = [...roles].sort((a, b) => Buffer.compare(Buffer.from(a.name), Buffer.from(b.name)));
+  const ordered = [...roles].sort((a3, b) => Buffer.compare(Buffer.from(a3.name), Buffer.from(b.name)));
   return {
     header: [...cc.header],
     defaults: cc.defaults.map((d) => ({ ...d })),
@@ -2249,8 +2261,8 @@ function tables(lines3) {
     const j = n + 1 < heads.length ? heads[n + 1][0] : lines3.length;
     let last = i;
     for (let k = i + 1; k < j; k += 1) {
-      const s = lines3[k].trim();
-      if (s && !s.startsWith("#")) last = k;
+      const s3 = lines3[k].trim();
+      if (s3 && !s3.startsWith("#")) last = k;
     }
     return [name, i, last + 1];
   });
@@ -2305,13 +2317,13 @@ var codexConfig = {
         if (t !== null) lines3 = removeTable(lines3, t);
       }
     }
-    for (const k of [...keep].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)))) {
+    for (const k of [...keep].sort((a3, b) => Buffer.compare(Buffer.from(a3), Buffer.from(b)))) {
       if (prev.includes(k) && findTable(lines3, k.slice("toml:".length)) !== null) keys.push(k);
     }
     for (const r of want.roles) {
-      const block2 = roleTable(r);
+      const block3 = roleTable(r);
       const t = findTable(lines3, `agents.${r.name}`);
-      lines3 = t === null ? appendBlock(lines3, block2) : [...lines3.slice(0, t[1]), ...block2, ...lines3.slice(t[2])];
+      lines3 = t === null ? appendBlock(lines3, block3) : [...lines3.slice(0, t[1]), ...block3, ...lines3.slice(t[2])];
       keys.push(`toml:agents.${r.name}`);
     }
     return { ok: true, text: joinLines(lines3), keys, created: cur === null };
@@ -2323,14 +2335,14 @@ var codexConfig = {
       const name = k.slice("toml:".length);
       if (defaults.has(k)) {
         const dot = name.lastIndexOf(".");
-        const table = name.slice(0, dot);
+        const table2 = name.slice(0, dot);
         const key = name.slice(dot + 1);
-        let t = findTable(lines3, table);
+        let t = findTable(lines3, table2);
         if (t === null) continue;
         const at = keyLine(lines3, t, key);
         if (at >= 0) {
           lines3 = [...lines3.slice(0, at), ...lines3.slice(at + 1)];
-          t = findTable(lines3, table);
+          t = findTable(lines3, table2);
           if (t !== null && allBlank(lines3.slice(t[1] + 1, t[2]), true)) lines3 = removeTable(lines3, t);
         }
       } else {
@@ -2378,7 +2390,7 @@ function ignoredName(name) {
   return name === ".DS_Store" || name.endsWith(".new") || name.endsWith(".bak") || name.startsWith(".") && name.includes(".hk-") || name === "__pycache__" || name.endsWith(".pyc");
 }
 function treeSha(files) {
-  const sorted = [...files].sort((a, b) => byteCompare(a.rel, b.rel));
+  const sorted = [...files].sort((a3, b) => byteCompare(a3.rel, b.rel));
   return sha256(sorted.map((f) => `${f.rel}\0${sha256(f.bytes)}
 `).join(""));
 }
@@ -2391,7 +2403,7 @@ function walkView(view, rel2, prefix = "") {
     if (e.kind === "dir") out.push(...walkView(view, full11, sub2));
     else if (e.kind === "file") out.push({ rel: sub2, bytes: view.read(full11), executable: view.executable(full11) });
   }
-  return out.sort((a, b) => byteCompare(a.rel, b.rel));
+  return out.sort((a3, b) => byteCompare(a3.rel, b.rel));
 }
 function hasPendingNew(view, rel2) {
   const k = view.kind(rel2);
@@ -2465,17 +2477,17 @@ function stem(source) {
   const base = source.slice(source.lastIndexOf("/") + 1);
   return base.endsWith(".md") ? base.slice(0, -".md".length) : base;
 }
-function mirrorDir(path73, harness, skill, deferred) {
+function mirrorDir(path79, harness, skill, deferred) {
   const t = treeSha(skill.files);
-  return { op: "mirror", path: path73, harness, from: skill.source, kind: "dir", files: skill.files, data: Buffer.alloc(0), executable: false, sha256: t, fromSha256: t, deferred: deferred.has(skill.source) };
+  return { op: "mirror", path: path79, harness, from: skill.source, kind: "dir", files: skill.files, data: Buffer.alloc(0), executable: false, sha256: t, fromSha256: t, deferred: deferred.has(skill.source) };
 }
-function mirrorFile(path73, harness, rule, view, deferred) {
-  const s = sha256(rule.data);
-  return { op: "mirror", path: path73, harness, from: rule.source, kind: "file", files: [], data: rule.data, executable: view.executable(rule.source), sha256: s, fromSha256: s, deferred: deferred.has(rule.source) };
+function mirrorFile(path79, harness, rule, view, deferred) {
+  const s3 = sha256(rule.data);
+  return { op: "mirror", path: path79, harness, from: rule.source, kind: "file", files: [], data: rule.data, executable: view.executable(rule.source), sha256: s3, fromSha256: s3, deferred: deferred.has(rule.source) };
 }
-function renderWant(path73, harness, from, text3, sourceData, deferred) {
-  const data = Buffer.from(text3, "utf8");
-  return { op: "render", path: path73, harness, from, kind: "file", files: [], data, executable: false, sha256: sha256(data), fromSha256: sha256(sourceData), deferred: deferred.has(from) };
+function renderWant(path79, harness, from, text4, sourceData, deferred) {
+  const data = Buffer.from(text4, "utf8");
+  return { op: "render", path: path79, harness, from, kind: "file", files: [], data, executable: false, sha256: sha256(data), fromSha256: sha256(sourceData), deferred: deferred.has(from) };
 }
 function skillData(skill) {
   return skill.files.find((f) => f.rel === "SKILL.md")?.bytes ?? Buffer.alloc(0);
@@ -2492,7 +2504,7 @@ var claude = {
   plan(ctx) {
     const d = ctx.sources.deferred;
     return [
-      ...ctx.skills.map((s) => mirrorDir(`.claude/skills/${stem(s.source)}`, "claude", s, d)),
+      ...ctx.skills.map((s3) => mirrorDir(`.claude/skills/${stem(s3.source)}`, "claude", s3, d)),
       ...ctx.rules.map((r) => mirrorFile(`.claude/rules/${stem(r.source)}.md`, "claude", r, ctx.view, d)),
       ...ctx.roles.map(({ role, fields }) => renderWant(`.claude/agents/${stem(role.source)}.md`, "claude", role.source, renderClaudeRole(role, fields.claude ?? {}), role.data, d)),
       { op: "merge", path: "CLAUDE.md", harness: "claude", kind: "claude-md", want: claudeMdWant(ctx.spec) },
@@ -2527,7 +2539,7 @@ var cursor = {
     const d = ctx.sources.deferred;
     const ds = withSkillFiles(d);
     return [
-      ...ctx.skills.map((s) => renderWant(`.cursor/commands/${stem(s.source)}.md`, "cursor", `${s.source}/SKILL.md`, renderCursorCommand(s), skillData(s), ds)),
+      ...ctx.skills.map((s3) => renderWant(`.cursor/commands/${stem(s3.source)}.md`, "cursor", `${s3.source}/SKILL.md`, renderCursorCommand(s3), skillData(s3), ds)),
       ...ctx.rules.map((r) => renderWant(`.cursor/rules/${stem(r.source)}.mdc`, "cursor", r.source, renderCursorRule(r), r.data, d))
     ];
   }
@@ -2547,9 +2559,9 @@ var kiro = {
     const hooksData = ctx.sources.hooksData;
     const slug = ctx.tokens.PROJECT_SLUG ?? "";
     return [
-      ...ctx.skills.map((s) => mirrorDir(`.kiro/skills/${stem(s.source)}`, "kiro", s, d)),
+      ...ctx.skills.map((s3) => mirrorDir(`.kiro/skills/${stem(s3.source)}`, "kiro", s3, d)),
       ...ctx.rules.map((r) => renderWant(`.kiro/steering/${stem(r.source)}.md`, "kiro", r.source, renderKiroRule(r), r.data, d)),
-      ...ctx.skills.map((s) => renderWant(`.kiro/steering/${stem(s.source)}.md`, "kiro", `${s.source}/SKILL.md`, renderKiroSkillSteering(s), skillData(s), ds)),
+      ...ctx.skills.map((s3) => renderWant(`.kiro/steering/${stem(s3.source)}.md`, "kiro", `${s3.source}/SKILL.md`, renderKiroSkillSteering(s3), skillData(s3), ds)),
       ...ctx.roles.map(({ role, fields }) => renderWant(`.kiro/agents/${stem(role.source)}.json`, "kiro", role.source, renderKiroRole(role, fields.kiro ?? {}, roleHooks), role.data, d)),
       ...kiroIdeFiles(ctx.hooks, map, mods).map((f) => renderWant(f.path, "kiro", HOOKS_REL, f.text, hooksData, d)),
       ...slug && ctx.hooksPresent ? [renderWant(`.kiro/agents/${slug}.json`, "kiro", HOOKS_REL, renderKiroCoordinator(ctx.spec, ctx.tokens, kiroCliHooks(ctx.hooks, map, mods)), hooksData, d)] : []
@@ -2575,7 +2587,7 @@ function ancestorDirs(rels) {
     const parts = rel2.split("/");
     for (let i = parts.length - 1; i > 0; i -= 1) dirs.add(parts.slice(0, i).join("/"));
   }
-  return [...dirs].sort((a, b) => b.split("/").length - a.split("/").length || byteCompare(a, b));
+  return [...dirs].sort((a3, b) => b.split("/").length - a3.split("/").length || byteCompare(a3, b));
 }
 function removeEmptyDirs(target, rels) {
   let removed = 0;
@@ -2695,10 +2707,10 @@ var ALL_HARNESSES = ["claude", "codex", "cursor", "kiro"];
 function buildContext(args) {
   const sources = loadSources(args.view);
   const findings = [];
-  const skills = sources.skills.filter((s) => {
-    if (!skillModelProblem(s)) return true;
-    const kit = s.source.slice(s.source.lastIndexOf("/") + 1).startsWith("hx-");
-    findings.push({ kind: "skill-model-field", severity: kit ? "error" : "warn", path: `${s.source}/SKILL.md`, hint: "context: fork 가 아닌 스킬에 model · effort 를 두지 않는다(그 턴의 사람 세션 모델이 바뀐다)" });
+  const skills = sources.skills.filter((s3) => {
+    if (!skillModelProblem(s3)) return true;
+    const kit = s3.source.slice(s3.source.lastIndexOf("/") + 1).startsWith("hx-");
+    findings.push({ kind: "skill-model-field", severity: kit ? "error" : "warn", path: `${s3.source}/SKILL.md`, hint: "context: fork 가 아닌 스킬에 model · effort 를 두지 않는다(그 턴의 사람 세션 모델이 바뀐다)" });
     return !kit;
   });
   const roles = [];
@@ -2726,7 +2738,7 @@ function wantsVscode(ctx) {
 }
 function wantedOps(ctx) {
   const wants = [];
-  for (const a of ADAPTERS) if (ctx.agents.includes(a.id)) wants.push(...a.plan(ctx));
+  for (const a3 of ADAPTERS) if (ctx.agents.includes(a3.id)) wants.push(...a3.plan(ctx));
   wants.push({ op: "merge", path: ".gitattributes", harness: "core", kind: "gitattributes", want: gitattributesWant(ctx.spec, ctx.agents) });
   if (wantsVscode(ctx)) wants.push({ op: "merge", path: ".vscode/settings.json", harness: "core", kind: "vscode-settings", want: vscodeSettingsWant() });
   const seen = /* @__PURE__ */ new Set();
@@ -2735,7 +2747,7 @@ function wantedOps(ctx) {
     seen.add(w.path);
   }
   for (const w of wants) {
-    if (w.op === "mirror" && w.kind === "dir" && wants.some((o) => o.path.startsWith(`${w.path}/`))) throw new CliError(EXIT.STATE, `배치 경로가 겹친다: ${w.path}`);
+    if (w.op === "mirror" && w.kind === "dir" && wants.some((o3) => o3.path.startsWith(`${w.path}/`))) throw new CliError(EXIT.STATE, `배치 경로가 겹친다: ${w.path}`);
   }
   return wants;
 }
@@ -2779,8 +2791,8 @@ function readTextAt(target, rel2) {
 var ownerKind = (owner) => owner === "kit" || owner === "user" ? owner : owner.startsWith("external:") ? "external" : owner.startsWith("pack:") ? "pack" : "unknown";
 var shaOf = (e) => e && typeof e.sha256 === "string" ? e.sha256 : null;
 var keysOf = (e) => e && Array.isArray(e.keys) ? e.keys : void 0;
-function kitEntry(w, sha = w.sha256) {
-  return { path: w.path, op: w.op, owner: "kit", sha256: sha, from: w.from, fromSha256: w.fromSha256 };
+function kitEntry(w, sha2 = w.sha256) {
+  return { path: w.path, op: w.op, owner: "kit", sha256: sha2, from: w.from, fromSha256: w.fromSha256 };
 }
 function mergeEntry(path_, keys, created) {
   return created ? { path: path_, op: "merge", owner: "kit", keys, createdByKit: true } : { path: path_, op: "merge", owner: "kit", keys };
@@ -2995,7 +3007,7 @@ function replacementDeferred(p, wants) {
   }
   return false;
 }
-var sortWants = (wants) => [...wants].sort((a, b) => byteCompare(a.path, b.path));
+var sortWants = (wants) => [...wants].sort((a3, b) => byteCompare(a3.path, b.path));
 function judgeInstall(args) {
   const engine = new Engine(args.target, args.spec, args.tokens, args.sources);
   const byPath = new Map(args.prev.filter((e) => PROJECTION_OPS.has(e.op)).map((e) => [e.path, e]));
@@ -3018,7 +3030,7 @@ function judgeUpdate(args) {
   for (const w of sortWants(args.wants)) engine.update(w, projection.get(w.path), claimedBy.get(w.path) ?? [], args.acceptAll);
   for (const p of [...projection.keys()].filter((x) => !wants.has(x)).sort(byteCompare)) engine.drop(projection.get(p), "원본이 없다");
   if (args.retire) {
-    for (const e of rest.sort((a, b) => byteCompare(a.path, b.path))) {
+    for (const e of rest.sort((a3, b) => byteCompare(a3.path, b.path))) {
       if (!HARNESS_DIRS.some((d) => e.path.startsWith(d))) continue;
       claimed.add(e.path);
       if (replacementDeferred(e.path, wants)) {
@@ -3036,8 +3048,8 @@ function removeEmptySubdirs(dir) {
   if (!st?.isDirectory()) return;
   for (const name of import_node_fs9.default.readdirSync(dir)) {
     const p = import_node_path6.default.join(dir, name);
-    const s = lstat(p);
-    if (s?.isDirectory() && !s.isSymbolicLink()) {
+    const s3 = lstat(p);
+    if (s3?.isDirectory() && !s3.isSymbolicLink()) {
       removeEmptySubdirs(p);
       if (import_node_fs9.default.readdirSync(p).length === 0) import_node_fs9.default.rmdirSync(p);
     }
@@ -3078,44 +3090,44 @@ function removeTarget(target, rel2, dir) {
   removeEmptyDirs(target, [rel2]);
 }
 function applyProjection(target, ops) {
-  for (const o of ops) {
-    const e = o.effect;
+  for (const o3 of ops) {
+    const e = o3.effect;
     if (!e) continue;
     for (const [from, to] of e.renames ?? []) import_node_fs9.default.renameSync(full3(target, from), full3(target, to));
     if (e.write) writeWant(target, e.write);
-    if (e.text !== void 0) writeFileAtomic(full3(target, o.path), Buffer.from(e.text, "utf8"), false);
+    if (e.text !== void 0) writeFileAtomic(full3(target, o3.path), Buffer.from(e.text, "utf8"), false);
     for (const x of e.extra ?? []) writeFileAtomic(full3(target, x.path), x.data, false);
-    if (e.remove) removeTarget(target, o.path, e.remove.dir);
+    if (e.remove) removeTarget(target, o3.path, e.remove.dir);
   }
 }
-function projOpJson(o) {
-  const j = { path: o.path, op: o.op, action: o.action };
-  if (o.harness) j.harness = o.harness;
-  if (o.reason) j.reason = o.reason;
-  if (o.newFiles?.length) j.new = o.newFiles.length === 1 ? o.newFiles[0] : o.newFiles;
-  if (o.backups?.length) j.backups = o.backups;
+function projOpJson(o3) {
+  const j = { path: o3.path, op: o3.op, action: o3.action };
+  if (o3.harness) j.harness = o3.harness;
+  if (o3.reason) j.reason = o3.reason;
+  if (o3.newFiles?.length) j.new = o3.newFiles.length === 1 ? o3.newFiles[0] : o3.newFiles;
+  if (o3.backups?.length) j.backups = o3.backups;
   return j;
 }
 var QUIET_ACTIONS = /* @__PURE__ */ new Set(["same", "keep"]);
 var ATTENTION_ACTIONS = /* @__PURE__ */ new Set(["conflict", "keep-modified"]);
 function projCounts(ops) {
   const out = {};
-  for (const o of ops) out[o.action] = (out[o.action] ?? 0) + 1;
+  for (const o3 of ops) out[o3.action] = (out[o3.action] ?? 0) + 1;
   return out;
 }
-function projLine(o) {
-  const extra = [...(o.newFiles ?? []).map((n) => `  → ${n}`), ...(o.backups ?? []).map((b) => `  (수정본 → ${b})`)].join("");
-  return `  ${o.action.padEnd(13)} ${o.path}${extra}${o.reason ? `  ${o.reason}` : ""}`;
+function projLine(o3) {
+  const extra = [...(o3.newFiles ?? []).map((n) => `  → ${n}`), ...(o3.backups ?? []).map((b) => `  (수정본 → ${b})`)].join("");
+  return `  ${o3.action.padEnd(13)} ${o3.path}${extra}${o3.reason ? `  ${o3.reason}` : ""}`;
 }
 function projSummary(ops) {
   const c = projCounts(ops);
-  const shown = Object.entries(c).filter(([a]) => !QUIET_ACTIONS.has(a)).map(([a, n]) => `${a} ${n}`).join(" · ");
+  const shown = Object.entries(c).filter(([a3]) => !QUIET_ACTIONS.has(a3)).map(([a3, n]) => `${a3} ${n}`).join(" · ");
   return `  배치: ${shown || "바꿀 것 없음"}${c.same ? ` (같음 ${c.same})` : ""}`;
 }
 
 // src/core/shell.ts
-function shellQuote(s) {
-  return /^[A-Za-z0-9_./@%+=:,-]+$/.test(s) ? s : `'${s.replace(/'/g, "'\\''")}'`;
+function shellQuote(s3) {
+  return /^[A-Za-z0-9_./@%+=:,-]+$/.test(s3) ? s3 : `'${s3.replace(/'/g, "'\\''")}'`;
 }
 
 // src/projection/flow.ts
@@ -3135,26 +3147,26 @@ function assertNoCopyOverlap(wants, copyPaths) {
   }
 }
 function needsHuman(plan, findings) {
-  return Boolean(plan?.ops.some((o) => ATTENTION_ACTIONS.has(o.action))) || findings.some((f) => f.severity === "error");
+  return Boolean(plan?.ops.some((o3) => ATTENTION_ACTIONS.has(o3.action))) || findings.some((f) => f.severity === "error");
 }
 function projectionConflicts(plan) {
   if (!plan) return [];
-  return plan.ops.filter((o) => o.action === "conflict").map((o) => {
-    const neu = o.newFiles?.[0] ?? null;
-    return { path: o.path, new: neu, diff: neu ? `diff -u ${shellQuote(o.path)} ${shellQuote(neu)}` : null };
+  return plan.ops.filter((o3) => o3.action === "conflict").map((o3) => {
+    const neu = o3.newFiles?.[0] ?? null;
+    return { path: o3.path, new: neu, diff: neu ? `diff -u ${shellQuote(o3.path)} ${shellQuote(neu)}` : null };
   });
 }
 function projectionData(plan, findings, all = false) {
   if (!plan) return null;
   return {
     counts: projCounts(plan.ops),
-    ops: plan.ops.filter((o) => all || !QUIET_ACTIONS.has(o.action)).map(projOpJson),
+    ops: plan.ops.filter((o3) => all || !QUIET_ACTIONS.has(o3.action)).map(projOpJson),
     findings
   };
 }
 function projectionLines(plan, findings, quiet, all = false, hide = /* @__PURE__ */ new Set()) {
   if (!plan) return [];
-  const shown = plan.ops.filter((o) => (all || !QUIET_ACTIONS.has(o.action) && !hide.has(o.action)) && (!quiet || ATTENTION_ACTIONS.has(o.action)));
+  const shown = plan.ops.filter((o3) => (all || !QUIET_ACTIONS.has(o3.action) && !hide.has(o3.action)) && (!quiet || ATTENTION_ACTIONS.has(o3.action)));
   return [
     ...findings.map((f) => `  ${f.severity === "error" ? "✖" : "⚠"} ${f.kind.padEnd(16)} ${f.path} — ${f.hint}`),
     ...shown.map(projLine),
@@ -3163,7 +3175,7 @@ function projectionLines(plan, findings, quiet, all = false, hide = /* @__PURE__
 }
 function mergeEntries(copyEntries, plan) {
   if (!plan) return copyEntries;
-  const owned = /* @__PURE__ */ new Set([...plan.claimed, ...plan.entries.map((e) => e.path), ...plan.ops.map((o) => o.path)]);
+  const owned = /* @__PURE__ */ new Set([...plan.claimed, ...plan.entries.map((e) => e.path), ...plan.ops.map((o3) => o3.path)]);
   return [...copyEntries.filter((e) => !owned.has(e.path) && !PROJECTION_OPS.has(e.op)), ...plan.entries];
 }
 
@@ -3190,10 +3202,10 @@ function walk(v, at) {
     walk(x, `${at}.${k}`);
   }
 }
-function parseSpec(text3) {
+function parseSpec(text4) {
   let raw;
   try {
-    raw = JSON.parse(text3);
+    raw = JSON.parse(text4);
   } catch (err) {
     throw bad2(err instanceof Error ? err.message : String(err));
   }
@@ -3276,19 +3288,19 @@ function substitute2(content, tokens, order) {
 var MANIFEST_PATH = ".agents/harness.json";
 function isSafeRelPath(p) {
   if (p === "" || p.startsWith("/") || p.includes("\\") || p.includes("\0")) return false;
-  return !p.split("/").some((s) => s === "" || s === "." || s === ".." || s.toLowerCase() === ".git");
+  return !p.split("/").some((s3) => s3 === "" || s3 === "." || s3 === ".." || s3.toLowerCase() === ".git");
 }
 function assertSafeRelPath(p) {
   if (!isSafeRelPath(p)) throw new CliError(EXIT.STATE, `리포 밖이나 .git 으로 가는 설치 경로를 거부한다: ${p}`);
 }
 function manifestContent(sel, tokens) {
-  const s = (v) => JSON.stringify(v);
-  const agents = sel.agents.map(s).join(", ");
+  const s3 = (v) => JSON.stringify(v);
+  const agents = sel.agents.map(s3).join(", ");
   return Buffer.from(
     `{
-  "unit": ${s(tokens.PROJECT_SLUG || "project")},
-  "title": ${s(tokens.PROJECT_NAME || "Project")},
-  "stack": ${s(sel.stack)},
+  "unit": ${s3(tokens.PROJECT_SLUG || "project")},
+  "title": ${s3(tokens.PROJECT_NAME || "Project")},
+  "stack": ${s3(sel.stack)},
   "agents": [${agents}],
   "shared": []
 }
@@ -3383,15 +3395,15 @@ function buildPlan(args) {
   });
   const generated = [manifestPlan(target, ancestors, manifestContent(selection, tokens), mode.adopt)];
   const counts2 = { create: 0, replace: 0, same: 0, "skip-user": 0, excludedByHarness: res.excludedByHarness, overlapped: res.overlaps.length };
-  for (const o of ops) counts2[o.action] += 1;
+  for (const o3 of ops) counts2[o3.action] += 1;
   const { projection, projectionFindings } = planProjection(args, ops);
   return { target, ops, overlaps: res.overlaps, excludedByHarness: res.excludedByHarness, generated, counts: counts2, projection, projectionFindings };
 }
 function planProjection(args, ops) {
   const spec = loadSpecOrNull(args.templatesDir);
   if (!spec) return { projection: null, projectionFindings: [] };
-  const writes = new Map(ops.filter((o) => o.action === "create" || o.action === "replace").map((o) => [o.path, { content: o.content, executable: o.executable }]));
-  const p = prepare({ target: args.target, spec, tokens: args.tokens, agents: args.selection.agents, writes, copyPaths: ops.map((o) => o.path) });
+  const writes = new Map(ops.filter((o3) => o3.action === "create" || o3.action === "replace").map((o3) => [o3.path, { content: o3.content, executable: o3.executable }]));
+  const p = prepare({ target: args.target, spec, tokens: args.tokens, agents: args.selection.agents, writes, copyPaths: ops.map((o3) => o3.path) });
   const projection = judgeInstall({ target: args.target, spec, tokens: args.tokens, sources: p.sources, wants: p.wants, prev: [], force: args.mode.force });
   return { projection, projectionFindings: p.findings };
 }
@@ -3449,7 +3461,7 @@ function resolveSelection(layout2, templatesDir, input, ctx) {
   }
   let lang = null;
   if (input.lang !== void 0) {
-    const withLang = Object.keys(layout2.stacks).filter((s) => layout2.stacks[s]?.lang);
+    const withLang = Object.keys(layout2.stacks).filter((s3) => layout2.stacks[s3]?.lang);
     if (!spec.lang) throw usageError(`--lang 은 이 스택에서 쓰지 않는다: '${stack}'`, `--lang 을 받는 스택: ${withLang.join(" ")}`);
     if (!(input.lang in spec.lang)) throw usageError(`알 수 없는 --lang: '${input.lang}'`, `사용 가능: ${Object.keys(spec.lang).join(" ")}`);
     lang = input.lang;
@@ -3494,10 +3506,10 @@ function parseSemver(v) {
   if (!m) return null;
   return { core: [Number(m[1]), Number(m[2]), Number(m[3])], pre: m[4] ? m[4].split(".") : [] };
 }
-function comparePre(a, b) {
-  if (a.length === 0 || b.length === 0) return b.length - a.length;
-  for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
-    const x = a[i];
+function comparePre(a3, b) {
+  if (a3.length === 0 || b.length === 0) return b.length - a3.length;
+  for (let i = 0; i < Math.max(a3.length, b.length); i += 1) {
+    const x = a3[i];
     const y = b[i];
     if (x === void 0) return -1;
     if (y === void 0) return 1;
@@ -3510,10 +3522,10 @@ function comparePre(a, b) {
   }
   return 0;
 }
-function compareSemver(a, b) {
-  const x = parseSemver(a);
+function compareSemver(a3, b) {
+  const x = parseSemver(a3);
   const y = parseSemver(b);
-  if (!x || !y) return a === b ? 0 : null;
+  if (!x || !y) return a3 === b ? 0 : null;
   for (let i = 0; i < 3; i += 1) {
     const d = x.core[i] - y.core[i];
     if (d !== 0) return Math.sign(d);
@@ -3645,7 +3657,7 @@ function withNames(sel, names) {
   };
 }
 function withoutNames(sel, names) {
-  return { ...sel, agents: sel.agents.filter((a) => !names.harnesses.includes(a)), modules: sel.modules.filter((m) => !names.modules.includes(m)) };
+  return { ...sel, agents: sel.agents.filter((a3) => !names.harnesses.includes(a3)), modules: sel.modules.filter((m) => !names.modules.includes(m)) };
 }
 function winnerLayers(layout2, templatesDir, sel, tokens) {
   return new Map(resolveCandidates(layout2, templatesDir, sel, tokens).winners.map((c) => [c.dest, c.layer]));
@@ -3784,7 +3796,7 @@ function buildUpdatePlan(input) {
   const locked = new Map(input.lock.entries.filter((e) => !PROJECTION_OPS2.has(e.op)).map((e) => [e.path, e]));
   const forget = forgetSet(input.forget, locked, want);
   const ctx = { target: input.target, ancestors: new AncestorCheck(input.target, import_node_fs13.default.realpathSync(input.target)), acceptAll: input.acceptAll, prune: input.prune };
-  const counts2 = Object.fromEntries(UPDATE_ACTIONS.map((a) => [a, 0]));
+  const counts2 = Object.fromEntries(UPDATE_ACTIONS.map((a3) => [a3, 0]));
   const ops = [];
   const entries = [];
   for (const p of [.../* @__PURE__ */ new Set([...want.keys(), ...locked.keys()])].sort(byteCompare)) {
@@ -3812,15 +3824,15 @@ function createPrompter(input, write) {
   return {
     async ask(question, fallback) {
       write(`${question}${fallback ? ` (${fallback})` : ""}: `);
-      const a = await next();
-      const v = (a ?? "").trim();
+      const a3 = await next();
+      const v = (a3 ?? "").trim();
       return v === "" ? fallback : v;
     },
     async confirm(question) {
       write(`${question} [Y/n]: `);
-      const a = await next();
-      if (a === null) return false;
-      return !/^(n|no|아니오|아니)$/i.test(a.trim());
+      const a3 = await next();
+      if (a3 === null) return false;
+      return !/^(n|no|아니오|아니)$/i.test(a3.trim());
     },
     close() {
       rl.close();
@@ -3856,8 +3868,8 @@ function full5(target, rel2) {
   return import_node_path15.default.join(target, ...rel2.split("/"));
 }
 function featureDocsAllowed(plan) {
-  const docs = plan.ops.filter((o) => o.path.startsWith(`${import_node_path15.default.posix.dirname(FEATURE_DOCS)}/`));
-  return docs.some((o) => o.path === FEATURE_DOCS) && docs.every((o) => o.owner === "kit");
+  const docs = plan.ops.filter((o3) => o3.path.startsWith(`${import_node_path15.default.posix.dirname(FEATURE_DOCS)}/`));
+  return docs.some((o3) => o3.path === FEATURE_DOCS) && docs.every((o3) => o3.owner === "kit");
 }
 function buildFeatureDocs(target, env) {
   if (!import_node_fs14.default.existsSync(full5(target, FEATURE_DOCS))) return { status: "skipped", reason: `${FEATURE_DOCS} 없음` };
@@ -3990,32 +4002,32 @@ function coreVersion(v) {
   const m = /^v?(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(v.trim());
   return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
 }
-function cmp(a, b) {
-  for (let i = 0; i < 3; i += 1) if (a[i] !== b[i]) return a[i] - b[i];
+function cmp(a3, b) {
+  for (let i = 0; i < 3; i += 1) if (a3[i] !== b[i]) return a3[i] - b[i];
   return 0;
 }
-function upgradeSections(text3) {
+function upgradeSections(text4) {
   const out = [];
-  for (const line of text3.replace(/\r\n/g, "\n").split("\n")) {
+  for (const line of text4.replace(/\r\n/g, "\n").split("\n")) {
     const h = /^## +(\S+)\s*$/.exec(line);
     if (h) out.push({ version: h[1], body: [] });
     else if (out.length) out[out.length - 1].body.push(line);
   }
-  return out.map((s) => ({ version: s.version, body: trimBlank(s.body) }));
+  return out.map((s3) => ({ version: s3.version, body: trimBlank(s3.body) }));
 }
 function trimBlank(lines3) {
-  let a = 0;
+  let a3 = 0;
   let b = lines3.length;
-  while (a < b && lines3[a].trim() === "") a += 1;
-  while (b > a && lines3[b - 1].trim() === "") b -= 1;
-  return lines3.slice(a, b);
+  while (a3 < b && lines3[a3].trim() === "") a3 += 1;
+  while (b > a3 && lines3[b - 1].trim() === "") b -= 1;
+  return lines3.slice(a3, b);
 }
 function addDays(day, n) {
   const [y, m, d] = day.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 }
-function isKitNotice(text3) {
-  const lines3 = text3.replace(/\r\n/g, "\n").split("\n");
+function isKitNotice(text4) {
+  const lines3 = text4.replace(/\r\n/g, "\n").split("\n");
   if (lines3[0]?.trim() !== "---") return false;
   const end = lines3.indexOf("---", 1);
   const head = lines3.slice(1, end < 0 ? 1 : end);
@@ -4024,16 +4036,16 @@ function isKitNotice(text3) {
 function planNotice(args) {
   const from = coreVersion(args.from);
   const to = coreVersion(args.to);
-  const sections = args.upgradeText !== null && from && to ? upgradeSections(args.upgradeText).map((s) => ({ ...s, core: coreVersion(s.version) })).filter((s) => s.core !== null && cmp(s.core, from) > 0 && cmp(s.core, to) <= 0).sort((a, b) => cmp(a.core, b.core)) : [];
+  const sections = args.upgradeText !== null && from && to ? upgradeSections(args.upgradeText).map((s3) => ({ ...s3, core: coreVersion(s3.version) })).filter((s3) => s3.core !== null && cmp(s3.core, from) > 0 && cmp(s3.core, to) <= 0).sort((a3, b) => cmp(a3.core, b.core)) : [];
   const kit = args.existing !== null && isKitNotice(args.existing);
   if (!sections.length) return { action: kit && noticeExpired(args.existing, args.today) ? "delete" : "none" };
   if (args.existing !== null && !kit) return { action: "keep-human" };
-  const body = sections.flatMap((s) => s.body);
-  const text3 = ["---", `kitFrom: ${args.from}`, `kitTo: ${args.to}`, `date: ${args.today}`, `expires: ${addDays(args.today, NOTICE_DAYS)}`, "---", `# 하네스 업데이트 ${args.from} → ${args.to}`, "", ...body, ""].join("\n");
-  return { action: "write", text: text3 };
+  const body = sections.flatMap((s3) => s3.body);
+  const text4 = ["---", `kitFrom: ${args.from}`, `kitTo: ${args.to}`, `date: ${args.today}`, `expires: ${addDays(args.today, NOTICE_DAYS)}`, "---", `# 하네스 업데이트 ${args.from} → ${args.to}`, "", ...body, ""].join("\n");
+  return { action: "write", text: text4 };
 }
-function noticeExpired(text3, today2) {
-  const m = /^expires:\s*(\S+)/m.exec(text3);
+function noticeExpired(text4, today2) {
+  const m = /^expires:\s*(\S+)/m.exec(text4);
   return Boolean(m && m[1] < today2);
 }
 
@@ -4052,8 +4064,8 @@ function text(buf, start, len) {
   return slice.subarray(0, end < 0 ? slice.length : end).toString("utf8");
 }
 function octal(buf, start, len) {
-  const s = text(buf, start, len).trim();
-  return s ? Number.parseInt(s, 8) : 0;
+  const s3 = text(buf, start, len).trim();
+  return s3 ? Number.parseInt(s3, 8) : 0;
 }
 function paxPath(data) {
   let i = 0;
@@ -4075,19 +4087,19 @@ function safe(p) {
 function untgz(gz) {
   const buf = import_node_zlib.default.gunzipSync(gz);
   const out = [];
-  let off = 0;
+  let off2 = 0;
   let longName = null;
-  while (off + BLOCK <= buf.length) {
-    const header = buf.subarray(off, off + BLOCK);
+  while (off2 + BLOCK <= buf.length) {
+    const header = buf.subarray(off2, off2 + BLOCK);
     if (header.every((b) => b === 0)) break;
     const size = octal(header, 124, 12);
     const type = String.fromCharCode(header[156] || 48);
     const prefix = text(header, 345, 155);
     let name = longName ?? (prefix ? `${prefix}/${text(header, 0, 100)}` : text(header, 0, 100));
     longName = null;
-    const dataStart = off + BLOCK;
+    const dataStart = off2 + BLOCK;
     const data = buf.subarray(dataStart, dataStart + size);
-    off = dataStart + Math.ceil(size / BLOCK) * BLOCK;
+    off2 = dataStart + Math.ceil(size / BLOCK) * BLOCK;
     if (type === "x") {
       longName = paxPath(data);
       continue;
@@ -4136,7 +4148,7 @@ function satisfiesKit(version, range) {
     const m = /^v?(\d+)\.(\d+)\.(\d+)/.exec(v2.trim());
     return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
   };
-  const cmp2 = (a, b) => a[0] - b[0] || a[1] - b[1] || a[2] - b[2];
+  const cmp3 = (a3, b) => a3[0] - b[0] || a3[1] - b[1] || a3[2] - b[2];
   const v = core(version);
   if (!v) return false;
   const parts = range.trim().split(/\s+/).filter(Boolean);
@@ -4145,7 +4157,7 @@ function satisfiesKit(version, range) {
     const m = /^(>=|<=|>|<|=|\^|~)?(.+)$/.exec(p);
     const b = m ? core(m[2]) : null;
     if (!m || !b) return false;
-    const c = cmp2(v, b);
+    const c = cmp3(v, b);
     switch (m[1]) {
       case ">=":
         return c >= 0;
@@ -4248,7 +4260,7 @@ function fetchPack(target, source, env) {
       } catch (err) {
         throw new CliError(EXIT.STATE, `npm 팩을 풀 수 없다(${parsed2.spec}): ${err instanceof Error ? err.message : String(err)}`);
       }
-      files = entries.filter((e) => e.path.startsWith("package/")).map((e) => ({ rel: e.path.slice("package/".length), data: e.data, mode: e.mode, link: false })).sort((a, b) => byteCompare(a.rel, b.rel));
+      files = entries.filter((e) => e.path.startsWith("package/")).map((e) => ({ rel: e.path.slice("package/".length), data: e.data, mode: e.mode, link: false })).sort((a3, b) => byteCompare(a3.rel, b.rel));
       resolved = `npm:${first.integrity ?? sha256(tgz)}`;
     }
     const manifest = readManifest(files, source);
@@ -4277,8 +4289,8 @@ function provided(m, dest) {
   const p = m.provides;
   return (p.rules ?? []).some((n) => dest === `.agents/rules/${n}.md`) || (p.skills ?? []).some((n) => dest.startsWith(`.agents/skills/${n}/`)) || (p.roles ?? []).some((n) => dest === `.agents/roles/${n}.md`) || (p.guards ?? []).some((n) => dest === `scripts/guards/${n}.sh`) || (p.scripts ?? []).includes(dest) || (p.templates ?? []).includes(dest) || dest.startsWith(`tools/${m.name}/`);
 }
-function sameSet(a, b) {
-  return a.length === b.length && [...a].sort().join("\n") === [...b].sort().join("\n");
+function sameSet(a3, b) {
+  return a3.length === b.length && [...a3].sort().join("\n") === [...b].sort().join("\n");
 }
 function planPack(pack, input) {
   const m = pack.manifest;
@@ -4319,7 +4331,7 @@ function planPack(pack, input) {
       continue;
     }
     const inner = lay.inner;
-    const okSeg = ALLOWED.some((a) => inner.startsWith(a)) || inner.startsWith(`tools/${m.name}/`);
+    const okSeg = ALLOWED.some((a3) => inner.startsWith(a3)) || inner.startsWith(`tools/${m.name}/`);
     if (!okSeg) {
       problems.push(`${where}: 팩이 쓸 수 없는 자리 ${f.rel}(하네스 파일 · root/ 는 킷 몫이다)`);
       continue;
@@ -4342,10 +4354,10 @@ function planPack(pack, input) {
 function fragment(pack, f, input, problems) {
   const m = pack.manifest;
   const where = `${m.name}(${pack.source})`;
-  const text3 = f.data.toString("utf8");
+  const text4 = f.data.toString("utf8");
   if (f.rel === "fragments/hooks.json") {
     try {
-      const hooks = parseHooks(text3, input.hookMap) ?? [];
+      const hooks = parseHooks(text4, input.hookMap) ?? [];
       for (const h of hooks) {
         if (!h.id.startsWith(`harness-${m.name}-`)) problems.push(`${where}: 훅 id ${h.id} 는 harness-${m.name}- 로 시작한다`);
         if (FLOOR_HOOKS.includes(h.id)) problems.push(`${where}: 하한 훅 ${h.id} 는 팩이 정의하지 못한다`);
@@ -4360,7 +4372,7 @@ function fragment(pack, f, input, problems) {
   if (f.rel === "fragments/verify-checks.json") {
     let checks = [];
     try {
-      const raw = JSON.parse(text3);
+      const raw = JSON.parse(text4);
       checks = Array.isArray(raw.checks) ? raw.checks : [];
     } catch (err) {
       problems.push(`${where}: fragments/verify-checks.json 을 해석할 수 없다: ${err instanceof Error ? err.message : String(err)}`);
@@ -4413,15 +4425,15 @@ function extension(rel2) {
   const dot = name.lastIndexOf(".");
   return dot >= 0 ? name.slice(dot).toLowerCase() : "";
 }
-function hasKitHeader(text3) {
-  return text3.split("\n").slice(0, HEADER_LINES).some((l) => l.includes(KIT_HEADER));
+function hasKitHeader(text4) {
+  return text4.split("\n").slice(0, HEADER_LINES).some((l) => l.includes(KIT_HEADER));
 }
 function planV1Merge(rel2, current4, kit) {
   if (KIT_FOLDERS.some((f) => rel2.startsWith(f))) return { kind: "kit", content: kit };
   const ext = extension(rel2);
   if (ext === ".md" || ext === ".txt") {
-    const text3 = decode2(current4);
-    if (text3 !== null && hasKitHeader(text3)) return { kind: "kit", content: kit };
+    const text4 = decode2(current4);
+    if (text4 !== null && hasKitHeader(text4)) return { kind: "kit", content: kit };
     const merged = mergeLines(current4, kit);
     return merged ? { kind: "lines", content: merged } : { kind: "new", content: null };
   }
@@ -4435,17 +4447,17 @@ function significant(line) {
   return /[A-Za-z0-9\u0080-\uffff]/.test(line);
 }
 var isBlank2 = (line) => /^[ \t\r]*$/.test(line);
-function splitLines2(text3) {
-  const lines3 = text3.split("\n");
+function splitLines2(text4) {
+  const lines3 = text4.split("\n");
   if (lines3[lines3.length - 1] === "") return { lines: lines3.slice(0, -1), eol: true };
   return { lines: lines3, eol: false };
 }
-function lcsPairs(a, b) {
+function lcsPairs(a3, b) {
   let head = 0;
-  while (head < a.length && head < b.length && a[head] === b[head]) head += 1;
+  while (head < a3.length && head < b.length && a3[head] === b[head]) head += 1;
   let tail = 0;
-  while (tail < a.length - head && tail < b.length - head && a[a.length - 1 - tail] === b[b.length - 1 - tail]) tail += 1;
-  const midA = a.slice(head, a.length - tail);
+  while (tail < a3.length - head && tail < b.length - head && a3[a3.length - 1 - tail] === b[b.length - 1 - tail]) tail += 1;
+  const midA = a3.slice(head, a3.length - tail);
   const midB = b.slice(head, b.length - tail);
   const n = midA.length;
   const m = midB.length;
@@ -4454,12 +4466,12 @@ function lcsPairs(a, b) {
   for (let k = 0; k < head; k += 1) pairs.push([k, k]);
   if (n && m) {
     const w = m + 1;
-    const table = new Uint32Array((n + 1) * w);
+    const table2 = new Uint32Array((n + 1) * w);
     for (let i2 = n - 1; i2 >= 0; i2 -= 1) {
       for (let j2 = m - 1; j2 >= 0; j2 -= 1) {
-        const below = table[(i2 + 1) * w + j2];
-        const right = table[i2 * w + j2 + 1];
-        table[i2 * w + j2] = midA[i2] === midB[j2] ? table[(i2 + 1) * w + j2 + 1] + 1 : below >= right ? below : right;
+        const below = table2[(i2 + 1) * w + j2];
+        const right = table2[i2 * w + j2 + 1];
+        table2[i2 * w + j2] = midA[i2] === midB[j2] ? table2[(i2 + 1) * w + j2 + 1] + 1 : below >= right ? below : right;
       }
     }
     let i = 0;
@@ -4469,11 +4481,11 @@ function lcsPairs(a, b) {
         pairs.push([head + i, head + j]);
         i += 1;
         j += 1;
-      } else if (table[(i + 1) * w + j] >= table[i * w + j + 1]) i += 1;
+      } else if (table2[(i + 1) * w + j] >= table2[i * w + j + 1]) i += 1;
       else j += 1;
     }
   }
-  for (let k = 0; k < tail; k += 1) pairs.push([a.length - tail + k, b.length - tail + k]);
+  for (let k = 0; k < tail; k += 1) pairs.push([a3.length - tail + k, b.length - tail + k]);
   return pairs;
 }
 function frontmatterEnd(lines3) {
@@ -4504,11 +4516,11 @@ function mergeLines(current4, kit) {
     const [nextC, nextD] = k < anchors.length ? anchors[k] : [c.length, d.length];
     const run4 = c.slice(prevC + 1, nextC).filter((l) => !(significant(l) && inD.has(l)));
     if (run4.some(significant)) {
-      let s = 0;
+      let s3 = 0;
       let e = run4.length;
-      while (s < e && isBlank2(run4[s])) s += 1;
-      while (e > s && isBlank2(run4[e - 1])) e -= 1;
-      blocks.push({ at: Math.max(nextD, fmEnd), lines: run4.slice(s, e) });
+      while (s3 < e && isBlank2(run4[s3])) s3 += 1;
+      while (e > s3 && isBlank2(run4[e - 1])) e -= 1;
+      blocks.push({ at: Math.max(nextD, fmEnd), lines: run4.slice(s3, e) });
     }
     prevC = nextC;
   }
@@ -4528,27 +4540,27 @@ var BadJson = class extends Error {
 var LONE_SURROGATE = /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
 var NUMBER = /-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/y;
 var ESCAPES = { '"': '"', "\\": "\\", "/": "/", b: "\b", f: "\f", n: "\n", r: "\r", t: "	" };
-function parseStrict(text3) {
+function parseStrict(text4) {
   let i = 0;
   const ws = () => {
-    while (i < text3.length && (text3[i] === " " || text3[i] === "	" || text3[i] === "\n" || text3[i] === "\r")) i += 1;
+    while (i < text4.length && (text4[i] === " " || text4[i] === "	" || text4[i] === "\n" || text4[i] === "\r")) i += 1;
   };
   const str6 = () => {
-    if (text3[i] !== '"') throw new BadJson("문자열");
+    if (text4[i] !== '"') throw new BadJson("문자열");
     i += 1;
     let out = "";
     for (; ; ) {
-      if (i >= text3.length) throw new BadJson("문자열 끝");
-      const ch = text3[i];
+      if (i >= text4.length) throw new BadJson("문자열 끝");
+      const ch = text4[i];
       if (ch === '"') {
         i += 1;
         break;
       }
       if (ch < " ") throw new BadJson("제어 문자");
       if (ch === "\\") {
-        const e = text3[i + 1];
+        const e = text4[i + 1];
         if (e === "u") {
-          const hex = text3.slice(i + 2, i + 6);
+          const hex = text4.slice(i + 2, i + 6);
           if (!/^[0-9a-fA-F]{4}$/.test(hex)) throw new BadJson("\\u");
           out += String.fromCharCode(parseInt(hex, 16));
           i += 6;
@@ -4566,13 +4578,13 @@ function parseStrict(text3) {
   };
   const value2 = () => {
     ws();
-    const ch = text3[i];
+    const ch = text4[i];
     if (ch === "{") {
       i += 1;
       const pairs = [];
       const keys = /* @__PURE__ */ new Set();
       ws();
-      if (text3[i] === "}") {
+      if (text4[i] === "}") {
         i += 1;
         return { t: "obj", pairs };
       }
@@ -4582,15 +4594,15 @@ function parseStrict(text3) {
         if (keys.has(k)) throw new BadJson("같은 키");
         keys.add(k);
         ws();
-        if (text3[i] !== ":") throw new BadJson(":");
+        if (text4[i] !== ":") throw new BadJson(":");
         i += 1;
         pairs.push([k, value2()]);
         ws();
-        if (text3[i] === ",") {
+        if (text4[i] === ",") {
           i += 1;
           continue;
         }
-        if (text3[i] === "}") {
+        if (text4[i] === "}") {
           i += 1;
           return { t: "obj", pairs };
         }
@@ -4601,18 +4613,18 @@ function parseStrict(text3) {
       i += 1;
       const items = [];
       ws();
-      if (text3[i] === "]") {
+      if (text4[i] === "]") {
         i += 1;
         return { t: "arr", items };
       }
       for (; ; ) {
         items.push(value2());
         ws();
-        if (text3[i] === ",") {
+        if (text4[i] === ",") {
           i += 1;
           continue;
         }
-        if (text3[i] === "]") {
+        if (text4[i] === "]") {
           i += 1;
           return { t: "arr", items };
         }
@@ -4621,27 +4633,27 @@ function parseStrict(text3) {
     }
     if (ch === '"') return { t: "str", v: str6() };
     for (const lit of ["true", "false", "null"]) {
-      if (text3.startsWith(lit, i)) {
+      if (text4.startsWith(lit, i)) {
         i += lit.length;
         return { t: "raw", v: lit };
       }
     }
     NUMBER.lastIndex = i;
-    const m = NUMBER.exec(text3);
+    const m = NUMBER.exec(text4);
     if (!m) throw new BadJson("값");
     i += m[0].length;
     return { t: "raw", v: m[0] };
   };
   const v = value2();
   ws();
-  if (i !== text3.length) throw new BadJson("끝 뒤 글자");
+  if (i !== text4.length) throw new BadJson("끝 뒤 글자");
   return v;
 }
 function parseObject2(data) {
-  const text3 = decode2(data);
-  if (text3 === null) return null;
+  const text4 = decode2(data);
+  if (text4 === null) return null;
   try {
-    const v = parseStrict(text3);
+    const v = parseStrict(text4);
     return v.t === "obj" ? v : null;
   } catch {
     return null;
@@ -4711,7 +4723,7 @@ function backupPath(stamp, rel2) {
 }
 function recount(ops, like) {
   const counts2 = Object.fromEntries(Object.keys(like).map((k) => [k, 0]));
-  for (const o of ops) counts2[o.action] += 1;
+  for (const o3 of ops) counts2[o3.action] += 1;
   return counts2;
 }
 function applyV1Merge(plan, opts) {
@@ -4719,23 +4731,23 @@ function applyV1Merge(plan, opts) {
   const merged = [];
   const backups = [];
   const kitSha = /* @__PURE__ */ new Map();
-  const ops = plan.ops.map((o) => {
-    if (o.action !== "conflict" || !opts.ambiguous.has(o.path) || !o.content || !o.sha256) return o;
-    const cur = existing(full6(opts.target, o.path));
-    if (cur.kind !== "file") return o;
-    const r = planV1Merge(o.path, cur.bytes, o.content);
-    if (r.kind === "new" || !r.content) return o;
-    const backup = backupPath(opts.stamp, o.path);
-    merged.push({ path: o.path, kind: r.kind, backup });
+  const ops = plan.ops.map((o3) => {
+    if (o3.action !== "conflict" || !opts.ambiguous.has(o3.path) || !o3.content || !o3.sha256) return o3;
+    const cur = existing(full6(opts.target, o3.path));
+    if (cur.kind !== "file") return o3;
+    const r = planV1Merge(o3.path, cur.bytes, o3.content);
+    if (r.kind === "new" || !r.content) return o3;
+    const backup = backupPath(opts.stamp, o3.path);
+    merged.push({ path: o3.path, kind: r.kind, backup });
     backups.push({ path: backup, data: cur.bytes });
-    kitSha.set(o.path, o.sha256);
-    const rest = Object.fromEntries(Object.entries(o).filter(([k]) => k !== "newFile" && k !== "newRefreshed"));
+    kitSha.set(o3.path, o3.sha256);
+    const rest = Object.fromEntries(Object.entries(o3).filter(([k]) => k !== "newFile" && k !== "newRefreshed"));
     return { ...rest, action: r.kind === "kit" ? "update" : "merge", merge: r.kind, mergeBackup: backup, content: r.content, reason: V1_MERGE_REASON };
   });
   if (merged.length === 0) return { plan, merged, backups };
   const entries = plan.entries.map((e) => {
-    const sha = kitSha.get(e.path);
-    return sha ? { ...e, owner: "kit", sha256: sha } : e;
+    const sha2 = kitSha.get(e.path);
+    return sha2 ? { ...e, owner: "kit", sha256: sha2 } : e;
   });
   return { plan: { ...plan, ops, entries, counts: recount(ops, plan.counts) }, merged, backups };
 }
@@ -4850,7 +4862,7 @@ function readLocalModelPolicy(target) {
 }
 function listDir(target, rel2) {
   try {
-    return import_node_fs18.default.readdirSync(import_node_path20.default.join(target, ...rel2.split("/")), { withFileTypes: true }).sort((a, b) => byteCompare(a.name, b.name));
+    return import_node_fs18.default.readdirSync(import_node_path20.default.join(target, ...rel2.split("/")), { withFileTypes: true }).sort((a3, b) => byteCompare(a3.name, b.name));
   } catch {
     return [];
   }
@@ -4891,12 +4903,12 @@ function planLocal(target, agents, spec, sharedHookIds2) {
       continue;
     }
     if (agents.includes("kiro")) plan.wants.push({ path: `.kiro/steering/local-${name}.md`, content: Buffer.from(renderKiroRule(parseRule(rel2, import_node_fs18.default.readFileSync(import_node_path20.default.join(target, ...rel2.split("/"))))), "utf8"), executable: false });
-    if (agents.some((a) => a === "claude" || a === "codex")) plan.findings.push({ kind: "personal-unsupported", severity: "info", path: rel2, hint: "Claude · Codex 개인 규칙은 배치하지 않는다(개인 메모리 파일 지원 확인 전, 설계 04 §6)" });
+    if (agents.some((a3) => a3 === "claude" || a3 === "codex")) plan.findings.push({ kind: "personal-unsupported", severity: "info", path: rel2, hint: "Claude · Codex 개인 규칙은 배치하지 않는다(개인 메모리 파일 지원 확인 전, 설계 04 §6)" });
   }
   let hooks = [];
   try {
-    const text3 = exists2(LOCAL_HOOKS) ? import_node_fs18.default.readFileSync(import_node_path20.default.join(target, ...LOCAL_HOOKS.split("/")), "utf8") : null;
-    hooks = parseHooks(text3, spec.hookMap) ?? [];
+    const text4 = exists2(LOCAL_HOOKS) ? import_node_fs18.default.readFileSync(import_node_path20.default.join(target, ...LOCAL_HOOKS.split("/")), "utf8") : null;
+    hooks = parseHooks(text4, spec.hookMap) ?? [];
   } catch (err) {
     plan.findings.push({ kind: "local-invalid", severity: "error", path: LOCAL_HOOKS, hint: err instanceof HooksError ? err.message : String(err) });
   }
@@ -4924,21 +4936,21 @@ function writeExclude(target, paths) {
   const r = (0, import_node_child_process4.spawnSync)("git", ["-C", target, "rev-parse", "--path-format=absolute", "--git-common-dir"], { encoding: "utf8" });
   if (r.status !== 0) return;
   const file = import_node_path20.default.join(r.stdout.trim(), "info", "exclude");
-  let text3 = "";
+  let text4 = "";
   try {
-    text3 = import_node_fs18.default.readFileSync(file, "utf8");
+    text4 = import_node_fs18.default.readFileSync(file, "utf8");
   } catch {
-    text3 = "";
+    text4 = "";
   }
-  const lines3 = text3.split("\n");
+  const lines3 = text4.split("\n");
   const b = lines3.indexOf(EXCLUDE_BEGIN);
   const e = lines3.indexOf(EXCLUDE_END);
   const outside = b >= 0 && e > b ? [...lines3.slice(0, b), ...lines3.slice(e + 1)] : lines3;
   const body = outside.join("\n").replace(/\n+$/, "");
-  const block2 = paths.length ? [EXCLUDE_BEGIN, ...paths.map((p) => `/${p}`), EXCLUDE_END] : [];
-  const next = `${[body, ...block2.length ? [block2.join("\n")] : []].filter(Boolean).join("\n")}
+  const block3 = paths.length ? [EXCLUDE_BEGIN, ...paths.map((p) => `/${p}`), EXCLUDE_END] : [];
+  const next = `${[body, ...block3.length ? [block3.join("\n")] : []].filter(Boolean).join("\n")}
 `;
-  if (next !== text3) writeFileAtomic(file, Buffer.from(next, "utf8"), false);
+  if (next !== text4) writeFileAtomic(file, Buffer.from(next, "utf8"), false);
 }
 function syncLocal(target, plan, dryRun) {
   const prev = readLocalLock(target);
@@ -5141,13 +5153,13 @@ function applyPacks(target, ops, lockText2, projection) {
   let currentPath = "";
   try {
     const deleted = [];
-    for (const o of ops) {
-      currentPath = o.path;
-      if ((o.action === "new" || o.action === "restore" || o.action === "update") && o.content) writeFileAtomic(full7(target, o.path), o.content, o.executable === true);
-      else if (o.action === "conflict" && o.newFile && o.content) writeFileAtomic(full7(target, o.newFile), o.content, false);
-      else if (o.action === "delete" && o.removeFile) {
-        removeFile(target, o.path);
-        deleted.push(o.path);
+    for (const o3 of ops) {
+      currentPath = o3.path;
+      if ((o3.action === "new" || o3.action === "restore" || o3.action === "update") && o3.content) writeFileAtomic(full7(target, o3.path), o3.content, o3.executable === true);
+      else if (o3.action === "conflict" && o3.newFile && o3.content) writeFileAtomic(full7(target, o3.newFile), o3.content, false);
+      else if (o3.action === "delete" && o3.removeFile) {
+        removeFile(target, o3.path);
+        deleted.push(o3.path);
       }
     }
     removeEmptyDirs(target, deleted);
@@ -5169,8 +5181,8 @@ function runUpdatePacks(ctx) {
   const { selection } = selectionFromMeta(layout2, loc.dir, inst.meta);
   const tokens = tokensFromMeta(layout2, selection, inst.meta, io2.env, target);
   const kit = wanted({ layout: layout2, templatesDir: loc.dir, selection, tokens }).want;
-  const sources = Array.isArray(inst.meta.packs) ? inst.meta.packs.filter((s) => typeof s === "string") : [];
-  const fetched = sources.map((s) => fetchPack(target, s, io2.env));
+  const sources = Array.isArray(inst.meta.packs) ? inst.meta.packs.filter((s3) => typeof s3 === "string") : [];
+  const fetched = sources.map((s3) => fetchPack(target, s3, io2.env));
   const plans = fetched.map((pack) => ({ pack, ...planPack(pack, { layout: layout2, selection, tokens, hookMap: loadSpec(loc.dir).hookMap, kitPaths: new Set(kit.keys()), kitVersion: VERSION }) }));
   const names = fetched.map((p) => p.manifest.name);
   const problems = plans.flatMap((p) => p.problems);
@@ -5206,18 +5218,18 @@ ${problems.map((p) => `  ${p}`).join("\n")}`, "팩을 고쳐 새 판을 내거�
   const projection = projectionForUpdate({ target, templatesDir: loc.dir, tokens, agents: selection.agents, inst, plan, acceptAll: false });
   const records = fetched.map((p) => ({ name: p.manifest.name, version: p.manifest.version, source: p.source, resolved: p.resolved, requiresKit: p.manifest.requires.kit }));
   const finalEntries = projection ? mergeEntries(copyEntries, projection.plan) : copyEntries;
-  const lockText2 = serializeLock({ ...inst.lock, packs: records, entries: finalEntries.sort((a, b) => byteCompare(a.path, b.path)) });
+  const lockText2 = serializeLock({ ...inst.lock, packs: records, entries: finalEntries.sort((a3, b) => byteCompare(a3.path, b.path)) });
   const dryRun = bool(ctx.values, "dry-run");
   if (!dryRun) applyPacks(target, ops, lockText2, projection?.plan.ops ?? null);
-  const conflict = ops.filter((o) => o.action === "conflict");
-  const human = conflict.length > 0 || ops.some((o) => o.action === "orphan") || (projection ? needsHuman(projection.plan, projection.findings) : false);
-  const shown = ops.filter((o) => o.action !== "same" || o.reason);
+  const conflict = ops.filter((o3) => o3.action === "conflict");
+  const human = conflict.length > 0 || ops.some((o3) => o3.action === "orphan") || (projection ? needsHuman(projection.plan, projection.findings) : false);
+  const shown = ops.filter((o3) => o3.action !== "same" || o3.reason);
   const lines3 = [
     `harness-kit update --packs — ${target}`,
     ...records.map((r) => `  팩: ${r.name}@${r.version}  ${r.source}  (${r.resolved.slice(0, 19)})`),
     ...records.length ? [] : ["  packs 가 비었다 — 팩 파일을 뺀다"],
-    ...shown.map((o) => `  ${o.action.padEnd(10)} ${o.path}${o.reason ? `  ${o.reason}` : ""}`),
-    `  팩 파일: ${["new", "update", "restore", "same", "conflict", "delete", "orphan", "skip-user"].map((a) => `${a} ${ops.filter((o) => o.action === a).length}`).join(" · ")}`,
+    ...shown.map((o3) => `  ${o3.action.padEnd(10)} ${o3.path}${o3.reason ? `  ${o3.reason}` : ""}`),
+    `  팩 파일: ${["new", "update", "restore", "same", "conflict", "delete", "orphan", "skip-user"].map((a3) => `${a3} ${ops.filter((o3) => o3.action === a3).length}`).join(" · ")}`,
     ...projection ? projectionLines(projection.plan, projection.findings, ctx.quiet) : [],
     ...conflict.length ? ["  충돌 — 사람이 고친 파일이라 덮지 않았다. 새 판은 .new 에 있다"] : [],
     dryRun ? "  (dry-run — 쓰지 않았다)" : "  다음: harness-kit doctor --only overrides"
@@ -5228,8 +5240,8 @@ ${problems.map((p) => `  ${p}`).join("\n")}`, "팩을 고쳐 새 판을 내거�
     target,
     dryRun,
     records,
-    ops: shown.map((o) => ({ path: o.path, owner: o.owner, layer: o.layer, action: o.action, ...o.reason ? { reason: o.reason } : {}, ...o.newFile ? { new: o.newFile } : {} })),
-    conflicts: [...conflict.map((o) => ({ path: o.path, new: o.newFile ?? null })), ...projectionConflicts(projection?.plan ?? null)]
+    ops: shown.map((o3) => ({ path: o3.path, owner: o3.owner, layer: o3.layer, action: o3.action, ...o3.reason ? { reason: o3.reason } : {}, ...o3.newFile ? { new: o3.newFile } : {} })),
+    conflicts: [...conflict.map((o3) => ({ path: o3.path, new: o3.newFile ?? null })), ...projectionConflicts(projection?.plan ?? null)]
   };
   if (projection) data.projection = projectionData(projection.plan, projection.findings);
   return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines: lines3 };
@@ -5296,12 +5308,12 @@ function stepOf(id, raw, where) {
 }
 function stepsOf(id, v, what) {
   if (!Array.isArray(v)) throw bad3(id, `steps.${what} 가 배열이 아니다`);
-  return v.map((s, i) => stepOf(id, s, `steps.${what}[${i}]`));
+  return v.map((s3, i) => stepOf(id, s3, `steps.${what}[${i}]`));
 }
-function parseModule(text3, expectId) {
+function parseModule(text4, expectId) {
   let raw;
   try {
-    raw = JSON.parse(text3);
+    raw = JSON.parse(text4);
   } catch (err) {
     throw bad3(expectId ?? "?", err instanceof Error ? err.message : String(err));
   }
@@ -5328,9 +5340,9 @@ function parseModule(text3, expectId) {
     if (!isObj6(h) || typeof h.id !== "string" || typeof h.event !== "string" || typeof h.script !== "string") throw bad3(id, `hooks[${i}]`);
     return { id: h.id, event: h.event, harnesses: strList3(id, h.harnesses, `hooks[${i}].harnesses`), script: h.script };
   });
-  const settings2 = (Array.isArray(raw.settings) ? raw.settings : []).map((s, i) => {
-    if (!isObj6(s) || typeof s.path !== "string") throw bad3(id, `settings[${i}]`);
-    return { path: s.path, keys: strList3(id, s.keys, `settings[${i}].keys`) };
+  const settings2 = (Array.isArray(raw.settings) ? raw.settings : []).map((s3, i) => {
+    if (!isObj6(s3) || typeof s3.path !== "string") throw bad3(id, `settings[${i}]`);
+    return { path: s3.path, keys: strList3(id, s3.keys, `settings[${i}].keys`) };
   });
   const cfg = isObj6(raw.config) ? raw.config : {};
   const steps = isObj6(raw.steps) ? raw.steps : {};
@@ -5355,28 +5367,28 @@ function parseModule(text3, expectId) {
   return decl;
 }
 function checkOrder(m) {
-  const add = m.steps.add.map((s) => s.kind);
+  const add = m.steps.add.map((s3) => s3.kind);
   const reg = add.indexOf("registerExternal");
   const apply = add.indexOf("applyKit");
   if (reg >= 0 && apply >= 0 && reg > apply) throw bad3(m.id, "registerExternal 은 applyKit 앞에 둔다");
-  if (m.kind === "kit" && [...m.steps.add, ...m.steps.remove].some((s) => s.kind === "run" || s.kind === "call" || s.kind === "registerExternal")) {
+  if (m.kind === "kit" && [...m.steps.add, ...m.steps.remove].some((s3) => s3.kind === "run" || s3.kind === "call" || s3.kind === "registerExternal")) {
     throw bad3(m.id, "kind kit 은 외부 명령 단계를 갖지 않는다");
   }
   if (!add.includes("applyKit")) throw bad3(m.id, "steps.add 에 applyKit 이 없다");
-  if (!m.steps.remove.some((s) => s.kind === "removeKit")) throw bad3(m.id, "steps.remove 에 removeKit 이 없다");
+  if (!m.steps.remove.some((s3) => s3.kind === "removeKit")) throw bad3(m.id, "steps.remove 에 removeKit 이 없다");
 }
 function modulePath(templatesDir, id) {
   return import_node_path23.default.join(templatesDir, "optional", id, MODULE_FILE);
 }
 function loadModule(templatesDir, id) {
   const file = modulePath(templatesDir, id);
-  let text3;
+  let text4;
   try {
-    text3 = import_node_fs21.default.readFileSync(file, "utf8");
+    text4 = import_node_fs21.default.readFileSync(file, "utf8");
   } catch {
     throw new CliError(EXIT.ENV, `module.json 이 없다: ${file}`);
   }
-  return parseModule(text3, id);
+  return parseModule(text4, id);
 }
 function listModuleIds(templatesDir) {
   const dir = import_node_path23.default.join(templatesDir, "optional");
@@ -5408,11 +5420,11 @@ function envMarker(env) {
   return null;
 }
 function row(pid) {
-  const a = (0, import_node_child_process5.spawnSync)("ps", ["-o", "ppid=", "-o", "comm=", "-p", String(pid)], { encoding: "utf8", timeout: 5e3 });
+  const a3 = (0, import_node_child_process5.spawnSync)("ps", ["-o", "ppid=", "-o", "comm=", "-p", String(pid)], { encoding: "utf8", timeout: 5e3 });
   const b = (0, import_node_child_process5.spawnSync)("ps", ["-o", "args=", "-p", String(pid)], { encoding: "utf8", timeout: 5e3 });
-  const text3 = (a.stdout ?? "").trim();
-  if (a.status !== 0 || !text3) return null;
-  const m = /^(\d+)\s+(.*)$/.exec(text3);
+  const text4 = (a3.stdout ?? "").trim();
+  if (a3.status !== 0 || !text4) return null;
+  const m = /^(\d+)\s+(.*)$/.exec(text4);
   if (!m) return null;
   return [Number(m[1]), m[2].trim(), (b.stdout ?? "").trim()];
 }
@@ -5465,8 +5477,8 @@ function norm(v) {
   const m = /^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?/.exec(v.trim());
   return m ? `${m[1]}.${m[2] ?? "0"}.${m[3] ?? "0"}` : null;
 }
-function parseVersion(text3) {
-  const m = /(?:^|[^\d.])v?(\d+\.\d+(?:\.\d+)?(?:-[0-9A-Za-z.-]+)?)/.exec(text3);
+function parseVersion(text4) {
+  const m = /(?:^|[^\d.])v?(\d+\.\d+(?:\.\d+)?(?:-[0-9A-Za-z.-]+)?)/.exec(text4);
   return m ? m[1] : null;
 }
 function satisfiesRange(version, range) {
@@ -5477,10 +5489,10 @@ function satisfiesRange(version, range) {
   for (const part of parts) {
     const m = /^(>=|<=|>|<|=)?(\d+(?:\.\d+){0,2})$/.exec(part);
     if (!m) return null;
-    const cmp2 = compareSemver(v, norm(m[2]));
-    if (cmp2 === null) return null;
+    const cmp3 = compareSemver(v, norm(m[2]));
+    if (cmp3 === null) return null;
     const op = m[1] ?? "=";
-    const ok2 = op === ">=" ? cmp2 >= 0 : op === "<=" ? cmp2 <= 0 : op === ">" ? cmp2 > 0 : op === "<" ? cmp2 < 0 : cmp2 === 0;
+    const ok2 = op === ">=" ? cmp3 >= 0 : op === "<=" ? cmp3 <= 0 : op === ">" ? cmp3 > 0 : op === "<" ? cmp3 < 0 : cmp3 === 0;
     if (!ok2) return false;
   }
   return true;
@@ -5499,10 +5511,10 @@ ${r.stderr}`);
 }
 var SUDO = /(^|[\s;&|()])sudo(\s|$)/;
 function needsSudo(argv2) {
-  return argv2[0] === "sudo" || argv2.slice(1).some((a) => SUDO.test(a));
+  return argv2[0] === "sudo" || argv2.slice(1).some((a3) => SUDO.test(a3));
 }
 function displayCmd(argv2) {
-  return argv2.map((a) => /^[A-Za-z0-9_./@%+=:,-]+$/.test(a) ? a : a.includes("'") ? `"${a}"` : `'${a}'`).join(" ");
+  return argv2.map((a3) => /^[A-Za-z0-9_./@%+=:,-]+$/.test(a3) ? a3 : a3.includes("'") ? `"${a3}"` : `'${a3}'`).join(" ");
 }
 function installOffer(tool, platform) {
   const command = tool.install.commands[platform] ?? null;
@@ -5627,32 +5639,32 @@ function checkPackRanges(packs) {
   }
 }
 function checkVersion(installed, to) {
-  const cmp2 = compareSemver(installed, VERSION);
-  if (cmp2 !== null && cmp2 > 0 && to !== VERSION) {
+  const cmp3 = compareSemver(installed, VERSION);
+  if (cmp3 !== null && cmp3 > 0 && to !== VERSION) {
     throw new CliError(EXIT.STATE, `설치된 킷(${installed})이 이 CLI(${VERSION})보다 새것이다`, `새 CLI 로 다시 실행한다. 내리려면 harness-kit update --to ${VERSION}`);
   }
 }
 var NEEDS_DATA = /* @__PURE__ */ new Set(["new", "restore", "update", "replace", "conflict", "merge"]);
 var WRITES = /* @__PURE__ */ new Set(["new", "restore", "update", "merge"]);
-function opJson(o) {
-  const j = { path: o.path, op: o.op, owner: o.owner, layer: o.layer, action: o.action };
-  if (NEEDS_DATA.has(o.action)) j.executable = o.executable;
-  if (o.reason !== void 0) j.reason = o.reason;
-  if (o.newFile !== void 0) j.new = o.newFile;
-  if (o.newRefreshed) j.newRefreshed = true;
-  if (o.backup !== void 0) j.backup = o.backup;
-  if (o.merge !== void 0) j.merge = o.merge;
-  if (o.mergeBackup !== void 0) j.backup = o.mergeBackup;
-  if (o.modified !== void 0) j.modified = o.modified;
+function opJson(o3) {
+  const j = { path: o3.path, op: o3.op, owner: o3.owner, layer: o3.layer, action: o3.action };
+  if (NEEDS_DATA.has(o3.action)) j.executable = o3.executable;
+  if (o3.reason !== void 0) j.reason = o3.reason;
+  if (o3.newFile !== void 0) j.new = o3.newFile;
+  if (o3.newRefreshed) j.newRefreshed = true;
+  if (o3.backup !== void 0) j.backup = o3.backup;
+  if (o3.merge !== void 0) j.merge = o3.merge;
+  if (o3.mergeBackup !== void 0) j.backup = o3.mergeBackup;
+  if (o3.modified !== void 0) j.modified = o3.modified;
   return j;
 }
-function opLine(o) {
+function opLine(o3) {
   let extra = "";
-  if (o.action === "conflict") extra = o.newFile ? `  → ${o.newFile}${o.newRefreshed ? " (갱신)" : ""}` : "";
-  else if (o.action === "replace") extra = `  (수정본 → ${o.backup})`;
-  else if (o.action === "orphan" && o.modified) extra = "  (고친 파일)";
-  else if (o.merge) extra = `  (${o.merge})`;
-  return `  ${o.action.padEnd(13)} ${o.path}${extra}${o.reason ? `  ${o.reason}` : ""}`;
+  if (o3.action === "conflict") extra = o3.newFile ? `  → ${o3.newFile}${o3.newRefreshed ? " (갱신)" : ""}` : "";
+  else if (o3.action === "replace") extra = `  (수정본 → ${o3.backup})`;
+  else if (o3.action === "orphan" && o3.modified) extra = "  (고친 파일)";
+  else if (o3.merge) extra = `  (${o3.merge})`;
+  return `  ${o3.action.padEnd(13)} ${o3.path}${extra}${o3.reason ? `  ${o3.reason}` : ""}`;
 }
 function countsLine(c) {
   const skipped = c["skip-user"] + c["skip-external"] + c["skip-pack"];
@@ -5669,16 +5681,16 @@ function applyUpdate(target, plan, w, projection) {
       writeFileAtomic(full8(target, b.path), b.data, false);
     }
     const deleted = [];
-    for (const o of plan.ops) {
-      current4 = o.path;
-      if (WRITES.has(o.action)) writeFileAtomic(full8(target, o.path), o.content, o.executable === true);
-      else if (o.action === "replace") {
-        import_node_fs22.default.renameSync(full8(target, o.path), full8(target, o.backup));
-        writeFileAtomic(full8(target, o.path), o.content, o.executable === true);
-      } else if (o.action === "conflict" && o.newFile) writeFileAtomic(full8(target, o.newFile), o.content, false);
-      else if (o.action === "delete" && o.removeFile) {
-        removeFile(target, o.path);
-        deleted.push(o.path);
+    for (const o3 of plan.ops) {
+      current4 = o3.path;
+      if (WRITES.has(o3.action)) writeFileAtomic(full8(target, o3.path), o3.content, o3.executable === true);
+      else if (o3.action === "replace") {
+        import_node_fs22.default.renameSync(full8(target, o3.path), full8(target, o3.backup));
+        writeFileAtomic(full8(target, o3.path), o3.content, o3.executable === true);
+      } else if (o3.action === "conflict" && o3.newFile) writeFileAtomic(full8(target, o3.newFile), o3.content, false);
+      else if (o3.action === "delete" && o3.removeFile) {
+        removeFile(target, o3.path);
+        deleted.push(o3.path);
       }
     }
     removeEmptyDirs(target, deleted);
@@ -5699,7 +5711,7 @@ function applyUpdate(target, plan, w, projection) {
   }
 }
 function conflictList(plan) {
-  return plan.ops.filter((o) => o.action === "conflict").map((o) => ({ path: o.path, new: o.newFile ?? null, diff: o.newFile ? `diff -u ${shellQuote(o.path)} ${shellQuote(o.newFile)}` : null }));
+  return plan.ops.filter((o3) => o3.action === "conflict").map((o3) => ({ path: o3.path, new: o3.newFile ?? null, diff: o3.newFile ? `diff -u ${shellQuote(o3.path)} ${shellQuote(o3.newFile)}` : null }));
 }
 function mergedLines(merged, backupDir) {
   if (merged.length === 0) return [];
@@ -5721,7 +5733,7 @@ function humanLines(ctx, head, plan, shown, conflicts, dryRun, board, merged, ba
     for (const c of conflicts) if (c.diff) lines3.push(`    ${String(c.diff)}`);
     lines3.push("  병합했으면 .new 를 지운다. 새 판을 그대로 쓰려면 mv 로 덮는다. 전부 새 판으로: harness-kit update --accept-all");
   }
-  if (plan.ops.some((o) => o.action === "orphan") && !bool(ctx.values, "prune")) lines3.push("  킷에서 빠진 미수정 파일을 지우려면: harness-kit update --prune");
+  if (plan.ops.some((o3) => o3.action === "orphan") && !bool(ctx.values, "prune")) lines3.push("  킷에서 빠진 미수정 파일을 지우려면: harness-kit update --prune");
   lines3.push(dryRun ? "  (dry-run — 쓰지 않았다)" : "  다음: harness-kit doctor");
   return lines3;
 }
@@ -5734,7 +5746,7 @@ function writtenState(ctx, target, inst, entries, sel, tokens, source, mergeBack
 }
 var ANY_SKIP = /* @__PURE__ */ new Set(["conflict", "skip-user", "skip-external", "skip-pack"]);
 function boardBlocker(plan) {
-  return plan.ops.find((o) => isBoardCode(o.path) && ANY_SKIP.has(o.action))?.path ?? null;
+  return plan.ops.find((o3) => isBoardCode(o3.path) && ANY_SKIP.has(o3.action))?.path ?? null;
 }
 var AMBIGUOUS_ACTIONS = /* @__PURE__ */ new Set(["conflict", "replace", "orphan"]);
 function runUpdate(ctx) {
@@ -5755,12 +5767,12 @@ function runUpdate(ctx) {
   const { lock, ambiguous } = resolvedLock(inst, target, shaOf2);
   const acceptAll = bool(ctx.values, "accept-all");
   const raw = buildUpdatePlan({ layout: layout2, templatesDir: loc.dir, target, selection, tokens, lock, acceptAll, prune, forget: list(ctx.values, "forget") });
-  const marked = { ...raw, ops: raw.ops.map((o) => ambiguous.has(o.path) && AMBIGUOUS_ACTIONS.has(o.action) && !o.reason ? { ...o, reason: AMBIGUOUS_REASON } : o) };
+  const marked = { ...raw, ops: raw.ops.map((o3) => ambiguous.has(o3.path) && AMBIGUOUS_ACTIONS.has(o3.action) && !o3.reason ? { ...o3, reason: AMBIGUOUS_REASON } : o3) };
   const stamp = backupStamp(/* @__PURE__ */ new Date());
   const v1 = applyV1Merge(marked, { target, ambiguous, acceptAll, stamp });
   const projection = projectionForUpdate({ target, templatesDir: loc.dir, tokens, agents: selection.agents, inst, plan: v1.plan, acceptAll });
   const claude2 = claudeBackup({ target, inst, agents: selection.agents, projection: projection !== null, stamp });
-  const merged = [...v1.merged, ...claude2 ? [claude2.merged] : []].sort((a, b) => byteCompare(a.path, b.path));
+  const merged = [...v1.merged, ...claude2 ? [claude2.merged] : []].sort((a3, b) => byteCompare(a3.path, b.path));
   const mergeBackups = [...v1.backups, ...claude2 ? [claude2.backup] : []];
   const plan = withoutClaimed(v1.plan, projection?.plan ?? null);
   const entries = projection ? mergeEntries(plan.entries, projection.plan) : [...plan.entries, ...inst.lock.entries.filter((e) => PROJECTION_OPS.has(e.op))];
@@ -5772,10 +5784,10 @@ function runUpdate(ctx) {
     applyNotice(target, notice);
   }
   const board = dryRun ? { status: "skipped", reason: "dry-run" } : refreshBoard(target, io2.env, boardBlocker(plan));
-  const keptModified = prune && plan.ops.some((o) => o.action === "orphan" && o.modified);
+  const keptModified = prune && plan.ops.some((o3) => o3.action === "orphan" && o3.modified);
   const human = projection ? needsHuman(projection.plan, projection.findings) : false;
   const code = plan.counts.conflict > 0 || keptModified || human ? EXIT.HUMAN : EXIT.OK;
-  const shown = plan.ops.filter((o) => o.action !== "same" && (!ctx.quiet || o.action === "conflict"));
+  const shown = plan.ops.filter((o3) => o3.action !== "same" && (!ctx.quiet || o3.action === "conflict"));
   const conflicts = [...conflictList(plan), ...projectionConflicts(projection?.plan ?? null)];
   const counts2 = { ...plan.counts, excludedByHarness: plan.excludedByHarness, overlapped: plan.overlaps.length };
   const data = {
@@ -5846,10 +5858,10 @@ function projectionForUpdate(args) {
   if (!spec) return null;
   const writes = /* @__PURE__ */ new Map();
   const deletes = /* @__PURE__ */ new Set();
-  for (const o of args.plan.ops) {
-    if ((WRITES.has(o.action) || o.action === "replace") && o.content) writes.set(o.path, { content: o.content, executable: o.executable === true });
-    else if (o.action === "conflict" && o.newFile && o.content) writes.set(o.newFile, { content: o.content, executable: false });
-    else if (o.action === "delete" && o.removeFile) deletes.add(o.path);
+  for (const o3 of args.plan.ops) {
+    if ((WRITES.has(o3.action) || o3.action === "replace") && o3.content) writes.set(o3.path, { content: o3.content, executable: o3.executable === true });
+    else if (o3.action === "conflict" && o3.newFile && o3.content) writes.set(o3.newFile, { content: o3.content, executable: false });
+    else if (o3.action === "delete" && o3.removeFile) deletes.add(o3.path);
   }
   const p = prepare({ target: args.target, spec, tokens: args.tokens, agents: args.agents, writes, deletes, copyPaths: args.plan.wantPaths });
   const plan = judgeUpdate({ target: args.target, spec, tokens: args.tokens, sources: p.sources, wants: p.wants, prev: args.inst.lock.entries, copyNow: args.plan.wantPaths, acceptAll: args.acceptAll, retire: true });
@@ -5857,9 +5869,9 @@ function projectionForUpdate(args) {
 }
 function withoutClaimed(plan, projection) {
   if (!projection || projection.claimed.size === 0) return plan;
-  const ops = plan.ops.filter((o) => !projection.claimed.has(o.path));
+  const ops = plan.ops.filter((o3) => !projection.claimed.has(o3.path));
   const counts2 = Object.fromEntries(Object.keys(plan.counts).map((k) => [k, 0]));
-  for (const o of ops) counts2[o.action] += 1;
+  for (const o3 of ops) counts2[o3.action] += 1;
   return { ...plan, ops, counts: counts2, entries: plan.entries.filter((e) => !projection.claimed.has(e.path)) };
 }
 
@@ -5890,8 +5902,8 @@ function loadForChange(ctx, command, kit) {
   const { io: io2 } = ctx;
   const target = targetOf(ctx);
   const inst = loadInstalled(target, command);
-  const cmp2 = compareSemver(inst.meta.kit.version, VERSION);
-  if (cmp2 !== null && cmp2 > 0) {
+  const cmp3 = compareSemver(inst.meta.kit.version, VERSION);
+  if (cmp3 !== null && cmp3 > 0) {
     throw new CliError(EXIT.STATE, `설치된 킷(${inst.meta.kit.version})이 이 CLI(${VERSION})보다 새것이다`, "새 CLI 로 다시 실행한다");
   }
   const { loc, layout: layout2 } = kit;
@@ -5930,9 +5942,9 @@ function featureDocsAllowed2(target, entries) {
 function changeOverlay(ops) {
   const writes = /* @__PURE__ */ new Map();
   const deletes = /* @__PURE__ */ new Set();
-  for (const o of ops) {
-    if ((o.action === "create" || o.action === "restore" || o.action === "update") && o.content) writes.set(o.path, { content: o.content, executable: o.executable === true });
-    else if (o.action === "delete") deletes.add(o.path);
+  for (const o3 of ops) {
+    if ((o3.action === "create" || o3.action === "restore" || o3.action === "update") && o3.content) writes.set(o3.path, { content: o3.content, executable: o3.executable === true });
+    else if (o3.action === "delete") deletes.add(o3.path);
   }
   return { writes, deletes };
 }
@@ -5946,14 +5958,14 @@ function applyChange(ctx, l, after, r) {
   let current4 = "";
   try {
     const deleted = [];
-    for (const o of r.ops) {
-      current4 = o.path;
-      if ((o.action === "create" || o.action === "restore" || o.action === "update") && o.content) writeFileAtomic(full11(o.path), o.content, o.executable === true);
-      else if (o.action === "conflict" && o.newFile && o.content) writeFileAtomic(full11(o.newFile), o.content, false);
-      else if (o.action === "delete") {
-        removeFile(target, o.path);
-        deleted.push(o.path);
-        if (o.alsoNew) removeFile(target, o.alsoNew);
+    for (const o3 of r.ops) {
+      current4 = o3.path;
+      if ((o3.action === "create" || o3.action === "restore" || o3.action === "update") && o3.content) writeFileAtomic(full11(o3.path), o3.content, o3.executable === true);
+      else if (o3.action === "conflict" && o3.newFile && o3.content) writeFileAtomic(full11(o3.newFile), o3.content, false);
+      else if (o3.action === "delete") {
+        removeFile(target, o3.path);
+        deleted.push(o3.path);
+        if (o3.alsoNew) removeFile(target, o3.alsoNew);
       }
     }
     removeEmptyDirs(target, deleted);
@@ -5986,7 +5998,7 @@ function applyChange(ctx, l, after, r) {
   return docs;
 }
 function conflictsOf(r) {
-  const out = r.ops.filter((o) => o.action === "conflict").map((o) => ({ path: o.path, new: o.newFile ?? null, diff: o.newFile ? `diff -u ${shellQuote(o.path)} ${shellQuote(o.newFile)}` : null }));
+  const out = r.ops.filter((o3) => o3.action === "conflict").map((o3) => ({ path: o3.path, new: o3.newFile ?? null, diff: o3.newFile ? `diff -u ${shellQuote(o3.path)} ${shellQuote(o3.newFile)}` : null }));
   out.push(...projectionConflicts(r.projection ?? null));
   if (r.manifest?.action === "conflict") {
     const n = r.manifest.newFile;
@@ -5995,21 +6007,21 @@ function conflictsOf(r) {
   return out;
 }
 function countsOf(ops) {
-  const c = Object.fromEntries(CHANGE_ACTIONS.map((a) => [a, 0]));
-  for (const o of ops) c[o.action] += 1;
+  const c = Object.fromEntries(CHANGE_ACTIONS.map((a3) => [a3, 0]));
+  for (const o3 of ops) c[o3.action] += 1;
   return c;
 }
-function opJson2(o) {
-  const j = { path: o.path, owner: o.owner, layer: o.layer, action: o.action };
-  if (o.executable !== void 0 && o.content) j.executable = o.executable;
-  if (o.reason !== void 0) j.reason = o.reason;
-  if (o.newFile !== void 0) j.new = o.newFile;
+function opJson2(o3) {
+  const j = { path: o3.path, owner: o3.owner, layer: o3.layer, action: o3.action };
+  if (o3.executable !== void 0 && o3.content) j.executable = o3.executable;
+  if (o3.reason !== void 0) j.reason = o3.reason;
+  if (o3.newFile !== void 0) j.new = o3.newFile;
   return j;
 }
-var opLine2 = (o) => `  ${o.action.padEnd(13)} ${o.path}${o.newFile ? `  → ${o.newFile}` : ""}${o.reason ? `  ${o.reason}` : ""}`;
-var selJson = (s) => ({ stack: s.stack, arch: s.arch, domain: s.domain, agents: s.agents, modules: s.modules });
+var opLine2 = (o3) => `  ${o3.action.padEnd(13)} ${o3.path}${o3.newFile ? `  → ${o3.newFile}` : ""}${o3.reason ? `  ${o3.reason}` : ""}`;
+var selJson = (s3) => ({ stack: s3.stack, arch: s3.arch, domain: s3.domain, agents: s3.agents, modules: s3.modules });
 function report(ctx, l, rep) {
-  const shown = rep.result.ops.filter((o) => !QUIET.has(o.action) && (!ctx.quiet || o.action === "conflict" || o.action === "keep-modified"));
+  const shown = rep.result.ops.filter((o3) => !QUIET.has(o3.action) && (!ctx.quiet || o3.action === "conflict" || o3.action === "keep-modified"));
   const conflicts = conflictsOf(rep.result);
   const m = rep.result.manifest;
   const data = {
@@ -6152,10 +6164,10 @@ function runKitRemove(ctx, kit, asked) {
   const result = nothing ? { ops: [], entries: l.inst.lock.entries, manifest: null } : planRemove(l, after);
   const featureDocs = dryRun || nothing ? null : applyChange(ctx, l, after, result);
   const notes = [...retiredNotes(asked), ...notOn.length ? [`  · 켜져 있지 않다 — 건너뛴다: ${notOn.join(", ")}`] : []];
-  const keep = [...result.ops.filter((o) => o.action === "keep-modified").map((o) => o.path), ...(result.projection?.ops ?? []).filter((o) => o.action === "keep-modified").map((o) => o.path)];
+  const keep = [...result.ops.filter((o3) => o3.action === "keep-modified").map((o3) => o3.path), ...(result.projection?.ops ?? []).filter((o3) => o3.action === "keep-modified").map((o3) => o3.path)];
   const { data, lines: lines3 } = report(ctx, l, { command: "remove", names: { ...names, notOn }, after, result, dryRun, featureDocs, notes, extra: { keep } });
   if (keep.length) lines3.splice(lines3.length - 1, 0, "  고친 파일은 남겼다(lock 은 owner user). 필요 없으면 직접 지운다");
-  const human = keep.length > 0 || result.ops.some((o) => o.action === "conflict") || result.manifest?.action === "conflict" || needsHuman(result.projection ?? null, result.projectionFindings ?? []);
+  const human = keep.length > 0 || result.ops.some((o3) => o3.action === "conflict") || result.manifest?.action === "conflict" || needsHuman(result.projection ?? null, result.projectionFindings ?? []);
   return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines: lines3 };
 }
 
@@ -6178,9 +6190,9 @@ function readText(file) {
     return null;
   }
 }
-function frontmatter(text3) {
-  const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(text3);
-  return m ? { head: m[1], body: text3.slice(m[0].length) } : null;
+function frontmatter(text4) {
+  const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(text4);
+  return m ? { head: m[1], body: text4.slice(m[0].length) } : null;
 }
 function headValue(head, key) {
   const lines3 = head.split(/\r?\n/);
@@ -6198,8 +6210,8 @@ function ownerResolver(entries) {
   return (rel2) => {
     let p = rel2;
     for (; ; ) {
-      const o = map.get(p);
-      if (o !== void 0) return o;
+      const o3 = map.get(p);
+      if (o3 !== void 0) return o3;
       const i = p.lastIndexOf("/");
       if (i < 0) return "user";
       p = p.slice(0, i);
@@ -6208,14 +6220,14 @@ function ownerResolver(entries) {
 }
 function listDir2(root, rel2) {
   try {
-    return import_node_fs24.default.readdirSync(import_node_path28.default.join(root, rel2), { withFileTypes: true }).map((d) => ({ name: d.name, dir: d.isDirectory() })).sort((a, b) => a.name < b.name ? -1 : 1);
+    return import_node_fs24.default.readdirSync(import_node_path28.default.join(root, rel2), { withFileTypes: true }).map((d) => ({ name: d.name, dir: d.isDirectory() })).sort((a3, b) => a3.name < b.name ? -1 : 1);
   } catch {
     return [];
   }
 }
-function importsOf(root, rel2, text3) {
+function importsOf(root, rel2, text4) {
   const out = [];
-  for (const line of text3.split(/\r?\n/)) {
+  for (const line of text4.split(/\r?\n/)) {
     const m = /^\s*@(\S+)\s*$/.exec(line);
     if (!m) continue;
     const target = m[1];
@@ -6241,11 +6253,11 @@ function measureSession(root, opts) {
     files.push({ path: rel2, owner: ownerOf(rel2), kind, bytes });
   };
   const walkImports = (rel2, depth) => {
-    const text3 = readText(import_node_path28.default.join(root, rel2));
-    if (text3 === null || seen.has(`entry:${rel2}`)) return;
-    add(rel2, "entry", Buffer.byteLength(text3));
+    const text4 = readText(import_node_path28.default.join(root, rel2));
+    if (text4 === null || seen.has(`entry:${rel2}`)) return;
+    add(rel2, "entry", Buffer.byteLength(text4));
     if (depth >= IMPORT_DEPTH) return;
-    for (const next of importsOf(root, rel2, text3)) walkImports(next, depth + 1);
+    for (const next of importsOf(root, rel2, text4)) walkImports(next, depth + 1);
   };
   for (const rel2 of spec.entries) walkImports(rel2, 0);
   const rulesDir = spec.rules;
@@ -6259,12 +6271,12 @@ function measureSession(root, opts) {
           stack.push(rel2);
           continue;
         }
-        const text3 = readText(import_node_path28.default.join(root, rel2));
-        if (text3 === null || !/\.(md|mdc)$/.test(e.name)) continue;
-        const fm = frontmatter(text3);
+        const text4 = readText(import_node_path28.default.join(root, rel2));
+        if (text4 === null || !/\.(md|mdc)$/.test(e.name)) continue;
+        const fm = frontmatter(text4);
         if (fm && hasPaths(fm.head)) continue;
-        add(rel2, "rule", Buffer.byteLength(text3));
-        for (const next of importsOf(root, rel2, text3)) walkImports(next, 1);
+        add(rel2, "rule", Buffer.byteLength(text4));
+        for (const next of importsOf(root, rel2, text4)) walkImports(next, 1);
       }
     }
   }
@@ -6274,8 +6286,8 @@ function measureSession(root, opts) {
       const f = file(e.name, e.dir);
       if (!f) continue;
       const rel2 = `${dir}/${f}`;
-      const text3 = readText(import_node_path28.default.join(root, rel2));
-      const fm = text3 === null ? null : frontmatter(text3);
+      const text4 = readText(import_node_path28.default.join(root, rel2));
+      const fm = text4 === null ? null : frontmatter(text4);
       if (!fm) continue;
       const name = headValue(fm.head, "name") ?? e.name;
       const desc = headValue(fm.head, "description") ?? "";
@@ -6285,7 +6297,7 @@ function measureSession(root, opts) {
   described(spec.skills, "skill", (n, d) => d ? `${n}/SKILL.md` : null);
   described(spec.agents, "agent", (n, d) => !d && n.endsWith(".md") ? n : null);
   const owners = {};
-  const slot = (o) => owners[o] ??= { bytes: 0, files: 0, entries: 0, rules: 0, skills: 0, agents: 0 };
+  const slot = (o3) => owners[o3] ??= { bytes: 0, files: 0, entries: 0, rules: 0, skills: 0, agents: 0 };
   for (const f of files) {
     const m = slot(f.owner);
     m.bytes += f.bytes;
@@ -6297,17 +6309,17 @@ function measureSession(root, opts) {
   }
   const hooks = {};
   for (const hf of spec.hookFiles) {
-    const text3 = readText(import_node_path28.default.join(root, hf));
-    if (text3 === null) continue;
+    const text4 = readText(import_node_path28.default.join(root, hf));
+    if (text4 === null) continue;
     let data;
     try {
-      data = JSON.parse(text3);
+      data = JSON.parse(text4);
     } catch {
       continue;
     }
-    const table = data !== null && typeof data === "object" ? data.hooks : void 0;
-    if (table === null || typeof table !== "object" || Array.isArray(table)) continue;
-    for (const [event, groups] of Object.entries(table)) {
+    const table2 = data !== null && typeof data === "object" ? data.hooks : void 0;
+    if (table2 === null || typeof table2 !== "object" || Array.isArray(table2)) continue;
+    for (const [event, groups] of Object.entries(table2)) {
       if (!Array.isArray(groups)) continue;
       for (const g of groups) {
         const inner = g !== null && typeof g === "object" && Array.isArray(g.hooks) ? g.hooks : [g];
@@ -6320,27 +6332,27 @@ function measureSession(root, opts) {
       }
     }
   }
-  for (const o of Object.keys(hooks)) slot(o);
-  const total = files.reduce((s, f) => s + f.bytes, 0);
-  return { harness: opts.harness, owners: Object.fromEntries(Object.entries(owners).sort(([a], [b]) => a < b ? -1 : 1)), hooks, total, files };
+  for (const o3 of Object.keys(hooks)) slot(o3);
+  const total = files.reduce((s3, f) => s3 + f.bytes, 0);
+  return { harness: opts.harness, owners: Object.fromEntries(Object.entries(owners).sort(([a3], [b]) => a3 < b ? -1 : 1)), hooks, total, files };
 }
 function hookOwnerOf(command, patterns) {
   for (const [owner, texts] of patterns) if (texts.some((t) => command.includes(t))) return owner;
   if (KIT_HOOK_MARKS.some((m) => command.includes(m))) return "kit";
   return "user";
 }
-var hookCount = (m, owner) => Object.values(m.hooks[owner] ?? {}).reduce((s, n) => s + n, 0);
+var hookCount = (m, owner) => Object.values(m.hooks[owner] ?? {}).reduce((s3, n) => s3 + n, 0);
 var estTokens = (bytes) => Math.round(bytes / 3);
 var THRESHOLD_BYTES = 4096;
 function compare(before, after) {
-  const names = [.../* @__PURE__ */ new Set([...Object.keys(before.owners), ...Object.keys(after.owners)])].sort((a, b) => a === "kit" ? -1 : b === "kit" ? 1 : a < b ? -1 : 1);
+  const names = [.../* @__PURE__ */ new Set([...Object.keys(before.owners), ...Object.keys(after.owners)])].sort((a3, b) => a3 === "kit" ? -1 : b === "kit" ? 1 : a3 < b ? -1 : 1);
   const rows = names.map((owner) => {
-    const a = after.owners[owner];
-    const parts = a ? [a.rules ? `규칙 ${a.rules}` : "", a.skills ? `스킬 설명 ${a.skills}` : "", a.agents ? `에이전트 설명 ${a.agents}` : "", a.entries ? `진입 파일 ${a.entries}` : ""].filter(Boolean) : [];
-    return { owner, before: before.owners[owner]?.bytes ?? 0, after: a?.bytes ?? 0, detail: parts.join(" · ") };
+    const a3 = after.owners[owner];
+    const parts = a3 ? [a3.rules ? `규칙 ${a3.rules}` : "", a3.skills ? `스킬 설명 ${a3.skills}` : "", a3.agents ? `에이전트 설명 ${a3.agents}` : "", a3.entries ? `진입 파일 ${a3.entries}` : ""].filter(Boolean) : [];
+    return { owner, before: before.owners[owner]?.bytes ?? 0, after: a3?.bytes ?? 0, detail: parts.join(" · ") };
   });
   const events = [...new Set([...Object.values(before.hooks), ...Object.values(after.hooks)].flatMap((h) => Object.keys(h)))].sort();
-  const sum = (m, ev) => Object.values(m.hooks).reduce((s, h) => s + (h[ev] ?? 0), 0);
+  const sum = (m, ev) => Object.values(m.hooks).reduce((s3, h) => s3 + (h[ev] ?? 0), 0);
   return { rows, added: Math.max(0, after.total - before.total), hookRows: events.map((event) => ({ event, before: sum(before, event), after: sum(after, event) })) };
 }
 function measureLines(command, before, after) {
@@ -6411,9 +6423,9 @@ function hostOf(url) {
   if (host === "gitlab.com" || host.startsWith("gitlab.")) return "gitlab";
   return "other";
 }
-function parseVisibility(text3) {
+function parseVisibility(text4) {
   try {
-    const j = JSON.parse(text3);
+    const j = JSON.parse(text4);
     const v = typeof j.visibility === "string" ? j.visibility.toLowerCase() : "";
     return v === "public" || v === "private" || v === "internal" ? v : "unknown";
   } catch {
@@ -6449,8 +6461,8 @@ function readPushState(root) {
   const shared = readJson(import_node_path29.default.join(root, ".entire/settings.json"));
   const local = readJson(import_node_path29.default.join(root, ".entire/settings.local.json"));
   const pick = (j) => {
-    const o = j && typeof j.strategy_options === "object" && j.strategy_options !== null ? j.strategy_options : null;
-    return o && typeof o.push_sessions === "boolean" ? o.push_sessions : null;
+    const o3 = j && typeof j.strategy_options === "object" && j.strategy_options !== null ? j.strategy_options : null;
+    return o3 && typeof o3.push_sessions === "boolean" ? o3.push_sessions : null;
   };
   const pushSessions = pick(local) ?? pick(shared);
   let policy = null;
@@ -6498,10 +6510,10 @@ function toolHarnessName(tool, harness, role) {
 }
 function fillPlaceholders(argv2, meta, tool) {
   return argv2.map(
-    (a) => a.replace(/\{(design|implement)Harness(Name)?\}/g, (_m, role, name) => {
+    (a3) => a3.replace(/\{(design|implement)Harness(Name)?\}/g, (_m, role, name) => {
       const h = roleHarness(meta, role);
       if (!name) return h;
-      if (!tool) throw new CliError(EXIT.ENV, `${a}: 이름 자리표는 도구가 있는 모듈에서만 쓴다`);
+      if (!tool) throw new CliError(EXIT.ENV, `${a3}: 이름 자리표는 도구가 있는 모듈에서만 쓴다`);
       return toolHarnessName(tool, h, role);
     })
   );
@@ -6534,7 +6546,7 @@ function harnessesOfOwner(entries, owner) {
   return [...out].sort();
 }
 function externalHookCount(measure, owner) {
-  return Object.values(measure.hooks[owner] ?? {}).reduce((s, n) => s + n, 0);
+  return Object.values(measure.hooks[owner] ?? {}).reduce((s3, n) => s3 + n, 0);
 }
 function readText2(file) {
   try {
@@ -6559,10 +6571,10 @@ function toolFindings(c, m) {
   const out = [];
   for (const t of m.requires.tools) {
     const range = rangeOf(t, c.meta);
-    const s = checkTool(c.io, c.root, t, range);
-    if (!s.installed) out.push({ kind: "tool-missing", severity: "warn", owner: m.id, hint: `${m.id} 모듈이 켜져 있는데 ${t.name} 가 없다. 설치 명령은 harness-kit add ${m.id} --dry-run 에 나온다` });
-    else if (s.inRange === false) out.push({ kind: "tool-version", severity: "warn", owner: m.id, hint: `${t.name} ${s.version} 은 검증된 범위(${range}) 밖이다`, detail: { version: s.version, range } });
-    else if (s.inRange === null) out.push({ kind: "tool-version", severity: "info", owner: m.id, hint: `${t.name} 버전을 읽지 못했다(범위 ${range})` });
+    const s3 = checkTool(c.io, c.root, t, range);
+    if (!s3.installed) out.push({ kind: "tool-missing", severity: "warn", owner: m.id, hint: `${m.id} 모듈이 켜져 있는데 ${t.name} 가 없다. 설치 명령은 harness-kit add ${m.id} --dry-run 에 나온다` });
+    else if (s3.inRange === false) out.push({ kind: "tool-version", severity: "warn", owner: m.id, hint: `${t.name} ${s3.version} 은 검증된 범위(${range}) 밖이다`, detail: { version: s3.version, range } });
+    else if (s3.inRange === null) out.push({ kind: "tool-version", severity: "info", owner: m.id, hint: `${t.name} 버전을 읽지 못했다(범위 ${range})` });
   }
   return out;
 }
@@ -6597,9 +6609,9 @@ function aidlcFindings(c, m) {
 function trailerFinding(c) {
   const files = ["scripts/git-hooks/commit-msg", ".githooks/commit-msg", ".husky/commit-msg"];
   for (const rel2 of files) {
-    const text3 = readText2(import_node_path30.default.join(c.root, rel2));
-    if (text3 === null || /Entire-Checkpoint/.test(text3)) continue;
-    if (/trailer|Co-Authored-By|Signed-off-by|sed -i|grep -v/i.test(text3)) {
+    const text4 = readText2(import_node_path30.default.join(c.root, rel2));
+    if (text4 === null || /Entire-Checkpoint/.test(text4)) continue;
+    if (/trailer|Co-Authored-By|Signed-off-by|sed -i|grep -v/i.test(text4)) {
       return { kind: "trailer-allowed", severity: "warn", path: rel2, owner: "entire", hint: "커밋 메시지 검사가 트레일러를 지우거나 거부할 수 있다. Entire-Checkpoint: 를 허용 목록에 더한다" };
     }
   }
@@ -6661,18 +6673,18 @@ function entireFindings(c, m) {
       out.push({ kind: "gitlab-squash-template", severity: tpl === null ? "info" : "warn", owner: m.id, hint: "GitLab squash 커밋 메시지 템플릿에 %{all_commits} 가 있어야 Entire-Checkpoint 트레일러가 남는다. Settings → Merge requests → Squash commit message template 을 '%{title} (%{reference})' 다음 줄에 '%{all_commits}' 로 바꾼다" + (tpl === null ? "(템플릿을 API 로 읽지 못해 안내만 한다)" : "") });
     }
   }
-  const s = sessionFinding(c);
-  if (s) out.push(s);
+  const s3 = sessionFinding(c);
+  if (s3) out.push(s3);
   return out;
 }
-function leftoverFindings(c, off) {
+function leftoverFindings(c, off2) {
   const out = [];
-  const table = hookOwnerTable(c.templatesDir);
-  for (const m of off) {
+  const table2 = hookOwnerTable(c.templatesDir);
+  for (const m of off2) {
     if (!m.externalHooks.length) continue;
     const owner = `external:${m.requires.tools[0]?.name ?? m.id}`;
     let n = 0;
-    for (const h of Object.keys(HARNESS_LOAD)) n += externalHookCount(measureSession(c.root, { harness: h, entries: [], hookOwners: table }), owner);
+    for (const h of Object.keys(HARNESS_LOAD)) n += externalHookCount(measureSession(c.root, { harness: h, entries: [], hookOwners: table2 }), owner);
     if (n > 0) out.push({ kind: "external-hooks-left", severity: "info", owner: m.id, hint: `${m.id} 모듈은 꺼졌지만 ${owner} 훅이 하네스 설정에 ${n}개 남아 있다. 그 도구의 명령으로 뺀다(킷은 건드리지 않는다)`, detail: { count: n } });
   }
   return out;
@@ -6681,7 +6693,7 @@ function moduleFindings(c) {
   if (!c.templatesDir) return [];
   const out = [];
   const on = c.meta.modules;
-  const off = [];
+  const off2 = [];
   for (const id of listModuleIds(c.templatesDir)) {
     let m;
     try {
@@ -6692,7 +6704,7 @@ function moduleFindings(c) {
     }
     if (!m) continue;
     if (!on.includes(id)) {
-      if (m.kind === "external") off.push(m);
+      if (m.kind === "external") off2.push(m);
       continue;
     }
     for (const other of m.conflicts) if (on.includes(other)) out.push({ kind: "module-conflict", severity: "error", owner: id, hint: `${id} 와 ${other} 는 같이 켤 수 없다` });
@@ -6702,7 +6714,7 @@ function moduleFindings(c) {
     if (m.id === "entire") out.push(...entireFindings(c, m));
     out.push(...declaredHookFindings(c, m));
   }
-  out.push(...leftoverFindings(c, off));
+  out.push(...leftoverFindings(c, off2));
   return out;
 }
 function declaredHookFindings(c, m) {
@@ -6765,8 +6777,8 @@ function matchExternal(root, globs) {
   const res = globs.map((g) => ({ re: globToRegExp(g), start: walkRoot(g) }));
   const starts = [...new Set(res.map((r) => r.start))];
   const files = /* @__PURE__ */ new Set();
-  for (const s of starts) {
-    const base = s && !import_node_fs27.default.existsSync(import_node_path31.default.join(root, s)) ? null : s;
+  for (const s3 of starts) {
+    const base = s3 && !import_node_fs27.default.existsSync(import_node_path31.default.join(root, s3)) ? null : s3;
     if (base === null) continue;
     for (const f of walkFiles2(root, base)) files.add(f);
   }
@@ -6784,8 +6796,8 @@ function takeSnapshot(root, m, at) {
   for (const f of matchExternal(root, m.externalPaths)) external[f] = shaOfFile(import_node_path31.default.join(root, f)) ?? "";
   const settings2 = {};
   for (const f of HARNESS_SETTINGS) {
-    const s = shaOfFile(import_node_path31.default.join(root, f));
-    if (s) settings2[f] = s;
+    const s3 = shaOfFile(import_node_path31.default.join(root, f));
+    if (s3) settings2[f] = s3;
   }
   return { schema: "harness-kit.module-snapshot/v1", module: m.id, at, external, settings: settings2, files: walkFiles2(root), lock: shaOfFile(import_node_path31.default.join(root, ".agents/harness-kit.lock")), meta: shaOfFile(import_node_path31.default.join(root, ".agents/harness-kit.json")) };
 }
@@ -6830,15 +6842,15 @@ function setDotted(obj2, dotted, value2) {
 }
 
 // src/modules/handlers.ts
-var entirePushPolicy = (a) => {
-  const vis = checkVisibility(a.ctx.io, a.root);
+var entirePushPolicy = (a3) => {
+  const vis = checkVisibility(a3.ctx.io, a3.root);
   const lines3 = [`  원격 공개 여부: ${vis.visibility}(${vis.via})${vis.remote ? ` · ${vis.host}` : ""}`];
   if (uploadsAllowed(vis.visibility)) {
     lines3.push("  체크포인트 push 정책: 같은 원격에 올린다(Entire 기본값)");
     return { lines: lines3 };
   }
   const argv2 = ["entire", "configure", "--project", "--skip-push-sessions"];
-  const r = runCmd(a.ctx.io, a.root, argv2, { timeout: 6e4 });
+  const r = runCmd(a3.ctx.io, a3.root, argv2, { timeout: 6e4 });
   lines3.push(`  실행: ${displayCmd(argv2)} → exit ${String(r.status)}`);
   if (r.status !== 0) throw new CliError(EXIT.STATE, "체크포인트를 올리지 않는 설정에 실패했다", (r.stderr || r.stdout).trim().split("\n").slice(-3).join("\n"));
   lines3.push("  체크포인트 push 정책: 올리지 않는다(공개이거나 확인하지 못했다). 비공개 원격에 따로 올리려면 entire configure --checkpoint-remote github:<그룹>/<리포>");
@@ -6886,16 +6898,16 @@ var Rollback = class _Rollback {
   /** 되돌린 경로 수 */
   restore() {
     let n = 0;
-    for (const [rel2, s] of this.saved) {
+    for (const [rel2, s3] of this.saved) {
       const abs = import_node_path32.default.join(this.root, ...rel2.split("/"));
       let same2 = false;
       try {
-        same2 = import_node_fs28.default.readFileSync(abs).equals(s.bytes);
+        same2 = import_node_fs28.default.readFileSync(abs).equals(s3.bytes);
       } catch {
         same2 = false;
       }
       if (same2) continue;
-      writeFileAtomic(abs, s.bytes, (s.mode & 73) !== 0);
+      writeFileAtomic(abs, s3.bytes, (s3.mode & 73) !== 0);
       n += 1;
     }
     const gone = [];
@@ -6998,21 +7010,21 @@ async function ensureTool(ctx, l, tool, prompter, dryRun) {
 }
 function planLines(decl, steps, meta, tool, kitResult, harness) {
   const lines3 = [`  계획 — ${decl.id}(${decl.title})`];
-  const files = kitResult.ops.filter((o) => o.action !== "keep" && o.action !== "same");
-  lines3.push(`    킷 파일 ${files.length}개: ${files.slice(0, 6).map((o) => o.path).join(", ")}${files.length > 6 ? " …" : ""}`);
+  const files = kitResult.ops.filter((o3) => o3.action !== "keep" && o3.action !== "same");
+  lines3.push(`    킷 파일 ${files.length}개: ${files.slice(0, 6).map((o3) => o3.path).join(", ")}${files.length > 6 ? " …" : ""}`);
   if (decl.hooks.length) lines3.push(`    병합할 훅: ${decl.hooks.map((h) => `${h.id}(${h.event}, ${h.harnesses.join("/") || "전체"})`).join(", ")}`);
-  const runs = steps.filter((s) => s.kind === "run");
+  const runs = steps.filter((s3) => s3.kind === "run");
   for (const r of runs) lines3.push(`    외부 명령: ${displayCmd(fillPlaceholders(r.argv, meta, tool))}${r.confirm ? "  (확인)" : ""}`);
-  for (const s of steps) if (s.kind === "call") lines3.push(`    도구 설정 단계: ${s.name}`);
+  for (const s3 of steps) if (s3.kind === "call") lines3.push(`    도구 설정 단계: ${s3.name}`);
   const set = Object.entries(decl.config.set);
   if (set.length) lines3.push(`    바뀔 설정(${META_REL}): ${set.map(([k, v]) => `${k} = ${JSON.stringify(v)}`).join(", ")}`);
-  if (decl.settings.length) lines3.push(`    병합할 설정 키: ${decl.settings.map((s) => `${s.path} ${s.keys.join(",")}`).join(" · ")}`);
+  if (decl.settings.length) lines3.push(`    병합할 설정 키: ${decl.settings.map((s3) => `${s3.path} ${s3.keys.join(",")}`).join(" · ")}`);
   const warn = decl.harnessWarnings[harness];
   if (warn) lines3.push(`    ⚠ ${warn}`);
   return lines3;
 }
 function rollbackPaths(r) {
-  const out = [LOCK_REL, META_REL, ...r.ops.flatMap((o) => [o.path, ...o.newFile ? [o.newFile] : []])];
+  const out = [LOCK_REL, META_REL, ...r.ops.flatMap((o3) => [o3.path, ...o3.newFile ? [o3.newFile] : []])];
   for (const p of r.projection?.ops ?? []) {
     out.push(p.path, ...p.newFiles ?? [], ...p.backups ?? []);
     for (const x of p.effect?.extra ?? []) out.push(x.path);
@@ -7037,7 +7049,7 @@ function runOne(ctx, l, step, tool, interactive, log, lines3) {
   lines3.push(`  실행: ${displayCmd(argv2)} → exit ${String(r.status)}`);
   if (!inherit) {
     const out = `${r.stdout}${r.stderr}`.trim().split("\n").filter(Boolean);
-    for (const o of out.slice(-12)) lines3.push(`    ${o}`);
+    for (const o3 of out.slice(-12)) lines3.push(`    ${o3}`);
   }
   if (r.missing) throw new CliError(EXIT.ENV, `${argv2[0]} 를 찾지 못했다`);
   if (r.status !== 0 && !step.allowFail) throw new CliError(EXIT.STATE, `${displayCmd(argv2)} 가 실패했다(exit ${String(r.status)})`, "외부 도구가 만든 파일은 남겼다. 킷 몫은 아직 적용하지 않았다");
@@ -7072,8 +7084,8 @@ async function addExternal(ctx, kit, id) {
   try {
     const toolOutcomes = [];
     for (const t of decl.requires.tools) toolOutcomes.push(await ensureTool(ctx, l0, t, prompter, dryRun));
-    for (const o of toolOutcomes) lines3.push(...o.lines);
-    for (const s of decl.steps.add) if (s.kind === "run") fillPlaceholders(s.argv, meta0, tool);
+    for (const o3 of toolOutcomes) lines3.push(...o3.lines);
+    for (const s3 of decl.steps.add) if (s3.kind === "run") fillPlaceholders(s3.argv, meta0, tool);
     const harness = measureHarness(meta0, decl, l0.before.agents);
     const before = measureOf(l0, l0.target, kit.loc.dir, harness);
     const names = { harnesses: [], modules: [id], retired: [] };
@@ -7084,17 +7096,17 @@ async function addExternal(ctx, kit, id) {
       module: id,
       target: l0.target,
       dryRun,
-      tools: toolOutcomes.map((o) => o.state),
-      plan: { kitFiles: plan.result.ops.filter((o) => o.action !== "keep" && o.action !== "same").length, hooks: decl.hooks.map((h) => h.id), config: decl.config.set, run: decl.steps.add.filter((s) => s.kind === "run").map((s) => fillPlaceholders(s.argv, meta0, tool)) }
+      tools: toolOutcomes.map((o3) => o3.state),
+      plan: { kitFiles: plan.result.ops.filter((o3) => o3.action !== "keep" && o3.action !== "same").length, hooks: decl.hooks.map((h) => h.id), config: decl.config.set, run: decl.steps.add.filter((s3) => s3.kind === "run").map((s3) => fillPlaceholders(s3.argv, meta0, tool)) }
     };
     if (dryRun) {
       lines3.push("  (dry-run — 쓰지 않았다)");
       return { code: EXIT.OK, lines: lines3, data };
     }
-    for (const s of decl.steps.add) {
-      if (s.kind !== "run") continue;
-      const argv2 = fillPlaceholders(s.argv, meta0, tool);
-      if (!await confirmRun(ctx, s, argv2, prompter)) throw new CliError(EXIT.ABORT, "중단했다(아무것도 쓰지 않았다)");
+    for (const s3 of decl.steps.add) {
+      if (s3.kind !== "run") continue;
+      const argv2 = fillPlaceholders(s3.argv, meta0, tool);
+      if (!await confirmRun(ctx, s3, argv2, prompter)) throw new CliError(EXIT.ABORT, "중단했다(아무것도 쓰지 않았다)");
     }
     const at = (/* @__PURE__ */ new Date()).toISOString();
     const snap = takeSnapshot(l0.target, decl, at);
@@ -7106,19 +7118,19 @@ async function addExternal(ctx, kit, id) {
     let kitCode = EXIT.OK;
     const interactive = ctx.io.isTTY && prompter !== null;
     try {
-      for (const s of decl.steps.add) {
-        if (s.kind === "run") runOne(ctx, l0, s, tool, interactive, log, lines3);
-        else if (s.kind === "call") {
-          const r = callHandler(s.name, { ctx, root: l0.target, decl, meta: meta0, tool, harness: toolHarnessName(tool, implementHarness(meta0), "implement") });
+      for (const s3 of decl.steps.add) {
+        if (s3.kind === "run") runOne(ctx, l0, s3, tool, interactive, log, lines3);
+        else if (s3.kind === "call") {
+          const r = callHandler(s3.name, { ctx, root: l0.target, decl, meta: meta0, tool, harness: toolHarnessName(tool, implementHarness(meta0), "implement") });
           lines3.push(...r.lines);
-          log.push({ step: `call ${s.name}` });
-        } else if (s.kind === "registerExternal") {
+          log.push({ step: `call ${s3.name}` });
+        } else if (s3.kind === "registerExternal") {
           const lockNow = readEntries(l0.target) ?? l0.inst.lock.entries;
           registration = registerExternal(l0.target, decl, lockNow, snap);
           lines3.push(`  외부 소유로 기록 ${registration.entries.length}개(owner ${toolOwner(decl)}, op none) — 새로 ${registration.created} · 이미 있던 것 ${registration.existing}`);
           if (registration.unknown.length) lines3.push(`  알 수 없는 파일 ${registration.unknown.length}개(externalPaths 밖이라 등록하지 않았다): ${registration.unknown.slice(0, 5).join(", ")}${registration.unknown.length > 5 ? " …" : ""}`);
           log.push({ step: "registerExternal" });
-        } else if (s.kind === "applyKit") {
+        } else if (s3.kind === "applyKit") {
           const l = loadForChange(ctx, "add", kit);
           const planned = planAdd(l, names);
           const extra = new Map((registration?.entries ?? []).map((e) => [e.path, e]));
@@ -7126,20 +7138,20 @@ async function addExternal(ctx, kit, id) {
           rollback = Rollback.capture(l.target, rollbackPaths(result));
           const featureDocs = applyChange(ctx, l, planned.after, result);
           kitReport = report(ctx, l, { command: "add", names: { ...names, already: [] }, after: planned.after, result, dryRun: false, featureDocs, notes: [] });
-          const conflict = result.ops.some((o) => o.action === "conflict") || result.manifest?.action === "conflict";
+          const conflict = result.ops.some((o3) => o3.action === "conflict") || result.manifest?.action === "conflict";
           if (conflict) kitCode = EXIT.HUMAN;
           lines3.push(...kitReport.lines.slice(1, -1));
           log.push({ step: "applyKit" });
-        } else if (s.kind === "setConfig") {
+        } else if (s3.kind === "setConfig") {
           applyConfig(loadForChange(ctx, "add", kit), decl.config.set);
           lines3.push(`  설정: ${Object.entries(decl.config.set).map(([k, v]) => `${k} = ${JSON.stringify(v)}`).join(", ")}`);
           log.push({ step: "setConfig" });
-        } else if (s.kind === "doctor") {
-          const f = doctorFor(ctx, kit, s.id);
-          lines3.push(...doctorLines(f, s.id));
+        } else if (s3.kind === "doctor") {
+          const f = doctorFor(ctx, kit, s3.id);
+          lines3.push(...doctorLines(f, s3.id));
           data.doctor = f;
           log.push({ step: "doctor" });
-        } else if (s.kind === "print") lines3.push(`  ${s.text}`);
+        } else if (s3.kind === "print") lines3.push(`  ${s3.text}`);
       }
     } catch (err) {
       let note;
@@ -7177,7 +7189,7 @@ function withNote(err, notes) {
   return new CliError(e.code, e.message, [...e.hint ? [e.hint] : [], ...notes].join("\n"));
 }
 function compactMeasure(m) {
-  return { total: m.total, owners: m.owners, hooks: m.hooks, hookTotals: Object.fromEntries(Object.keys(m.hooks).map((o) => [o, hookCount(m, o)])) };
+  return { total: m.total, owners: m.owners, hooks: m.hooks, hookTotals: Object.fromEntries(Object.keys(m.hooks).map((o3) => [o3, hookCount(m, o3)])) };
 }
 function removeKitPart(ctx, kit, decl) {
   const l = loadForChange(ctx, "remove", kit);
@@ -7186,7 +7198,7 @@ function removeKitPart(ctx, kit, decl) {
   const result = dropExternal(planRemove(l, after), decl);
   applyChange(ctx, l, after, result);
   applyConfig(loadForChange(ctx, "remove", kit), decl.config.unset);
-  return `파일 ${result.ops.filter((o) => o.action === "delete").length}개 삭제`;
+  return `파일 ${result.ops.filter((o3) => o3.action === "delete").length}개 삭제`;
 }
 function dropExternal(r, decl) {
   const owner = toolOwner(decl);
@@ -7208,8 +7220,8 @@ async function removeExternal(ctx, kit, id) {
   const names = { harnesses: [], modules: [id], retired: [] };
   const tool = decl.requires.tools[0] ?? null;
   let code = EXIT.OK;
-  for (const s of decl.steps.remove) {
-    if (s.kind === "removeKit") {
+  for (const s3 of decl.steps.remove) {
+    if (s3.kind === "removeKit") {
       const after = withoutNames(l.before, names);
       const result = dropExternal(planRemove(l, after), decl);
       const featureDocs = dryRun ? null : applyChange(ctx, l, after, result);
@@ -7218,13 +7230,13 @@ async function removeExternal(ctx, kit, id) {
       data.kit = rep.data;
       const external = l.inst.lock.entries.filter((e) => e.owner === toolOwner(decl)).length;
       lines3.push(`  외부 소유 항목 ${external}개는 lock 에서만 뺐다(파일은 그대로)`);
-      const keep = result.ops.filter((o) => o.action === "keep-modified");
-      if (keep.length || result.ops.some((o) => o.action === "conflict")) code = EXIT.HUMAN;
-    } else if (s.kind === "unsetConfig") {
+      const keep = result.ops.filter((o3) => o3.action === "keep-modified");
+      if (keep.length || result.ops.some((o3) => o3.action === "conflict")) code = EXIT.HUMAN;
+    } else if (s3.kind === "unsetConfig") {
       if (!dryRun) applyConfig(loadForChange(ctx, "remove", kit), decl.config.unset);
       lines3.push(`  설정: ${Object.entries(decl.config.unset).map(([k, v]) => `${k} = ${JSON.stringify(v)}`).join(", ")}`);
-    } else if (s.kind === "print") {
-      lines3.push(`  ${fillPlaceholders([s.text], meta, tool)[0]}`);
+    } else if (s3.kind === "print") {
+      lines3.push(`  ${fillPlaceholders([s3.text], meta, tool)[0]}`);
     }
   }
   if (!dryRun) {
@@ -7240,15 +7252,15 @@ async function removeExternal(ctx, kit, id) {
 }
 function merge(outs, command) {
   if (outs.length === 1) return outs[0];
-  return { code: Math.max(...outs.map((o) => o.code)), lines: outs.flatMap((o) => o.lines), data: { command, results: outs.map((o) => o.data) } };
+  return { code: Math.max(...outs.map((o3) => o3.code)), lines: outs.flatMap((o3) => o3.lines), data: { command, results: outs.map((o3) => o3.data) } };
 }
 async function runModuleAdd(ctx, kit, rest, externals) {
   const outs = [];
   if (rest.harnesses.length + rest.modules.length + rest.retired.length > 0) outs.push(runKitAdd(ctx, kit, rest));
   for (const id of externals) {
-    const o = await addExternal(ctx, kit, id);
-    outs.push(o);
-    if (o.code === EXIT.HUMAN && Object.hasOwn(o.data, "reverted")) break;
+    const o3 = await addExternal(ctx, kit, id);
+    outs.push(o3);
+    if (o3.code === EXIT.HUMAN && Object.hasOwn(o3.data, "reverted")) break;
   }
   return merge(outs, "add");
 }
@@ -7325,7 +7337,7 @@ function runKitAdd(ctx, kit, names) {
   const featureDocs = dryRun ? null : applyChange(ctx, l, after, result);
   const notes = [...retiredNotes(names), ...already.length ? [`  · 이미 켜져 있다 — 그 몫에서 빠진 파일만 채운다: ${already.join(", ")}`] : []];
   const { data, lines: lines3 } = report(ctx, l, { command: "add", names: { ...names, already }, after, result, dryRun, featureDocs, notes });
-  const conflict = result.ops.some((o) => o.action === "conflict") || result.manifest?.action === "conflict" || needsHuman(result.projection ?? null, result.projectionFindings ?? []);
+  const conflict = result.ops.some((o3) => o3.action === "conflict") || result.manifest?.action === "conflict" || needsHuman(result.projection ?? null, result.projectionFindings ?? []);
   return { code: conflict ? EXIT.HUMAN : EXIT.OK, data, lines: lines3 };
 }
 
@@ -7386,9 +7398,9 @@ function ulid(now = Date.now()) {
 }
 function nowText(d = /* @__PURE__ */ new Date()) {
   const p = (n) => String(Math.abs(n)).padStart(2, "0");
-  const off = -d.getTimezoneOffset();
-  const sign = off >= 0 ? "+" : "-";
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}${sign}${p(Math.trunc(off / 60))}:${p(off % 60)}`;
+  const off2 = -d.getTimezoneOffset();
+  const sign = off2 >= 0 ? "+" : "-";
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}${sign}${p(Math.trunc(off2 / 60))}:${p(off2 % 60)}`;
 }
 function childEnv(env) {
   const out = { ...env, PATH: env.PATH ?? process.env.PATH, HOME: env.HOME ?? process.env.HOME, GIT_TERMINAL_PROMPT: "0", PYTHONDONTWRITEBYTECODE: "1" };
@@ -7414,8 +7426,8 @@ function python(cwd, env, args, timeout = 6e4) {
   return run2("python3", ["-B", ...args], { cwd, env, timeout });
 }
 function kitConfigDir(home, env = {}) {
-  const o = env.HARNESS_KIT_CONFIG_DIR;
-  return o && import_node_path34.default.isAbsolute(o) ? o : import_node_path34.default.join(home, ".config/harness-kit");
+  const o3 = env.HARNESS_KIT_CONFIG_DIR;
+  return o3 && import_node_path34.default.isAbsolute(o3) ? o3 : import_node_path34.default.join(home, ".config/harness-kit");
 }
 function readJson2(file) {
   try {
@@ -7431,13 +7443,13 @@ function isObj7(v) {
 function rel(from, to) {
   return import_node_path34.default.relative(from, to).split(import_node_path34.default.sep).join("/") || ".";
 }
-function oneLine(s) {
-  return s.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
+function oneLine(s3) {
+  return s3.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
 }
-function cutBytes(s, limit) {
-  if (Buffer.byteLength(s) <= limit) return s;
+function cutBytes(s3, limit) {
+  if (Buffer.byteLength(s3) <= limit) return s3;
   let out = "";
-  for (const ch of s) {
+  for (const ch of s3) {
     if (Buffer.byteLength(out + ch) > limit) break;
     out += ch;
   }
@@ -7452,10 +7464,11 @@ var TIME = /^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})(?
 var APPROVER = /^([^\s@()]+@[^\s@()]+)(?: \(([^()]*)\))?(?: · 그룹: (\S+))?$/;
 var ENTRY_ID = /^[0-9A-HJKMNP-TV-Z]{26}$/;
 var TARGET_PARTS = [
-  ["sha256", /^sha256: ([0-9a-f]{64})$/],
+  ["sha256", /^sha256: ([0-9a-f]{64}|\(jira\))$/],
   ["fingerprint", /^지문: ([0-9a-f]{12,64})$/],
   ["head", /^head: ([0-9a-f]{7,40})$/]
 ];
+var JIRA_SHA = "(jira)";
 var PATHS = ["terminal", "dashboard", "jira", "aidlc"];
 var DOC_GATES = ["codebase", "intent", "plans", "requirements", "design", "tasks", "deploy"];
 var GATES = ["codebase", "intent", "plans", "requirements", "design", "tasks", "mr", "done", "deploy"];
@@ -7481,8 +7494,8 @@ var DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 function validTime(value2) {
   const m = TIME.exec(value2);
   if (!m) return false;
-  const [y, mo, d, h, mi, s] = m.slice(1, 7).map(Number);
-  if (y < 1 || mo < 1 || mo > 12 || h > 23 || mi > 59 || s > 59) return false;
+  const [y, mo, d, h, mi, s3] = m.slice(1, 7).map(Number);
+  if (y < 1 || mo < 1 || mo > 12 || h > 23 || mi > 59 || s3 > 59) return false;
   const leap = y % 4 === 0 && y % 100 !== 0 || y % 400 === 0;
   const max = mo === 2 && leap ? 29 : DAYS[mo - 1];
   if (d < 1 || d > max) return false;
@@ -7552,6 +7565,7 @@ function requiredErrors(entry, seen) {
   if (!seen.has("target")) errors.push("missing-target");
   else if (entry.target) {
     if (DOC_GATES.includes(entry.gate) && !entry.target.sha256) errors.push("bad-target");
+    if (entry.target.sha256 === JIRA_SHA && p !== "jira") errors.push("bad-target");
     if (REVIEW_GATE.test(entry.gate) && !entry.target.fingerprint) errors.push("bad-target");
   }
   if (!seen.has("path") || !p) errors.push("missing-path");
@@ -7575,8 +7589,8 @@ function finish(entry, seen, errors, ids2) {
   entry.valid = entry.errors.length === 0;
   return entry;
 }
-function parse(text3) {
-  const src = typeof text3 === "string" ? text3 : Buffer.from(text3).toString("utf8");
+function parse(text4) {
+  const src = typeof text4 === "string" ? text4 : Buffer.from(text4).toString("utf8");
   let key = null;
   const entries = [];
   const fileErrors = [];
@@ -7654,14 +7668,17 @@ function needOf(meta, risk, gate) {
   const n = Number(conf.highApprovals ?? 2);
   return Number.isFinite(n) ? Math.max(2, Math.trunc(n)) : 2;
 }
-function approversOf(entries, gate, sha = null) {
-  return new Set(entries.filter((e) => e.valid && e.gate === gate && e.decision === "approved" && (sha === null || e.target?.sha256 === sha)).map((e) => (e.approver?.email ?? "").toLowerCase()));
+function shaMatches(e, sha2) {
+  return !!e.target && (e.target.sha256 === sha2 || e.target.sha256 === JIRA_SHA && e.path === "jira");
 }
-function approvalState(entries, gate, sha = null, policy = null, need = 1) {
+function approversOf(entries, gate, sha2 = null) {
+  return new Set(entries.filter((e) => e.valid && e.gate === gate && e.decision === "approved" && (sha2 === null || shaMatches(e, sha2))).map((e) => (e.approver?.email ?? "").toLowerCase()));
+}
+function approvalState(entries, gate, sha2 = null, policy = null, need = 1) {
   let found = entries.filter((e) => e.valid && e.gate === gate && e.decision === "approved");
   if (found.length === 0) return "none";
-  if (sha !== null && sha !== void 0) {
-    found = found.filter((e) => e.target && e.target.sha256 === sha);
+  if (sha2 !== null && sha2 !== void 0) {
+    found = found.filter((e) => shaMatches(e, sha2));
     if (found.length === 0) return "stale";
   }
   const people = new Set(found.filter((e) => allowed(e.approver?.email, gate, policy)).map((e) => (e.approver?.email ?? "").toLowerCase()));
@@ -7710,8 +7727,8 @@ ${FORMAT_NOTE}
 `;
 }
 function renderEntry(entry) {
-  const a = entry.approver;
-  const who = a.email + (a.name ? ` (${a.name})` : "") + (a.group ? ` · 그룹: ${a.group}` : "");
+  const a3 = entry.approver;
+  const who = a3.email + (a3.name ? ` (${a3.name})` : "") + (a3.group ? ` · 그룹: ${a3.group}` : "");
   const t = entry.target;
   const parts = [t.name];
   if (t.sha256) parts.push(`sha256: ${t.sha256}`);
@@ -7721,6 +7738,7 @@ function renderEntry(entry) {
   const lines3 = [`## ${entry.at} · ${entry.gate} · ${entry.decision}`, `- 승인자: ${who}`, `- 대상: ${parts.join(" · ")}`];
   if (phrase) lines3.push(`- 문구: "${phrase}"`);
   lines3.push(`- 경로: ${entry.path}`);
+  if (entry.evidence) lines3.push(`- 근거: ${entry.evidence}`);
   if (entry.ruleCandidate) lines3.push("- 규칙 후보: 예");
   if (entry.rollbackWaiver) lines3.push(`- 롤백 면제: ${entry.rollbackWaiver}`);
   lines3.push(`- 기록 ID: ${entry.entryId}`);
@@ -7728,18 +7746,18 @@ function renderEntry(entry) {
 `;
 }
 function appendedText(current4, key, entries) {
-  let text3 = current4 ?? newFileText(key);
-  if (text3 && !text3.endsWith("\n")) text3 += "\n";
-  for (const e of entries) text3 += `
+  let text4 = current4 ?? newFileText(key);
+  if (text4 && !text4.endsWith("\n")) text4 += "\n";
+  for (const e of entries) text4 += `
 ${renderEntry(e)}`;
-  return text3;
+  return text4;
 }
 function policyOf(meta) {
   const m = meta ?? {};
   const pick = (v) => {
     if (!v || typeof v !== "object" || Array.isArray(v)) return {};
     const out = {};
-    for (const [k, x] of Object.entries(v)) if (Array.isArray(x)) out[k] = x.filter((s) => typeof s === "string");
+    for (const [k, x] of Object.entries(v)) if (Array.isArray(x)) out[k] = x.filter((s3) => typeof s3 === "string");
     return out;
   };
   return { approvers: pick(m.approvers), groups: pick(m.groups) };
@@ -7811,10 +7829,10 @@ var ApiError = class extends Error {
   status;
   code;
   details;
-  constructor(status, code, message2, details) {
+  constructor(status2, code, message2, details) {
     super(message2);
     this.name = "ApiError";
-    this.status = status;
+    this.status = status2;
     this.code = code;
     this.details = details;
   }
@@ -7833,9 +7851,9 @@ var LINE = /^([a-z][a-zA-Z0-9]*):\s*([^\n]*?)(\s+#[^\n]*)?$/;
 var FENCE = "---";
 var FrontmatterError = class extends Error {
 };
-function split(text3) {
-  const lines3 = text3.split("\n");
-  if (lines3.length === 0 || lines3[0].replace(/\r$/, "") !== FENCE) return [null, text3];
+function split(text4) {
+  const lines3 = text4.split("\n");
+  if (lines3.length === 0 || lines3[0].replace(/\r$/, "") !== FENCE) return [null, text4];
   for (let i = 1; i < lines3.length; i += 1) {
     if (lines3[i].replace(/\r$/, "") === FENCE) return [lines3.slice(1, i), lines3.slice(i + 1).join("\n")];
   }
@@ -7845,8 +7863,8 @@ function unquote2(value2) {
   if (value2.length >= 2 && value2[0] === value2[value2.length - 1] && (value2[0] === '"' || value2[0] === "'")) return value2.slice(1, -1);
   return value2;
 }
-function parse2(text3) {
-  const [head] = split(text3);
+function parse2(text4) {
+  const [head] = split(text4);
   if (head === null) return null;
   const fields = {};
   head.forEach((raw, i) => {
@@ -7860,17 +7878,17 @@ function parse2(text3) {
   });
   return fields;
 }
-function parseLoose(text3) {
+function parseLoose(text4) {
   try {
-    return parse2(text3);
+    return parse2(text4);
   } catch {
     return {};
   }
 }
-function setField2(text3, key, value2) {
-  const eol = text3.includes("\r\n") ? "\r\n" : "\n";
-  const lines3 = text3.split("\n");
-  if ((lines3[0] ?? "").replace(/\r$/, "") !== FENCE) return `${FENCE}${eol}${key}: ${value2}${eol}${FENCE}${eol}${text3}`;
+function setField2(text4, key, value2) {
+  const eol = text4.includes("\r\n") ? "\r\n" : "\n";
+  const lines3 = text4.split("\n");
+  if ((lines3[0] ?? "").replace(/\r$/, "") !== FENCE) return `${FENCE}${eol}${key}: ${value2}${eol}${FENCE}${eol}${text4}`;
   let end = -1;
   for (let i = 1; i < lines3.length; i += 1) {
     if (lines3[i].replace(/\r$/, "") === FENCE) {
@@ -7899,8 +7917,8 @@ var HEAD = /^## (Q-\d+) · (범위|보안|개인정보|UX|기술|운영) · 답�
 var CHOICE = /^- ([A-D])\. (.+?) — 영향: (.+)$/;
 var RECOMMEND = /^- 권장: ([A-D])\b/;
 var ANSWER = /^- 답:\s*(.*)$/;
-function parseQuestions(text3) {
-  const lines3 = text3.split("\n").map((l) => l.replace(/\r$/, ""));
+function parseQuestions(text4) {
+  const lines3 = text4.split("\n").map((l) => l.replace(/\r$/, ""));
   const questions = [];
   let cur = null;
   lines3.forEach((line, i) => {
@@ -7918,22 +7936,22 @@ function parseQuestions(text3) {
     if (!q2) return;
     const c = CHOICE.exec(line);
     const r = RECOMMEND.exec(line);
-    const a = ANSWER.exec(line);
+    const a3 = ANSWER.exec(line);
     if (c) q2.choices.push({ id: c[1], text: c[2], impact: c[3] });
     else if (r) q2.recommended = r[1];
-    else if (a) {
-      q2.answer = a[1].trim() || null;
+    else if (a3) {
+      q2.answer = a3[1].trim() || null;
       q2.open = q2.answer === null;
     } else if (line.startsWith("- 메모:")) q2.notes.push(line.slice("- 메모:".length).trim());
     else if (line.startsWith("- 의견:")) q2.opinions.push(line.slice("- 의견:".length).trim());
     else if (!line.startsWith("- ") && line.trim() && q2.choices.length === 0) q2.text = q2.text ? `${q2.text} ${line.trim()}` : line.trim();
   });
-  return { frontmatter: parseLoose(text3) ?? {}, questions };
+  return { frontmatter: parseLoose(text4) ?? {}, questions };
 }
-function writeAnswer(text3, input) {
-  const eol = text3.includes("\r\n") ? "\r\n" : "\n";
+function writeAnswer(text4, input) {
+  const eol = text4.includes("\r\n") ? "\r\n" : "\n";
   const cr = eol === "\r\n" ? "\r" : "";
-  const lines3 = text3.split("\n");
+  const lines3 = text4.split("\n");
   const bareOf = (i) => lines3[i].replace(/\r$/, "");
   let start = -1;
   for (let i = 0; i < lines3.length; i += 1) {
@@ -7949,29 +7967,29 @@ function writeAnswer(text3, input) {
     }
   }
   const memo = input.text ? input.text.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 500) : "";
-  const block2 = lines3.slice(start, end);
+  const block3 = lines3.slice(start, end);
   if (input.opinion) {
-    let at = block2.length;
-    while (at > 1 && !block2[at - 1].replace(/\r$/, "").trim()) at -= 1;
-    block2.splice(at, 0, `- 의견: ${input.choice} · ${input.email}${memo ? ` — ${memo}` : ""}${cr}`);
+    let at = block3.length;
+    while (at > 1 && !block3[at - 1].replace(/\r$/, "").trim()) at -= 1;
+    block3.splice(at, 0, `- 의견: ${input.choice} · ${input.email}${memo ? ` — ${memo}` : ""}${cr}`);
   } else {
-    const ai = block2.findIndex((l) => ANSWER.test(l.replace(/\r$/, "")));
+    const ai = block3.findIndex((l) => ANSWER.test(l.replace(/\r$/, "")));
     const value2 = `${input.choice} · ${input.email} · ${input.at}${input.recordedBy ? ` · 기록: ${input.recordedBy}` : ""}`;
     const added = [`- 답: ${value2}${cr}`];
     if (memo) added.push(`- 메모: ${memo}${cr}`);
     if (ai < 0) {
-      let at = block2.length;
-      while (at > 1 && !block2[at - 1].replace(/\r$/, "").trim()) at -= 1;
-      block2.splice(at, 0, ...added);
+      let at = block3.length;
+      while (at > 1 && !block3[at - 1].replace(/\r$/, "").trim()) at -= 1;
+      block3.splice(at, 0, ...added);
     } else {
-      const old = (ANSWER.exec(block2[ai].replace(/\r$/, ""))?.[1] ?? "").trim();
+      const old = (ANSWER.exec(block3[ai].replace(/\r$/, ""))?.[1] ?? "").trim();
       let drop = 1;
-      while (ai + drop < block2.length && block2[ai + drop].replace(/\r$/, "").startsWith("- 메모:")) drop += 1;
+      while (ai + drop < block3.length && block3[ai + drop].replace(/\r$/, "").startsWith("- 메모:")) drop += 1;
       if (old) added.push(`- 이전 답: ${old}${cr}`);
-      block2.splice(ai, drop, ...added);
+      block3.splice(ai, drop, ...added);
     }
   }
-  let out = [...lines3.slice(0, start), ...block2, ...lines3.slice(end)].join("\n");
+  let out = [...lines3.slice(0, start), ...block3, ...lines3.slice(end)].join("\n");
   const allAnswered = parseQuestions(out).questions.every((q2) => !q2.open);
   let statusChanged = null;
   const before = parseLoose(out)?.status ?? null;
@@ -8026,8 +8044,8 @@ function readUnitsFile(abs) {
   } catch {
     data = null;
   }
-  const list3 = data && Array.isArray(data.units) ? data.units : [];
-  const units = list3.filter((u) => typeof u.id === "string").map((u) => ({
+  const list4 = data && Array.isArray(data.units) ? data.units : [];
+  const units = list4.filter((u) => typeof u.id === "string").map((u) => ({
     ...u,
     id: u.id,
     title: typeof u.title === "string" ? u.title : u.id,
@@ -8043,7 +8061,7 @@ function readUnitsFile(abs) {
   return { raw, data, units };
 }
 var num = (id) => Number(/(\d+)$/.exec(id)?.[1] ?? 0);
-var byId = (a, b) => num(a.id) - num(b.id);
+var byId = (a3, b) => num(a3.id) - num(b.id);
 var STEPS = ["requirements", "design", "tasks", "impl", "verify", "mr", "done"];
 function stepsOf2(issue, withDeploy) {
   const steps = withDeploy ? [...STEPS, "deploy"] : [...STEPS];
@@ -8054,7 +8072,7 @@ function stepsOf2(issue, withDeploy) {
   else if (issue.stage === "completed") current4 = withDeploy ? "deploy" : "";
   else current4 = issue.stage;
   const at = current4 ? steps.indexOf(current4) : steps.length;
-  return steps.map((s, i) => i < at ? `${s}:done` : i === at ? `${s}:active` : s);
+  return steps.map((s3, i) => i < at ? `${s3}:done` : i === at ? `${s3}:active` : s3);
 }
 function layout(units) {
   const live = units.filter((u) => u.planned).sort(byId);
@@ -8155,23 +8173,23 @@ function flowData(p, info, issues, sessions) {
   } catch {
     fm = {};
   }
-  let approved = null;
+  let approved2 = null;
   try {
     const entries = parse(import_node_fs32.default.readFileSync(import_node_path36.default.join(info.abs, "approvals.md"))).entries.filter((e) => e.valid && e.gate === "intent" && e.decision === "approved");
     const last = entries[entries.length - 1];
-    if (last) approved = { at: last.at, by: last.approver?.name ?? last.approver?.email ?? "" };
+    if (last) approved2 = { at: last.at, by: last.approver?.name ?? last.approver?.email ?? "" };
   } catch {
-    approved = null;
+    approved2 = null;
   }
   const withDeploy = p.gates().includes("deploy");
   const { nodes, edges } = layout(units);
   const intentMeta = data && isObj7(data.intent) ? data.intent : {};
   return {
-    intent: { key: info.key, title: fm.title ?? (typeof intentMeta.title === "string" ? intentMeta.title : null), approved },
+    intent: { key: info.key, title: fm.title ?? (typeof intentMeta.title === "string" ? intentMeta.title : null), approved: approved2 },
     nodes: nodes.map((n) => {
       const issue = n.unit.issue ? issues.find((i) => i.key === n.unit.issue) : void 0;
       if (n.type === "contract-unit") return { id: n.id, type: n.type, position: n.position, data: { title: n.unit.title, contracts: n.unit.provides, issue: n.unit.issue, steps: stepsOf2(issue, withDeploy) } };
-      const s = issue ? sessions.find((x) => x.issue === issue.key && x.state !== "gone") : void 0;
+      const s3 = issue ? sessions.find((x) => x.issue === issue.key && x.state !== "gone") : void 0;
       const flags = [];
       if (issue?.review?.open.CRITICAL) flags.push(`critical:${issue.review.open.CRITICAL}`);
       if (issue?.review?.open.HIGH) flags.push(`high:${issue.review.open.HIGH}`);
@@ -8181,7 +8199,7 @@ function flowData(p, info, issues, sessions) {
         id: n.id,
         type: n.type,
         position: n.position,
-        data: { issue: n.unit.issue, area: n.unit.area, title: n.unit.title, session: s ? { name: s.name, harness: s.harness } : null, steps: stepsOf2(issue, withDeploy), flags, bolts: b ? { done: b.done, total: b.total, estimated: false } : { done: 0, total: Math.max(1, Math.ceil(n.unit.stories.length / 3)), estimated: true } }
+        data: { issue: n.unit.issue, area: n.unit.area, title: n.unit.title, session: s3 ? { name: s3.name, harness: s3.harness } : null, steps: stepsOf2(issue, withDeploy), flags, bolts: b ? { done: b.done, total: b.total, estimated: false } : { done: 0, total: Math.max(1, Math.ceil(n.unit.stories.length / 3)), estimated: true } }
       };
     }),
     edges,
@@ -8204,27 +8222,27 @@ function validChanges(input) {
   });
 }
 function applyChanges(units, changes) {
-  let list3 = units.map((u) => ({ ...u, dependsOn: [...u.dependsOn], stories: [...u.stories] }));
+  let list4 = units.map((u) => ({ ...u, dependsOn: [...u.dependsOn], stories: [...u.stories] }));
   const get = (id) => {
-    const u = list3.find((x) => x.id === id);
+    const u = list4.find((x) => x.id === id);
     if (!u) throw new ApiError(422, "unknown_unit", `없는 Unit: ${id ?? ""}`, { unit: id ?? null });
     return u;
   };
-  let next = Math.max(0, ...list3.map((u) => num(u.id)));
+  let next = Math.max(0, ...list4.map((u) => num(u.id)));
   for (const c of changes) {
     if (c.op === "add-dep" || c.op === "remove-dep") {
       const u = get(c.unit);
       const d = get(c.dependsOn);
       if (u.kind === "contract" && d.kind !== "contract" && c.op === "add-dep") throw new ApiError(422, "contract_dependency", "계약 Unit 은 기능 Unit 에 의존하지 않습니다(08 §3.5)");
-      list3 = list3.map((x) => x.id !== u.id ? x : { ...x, dependsOn: c.op === "add-dep" ? [.../* @__PURE__ */ new Set([...x.dependsOn, d.id])] : x.dependsOn.filter((y) => y !== d.id) });
+      list4 = list4.map((x) => x.id !== u.id ? x : { ...x, dependsOn: c.op === "add-dep" ? [.../* @__PURE__ */ new Set([...x.dependsOn, d.id])] : x.dependsOn.filter((y) => y !== d.id) });
     } else if (c.op === "merge") {
-      const [a, b] = (c.units ?? []).map((id) => get(id));
-      if (!a || !b || a.id === b.id) throw bad4("merge 는 서로 다른 Unit 둘입니다");
-      if (a.kind === "contract" || b.kind === "contract") throw new ApiError(422, "contract_merge", "계약 Unit 은 합치지 않습니다");
-      list3 = list3.map((x) => {
-        if (x.id === a.id) return { ...x, stories: [.../* @__PURE__ */ new Set([...x.stories, ...b.stories])], dependsOn: [.../* @__PURE__ */ new Set([...x.dependsOn, ...b.dependsOn])].filter((y) => y !== a.id && y !== b.id) };
+      const [a3, b] = (c.units ?? []).map((id) => get(id));
+      if (!a3 || !b || a3.id === b.id) throw bad4("merge 는 서로 다른 Unit 둘입니다");
+      if (a3.kind === "contract" || b.kind === "contract") throw new ApiError(422, "contract_merge", "계약 Unit 은 합치지 않습니다");
+      list4 = list4.map((x) => {
+        if (x.id === a3.id) return { ...x, stories: [.../* @__PURE__ */ new Set([...x.stories, ...b.stories])], dependsOn: [.../* @__PURE__ */ new Set([...x.dependsOn, ...b.dependsOn])].filter((y) => y !== a3.id && y !== b.id) };
         if (x.id === b.id) return { ...x, planned: false };
-        return { ...x, dependsOn: [...new Set(x.dependsOn.map((y) => y === b.id ? a.id : y))].filter((y) => y !== x.id) };
+        return { ...x, dependsOn: [...new Set(x.dependsOn.map((y) => y === b.id ? a3.id : y))].filter((y) => y !== x.id) };
       });
     } else if (c.op === "split") {
       const u = get(c.unit);
@@ -8232,13 +8250,13 @@ function applyChanges(units, changes) {
       if (titles.length < 2) throw bad4("split 의 into 는 제목 2개 이상입니다");
       const made = titles.map((t, i) => ({ ...u, id: `U-${++next}`, title: t, stories: i === 0 ? [...u.stories] : [], issue: null, planned: true }));
       const madeIds = made.map((m) => m.id);
-      list3 = [...list3.map((x) => x.id === u.id ? { ...x, planned: false } : { ...x, dependsOn: x.dependsOn.flatMap((y) => y === u.id ? madeIds : [y]) }), ...made];
+      list4 = [...list4.map((x) => x.id === u.id ? { ...x, planned: false } : { ...x, dependsOn: x.dependsOn.flatMap((y) => y === u.id ? madeIds : [y]) }), ...made];
     } else if (c.op === "order") {
       const ids2 = (c.units ?? []).map((id) => get(id).id);
-      list3 = list3.map((x) => ids2.includes(x.id) ? { ...x, order: ids2.indexOf(x.id) + 1 } : x);
+      list4 = list4.map((x) => ids2.includes(x.id) ? { ...x, order: ids2.indexOf(x.id) + 1 } : x);
     }
   }
-  const live = new Map(list3.filter((u) => u.planned).map((u) => [u.id, u]));
+  const live = new Map(list4.filter((u) => u.planned).map((u) => [u.id, u]));
   const state = /* @__PURE__ */ new Map();
   const cycle = [];
   const visit = (id, trail) => {
@@ -8257,7 +8275,7 @@ function applyChanges(units, changes) {
     const ids2 = c.units ?? [];
     for (const id of ids2) for (const d of live.get(id)?.dependsOn ?? []) if (ids2.includes(d) && ids2.indexOf(d) > ids2.indexOf(id)) throw new ApiError(422, "cycle", `순서가 의존과 어긋납니다: ${d} 가 ${id} 보다 먼저입니다`, { cycle: [d, id] });
   }
-  return list3;
+  return list4;
 }
 function proposalBody(body) {
   if (!isObj7(body) || typeof body.intent !== "string" || typeof body.baseSha256 !== "string") throw bad4("intent · baseSha256 · changes 가 필요합니다");
@@ -8267,7 +8285,7 @@ function appliedUnitsBytes(raw, data, units, changes) {
   const applied = applyChanges(units, changes);
   const original = Array.isArray(data.units) ? data.units : [];
   const merged = applied.map((u) => {
-    const before = original.find((o) => o.id === u.id);
+    const before = original.find((o3) => o3.id === u.id);
     if (!before) return Object.fromEntries(Object.entries(u).filter(([, v]) => v !== null && v !== void 0));
     const out = { ...before, dependsOn: u.dependsOn };
     if (Object.hasOwn(before, "planned") || !u.planned) out.planned = u.planned;
@@ -8275,15 +8293,15 @@ function appliedUnitsBytes(raw, data, units, changes) {
     if (Object.hasOwn(before, "order") || u.order !== null) out.order = u.order;
     return out;
   });
-  const text3 = `${JSON.stringify({ ...data, units: merged }, null, 2)}${raw.toString("utf8").endsWith("\n") ? "\n" : ""}`;
-  return Buffer.from(text3, "utf8");
+  const text4 = `${JSON.stringify({ ...data, units: merged }, null, 2)}${raw.toString("utf8").endsWith("\n") ? "\n" : ""}`;
+  return Buffer.from(text4, "utf8");
 }
 var unitsSha = (raw) => raw ? sha2562(raw) : null;
 
 // ../dashboard/src/md.ts
 var import_node_path37 = __toESM(require("node:path"));
-function escapeHtml(s) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+function escapeHtml(s3) {
+  return s3.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 var SCHEME = /^[a-zA-Z][a-zA-Z0-9+.-]*:/;
 function safeHref(url) {
@@ -8301,29 +8319,29 @@ function imageSrc(url, opts) {
   if (joined.startsWith("../") || joined === ".." || !joined.startsWith(".agents/docs/")) return null;
   return opts.sign ? opts.sign(joined) : null;
 }
-function inline2(text3, opts) {
+function inline2(text4, opts) {
   const codes = [];
-  let s = text3.replace(/`([^`]+)`/g, (_m, c) => {
+  let s3 = text4.replace(/`([^`]+)`/g, (_m, c) => {
     codes.push(`<code>${escapeHtml(c)}</code>`);
     return `\0C${codes.length - 1}\0`;
   });
   const parts = [];
-  s = s.replace(/!\[([^\]]*)\]\(([^)\s]*)(?:\s+"[^"]*")?\)/g, (_m, alt, src) => {
+  s3 = s3.replace(/!\[([^\]]*)\]\(([^)\s]*)(?:\s+"[^"]*")?\)/g, (_m, alt, src) => {
     const signed = imageSrc(src, opts);
     parts.push(signed ? `<img src="${escapeHtml(signed)}" alt="${escapeHtml(alt)}">` : escapeHtml(alt));
     return `\0P${parts.length - 1}\0`;
   });
-  s = s.replace(/\[([^\]]+)\]\(([^)\s]*)(?:\s+"[^"]*")?\)/g, (_m, label, href) => {
+  s3 = s3.replace(/\[([^\]]+)\]\(([^)\s]*)(?:\s+"[^"]*")?\)/g, (_m, label2, href) => {
     const ok2 = safeHref(href);
-    parts.push(ok2 ? `<a href="${escapeHtml(ok2)}" rel="noopener noreferrer">${escapeHtml(label)}</a>` : escapeHtml(label));
+    parts.push(ok2 ? `<a href="${escapeHtml(ok2)}" rel="noopener noreferrer">${escapeHtml(label2)}</a>` : escapeHtml(label2));
     return `\0P${parts.length - 1}\0`;
   });
-  s = s.replace(/<(https?:\/\/[^\s>]+)>/g, (_m, href) => {
+  s3 = s3.replace(/<(https?:\/\/[^\s>]+)>/g, (_m, href) => {
     parts.push(`<a href="${escapeHtml(href)}" rel="noopener noreferrer">${escapeHtml(href)}</a>`);
     return `\0P${parts.length - 1}\0`;
   });
-  s = escapeHtml(s).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/__([^_]+)__/g, "<strong>$1</strong>").replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>").replace(/~~([^~]+)~~/g, "<del>$1</del>");
-  return s.replace(/\u0000([CP])(\d+)\u0000/g, (_m, k, i) => k === "C" ? codes[Number(i)] : parts[Number(i)]);
+  s3 = escapeHtml(s3).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/__([^_]+)__/g, "<strong>$1</strong>").replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>").replace(/~~([^~]+)~~/g, "<del>$1</del>");
+  return s3.replace(/\u0000([CP])(\d+)\u0000/g, (_m, k, i) => k === "C" ? codes[Number(i)] : parts[Number(i)]);
 }
 function stripFrontmatter(lines3) {
   if (lines3[0] !== "---") return lines3;
@@ -8512,14 +8530,14 @@ function real(p) {
 async function checkouts(p) {
   return p.cache.get("checkouts", gitStamp(p.loc.common), async () => {
     const out = await gitOut(p.loc.top, p.env, "worktree", "list", "--porcelain");
-    const list3 = [];
+    const list4 = [];
     let cur = {};
     const flush = () => {
       if (cur.path && !cur.bare) {
         const top = real(cur.path);
         const branch = cur.branch ?? null;
         const m = branch ? ISSUE_BRANCH.exec(branch) : null;
-        list3.push({ path: top, root: p.loc.prefix ? import_node_path38.default.join(top, p.loc.prefix) : top, branch, head: cur.head ?? null, main: list3.length === 0, key: m ? m[2] : null });
+        list4.push({ path: top, root: p.loc.prefix ? import_node_path38.default.join(top, p.loc.prefix) : top, branch, head: cur.head ?? null, main: list4.length === 0, key: m ? m[2] : null });
       }
       cur = {};
     };
@@ -8532,8 +8550,8 @@ async function checkouts(p) {
       else if (line === "bare") cur.bare = true;
     }
     flush();
-    if (list3.length === 0) list3.push({ path: p.loc.top, root: p.loc.root, branch: null, head: null, main: true, key: null });
-    return list3;
+    if (list4.length === 0) list4.push({ path: p.loc.top, root: p.loc.root, branch: null, head: null, main: true, key: null });
+    return list4;
   });
 }
 async function branches(p) {
@@ -8588,9 +8606,9 @@ async function gitUser(root, env) {
   return { email: email || null, name: name || null };
 }
 async function gitStatus(root, env) {
-  const s = await git2(root, env, "status", "--porcelain", "--untracked-files=normal");
+  const s3 = await git2(root, env, "status", "--porcelain", "--untracked-files=normal");
   const u = await gitOut(root, env, "rev-list", "--count", "HEAD", "--not", "--remotes");
-  return { dirty: s.code === 0 ? s.stdout.trim().length > 0 : false, unpushed: u === null ? null : Number(u) };
+  return { dirty: s3.code === 0 ? s3.stdout.trim().length > 0 : false, unpushed: u === null ? null : Number(u) };
 }
 
 // ../dashboard/src/project.ts
@@ -8690,12 +8708,46 @@ ${fileStamp(import_node_path39.default.join(this.home, ".gitconfig"))}`, () => g
 // ../dashboard/src/readers/issues.ts
 var import_node_fs35 = __toESM(require("node:fs"));
 var import_node_path40 = __toESM(require("node:path"));
-var CLARIFY = "[NEEDS CLARIFICATION";
-function clarifyCount(text3) {
-  return text3.split(CLARIFY).length - 1;
+
+// ../dashboard/src/board-status.ts
+var BOARD_STATES = [
+  { id: "backlog", label: "백로그" },
+  { id: "requirements-draft", label: "요구사항 작성" },
+  { id: "requirements-review", label: "요구사항 승인 대기" },
+  { id: "design", label: "설계" },
+  { id: "implementing", label: "구현 중" },
+  { id: "verifying", label: "검증" },
+  { id: "done", label: "완료" },
+  { id: "deployed", label: "배포됨" }
+];
+function status(id) {
+  return { id, label: BOARD_STATES.find((s3) => s3.id === id).label };
 }
-function bolts(text3) {
-  const lines3 = text3.split(/\r?\n/);
+function approved(d) {
+  return !!d && (d.approval === "valid" || d.status === "approved");
+}
+function boardStatusOf(input) {
+  const { requirements, design, tasks } = input;
+  if (input.deployed) return status("deployed");
+  if (tasks?.state === "completed") return status("done");
+  if (tasks?.state === "check") return status("verifying");
+  if (approved(tasks) || tasks?.state === "active") return status("implementing");
+  if (approved(requirements) || design) return status("design");
+  if (requirements?.status === "in-review") return status("requirements-review");
+  if (requirements) return status("requirements-draft");
+  return status("backlog");
+}
+function stateIndex(id) {
+  return BOARD_STATES.findIndex((s3) => s3.id === id);
+}
+
+// ../dashboard/src/readers/issues.ts
+var CLARIFY = "[NEEDS CLARIFICATION";
+function clarifyCount(text4) {
+  return text4.split(CLARIFY).length - 1;
+}
+function bolts(text4) {
+  const lines3 = text4.split(/\r?\n/);
   let total = 0;
   let done = 0;
   let open = 0;
@@ -8718,20 +8770,20 @@ function bolts(text3) {
   return { total, done };
 }
 function docInfo(bytes, gate, entries, p, mtimeMs, need = 1) {
-  const text3 = bytes.toString("utf8");
-  const fm = parseLoose(text3) ?? {};
+  const text4 = bytes.toString("utf8");
+  const fm = parseLoose(text4) ?? {};
   const aSha = approvalSha(bytes);
   const info = {
     status: fm.status ?? null,
     sha256: sha2562(bytes),
     approvalSha256: aSha,
-    clarify: clarifyCount(text3),
+    clarify: clarifyCount(text4),
     approval: approvalState(entries, gate, gate === "tasks" ? null : aSha, p.policy(), need)
   };
   if (mtimeMs !== void 0) info.mtimeMs = mtimeMs;
   if (gate === "tasks") {
     info.state = fm.state ?? null;
-    info.bolts = bolts(text3);
+    info.bolts = bolts(text4);
   }
   return info;
 }
@@ -8746,7 +8798,7 @@ function snapStamp(p, co) {
   }
   return [
     treeStamp(import_node_path40.default.join(docs, "issues"), 2),
-    ...specs.map((s) => treeStamp(import_node_path40.default.join(docs, s), 4)),
+    ...specs.map((s3) => treeStamp(import_node_path40.default.join(docs, s3), 4)),
     fileStamp(import_node_path40.default.join(r, ".agents/harness-kit.json")),
     fileStamp(import_node_path40.default.join(r, ".agents/state/verify-last.json")),
     fileStamp(import_node_path40.default.join(r, ".agents/reports/quality-gate-last.json")),
@@ -8783,14 +8835,14 @@ function verifyOf(root) {
   if (!v) return null;
   const steps = Array.isArray(v.steps) ? v.steps : [];
   let slow = null;
-  for (const s of steps) if (typeof s.durationMs === "number" && (!slow || s.durationMs > slow.durationMs)) slow = s;
-  const label = slow ? String(slow.label ?? slow.command ?? slow.id ?? "") : "";
+  for (const s3 of steps) if (typeof s3.durationMs === "number" && (!slow || s3.durationMs > slow.durationMs)) slow = s3;
+  const label2 = slow ? String(slow.label ?? slow.command ?? slow.id ?? "") : "";
   return {
     level: typeof v.level === "string" ? v.level : null,
     status: typeof v.status === "string" ? v.status : null,
     finishedAt: typeof v.finishedAt === "string" ? v.finishedAt : null,
     durationMs: typeof v.durationMs === "number" ? v.durationMs : null,
-    slowestStep: slow ? `${label} ${Math.round(slow.durationMs / 1e3)}s`.trim() : null
+    slowestStep: slow ? `${label2} ${Math.round(slow.durationMs / 1e3)}s`.trim() : null
   };
 }
 function nodeGates(docs, legacyFlags) {
@@ -8834,7 +8886,7 @@ function waitingOf(p, stage, gates, docs, email) {
   const policy = p.policy();
   const approvers = (policy.approvers ?? {})[stage] ?? [];
   const groups = policy.groups ?? {};
-  const mine = approvers.length === 0 || approvers.some((a) => a.includes("@") ? a.toLowerCase() === (email ?? "").toLowerCase() : (groups[a] ?? []).some((m) => m.toLowerCase() === (email ?? "").toLowerCase()));
+  const mine = approvers.length === 0 || approvers.some((a3) => a3.includes("@") ? a3.toLowerCase() === (email ?? "").toLowerCase() : (groups[a3] ?? []).some((m) => m.toLowerCase() === (email ?? "").toLowerCase()));
   return { gate: stage, approvers, mine };
 }
 function rolesOf(p) {
@@ -8906,12 +8958,13 @@ function build(ctx, key, f, extra, snap, verify, root) {
     boardState: board?.state ?? null,
     docs,
     stage,
+    boardStatus: boardStatusOf(docs),
     gates,
     waitingOn: waitingOf(p, stage, gates, docs, ctx.email),
     review: review ? { open: review.open, report: review.report ? rel(p.root, import_node_path40.default.resolve(root ?? p.root, review.report)) : null, stale: review.stale } : null,
     verify,
     roles: rolesOf(p),
-    sessions: ctx.sessions.filter((s) => s.issue === key && s.state !== "gone").map((s) => s.id),
+    sessions: ctx.sessions.filter((s3) => s3.issue === key && s3.state !== "gone").map((s3) => s3.id),
     root,
     ...extra
   };
@@ -8945,9 +8998,9 @@ async function fromGitObjects(p, ref) {
   return out;
 }
 async function branchIssues(p, ref) {
-  const sha = await gitOut(p.loc.top, p.env, "rev-parse", "--verify", "--quiet", `${ref}^{commit}`);
-  if (!sha) return [];
-  return p.cache.get(`objects:${ref}`, sha, () => fromGitObjects(p, ref));
+  const sha2 = await gitOut(p.loc.top, p.env, "rev-parse", "--verify", "--quiet", `${ref}^{commit}`);
+  if (!sha2) return [];
+  return p.cache.get(`objects:${ref}`, sha2, () => fromGitObjects(p, ref));
 }
 function issueFolders(root) {
   const dir = import_node_path40.default.join(root, ".agents/docs/issues");
@@ -8982,9 +9035,9 @@ async function readIssues(p, sessions, dirty) {
   const snaps = /* @__PURE__ */ new Map();
   const snapOf = async (co) => {
     if (!snaps.has(co.root)) {
-      const s = await snapshot(p, co);
-      for (const e of s.errors) errors.push(`${rel(p.loc.top, co.path)}: ${e.part}: ${e.message}`);
-      snaps.set(co.root, s);
+      const s3 = await snapshot(p, co);
+      for (const e of s3.errors) errors.push(`${rel(p.loc.top, co.path)}: ${e.part}: ${e.message}`);
+      snaps.set(co.root, s3);
     }
     return snaps.get(co.root);
   };
@@ -9032,7 +9085,7 @@ async function readIssues(p, sessions, dirty) {
 }
 function legacyModel(ctx, b, checkout, base, root) {
   const stage = LEGACY_STAGE[b.state] ?? "requirements";
-  const d = (s) => s ? { status: s, sha256: "", approvalSha256: "", clarify: 0, approval: "none" } : null;
+  const d = (s3) => s3 ? { status: s3, sha256: "", approvalSha256: "", clarify: 0, approval: "none" } : null;
   return {
     key: b.key,
     name: b.name,
@@ -9049,6 +9102,7 @@ function legacyModel(ctx, b, checkout, base, root) {
     boardState: b.state,
     docs: { requirements: d(b.requirements), design: d(b.design), tasks: b.tasks ? { status: null, state: b.tasks, sha256: "", approvalSha256: "", clarify: 0, approval: "none", bolts: { total: 0, done: 0 } } : null },
     stage,
+    boardStatus: boardStatusOf({ requirements: d(b.requirements), design: d(b.design), tasks: b.tasks ? { status: null, state: b.tasks } : null }),
     gates: [],
     waitingOn: null,
     review: null,
@@ -9058,11 +9112,11 @@ function legacyModel(ctx, b, checkout, base, root) {
     root
   };
 }
-function byKey(a, b) {
-  const pa = /^(.*)-(\d+)$/.exec(a.key);
+function byKey(a3, b) {
+  const pa = /^(.*)-(\d+)$/.exec(a3.key);
   const pb = /^(.*)-(\d+)$/.exec(b.key);
   if (pa && pb && pa[1] === pb[1]) return Number(pa[2]) - Number(pb[2]);
-  return a.key < b.key ? -1 : a.key > b.key ? 1 : 0;
+  return a3.key < b.key ? -1 : a3.key > b.key ? 1 : 0;
 }
 function publicIssue(i) {
   const { root: _root, ...rest } = i;
@@ -9103,16 +9157,16 @@ function alive(pid) {
 function probeSocket(socketPath, timeoutMs = 200) {
   return new Promise((resolve) => {
     let done = false;
-    const s = import_node_net.default.connect({ path: socketPath });
+    const s3 = import_node_net.default.connect({ path: socketPath });
     const finish2 = (ok2) => {
       if (done) return;
       done = true;
-      s.destroy();
+      s3.destroy();
       resolve(ok2);
     };
-    s.setTimeout(timeoutMs, () => finish2(false));
-    s.once("connect", () => finish2(true));
-    s.once("error", () => finish2(false));
+    s3.setTimeout(timeoutMs, () => finish2(false));
+    s3.once("connect", () => finish2(true));
+    s3.once("error", () => finish2(false));
   });
 }
 async function liveness(data) {
@@ -9136,10 +9190,10 @@ async function leases(p, root) {
     if (r.code !== 0) return out;
     try {
       const data = JSON.parse(r.stdout);
-      for (const s of data.sessions ?? []) {
-        if (typeof s.id !== "string") continue;
-        const files = Array.isArray(s.files) ? s.files.filter((f) => typeof f === "string") : [];
-        out.set(s.id, { files, active: s.status === "active" && s.expired !== true });
+      for (const s3 of data.sessions ?? []) {
+        if (typeof s3.id !== "string") continue;
+        const files = Array.isArray(s3.files) ? s3.files.filter((f) => typeof f === "string") : [];
+        out.set(s3.id, { files, active: s3.status === "active" && s3.expired !== true });
       }
     } catch {
     }
@@ -9197,10 +9251,10 @@ async function readSessions(p) {
       });
     })
   );
-  return out.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  return out.sort((a3, b) => a3.id < b.id ? -1 : a3.id > b.id ? 1 : 0);
 }
-function publicSession(s) {
-  const { socket: _s, cwdAbs: _c, ...rest } = s;
+function publicSession(s3) {
+  const { socket: _s, cwdAbs: _c, ...rest } = s3;
   return rest;
 }
 function queueDir(p) {
@@ -9266,8 +9320,8 @@ async function readVerify(p, issue) {
     const file = import_node_path42.default.join(co.root, ".agents/state/verify-last.json");
     const v = await p.cache.get(`verify:${co.root}`, fileStamp(file), () => readJson2(file));
     const steps = v && Array.isArray(v.steps) ? v.steps : [];
-    const shaped = steps.map((s) => ({ label: s.label ?? s.command ?? s.id ?? null, status: s.status ?? null, durationMs: typeof s.durationMs === "number" ? s.durationMs : null }));
-    const slowest = shaped.filter((s) => s.durationMs !== null).sort((a, b) => b.durationMs - a.durationMs)[0] ?? null;
+    const shaped = steps.map((s3) => ({ label: s3.label ?? s3.command ?? s3.id ?? null, status: s3.status ?? null, durationMs: typeof s3.durationMs === "number" ? s3.durationMs : null }));
+    const slowest = shaped.filter((s3) => s3.durationMs !== null).sort((a3, b) => b.durationMs - a3.durationMs)[0] ?? null;
     out.push({
       checkout: { kind: co.main ? "main" : "worktree", path: rel(p.loc.top, co.path), branch: co.branch },
       issue: co.key,
@@ -9288,12 +9342,12 @@ async function readSummary(p) {
   return p.cache.get("summary", [gateFile, findingsFile, metricsFile].map(fileStamp).join("\n"), () => {
     const gate = readJson2(gateFile);
     const f = readJson2(findingsFile);
-    const list3 = f && Array.isArray(f.findings) ? f.findings : [];
-    const bySeverity = Object.fromEntries(SEVERITIES.map((s) => [s, list3.filter((x) => x.severity === s).length]));
-    const newBySeverity = Object.fromEntries(SEVERITIES.map((s) => [s, list3.filter((x) => x.severity === s && x.new === true).length]));
+    const list4 = f && Array.isArray(f.findings) ? f.findings : [];
+    const bySeverity = Object.fromEntries(SEVERITIES.map((s3) => [s3, list4.filter((x) => x.severity === s3).length]));
+    const newBySeverity = Object.fromEntries(SEVERITIES.map((s3) => [s3, list4.filter((x) => x.severity === s3 && x.new === true).length]));
     return {
       gate: gate ? { status: gate.status ?? null, level: gate.level ?? null, head: gate.head ?? null, base: gate.base ?? null, mode: gate.mode ?? null, checks: gate.checks ?? [], incomplete: gate.incomplete ?? [] } : null,
-      findings: f ? { at: f.at ?? null, head: f.head ?? null, level: f.level ?? null, total: list3.length, bySeverity, new: newBySeverity, truncated: f.truncated === true, analyzers: f.analyzers ?? {} } : null,
+      findings: f ? { at: f.at ?? null, head: f.head ?? null, level: f.level ?? null, total: list4.length, bySeverity, new: newBySeverity, truncated: f.truncated === true, analyzers: f.analyzers ?? {} } : null,
       metrics: readJson2(metricsFile)
     };
   });
@@ -9301,14 +9355,14 @@ async function readSummary(p) {
 async function readFindings(p, q2) {
   const file = import_node_path42.default.join(reportsDir(p), "findings-latest.json");
   const f = await p.cache.get("findings", fileStamp(file), () => readJson2(file));
-  let list3 = f && Array.isArray(f.findings) ? f.findings : [];
-  if (q2.severity) list3 = list3.filter((x) => x.severity === q2.severity);
-  if (q2.onlyNew) list3 = list3.filter((x) => x.new === true);
+  let list4 = f && Array.isArray(f.findings) ? f.findings : [];
+  if (q2.severity) list4 = list4.filter((x) => x.severity === q2.severity);
+  if (q2.onlyNew) list4 = list4.filter((x) => x.new === true);
   if (q2.issue) {
     const branch = f && typeof f.branch === "string" ? f.branch : "";
-    if (!branch.includes(`/${q2.issue}-`)) list3 = [];
+    if (!branch.includes(`/${q2.issue}-`)) list4 = [];
   }
-  return { head: f?.head ?? null, branch: f?.branch ?? null, at: f?.at ?? null, findings: list3 };
+  return { head: f?.head ?? null, branch: f?.branch ?? null, at: f?.at ?? null, findings: list4 };
 }
 async function readReview(p, root, folderRel) {
   const script = import_node_fs37.default.existsSync(import_node_path42.default.join(root, "scripts/harness/review_state.py")) ? import_node_path42.default.join(root, "scripts/harness/review_state.py") : import_node_path42.default.join(p.root, "scripts/harness/review_state.py");
@@ -9462,7 +9516,7 @@ async function todos(p, loaded) {
   const gate = summary.gate;
   const findings = summary.findings;
   if (gate?.status === "failed" && (findings?.new?.CRITICAL ?? 0) > 0) out.push({ rank: 1, kind: "quality-blocker", target: ".", title: `품질 게이트 failed · 새 CRITICAL ${findings?.new?.CRITICAL ?? 0}`, reason: "quality-gate-last.json", since: findings?.at ?? iso(null), link: "/verify", mine: false });
-  return out.sort((a, b) => a.rank - b.rank || Date.parse(a.since) - Date.parse(b.since) || (a.target < b.target ? -1 : a.target > b.target ? 1 : 0));
+  return out.sort((a3, b) => a3.rank - b.rank || Date.parse(a3.since) - Date.parse(b.since) || (a3.target < b.target ? -1 : a3.target > b.target ? 1 : 0));
 }
 var TODO_LIMIT = 50;
 async function overview(p) {
@@ -9479,7 +9533,7 @@ async function overview(p) {
     total: all.length,
     stages,
     issues: loaded.issues.length,
-    sessions: { alive: loaded.sessions.filter((s) => s.state !== "gone").length, total: loaded.sessions.length },
+    sessions: { alive: loaded.sessions.filter((s3) => s3.state !== "gone").length, total: loaded.sessions.length },
     doctor,
     errors: loaded.errors
   };
@@ -9504,9 +9558,9 @@ var ExportError = class extends Error {
 };
 function scrub(value2, map) {
   if (typeof value2 === "string") {
-    let s = value2;
-    for (const [from, to] of map) s = s.split(from).join(to);
-    return s;
+    let s3 = value2;
+    for (const [from, to] of map) s3 = s3.split(from).join(to);
+    return s3;
   }
   if (Array.isArray(value2)) return value2.map((v) => scrub(v, map));
   if (value2 && typeof value2 === "object") {
@@ -9540,7 +9594,7 @@ async function exportStatic(opts) {
   const issues = loaded.issues.map(publicIssue).map((i) => ({ ...i, sessions: [], checkout: i.checkout ? { ...i.checkout, path: i.checkout.path.replace(/^\.\.\/[^/]+\.worktrees\//, "<worktrees>/") } : null }));
   const data = {
     session: { ...await sessionInfo(p, "single"), readOnly: true, mode: "export" },
-    overview: await overview(p).then((o) => ({ ...o, sessions: void 0, todo: o.todo.filter((t) => t.kind !== "dispatch-stale") })),
+    overview: await overview(p).then((o3) => ({ ...o3, sessions: void 0, todo: o3.todo.filter((t) => t.kind !== "dispatch-stale") })),
     issues: { issues },
     intents: { intents: intentFolders(p.root).map((i) => intentModel(p, i, loaded.issues)) },
     verify: { checkouts: await readVerify(p, null) },
@@ -9553,22 +9607,22 @@ async function exportStatic(opts) {
     data[`flow-${info.key}`] = { ...f, nodes: f.nodes.map((n) => ({ ...n, data: { ...n.data, session: null } })), proposal: proposal ? { ...proposal, createdBy: void 0 } : null };
   }
   const written = [];
-  const write = (rel2, text3) => {
+  const write = (rel2, text4) => {
     const f = import_node_path44.default.join(out, rel2);
     import_node_fs39.default.mkdirSync(import_node_path44.default.dirname(f), { recursive: true });
-    import_node_fs39.default.writeFileSync(f, text3);
+    import_node_fs39.default.writeFileSync(f, text4);
     written.push(rel2);
   };
   try {
     for (const [name, value2] of Object.entries(data)) write(`data/${name}.json`, `${JSON.stringify(scrub(value2, map), null, 2)}
 `);
-    const o = scrub(data.overview, map);
+    const o3 = scrub(data.overview, map);
     const rows = issues.map((i) => scrub(i, map));
     write(
       "index.html",
       page(
         `${p.name()} — 관리 페이지(내보내기)`,
-        `<h1>${escapeHtml(p.name())}</h1><p>정적 내보내기입니다. 저장 · 승인 · 답 · 요청은 리포의 관리 페이지 · 콘솔에서 합니다.</p><h2>처리할 일</h2><ol>${o.todo.map((t) => `<li>[${t.rank}] ${escapeHtml(t.title)} — ${escapeHtml(t.reason)}</li>`).join("")}</ol><h2>단계별</h2><ul>${Object.entries(o.stages).map(([k, v]) => `<li>${escapeHtml(k)} ${v}</li>`).join("")}</ul><h2>이슈</h2><table><thead><tr><th>키</th><th>이름</th><th>영역</th><th>단계</th><th>출처</th><th>체크아웃</th></tr></thead><tbody>${rows.map(issueRow).join("")}</tbody></table>`
+        `<h1>${escapeHtml(p.name())}</h1><p>정적 내보내기입니다. 저장 · 승인 · 답 · 요청은 리포의 관리 페이지 · 콘솔에서 합니다.</p><h2>처리할 일</h2><ol>${o3.todo.map((t) => `<li>[${t.rank}] ${escapeHtml(t.title)} — ${escapeHtml(t.reason)}</li>`).join("")}</ol><h2>단계별</h2><ul>${Object.entries(o3.stages).map(([k, v]) => `<li>${escapeHtml(k)} ${v}</li>`).join("")}</ul><h2>이슈</h2><table><thead><tr><th>키</th><th>이름</th><th>영역</th><th>단계</th><th>출처</th><th>체크아웃</th></tr></thead><tbody>${rows.map(issueRow).join("")}</tbody></table>`
       )
     );
     for (const issue of loaded.issues) {
@@ -9606,8 +9660,8 @@ function check2(out, p, home) {
       const f = import_node_path44.default.join(d, n);
       if (import_node_fs39.default.statSync(f).isDirectory()) walk4(f);
       else {
-        const text3 = import_node_fs39.default.readFileSync(f, "utf8");
-        for (const needle of needles) if (text3.includes(needle)) hits.push(`${import_node_path44.default.relative(out, f)}: ${needle === token ? "<토큰>" : needle}`);
+        const text4 = import_node_fs39.default.readFileSync(f, "utf8");
+        for (const needle of needles) if (text4.includes(needle)) hits.push(`${import_node_path44.default.relative(out, f)}: ${needle === token ? "<토큰>" : needle}`);
       }
     }
   };
@@ -9640,8 +9694,8 @@ async function history(p, issue) {
   if (log.code !== 0) return [];
   const pts = [];
   for (const line of log.stdout.split("\n").filter(Boolean).reverse()) {
-    const [sha, iso] = line.split("	");
-    const shown = await git2(issue.root, p.env, "show", `${sha}:${rel2}`);
+    const [sha2, iso] = line.split("	");
+    const shown = await git2(issue.root, p.env, "show", `${sha2}:${rel2}`);
     if (shown.code !== 0) continue;
     const b = bolts(shown.stdout);
     pts.push({ at: Date.parse(iso), total: b.total, done: b.done });
@@ -9732,18 +9786,18 @@ async function checkpointsList(p, issue) {
   const rows = [];
   let commits = 0;
   for (const rec of r.stdout.split(RS)) {
-    const [sha, short, subject, trailers] = rec.replace(/^\n/, "").split(NUL);
-    if (!sha) continue;
+    const [sha2, short, subject, trailers] = rec.replace(/^\n/, "").split(NUL);
+    if (!sha2) continue;
     commits += 1;
     for (const id of (trailers ?? "").split(",").map((x) => x.trim().replace(/\s+/g, "")).filter(Boolean)) {
       const has = local.has(id);
-      rows.push({ id, commit: short ?? sha.slice(0, 7), subject: subject ?? "", local: has, state: has ? "local" : "remote-or-missing" });
+      rows.push({ id, commit: short ?? sha2.slice(0, 7), subject: subject ?? "", local: has, state: has ? "local" : "remote-or-missing" });
     }
   }
   return { enabled: true, issue, branch, base, range, commits, checkpoints: rows };
 }
-function cleanText(s) {
-  return s.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "");
+function cleanText(s3) {
+  return s3.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "");
 }
 async function checkpointExplain(p, id) {
   if (!ID.test(id)) throw bad4(`체크포인트 id 형식이 아니다: ${id}`);
@@ -9751,8 +9805,8 @@ async function checkpointExplain(p, id) {
   const r = await run2("entire", ["checkpoint", "explain", id], { cwd: p.loc.top, env: p.env, timeout: EXPLAIN_TIMEOUT });
   const missing = r.code !== 0 && /ENOENT|not found|command not found/i.test(r.stderr + String(r.code));
   if (missing || r.code === 1 && r.stdout === "" && r.stderr === "") return { enabled: true, id, available: false, reason: "entire 를 실행하지 못했다(없거나 10초 안에 끝나지 않았다)" };
-  const text3 = cutBytes(cleanText(r.stdout || r.stderr), EXPLAIN_LIMIT);
-  return { enabled: true, id, available: true, ok: r.code === 0, truncated: Buffer.byteLength(r.stdout) > EXPLAIN_LIMIT, text: text3, untrusted: true };
+  const text4 = cutBytes(cleanText(r.stdout || r.stderr), EXPLAIN_LIMIT);
+  return { enabled: true, id, available: true, ok: r.code === 0, truncated: Buffer.byteLength(r.stdout) > EXPLAIN_LIMIT, text: text4, untrusted: true };
 }
 
 // ../dashboard/src/projects.ts
@@ -9766,8 +9820,8 @@ function registryFile(home, env = {}) {
 }
 function readRegistry(home, env = {}) {
   const data = readJson2(registryFile(home, env));
-  const list3 = data && Array.isArray(data.projects) ? data.projects : [];
-  return list3.filter((x) => isObj7(x) && typeof x.path === "string").map((x) => ({ path: String(x.path), name: typeof x.name === "string" ? x.name : import_node_path45.default.basename(String(x.path)), addedAt: typeof x.addedAt === "string" ? x.addedAt : "" }));
+  const list4 = data && Array.isArray(data.projects) ? data.projects : [];
+  return list4.filter((x) => isObj7(x) && typeof x.path === "string").map((x) => ({ path: String(x.path), name: typeof x.name === "string" ? x.name : import_node_path45.default.basename(String(x.path)), addedAt: typeof x.addedAt === "string" ? x.addedAt : "" }));
 }
 function writeRegistry(home, projects, env = {}) {
   ensureDir(configDir(home, env), 448);
@@ -9786,26 +9840,26 @@ function addProject(home, dir, today2, env = {}) {
     throw new ApiError(404, "not_found", `폴더가 없습니다: ${dir}`);
   }
   if (!isHarnessRepo(real2)) throw new ApiError(422, "not_a_harness_repo", `킷을 설치한 리포가 아닙니다(.agents/harness-kit.json 없음): ${real2}`);
-  const list3 = readRegistry(home, env);
-  const found = list3.find((e) => e.path === real2);
+  const list4 = readRegistry(home, env);
+  const found = list4.find((e) => e.path === real2);
   if (found) return { added: false, entry: found };
   const meta = readJson2(import_node_path45.default.join(real2, ".agents/harness-kit.json")) ?? {};
   const project = isObj7(meta.project) ? meta.project : {};
   const entry = { path: real2, name: typeof project.name === "string" && project.name ? project.name : import_node_path45.default.basename(real2), addedAt: today2 };
-  writeRegistry(home, [...list3, entry], env);
+  writeRegistry(home, [...list4, entry], env);
   return { added: true, entry };
 }
 function removeProject(home, nameOrPath, env = {}) {
-  const list3 = readRegistry(home, env);
+  const list4 = readRegistry(home, env);
   let real2 = nameOrPath;
   try {
     real2 = import_node_fs40.default.realpathSync(nameOrPath);
   } catch {
     real2 = import_node_path45.default.resolve(nameOrPath);
   }
-  const removed = list3.filter((e) => e.name === nameOrPath || e.path === nameOrPath || e.path === real2);
+  const removed = list4.filter((e) => e.name === nameOrPath || e.path === nameOrPath || e.path === real2);
   if (removed.length === 0) throw new ApiError(404, "not_found", `등록부에 없습니다: ${nameOrPath}`);
-  writeRegistry(home, list3.filter((e) => !removed.includes(e)), env);
+  writeRegistry(home, list4.filter((e) => !removed.includes(e)), env);
   return { removed };
 }
 function discover(dir, depth = 3) {
@@ -9834,8 +9888,8 @@ function discover(dir, depth = 3) {
 function workspaceEntries(file) {
   const data = readJson2(file);
   if (!data) throw bad4(`workspace 파일을 읽지 못했습니다: ${file}`);
-  const list3 = Array.isArray(data.projects) ? data.projects : [];
-  return list3.map((x) => typeof x === "string" ? x : isObj7(x) && typeof x.path === "string" ? x.path : null).filter((x) => x !== null).map((p) => {
+  const list4 = Array.isArray(data.projects) ? data.projects : [];
+  return list4.map((x) => typeof x === "string" ? x : isObj7(x) && typeof x.path === "string" ? x.path : null).filter((x) => x !== null).map((p) => {
     const abs = import_node_path45.default.resolve(import_node_path45.default.dirname(file), p);
     return { path: abs, name: import_node_path45.default.basename(abs), addedAt: "" };
   });
@@ -9877,19 +9931,19 @@ var Projects = class {
     return out;
   }
   async get(id) {
-    return (await this.list()).find((s) => s.id === id)?.project ?? null;
+    return (await this.list()).find((s3) => s3.id === id)?.project ?? null;
   }
 };
 async function projectsList(projects) {
   return {
-    projects: (await projects.list()).map((s) => ({
-      id: s.id,
-      name: s.entry.name,
-      path: s.entry.path,
-      addedAt: s.entry.addedAt || null,
-      state: s.state,
-      version: s.project ? isObj7(s.project.meta().kit) ? s.project.meta().kit.version ?? null : null : null,
-      remove: s.state === "ok" ? null : `npx harness-kit projects remove ${s.entry.name}`
+    projects: (await projects.list()).map((s3) => ({
+      id: s3.id,
+      name: s3.entry.name,
+      path: s3.entry.path,
+      addedAt: s3.entry.addedAt || null,
+      state: s3.state,
+      version: s3.project ? isObj7(s3.project.meta().kit) ? s3.project.meta().kit.version ?? null : null : null,
+      remove: s3.state === "ok" ? null : `npx harness-kit projects remove ${s3.entry.name}`
     }))
   };
 }
@@ -9915,15 +9969,15 @@ async function projectsOverview(projects, timeoutMs = 3e3) {
   const worker = async () => {
     while (next < slots.length) {
       const i = next++;
-      const s = slots[i];
-      const base = { id: s.id, name: s.entry.name, path: s.entry.path };
-      if (!s.project) {
-        rows[i] = { ...base, state: s.state, error: s.state === "missing" ? "폴더 없음" : "킷 리포가 아닙니다" };
+      const s3 = slots[i];
+      const base = { id: s3.id, name: s3.entry.name, path: s3.entry.path };
+      if (!s3.project) {
+        rows[i] = { ...base, state: s3.state, error: s3.state === "missing" ? "폴더 없음" : "킷 리포가 아닙니다" };
         continue;
       }
       try {
-        const o = await withTimeout(overview(s.project), timeoutMs);
-        rows[i] = { ...base, state: "ok", todo: o.todo.slice(0, 10), total: o.total, stages: o.stages, issues: o.issues, sessions: o.sessions };
+        const o3 = await withTimeout(overview(s3.project), timeoutMs);
+        rows[i] = { ...base, state: "ok", todo: o3.todo.slice(0, 10), total: o3.total, stages: o3.stages, issues: o3.issues, sessions: o3.sessions };
       } catch (err) {
         rows[i] = { ...base, state: "error", error: `읽기 실패: ${err instanceof Error ? err.message : String(err)}` };
       }
@@ -9933,7 +9987,7 @@ async function projectsOverview(projects, timeoutMs = 3e3) {
   const nested = rows.map((r) => ({ ...r, children: [] }));
   const top = [];
   for (const r of nested) {
-    const parent = nested.find((o) => o !== r && String(r.path).startsWith(`${String(o.path)}${import_node_path45.default.sep}`));
+    const parent = nested.find((o3) => o3 !== r && String(r.path).startsWith(`${String(o3.path)}${import_node_path45.default.sep}`));
     if (parent) parent.children.push({ id: r.id, name: r.name, state: r.state });
     else top.push(r);
   }
@@ -9941,7 +9995,7 @@ async function projectsOverview(projects, timeoutMs = 3e3) {
 }
 async function machineSessions(projects) {
   const out = [];
-  for (const p of projects) for (const s of await readSessions(p)) out.push({ project: p.name(), projectId: p.id, ...publicSession(s) });
+  for (const p of projects) for (const s3 of await readSessions(p)) out.push({ project: p.name(), projectId: p.id, ...publicSession(s3) });
   return { sessions: out };
 }
 
@@ -9954,34 +10008,34 @@ var import_node_path46 = __toESM(require("node:path"));
 var YamlError = class extends Error {
 };
 var MAX_DEPTH = 8;
-function stripComment(s) {
+function stripComment(s3) {
   let quote = "";
-  for (let i = 0; i < s.length; i += 1) {
-    const c = s[i];
+  for (let i = 0; i < s3.length; i += 1) {
+    const c = s3[i];
     if (quote) {
       if (c === "\\" && quote === '"') i += 1;
       else if (c === quote) quote = "";
     } else if (c === '"' || c === "'") {
-      if (i === 0 || /[\s[{,:]/.test(s[i - 1])) quote = c;
-    } else if (c === "#" && (i === 0 || /\s/.test(s[i - 1]))) return s.slice(0, i).trimEnd();
+      if (i === 0 || /[\s[{,:]/.test(s3[i - 1])) quote = c;
+    } else if (c === "#" && (i === 0 || /\s/.test(s3[i - 1]))) return s3.slice(0, i).trimEnd();
   }
-  return s.trimEnd();
+  return s3.trimEnd();
 }
-function dq(s) {
+function dq(s3) {
   let out = "";
-  for (let i = 0; i < s.length; i += 1) {
-    const c = s[i];
+  for (let i = 0; i < s3.length; i += 1) {
+    const c = s3[i];
     if (c !== "\\") {
       out += c;
       continue;
     }
-    const n = s[++i];
+    const n = s3[++i];
     if (n === "n") out += "\n";
     else if (n === "t") out += "	";
     else if (n === "r") out += "\r";
     else if (n === "0") out += "\0";
     else if (n === "u") {
-      const hex = s.slice(i + 1, i + 5);
+      const hex = s3.slice(i + 1, i + 5);
       if (!/^[0-9a-fA-F]{4}$/.test(hex)) throw new YamlError("잘못된 \\u 이스케이프");
       out += String.fromCharCode(parseInt(hex, 16));
       i += 4;
@@ -9991,46 +10045,46 @@ function dq(s) {
   return out;
 }
 function scalar2(raw) {
-  const s = raw.trim();
-  if (s === "" || s === "~" || s === "null" || s === "Null" || s === "NULL") return null;
-  if (s === "true" || s === "True" || s === "TRUE") return true;
-  if (s === "false" || s === "False" || s === "FALSE") return false;
-  if (/^[-+]?(0|[1-9][0-9]*)$/.test(s)) return Number(s);
-  if (/^[-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?$/.test(s)) return Number(s);
-  return s;
+  const s3 = raw.trim();
+  if (s3 === "" || s3 === "~" || s3 === "null" || s3 === "Null" || s3 === "NULL") return null;
+  if (s3 === "true" || s3 === "True" || s3 === "TRUE") return true;
+  if (s3 === "false" || s3 === "False" || s3 === "FALSE") return false;
+  if (/^[-+]?(0|[1-9][0-9]*)$/.test(s3)) return Number(s3);
+  if (/^[-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?$/.test(s3)) return Number(s3);
+  return s3;
 }
 function value(raw, depth) {
-  const s = raw.trim();
+  const s3 = raw.trim();
   if (depth > MAX_DEPTH) throw new YamlError("깊이 8 초과");
-  if (s === "") return null;
-  const c = s[0];
+  if (s3 === "") return null;
+  const c = s3[0];
   if (c === "*") throw new YamlError("별칭(*)은 쓸 수 없습니다");
   if (c === "&") throw new YamlError("앵커(&)는 쓸 수 없습니다");
   if (c === "!") throw new YamlError("태그(!)는 쓸 수 없습니다");
   if (c === '"') {
-    const end = closing(s, '"');
-    if (s.slice(end + 1).trim()) throw new YamlError("따옴표 뒤에 글이 남았습니다");
-    return dq(s.slice(1, end));
+    const end = closing(s3, '"');
+    if (s3.slice(end + 1).trim()) throw new YamlError("따옴표 뒤에 글이 남았습니다");
+    return dq(s3.slice(1, end));
   }
   if (c === "'") {
-    const end = closing(s, "'");
-    if (s.slice(end + 1).trim()) throw new YamlError("따옴표 뒤에 글이 남았습니다");
-    return s.slice(1, end).replace(/''/g, "'");
+    const end = closing(s3, "'");
+    if (s3.slice(end + 1).trim()) throw new YamlError("따옴표 뒤에 글이 남았습니다");
+    return s3.slice(1, end).replace(/''/g, "'");
   }
-  if (c === "[") return flow(s, depth);
-  if (c === "{") return flow(s, depth);
+  if (c === "[") return flow(s3, depth);
+  if (c === "{") return flow(s3, depth);
   if (c === "@" || c === "`") throw new YamlError(`예약된 첫 글자 ${c}`);
-  return scalar2(s);
+  return scalar2(s3);
 }
-function closing(s, q2) {
-  for (let i = 1; i < s.length; i += 1) {
-    const c = s[i];
+function closing(s3, q2) {
+  for (let i = 1; i < s3.length; i += 1) {
+    const c = s3[i];
     if (q2 === '"' && c === "\\") {
       i += 1;
       continue;
     }
     if (c === q2) {
-      if (q2 === "'" && s[i + 1] === "'") {
+      if (q2 === "'" && s3[i + 1] === "'") {
         i += 1;
         continue;
       }
@@ -10039,36 +10093,36 @@ function closing(s, q2) {
   }
   throw new YamlError("따옴표가 닫히지 않았습니다");
 }
-function flow(s, depth) {
+function flow(s3, depth) {
   let i = 0;
   const ws = () => {
-    while (i < s.length && /\s/.test(s[i])) i += 1;
+    while (i < s3.length && /\s/.test(s3[i])) i += 1;
   };
   const item = (d) => {
     ws();
     if (d > MAX_DEPTH) throw new YamlError("깊이 8 초과");
-    const c = s[i];
+    const c = s3[i];
     if (c === "[") {
       i += 1;
       const out2 = [];
       ws();
-      if (s[i] === "]") {
+      if (s3[i] === "]") {
         i += 1;
         return out2;
       }
       for (; ; ) {
         out2.push(item(d + 1));
         ws();
-        if (s[i] === ",") {
+        if (s3[i] === ",") {
           i += 1;
           ws();
-          if (s[i] === "]") {
+          if (s3[i] === "]") {
             i += 1;
             return out2;
           }
           continue;
         }
-        if (s[i] === "]") {
+        if (s3[i] === "]") {
           i += 1;
           return out2;
         }
@@ -10079,7 +10133,7 @@ function flow(s, depth) {
       i += 1;
       const out2 = {};
       ws();
-      if (s[i] === "}") {
+      if (s3[i] === "}") {
         i += 1;
         return out2;
       }
@@ -10087,16 +10141,16 @@ function flow(s, depth) {
         ws();
         const k = String(item(d + 1));
         ws();
-        if (s[i] !== ":") throw new YamlError("흐름 맵의 ':' 가 없습니다");
+        if (s3[i] !== ":") throw new YamlError("흐름 맵의 ':' 가 없습니다");
         i += 1;
         if (Object.hasOwn(out2, k)) throw new YamlError(`같은 키 ${k}`);
         out2[k] = item(d + 1);
         ws();
-        if (s[i] === ",") {
+        if (s3[i] === ",") {
           i += 1;
           continue;
         }
-        if (s[i] === "}") {
+        if (s3[i] === "}") {
           i += 1;
           return out2;
         }
@@ -10104,25 +10158,25 @@ function flow(s, depth) {
       }
     }
     if (c === '"' || c === "'") {
-      const end = closing(s.slice(i), c) + i;
-      const lit2 = s.slice(i, end + 1);
+      const end = closing(s3.slice(i), c) + i;
+      const lit2 = s3.slice(i, end + 1);
       i = end + 1;
       return value(lit2, d);
     }
     let j = i;
-    while (j < s.length && !",]}".includes(s[j]) && !(s[j] === ":" && /[\s]/.test(s[j + 1] ?? " "))) j += 1;
-    const lit = s.slice(i, j);
+    while (j < s3.length && !",]}".includes(s3[j]) && !(s3[j] === ":" && /[\s]/.test(s3[j + 1] ?? " "))) j += 1;
+    const lit = s3.slice(i, j);
     i = j;
     return value(lit, d);
   };
   const out = item(depth);
   ws();
-  if (i < s.length) throw new YamlError("흐름 값 뒤에 글이 남았습니다");
+  if (i < s3.length) throw new YamlError("흐름 값 뒤에 글이 남았습니다");
   return out;
 }
-function lines(text3) {
+function lines(text4) {
   const out = [];
-  text3.split("\n").forEach((raw, n) => {
+  text4.split("\n").forEach((raw, n) => {
     const line = raw.replace(/\r$/, "");
     if (/^\t/.test(line) || /^ *\t/.test(line)) {
       if (line.trim()) throw new YamlError(`탭 들여쓰기(${n + 1}째 줄)`);
@@ -10215,8 +10269,8 @@ function parseMap(r, indent, depth) {
     if (!l || l.indent < indent) return out;
     if (l.indent > indent) throw new YamlError(`들여쓰기가 맞지 않습니다(${l.no}째 줄)`);
     if (l.text.startsWith("- ") || l.text === "-") return out;
-    const text3 = stripComment(l.text);
-    const m = /^("(?:[^"\\]|\\.)*"|'(?:[^']|'')*'|[^\s:#][^:]*?)\s*:(?:\s+(.*))?$/.exec(text3);
+    const text4 = stripComment(l.text);
+    const m = /^("(?:[^"\\]|\\.)*"|'(?:[^']|'')*'|[^\s:#][^:]*?)\s*:(?:\s+(.*))?$/.exec(text4);
     if (!m) throw new YamlError(`'키: 값' 모양이 아닙니다(${l.no}째 줄)`);
     let key = m[1];
     if (key[0] === '"' || key[0] === "'") key = String(value(key, depth));
@@ -10263,11 +10317,11 @@ function parseMap(r, indent, depth) {
     }
   }
 }
-function flowClosed(s) {
+function flowClosed(s3) {
   let depth = 0;
   let quote = "";
-  for (let i = 0; i < s.length; i += 1) {
-    const c = s[i];
+  for (let i = 0; i < s3.length; i += 1) {
+    const c = s3[i];
     if (quote) {
       if (c === "\\" && quote === '"') i += 1;
       else if (c === quote) quote = "";
@@ -10277,8 +10331,8 @@ function flowClosed(s) {
   }
   return depth <= 0;
 }
-function parseYaml(text3) {
-  const r = new Reader(lines(text3));
+function parseYaml(text4) {
+  const r = new Reader(lines(text4));
   const first = r.peek();
   if (!first) return {};
   const res = parseBlock(r, first.indent, 0);
@@ -10382,8 +10436,8 @@ function semverKey(v) {
   const m = /^v?(\d+)\.(\d+)\.(\d+)/.exec(v);
   return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
 }
-function cmpSemver(a, b) {
-  for (let i = 0; i < 3; i += 1) if (a[i] !== b[i]) return a[i] - b[i];
+function cmpSemver(a3, b) {
+  for (let i = 0; i < 3; i += 1) if (a3[i] !== b[i]) return a3[i] - b[i];
   return 0;
 }
 function pluginRoots(repo, home) {
@@ -10397,22 +10451,22 @@ function pluginRoots(repo, home) {
   }
   const enabled2 = /* @__PURE__ */ new Map();
   for (const f of [import_node_path46.default.join(home, ".claude/settings.json"), import_node_path46.default.join(repo, ".claude/settings.json"), import_node_path46.default.join(repo, ".claude/settings.local.json")]) {
-    const s = readJson2(f);
-    const e = s && isObj7(s.enabledPlugins) ? s.enabledPlugins : {};
+    const s3 = readJson2(f);
+    const e = s3 && isObj7(s3.enabledPlugins) ? s3.enabledPlugins : {};
     for (const [id, on] of Object.entries(e)) if (typeof on === "boolean") enabled2.set(id, on);
   }
   const plugins = isObj7(installed.plugins) ? installed.plugins : {};
   const cacheRoot = import_node_path46.default.join(base, "cache");
-  for (const [id, on] of [...enabled2].sort(([a], [b]) => a < b ? -1 : 1)) {
+  for (const [id, on] of [...enabled2].sort(([a3], [b]) => a3 < b ? -1 : 1)) {
     if (!on) continue;
     const entries = (Array.isArray(plugins[id]) ? plugins[id] : []).filter(isObj7);
     const repoReal = safeReal(repo);
     const usable = entries.filter((e) => e.scope === "user" || (e.scope === "project" || e.scope === "local") && typeof e.projectPath === "string" && safeReal(e.projectPath) === repoReal);
-    usable.sort((a, b) => {
-      const ra = a.scope === "user" ? 0 : 1;
+    usable.sort((a3, b) => {
+      const ra = a3.scope === "user" ? 0 : 1;
       const rb = b.scope === "user" ? 0 : 1;
       if (ra !== rb) return rb - ra;
-      return String(b.lastUpdated ?? "") < String(a.lastUpdated ?? "") ? -1 : 1;
+      return String(b.lastUpdated ?? "") < String(a3.lastUpdated ?? "") ? -1 : 1;
     });
     let installPath = null;
     let version = "";
@@ -10427,8 +10481,8 @@ function pluginRoots(repo, home) {
       try {
         const versions = import_node_fs41.default.readdirSync(dir).filter((v) => import_node_fs41.default.statSync(import_node_path46.default.join(dir, v)).isDirectory());
         const scored = versions.map((v) => ({ v, key: semverKey(v), mtime: import_node_fs41.default.statSync(import_node_path46.default.join(dir, v)).mtimeMs }));
-        const semver = scored.filter((s) => s.key !== null).sort((a, b) => cmpSemver(b.key, a.key));
-        const best = semver[0] ?? scored.sort((a, b) => b.mtime - a.mtime)[0];
+        const semver = scored.filter((s3) => s3.key !== null).sort((a3, b) => cmpSemver(b.key, a3.key));
+        const best = semver[0] ?? scored.sort((a3, b) => b.mtime - a3.mtime)[0];
         if (best) {
           installPath = import_node_path46.default.join(dir, best.v);
           version = best.v;
@@ -10477,17 +10531,17 @@ async function readSkillFile(file) {
     return { sha256: null, fm: null, error: "unreadable" };
   }
   const sha2563 = import_node_crypto6.default.createHash("sha256").update(bytes).digest("hex");
-  let text3;
+  let text4;
   try {
-    text3 = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, READ_HEAD));
+    text4 = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, READ_HEAD));
   } catch {
     try {
-      text3 = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, Math.max(0, Math.min(bytes.length, READ_HEAD) - 3)));
+      text4 = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, Math.max(0, Math.min(bytes.length, READ_HEAD) - 3)));
     } catch {
       return { sha256: sha2563, fm: null, error: "encoding" };
     }
   }
-  const lines3 = text3.split("\n");
+  const lines3 = text4.split("\n");
   if ((lines3[0] ?? "").replace(/\r$/, "") !== "---") return { sha256: sha2563, fm: null, error: "no-frontmatter" };
   let end = -1;
   for (let i = 1; i < lines3.length; i += 1) {
@@ -10574,11 +10628,11 @@ async function readRoot(root, home, repo) {
       error: null
     };
   });
-  for (const s of found) {
-    if (!s) continue;
+  for (const s3 of found) {
+    if (!s3) continue;
     res.count += 1;
-    if (s.error) res.errors += 1;
-    res.skills.push(s);
+    if (s3.error) res.errors += 1;
+    res.skills.push(s3);
   }
   return res;
 }
@@ -10592,9 +10646,9 @@ var WORDS = {
   docs: ["documentation", "docs", "changelog", "release note", "readme", "codemap", "문서", "릴리스 노트"],
   ops: ["deploy", "canary", "monitor", "incident", "retro", "rollback", "observability", "on-call", "배포", "장애", "운영", "회고"]
 };
-function hit(text3, word) {
-  if (/^[a-z]{1,3}$/.test(word)) return new RegExp(`(^|[^a-z0-9])${word}([^a-z0-9]|$)`).test(text3);
-  return text3.includes(word);
+function hit(text4, word) {
+  if (/^[a-z]{1,3}$/.test(word)) return new RegExp(`(^|[^a-z0-9])${word}([^a-z0-9]|$)`).test(text4);
+  return text4.includes(word);
 }
 function guessStages(name, description) {
   const n = name.toLowerCase();
@@ -10602,22 +10656,22 @@ function guessStages(name, description) {
   const score = {};
   const matched = {};
   for (const st of STAGES) {
-    let s = 0;
+    let s3 = 0;
     const m = [];
     for (const w of WORDS[st]) {
       const inName = hit(n, w);
       const inDesc = hit(d, w);
-      if (inName) s += 3;
-      if (inDesc) s += 1;
+      if (inName) s3 += 3;
+      if (inDesc) s3 += 1;
       if (inName || inDesc) m.push(w);
     }
-    score[st] = s;
+    score[st] = s3;
     matched[st] = m;
   }
-  const top = Math.max(...STAGES.map((s) => score[s]));
+  const top = Math.max(...STAGES.map((s3) => score[s3]));
   if (top < 2) return { stages: [], matched: [] };
-  const stages = STAGES.filter((s) => score[s] === top);
-  return { stages, matched: stages.flatMap((s) => matched[s]) };
+  const stages = STAGES.filter((s3) => score[s3] === top);
+  return { stages, matched: stages.flatMap((s3) => matched[s3]) };
 }
 function readSkillMap(repo) {
   const raw = readJson2(import_node_path46.default.join(repo, ".agents/skill-map.json"));
@@ -10653,25 +10707,25 @@ function rankOf(h, r) {
 function statusOf(skill, all, h) {
   const vis = skill.roots.filter((r) => r.harnesses.includes(h));
   if (!vis.length || skill.error) return { status: "no" };
-  const others = all.filter((o) => o !== skill && !o.error && o.name === skill.name && !o.plugin && !skill.plugin && o.sha256 !== skill.sha256 && o.roots.some((r) => r.harnesses.includes(h)));
+  const others = all.filter((o3) => o3 !== skill && !o3.error && o3.name === skill.name && !o3.plugin && !skill.plugin && o3.sha256 !== skill.sha256 && o3.roots.some((r) => r.harnesses.includes(h)));
   if (!others.length) return { status: "loaded" };
   if (h === "codex" || h === "cursor" || h === "kiro") return { status: "both" };
   const mine = Math.min(...vis.map((r) => rankOf(h, r)));
   let best = mine;
   let by = null;
-  for (const o of others) {
-    const r = Math.min(...o.roots.filter((x) => x.harnesses.includes(h)).map((x) => rankOf(h, x)));
+  for (const o3 of others) {
+    const r = Math.min(...o3.roots.filter((x) => x.harnesses.includes(h)).map((x) => rankOf(h, x)));
     if (r < best) {
       best = r;
-      by = o;
+      by = o3;
     }
   }
   return best < mine && by ? { status: "shadowed", by: by.display } : { status: "loaded" };
 }
 function activeHarnesses(p) {
-  const a = p.meta().agents;
-  const list3 = Array.isArray(a) ? a.filter((x) => typeof x === "string" && HARNESSES.includes(x)) : [];
-  return list3.length ? list3 : ["claude"];
+  const a3 = p.meta().agents;
+  const list4 = Array.isArray(a3) ? a3.filter((x) => typeof x === "string" && HARNESSES.includes(x)) : [];
+  return list4.length ? list4 : ["claude"];
 }
 async function scan2(p, opts) {
   const repo = p.root;
@@ -10686,7 +10740,7 @@ async function scan2(p, opts) {
     pluginErrors.push(...pl.errors);
     if (pl.warning) warnings.push(pl.warning);
   }
-  const reads = await mapLimit(specs, 4, (s) => readRoot(s, home, repo));
+  const reads = await mapLimit(specs, 4, (s3) => readRoot(s3, home, repo));
   const groups = /* @__PURE__ */ new Map();
   const rootsOut = [];
   for (const r of reads) {
@@ -10705,48 +10759,48 @@ async function scan2(p, opts) {
       ...r.root.version ? { version: r.root.version, versionSource: r.root.versionSource } : {},
       ...r.error ? { error: r.error } : {}
     });
-    for (const s of r.skills) {
-      const key = s.real ? `r:${s.real}` : `e:${s.file}`;
+    for (const s3 of r.skills) {
+      const key = s3.real ? `r:${s3.real}` : `e:${s3.file}`;
       const g = groups.get(key);
-      const locPath = display(s.dir, home, repo);
-      const loc = { path: locPath, scope: r.root.scope, ...s.viaLink ? { via: "symlink" } : {} };
+      const locPath = display(s3.dir, home, repo);
+      const loc = { path: locPath, scope: r.root.scope, ...s3.viaLink ? { via: "symlink" } : {} };
       if (g) {
         g.roots.push(r.root);
         g.locations.push(loc);
         continue;
       }
       groups.set(key, {
-        name: s.name,
-        id: s.id,
-        real: s.real,
-        sha256: s.sha256,
-        description: s.description,
+        name: s3.name,
+        id: s3.id,
+        real: s3.real,
+        sha256: s3.sha256,
+        description: s3.description,
         plugin: r.root.plugin ?? null,
         roots: [r.root],
         locations: [loc],
-        fields: s.fields,
-        warnings: s.warnings,
-        error: s.error,
-        stages: s.stages,
+        fields: s3.fields,
+        warnings: s3.warnings,
+        error: s3.error,
+        stages: s3.stages,
         display: locPath
       });
     }
   }
   for (const e of pluginErrors) rootsOut.push({ path: e.path, scope: "plugin", count: 0, symlinks: 0, nested: 0, errors: 1, error: e.error });
-  const list3 = [...groups.values()];
+  const list4 = [...groups.values()];
   const { map, prepend } = readSkillMap(repo);
   const excluded = new Set(map?.exclude ?? []);
   const mapStages = /* @__PURE__ */ new Map();
   if (map) for (const [st, slots] of Object.entries(map.stages)) for (const [slot, ids2] of Object.entries(slots)) for (const id of ids2) mapStages.set(id, [...mapStages.get(id) ?? [], { stage: st, slot }]);
   const bySha = /* @__PURE__ */ new Map();
-  for (const g of list3) if (g.sha256) bySha.set(g.sha256, [...bySha.get(g.sha256) ?? [], g]);
-  const skills = list3.map((g) => {
+  for (const g of list4) if (g.sha256) bySha.set(g.sha256, [...bySha.get(g.sha256) ?? [], g]);
+  const skills = list4.map((g) => {
     const harnesses = {};
     const shadowedBy = {};
     for (const h of HARNESSES) {
-      const s = statusOf(g, list3, h);
-      harnesses[h] = s.status;
-      if (s.by) shadowedBy[h] = s.by;
+      const s3 = statusOf(g, list4, h);
+      harnesses[h] = s3.status;
+      if (s3.by) shadowedBy[h] = s3.by;
     }
     let stages = [];
     const fromMap = mapStages.get(g.id);
@@ -10756,7 +10810,7 @@ async function scan2(p, opts) {
       const gs = guessStages(g.name, g.description);
       stages = gs.stages.map((st) => ({ stage: st, slot: null, source: "추정", matched: gs.matched }));
     }
-    const copies = (g.sha256 ? bySha.get(g.sha256) ?? [] : []).filter((o) => o !== g).map((o) => o.display);
+    const copies = (g.sha256 ? bySha.get(g.sha256) ?? [] : []).filter((o3) => o3 !== g).map((o3) => o3.display);
     return {
       id: g.id,
       name: g.name,
@@ -10772,11 +10826,11 @@ async function scan2(p, opts) {
       error: g.error
     };
   });
-  skills.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  skills.sort((a3, b) => a3.id < b.id ? -1 : a3.id > b.id ? 1 : 0);
   const conflicts = [];
   const byName = /* @__PURE__ */ new Map();
-  for (const g of list3) if (!g.plugin && !g.error && g.sha256) byName.set(g.name, [...byName.get(g.name) ?? [], g]);
-  for (const [name, gs] of [...byName].sort(([a], [b]) => a < b ? -1 : 1)) {
+  for (const g of list4) if (!g.plugin && !g.error && g.sha256) byName.set(g.name, [...byName.get(g.name) ?? [], g]);
+  for (const [name, gs] of [...byName].sort(([a3], [b]) => a3 < b ? -1 : 1)) {
     const distinct = new Set(gs.map((g) => g.sha256));
     if (distinct.size < 2) continue;
     const winner = {};
@@ -10785,7 +10839,7 @@ async function scan2(p, opts) {
       const vis = gs.filter((g) => g.roots.some((r) => r.harnesses.includes(h)));
       if (new Set(vis.map((g) => g.sha256)).size < 2) continue;
       any = true;
-      const sts = vis.map((g) => ({ g, s: statusOf(g, list3, h) }));
+      const sts = vis.map((g) => ({ g, s: statusOf(g, list4, h) }));
       const w = sts.find((x) => x.s.status === "loaded");
       winner[h] = w ? w.g.display : "both";
     }
@@ -10810,8 +10864,8 @@ function resolveAll(map, prepend, skills, harnesses) {
         const [stage, slotName] = slot.split(".");
         const ids2 = [...prepend[slot] ?? [], ...(map.stages[stage] ?? {})[slotName ?? ""] ?? []];
         const found = ids2.find((id) => {
-          const s = skills.find((x) => x.id === id);
-          return s && !s.error && ["loaded", "both"].includes(s.harnesses[h] ?? "no");
+          const s3 = skills.find((x) => x.id === id);
+          return s3 && !s3.error && ["loaded", "both"].includes(s3.harnesses[h] ?? "no");
         });
         out.push({ command, slot, harness: h, skill: found ?? null, fallback: found ? "" : def.fallback });
       }
@@ -10830,9 +10884,9 @@ async function stampOf(p, opts) {
   return parts.join("\n");
 }
 async function skillsInventory(p, opts = {}) {
-  const o = { user: opts.user ?? true, refresh: opts.refresh ?? false };
-  if (o.refresh) return scan2(p, o);
-  return p.cache.get(`skills:${o.user}`, await stampOf(p, o), () => scan2(p, o), TTL_MS);
+  const o3 = { user: opts.user ?? true, refresh: opts.refresh ?? false };
+  if (o3.refresh) return scan2(p, o3);
+  return p.cache.get(`skills:${o3.user}`, await stampOf(p, o3), () => scan2(p, o3), TTL_MS);
 }
 function filterInventory(inv, q2) {
   const stage = q2.stage ? STAGE_ALIAS[q2.stage] ?? q2.stage : null;
@@ -10840,15 +10894,15 @@ function filterInventory(inv, q2) {
   const shown = q2.all ? [...HARNESSES] : inv.harnesses;
   const order = { map: 0, metadata: 1, 추정: 2 };
   let skills = inv.skills;
-  if (stage) skills = skills.filter((s) => s.stages.some((x) => x.stage === stage));
-  if (harness) skills = skills.filter((s) => ["loaded", "both"].includes(s.harnesses[harness] ?? "no"));
-  if (q2.errors) skills = skills.filter((s) => s.error || s.warnings.length);
+  if (stage) skills = skills.filter((s3) => s3.stages.some((x) => x.stage === stage));
+  if (harness) skills = skills.filter((s3) => ["loaded", "both"].includes(s3.harnesses[harness] ?? "no"));
+  if (q2.errors) skills = skills.filter((s3) => s3.error || s3.warnings.length);
   if (q2.conflicts) {
     const names = new Set(inv.conflicts.map((c) => c.name));
-    skills = skills.filter((s) => names.has(s.name));
+    skills = skills.filter((s3) => names.has(s3.name));
   }
-  if (stage) skills = [...skills].sort((a, b) => (order[a.stages.find((x) => x.stage === stage)?.source ?? "추정"] ?? 2) - (order[b.stages.find((x) => x.stage === stage)?.source ?? "추정"] ?? 2));
-  return { ...inv, harnesses: shown, skills, conflicts: q2.conflicts || q2.stage || q2.harness ? inv.conflicts.filter((c) => skills.some((s) => s.name === c.name)) : inv.conflicts, total: inv.skills.length, shown: skills.length };
+  if (stage) skills = [...skills].sort((a3, b) => (order[a3.stages.find((x) => x.stage === stage)?.source ?? "추정"] ?? 2) - (order[b.stages.find((x) => x.stage === stage)?.source ?? "추정"] ?? 2));
+  return { ...inv, harnesses: shown, skills, conflicts: q2.conflicts || q2.stage || q2.harness ? inv.conflicts.filter((c) => skills.some((s3) => s3.name === c.name)) : inv.conflicts, total: inv.skills.length, shown: skills.length };
 }
 
 // ../dashboard/src/usage.ts
@@ -10902,11 +10956,11 @@ async function readAppended(file, st) {
     if (len <= 0) return [];
     const buf = Buffer.alloc(len);
     const { bytesRead } = await fh.read(buf, 0, len, st.offset);
-    const text3 = buf.subarray(0, bytesRead).toString("utf8");
-    const cut = text3.lastIndexOf("\n");
+    const text4 = buf.subarray(0, bytesRead).toString("utf8");
+    const cut = text4.lastIndexOf("\n");
     if (cut < 0) return [];
-    st.offset += Buffer.byteLength(text3.slice(0, cut + 1), "utf8");
-    return text3.slice(0, cut).split("\n");
+    st.offset += Buffer.byteLength(text4.slice(0, cut + 1), "utf8");
+    return text4.slice(0, cut).split("\n");
   } finally {
     await fh.close();
   }
@@ -11104,14 +11158,14 @@ function rangeOf2(daysText) {
 var issueOf = (branch) => /^[a-z]+\/([A-Z][A-Z0-9]*-[0-9]+)(?:-|$)/.exec(branch ?? "")?.[1] ?? null;
 async function sessionMap(p) {
   const m = /* @__PURE__ */ new Map();
-  for (const s of await readSessions(p)) m.set(s.id, { role: s.role ?? null, issue: s.issue ?? null });
+  for (const s3 of await readSessions(p)) m.set(s3.id, { role: s3.role ?? null, issue: s3.issue ?? null });
   return m;
 }
 function priceOf(p, model) {
   const usage = p.machineConfig().usage;
   const pricing = isObj7(usage) && isObj7(usage.pricing) ? usage.pricing : null;
   if (!pricing || !model) return null;
-  const key = Object.keys(pricing).sort((a, b) => b.length - a.length).find((k) => model.startsWith(k));
+  const key = Object.keys(pricing).sort((a3, b) => b.length - a3.length).find((k) => model.startsWith(k));
   const v = key ? pricing[key] : null;
   return isObj7(v) ? { input: num2(v.input), output: num2(v.output), cacheRead: num2(v.cacheRead), cacheWrite: num2(v.cacheWrite) } : null;
 }
@@ -11167,7 +11221,7 @@ async function usageData(p, q2) {
     totals,
     daily: dayList,
     roles: [...roles].sort(),
-    byIssue: [...issues].map(([issue, sum]) => ({ issue, sum })).sort((a, b) => b.sum - a.sum || (a.issue < b.issue ? -1 : 1)),
+    byIssue: [...issues].map(([issue, sum]) => ({ issue, sum })).sort((a3, b) => b.sum - a3.sum || (a3.issue < b.issue ? -1 : 1)),
     cache: { average: ratio(totals), daily: dayList.map((d) => ({ date: d.date, ratio: ratio(d) })) },
     cost: priced ? { estimate: Math.round(cost * 100) / 100, note: "usage.pricing 으로 센 추정입니다. 청구 금액이 아닙니다" } : null,
     unreadable
@@ -11177,7 +11231,7 @@ async function usageNow(p) {
   if (!historyOn(p)) return { enabled: false, ...configHint(p), session: null };
   const { recs } = await loadRecords(p, Date.now() - 2 * DAY3, null);
   const sess = await sessionMap(p);
-  const last = recs.reduce((a, r) => !a || r.ts > a.ts ? r : a, null);
+  const last = recs.reduce((a3, r) => !a3 || r.ts > a3.ts ? r : a3, null);
   if (!last) return { enabled: true, session: null };
   const usage = isObj7(p.machineConfig().usage) ? p.machineConfig().usage : {};
   const windows = isObj7(usage.contextWindows) ? usage.contextWindows : {};
@@ -11245,13 +11299,13 @@ async function usageKit(p) {
     }
   } catch {
   }
-  const hooks = [...by.values()].map((e) => ({ event: e.event, hook: e.hook, count: e.count, avgBytes: Math.round(e.total / e.count), lastBytes: e.last, maxBytes: e.max, truncated: e.truncated })).sort((a, b) => a.event + a.hook < b.event + b.hook ? -1 : 1);
+  const hooks = [...by.values()].map((e) => ({ event: e.event, hook: e.hook, count: e.count, avgBytes: Math.round(e.total / e.count), lastBytes: e.last, maxBytes: e.max, truncated: e.truncated })).sort((a3, b) => a3.event + a3.hook < b.event + b.hook ? -1 : 1);
   const start = hooks.filter((h) => isSessionStart(h.event));
-  const avgTotal = start.reduce((s, h) => s + h.avgBytes, 0);
+  const avgTotal = start.reduce((s3, h) => s3 + h.avgBytes, 0);
   return {
     hooks,
     skipped,
-    sessionStart: { avgBytes: avgTotal, maxBytes: start.reduce((s, h) => s + h.maxBytes, 0), limit: SESSION_START_LIMIT, ratio: avgTotal / SESSION_START_LIMIT, within: avgTotal <= SESSION_START_LIMIT, estTokens: Math.round(avgTotal / 3) },
+    sessionStart: { avgBytes: avgTotal, maxBytes: start.reduce((s3, h) => s3 + h.maxBytes, 0), limit: SESSION_START_LIMIT, ratio: avgTotal / SESSION_START_LIMIT, within: avgTotal <= SESSION_START_LIMIT, estTokens: Math.round(avgTotal / 3) },
     modules: modulesOf(p),
     load: loadOf(p),
     note: "바이트 ÷ 3 은 한글 위주 글의 토큰 추정입니다"
@@ -11261,10 +11315,10 @@ function loadOf(p) {
   const lock = readJson2(import_node_path47.default.join(p.root, ".agents/harness-kit.lock"));
   const entries = lock && Array.isArray(lock.entries) ? lock.entries.filter(isObj7) : [];
   const pairs = entries.filter((e) => typeof e.path === "string" && typeof e.owner === "string").map((e) => ({ path: e.path, owner: e.owner }));
-  const tools = [...new Set(pairs.map((e) => e.owner).filter((o) => o.startsWith("external:")))];
+  const tools = [...new Set(pairs.map((e) => e.owner).filter((o3) => o3.startsWith("external:")))];
   const roles = isObj7(p.meta().roles) ? p.meta().roles : {};
   const impl = isObj7(roles.implement) && typeof roles.implement.harness === "string" ? roles.implement.harness : "claude";
-  const m = measureSession(p.root, { harness: impl, entries: pairs, hookOwners: tools.map((o) => [o, [`${o.slice("external:".length)} `]]) });
+  const m = measureSession(p.root, { harness: impl, entries: pairs, hookOwners: tools.map((o3) => [o3, [`${o3.slice("external:".length)} `]]) });
   return { harness: m.harness, total: m.total, estTokens: Math.round(m.total / 3), owners: m.owners, hooks: m.hooks };
 }
 function modulesOf(p) {
@@ -11282,19 +11336,19 @@ function modulesOf(p) {
     try {
       const st = import_node_fs42.default.statSync(import_node_path47.default.join(p.root, rel2));
       if (!st.isFile()) continue;
-      const o = get(typeof e.owner === "string" ? e.owner : "kit");
-      o.files += 1;
-      o.bytes += st.size;
+      const o3 = get(typeof e.owner === "string" ? e.owner : "kit");
+      o3.files += 1;
+      o3.bytes += st.size;
     } catch {
     }
   }
   const hooks = readJson2(import_node_path47.default.join(p.root, ".agents/hooks.json"));
   for (const h of hooks && Array.isArray(hooks.hooks) ? hooks.hooks.filter(isObj7) : []) {
-    const o = get(typeof h.owner === "string" ? h.owner : "kit");
+    const o3 = get(typeof h.owner === "string" ? h.owner : "kit");
     const ev = typeof h.event === "string" ? h.event : "-";
-    o.hooks[ev] = (o.hooks[ev] ?? 0) + 1;
+    o3.hooks[ev] = (o3.hooks[ev] ?? 0) + 1;
   }
-  return [...out.values()].sort((a, b) => a.owner < b.owner ? -1 : 1).map((o) => ({ ...o, estTokens: Math.round(o.bytes / 3) }));
+  return [...out.values()].sort((a3, b) => a3.owner < b.owner ? -1 : 1).map((o3) => ({ ...o3, estTokens: Math.round(o3.bytes / 3) }));
 }
 async function historyData(p, q2) {
   if (!historyOn(p)) throw new ApiError(404, "history_off", '대화 기록 읽기가 꺼져 있습니다. 켜려면 사람이 ~/.config/harness-kit/config.json 에 "history": "on" 을 씁니다', configHint(p));
@@ -11345,7 +11399,7 @@ async function historyData(p, q2) {
     }
   }
   const needle = q2.q?.toLowerCase() ?? null;
-  const all = prompts.filter((x) => (!needle || x.text.toLowerCase().includes(needle)) && (!q2.session || x.session === q2.session) && (!q2.role || x.role === q2.role)).sort((a, b) => a.at < b.at ? 1 : a.at > b.at ? -1 : 0);
+  const all = prompts.filter((x) => (!needle || x.text.toLowerCase().includes(needle)) && (!q2.session || x.session === q2.session) && (!q2.role || x.role === q2.role)).sort((a3, b) => a3.at < b.at ? 1 : a3.at > b.at ? -1 : 0);
   return { enabled: true, prompts: all.slice(0, HISTORY_LIMIT), total: all.length, shown: Math.min(all.length, HISTORY_LIMIT), unreadable, note: "글을 보여 주기만 합니다. 내보내기 · 커밋 · 세션 요청에 넣지 않습니다" };
 }
 
@@ -11373,8 +11427,8 @@ async function gateInfo(p, root, key, gate) {
     throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건을 판정하지 못했습니다`, { reasons: [(r.stderr.trim().split("\n").pop() ?? "").slice(0, 300)] });
   }
 }
-function headValue2(text3, key) {
-  const lines3 = text3.split("\n").map((l) => l.replace(/\r$/, ""));
+function headValue2(text4, key) {
+  const lines3 = text4.split("\n").map((l) => l.replace(/\r$/, ""));
   if (lines3[0] !== "---") return null;
   for (let i = 1; i < lines3.length && lines3[i] !== "---"; i += 1) {
     const m = new RegExp(`^${key}:\\s*(.*?)\\s*(?:#.*)?$`).exec(lines3[i]);
@@ -11383,7 +11437,7 @@ function headValue2(text3, key) {
   return null;
 }
 function bundleSha(files) {
-  const lines3 = [...files].sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0).map((f) => `${f.path}	${f.sha256}
+  const lines3 = [...files].sort((a3, b) => a3.path < b.path ? -1 : a3.path > b.path ? 1 : 0).map((f) => `${f.path}	${f.sha256}
 `);
   return sha2562(lines3.join(""));
 }
@@ -11411,8 +11465,8 @@ async function approveBundle(p, gate, key, decision, phrase, body, via) {
   const entries = current4 ? parse(current4).entries : [];
   const first = files[0];
   const firstText = import_node_fs43.default.readFileSync(import_node_path48.default.join(co.root, first.path), "utf8");
-  const status = gate === "codebase" ? headValue2(firstText, "status") : null;
-  if (gate === "codebase" && !STATUSES.includes(status ?? "")) throw new ApiError(422, "gate_precondition", `current-state.md 머리 status 가 ${status ?? "없음"} 입니다`, { reasons: [`status ${status ?? "없음"}`] });
+  const status2 = gate === "codebase" ? headValue2(firstText, "status") : null;
+  if (gate === "codebase" && !STATUSES.includes(status2 ?? "")) throw new ApiError(422, "gate_precondition", `current-state.md 머리 status 가 ${status2 ?? "없음"} 입니다`, { reasons: [`status ${status2 ?? "없음"}`] });
   if (decision === "approved") {
     if (files.every((f) => approvalState(entries, gate, f.approvalSha256, p.policy()) === "valid")) throw new ApiError(409, "already_approved", "같은 내용으로 승인한 기록이 있습니다");
     const unclear = files.filter((f) => f.path.endsWith(".md") && import_node_fs43.default.readFileSync(import_node_path48.default.join(co.root, f.path), "utf8").includes(CLARIFY2));
@@ -11435,9 +11489,9 @@ async function approveBundle(p, gate, key, decision, phrase, body, via) {
   }));
   const writes = [{ file: approvalsFile, data: Buffer.from(appendedText(current4, key, made), "utf8") }];
   let statusChanged = null;
-  if (gate === "codebase" && decision === "approved" && status !== "approved") {
+  if (gate === "codebase" && decision === "approved" && status2 !== "approved") {
     writes.push({ file: import_node_path48.default.join(co.root, first.path), data: Buffer.from(setField2(firstText, "status", "approved"), "utf8") });
-    statusChanged = `${status ?? "없음"}→approved`;
+    statusChanged = `${status2 ?? "없음"}→approved`;
   }
   writeAll(writes);
   for (const e of made) appendLog(co.root, { entryId: e.entryId, target: info.folder, gate, sha256: e.target.sha256 ?? null, at, path: via });
@@ -11530,7 +11584,7 @@ async function preconditions(p, co, key, gate) {
   return g?.preconditions ?? g?.reasons ?? [];
 }
 async function aliveSessions(p, key) {
-  return (await readSessions(p)).filter((s) => s.issue === key && s.state !== "gone").map((s) => s.id);
+  return (await readSessions(p)).filter((s3) => s3.issue === key && s3.state !== "gone").map((s3) => s3.id);
 }
 async function postApproval(p, body, via) {
   if (p.readOnly) throw readOnly();
@@ -11562,22 +11616,22 @@ async function postApproval(p, body, via) {
     const docFile = import_node_path49.default.join(co.root, folder, DOC_FILES[gate]);
     if (!import_node_fs44.default.existsSync(docFile)) throw notFound(`${DOC_FILES[gate]} 가 없습니다`);
     const bytes = import_node_fs44.default.readFileSync(docFile);
-    const text3 = bytes.toString("utf8");
-    const fm = parseLoose(text3) ?? {};
-    const status = fm.status ?? null;
+    const text4 = bytes.toString("utf8");
+    const fm = parseLoose(text4) ?? {};
+    const status2 = fm.status ?? null;
     const aSha = approvalSha(bytes);
-    if (gate !== "tasks" && !["draft", "in-review", "approved"].includes(status ?? "")) throw new ApiError(422, "gate_precondition", `${DOC_FILES[gate]} 머리 status 가 ${status ?? "없음"} 입니다(draft · in-review 만 승인합니다)`, { reasons: [`status ${status ?? "없음"}`] });
+    if (gate !== "tasks" && !["draft", "in-review", "approved"].includes(status2 ?? "")) throw new ApiError(422, "gate_precondition", `${DOC_FILES[gate]} 머리 status 가 ${status2 ?? "없음"} 입니다(draft · in-review 만 승인합니다)`, { reasons: [`status ${status2 ?? "없음"}`] });
     const need = needOf(p.meta(), riskOfFolder(import_node_path49.default.join(co.root, folder)), gate);
     const state = approvalState(entries, gate, aSha, p.policy(), need);
     if (decision === "approved" && state === "valid") throw new ApiError(409, "already_approved", `${gate}: 같은 내용(sha ${aSha.slice(0, 12)})으로 승인한 기록이 있습니다`);
     const me = ((await gitUser(co.root, p.env)).email ?? "").toLowerCase();
     if (decision === "approved" && state === "partial" && me && approversOf(entries, gate, aSha).has(me)) throw new ApiError(409, "already_approved", `${gate}: 이미 승인했습니다 — risk: high 는 다른 승인자 한 명이 더 승인합니다(DS-R26)`, { need });
-    if (decision === "approved" && text3.includes(CLARIFY3)) throw new ApiError(422, "needs_clarification", `${DOC_FILES[gate]} 에 [NEEDS CLARIFICATION 가 남았습니다`);
+    if (decision === "approved" && text4.includes(CLARIFY3)) throw new ApiError(422, "needs_clarification", `${DOC_FILES[gate]} 에 [NEEDS CLARIFICATION 가 남았습니다`);
     if (body.docSha256 !== sha2562(bytes)) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 문서가 바뀌었습니다. 다시 읽고 승인합니다", { currentSha256: sha2562(bytes) });
     targetRef = { name: DOC_FILES[gate], sha256: aSha };
-    if (decision === "approved" && status !== "approved" && gate !== "tasks") {
-      writes.push({ file: docFile, data: Buffer.from(setField2(text3, "status", "approved"), "utf8") });
-      statusChanged = `${status ?? "없음"}→approved`;
+    if (decision === "approved" && status2 !== "approved" && gate !== "tasks") {
+      writes.push({ file: docFile, data: Buffer.from(setField2(text4, "status", "approved"), "utf8") });
+      statusChanged = `${status2 ?? "없음"}→approved`;
     }
   } else {
     const head = await gitOut(co.root, p.env, "rev-parse", "HEAD");
@@ -11603,15 +11657,15 @@ async function approveIntent(p, key, decision, phrase, body, via) {
   const intentFile = import_node_path49.default.join(info.abs, "intent.md");
   if (!import_node_fs44.default.existsSync(intentFile)) throw notFound("intent.md 가 없습니다");
   const bytes = import_node_fs44.default.readFileSync(intentFile);
-  const text3 = bytes.toString("utf8");
-  const status = parseLoose(text3)?.status ?? null;
+  const text4 = bytes.toString("utf8");
+  const status2 = parseLoose(text4)?.status ?? null;
   const approvalsFile = import_node_path49.default.join(info.abs, "approvals.md");
   const current4 = import_node_fs44.default.existsSync(approvalsFile) ? import_node_fs44.default.readFileSync(approvalsFile, "utf8") : null;
   const entries = current4 ? parse(current4).entries : [];
   const aSha = approvalSha(bytes);
-  if (!["draft", "in-review", "approved"].includes(status ?? "")) throw new ApiError(422, "gate_precondition", `intent.md 머리 status 가 ${status ?? "없음"} 입니다`, { reasons: [`status ${status ?? "없음"}`] });
+  if (!["draft", "in-review", "approved"].includes(status2 ?? "")) throw new ApiError(422, "gate_precondition", `intent.md 머리 status 가 ${status2 ?? "없음"} 입니다`, { reasons: [`status ${status2 ?? "없음"}`] });
   if (decision === "approved" && approvalState(entries, "intent", aSha, p.policy()) === "valid" && !proposalOf(info.abs)) throw new ApiError(409, "already_approved", "같은 내용으로 승인한 기록이 있습니다");
-  if (decision === "approved" && text3.includes(CLARIFY3)) throw new ApiError(422, "needs_clarification", "intent.md 에 [NEEDS CLARIFICATION 가 남았습니다");
+  if (decision === "approved" && text4.includes(CLARIFY3)) throw new ApiError(422, "needs_clarification", "intent.md 에 [NEEDS CLARIFICATION 가 남았습니다");
   if (body.docSha256 !== sha2562(bytes)) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 intent.md 가 바뀌었습니다", { currentSha256: sha2562(bytes) });
   if (decision === "approved") {
     const reasons = [];
@@ -11648,9 +11702,9 @@ async function approveIntent(p, key, decision, phrase, body, via) {
     writes.push({ file: import_node_path49.default.join(info.abs, "units.proposed.json"), data: null });
   }
   let statusChanged = null;
-  if (decision === "approved" && status !== "approved") {
-    writes.push({ file: intentFile, data: Buffer.from(setField2(text3, "status", "approved"), "utf8") });
-    statusChanged = `${status ?? "없음"}→approved`;
+  if (decision === "approved" && status2 !== "approved") {
+    writes.push({ file: intentFile, data: Buffer.from(setField2(text4, "status", "approved"), "utf8") });
+    statusChanged = `${status2 ?? "없음"}→approved`;
   }
   const at = nowText();
   const made = [{ at, gate: "intent", decision, approver: who, target: { name: "intent.md", sha256: aSha }, phrase, path: via, entryId: ulid(), ruleCandidate: decision === "changes-requested" && body.ruleCandidate === true }];
@@ -11726,8 +11780,8 @@ async function postMob(p, key, body) {
   if (p.readOnly) throw readOnly();
   if (!isObj7(body) || typeof body.action !== "string" || !ACTIONS.has(body.action)) throw bad4("action 은 start · next · close 다");
   if (body.action !== "start") return runMob(p, key, [body.action, key]);
-  const attendees = Array.isArray(body.attendees) ? body.attendees.filter((a) => typeof a === "string") : [];
-  if (!attendees.length || attendees.some((a) => !EMAIL.test(a))) throw bad4("attendees 는 email 목록입니다");
+  const attendees = Array.isArray(body.attendees) ? body.attendees.filter((a3) => typeof a3 === "string") : [];
+  if (!attendees.length || attendees.some((a3) => !EMAIL.test(a3))) throw bad4("attendees 는 email 목록입니다");
   const timebox = typeof body.timeboxMin === "number" && Number.isInteger(body.timeboxMin) && body.timeboxMin > 0 ? body.timeboxMin : 30;
   return runMob(p, key, ["start", key, "--attendees", attendees.join(","), "--timebox", String(timebox)]);
 }
@@ -11767,22 +11821,22 @@ async function postAnswer(p, target, qid, body) {
     if (!q2) throw notFound(`질문이 없습니다: ${qid}`);
     const choice = typeof body.choice === "string" ? body.choice : "";
     if (choice !== "other" && !q2.choices.some((c) => c.id === choice)) throw bad4(`선택지가 아닙니다: ${choice} (${q2.choices.map((c) => c.id).join(" · ")} · other)`);
-    const text3 = typeof body.text === "string" && body.text.trim() ? body.text : null;
-    if (choice === "other" && !text3) throw bad4("other 는 text 가 필요합니다");
+    const text4 = typeof body.text === "string" && body.text.trim() ? body.text : null;
+    if (choice === "other" && !text4) throw bad4("other 는 text 가 필요합니다");
     const u = await gitUser(co.root, p.env);
     if (!u.email) throw new ApiError(403, "not_an_approver", "git config user.email 이 비었습니다");
     let who = u.email;
     if (mob) {
       const by = typeof body.by === "string" ? body.by.trim() : "";
-      if (!by) throw bad4("몹 세션이 열려 있습니다 — by(답한 참석자 email)가 필요합니다", { attendees: mob.attendees.map((a) => a.email) });
-      if (!mob.attendees.some((a) => a.email.toLowerCase() === by.toLowerCase())) throw bad4(`${by} 는 몹 세션 참석자가 아닙니다`, { attendees: mob.attendees.map((a) => a.email) });
+      if (!by) throw bad4("몹 세션이 열려 있습니다 — by(답한 참석자 email)가 필요합니다", { attendees: mob.attendees.map((a3) => a3.email) });
+      if (!mob.attendees.some((a3) => a3.email.toLowerCase() === by.toLowerCase())) throw bad4(`${by} 는 몹 세션 참석자가 아닙니다`, { attendees: mob.attendees.map((a3) => a3.email) });
       who = by;
     }
     const groups = p.policy().groups ?? {};
     const members = Object.hasOwn(groups, q2.role) ? groups[q2.role] : void 0;
     const opinion = members !== void 0 && !members.some((m) => m.toLowerCase() === who.toLowerCase());
     const recordedBy = who.toLowerCase() === u.email.toLowerCase() ? null : u.email;
-    const out = writeAnswer(bytes.toString("utf8"), { qid, choice, text: text3, email: who, at: nowText(), opinion, recordedBy });
+    const out = writeAnswer(bytes.toString("utf8"), { qid, choice, text: text4, email: who, at: nowText(), opinion, recordedBy });
     atomicWrite(abs, out.text);
     const after = parseQuestions(out.text).questions;
     return { sha256: sha2562(Buffer.from(out.text, "utf8")), path: rel2, kind: opinion ? "opinion" : "answer", answered: after.filter((x) => !x.open).length, open: after.filter((x) => x.open).length, statusChanged: out.statusChanged };
@@ -11804,12 +11858,12 @@ function dispatchBody(body) {
   for (const k of ["sessionId", "issue", "role", "name"]) if (typeof target[k] === "string" && target[k]) t[k] = String(target[k]);
   if (!t.sessionId && !t.issue && !t.name && !t.role) throw bad4("target 은 {sessionId} · {issue, role} · {name} 중 하나다");
   const paths = Array.isArray(body.paths) ? body.paths.filter((x) => typeof x === "string").map((x) => oneLine(x).slice(0, 300)).slice(0, 10) : [];
-  const text3 = typeof body.text === "string" ? oneLine(body.text) : null;
-  if (text3 && [...text3].length > 300) throw bad4("요청 글(text)은 300자 이하다");
-  if (kind === "custom" && !text3) throw bad4("custom 은 text 가 필요하다");
+  const text4 = typeof body.text === "string" ? oneLine(body.text) : null;
+  if (text4 && [...text4].length > 300) throw bad4("요청 글(text)은 300자 이하다");
+  if (kind === "custom" && !text4) throw bad4("custom 은 text 가 필요하다");
   const via = body.via === "socket" || body.via === "deeplink" || body.via === "queue" ? body.via : null;
   const cs = isObj7(body.changeSummary) ? body.changeSummary : null;
-  return { target: t, kind, paths, text: text3, changeSummary: cs, via };
+  return { target: t, kind, paths, text: text4, changeSummary: cs, via };
 }
 function message(b, subject) {
   const where = b.paths.length ? ` 경로: ${b.paths.join(", ")}.` : "";
@@ -11828,13 +11882,13 @@ function message(b, subject) {
   return [...line].length > MAX ? [...line].slice(0, MAX).join("") : line;
 }
 function chooseSession(sessions, t) {
-  if (t.sessionId) return sessions.find((s) => s.id === t.sessionId) ?? null;
-  if (t.name) return sessions.find((s) => s.name === t.name && s.state !== "gone") ?? null;
-  const live = sessions.filter((s) => s.state !== "gone" && (!t.issue || s.issue === t.issue) && (!t.role || s.role === t.role));
+  if (t.sessionId) return sessions.find((s3) => s3.id === t.sessionId) ?? null;
+  if (t.name) return sessions.find((s3) => s3.name === t.name && s3.state !== "gone") ?? null;
+  const live = sessions.filter((s3) => s3.state !== "gone" && (!t.issue || s3.issue === t.issue) && (!t.role || s3.role === t.role));
   return live.length === 1 ? live[0] : null;
 }
-function deeplink(cwd, text3) {
-  const q2 = `${text3} 먼저 경로의 파일을 읽는다.`;
+function deeplink(cwd, text4) {
+  const q2 = `${text4} 먼저 경로의 파일을 읽는다.`;
   return `claude-cli://open?cwd=${encodeURIComponent(cwd)}&q=${encodeURIComponent([...q2].slice(0, 5e3).join(""))}`;
 }
 function socketFormat(p) {
@@ -11849,19 +11903,19 @@ function sendLine(socketPath, line) {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
-      s.destroy();
+      s3.destroy();
       resolve(ok2);
     };
-    const s = import_node_net2.default.connect({ path: socketPath });
+    const s3 = import_node_net2.default.connect({ path: socketPath });
     let timer = setTimeout(() => done(false), 2e3);
-    s.once("connect", () => {
+    s3.once("connect", () => {
       clearTimeout(timer);
       timer = setTimeout(() => done(true), 2e3);
-      s.end(`${line}
+      s3.end(`${line}
 `, "utf8");
     });
-    s.once("close", () => done(true));
-    s.once("error", () => done(false));
+    s3.once("close", () => done(true));
+    s3.once("error", () => done(false));
   });
 }
 async function postDispatch(p, raw, createdBy) {
@@ -11871,21 +11925,21 @@ async function postDispatch(p, raw, createdBy) {
   const session = chooseSession(sessions, b.target);
   if ((b.target.sessionId || b.target.name) && !session) throw notFound("고른 세션이 없다");
   const subject = b.target.issue ?? session?.issue ?? "";
-  const text3 = message(b, subject);
+  const text4 = message(b, subject);
   const main2 = (await checkouts(p))[0];
   const cwd = session?.cwdAbs ?? main2?.path ?? p.root;
-  const options = () => ({ deeplink: session && session.harness === "claude" ? deeplink(cwd, text3) : session ? null : deeplink(cwd, text3), queueAvailable: true });
+  const options = () => ({ deeplink: session && session.harness === "claude" ? deeplink(cwd, text4) : session ? null : deeplink(cwd, text4), queueAvailable: true });
   const via = b.via ?? (session && session.state === "alive" ? "socket" : null);
   if (via === null) throw new ApiError(409, "socket_unavailable", "고른 세션의 수신함 소켓이 없다. deep link 또는 대기함을 고른다", options());
   if (via === "socket") {
     if (!session?.socket) throw new ApiError(409, "socket_unavailable", "고른 세션에 수신함 소켓이 없다", options());
-    const line = socketFormat(p) === "json" ? JSON.stringify({ type: "message", text: text3 }) : text3;
+    const line = socketFormat(p) === "json" ? JSON.stringify({ type: "message", text: text4 }) : text4;
     if (!await sendLine(session.socket, line)) throw new ApiError(409, "socket_unavailable", "수신함 소켓에 연결하지 못했다", options());
     return { status: 202, data: { method: "socket", status: "sent" } };
   }
   if (via === "deeplink") {
     if (session && session.harness !== "claude") throw new ApiError(409, "deeplink_unavailable", `${session.harness ?? "이"} 하네스에는 deep link 가 없다. 대기함을 쓴다`, { queueAvailable: true });
-    return { status: 202, data: { method: "deeplink", url: deeplink(cwd, text3) } };
+    return { status: 202, data: { method: "deeplink", url: deeplink(cwd, text4) } };
   }
   const dir = queueDir(p);
   ensureDir(import_node_path52.default.dirname(dir), 448);
@@ -11899,7 +11953,7 @@ async function postDispatch(p, raw, createdBy) {
     createdBy,
     target: { issue: b.target.issue ?? session?.issue ?? null, role: b.target.role ?? null, harness: "any", sessionId: b.target.sessionId ?? (b.target.name ? session?.id ?? null : null) },
     kind: b.kind,
-    message: text3,
+    message: text4,
     paths: b.paths,
     expiresAt: nowText(new Date(created.getTime() + 7 * 24 * 3600 * 1e3))
   };
@@ -12018,7 +12072,7 @@ async function getDoc(p, relInput, sign) {
   const t = readTarget(relInput);
   const found = await locateForRead(p, t);
   if (found.bytes.length > LIMIT) throw bad4("1 MiB 를 넘는 문서입니다");
-  const text3 = found.bytes.toString("utf8");
+  const text4 = found.bytes.toString("utf8");
   let writable = t.writable && found.co !== null;
   if (writable) {
     try {
@@ -12031,27 +12085,27 @@ async function getDoc(p, relInput, sign) {
   return {
     path: t.rel,
     sha256: sha2562(found.bytes),
-    frontmatter: parseLoose(text3) ?? {},
-    html: renderMarkdown(text3, { docPath: t.rel, ...sign ? { sign } : {} }),
-    markdown: text3,
+    frontmatter: parseLoose(text4) ?? {},
+    html: renderMarkdown(text4, { docPath: t.rel, ...sign ? { sign } : {} }),
+    markdown: text4,
     writable: writable && !p.readOnly,
     checkout: found.co ? { kind: found.co.main ? "main" : "worktree", path: rel(p.loc.top, found.co.path), branch: found.co.branch } : { kind: "branch", path: null, branch: found.ref }
   };
 }
 var IDS = /\b(R\d+(?:\.\d+)*|SC-\d+|S-\d+|U-\d+)\b/g;
 function changeSummary(before, after) {
-  const a = before.replace(/\r\n/g, "\n").split("\n");
+  const a3 = before.replace(/\r\n/g, "\n").split("\n");
   const b = after.replace(/\r\n/g, "\n").split("\n");
-  let s = 0;
-  while (s < a.length && s < b.length && a[s] === b[s]) s += 1;
-  let ea = a.length;
+  let s3 = 0;
+  while (s3 < a3.length && s3 < b.length && a3[s3] === b[s3]) s3 += 1;
+  let ea = a3.length;
   let eb = b.length;
-  while (ea > s && eb > s && a[ea - 1] === b[eb - 1]) {
+  while (ea > s3 && eb > s3 && a3[ea - 1] === b[eb - 1]) {
     ea -= 1;
     eb -= 1;
   }
-  const midA = a.slice(s, ea);
-  const midB = b.slice(s, eb);
+  const midA = a3.slice(s3, ea);
+  const midB = b.slice(s3, eb);
   const removedIdx = [];
   const addedIdx = [];
   if (midA.length * midB.length <= 4e6) {
@@ -12065,14 +12119,14 @@ function changeSummary(before, after) {
       if (midA[i] === midB[j]) {
         i += 1;
         j += 1;
-      } else if (dp[i + 1][j] >= dp[i][j + 1]) removedIdx.push(s + i++);
-      else addedIdx.push(s + j++);
+      } else if (dp[i + 1][j] >= dp[i][j + 1]) removedIdx.push(s3 + i++);
+      else addedIdx.push(s3 + j++);
     }
-    while (i < n) removedIdx.push(s + i++);
-    while (j < m) addedIdx.push(s + j++);
+    while (i < n) removedIdx.push(s3 + i++);
+    while (j < m) addedIdx.push(s3 + j++);
   } else {
-    for (let i = s; i < ea; i += 1) removedIdx.push(i);
-    for (let j = s; j < eb; j += 1) addedIdx.push(j);
+    for (let i = s3; i < ea; i += 1) removedIdx.push(i);
+    for (let j = s3; j < eb; j += 1) addedIdx.push(j);
   }
   const headingAt = (lines3, idx) => {
     for (let k = idx; k >= 0; k -= 1) if (/^#{1,6}\s/.test(lines3[k])) return lines3[k];
@@ -12081,9 +12135,9 @@ function changeSummary(before, after) {
   const headings = /* @__PURE__ */ new Set();
   const ids2 = /* @__PURE__ */ new Set();
   for (const i of removedIdx) {
-    const h = headingAt(a, i);
+    const h = headingAt(a3, i);
     if (h) headings.add(h);
-    for (const m of a[i].matchAll(IDS)) ids2.add(m[1]);
+    for (const m of a3[i].matchAll(IDS)) ids2.add(m[1]);
   }
   for (const j of addedIdx) {
     const h = headingAt(b, j);
@@ -12141,7 +12195,7 @@ async function leaseHolder(p, co, relPath) {
   for (const [id, l] of owned) {
     if (!l.active) continue;
     if (!l.files.some((f) => f === relPath || relPath.startsWith(`${f}/`) || f.startsWith(`${relPath}/`))) continue;
-    const reg = sessions.find((s) => s.id === id);
+    const reg = sessions.find((s3) => s3.id === id);
     if (reg && reg.state === "gone") continue;
     return id;
   }
@@ -12163,12 +12217,13 @@ function strings(v, field) {
 }
 function intakeBody(body, via) {
   if (!isObj7(body)) throw bad4("본문은 JSON 객체입니다");
-  const { title, kind, name, area, text: text3 } = body;
+  const { title, kind, name, area, text: text4, key } = body;
   if (typeof title !== "string" || !title.trim() || title.length > 200) throw bad4("title 은 1~200자 문자열입니다");
   if (typeof kind !== "string" || !KINDS2.has(kind)) throw bad4(`kind 는 ${[...KINDS2].join(" · ")}`);
   if (typeof name !== "string" || !NAME.test(name) || name.length > 60) throw bad4("name 은 영문 소문자 · 숫자 kebab-case(60자 이하)다");
   if (area !== void 0 && area !== null && (typeof area !== "string" || !NAME.test(area))) throw bad4("area 는 kebab-case 다");
-  if (text3 !== void 0 && typeof text3 !== "string") throw bad4("text 는 문자열입니다");
+  if (text4 !== void 0 && typeof text4 !== "string") throw bad4("text 는 문자열입니다");
+  if (key !== void 0 && key !== null && (typeof key !== "string" || !/^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5}$/.test(key))) throw bad4("key 는 이슈 키 형식입니다(예: HDRV3D-40)");
   const links = strings(body.links, "links");
   if (links.some((l) => !/^https?:\/\/\S+$/.test(l))) throw bad4("링크는 http(s):// 로 시작합니다");
   const paths = strings(body.paths, "paths");
@@ -12182,7 +12237,7 @@ function intakeBody(body, via) {
     }
     return { name: f.name, data: Buffer.from(f.base64, "base64") };
   });
-  return { title, kind, name, area: typeof area === "string" ? area : null, text: typeof text3 === "string" ? text3 : "", links, files, paths };
+  return { title, kind, name, area: typeof area === "string" ? area : null, key: typeof key === "string" ? key : null, text: typeof text4 === "string" ? text4 : "", links, files, paths };
 }
 function rejected(out) {
   const message2 = out.trim().split("\n").filter(Boolean).pop() ?? "접수하지 못했습니다";
@@ -12206,6 +12261,7 @@ async function postIntake(p, body, via) {
     const files = [...b.paths.map((x) => import_node_path54.default.resolve(p.root, x)), ...attach];
     const args = ["scripts/harness/intake.py", "new", "--json", "--title", b.title, "--kind", b.kind, "--name", b.name, "--text-file", textFile];
     if (b.area) args.push("--area", b.area);
+    if (b.key) args.push("--key", b.key);
     for (const f of files) args.push("--attach", f);
     for (const l of b.links) args.push("--link", l);
     const r = await python(p.root, p.env, args, 3e5);
@@ -12237,10 +12293,10 @@ async function postProposal(p, body) {
     applyChanges(units.units, b.changes);
     const u = await gitUser(co.root, p.env);
     const proposal = { schema: "harness-kit.units-proposal/v1", intent: b.intent, baseSha256: b.baseSha256, createdBy: u.email, createdAt: nowText(), changes: b.changes };
-    const text3 = `${JSON.stringify(proposal, null, 2)}
+    const text4 = `${JSON.stringify(proposal, null, 2)}
 `;
-    atomicWrite(file, text3);
-    return { intent: b.intent, path: `${info.dir}/units.proposed.json`, sha256: sha2562(Buffer.from(text3, "utf8")), changes: b.changes.length };
+    atomicWrite(file, text4);
+    return { intent: b.intent, path: `${info.dir}/units.proposed.json`, sha256: sha2562(Buffer.from(text4, "utf8")), changes: b.changes.length };
   });
 }
 async function deleteProposal(p, intent) {
@@ -12253,7 +12309,7 @@ async function deleteProposal(p, intent) {
 }
 
 // ../dashboard/src/api.ts
-var ok = (data, status = 200, meta) => ({ status, data, ...meta ? { meta } : {} });
+var ok = (data, status2 = 200, meta) => ({ status: status2, data, ...meta ? { meta } : {} });
 async function intentNext(p, abs) {
   const script = import_node_path56.default.join(p.root, "scripts/harness/intent.py");
   if (!import_node_fs51.default.existsSync(script)) return null;
@@ -12270,8 +12326,8 @@ async function issueList(p, r) {
   const area = q(r, "area");
   const stage = q(r, "stage");
   const intent = q(r, "intent");
-  const list3 = issues.filter((i) => (!area || i.area === area) && (!stage || i.stage === stage) && (!intent || i.intent === intent));
-  return ok({ issues: list3.map(publicIssue), errors });
+  const list4 = issues.filter((i) => (!area || i.area === area) && (!stage || i.stage === stage) && (!intent || i.intent === intent));
+  return ok({ issues: list4.map(publicIssue), errors });
 }
 async function oneIssue(p, key) {
   const { issues } = await load(p);
@@ -12279,9 +12335,9 @@ async function oneIssue(p, key) {
   if (!i) throw notFound(`이슈가 없습니다: ${key}`);
   return i;
 }
-var stub = (method, path73, stage, cli, what) => ({
+var stub = (method, path79, stage, cli, what) => ({
   method,
-  path: path73,
+  path: path79,
   stub: stage,
   cli,
   handler: async () => {
@@ -12377,9 +12433,9 @@ var ROUTES = [
     cli: "sessions [--machine]",
     handler: async (p, r) => {
       if (q(r, "scope") === "machine") {
-        const list3 = r.projects ? (await r.projects.list()).map((s) => s.project).filter((x) => x !== null) : [p];
-        if (!list3.some((x) => x.id === p.id) && r.mode === "single") list3.unshift(p);
-        return ok(await machineSessions(list3));
+        const list4 = r.projects ? (await r.projects.list()).map((s3) => s3.project).filter((x) => x !== null) : [p];
+        if (!list4.some((x) => x.id === p.id) && r.mode === "single") list4.unshift(p);
+        return ok(await machineSessions(list4));
       }
       return ok({ sessions: (await readSessions(p)).map(publicSession) });
     }
@@ -12484,10 +12540,10 @@ var COMPILED = ROUTES.map((route) => {
   })}$`);
   return { route, re, names };
 });
-function match(method, path73) {
+function match(method, path79) {
   const methods = [];
   for (const c of COMPILED) {
-    const m = c.re.exec(path73);
+    const m = c.re.exec(path79);
     if (!m) continue;
     if (c.route.method !== method) {
       methods.push(c.route.method);
@@ -12501,9 +12557,9 @@ function match(method, path73) {
   }
   return methods.length ? { methods } : null;
 }
-async function callApi(p, method, path73, opts = {}) {
-  const m = match(method, path73);
-  if (!m || !("route" in m)) throw notFound(`경로 없음: ${method} ${path73}`);
+async function callApi(p, method, path79, opts = {}) {
+  const m = match(method, path79);
+  if (!m || !("route" in m)) throw notFound(`경로 없음: ${method} ${path79}`);
   return m.route.handler(p, { method, params: m.params, query: new URLSearchParams(opts.query ?? {}), body: opts.body, via: opts.via ?? "terminal", mode: opts.mode ?? "single", ...opts.projects ? { projects: opts.projects } : {} });
 }
 
@@ -12530,8 +12586,8 @@ function newPin() {
   for (let i = 0; i < 10; i += 1) out += CROCKFORD2[bytes[i] & 31];
   return out;
 }
-function same(a, b) {
-  const x = Buffer.from(a);
+function same(a3, b) {
+  const x = Buffer.from(a3);
   const y = Buffer.from(b);
   return x.length === y.length && import_node_crypto7.default.timingSafeEqual(x, y);
 }
@@ -12539,7 +12595,7 @@ function stateFiles(root) {
   const dir = import_node_path57.default.join(root, ".agents/state");
   return { dir, token: import_node_path57.default.join(dir, "dashboard.token"), info: import_node_path57.default.join(dir, "dashboard.json") };
 }
-function writeSecret(file, text3) {
+function writeSecret(file, text4) {
   try {
     const st = import_node_fs52.default.lstatSync(file);
     if (st.isSymbolicLink() || st.isFile()) import_node_fs52.default.unlinkSync(file);
@@ -12547,7 +12603,7 @@ function writeSecret(file, text3) {
   }
   const fd = import_node_fs52.default.openSync(file, import_node_fs52.default.constants.O_WRONLY | import_node_fs52.default.constants.O_CREAT | import_node_fs52.default.constants.O_EXCL | (import_node_fs52.default.constants.O_NOFOLLOW ?? 0), 384);
   try {
-    import_node_fs52.default.writeSync(fd, text3);
+    import_node_fs52.default.writeSync(fd, text4);
   } finally {
     import_node_fs52.default.closeSync(fd);
   }
@@ -12596,12 +12652,12 @@ async function findRunning(cwd, env, agent = () => agentSession(env)) {
   }
   return { url: token ? `${base}#t=${token}` : base, port: info.port };
 }
-function send(res, status, body, headers) {
-  res.writeHead(status, { "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", ...headers });
+function send(res, status2, body, headers) {
+  res.writeHead(status2, { "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", ...headers });
   res.end(body);
 }
-function sendJson(res, status, value2, extra = {}) {
-  send(res, status, JSON.stringify(value2), { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...extra });
+function sendJson(res, status2, value2, extra = {}) {
+  send(res, status2, JSON.stringify(value2), { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...extra });
 }
 function sendError(res, err) {
   sendJson(res, err.status, err.body());
@@ -12627,7 +12683,7 @@ async function startServer(opts) {
   const readOnly2 = opts.readOnly === true || marker !== null;
   const readOnlyReason = marker ?? (opts.readOnly ? "--read-only" : null);
   const deps = opts.deps ?? {};
-  const log = opts.stderr ?? ((s) => process.stderr.write(s));
+  const log = opts.stderr ?? ((s3) => process.stderr.write(s3));
   const projectOpts = { env: opts.env, home, readOnly: readOnly2, deps };
   let single = null;
   let projects = null;
@@ -12695,7 +12751,7 @@ ${exp}`).digest("hex");
     if (!target && projects) {
       const top = match(method, rest);
       if (top && "route" in top && (top.route.multi || rest === "/sessions" && url.searchParams.get("scope") === "machine")) {
-        const first = (await projects.list()).find((s) => s.project)?.project ?? null;
+        const first = (await projects.list()).find((s3) => s3.project)?.project ?? null;
         if (!first && !top.route.multi) throw new ApiError(404, "not_found", "읽을 프로젝트가 없습니다");
         target = { p: first, path: rest, prefix: "" };
       }
@@ -12725,18 +12781,18 @@ ${exp}`).digest("hex");
     };
     const out = await m.route.handler(target.p, request);
     const envelope = { ok: true, data: out.data, ...out.meta ? { meta: out.meta } : {} };
-    const text3 = JSON.stringify(envelope);
+    const text4 = JSON.stringify(envelope);
     if (method === "GET") {
-      const etag = `W/"${import_node_crypto7.default.createHash("sha256").update(text3).digest("hex").slice(0, 32)}"`;
+      const etag = `W/"${import_node_crypto7.default.createHash("sha256").update(text4).digest("hex").slice(0, 32)}"`;
       if (req.headers["if-none-match"] === etag) {
         res.writeHead(304, { ETag: etag, "Cache-Control": "no-store" });
         res.end();
         return;
       }
-      send(res, out.status, text3, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ETag: etag });
+      send(res, out.status, text4, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ETag: etag });
       return;
     }
-    send(res, out.status, text3, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+    send(res, out.status, text4, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
   }
   async function handleRaw(res, url) {
     let rest = url.pathname;
@@ -12923,14 +12979,14 @@ function overridesReport(ctx, target, inst) {
   const models = readLocalModelPolicy(target);
   for (const [cls, tier] of Object.entries(models.classes)) out.push({ target: `model-policy.classes.${cls}`, winner: "local", value: tier, losers: [] });
   const ignoredPersonal = [...local.ignored.map((key) => ({ key, file: LOCAL_CONFIG })), ...models.ignored.map((i) => ({ key: i.key, file: LOCAL_MODEL_POLICY }))];
-  return { overrides: out.sort((a, b) => a.target < b.target ? -1 : a.target > b.target ? 1 : 0), ignoredPersonal, floorViolations };
+  return { overrides: out.sort((a3, b) => a3.target < b.target ? -1 : a3.target > b.target ? 1 : 0), ignoredPersonal, floorViolations };
 }
 function overridesLines(r) {
   const loser = (l) => typeof l === "string" ? l : `${l.layer}(${l.value})`;
-  const width = Math.max(10, ...r.overrides.map((o) => o.target.length));
+  const width = Math.max(10, ...r.overrides.map((o3) => o3.target.length));
   return [
     `덮어쓴 것 ${r.overrides.length}건 (이긴 층 ← 진 층)`,
-    ...r.overrides.map((o) => `  ${o.target.padEnd(width)}  ${o.winner}${o.value ? `(${o.value})` : ""} ← ${o.losers.map(loser).join(", ") || "-"}${o.declared ? "  (overrides 선언)" : ""}${o.note ? `  (${o.note})` : ""}`),
+    ...r.overrides.map((o3) => `  ${o3.target.padEnd(width)}  ${o3.winner}${o3.value ? `(${o3.value})` : ""} ← ${o3.losers.map(loser).join(", ") || "-"}${o3.declared ? "  (overrides 선언)" : ""}${o3.note ? `  (${o3.note})` : ""}`),
     `무시한 개인 설정 ${r.ignoredPersonal.length}건`,
     ...r.ignoredPersonal.map((i) => `  ${i.file} ${i.key} — ${i.file === LOCAL_MODEL_POLICY ? "개인 모델 설정은 잠기지 않은 classes 만 바꾼다" : "개인 층은 roles · git.ide 만 바꾼다"}`),
     `하한 ${r.floorViolations.length}건 위반`,
@@ -12963,20 +13019,20 @@ function linksInside(p, prefix = "") {
   const out = [];
   for (const name of import_node_fs54.default.readdirSync(p).sort()) {
     const q2 = import_node_path59.default.join(p, name);
-    const s = lstat2(q2);
+    const s3 = lstat2(q2);
     const rel2 = prefix ? `${prefix}/${name}` : name;
-    if (s?.isSymbolicLink()) out.push(rel2);
-    else if (s?.isDirectory()) out.push(...linksInside(q2, rel2));
+    if (s3?.isSymbolicLink()) out.push(rel2);
+    else if (s3?.isDirectory()) out.push(...linksInside(q2, rel2));
   }
   return out.sort();
 }
-function hasRelativeRef(text3) {
-  const stripped = text3.replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
+function hasRelativeRef(text4) {
+  const stripped = text4.replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
   return /\[[^\]]*\]\((\.\.\/[^)\s]*)\)/.test(stripped);
 }
 function fmOf(file) {
-  const { block: block2 } = splitFrontmatter(import_node_fs54.default.readFileSync(file, "utf8"));
-  return block2 === null ? {} : parseFrontmatter(block2);
+  const { block: block3 } = splitFrontmatter(import_node_fs54.default.readFileSync(file, "utf8"));
+  return block3 === null ? {} : parseFrontmatter(block3);
 }
 function kiroAlwaysBytes(target) {
   const dir = import_node_path59.default.join(target, ".kiro/steering");
@@ -13051,9 +13107,9 @@ function layoutFindings(target, entries) {
     }
   }
   try {
-    const s = spec === void 0 ? specAt(target) : spec;
-    if (s) {
-      const ctx = buildContext({ view: new FsView(target), spec: s, tokens, agents });
+    const s3 = spec === void 0 ? specAt(target) : spec;
+    if (s3) {
+      const ctx = buildContext({ view: new FsView(target), spec: s3, tokens, agents });
       wantedOps(ctx);
       out.push(...ctx.findings);
     }
@@ -13078,9 +13134,9 @@ function versionFindings(meta, lock) {
   const out = [];
   const installed = meta && meta.kit.version !== "unknown" ? meta.kit.version : null;
   if (installed) {
-    const cmp2 = compareSemver(installed, VERSION);
-    if (cmp2 === null || cmp2 !== 0) {
-      const newer2 = cmp2 !== null && cmp2 > 0;
+    const cmp3 = compareSemver(installed, VERSION);
+    if (cmp3 === null || cmp3 !== 0) {
+      const newer2 = cmp3 !== null && cmp3 > 0;
       out.push({
         kind: "version-mismatch",
         severity: newer2 ? "error" : "warn",
@@ -13096,11 +13152,11 @@ function versionFindings(meta, lock) {
   }
   return out;
 }
-function fileState(full11, sha) {
+function fileState(full11, sha2) {
   const st = lstatOrNull(full11);
   if (!st || !st.isFile()) return "missing";
   try {
-    return sha && sha256File(full11) === sha ? "ok" : "drifted";
+    return sha2 && sha256File(full11) === sha2 ? "ok" : "drifted";
   } catch (err) {
     return { unreadable: err.code ?? String(err) };
   }
@@ -13225,13 +13281,13 @@ function approverFindings(raw) {
   return bad5.length ? [{ kind: "approvers", severity: "warn", path: META_REL, hint: bad5.join(" · "), detail: { problems: bad5 } }] : [];
 }
 function noticeFinding(target, day) {
-  let text3;
+  let text4;
   try {
-    text3 = import_node_fs55.default.readFileSync(import_node_path60.default.join(target, ...NOTICE_REL.split("/")), "utf8");
+    text4 = import_node_fs55.default.readFileSync(import_node_path60.default.join(target, ...NOTICE_REL.split("/")), "utf8");
   } catch {
     return null;
   }
-  if (!isKitNotice(text3) || !noticeExpired(text3, day)) return null;
+  if (!isKitNotice(text4) || !noticeExpired(text4, day)) return null;
   return { kind: "upgrade-notice-expired", severity: "info", path: NOTICE_REL, hint: "만료된 업그레이드 공지다. 다음 update 가 지운다(지금 지워도 된다)" };
 }
 function collect(ctx, target, day) {
@@ -13292,8 +13348,8 @@ var fmt = (n) => n.toLocaleString("en-US");
 function loadLines(load2) {
   const out = [];
   for (const m of load2) {
-    const owners = Object.entries(m.owners).map(([o, v]) => `${o} ${fmt(v.bytes)}${hookCount(m, o) ? `(훅 ${hookCount(m, o)})` : ""}`);
-    const only = Object.keys(m.hooks).filter((o) => !m.owners[o]).map((o) => `${o} 훅 ${hookCount(m, o)}`);
+    const owners = Object.entries(m.owners).map(([o3, v]) => `${o3} ${fmt(v.bytes)}${hookCount(m, o3) ? `(훅 ${hookCount(m, o3)})` : ""}`);
+    const only = Object.keys(m.hooks).filter((o3) => !m.owners[o3]).map((o3) => `${o3} 훅 ${hookCount(m, o3)}`);
     out.push(`  세션마다 실리는 양(${m.harness}): ${[...owners, ...only].join(" · ") || "없음"} = ${fmt(m.total)}바이트`);
   }
   return out;
@@ -13355,7 +13411,7 @@ function pickSource(flag, envVars, lockSource) {
   return { url: DEFAULT_SOURCE, from: "default" };
 }
 var isPre = (v) => /^\d+\.\d+\.\d+-/.test(v);
-var newer = (a, b) => (compareSemver(a, b) ?? 0) > 0;
+var newer = (a3, b) => (compareSemver(a3, b) ?? 0) > 0;
 function runOutdated(ctx) {
   const target = targetOf(ctx);
   const m = readMeta(import_node_path61.default.join(target, META_REL));
@@ -13450,10 +13506,10 @@ function humanTerminal(ctx) {
   if (!ctx.io.isTTY) return new ApiError(403, "read_only", "TTY 가 아니다 — 사람이 터미널에서 직접 실행한다");
   return null;
 }
-async function run3(ctx, method, path73, opts, human) {
+async function run3(ctx, method, path79, opts, human) {
   try {
     const p = opts.project ?? await openProject(ctx);
-    const r = await callApi(p, method, path73, { ...opts.query ? { query: opts.query } : {}, body: opts.body, via: "terminal", mode: opts.mode ?? "single", ...opts.projects ? { projects: opts.projects } : {} });
+    const r = await callApi(p, method, path79, { ...opts.query ? { query: opts.query } : {}, body: opts.body, via: "terminal", mode: opts.mode ?? "single", ...opts.projects ? { projects: opts.projects } : {} });
     const data = r.data;
     return { code: EXIT.OK, data, lines: human(data) };
   } catch (err) {
@@ -13629,8 +13685,8 @@ async function runAnswer(ctx) {
   if (refused) return failure(ctx, refused);
   try {
     const p = await openProject(ctx);
-    const list3 = (await callApi(p, "GET", "/questions", { query: { target } })).data;
-    return run3(ctx, "POST", `/questions/${target}/${qid}/answer`, { project: p, body: { choice, text: str(ctx.values, "text"), baseSha256: list3.sha256, ...str(ctx.values, "by") ? { by: str(ctx.values, "by") } : {} } }, (d) => [`${String(d.kind) === "opinion" ? "의견" : "답"}을 남겼다: ${String(d.path)} · 열린 질문 ${String(d.open)}건${d.statusChanged ? ` · ${String(d.statusChanged)}` : ""}`]);
+    const list4 = (await callApi(p, "GET", "/questions", { query: { target } })).data;
+    return run3(ctx, "POST", `/questions/${target}/${qid}/answer`, { project: p, body: { choice, text: str(ctx.values, "text"), baseSha256: list4.sha256, ...str(ctx.values, "by") ? { by: str(ctx.values, "by") } : {} } }, (d) => [`${String(d.kind) === "opinion" ? "의견" : "답"}을 남겼다: ${String(d.path)} · 열린 질문 ${String(d.open)}건${d.statusChanged ? ` · ${String(d.statusChanged)}` : ""}`]);
   } catch (err) {
     if (err instanceof ApiError) return failure(ctx, err);
     throw err;
@@ -13723,12 +13779,12 @@ async function askMissing(p, input, layout2, templatesDir) {
   if (out.modules === void 0) out.modules = await p.ask(`모듈 [${[...layout2.modules, ...layout2.externalModules].join(",")}|all|none] (aidlc · entire 는 이름을 줄 때만)`, "none");
   return out;
 }
-function opJson3(o) {
-  const j = { path: o.path, op: o.op, owner: o.owner, layer: o.layer, action: o.action, executable: o.executable };
-  if (o.reason !== void 0) j.reason = o.reason;
+function opJson3(o3) {
+  const j = { path: o3.path, op: o3.op, owner: o3.owner, layer: o3.layer, action: o3.action, executable: o3.executable };
+  if (o3.reason !== void 0) j.reason = o3.reason;
   return j;
 }
-var needsAttention = (o) => o.action === "skip-user" || o.action === "replace";
+var needsAttention = (o3) => o3.action === "skip-user" || o3.action === "replace";
 function selectionLine2(sel) {
   const parts = [sel.stack, sel.arch, sel.domain || "도메인 없음", ...sel.lang ? [`lang ${sel.lang}`] : []];
   return `  선택: ${parts.join(" · ")} · 하네스 ${sel.agents.join(",")} · 모듈 ${sel.modules.join(",") || "none"}`;
@@ -13737,8 +13793,8 @@ function countsLine2(plan) {
   const c = plan.counts;
   return `  파일: 생성 ${c.create} · 교체 ${c.replace} · 같음 ${c.same} · 건너뜀(사람 파일) ${c["skip-user"]} · 하네스 제외 ${c.excludedByHarness} · 겹침 ${c.overlapped}`;
 }
-function opLine3(o) {
-  return `  ${o.action.padEnd(9)} ${o.path}  [${o.layer}]${o.reason ? `  ${o.reason}` : ""}`;
+function opLine3(o3) {
+  return `  ${o3.action.padEnd(9)} ${o3.path}  [${o3.layer}]${o3.reason ? `  ${o3.reason}` : ""}`;
 }
 function docsLine(r) {
   if (r.status === "built") return "  기능 문서: docs/features/ 생성";
@@ -13793,7 +13849,7 @@ function planData(command, target, templates, sel, tokens, plan, shown) {
 }
 function lockText(plan, source) {
   const copies = plan.ops.map(
-    (o) => o.owner === "kit" ? { path: o.path, op: "copy", owner: "kit", sha256: o.sha256, layer: o.layer } : { path: o.path, op: "copy", owner: "user", sha256: null, layer: o.layer }
+    (o3) => o3.owner === "kit" ? { path: o3.path, op: "copy", owner: "kit", sha256: o3.sha256, layer: o3.layer } : { path: o3.path, op: "copy", owner: "user", sha256: null, layer: o3.layer }
   );
   return serializeLock({ schema: "harness-kit.lock/v2", kit: { version: VERSION, source }, packs: [], entries: mergeEntries(copies, plan.projection) });
 }
@@ -13869,10 +13925,10 @@ async function runInit(ctx) {
       const results = [];
       for (const id of externals) {
         try {
-          const o = await addExternal({ ...ctx, command: "add", values: { ...ctx.values, cwd: target }, positionals: [id] }, kit, id);
-          lines3.push(...o.lines.slice(1));
-          results.push(o.data);
-          if (o.code !== EXIT.OK) code = Math.max(code, o.code);
+          const o3 = await addExternal({ ...ctx, command: "add", values: { ...ctx.values, cwd: target }, positionals: [id] }, kit, id);
+          lines3.push(...o3.lines.slice(1));
+          results.push(o3.data);
+          if (o3.code !== EXIT.OK) code = Math.max(code, o3.code);
         } catch (err) {
           if (!(err instanceof CliError)) throw err;
           lines3.push(`  ✖ ${id}: ${err.message}`, ...err.hint ? err.hint.split("\n").map((h) => `    ${h}`) : [], `  init 은 끝났다. 모듈은 도구를 준비한 뒤 harness-kit add ${id} 로 켠다`);
@@ -13890,10 +13946,785 @@ async function runInit(ctx) {
 }
 
 // src/commands/intake.ts
+var import_node_fs59 = __toESM(require("node:fs"));
+var import_node_path66 = __toESM(require("node:path"));
+
+// src/modules/intake/from.ts
+var import_node_fs58 = __toESM(require("node:fs"));
+var import_node_os5 = __toESM(require("node:os"));
+var import_node_path65 = __toESM(require("node:path"));
+
+// src/modules/intake/adf.ts
+var isNode = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+function inline3(n) {
+  if (n.type === "hardBreak") return "  \n";
+  if (n.type === "mention") return String(n.attrs?.text ?? "@사용자");
+  if (n.type === "emoji") return String(n.attrs?.text ?? n.attrs?.shortName ?? "");
+  if (n.type === "inlineCard") return String(n.attrs?.url ?? "");
+  if (n.type === "status") return `[${String(n.attrs?.text ?? "")}]`;
+  if (n.type === "date") return new Date(Number(n.attrs?.timestamp ?? 0)).toISOString().slice(0, 10);
+  let t = n.text ?? (n.content ?? []).map(inline3).join("");
+  for (const m of n.marks ?? []) {
+    if (m.type === "code") t = `\`${t}\``;
+    else if (m.type === "strong") t = `**${t}**`;
+    else if (m.type === "em") t = `*${t}*`;
+    else if (m.type === "strike") t = `~~${t}~~`;
+    else if (m.type === "link" && typeof m.attrs?.href === "string") t = `[${t}](${m.attrs.href})`;
+  }
+  return t;
+}
+var inlines = (n) => (n.content ?? []).map(inline3).join("");
+function table(n) {
+  const rows = (n.content ?? []).map((r) => (r.content ?? []).map((c) => (c.content ?? []).map((p) => inlines(p)).join(" ").replace(/\|/g, "\\|").replace(/\n/g, " ")));
+  if (rows.length === 0) return [];
+  const width = Math.max(...rows.map((r) => r.length));
+  const pad2 = (r) => `| ${[...r, ...Array(width - r.length).fill("")].join(" | ")} |`;
+  return [pad2(rows[0]), `|${"---|".repeat(width)}`, ...rows.slice(1).map(pad2)];
+}
+function block2(n, indent) {
+  const c = n.content ?? [];
+  switch (n.type) {
+    case "paragraph":
+      return [`${indent}${inlines(n)}`, ""];
+    case "heading": {
+      const level = Math.min(6, Math.max(1, Number(n.attrs?.level ?? 1))) + 2;
+      return [`${"#".repeat(Math.min(6, level))} ${inlines(n)}`, ""];
+    }
+    case "bulletList":
+    case "orderedList":
+      return [...c.flatMap((item, i) => list2(item, indent, n.type === "orderedList" ? `${Number(n.attrs?.order ?? 1) + i}.` : "-")), ""];
+    case "codeBlock":
+      return [`${indent}\`\`\`${String(n.attrs?.language ?? "")}`, ...c.map((x) => x.text ?? "").join("").split("\n").map((l) => indent + l), `${indent}\`\`\``, ""];
+    case "blockquote":
+      return [...c.flatMap((x) => block2(x, "")).map((l) => l ? `> ${l}` : ">"), ""];
+    case "rule":
+      return ["---", ""];
+    case "table":
+      return [...table(n), ""];
+    case "panel":
+      return [...c.flatMap((x) => block2(x, "")).map((l) => l ? `> ${l}` : ">"), ""];
+    case "mediaSingle":
+    case "mediaGroup":
+      return c.flatMap((m) => m.type === "media" ? [`${indent}(첨부: ${String(m.attrs?.alt ?? m.attrs?.id ?? "")})`, ""] : []);
+    default:
+      return c.length ? c.flatMap((x) => block2(x, indent)) : n.text ? [n.text, ""] : [];
+  }
+}
+function list2(item, indent, marker) {
+  const out = [];
+  let first = true;
+  for (const child of item.content ?? []) {
+    if (child.type === "bulletList" || child.type === "orderedList") out.push(...block2(child, `${indent}  `).filter((l) => l !== ""));
+    else {
+      const text4 = block2(child, "").filter((l) => l !== "").join(`
+${indent}  `);
+      out.push(first ? `${indent}${marker} ${text4}` : `${indent}  ${text4}`);
+      first = false;
+    }
+  }
+  return out;
+}
+function adfToMarkdown(doc) {
+  if (typeof doc === "string") return doc;
+  if (!isNode(doc)) return "";
+  return (doc.content ?? []).flatMap((n) => block2(n, "")).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+// src/modules/jira/config.ts
 var import_node_fs57 = __toESM(require("node:fs"));
 var import_node_path64 = __toESM(require("node:path"));
+var TRACKER_FILE = ".agents/issue-tracker.yml";
+function isObj9(v) {
+  return !!v && typeof v === "object" && !Array.isArray(v);
+}
+function text2(v) {
+  if (typeof v === "number") return String(v);
+  if (typeof v !== "string") return null;
+  const t = v.trim();
+  return t === "" || t === "TBD" ? null : t;
+}
+function stringMap(v) {
+  const out = {};
+  if (!isObj9(v)) return out;
+  for (const [k, x] of Object.entries(v)) {
+    const t = text2(x);
+    if (t !== null) out[k] = t;
+  }
+  return out;
+}
+function readTracker(root) {
+  const file = import_node_path64.default.join(root, TRACKER_FILE);
+  if (!import_node_fs57.default.existsSync(file)) return null;
+  let doc;
+  try {
+    doc = parseYaml(import_node_fs57.default.readFileSync(file, "utf8"));
+  } catch (err) {
+    throw new CliError(EXIT.STATE, `${TRACKER_FILE} 를 읽지 못했다: ${err instanceof Error ? err.message : String(err)}`, "hx-jira-setup 스킬로 다시 채운다");
+  }
+  const sync = isObj9(doc.sync) ? doc.sync : {};
+  const access = isObj9(doc.access) ? doc.access : {};
+  const rawMethod = text2(sync.method) ?? text2(access.method);
+  const method = rawMethod === "rest" || rawMethod === "mcp" ? rawMethod : "none";
+  const boundary = isObj9(doc.agentBoundary) ? doc.agentBoundary : {};
+  const statusMap = stringMap(doc.statusMap);
+  const missing = BOARD_STATES.map((s3) => s3.id).filter((id) => !(id in statusMap));
+  const cfg = {
+    baseUrl: text2(doc.baseUrl),
+    projectKey: text2(doc.projectKey),
+    issueKeyPattern: text2(doc.issueKeyPattern),
+    statusMap,
+    approvalTransitions: stringMap(doc.approvalTransitions),
+    issueTypes: stringMap(doc.issueTypes),
+    groupMap: stringMap(doc.groupMap),
+    sync: { method, mcpServer: text2(sync.mcpServer) ?? text2(access.mcpServer), restTokenEnv: text2(sync.restTokenEnv) ?? text2(access.restTokenEnv), restUserEnv: text2(sync.restUserEnv) ?? text2(access.restUserEnv) },
+    maxStatus: text2(boundary.maxStatus) ?? "verifying",
+    missing
+  };
+  if (!cfg.baseUrl) cfg.missing.unshift("baseUrl");
+  return cfg;
+}
+function keyMatcher(cfg) {
+  if (cfg.issueKeyPattern) {
+    try {
+      return new RegExp(`^(?:${cfg.issueKeyPattern})$`);
+    } catch {
+    }
+  }
+  if (cfg.projectKey && /^[A-Z][A-Z0-9_]*$/.test(cfg.projectKey)) return new RegExp(`^${cfg.projectKey}-\\d+$`);
+  return /^[A-Z][A-Z0-9_]+-\d+$/;
+}
+function moduleEnabled(root, id) {
+  try {
+    const meta = JSON.parse(import_node_fs57.default.readFileSync(import_node_path64.default.join(root, ".agents/harness-kit.json"), "utf8"));
+    return Array.isArray(meta.modules) && meta.modules.includes(id);
+  } catch {
+    return false;
+  }
+}
+
+// src/modules/http.ts
+var HttpError = class extends Error {
+  constructor(status2, message2) {
+    super(message2);
+    this.status = status2;
+    this.name = "HttpError";
+  }
+  status;
+};
+var LOOPBACK = /* @__PURE__ */ new Set(["127.0.0.1", "localhost", "[::1]", "::1"]);
+function checkBaseUrl(raw) {
+  let url;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new CliError(EXIT.STATE, `주소 형식이 틀리다: ${raw}`, "baseUrl 은 https://<조직>.atlassian.net 꼴이다");
+  }
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && LOOPBACK.has(url.hostname))) {
+    throw new CliError(EXIT.STATE, `https 가 아닌 주소는 쓰지 않는다: ${url.origin}`, "토큰이 평문으로 나간다. 루프백 시험 서버만 http 를 허용한다");
+  }
+  return url;
+}
+function redact(text4, secrets) {
+  let out = text4;
+  for (const s3 of secrets) if (s3.length >= 4) out = out.split(s3).join("***");
+  return out;
+}
+function makeRequester(base, headers, secrets, opts = {}) {
+  const doFetch = opts.fetchImpl ?? fetch;
+  const timeout = opts.timeoutMs ?? 3e4;
+  const resolve = (p) => {
+    const u = new URL(p, base.origin + (base.pathname.endsWith("/") ? base.pathname : `${base.pathname}/`));
+    if (u.origin !== base.origin) throw new HttpError(0, "다른 출처 주소로는 인증 정보를 보내지 않는다");
+    return u;
+  };
+  const call = async (method, url, extra, body) => {
+    try {
+      return await doFetch(url, {
+        method,
+        headers: { Accept: "application/json", ...headers, ...extra },
+        ...body !== void 0 ? { body: JSON.stringify(body) } : {},
+        signal: AbortSignal.timeout(timeout)
+      });
+    } catch (err) {
+      throw new HttpError(0, redact(`연결하지 못했다(${url.origin}): ${err instanceof Error ? err.message : String(err)}`, secrets));
+    }
+  };
+  return {
+    async json(method, pathAndQuery, body) {
+      const res = await call(method, resolve(pathAndQuery), body !== void 0 ? { "Content-Type": "application/json" } : {}, body);
+      const text4 = await res.text();
+      if (!res.ok) throw new HttpError(res.status, redact(`${method} ${pathAndQuery} → ${res.status} ${text4.slice(0, 200)}`, secrets));
+      if (!text4.trim()) return null;
+      try {
+        return JSON.parse(text4);
+      } catch {
+        throw new HttpError(res.status, `JSON 이 아닌 응답: ${pathAndQuery}`);
+      }
+    },
+    async bytes(urlOrPath, maxBytes) {
+      const url = new URL(urlOrPath, base.origin);
+      const same2 = url.origin === base.origin;
+      const res = same2 ? await call("GET", url, { Accept: "*/*" }) : await doFetch(url, { signal: AbortSignal.timeout(timeout) }).catch((err) => {
+        throw new HttpError(0, redact(`내려받지 못했다: ${err instanceof Error ? err.message : String(err)}`, secrets));
+      });
+      if (!res.ok) throw new HttpError(res.status, `첨부를 받지 못했다(${res.status})`);
+      const len = Number(res.headers.get("content-length") ?? 0);
+      if (len > maxBytes) throw new HttpError(413, `첨부가 ${maxBytes} 바이트보다 크다`);
+      const buf = Buffer.from(await res.arrayBuffer());
+      if (buf.length > maxBytes) throw new HttpError(413, `첨부가 ${maxBytes} 바이트보다 크다`);
+      return buf;
+    }
+  };
+}
+
+// src/modules/jira/rest.ts
+var s = (v) => typeof v === "string" ? v : typeof v === "number" ? String(v) : "";
+var o = (v) => v && typeof v === "object" && !Array.isArray(v) ? v : {};
+var a = (v) => Array.isArray(v) ? v : [];
+function jiraCredentials(cfg, env) {
+  const tokenName = cfg.sync.restTokenEnv ?? "JIRA_API_TOKEN";
+  const userName = cfg.sync.restUserEnv ?? "JIRA_USER_EMAIL";
+  const token = env[tokenName];
+  const email = env[userName];
+  if (!token || !email) throw new CliError(EXIT.ENV, `Jira REST 인증이 없다: 환경 변수 ${userName} · ${tokenName} 을 채운다`, "토큰은 리포 · harness-kit.json 에 쓰지 않는다. hx-jira-setup 스킬 참고");
+  return { email, token };
+}
+function makeJiraClient(baseUrl, creds, opts = {}) {
+  const base = checkBaseUrl(baseUrl);
+  const auth = Buffer.from(`${creds.email}:${creds.token}`).toString("base64");
+  const http2 = makeRequester(base, { Authorization: `Basic ${auth}` }, [creds.token, auth], opts);
+  const enc2 = encodeURIComponent;
+  const toIssue = (raw) => {
+    const r = o(raw);
+    const f = o(r.fields);
+    const key = s(r.key);
+    return {
+      key,
+      summary: s(f.summary),
+      type: s(o(f.issuetype).name),
+      statusId: s(o(f.status).id),
+      statusName: s(o(f.status).name),
+      description: f.description ?? null,
+      attachments: a(f.attachment).map((x) => ({ filename: s(o(x).filename), size: Number(o(x).size ?? 0), url: s(o(x).content) })).filter((x) => x.url),
+      updated: s(f.updated),
+      webUrl: `${base.origin}/browse/${key}`
+    };
+  };
+  const FIELDS3 = "summary,description,issuetype,status,attachment,updated";
+  return {
+    async issue(key) {
+      return toIssue(await http2.json("GET", `/rest/api/3/issue/${enc2(key)}?fields=${FIELDS3}`));
+    },
+    async children(key) {
+      const out = [];
+      let token = "";
+      for (let page2 = 0; page2 < 20; page2 += 1) {
+        const q2 = `jql=${enc2(`parent = ${key} ORDER BY key ASC`)}&fields=${FIELDS3}&maxResults=100${token ? `&nextPageToken=${enc2(token)}` : ""}`;
+        const res = o(await http2.json("GET", `/rest/api/3/search/jql?${q2}`));
+        out.push(...a(res.issues).map(toIssue));
+        token = s(res.nextPageToken);
+        if (!token) break;
+      }
+      return out;
+    },
+    async transitions(key) {
+      const res = o(await http2.json("GET", `/rest/api/3/issue/${enc2(key)}/transitions`));
+      return a(res.transitions).map((t) => ({ id: s(o(t).id), name: s(o(t).name), toId: s(o(o(t).to).id) }));
+    },
+    async transition(key, transitionId) {
+      await http2.json("POST", `/rest/api/3/issue/${enc2(key)}/transitions`, { transition: { id: transitionId } });
+    },
+    async remoteLinks(key) {
+      const res = await http2.json("GET", `/rest/api/3/issue/${enc2(key)}/remotelink`);
+      return a(res).map((l) => ({ globalId: s(o(l).globalId) || null, url: s(o(o(l).object).url) }));
+    },
+    async addRemoteLink(key, link) {
+      await http2.json("POST", `/rest/api/3/issue/${enc2(key)}/remotelink`, { globalId: link.globalId, object: { url: link.url, title: link.title } });
+    },
+    async changelog(key) {
+      const out = [];
+      let startAt = 0;
+      for (let page2 = 0; page2 < 200; page2 += 1) {
+        const res = o(await http2.json("GET", `/rest/api/3/issue/${enc2(key)}/changelog?startAt=${startAt}&maxResults=100`));
+        const values = a(res.values);
+        for (const v of values) {
+          const item = o(v);
+          for (const it of a(item.items)) {
+            const i = o(it);
+            if (s(i.field) !== "status") continue;
+            out.push({ id: s(item.id), created: s(item.created), authorAccountId: s(o(item.author).accountId) || null, from: s(i.from), to: s(i.to) });
+          }
+        }
+        startAt += values.length;
+        if (res.isLast === true || values.length === 0 || typeof res.total === "number" && startAt >= res.total) break;
+      }
+      return out;
+    },
+    async userEmail(accountId) {
+      try {
+        const res = o(await http2.json("GET", `/rest/api/3/user?accountId=${enc2(accountId)}`));
+        return s(res.emailAddress) || null;
+      } catch {
+        return null;
+      }
+    },
+    download: (url, maxBytes) => http2.bytes(url, maxBytes)
+  };
+}
+
+// src/modules/intake/notion.ts
+var VERSION3 = "2022-06-28";
+var ID32 = /([0-9a-f]{32})(?![0-9a-f])/i;
+var UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+var o2 = (v) => v && typeof v === "object" && !Array.isArray(v) ? v : {};
+var a2 = (v) => Array.isArray(v) ? v : [];
+var s2 = (v) => typeof v === "string" ? v : "";
+function notionConfigOf(meta) {
+  const n = o2(meta.notion);
+  const props = o2(n.properties);
+  const strs = (v) => Object.fromEntries(Object.entries(o2(v)).filter(([, x]) => typeof x === "string"));
+  return { database: s2(n.database) || null, properties: strs(props), kindMap: strs(n.kindMap), writeBack: n.writeBack === true };
+}
+function notionIdOf(ref) {
+  const raw = ref.trim();
+  if (UUID.test(raw)) return raw.toLowerCase();
+  let target = raw;
+  try {
+    const u = new URL(raw);
+    if (!/(^|\.)notion\.(so|site)$/.test(u.hostname)) throw new CliError(EXIT.USAGE, `Notion 주소가 아니다: ${u.hostname}`);
+    target = u.pathname;
+  } catch (err) {
+    if (err instanceof CliError) throw err;
+  }
+  const m = ID32.exec(target.replace(/-/g, ""));
+  if (!m) throw new CliError(EXIT.USAGE, `Notion 페이지 id 를 찾지 못했다: ${ref}`, "페이지 URL 또는 32자리 id 를 준다");
+  const h = m[1].toLowerCase();
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-${h.slice(12, 16)}-${h.slice(16, 20)}-${h.slice(20)}`;
+}
+function notionToken(env) {
+  const t = env.NOTION_TOKEN;
+  if (!t) throw new CliError(EXIT.ENV, "Notion 인증이 없다: 환경 변수 NOTION_TOKEN 에 통합 토큰을 넣는다", "토큰은 리포 · harness-kit.json 에 쓰지 않는다. 통합에 그 페이지를 공유해야 읽힌다");
+  return t;
+}
+function makeNotionApi(token, env, opts = {}) {
+  const base = checkBaseUrl(env.NOTION_API_BASE || "https://api.notion.com");
+  const http2 = makeRequester(base, { Authorization: `Bearer ${token}`, "Notion-Version": VERSION3 }, [token], opts);
+  return {
+    page: async (id) => o2(await http2.json("GET", `/v1/pages/${id}`)),
+    async children(id) {
+      const out = [];
+      let cursor2 = "";
+      for (let page2 = 0; page2 < 100; page2 += 1) {
+        const res = o2(await http2.json("GET", `/v1/blocks/${id}/children?page_size=100${cursor2 ? `&start_cursor=${encodeURIComponent(cursor2)}` : ""}`));
+        out.push(...a2(res.results).map(o2));
+        if (res.has_more !== true || !s2(res.next_cursor)) break;
+        cursor2 = s2(res.next_cursor);
+      }
+      return out;
+    },
+    async patchPage(id, properties) {
+      await http2.json("PATCH", `/v1/pages/${id}`, { properties });
+    },
+    download: (url, maxBytes) => http2.bytes(url, maxBytes)
+  };
+}
+function rich(list4) {
+  return a2(list4).map((x) => {
+    const r = o2(x);
+    const raw = s2(r.plain_text);
+    const lead = /^\s*/.exec(raw)?.[0] ?? "";
+    const trail = raw.trim() ? /\s*$/.exec(raw)?.[0] ?? "" : "";
+    let t = raw.trim();
+    if (!t) return raw;
+    const ann = o2(r.annotations);
+    if (ann.code === true) t = `\`${t}\``;
+    if (ann.bold === true) t = `**${t}**`;
+    if (ann.italic === true) t = `*${t}*`;
+    if (ann.strikethrough === true) t = `~~${t}~~`;
+    const href = s2(r.href);
+    return `${lead}${href ? `[${t}](${href})` : t}${trail}`;
+  }).join("");
+}
+var plain = (list4) => a2(list4).map((x) => s2(o2(x).plain_text)).join("");
+function propertyText(p) {
+  const t = s2(p.type);
+  const v = p[t];
+  switch (t) {
+    case "title":
+    case "rich_text":
+      return plain(v);
+    case "select":
+    case "status":
+      return s2(o2(v).name);
+    case "multi_select":
+      return a2(v).map((x) => s2(o2(x).name)).join(", ");
+    case "number":
+      return v === null || v === void 0 ? "" : String(v);
+    case "checkbox":
+      return v === true ? "예" : "아니오";
+    case "date":
+      return o2(v).start ? `${s2(o2(v).start)}${o2(v).end ? ` ~ ${s2(o2(v).end)}` : ""}` : "";
+    case "url":
+    case "email":
+    case "phone_number":
+      return s2(v);
+    case "people":
+      return a2(v).map((x) => s2(o2(x).name)).filter(Boolean).join(", ");
+    case "relation":
+      return `${a2(v).length}건`;
+    case "formula": {
+      const f = o2(v);
+      return String(f[s2(f.type)] ?? "");
+    }
+    case "created_time":
+    case "last_edited_time":
+      return s2(v);
+    default:
+      return "";
+  }
+}
+var cell = (x) => x.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
+function propertiesTable(page2, titleName) {
+  const rows = Object.entries(o2(page2.properties)).filter(([name, prop]) => name !== titleName && s2(o2(prop).type) !== "title").map(([name, prop]) => [name, propertyText(o2(prop))]).filter(([, v]) => v !== "");
+  if (rows.length === 0) return "";
+  return ["| 속성 | 값 |", "|---|---|", ...rows.map(([k, v]) => `| ${cell(k)} | ${cell(v)} |`)].join("\n");
+}
+var HEAD2 = { heading_1: "###", heading_2: "####", heading_3: "#####" };
+function fileOf(block3) {
+  const t = s2(block3.type);
+  const f = o2(block3[t]);
+  const kind = s2(f.type);
+  const url = s2(o2(f[kind]).url);
+  if (!url) return null;
+  const caption = plain(f.caption);
+  const tail = decodeURIComponent(new URL(url).pathname.split("/").pop() ?? "") || t;
+  return { name: s2(f.name) || (/\.[A-Za-z0-9]{1,5}$/.test(tail) ? tail : `${caption || t}-${tail}`), url, external: kind === "external" };
+}
+async function takeFile(block3, ctx) {
+  const f = fileOf(block3);
+  if (!f) return "";
+  const label2 = f.name;
+  if (f.external) {
+    ctx.links.push(f.url);
+    return `[${label2}](${f.url})`;
+  }
+  try {
+    const data = await ctx.api.download(f.url, ctx.maxBytes);
+    ctx.attachments.push({ name: label2.replace(/[\\/\0]/g, "-"), data });
+    return `(첨부: ${label2})`;
+  } catch (err) {
+    ctx.warnings.push(`${label2}: 내려받지 못했다(${err instanceof Error ? err.message : String(err)})`);
+    return `(첨부 못 받음: ${label2})`;
+  }
+}
+async function render(blocks, ctx, indent, level) {
+  const out = [];
+  let n = 0;
+  let listOpen = false;
+  for (const b of blocks) {
+    const t = s2(b.type);
+    const body = o2(b[t]);
+    const isList = ["bulleted_list_item", "numbered_list_item", "to_do", "toggle"].includes(t);
+    if (!isList && listOpen && out.length && out[out.length - 1] !== "") out.push("");
+    listOpen = isList;
+    const text4 = rich(body.rich_text);
+    n = t === "numbered_list_item" ? n + 1 : 0;
+    const kids = b.has_children === true && !["child_page", "child_database", "table"].includes(t) ? await ctx.api.children(s2(b.id)) : [];
+    const sub2 = async (extra) => kids.length ? render(kids, ctx, indent + extra, level) : [];
+    switch (t) {
+      case "paragraph":
+        out.push(`${indent}${text4}`, ...await sub2(""), "");
+        break;
+      case "heading_1":
+      case "heading_2":
+      case "heading_3":
+        out.push(`${HEAD2[t]} ${text4}`, "", ...await sub2(""));
+        break;
+      case "bulleted_list_item":
+        out.push(`${indent}- ${text4}`, ...await sub2("  "));
+        break;
+      case "numbered_list_item":
+        out.push(`${indent}${n}. ${text4}`, ...await sub2("   "));
+        break;
+      case "to_do":
+        out.push(`${indent}- [${body.checked === true ? "x" : " "}] ${text4}`, ...await sub2("  "));
+        break;
+      case "toggle":
+        out.push(`${indent}- ${text4}`, ...await sub2("  "));
+        break;
+      case "quote":
+      case "callout":
+        out.push(...[text4, ...await sub2("")].join("\n").split("\n").map((l) => `${indent}> ${l}`), "");
+        break;
+      case "code":
+        out.push(`${indent}\`\`\`${s2(body.language) === "plain text" ? "" : s2(body.language)}`, ...plain(body.rich_text).split("\n").map((l) => indent + l), `${indent}\`\`\``, "");
+        break;
+      case "divider":
+        out.push("---", "");
+        break;
+      case "equation":
+        out.push(`$$${s2(body.expression)}$$`, "");
+        break;
+      case "table": {
+        const rows = (await ctx.api.children(s2(b.id))).map((r) => a2(o2(o2(r).table_row).cells).map((c) => cell(rich(c))));
+        if (rows.length) {
+          const w = Math.max(...rows.map((r) => r.length));
+          const line = (r) => `| ${[...r, ...Array(w - r.length).fill("")].join(" | ")} |`;
+          out.push(line(rows[0]), `|${"---|".repeat(w)}`, ...rows.slice(1).map(line), "");
+        }
+        break;
+      }
+      case "image":
+      case "file":
+      case "pdf":
+      case "video":
+      case "audio": {
+        const link = await takeFile(b, ctx);
+        const caption = plain(body.caption);
+        if (link) out.push(`${indent}${link}${caption && !link.includes(caption) ? ` — ${caption}` : ""}`, "");
+        break;
+      }
+      case "bookmark":
+      case "embed":
+      case "link_preview": {
+        const url = s2(body.url);
+        if (url) {
+          ctx.links.push(url);
+          out.push(`${indent}<${url}>`, "");
+        }
+        break;
+      }
+      case "child_page": {
+        const title = s2(o2(b.child_page).title);
+        if (level < ctx.depth && !ctx.visited.has(s2(b.id))) {
+          ctx.visited.add(s2(b.id));
+          const page2 = await ctx.api.page(s2(b.id));
+          ctx.versions.push(s2(page2.last_edited_time));
+          const inner = await render(await ctx.api.children(s2(b.id)), ctx, "", level + 1);
+          out.push(`## 하위 페이지: ${title}`, "", ...inner, "");
+        } else out.push(`${indent}- (하위 페이지: ${title})`);
+        break;
+      }
+      case "child_database":
+        out.push(`${indent}- (하위 데이터베이스: ${s2(o2(b.child_database).title)} — 가져오지 않는다)`);
+        break;
+      case "column_list":
+      case "column":
+      case "synced_block":
+        out.push(...await sub2(""));
+        break;
+      default:
+        if (text4) out.push(`${indent}${text4}`, "");
+        break;
+    }
+  }
+  return out;
+}
+function titleOf(page2, preferred) {
+  const props = o2(page2.properties);
+  const name = preferred && props[preferred] ? preferred : Object.entries(props).find(([, p]) => s2(o2(p).type) === "title")?.[0] ?? "";
+  return { name, text: propertyText(o2(props[name])) };
+}
+async function fetchNotion(api, ref, opts) {
+  const id = notionIdOf(ref);
+  const page2 = await api.page(id);
+  const title = titleOf(page2, opts.config.properties.title);
+  const ctx = { api, attachments: [], links: [], warnings: [], maxBytes: opts.maxBytes, depth: opts.depth, visited: /* @__PURE__ */ new Set([id]), versions: [s2(page2.last_edited_time)] };
+  const body = (await render(await api.children(id), ctx, "", 0)).join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  const props = propertiesTable(page2, title.name);
+  const kindProp = opts.config.properties.kind ? propertyText(o2(o2(page2.properties)[opts.config.properties.kind])) : "";
+  const mapped = opts.config.kindMap[kindProp];
+  const keyProp = opts.config.properties.key ? propertyText(o2(o2(page2.properties)[opts.config.properties.key])) : "";
+  const text4 = [props && `## 속성
+
+${props}`, body].filter(Boolean).join("\n\n");
+  return {
+    title: title.text || "(제목 없음)",
+    kind: opts.kind ?? mapped ?? "feature",
+    text: text4,
+    attachments: ctx.attachments,
+    links: [.../* @__PURE__ */ new Set([...ctx.links, ...s2(page2.url).startsWith("http") ? [s2(page2.url)] : []])],
+    source: { type: "notion", ref: id, url: s2(page2.url), version: [...ctx.versions].sort().pop() ?? "" },
+    warnings: ctx.warnings,
+    key: keyProp || null,
+    pageId: id
+  };
+}
+async function writeBackNotion(api, pageId, cfg, values) {
+  const page2 = await api.page(pageId);
+  const props = o2(page2.properties);
+  const patch = {};
+  const done = [];
+  const st = cfg.properties.status;
+  if (st && props[st]) {
+    const type = s2(o2(props[st]).type);
+    if (type === "status" || type === "select") {
+      patch[st] = { [type]: { name: values.status } };
+      done.push(st);
+    }
+  }
+  const k = cfg.properties.key;
+  if (k && props[k] && s2(o2(props[k]).type) === "rich_text") {
+    patch[k] = { rich_text: [{ type: "text", text: { content: values.key } }] };
+    done.push(k);
+  }
+  if (done.length) await api.patchPage(pageId, patch);
+  return done;
+}
+
+// src/modules/intake/from.ts
+var SECRET_ENV = ["NOTION_TOKEN", "JIRA_API_TOKEN", "JIRA_USER_EMAIL"];
+var MB = 1024 * 1024;
+var NAME2 = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+function parseFrom(raw) {
+  const i = raw.indexOf(":");
+  const type = raw.slice(0, i);
+  const ref = raw.slice(i + 1).trim();
+  if (type !== "jira" && type !== "notion" || !ref) throw usageError(`--from 형식이 틀리다: ${raw}`, "--from jira:<이슈 키> 또는 --from notion:<페이지 URL|id>");
+  return { type, ref };
+}
+function metaOf(root) {
+  try {
+    return JSON.parse(import_node_fs58.default.readFileSync(import_node_path65.default.join(root, ".agents/harness-kit.json"), "utf8"));
+  } catch {
+    return {};
+  }
+}
+function maxBytesOf(meta) {
+  const conf = meta.intake && typeof meta.intake === "object" ? meta.intake : {};
+  return Number(conf.maxFileMB ?? 20) * MB;
+}
+async function fromJira(ctx, root, key, maxBytes, kind) {
+  if (!moduleEnabled(root, "jira-workflow")) throw new CliError(EXIT.STATE, "jira-workflow 모듈이 꺼져 있다 — Jira 에서 가져오려면 켠다", "harness-kit add jira-workflow");
+  const cfg = readTracker(root);
+  if (!cfg?.baseUrl) throw new CliError(EXIT.STATE, "연결 설정이 비었다: .agents/issue-tracker.yml 의 baseUrl 이 TBD 다", "hx-jira-setup 스킬로 채운다");
+  const client = makeJiraClient(cfg.baseUrl, jiraCredentials(cfg, ctx.io.env));
+  const epic = await client.issue(key);
+  const children = await client.children(key);
+  const warnings = [];
+  const attachments = [];
+  const links = [];
+  const takeAttachments = async (issue) => {
+    for (const att of issue.attachments) {
+      if (att.size > maxBytes) {
+        links.push(att.url);
+        warnings.push(`${issue.key} ${att.filename}: ${Math.ceil(att.size / MB)}MB 라 내려받지 않고 링크로 둔다`);
+        continue;
+      }
+      try {
+        attachments.push({ name: `${issue.key}-${att.filename}`, data: await client.download(att.url, maxBytes) });
+      } catch (err) {
+        warnings.push(`${issue.key} ${att.filename}: 내려받지 못했다(${err instanceof Error ? err.message : String(err)})`);
+      }
+    }
+  };
+  await takeAttachments(epic);
+  const parts = [`## 출처
+
+- Jira ${epic.key} (${epic.type}, 상태 ${epic.statusName}): ${epic.webUrl}`, adfToMarkdown(epic.description)];
+  if (children.length) {
+    parts.push("## 하위 작업 항목");
+    for (const c of children) {
+      await takeAttachments(c);
+      parts.push(`### ${c.key} ${c.summary}
+
+- 유형 ${c.type} · 상태 ${c.statusName}
+
+${adfToMarkdown(c.description)}`.trimEnd());
+    }
+  }
+  links.push(epic.webUrl);
+  const updated = [epic, ...children].map((i) => i.updated).sort().pop() ?? "";
+  return { title: epic.summary, kind: kind ?? "feature", text: parts.filter(Boolean).join("\n\n"), attachments, links: [...new Set(links)], source: { type: "jira", ref: key, url: epic.webUrl, version: updated }, warnings, key };
+}
+async function runIntakeFrom(ctx, from) {
+  const { type, ref } = parseFrom(from);
+  const root = targetOf(ctx);
+  const meta = metaOf(root);
+  const name = str(ctx.values, "name");
+  if (!name || !NAME2.test(name)) throw usageError("--from 은 --name <영문-kebab> 이 필요하다(2~5단어)");
+  const kindFlag = str(ctx.values, "kind");
+  const depth = str(ctx.values, "depth") === void 0 ? 1 : Number(str(ctx.values, "depth"));
+  if (!Number.isInteger(depth) || depth < 0 || depth > 5) throw usageError("--depth 는 0~5 정수다(하위 페이지를 따라갈 단계, 기본 1)");
+  const maxBytes = maxBytesOf(meta);
+  let imported;
+  let notion = null;
+  const cfg = notionConfigOf(meta);
+  if (type === "jira") {
+    imported = await fromJira(ctx, root, ref, maxBytes, kindFlag);
+  } else {
+    if (!moduleEnabled(root, "notion")) throw new CliError(EXIT.STATE, "notion 모듈이 꺼져 있다 — Notion 에서 가져오려면 켠다", "harness-kit add notion");
+    const api = makeNotionApi(notionToken(ctx.io.env), ctx.io.env);
+    const got = await fetchNotion(api, ref, { config: cfg, depth, maxBytes, ...kindFlag ? { kind: kindFlag } : {} });
+    imported = got;
+    notion = { api, pageId: got.pageId };
+  }
+  const title = str(ctx.values, "title") ?? imported.title;
+  const kind = kindFlag ?? imported.kind;
+  const keyFlag = str(ctx.values, "key");
+  const key = keyFlag ?? (moduleEnabled(root, "jira-workflow") ? imported.key : null);
+  if (moduleEnabled(root, "jira-workflow") && !key && kind !== "bug") throw usageError("jira-workflow 모듈이 켜져 있다 — Intent 키는 Jira 에픽 키다. --key <에픽 키> 로 준다");
+  const tmp = import_node_fs58.default.mkdtempSync(import_node_path65.default.join(import_node_os5.default.tmpdir(), "hk-from-"));
+  try {
+    import_node_fs58.default.chmodSync(tmp, 448);
+    const textFile = import_node_path65.default.join(tmp, "text.md");
+    import_node_fs58.default.writeFileSync(textFile, imported.text, { mode: 384 });
+    const sourceFile = import_node_path65.default.join(tmp, "source.json");
+    import_node_fs58.default.writeFileSync(sourceFile, JSON.stringify(imported.source), { mode: 384 });
+    const args = ["scripts/harness/intake.py", "new", "--json", "--title", title, "--kind", kind, "--name", name, "--text-file", textFile, "--source-json", sourceFile];
+    const area = str(ctx.values, "area");
+    if (area) args.push("--area", area);
+    if (key) args.push("--key", key);
+    if (bool(ctx.values, "yes")) args.push("--apply");
+    imported.attachments.forEach((att, i) => {
+      const dir = import_node_path65.default.join(tmp, String(i));
+      import_node_fs58.default.mkdirSync(dir, { mode: 448 });
+      const file = import_node_path65.default.join(dir, import_node_path65.default.basename(att.name));
+      import_node_fs58.default.writeFileSync(file, att.data, { mode: 384 });
+      args.push("--attach", file);
+    });
+    for (const l of imported.links.filter((x) => /^https?:\/\/\S+$/.test(x))) args.push("--link", l);
+    const childEnv2 = { ...ctx.io.env };
+    for (const k of SECRET_ENV) delete childEnv2[k];
+    const r = await python(root, childEnv2, args, 3e5);
+    if (r.code !== 0 && r.code !== 4) {
+      const message2 = (r.stderr || r.stdout).trim().split("\n").filter(Boolean).pop() ?? "가져오지 못했다";
+      throw new CliError(EXIT.CHECK, message2.slice(0, 500));
+    }
+    let data;
+    try {
+      data = JSON.parse(r.stdout);
+    } catch {
+      throw new CliError(EXIT.CHECK, `intake.py 출력이 JSON 이 아니다: ${r.stdout.slice(0, 200)}`);
+    }
+    const warnings = [...imported.warnings, ...data.warnings ?? []];
+    const action = String(data.action);
+    const lines3 = [];
+    let wrote = [];
+    if (action === "diff") {
+      lines3.push(`이미 가져온 출처다: ${String(data.folder)} — 바뀐 부분(원본은 리포다, 반영하려면 --yes 로 다시 실행한다)`, ...data.diff ?? []);
+    } else if (action === "same") {
+      lines3.push(`변화 없음: ${String(data.folder)} — 이미 가져온 내용과 같다`);
+    } else {
+      lines3.push(`✔ ${action === "updated" ? "다시 가져옴" : "접수"}: ${String(data.folder)}`);
+    }
+    if (notion && cfg.writeBack && (action === "created" || action === "updated")) {
+      const folderName = String(data.folder).split("/").pop() ?? "";
+      const intentKey = /^([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5})-/.exec(folderName)?.[1] ?? "";
+      wrote = await writeBackNotion(notion.api, notion.pageId, cfg, { status: "접수됨", key: intentKey });
+      if (wrote.length) lines3.push(`Notion 속성 갱신: ${wrote.join(", ")}`);
+    }
+    lines3.push(...warnings.map((w) => `⚠ ${w}`));
+    if (action === "created" || action === "updated") lines3.push(`다음: ${String(data.next)} (세션 요청은 사람이 고를 때만)`);
+    return { code: action === "diff" ? EXIT.HUMAN : EXIT.OK, data: { ...data, warnings, source: imported.source, writeBack: wrote }, lines: lines3 };
+  } finally {
+    import_node_fs58.default.rmSync(tmp, { recursive: true, force: true });
+  }
+}
+
+// src/commands/intake.ts
 var str5 = (ctx, k) => typeof ctx.values[k] === "string" ? ctx.values[k] : void 0;
-var list2 = (ctx, k) => Array.isArray(ctx.values[k]) ? ctx.values[k] : [];
+var list3 = (ctx, k) => Array.isArray(ctx.values[k]) ? ctx.values[k] : [];
 async function readStdin(ctx) {
   const input = ctx.io.stdin;
   if (!input) return "";
@@ -13902,25 +14733,31 @@ async function readStdin(ctx) {
   return Buffer.concat(chunks).toString("utf8");
 }
 async function runIntake(ctx) {
+  const from = str5(ctx, "from");
+  if (from !== void 0) {
+    if (str5(ctx, "text") !== void 0 || str5(ctx, "text-file") !== void 0 || list3(ctx, "attach").length) throw usageError("--from 은 --text · --text-file · --attach 와 같이 쓰지 않는다(출처의 글 · 첨부를 가져온다)");
+    return runIntakeFrom(ctx, from);
+  }
   const title = str5(ctx, "title");
   const kind = str5(ctx, "kind");
   const name = str5(ctx, "name");
-  if (!title || !kind || !name) throw usageError("harness-kit intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]…");
+  if (!title || !kind || !name) throw usageError("harness-kit intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--key 키] [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]… | --from jira:<키>|notion:<페이지> --name <영문-kebab> [--depth n] [--yes]");
   const textArg = str5(ctx, "text");
   const textFile = str5(ctx, "text-file");
   if (textArg !== void 0 && textFile !== void 0) throw usageError("--text 와 --text-file 은 하나만 쓴다");
   const cwd = targetOf(ctx);
-  let text3 = textArg === "-" ? await readStdin(ctx) : textArg ?? "";
+  let text4 = textArg === "-" ? await readStdin(ctx) : textArg ?? "";
   if (textFile !== void 0) {
-    const file = import_node_path64.default.resolve(ctx.io.cwd, textFile);
-    if (!import_node_fs57.default.existsSync(file)) throw usageError(`--text-file 이 없다: ${textFile}`);
-    text3 = import_node_fs57.default.readFileSync(file, "utf8");
+    const file = import_node_path66.default.resolve(ctx.io.cwd, textFile);
+    if (!import_node_fs59.default.existsSync(file)) throw usageError(`--text-file 이 없다: ${textFile}`);
+    text4 = import_node_fs59.default.readFileSync(file, "utf8");
   }
-  const paths = list2(ctx, "attach").map((a) => import_node_path64.default.resolve(ctx.io.cwd, a));
-  const missing = paths.find((a) => !import_node_fs57.default.statSync(a, { throwIfNoEntry: false })?.isFile());
-  if (missing) throw usageError(`첨부가 없다: ${import_node_path64.default.relative(cwd, missing) || missing}`);
+  const paths = list3(ctx, "attach").map((a3) => import_node_path66.default.resolve(ctx.io.cwd, a3));
+  const missing = paths.find((a3) => !import_node_fs59.default.statSync(a3, { throwIfNoEntry: false })?.isFile());
+  if (missing) throw usageError(`첨부가 없다: ${import_node_path66.default.relative(cwd, missing) || missing}`);
   const area = str5(ctx, "area");
-  const body = { title, kind, name, text: text3, links: list2(ctx, "link"), paths, ...area ? { area } : {} };
+  const key = str5(ctx, "key");
+  const body = { title, kind, name, text: text4, links: list3(ctx, "link"), paths, ...area ? { area } : {}, ...key ? { key } : {} };
   return run3(ctx, "POST", "/intake", { body }, (d) => {
     const warnings = Array.isArray(d.warnings) ? d.warnings : [];
     return [`✔ 접수: ${String(d.folder)}`, ...warnings.map((w) => `⚠ ${w}`), `다음: ${String(d.next)} (세션 요청은 사람이 고를 때만)`];
@@ -13949,7 +14786,7 @@ async function runMob2(ctx) {
   if (marker) return failure(ctx, new ApiError(403, "read_only", `에이전트 세션에서는 몹 세션을 열고 닫지 않는다(판정: ${marker}). 진행자가 자기 터미널에서 실행한다`));
   const body = { action };
   if (action === "start") {
-    const attendees = typeof ctx.values.attendees === "string" ? ctx.values.attendees.split(",").map((a) => a.trim()).filter(Boolean) : [];
+    const attendees = typeof ctx.values.attendees === "string" ? ctx.values.attendees.split(",").map((a3) => a3.trim()).filter(Boolean) : [];
     if (!attendees.length) throw usageError("--attendees a@x,b@y 가 필요하다");
     body.attendees = attendees;
     if (typeof ctx.values.timebox === "string") {
@@ -13962,7 +14799,7 @@ async function runMob2(ctx) {
 }
 
 // src/commands/list.ts
-var import_node_path65 = __toESM(require("node:path"));
+var import_node_path67 = __toESM(require("node:path"));
 function tally(values) {
   const out = /* @__PURE__ */ new Map();
   for (const v of values) out.set(v, (out.get(v) ?? 0) + 1);
@@ -13970,7 +14807,7 @@ function tally(values) {
 }
 function runList(ctx) {
   const target = targetOf(ctx);
-  const read2 = readMeta(import_node_path65.default.join(target, META_REL));
+  const read2 = readMeta(import_node_path67.default.join(target, META_REL));
   if (read2.status === "missing") throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 harness-kit init");
   if (read2.status === "invalid") throw new CliError(EXIT.STATE, `메타를 해석하지 못했다: ${read2.error}`, "harness-kit doctor 로 상태를 본다");
   const m = read2.meta;
@@ -13999,7 +14836,7 @@ function runList(ctx) {
     `  이슈 키 ${m.issueKey.source}:${m.issueKey.prefix} · base ${m.git.base}`
   ];
   if (bool(ctx.values, "files")) {
-    const lr = readLock(import_node_path65.default.join(target, LOCK_REL));
+    const lr = readLock(import_node_path67.default.join(target, LOCK_REL));
     if (lr.status !== "ok") {
       throw new CliError(EXIT.STATE, `lock 을 읽지 못했다: ${lr.status === "missing" ? "없음" : lr.error}`, "harness-kit doctor 로 상태를 본다");
     }
@@ -14014,11 +14851,11 @@ function runList(ctx) {
 }
 
 // src/commands/repair.ts
-var import_node_fs58 = __toESM(require("node:fs"));
-var import_node_path66 = __toESM(require("node:path"));
+var import_node_fs60 = __toESM(require("node:fs"));
+var import_node_path68 = __toESM(require("node:path"));
 var REPAIR_KINDS = ["missing", "drifted", "stale", "merge"];
 function full9(target, rel2) {
-  return import_node_path66.default.join(target, ...rel2.split("/"));
+  return import_node_path68.default.join(target, ...rel2.split("/"));
 }
 function parseOnly2(raw) {
   if (raw === void 0) return [...REPAIR_KINDS];
@@ -14028,7 +14865,7 @@ function parseOnly2(raw) {
   return only;
 }
 function survey(target, inst) {
-  const ancestors = new AncestorCheck(target, import_node_fs58.default.realpathSync(target));
+  const ancestors = new AncestorCheck(target, import_node_fs60.default.realpathSync(target));
   const out = { ok: 0, drifted: 0, skipped: 0, missing: [] };
   for (const e of inst.lock.entries) {
     if (ownerKind2(e.owner) !== "kit" || entryKind(e) !== "copy") {
@@ -14066,7 +14903,7 @@ function judgeMissing(e, lockVersion, want) {
   return { ...base, action: "restore", want: w };
 }
 function applyRepair(target, inst, ops, projection) {
-  const restored = new Map(ops.filter((o) => o.action === "restore").map((o) => [o.path, o.want]));
+  const restored = new Map(ops.filter((o3) => o3.action === "restore").map((o3) => [o3.path, o3.want]));
   let current4 = "";
   try {
     for (const [rel2, w] of restored) {
@@ -14101,7 +14938,7 @@ function repairProjection(ctx, target, inst, only) {
   const p = prepare({ target, spec, tokens, agents: selection.agents });
   const out = { ops: [], entries: [], touched: /* @__PURE__ */ new Set(), unrestorable: 0, findings: p.findings };
   const byPath = new Map(inst.lock.entries.map((e) => [e.path, e]));
-  for (const w of [...p.wants].sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0)) {
+  for (const w of [...p.wants].sort((a3, b) => a3.path < b.path ? -1 : a3.path > b.path ? 1 : 0)) {
     const r = w.op === "merge" ? repairMerge(target, w, byPath.get(w.path), only) : repairFile(target, w, byPath.get(w.path), only);
     if (!r) continue;
     out.touched.add(w.path);
@@ -14118,7 +14955,7 @@ function repairProjection(ctx, target, inst, only) {
 }
 function repairMerge(target, w, e, only) {
   const p = full9(target, w.path);
-  const cur = import_node_fs58.default.existsSync(p) && import_node_fs58.default.lstatSync(p).isFile() ? import_node_fs58.default.readFileSync(p, "utf8") : null;
+  const cur = import_node_fs60.default.existsSync(p) && import_node_fs60.default.lstatSync(p).isFile() ? import_node_fs60.default.readFileSync(p, "utf8") : null;
   const keys = e && Array.isArray(e.keys) ? e.keys : void 0;
   const lost = cur === null ? ["(파일 없음)"] : keys ? missingWith(w.kind, cur, keys, w.want) : [];
   if (lost.length === 0 && e || !chosen(only, cur === null ? "missing" : "merge")) return null;
@@ -14164,26 +15001,26 @@ function runRepair(ctx) {
   const only = parseOnly2(str(ctx.values, "only"));
   const inst = loadInstalled(target, "repair");
   const lockVersion = inst.lock.kit.version;
-  const s = survey(target, inst);
-  const doMissing = only.includes("missing") && s.missing.length > 0;
+  const s3 = survey(target, inst);
+  const doMissing = only.includes("missing") && s3.missing.length > 0;
   const source = doMissing && lockVersion === VERSION ? wantFor(ctx, target, inst) : null;
-  const ops = doMissing ? s.missing.map((e) => judgeMissing(e, lockVersion, source?.want ?? null)) : [];
+  const ops = doMissing ? s3.missing.map((e) => judgeMissing(e, lockVersion, source?.want ?? null)) : [];
   const dryRun = bool(ctx.values, "dry-run");
-  const count = (a) => ops.filter((o) => o.action === a).length;
+  const count = (a3) => ops.filter((o3) => o3.action === a3).length;
   const projection = repairProjection(ctx, target, inst, only);
-  const projectionWrites = (projection?.ops ?? []).some((o) => o.effect) || (projection?.entries ?? []).some((e) => JSON.stringify(e) !== JSON.stringify(inst.lock.entries.find((x) => x.path === e.path)));
+  const projectionWrites = (projection?.ops ?? []).some((o3) => o3.effect) || (projection?.entries ?? []).some((e) => JSON.stringify(e) !== JSON.stringify(inst.lock.entries.find((x) => x.path === e.path)));
   if (!dryRun && (count("restore") > 0 || projectionWrites)) applyRepair(target, inst, ops, projection);
-  const counts2 = { ok: s.ok, drifted: s.drifted, missing: s.missing.length, restore: count("restore"), "needs-update": count("needs-update"), unrestorable: count("unrestorable") + (projection?.unrestorable ?? 0), skipped: s.skipped };
-  const hints = ["needs-update", "unrestorable"].filter((a) => counts2[a] > 0).map((a) => HINTS[a]);
-  const code = hints.length || (projection?.ops ?? []).some((o) => o.action === "conflict") ? EXIT.HUMAN : EXIT.OK;
-  const opsJson = ops.map((o) => ({ path: o.path, layer: o.layer, action: o.action, ...o.reason ? { reason: o.reason } : {} }));
+  const counts2 = { ok: s3.ok, drifted: s3.drifted, missing: s3.missing.length, restore: count("restore"), "needs-update": count("needs-update"), unrestorable: count("unrestorable") + (projection?.unrestorable ?? 0), skipped: s3.skipped };
+  const hints = ["needs-update", "unrestorable"].filter((a3) => counts2[a3] > 0).map((a3) => HINTS[a3]);
+  const code = hints.length || (projection?.ops ?? []).some((o3) => o3.action === "conflict") ? EXIT.HUMAN : EXIT.OK;
+  const opsJson = ops.map((o3) => ({ path: o3.path, layer: o3.layer, action: o3.action, ...o3.reason ? { reason: o3.reason } : {} }));
   const data = { command: "repair", target, dryRun, kit: { lock: lockVersion, cli: VERSION }, only, counts: counts2, ops: opsJson, hints };
   if (projection) data.projection = { counts: projCounts(projection.ops), ops: projection.ops.map(projOpJson), findings: projection.findings };
   if (source) data.templates = source.templates;
   const lines3 = [
     `harness-kit repair — ${target}`,
     `  킷: lock ${lockVersion ?? "?(v1)"} · CLI ${VERSION}`,
-    ...ops.map((o) => `  ${o.action.padEnd(13)} ${o.path}${o.reason ? `  ${o.reason}` : ""}`),
+    ...ops.map((o3) => `  ${o3.action.padEnd(13)} ${o3.path}${o3.reason ? `  ${o3.reason}` : ""}`),
     `  copy 항목: ok ${counts2.ok} · drifted ${counts2.drifted}(사람이 고친 파일 — 그대로 둔다) · missing ${counts2.missing}`,
     `  되살림 ${counts2.restore} · update 필요 ${counts2["needs-update"]} · 킷에 없음 ${counts2.unrestorable}`,
     ...projection ? [...projection.ops.map(projLine), projSummary(projection.ops)] : [],
@@ -14208,17 +15045,17 @@ var RESERVED = {
 };
 
 // src/modules/aidlc/sync.ts
-var import_node_fs60 = __toESM(require("node:fs"));
-var import_node_path68 = __toESM(require("node:path"));
+var import_node_fs62 = __toESM(require("node:fs"));
+var import_node_path70 = __toESM(require("node:path"));
 
 // src/modules/aidlc/adapter-v2.ts
-var import_node_fs59 = __toESM(require("node:fs"));
-var import_node_path67 = __toESM(require("node:path"));
+var import_node_fs61 = __toESM(require("node:fs"));
+var import_node_path69 = __toESM(require("node:path"));
 var READER_VERSION = "aidlc-v2";
 var UG = "inception/units-generation";
 function read(file) {
   try {
-    return import_node_fs59.default.readFileSync(file, "utf8");
+    return import_node_fs61.default.readFileSync(file, "utf8");
   } catch {
     return null;
   }
@@ -14228,7 +15065,7 @@ function listInputs(folder) {
   const walk4 = (rel2) => {
     let ents;
     try {
-      ents = import_node_fs59.default.readdirSync(import_node_path67.default.join(folder, rel2), { withFileTypes: true });
+      ents = import_node_fs61.default.readdirSync(import_node_path69.default.join(folder, rel2), { withFileTypes: true });
     } catch {
       return;
     }
@@ -14243,15 +15080,15 @@ function listInputs(folder) {
   return out.sort(byteCompare);
 }
 function inputSha(folder, files) {
-  return sha256(files.map((f) => `${f}\0${sha256(import_node_fs59.default.readFileSync(import_node_path67.default.join(folder, f)))}
+  return sha256(files.map((f) => `${f}\0${sha256(import_node_fs61.default.readFileSync(import_node_path69.default.join(folder, f)))}
 `).join(""));
 }
 function cells2(line) {
   return line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
 }
 var isSep = (line) => /^\s*\|?\s*:?-{2,}/.test(line);
-function tableRows(text3, want) {
-  const lines3 = text3.split(/\r?\n/);
+function tableRows(text4, want) {
+  const lines3 = text4.split(/\r?\n/);
   const rows = [];
   for (let i = 0; i < lines3.length - 1; i += 1) {
     const head = lines3[i].includes("|") ? cells2(lines3[i]).map((c) => c.toLowerCase().replace(/[*`]/g, "")) : null;
@@ -14263,15 +15100,15 @@ function tableRows(text3, want) {
   }
   return rows;
 }
-function parseEdgeBlock(text3) {
+function parseEdgeBlock(text4) {
   const m = /```ya?ml\s*\n([\s\S]*?)```/g;
-  let block2 = null;
-  for (let r = m.exec(text3); r; r = m.exec(text3)) if (/^units:\s*$/m.test(r[1])) block2 = r[1];
-  if (block2 === null) return null;
+  let block3 = null;
+  for (let r = m.exec(text4); r; r = m.exec(text4)) if (/^units:\s*$/m.test(r[1])) block3 = r[1];
+  if (block3 === null) return null;
   const edges = [];
   let cur = null;
   let listFor = null;
-  for (const raw of block2.split(/\r?\n/)) {
+  for (const raw of block3.split(/\r?\n/)) {
     const line = raw.replace(/\s+#.*$/, "");
     if (!line.trim() || /^units:\s*$/.test(line.trim())) continue;
     const name = /^\s*-\s+name:\s*(\S+)\s*$/.exec(line);
@@ -14306,9 +15143,9 @@ var dirTitle = (name) => name.replace(/^u\d+-/, "").replace(/-/g, " ").trim() ||
 function readAidlcIntent(folder) {
   const missing = [];
   const files = listInputs(folder);
-  const state = read(import_node_path67.default.join(folder, "aidlc-state.md"));
+  const state = read(import_node_path69.default.join(folder, "aidlc-state.md"));
   let title = null;
-  const desc = read(import_node_path67.default.join(folder, "project-description.json"));
+  const desc = read(import_node_path69.default.join(folder, "project-description.json"));
   if (desc !== null) {
     try {
       const j = JSON.parse(desc);
@@ -14320,18 +15157,18 @@ function readAidlcIntent(folder) {
   if (title === null && state !== null) title = /^- \*\*Project\*\*:\s*(.+?)\s*$/m.exec(state)?.[1] ?? null;
   if (title === null) missing.push("Intent 제목(project-description.json 또는 aidlc-state.md 의 Project 줄)");
   const scope = state !== null ? /^- \*\*Scope\*\*:\s*(\S+)/m.exec(state)?.[1] ?? null : null;
-  const dep = read(import_node_path67.default.join(folder, UG, "unit-of-work-dependency.md"));
-  const uow = read(import_node_path67.default.join(folder, UG, "unit-of-work.md"));
+  const dep = read(import_node_path69.default.join(folder, UG, "unit-of-work-dependency.md"));
+  const uow = read(import_node_path69.default.join(folder, UG, "unit-of-work.md"));
   const edges = dep === null ? null : parseEdgeBlock(dep);
   if (dep === null) missing.push(`${UG}/unit-of-work-dependency.md`);
   else if (edges === null || edges.length === 0) missing.push(`${UG}/unit-of-work-dependency.md 의 yaml units 블록`);
-  const table = uow === null ? [] : tableRows(uow, ["unit id", "directory"]);
+  const table2 = uow === null ? [] : tableRows(uow, ["unit id", "directory"]);
   if (uow === null) missing.push(`${UG}/unit-of-work.md`);
-  const byDir = new Map(table.map((r) => [r.directory ?? "", r]));
-  const titleKey = ["name", "title", "unit", "unit name"].find((k) => table[0] && k in table[0]);
-  const mapText = read(import_node_path67.default.join(folder, UG, "unit-of-work-story-map.md"));
+  const byDir = new Map(table2.map((r) => [r.directory ?? "", r]));
+  const titleKey = ["name", "title", "unit", "unit name"].find((k) => table2[0] && k in table2[0]);
+  const mapText = read(import_node_path69.default.join(folder, UG, "unit-of-work-story-map.md"));
   const idToName = /* @__PURE__ */ new Map();
-  for (const r of table) if (r["unit id"] && r.directory) idToName.set(r["unit id"], r.directory);
+  for (const r of table2) if (r["unit id"] && r.directory) idToName.set(r["unit id"], r.directory);
   const storyUnits = /* @__PURE__ */ new Map();
   if (mapText !== null) {
     for (const line of mapText.split(/\r?\n/)) {
@@ -14343,7 +15180,7 @@ function readAidlcIntent(folder) {
       storyUnits.set(id, [...storyUnits.get(id) ?? [], ...targets]);
     }
   }
-  const storiesText = read(import_node_path67.default.join(folder, "inception/user-stories/stories.md"));
+  const storiesText = read(import_node_path69.default.join(folder, "inception/user-stories/stories.md"));
   const stories = [];
   const seen = /* @__PURE__ */ new Set();
   if (storiesText !== null) {
@@ -14376,7 +15213,7 @@ function readAidlcIntent(folder) {
   for (const u of units) for (const d of u.dependsOn) if (!units.some((x) => x.name === d)) missing.push(`Unit ${u.name} 의 depends_on ${d} 가 Unit 목록에 없다`);
   let gateApprovals = 0;
   for (const f of files.filter((x) => x.startsWith("audit/") && x.endsWith(".md"))) {
-    gateApprovals += (read(import_node_path67.default.join(folder, f)) ?? "").split(/\r?\n/).filter((l) => /^\*\*Event\*\*:\s*GATE_APPROVED\b/.test(l)).length;
+    gateApprovals += (read(import_node_path69.default.join(folder, f)) ?? "").split(/\r?\n/).filter((l) => /^\*\*Event\*\*:\s*GATE_APPROVED\b/.test(l)).length;
   }
   return { folder, title, scope, units, stories, shared, inputSha256: inputSha(folder, files), fileCount: files.length, missing, gateApprovals };
 }
@@ -14387,32 +15224,32 @@ var LABEL = /^\d{6}-(.+)$/;
 var FOLDER2 = /^([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5})-(.+)$/;
 var INT_KEY = /^INT-([1-9][0-9]{0,5})$/;
 var KEBAB = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-var isObj9 = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+var isObj10 = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 function readJson4(file) {
   try {
-    const j = JSON.parse(import_node_fs60.default.readFileSync(file, "utf8"));
-    return isObj9(j) ? j : null;
+    const j = JSON.parse(import_node_fs62.default.readFileSync(file, "utf8"));
+    return isObj10(j) ? j : null;
   } catch {
     return null;
   }
 }
 function candidates(root) {
   const out = [];
-  const spaces = import_node_path68.default.join(root, "aidlc", "spaces");
+  const spaces = import_node_path70.default.join(root, "aidlc", "spaces");
   if (!isDir(spaces)) return out;
-  for (const space of import_node_fs60.default.readdirSync(spaces).sort()) {
-    const intents = import_node_path68.default.join(spaces, space, "intents");
+  for (const space of import_node_fs62.default.readdirSync(spaces).sort()) {
+    const intents = import_node_path70.default.join(spaces, space, "intents");
     if (!isDir(intents)) continue;
-    for (const dir of import_node_fs60.default.readdirSync(intents).sort()) {
-      const abs = import_node_path68.default.join(intents, dir);
-      if (isDir(abs) && import_node_fs60.default.existsSync(import_node_path68.default.join(abs, "aidlc-state.md"))) out.push({ space, dir, abs });
+    for (const dir of import_node_fs62.default.readdirSync(intents).sort()) {
+      const abs = import_node_path70.default.join(intents, dir);
+      if (isDir(abs) && import_node_fs62.default.existsSync(import_node_path70.default.join(abs, "aidlc-state.md"))) out.push({ space, dir, abs });
     }
   }
   return out;
 }
 function spaceOf(root, abs) {
-  const m = /aidlc\/spaces\/([^/]+)\/intents\/([^/]+)\/?$/.exec(import_node_path68.default.relative(root, abs).split(import_node_path68.default.sep).join("/"));
-  return { space: m?.[1] ?? "default", dir: m?.[2] ?? import_node_path68.default.basename(abs) };
+  const m = /aidlc\/spaces\/([^/]+)\/intents\/([^/]+)\/?$/.exec(import_node_path70.default.relative(root, abs).split(import_node_path70.default.sep).join("/"));
+  return { space: m?.[1] ?? "default", dir: m?.[2] ?? import_node_path70.default.basename(abs) };
 }
 function nextKey(root, base, env) {
   const nums = [];
@@ -14421,20 +15258,20 @@ function nextKey(root, base, env) {
     const k = m ? INT_KEY.exec(m[1]) : null;
     if (k) nums.push(Number(k[1]));
   };
-  const dir = import_node_path68.default.join(root, INTENTS);
-  if (isDir(dir)) for (const n of import_node_fs60.default.readdirSync(dir)) add(n);
+  const dir = import_node_path70.default.join(root, INTENTS);
+  if (isDir(dir)) for (const n of import_node_fs62.default.readdirSync(dir)) add(n);
   const listed = git(["-C", root, "ls-tree", "-d", "--name-only", `${base}:${INTENTS}`], env);
   if (listed.status === 0) for (const n of listed.stdout.split(/\s+/).filter(Boolean)) add(n);
   return `INT-${Math.max(0, ...nums) + 1}`;
 }
 function existingLink(root, aidlcPath) {
-  const base = import_node_path68.default.join(root, INTENTS);
+  const base = import_node_path70.default.join(root, INTENTS);
   if (!isDir(base)) return null;
-  for (const name of import_node_fs60.default.readdirSync(base).sort()) {
-    const link = readJson4(import_node_path68.default.join(base, name, "intent.json"));
-    const a = link && isObj9(link.aidlc) ? link.aidlc : null;
+  for (const name of import_node_fs62.default.readdirSync(base).sort()) {
+    const link = readJson4(import_node_path70.default.join(base, name, "intent.json"));
+    const a3 = link && isObj10(link.aidlc) ? link.aidlc : null;
     const m = FOLDER2.exec(name);
-    if (a && m && String(a.path).replace(/\/$/, "") === aidlcPath.replace(/\/$/, "")) return { folder: name, key: m[1] };
+    if (a3 && m && String(a3.path).replace(/\/$/, "") === aidlcPath.replace(/\/$/, "")) return { folder: name, key: m[1] };
   }
   return null;
 }
@@ -14453,11 +15290,11 @@ function layers(units) {
   return memo;
 }
 var areaOf = (name) => {
-  const a = name.replace(/^u\d+-/, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  return KEBAB.test(a) ? a : "unit";
+  const a3 = name.replace(/^u\d+-/, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return KEBAB.test(a3) ? a3 : "unit";
 };
 function buildUnits(r, key, aidlcPath, existing2) {
-  const old = (existing2 && Array.isArray(existing2.units) ? existing2.units : []).filter(isObj9);
+  const old = (existing2 && Array.isArray(existing2.units) ? existing2.units : []).filter(isObj10);
   const bySource = new Map(old.filter((u) => typeof u.sourceId === "string").map((u) => [u.sourceId, u]));
   let max = Math.max(0, ...old.map((u) => Number(/^U-(\d+)$/.exec(String(u.id))?.[1] ?? 0)));
   const idOf = /* @__PURE__ */ new Map();
@@ -14489,7 +15326,7 @@ function buildUnits(r, key, aidlcPath, existing2) {
     };
   });
   for (const u of old) if (typeof u.sourceId === "string" && !live.has(u.sourceId)) units.push({ ...u, planned: false });
-  units.sort((a, b) => Number(/^U-(\d+)$/.exec(String(a.id))?.[1]) - Number(/^U-(\d+)$/.exec(String(b.id))?.[1]));
+  units.sort((a3, b) => Number(/^U-(\d+)$/.exec(String(a3.id))?.[1]) - Number(/^U-(\d+)$/.exec(String(b.id))?.[1]));
   const planned = units.filter((u) => u.planned !== false);
   return {
     schema: "harness-kit.units/v1",
@@ -14500,7 +15337,7 @@ function buildUnits(r, key, aidlcPath, existing2) {
     unassigned: []
   };
 }
-var text2 = (o) => `${JSON.stringify(o, null, 2)}
+var text3 = (o3) => `${JSON.stringify(o3, null, 2)}
 `;
 function toolVersion(ctx, root) {
   const r = runCmd(ctx.io, root, ["aidlc", "--version"], { timeout: 15e3 });
@@ -14510,17 +15347,17 @@ ${r.stderr}`);
 function runSyncAidlc(ctx) {
   const root = targetOf(ctx);
   const check3 = bool(ctx.values, "check");
-  const metaRead = readMeta(import_node_path68.default.join(root, META_REL));
+  const metaRead = readMeta(import_node_path70.default.join(root, META_REL));
   if (metaRead.status !== "ok") throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL}): ${root}`, "설치는 harness-kit init");
   const meta = metaRead.meta;
   if (!meta.modules.includes("aidlc")) throw new CliError(EXIT.STATE, "aidlc 모듈이 꺼져 있다", "harness-kit add aidlc");
-  const flow2 = isObj9(meta.flow) ? meta.flow : {};
-  const base = isObj9(meta.git) && typeof meta.git.base === "string" ? meta.git.base : "develop";
+  const flow2 = isObj10(meta.flow) ? meta.flow : {};
+  const base = isObj10(meta.git) && typeof meta.git.base === "string" ? meta.git.base : "develop";
   const asked = str(ctx.values, "intent");
   const all = candidates(root);
   let picks;
   if (asked !== void 0) {
-    const abs = import_node_path68.default.resolve(root, asked);
+    const abs = import_node_path70.default.resolve(root, asked);
     if (!isDir(abs)) throw usageError(`AI-DLC Intent 폴더가 없다: ${asked}`, "aidlc/spaces/<space>/intents/<폴더>");
     const { space, dir } = spaceOf(root, abs);
     picks = [{ space, dir, abs }];
@@ -14533,7 +15370,7 @@ function runSyncAidlc(ctx) {
   const results = [];
   let firstFail = null;
   for (const p of picks) {
-    const aidlcPath = `${import_node_path68.default.relative(root, p.abs).split(import_node_path68.default.sep).join("/")}/`;
+    const aidlcPath = `${import_node_path70.default.relative(root, p.abs).split(import_node_path70.default.sep).join("/")}/`;
     const r = readAidlcIntent(p.abs);
     const one = { intent: p.dir, key: null, folder: null, action: "pending", units: r.units.length, stories: r.stories.length, missing: r.missing, notes: [], inputSha256: r.inputSha256 };
     if (flow2.design !== "aidlc") one.notes.push("flow.design 이 aidlc 가 아니다(harness-kit add aidlc 가 설정한다)");
@@ -14549,20 +15386,20 @@ function runSyncAidlc(ctx) {
       if (meta.modules.includes("jira-workflow")) throw usageError("jira-workflow 모듈이 켜져 있다 — Intent 키는 Jira 에픽 키다", "--key <에픽 키> 로 준다");
       key = nextKey(root, base, ctx.io.env);
     }
-    const label = (LABEL.exec(p.dir)?.[1] ?? p.dir).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "intent";
-    const folderName = link?.folder ?? `${key}-${label}`;
-    const folderAbs = import_node_path68.default.join(root, INTENTS, folderName);
-    const linkFile = import_node_path68.default.join(folderAbs, "intent.json");
-    const unitsFile = import_node_path68.default.join(folderAbs, "units.json");
+    const label2 = (LABEL.exec(p.dir)?.[1] ?? p.dir).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "intent";
+    const folderName = link?.folder ?? `${key}-${label2}`;
+    const folderAbs = import_node_path70.default.join(root, INTENTS, folderName);
+    const linkFile = import_node_path70.default.join(folderAbs, "intent.json");
+    const unitsFile = import_node_path70.default.join(folderAbs, "units.json");
     const oldLink = readJson4(linkFile);
     const oldUnits = readJson4(unitsFile);
-    const sameInput = oldLink !== null && isObj9(oldLink.adapter) && oldLink.adapter.inputSha256 === r.inputSha256;
+    const sameInput = oldLink !== null && isObj10(oldLink.adapter) && oldLink.adapter.inputSha256 === r.inputSha256;
     one.key = key;
     one.folder = `${INTENTS}/${folderName}`;
     const units = buildUnits(r, key, aidlcPath, oldUnits);
-    const unitsText = text2(units);
-    const unitsSame = import_node_fs60.default.existsSync(unitsFile) && import_node_fs60.default.readFileSync(unitsFile, "utf8") === unitsText;
-    for (const s of r.shared) one.notes.push(`스토리 ${s.story} 가 Unit 여럿에 적혀 있다(${s.units.join(", ")}) — 킷은 한 Unit 에만 둔다: ${s.units[0]}`);
+    const unitsText = text3(units);
+    const unitsSame = import_node_fs62.default.existsSync(unitsFile) && import_node_fs62.default.readFileSync(unitsFile, "utf8") === unitsText;
+    for (const s3 of r.shared) one.notes.push(`스토리 ${s3.story} 가 Unit 여럿에 적혀 있다(${s3.units.join(", ")}) — 킷은 한 Unit 에만 둔다: ${s3.units[0]}`);
     if (r.gateApprovals) one.notes.push(`AI-DLC 승인 기록 ${r.gateApprovals}건: 승인자(이메일)가 기록에 없어 approvals.md 로 옮기지 않았다 — 사람이 관리 페이지 · harness-kit approve 로 승인한다`);
     if (sameInput && unitsSame) {
       one.action = "same";
@@ -14583,41 +15420,805 @@ function runSyncAidlc(ctx) {
       adapter: { name: "harness-kit/aidlc", version: VERSION, reader: READER_VERSION, inputSha256: r.inputSha256, adaptedAt },
       stories: r.stories
     };
-    import_node_fs60.default.mkdirSync(folderAbs, { recursive: true });
+    import_node_fs62.default.mkdirSync(folderAbs, { recursive: true });
     if (!unitsSame) writeFileAtomic(unitsFile, Buffer.from(unitsText, "utf8"), false);
-    writeFileAtomic(linkFile, Buffer.from(text2(linkOut), "utf8"), false);
+    writeFileAtomic(linkFile, Buffer.from(text3(linkOut), "utf8"), false);
     one.action = oldLink === null ? "created" : "updated";
     results.push(one);
   }
-  const diff = results.some((o) => o.action === "check-diff");
+  const diff = results.some((o3) => o3.action === "check-diff");
   const lines3 = [`harness-kit sync aidlc${check3 ? " --check" : ""} — ${root}`];
-  for (const o of results) {
-    if (o.action === "pending") lines3.push(`  ${o.intent}: 아직 가져올 수 없다 — ${o.missing.join(" · ")}`);
-    else lines3.push(`  ${o.intent} → ${o.folder}: ${o.action === "same" ? "변화 없음" : o.action === "check-diff" ? "달라졌다(쓰지 않았다)" : o.action === "created" ? "만들었다" : "갱신했다"} · Unit ${o.units} · 스토리 ${o.stories}`);
-    for (const n of o.notes) lines3.push(`    · ${n}`);
+  for (const o3 of results) {
+    if (o3.action === "pending") lines3.push(`  ${o3.intent}: 아직 가져올 수 없다 — ${o3.missing.join(" · ")}`);
+    else lines3.push(`  ${o3.intent} → ${o3.folder}: ${o3.action === "same" ? "변화 없음" : o3.action === "check-diff" ? "달라졌다(쓰지 않았다)" : o3.action === "created" ? "만들었다" : "갱신했다"} · Unit ${o3.units} · 스토리 ${o3.stories}`);
+    for (const n of o3.notes) lines3.push(`    · ${n}`);
   }
   if (firstFail) throw firstFail;
   return { code: check3 && diff ? EXIT.CHECK : EXIT.OK, data: { command: "sync", tool: "aidlc", target: root, check: check3, intents: results }, lines: lines3 };
 }
 
-// src/commands/sync.ts
-var LATER2 = {
-  units: "HK-20b(multi-harness, 설계 10 §3.5)",
-  jira: "HK-20b(jira-workflow, 설계 10 §3.4)"
+// src/modules/jira/sync.ts
+var import_node_fs63 = __toESM(require("node:fs"));
+var import_node_path71 = __toESM(require("node:path"));
+var HUMAN_STATES = /* @__PURE__ */ new Set(["design", "implementing", "done", "deployed"]);
+var GATE_DOC = { requirements: "requirements.md", design: "design.md", done: "tasks.md", deploy: "deploy" };
+function transitionRefusal(cfg, fromStatusId, toStatusId, toState) {
+  const gate = cfg.approvalTransitions[`${fromStatusId}>${toStatusId}`];
+  if (gate) return `${fromStatusId}>${toStatusId} 는 ${gate} 승인 전이다 — 사람이 Jira 에서 한다(MD-R14)`;
+  if (HUMAN_STATES.has(toState) || humanTargets(cfg).has(toStatusId)) return `${toState} 는 사람이 승인 전이로 옮기는 상태다`;
+  if (stateIndex(toState) > stateIndex(cfg.maxStatus)) return `${toState} 는 agentBoundary.maxStatus(${cfg.maxStatus}) 위다`;
+  return null;
+}
+function humanTargets(cfg) {
+  return new Set(Object.keys(cfg.approvalTransitions).map((k) => k.split(">")[1] ?? ""));
+}
+function stateOfStatus(cfg, statusId) {
+  return Object.entries(cfg.statusMap).find(([, id]) => id === statusId)?.[0] ?? null;
+}
+var labelOf = (id) => BOARD_STATES.find((s3) => s3.id === id)?.label ?? id;
+function off(why, json) {
+  return { code: EXIT.OK, data: { module: "jira-workflow", enabled: false, ...json }, lines: [why] };
+}
+async function runSyncJira(ctx) {
+  const root = targetOf(ctx);
+  if (!moduleEnabled(root, "jira-workflow")) {
+    return off("jira-workflow 모듈이 꺼져 있다 — 보드는 킷 단계에서 계산한 같은 여덟 상태로 돈다(켜려면 harness-kit add jira-workflow)", {});
+  }
+  const cfg = readTracker(root);
+  if (!cfg || cfg.sync.method === "none") {
+    return off("jira-workflow 모듈은 켜져 있지만 sync.method 가 none 이다 — 연동하지 않는다. 보드는 킷 단계의 여덟 상태로 돈다", { method: "none" });
+  }
+  if (!cfg.baseUrl) throw new CliError(EXIT.STATE, "연결 설정이 비었다: .agents/issue-tracker.yml 의 baseUrl 이 TBD 다", "hx-jira-setup 스킬로 채운다");
+  const wantApprovals = bool(ctx.values, "approvals");
+  const wantVerify = bool(ctx.values, "verify");
+  const issueArg = str(ctx.values, "issue");
+  const to = str(ctx.values, "to");
+  if (to && !issueArg || issueArg && !to && !str(ctx.values, "mr-url")) throw usageError("--issue 는 --to <상태> 또는 --mr-url 과 함께 쓴다");
+  if (cfg.sync.method === "mcp" && !wantApprovals && !wantVerify) {
+    return off("sync.method 가 mcp 다 — 상태 전이 · 링크는 세션의 /hx-issue 가 서버 도구로 한다. 승인 가져오기(--approvals)만 REST 로 이 명령이 한다", { method: "mcp" });
+  }
+  const client = makeJiraClient(cfg.baseUrl, jiraCredentials(cfg, ctx.io.env));
+  const p = await openProject(ctx);
+  const { issues } = await load(p);
+  const match2 = keyMatcher(cfg);
+  const mine = issues.filter((i) => !i.legacy && match2.test(i.key) && (!issueArg || i.key === issueArg));
+  if (issueArg && mine.length === 0) throw new CliError(EXIT.STATE, `이슈 폴더가 없거나 Jira 키 꼴이 아니다: ${issueArg}`);
+  if (wantVerify) return verifyApprovals(ctx, p, cfg, client, mine);
+  if (wantApprovals) return importApprovals(ctx, p, cfg, client, mine);
+  return pushToJira(ctx, p, cfg, client, mine, to ?? null);
+}
+async function pushToJira(ctx, p, cfg, client, issues, explicit) {
+  const dry = bool(ctx.values, "dry-run");
+  const actions = [];
+  const webBase = await webBaseOf(p);
+  for (const issue of issues) {
+    try {
+      const desired = explicit ?? issue.boardStatus.id;
+      const targetId = cfg.statusMap[desired];
+      const current4 = await client.issue(issue.key);
+      if (!targetId) {
+        actions.push({ key: issue.key, action: "no-transition", to: desired, detail: `statusMap.${desired} 가 TBD 다` });
+      } else if (current4.statusId === targetId) {
+        actions.push({ key: issue.key, action: "same", from: stateOfStatus(cfg, current4.statusId) ?? current4.statusName, to: desired });
+      } else {
+        const from = stateOfStatus(cfg, current4.statusId);
+        const behind = from === null || stateIndex(from) < stateIndex(desired);
+        const refusal = transitionRefusal(cfg, current4.statusId, targetId, desired);
+        if (explicit && refusal) {
+          actions.push({ key: issue.key, action: "refused", from: from ?? current4.statusName, to: desired, detail: refusal });
+        } else if (!behind) {
+          actions.push({ key: issue.key, action: "jira-ahead", from: from ?? current4.statusName, to: desired, detail: "Jira 가 킷 단계보다 앞서 있다(사람이 옮겼다) — 되돌리지 않는다" });
+        } else if (refusal) {
+          actions.push({ key: issue.key, action: "waiting-human", from: from ?? current4.statusName, to: desired, detail: refusal });
+        } else {
+          const t = (await client.transitions(issue.key)).find((x) => x.toId === targetId);
+          if (!t) actions.push({ key: issue.key, action: "no-transition", from: from ?? current4.statusName, to: desired, detail: "현재 상태에서 그 상태로 가는 전이가 없다" });
+          else if (dry) actions.push({ key: issue.key, action: "would-move", from: from ?? current4.statusName, to: desired });
+          else {
+            await client.transition(issue.key, t.id);
+            actions.push({ key: issue.key, action: "moved", from: from ?? current4.statusName, to: desired });
+          }
+        }
+      }
+      if (!explicit || str(ctx.values, "mr-url")) actions.push(...await linkActions(p, client, issue, webBase, dry, str(ctx.values, "mr-url")));
+    } catch (err) {
+      actions.push({ key: issue.key, action: "error", detail: err instanceof Error ? err.message : String(err) });
+    }
+  }
+  const refused = actions.some((a3) => a3.action === "refused");
+  const failed = actions.some((a3) => a3.action === "error");
+  const lines3 = actions.map((a3) => `${a3.key}  ${label(a3)}${a3.detail ? `  — ${a3.detail}` : ""}`);
+  if (actions.length === 0) lines3.push("Jira 키가 있는 이슈가 없다");
+  const code = refused ? EXIT.HUMAN : failed ? EXIT.CHECK : EXIT.OK;
+  return { code, data: { module: "jira-workflow", enabled: true, dryRun: dry, actions }, lines: lines3 };
+}
+function label(a3) {
+  const move = a3.from || a3.to ? `${a3.from ? labelOf(a3.from) : "?"} → ${a3.to ? labelOf(a3.to) : "?"}` : "";
+  const names = {
+    moved: "전이함",
+    "would-move": "전이 예정",
+    same: "같음",
+    "waiting-human": "사람 승인 전이를 기다림",
+    "jira-ahead": "Jira 가 앞섬",
+    "no-transition": "전이 없음",
+    refused: "거부(승인 전이는 사람이 한다)",
+    "link-added": "링크 더함",
+    "link-exists": "링크 있음",
+    error: "오류"
+  };
+  return `${names[a3.action]}${move ? `  ${move}` : ""}`;
+}
+async function webBaseOf(p) {
+  const raw = await gitOut(p.root, p.env, "remote", "get-url", "origin");
+  if (!raw) return null;
+  const m = /^(?:https?:\/\/(?:[^@/]+@)?|ssh:\/\/(?:[^@/]+@)?|git@)([^/:]+)(?::\d+)?[/:](.+?)(?:\.git)?\/?$/.exec(raw.trim());
+  return m ? `https://${m[1]}/${m[2]}` : null;
+}
+async function linkActions(p, client, issue, webBase, dry, mrUrl) {
+  const wanted2 = [];
+  if (webBase && !mrUrl) {
+    const branch = issue.branch ?? p.base();
+    const sep = /github\.com$/.test(new URL(webBase).hostname) ? "tree" : "-/tree";
+    wanted2.push({ globalId: `harness-kit:sdd:${issue.key}`, url: `${webBase}/${sep}/${branch}/${issue.dir}`, title: `SDD ${issue.dir.split("/").pop() ?? issue.key}` });
+  }
+  if (mrUrl) wanted2.push({ globalId: `harness-kit:mr:${issue.key}`, url: mrUrl, title: `MR ${issue.key}` });
+  if (wanted2.length === 0) return [];
+  const existing2 = await client.remoteLinks(issue.key);
+  const out = [];
+  for (const w of wanted2) {
+    if (existing2.some((e) => e.globalId === w.globalId || e.url === w.url)) {
+      out.push({ key: issue.key, action: "link-exists", detail: w.url });
+    } else if (dry) {
+      out.push({ key: issue.key, action: "link-added", detail: `(예정) ${w.url}` });
+    } else {
+      await client.addRemoteLink(issue.key, w);
+      out.push({ key: issue.key, action: "link-added", detail: w.url });
+    }
+  }
+  return out;
+}
+function isoOf2(jira) {
+  return jira.replace(/([+-]\d{2})(\d{2})$/, "$1:$2");
+}
+function evidenceIds(entries) {
+  const ids2 = /* @__PURE__ */ new Set();
+  for (const e of entries) {
+    const m = /^changelog (\S+)$/.exec(e.evidence ?? "");
+    if (e.path === "jira" && m) ids2.add(m[1]);
+  }
+  return ids2;
+}
+function accountResolver(client) {
+  const cache = /* @__PURE__ */ new Map();
+  return async (id) => {
+    if (!id) return { email: null, name: null };
+    const hit2 = cache.get(id);
+    if (hit2) return hit2;
+    const email = await client.userEmail(id);
+    const r = { email: email ? email.toLowerCase() : null, name: null };
+    cache.set(id, r);
+    return r;
+  };
+}
+async function importApprovals(ctx, p, cfg, client, issues) {
+  const dry = bool(ctx.values, "dry-run");
+  const resolve = accountResolver(client);
+  const policy = p.policy();
+  const flow2 = new Set(p.gates());
+  const added = [];
+  const warnings = [];
+  let skipped = 0;
+  let failed = false;
+  for (const issue of issues) {
+    try {
+      const checkout = issue.root ?? p.root;
+      const approvalsFile = import_node_path71.default.join(checkout, issue.dir, "approvals.md");
+      const current4 = import_node_fs63.default.existsSync(approvalsFile) ? import_node_fs63.default.readFileSync(approvalsFile, "utf8") : null;
+      const seen = evidenceIds(current4 ? parse(current4).entries : []);
+      const changes = (await client.changelog(issue.key)).sort((a3, b) => a3.created.localeCompare(b.created));
+      const made = [];
+      const writes = [];
+      for (const ch of changes) {
+        const gate = cfg.approvalTransitions[`${ch.from}>${ch.to}`];
+        if (!gate) continue;
+        if (seen.has(ch.id)) {
+          skipped += 1;
+          continue;
+        }
+        seen.add(ch.id);
+        if (!flow2.has(gate)) {
+          warnings.push(`${issue.key} changelog ${ch.id}: ${gate} 는 flow.gates 에 없어 기록하지 않았다`);
+          continue;
+        }
+        const who = await resolve(ch.authorAccountId);
+        if (!who.email) {
+          warnings.push(`${issue.key} changelog ${ch.id}: 작성자 이메일을 읽지 못했다(Jira 공개 설정) — 기록하지 않았다`);
+          continue;
+        }
+        if (!allowed(who.email, gate, policy)) {
+          warnings.push(`${issue.key} changelog ${ch.id}: ${who.email} 는 approvers.${gate} 에 없다 — 기록하지 않았다`);
+          continue;
+        }
+        const docName = GATE_DOC[gate];
+        const docFile = docName && docName.endsWith(".md") && gate !== "done" ? import_node_path71.default.join(checkout, issue.dir, docName) : null;
+        if (docFile && !import_node_fs63.default.existsSync(docFile)) {
+          warnings.push(`${issue.key} changelog ${ch.id}: ${docName} 가 없어 기록하지 않았다`);
+          continue;
+        }
+        made.push({
+          at: isoOf2(ch.created),
+          gate,
+          decision: "approved",
+          approver: { email: who.email, name: who.name },
+          target: { name: docName ?? gate, sha256: "(jira)" },
+          path: "jira",
+          evidence: `changelog ${ch.id}`,
+          entryId: ulid()
+        });
+        if (docFile) {
+          const text4 = import_node_fs63.default.readFileSync(docFile, "utf8");
+          const status2 = parseLoose(text4)?.status ?? null;
+          if (status2 === "draft" || status2 === "in-review") writes.push({ file: docFile, data: Buffer.from(setField2(text4, "status", "approved"), "utf8") });
+        }
+        added.push({ key: issue.key, gate, approver: who.email, changelog: ch.id });
+      }
+      if (made.length && !dry) {
+        writeAll([{ file: approvalsFile, data: Buffer.from(appendedText(current4, issue.key, made), "utf8") }, ...writes]);
+        for (const e of made) appendLog(checkout, { entryId: e.entryId, target: issue.dir, gate: e.gate, sha256: "(jira)", at: e.at, path: "jira" });
+      }
+    } catch (err) {
+      failed = true;
+      warnings.push(`${issue.key}: ${err instanceof HttpError || err instanceof Error ? err.message : String(err)}`);
+    }
+  }
+  const lines3 = [
+    ...added.map((a3) => `${dry ? "(예정) " : ""}${a3.key}  ${a3.gate} · ${a3.approver} · changelog ${a3.changelog}`),
+    ...warnings.map((w) => `⚠ ${w}`),
+    `승인 ${added.length}건 ${dry ? "가져올 예정" : "가져옴"} · 이미 있어 건너뜀 ${skipped}건 · 경고 ${warnings.length}건`
+  ];
+  return { code: failed ? EXIT.CHECK : EXIT.OK, data: { module: "jira-workflow", enabled: true, dryRun: dry, added, skipped, warnings }, lines: lines3 };
+}
+async function verifyApprovals(_ctx, p, cfg, client, issues) {
+  const resolve = accountResolver(client);
+  const problems = [];
+  let checked = 0;
+  for (const issue of issues) {
+    const file = import_node_path71.default.join(issue.root ?? p.root, issue.dir, "approvals.md");
+    if (!import_node_fs63.default.existsSync(file)) continue;
+    const entries = parse(import_node_fs63.default.readFileSync(file, "utf8")).entries.filter((e) => e.path === "jira" && e.valid);
+    if (entries.length === 0) continue;
+    const changes = await client.changelog(issue.key);
+    for (const e of entries) {
+      checked += 1;
+      const id = /^changelog (\S+)$/.exec(e.evidence ?? "")?.[1];
+      const ch = id ? changes.find((c) => c.id === id) : void 0;
+      if (!ch) {
+        problems.push(`${issue.key} ${e.gate}: changelog ${id ?? "?"} 가 Jira 에 없다`);
+        continue;
+      }
+      if (cfg.approvalTransitions[`${ch.from}>${ch.to}`] !== e.gate) problems.push(`${issue.key} ${e.gate}: changelog ${ch.id} 는 그 게이트의 승인 전이가 아니다`);
+      const who = await resolve(ch.authorAccountId);
+      if (!who.email || who.email !== (e.approver?.email ?? "").toLowerCase()) problems.push(`${issue.key} ${e.gate}: changelog ${ch.id} 의 작성자가 기록의 승인자와 다르다`);
+    }
+  }
+  return {
+    code: problems.length ? EXIT.CHECK : EXIT.OK,
+    data: { module: "jira-workflow", enabled: true, checked, problems },
+    lines: [...problems.map((x) => `✖ ${x}`), `jira 경로 기록 ${checked}건 대조 · 문제 ${problems.length}건`]
+  };
+}
+
+// src/modules/units/sync.ts
+var import_node_fs66 = __toESM(require("node:fs"));
+var import_node_path74 = __toESM(require("node:path"));
+
+// src/modules/units/engine.ts
+var import_node_crypto9 = __toESM(require("node:crypto"));
+var import_node_fs65 = __toESM(require("node:fs"));
+var import_node_path73 = __toESM(require("node:path"));
+
+// src/modules/units/safety.ts
+var import_node_crypto8 = __toESM(require("node:crypto"));
+var import_node_fs64 = __toESM(require("node:fs"));
+var import_node_os6 = __toESM(require("node:os"));
+var import_node_path72 = __toESM(require("node:path"));
+var SafetyError = class extends Error {
 };
-function runSync(ctx) {
+var S_IFMT = 61440;
+var S_IFLNK = 40960;
+var S_IFDIR = 16384;
+var S_IFREG = 32768;
+var isLink = (mode) => (mode & S_IFMT) === S_IFLNK;
+var isDirMode = (mode) => (mode & S_IFMT) === S_IFDIR;
+var isRegMode = (mode) => (mode & S_IFMT) === S_IFREG;
+function validatePath(root, target, directory = false) {
+  const parts = import_node_path72.default.relative(root, target).split(import_node_path72.default.sep).filter((x) => x !== "");
+  if (parts[0] === "..") throw new SafetyError(`invalid path: ${target}`);
+  let current4 = root;
+  parts.forEach((part, index) => {
+    if (part === "." || part === "..") throw new SafetyError(`invalid path: ${target}`);
+    current4 = import_node_path72.default.join(current4, part);
+    let mode;
+    try {
+      mode = import_node_fs64.default.lstatSync(current4).mode;
+    } catch (err) {
+      if (err.code === "ENOENT") return;
+      throw err;
+    }
+    if (isLink(mode)) throw new SafetyError(`symlink path refused: ${current4}`);
+    const isParent = index < parts.length - 1 || directory;
+    if (isParent && !isDirMode(mode)) throw new SafetyError(`not a directory: ${current4}`);
+    if (!isParent && !isRegMode(mode)) throw new SafetyError(`not a regular file: ${current4}`);
+  });
+}
+function fileState2(root, relative) {
+  const target = import_node_path72.default.join(root, relative);
+  validatePath(root, target);
+  let fd;
+  try {
+    fd = import_node_fs64.default.openSync(target, import_node_fs64.default.constants.O_RDONLY | import_node_fs64.default.constants.O_NOFOLLOW | import_node_fs64.default.constants.O_NONBLOCK);
+  } catch (err) {
+    const code = err.code;
+    if (code === "ENOENT" || code === "ENOTDIR") return null;
+    throw err;
+  }
+  try {
+    const before = import_node_fs64.default.fstatSync(fd);
+    if (!isRegMode(before.mode)) throw new SafetyError(`not a regular file: ${import_node_path72.default.basename(target)}`);
+    const hash = import_node_crypto8.default.createHash("sha256");
+    const buf = Buffer.alloc(65536);
+    for (; ; ) {
+      const n = import_node_fs64.default.readSync(fd, buf, 0, buf.length, null);
+      if (n === 0) break;
+      hash.update(buf.subarray(0, n));
+    }
+    const after = import_node_fs64.default.fstatSync(fd);
+    if (before.mtimeMs !== after.mtimeMs || before.size !== after.size || before.mode !== after.mode) throw new SafetyError(`changed while reading: ${import_node_path72.default.basename(target)}`);
+    return { sha256: hash.digest("hex"), mode: after.mode & 4095 };
+  } finally {
+    import_node_fs64.default.closeSync(fd);
+  }
+}
+function collectStates(root, paths) {
+  const out = /* @__PURE__ */ new Map();
+  for (const rel2 of [...new Set(paths)].sort()) out.set(rel2, fileState2(root, rel2));
+  return out;
+}
+var sameState = (a3, b) => a3 === null || b === null ? a3 === b : a3.sha256 === b.sha256 && a3.mode === b.mode;
+function assertUnchanged(root, relative, expected) {
+  validatePath(root, import_node_path72.default.join(root, relative));
+  if (!sameState(fileState2(root, relative), expected)) throw new SafetyError(`changed since snapshot: ${relative}`);
+}
+function ensureParents(root, relative) {
+  let current4 = root;
+  for (const part of import_node_path72.default.dirname(relative).split(import_node_path72.default.sep)) {
+    if (part === "." || part === "") continue;
+    current4 = import_node_path72.default.join(current4, part);
+    try {
+      import_node_fs64.default.mkdirSync(current4);
+    } catch (err) {
+      if (err.code !== "EEXIST") throw err;
+    }
+    if (isLink(import_node_fs64.default.lstatSync(current4).mode)) throw new SafetyError(`symlink path refused: ${current4}`);
+  }
+}
+function atomicWrite2(root, relative, text4, mode, expected) {
+  validatePath(root, import_node_path72.default.join(root, relative));
+  ensureParents(root, relative);
+  const temporary = import_node_path72.default.join(root, import_node_path72.default.dirname(relative), `.harness-sync-${import_node_crypto8.default.randomBytes(16).toString("hex")}.tmp`);
+  const fd = import_node_fs64.default.openSync(temporary, import_node_fs64.default.constants.O_WRONLY | import_node_fs64.default.constants.O_CREAT | import_node_fs64.default.constants.O_EXCL | import_node_fs64.default.constants.O_NOFOLLOW, 384);
+  try {
+    try {
+      import_node_fs64.default.writeSync(fd, Buffer.from(text4, "utf8"));
+      import_node_fs64.default.fchmodSync(fd, mode);
+      import_node_fs64.default.fsyncSync(fd);
+    } finally {
+      import_node_fs64.default.closeSync(fd);
+    }
+    assertUnchanged(root, relative, expected);
+    import_node_fs64.default.renameSync(temporary, import_node_path72.default.join(root, relative));
+  } finally {
+    import_node_fs64.default.rmSync(temporary, { force: true });
+  }
+}
+function safeUnlink(root, relative, expected) {
+  assertUnchanged(root, relative, expected);
+  import_node_fs64.default.unlinkSync(import_node_path72.default.join(root, relative));
+}
+function lockPath(root) {
+  const digest = import_node_crypto8.default.createHash("sha256").update(import_node_fs64.default.realpathSync(root)).digest("hex");
+  return import_node_path72.default.join(import_node_os6.default.tmpdir(), `harness-sync-${process.getuid?.() ?? 0}-${digest}.lock`);
+}
+var alive2 = (pid) => {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    return err.code === "EPERM";
+  }
+};
+function withDeploymentLock(root, fn) {
+  const file = `${lockPath(root)}.node`;
+  let fd = -1;
+  for (let attempt = 0; attempt < 2 && fd < 0; attempt += 1) {
+    try {
+      fd = import_node_fs64.default.openSync(file, import_node_fs64.default.constants.O_CREAT | import_node_fs64.default.constants.O_EXCL | import_node_fs64.default.constants.O_WRONLY | import_node_fs64.default.constants.O_NOFOLLOW, 384);
+    } catch (err) {
+      if (err.code !== "EEXIST") throw err;
+      const pid = Number.parseInt(import_node_fs64.default.readFileSync(file, "utf8"), 10);
+      if (Number.isFinite(pid) && alive2(pid)) throw new SafetyError("another harness sync is running; retry after it finishes");
+      import_node_fs64.default.rmSync(file, { force: true });
+    }
+  }
+  if (fd < 0) throw new SafetyError("another harness sync is running; retry after it finishes");
+  try {
+    import_node_fs64.default.writeSync(fd, String(process.pid));
+    return fn();
+  } finally {
+    import_node_fs64.default.closeSync(fd);
+    import_node_fs64.default.rmSync(file, { force: true });
+  }
+}
+
+// src/modules/units/engine.ts
+var RegistryError = class extends Error {
+};
+var REGISTRY = "tools/harness/units.json";
+var SHARED = "tools/harness/shared";
+var MANIFEST = ".agents/harness.json";
+var SCHEMA = "harness-kit.deploy-units/v1";
+var IGNORED_PARTS = /* @__PURE__ */ new Set(["__pycache__", ".DS_Store", ".pytest_cache", ".mypy_cache", ".ruff_cache"]);
+var UNIT_TOKENS = ["UNIT_ID", "UNIT_TITLE", "UNIT_PATH", "UNIT_STACK"];
+var ID_PATTERN = /^[a-z][a-z0-9-]*$/;
+var S_IXUSR = 64;
+var EXEC_BITS = 73;
+var cmp2 = (a3, b) => a3 < b ? -1 : a3 > b ? 1 : 0;
+var sortedStrings = (xs) => [...xs].sort(cmp2);
+function partsCompare(a3, b) {
+  const pa = a3.split("/");
+  const pb = b.split("/");
+  for (let i = 0; i < Math.min(pa.length, pb.length); i += 1) {
+    const c = cmp2(pa[i], pb[i]);
+    if (c) return c;
+  }
+  return pa.length - pb.length;
+}
+function fnmatch(name, pattern) {
+  let re = "";
+  for (let i = 0; i < pattern.length; i += 1) {
+    const c = pattern[i];
+    if (c === "*") re += ".*";
+    else if (c === "?") re += ".";
+    else if (c === "[") {
+      let j = i + 1;
+      if (pattern[j] === "!") j += 1;
+      if (pattern[j] === "]") j += 1;
+      while (j < pattern.length && pattern[j] !== "]") j += 1;
+      if (j >= pattern.length) re += "\\[";
+      else {
+        let stuff = pattern.slice(i + 1, j).replace(/\\/g, "\\\\");
+        stuff = stuff[0] === "!" ? `^${stuff.slice(1)}` : stuff[0] === "^" ? `\\${stuff}` : stuff;
+        re += `[${stuff}]`;
+        i = j;
+      }
+    } else re += c.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+  }
+  return new RegExp(`^${re}$`, "s").test(name);
+}
+function readText3(file) {
+  return import_node_fs65.default.readFileSync(file).toString("utf8").replace(/\r\n?/g, "\n");
+}
+var sha = (text4) => import_node_crypto9.default.createHash("sha256").update(text4, "utf8").digest("hex");
+function loadUnits(repo, registry) {
+  let data;
+  try {
+    data = JSON.parse(readText3(registry));
+  } catch (err) {
+    if (err.code === "ENOENT") throw new RegistryError(`No such file or directory: '${registry}'`);
+    throw new RegistryError(err instanceof Error ? err.message : String(err));
+  }
+  if (data.schema !== void 0 && data.schema !== SCHEMA) throw new RegistryError(`${REGISTRY}: schema 가 ${SCHEMA} 가 아니다: ${String(data.schema)}`);
+  const units = [];
+  const seen = /* @__PURE__ */ new Set();
+  const list4 = Array.isArray(data.units) ? data.units : [];
+  for (const raw of list4) {
+    const id = typeof raw.id === "string" ? raw.id : "";
+    if (!ID_PATTERN.test(id) || seen.has(id)) throw new RegistryError(`invalid or duplicate unit id: '${id}'`);
+    seen.add(id);
+    const relative = typeof raw.path === "string" ? raw.path : "";
+    const target = import_node_path73.default.join(repo, relative);
+    const parts = relative.split("/");
+    const resolved = import_node_fs65.default.existsSync(target) ? import_node_fs65.default.realpathSync(target) : import_node_path73.default.resolve(target);
+    if (import_node_path73.default.isAbsolute(relative) || parts.includes("..") || !(resolved === import_node_fs65.default.realpathSync(repo) || resolved.startsWith(import_node_fs65.default.realpathSync(repo) + import_node_path73.default.sep))) {
+      throw new RegistryError(`${id}: path escapes the repository: ${relative}`);
+    }
+    validatePath(repo, target, true);
+    if (!import_node_fs65.default.existsSync(target) || !import_node_fs65.default.statSync(target).isDirectory()) throw new RegistryError(`${id}: unit directory does not exist: ${relative}`);
+    units.push({
+      id,
+      path: relative,
+      root: target,
+      title: typeof raw.title === "string" ? raw.title : id,
+      stack: typeof raw.stack === "string" ? raw.stack : "",
+      exclude: Array.isArray(raw.exclude) ? raw.exclude.map(String) : []
+    });
+  }
+  return units;
+}
+function sourceFiles(shared) {
+  const files = [];
+  validatePath(import_node_path73.default.dirname(shared), shared, true);
+  const walk4 = (dir) => {
+    for (const name of import_node_fs65.default.readdirSync(dir)) {
+      const full11 = import_node_path73.default.join(dir, name);
+      const rel2 = import_node_path73.default.relative(shared, full11).split(import_node_path73.default.sep);
+      if (rel2.some((p) => IGNORED_PARTS.has(p))) continue;
+      const st = import_node_fs65.default.lstatSync(full11);
+      if (st.isSymbolicLink()) throw new SafetyError(`symlink source refused: ${full11}`);
+      if (st.isDirectory()) walk4(full11);
+      else if (st.isFile()) {
+        validatePath(shared, full11);
+        files.push(full11);
+      }
+    }
+  };
+  walk4(shared);
+  return files.sort((a3, b) => partsCompare(import_node_path73.default.relative(shared, a3).split(import_node_path73.default.sep).join("/"), import_node_path73.default.relative(shared, b).split(import_node_path73.default.sep).join("/")));
+}
+function render2(text4, unit) {
+  const values = { UNIT_ID: unit.id, UNIT_TITLE: unit.title, UNIT_PATH: unit.path, UNIT_STACK: unit.stack };
+  let out = text4;
+  for (const token of UNIT_TOKENS) out = out.split(`{{${token}}}`).join(values[token]);
+  return out;
+}
+function plannedFiles(shared, unit) {
+  const planned = /* @__PURE__ */ new Map();
+  const excluded = /* @__PURE__ */ new Set();
+  for (const source of sourceFiles(shared)) {
+    const relative = import_node_path73.default.relative(shared, source).split(import_node_path73.default.sep).join("/").split("__UNIT_ID__").join(unit.id);
+    if (unit.exclude.some((pattern) => fnmatch(relative, pattern))) {
+      excluded.add(relative);
+      continue;
+    }
+    const executable = (import_node_fs65.default.statSync(source).mode & S_IXUSR) !== 0;
+    if (relative === MANIFEST) throw new RegistryError(`${source}: reserved deployment manifest cannot be a shared source`);
+    planned.set(relative, { text: render2(readText3(source), unit), executable });
+  }
+  return { planned, excluded };
+}
+function collisions(unit, planned, previous) {
+  const found = [];
+  for (const [relative, { text: text4 }] of planned) {
+    const target = import_node_path73.default.join(unit.root, relative);
+    if (!previous.has(relative) && import_node_fs65.default.existsSync(target) && import_node_fs65.default.statSync(target).isFile() && readText3(target) !== text4) {
+      found.push(`collision: ${unit.path}/${relative} — 단위 파일과 겹친다. 원본 이름을 바꾸거나 --adopt 로 덮어쓴다`);
+    }
+  }
+  return found;
+}
+function stale(previous, planned, excluded) {
+  return sortedStrings([...previous].filter((x) => !planned.has(x) && !excluded.has(x)));
+}
+function plannedState(text4, executable, original) {
+  const mode = original ? original.mode : 420;
+  return { sha256: sha(text4), mode: executable ? mode | EXEC_BITS : mode & ~EXEC_BITS, executable };
+}
+function manifestText(unit, planned, originals) {
+  const deployed = {};
+  for (const relative of sortedStrings(planned.keys())) {
+    const p = planned.get(relative);
+    deployed[relative] = plannedState(p.text, p.executable, originals.get(relative) ?? null);
+  }
+  const manifest = { unit: unit.id, title: unit.title, stack: unit.stack, source: SHARED, shared: sortedStrings(planned.keys()), deployed };
+  return `${JSON.stringify(manifest, null, 2)}
+`;
+}
+function insideAny(target, others) {
+  return others.some((o3) => target === o3 || target.startsWith(o3 + import_node_path73.default.sep));
+}
+function previousShared(unit, others) {
+  const file = import_node_path73.default.join(unit.root, MANIFEST);
+  validatePath(unit.root, file);
+  if (!import_node_fs65.default.existsSync(file) || !import_node_fs65.default.statSync(file).isFile()) return /* @__PURE__ */ new Set();
+  let shared;
+  try {
+    shared = JSON.parse(readText3(file)).shared ?? [];
+  } catch (err) {
+    throw new RegistryError(`${unit.path}/${MANIFEST}: invalid JSON: ${err instanceof Error ? err.message : String(err)}`);
+  }
+  if (!Array.isArray(shared)) throw new RegistryError(`${unit.path}/${MANIFEST}: shared must be a list`);
+  for (const relative of shared) {
+    if (typeof relative !== "string" || !relative || import_node_path73.default.isAbsolute(relative) || relative.split("/").includes("..")) {
+      throw new RegistryError(`${unit.path}/${MANIFEST}: invalid shared path ${JSON.stringify(relative)}`);
+    }
+    const target = import_node_path73.default.resolve(unit.root, relative);
+    if (!(target === unit.root || target.startsWith(unit.root + import_node_path73.default.sep)) || insideAny(target, others)) {
+      throw new RegistryError(`${unit.path}/${MANIFEST}: shared path leaves the harness: ${relative}`);
+    }
+  }
+  return new Set(shared);
+}
+function differences(plan) {
+  const { unit, planned, excluded, previous } = plan;
+  const problems = [];
+  for (const [relative, { text: text4, executable }] of planned) {
+    const target = import_node_path73.default.join(unit.root, relative);
+    const label2 = `${unit.path}/${relative}`;
+    if (!import_node_fs65.default.existsSync(target) || !import_node_fs65.default.statSync(target).isFile()) problems.push(`missing: ${label2}`);
+    else if (readText3(target) !== text4) problems.push(`differs: ${label2}`);
+    else if (executable !== ((import_node_fs65.default.statSync(target).mode & S_IXUSR) !== 0)) problems.push(`mode differs: ${label2}`);
+  }
+  for (const relative of stale(previous, planned, excluded)) if (import_node_fs65.default.existsSync(import_node_path73.default.join(unit.root, relative))) problems.push(`stale: ${unit.path}/${relative}`);
+  for (const relative of sortedStrings([...previous].filter((x) => excluded.has(x)))) problems.push(`excluded: ${unit.path}/${relative} — 배포 목록에서만 뺀다(파일은 남는다)`);
+  const manifest = import_node_path73.default.join(unit.root, MANIFEST);
+  if (!import_node_fs65.default.existsSync(manifest) || readText3(manifest) !== manifestText(unit, planned, collectStates(unit.root, planned.keys()))) problems.push(`differs: ${unit.path}/${MANIFEST}`);
+  return problems;
+}
+function selectUnits(all, selected) {
+  const known = new Set(all.map((u) => u.id));
+  const unknown = sortedStrings(selected.filter((x) => !known.has(x)));
+  if (unknown.length) throw new RegistryError(`unknown unit: ${unknown.join(", ")} (known: ${sortedStrings(known).join(", ")})`);
+  return all.filter((u) => selected.length === 0 || selected.includes(u.id));
+}
+function buildPlans(repo, all, units) {
+  const shared = import_node_path73.default.join(repo, SHARED);
+  const roots = new Map(all.map((u) => [u.id, u.root]));
+  return units.map((unit) => {
+    const others = [...roots].filter(([id, root]) => id !== unit.id && root !== unit.root && (root === unit.root || root.startsWith(unit.root + import_node_path73.default.sep))).map(([, r]) => r);
+    const { planned, excluded } = plannedFiles(shared, unit);
+    const previous = previousShared(unit, others);
+    for (const relative of planned.keys()) {
+      if (insideAny(import_node_path73.default.join(unit.root, relative), others)) throw new RegistryError(`${import_node_path73.default.join(unit.root, relative)}: shared path leaves the harness`);
+    }
+    return { unit, planned, excluded, previous };
+  });
+}
+function deployedOf(unit) {
+  const file = import_node_path73.default.join(unit.root, MANIFEST);
+  if (!import_node_fs65.default.existsSync(file)) return {};
+  const d = JSON.parse(readText3(file)).deployed;
+  if (d === void 0) return {};
+  if (!d || typeof d !== "object" || Array.isArray(d)) throw new RegistryError(`${file}: deployed must be an object`);
+  return d;
+}
+var matchesPlan = (actual, desired) => !desired ? actual === null : actual !== null && actual.sha256 === sha(desired.text) && (actual.mode & S_IXUSR) !== 0 === desired.executable;
+var matchesDeployment = (actual, rec) => actual !== null && !!rec && actual.sha256 === rec.sha256 && (actual.mode & S_IXUSR) !== 0 === rec.executable && actual.mode === (rec.mode ?? actual.mode);
+function applyPlan2(repo, plan, adopt) {
+  const { unit, planned, excluded, previous } = plan;
+  const root = unit.root;
+  const expected = collectStates(repo, [...planned.keys(), ...previous, MANIFEST].map((r) => import_node_path73.default.relative(repo, import_node_path73.default.join(root, r)).split(import_node_path73.default.sep).join("/")));
+  const stateOf2 = (relative) => expected.get(import_node_path73.default.relative(repo, import_node_path73.default.join(root, relative)).split(import_node_path73.default.sep).join("/")) ?? null;
+  const deployed = deployedOf(unit);
+  const result = { unit: unit.id, shared: planned.size, changed: 0, kept: [], removedKept: [] };
+  const finalState = /* @__PURE__ */ new Map();
+  for (const [relative, { text: text5, executable }] of planned) {
+    const original = stateOf2(relative);
+    const rel2 = import_node_path73.default.relative(repo, import_node_path73.default.join(root, relative)).split(import_node_path73.default.sep).join("/");
+    const desired = plannedState(text5, executable, original);
+    if (original && original.sha256 === desired.sha256 && original.mode === desired.mode) {
+      finalState.set(relative, original);
+      import_node_fs65.default.rmSync(import_node_path73.default.join(root, `${relative}.new`), { force: true });
+      continue;
+    }
+    const managed = previous.has(relative);
+    const local = original !== null && (managed ? deployed[relative] ? !matchesDeployment(original, deployed[relative]) : !matchesPlan(original, { text: text5, executable }) : !adopt && readText3(import_node_path73.default.join(root, relative)) !== text5);
+    if (local) {
+      atomicWrite2(repo, `${rel2}.new`, text5, desired.mode, fileState2(repo, `${rel2}.new`));
+      result.kept.push(relative);
+      finalState.set(relative, original);
+      continue;
+    }
+    atomicWrite2(repo, rel2, text5, desired.mode, original);
+    import_node_fs65.default.rmSync(import_node_path73.default.join(root, `${relative}.new`), { force: true });
+    result.changed += 1;
+    finalState.set(relative, fileState2(repo, rel2));
+  }
+  for (const relative of stale(previous, planned, excluded)) {
+    const rel2 = import_node_path73.default.relative(repo, import_node_path73.default.join(root, relative)).split(import_node_path73.default.sep).join("/");
+    const original = stateOf2(relative);
+    if (original === null) continue;
+    if (!deployed[relative] || !matchesDeployment(original, deployed[relative])) {
+      result.removedKept.push(relative);
+      continue;
+    }
+    safeUnlink(repo, rel2, original);
+    result.changed += 1;
+  }
+  const manifestRel = import_node_path73.default.relative(repo, import_node_path73.default.join(root, MANIFEST)).split(import_node_path73.default.sep).join("/");
+  const originals = new Map([...planned.keys()].map((r) => [r, stateOf2(r)]));
+  const text4 = manifestText(unit, planned, originals);
+  const manifestOriginal = stateOf2(MANIFEST);
+  if (manifestOriginal === null || manifestOriginal.sha256 !== sha(text4)) atomicWrite2(repo, manifestRel, text4, manifestOriginal ? manifestOriginal.mode : 420, manifestOriginal);
+  writeUnitLock(repo, plan, finalState);
+  return result;
+}
+function writeUnitLock(repo, plan, finalState) {
+  const { unit, planned } = plan;
+  const lockRel = import_node_path73.default.relative(repo, import_node_path73.default.join(unit.root, ".agents/harness-kit.lock")).split(import_node_path73.default.sep).join("/");
+  const file = import_node_path73.default.join(repo, lockRel);
+  const layer = `unit:${unit.id}`;
+  let lock = { schema: LOCK_SCHEMA, kit: { version: null, source: null }, packs: [], entries: [] };
+  if (import_node_fs65.default.existsSync(file)) {
+    const read2 = readLock(file);
+    if (read2.status !== "ok" || read2.format !== "v2") return;
+    lock = read2.lock;
+  }
+  const others = lock.entries.filter((e) => e.layer !== layer);
+  const taken = new Set(others.map((e) => e.path));
+  const mine = [];
+  for (const relative of sortedStrings(planned.keys())) {
+    if (taken.has(relative)) continue;
+    const st = finalState.get(relative);
+    mine.push({ path: relative, op: "copy", owner: "kit", sha256: st ? st.sha256 : null, layer });
+  }
+  const text4 = serializeLock({ ...lock, entries: [...others, ...mine] });
+  const before = fileState2(repo, lockRel);
+  if (before === null || before.sha256 !== sha(text4)) atomicWrite2(repo, lockRel, text4, before ? before.mode : 420, before);
+}
+
+// src/modules/units/sync.ts
+function runSyncUnits(ctx) {
+  const cwd = targetOf(ctx);
+  const repo = import_node_fs66.default.existsSync(cwd) ? import_node_fs66.default.realpathSync(cwd) : cwd;
+  const check3 = bool(ctx.values, "check");
+  const adopt = bool(ctx.values, "adopt");
+  if (check3 && adopt) throw new CliError(EXIT.USAGE, "sync units: --check 와 --adopt 는 같이 쓰지 않는다");
+  if (!import_node_fs66.default.existsSync(import_node_path74.default.join(repo, REGISTRY))) {
+    throw new CliError(EXIT.STATE, `배포 단위 목록이 없다: ${REGISTRY}`, "multi-harness 모듈을 켠다(harness-kit add multi-harness)");
+  }
+  try {
+    const all = loadUnits(repo, import_node_path74.default.join(repo, REGISTRY));
+    const units = selectUnits(all, list(ctx.values, "unit"));
+    const plans = buildPlans(repo, all, units);
+    const clashes = adopt ? [] : plans.flatMap((p) => collisions(p.unit, p.planned, p.previous));
+    if (check3) {
+      const problems = [...plans.flatMap((p) => differences(p)), ...clashes];
+      if (problems.length) {
+        ctx.io.stderr("✖ 공통 하네스 파일이 원본과 다릅니다. tools/harness/shared 를 고치고 npx harness-kit sync units 를 실행하십시오.\n");
+        return { code: EXIT.CHECK, data: { check: true, ok: false, problems, units: plans.length }, lines: problems };
+      }
+      return { code: EXIT.OK, data: { check: true, ok: true, problems: [], units: plans.length }, lines: [`공통 하네스 파일 일치 — 단위 ${plans.length}개`] };
+    }
+    if (bool(ctx.values, "dry-run")) {
+      const problems = [...plans.flatMap((p) => differences(p)), ...clashes];
+      return { code: EXIT.OK, data: { dryRun: true, problems, units: plans.length }, lines: [...problems, `(--dry-run) 쓰지 않았다 — 단위 ${plans.length}개`] };
+    }
+    const results = withDeploymentLock(repo, () => plans.map((p) => applyPlan2(repo, p, adopt)));
+    const lines3 = [];
+    for (const r of results) {
+      lines3.push(`${r.unit}: ${r.shared} shared files, ${r.changed} written or removed`);
+      for (const k of r.kept) lines3.push(`  .new: ${r.unit}/${k}.new — 단위에서 고친 파일이라 덮지 않고 옆에 두었다`);
+      for (const k of r.removedKept) lines3.push(`  kept: ${r.unit}/${k} — 원본에서 사라졌지만 단위에서 고쳐 지우지 않았다`);
+    }
+    const held = results.some((r) => r.kept.length || r.removedKept.length);
+    return { code: held ? EXIT.HUMAN : EXIT.OK, data: { check: false, units: results }, lines: lines3 };
+  } catch (err) {
+    if (err instanceof SafetyError) {
+      ctx.io.stderr(`✖ ${err.message}
+중단했다. 실행 중 변경이면 앞서 배포된 파일은 남을 수 있다.
+`);
+      return { code: EXIT.CHECK, data: { error: err.message }, lines: [] };
+    }
+    if (err instanceof RegistryError) throw new CliError(EXIT.USAGE, err.message);
+    throw err;
+  }
+}
+
+// src/commands/sync.ts
+async function runSync(ctx) {
   const [what, ...extra] = ctx.positionals;
-  if (!what) throw usageError("sync: 무엇을 가져올지 없다", "harness-kit sync aidlc [--intent <폴더>] [--check]");
+  if (!what) throw usageError("sync: 무엇을 맞출지 없다", "harness-kit sync aidlc | jira | units");
   if (extra.length) throw usageError(`sync: 위치 인자가 많다: ${extra.join(" ")}`);
-  if (Object.hasOwn(LATER2, what)) throw usageError(`'sync ${what}' 는 아직 없다 — ${LATER2[what]}에서 제공한다`);
-  if (what !== "aidlc") throw usageError(`sync: 모르는 대상 ${what}`, "sync aidlc");
-  return runSyncAidlc(ctx);
+  if (what === "aidlc") return runSyncAidlc(ctx);
+  if (what === "jira") return runSyncJira(ctx);
+  if (what === "units") return runSyncUnits(ctx);
+  throw usageError(`sync: 모르는 대상 ${what}`, "sync aidlc | jira | units");
 }
 
 // src/commands/skills.ts
 var STAGE_KO = { design: "설계", implement: "구현", verify: "검증", docs: "반영", ops: "운영" };
 var SOURCE_KO = { map: "지도", metadata: "머리", 추정: "추정" };
-var pad = (s, n) => s.length >= n ? `${s} ` : s.padEnd(n);
+var pad = (s3, n) => s3.length >= n ? `${s3} ` : s3.padEnd(n);
 function skillLines(d, stage) {
   const roots = d.roots ?? [];
   const skills = d.skills ?? [];
@@ -14633,12 +16234,12 @@ function skillLines(d, stage) {
   lines3.push(`스킬 ${String(d.shown ?? skills.length)}개(전체 ${String(d.total ?? skills.length)}) — 하네스: ${harnesses.join(" · ")}`);
   if (skills.length) {
     lines3.push(`${pad("이름", 34)} ${pad("단계", 12)} ${pad("출처", 8)} ${harnesses.map((h) => pad(h, 8)).join("")}위치`);
-    for (const s of skills) {
+    for (const s3 of skills) {
       const want = stage ? STAGE_ALIAS[stage] ?? stage : null;
-      const st = want ? s.stages.find((x) => x.stage === want) : s.stages[0];
+      const st = want ? s3.stages.find((x) => x.stage === want) : s3.stages[0];
       const stText = st ? `${STAGE_KO[st.stage] ?? st.stage}${st.slot ? `/${st.slot}` : ""}` : "미분류";
-      const overlap = conflicts.some((c) => c.name === s.id) ? " (이름 겹침)" : "";
-      lines3.push(`${pad(s.id, 34)} ${pad(stText, 12)} ${pad(SOURCE_KO[st?.source ?? ""] ?? "-", 8)} ${harnesses.map((h) => pad(s.harnesses[h] ?? "no", 8)).join("")}${s.locations[0]?.path ?? ""}${overlap}${s.error ? ` [오류: ${s.error}]` : ""}`);
+      const overlap = conflicts.some((c) => c.name === s3.id) ? " (이름 겹침)" : "";
+      lines3.push(`${pad(s3.id, 34)} ${pad(stText, 12)} ${pad(SOURCE_KO[st?.source ?? ""] ?? "-", 8)} ${harnesses.map((h) => pad(s3.harnesses[h] ?? "no", 8)).join("")}${s3.locations[0]?.path ?? ""}${overlap}${s3.error ? ` [오류: ${s3.error}]` : ""}`);
     }
   }
   if (conflicts.length) lines3.push("이름 겹침", ...conflicts.map((c) => `  ${c.name}: ${c.candidates.join(" · ")}`));
@@ -14660,11 +16261,11 @@ async function runUsage(ctx) {
   const v = ctx.values;
   if (bool(v, "kit")) {
     return run3(ctx, "GET", "/usage/kit", {}, (d) => {
-      const s = d.sessionStart;
+      const s3 = d.sessionStart;
       const hooks = d.hooks ?? [];
       const mods = d.modules ?? [];
       return [
-        `세션 시작 평균 ${s.avgBytes} / ${s.limit}바이트 ${s.within ? "(상한 안)" : "(상한 넘음)"}`,
+        `세션 시작 평균 ${s3.avgBytes} / ${s3.limit}바이트 ${s3.within ? "(상한 안)" : "(상한 넘음)"}`,
         ...hooks.map((h) => `  ${pad(h.event, 14)} ${pad(h.hook, 30)} ${String(h.count).padStart(5)}회 평균 ${h.avgBytes} 최대 ${h.maxBytes}바이트`),
         ...mods.map((m) => `  owner ${pad(m.owner, 16)} 세션마다 실리는 파일 ${m.files}개 ${m.bytes}바이트`)
       ];
@@ -14673,9 +16274,9 @@ async function runUsage(ctx) {
   if (bool(v, "now")) {
     return run3(ctx, "GET", "/usage/now", {}, (d) => {
       if (d.enabled === false) return ['대화 기록 읽기가 꺼져 있다 — ~/.config/harness-kit/config.json 에 "history": "on"'];
-      const s = d.session;
-      if (!s) return ["이 리포의 최근 세션 기록이 없다"];
-      return [`${s.id} · ${s.model ?? "모델 모름"} · 컨텍스트 ${fmt2(s.used)}${s.window ? ` / ${fmt2(s.window)} (${Math.round((s.ratio ?? 0) * 100)}%)` : " (창 크기: 기록에 없다)"}${s.warn ? " · 알림 기준을 넘었다" : ""}${s.issue ? ` · ${s.issue}` : ""}`];
+      const s3 = d.session;
+      if (!s3) return ["이 리포의 최근 세션 기록이 없다"];
+      return [`${s3.id} · ${s3.model ?? "모델 모름"} · 컨텍스트 ${fmt2(s3.used)}${s3.window ? ` / ${fmt2(s3.window)} (${Math.round((s3.ratio ?? 0) * 100)}%)` : " (창 크기: 기록에 없다)"}${s3.warn ? " · 알림 기준을 넘었다" : ""}${s3.issue ? ` · ${s3.issue}` : ""}`];
     });
   }
   const query = {};
@@ -14683,7 +16284,7 @@ async function runUsage(ctx) {
   if (str(v, "harness")) query.harness = str(v, "harness");
   return run3(ctx, "GET", "/usage", { query }, (d) => {
     const sources = d.sources ?? [];
-    const srcLines = sources.map((s) => `  ${pad(s.label, 36)} ${pad(s.state, 5)} 파일 ${s.files} 세션 ${s.sessions}${s.unreadable ? ` 읽지 못함 ${s.unreadable}` : ""}${s.note ? ` · ${s.note}` : ""}`);
+    const srcLines = sources.map((s3) => `  ${pad(s3.label, 36)} ${pad(s3.state, 5)} 파일 ${s3.files} 세션 ${s3.sessions}${s3.unreadable ? ` 읽지 못함 ${s3.unreadable}` : ""}${s3.note ? ` · ${s3.note}` : ""}`);
     if (bool(v, "sources")) return ["읽는 곳", ...srcLines];
     if (d.enabled === false) return ['대화 기록 읽기가 꺼져 있다(기본). 켜려면 사람이 ~/.config/harness-kit/config.json 에 "history": "on" 을 쓴다', ...srcLines];
     const t = d.totals;
@@ -14705,14 +16306,14 @@ async function runHistory(ctx) {
   const query = {};
   for (const k of ["q", "session", "role"]) if (str(ctx.values, k)) query[k] = str(ctx.values, k);
   return run3(ctx, "GET", "/history", { query }, (d) => {
-    const list3 = d.prompts ?? [];
-    return list3.length ? [`프롬프트 ${String(d.total)}건 중 ${list3.length}건`, ...list3.map((x) => `${x.at.slice(0, 16).replace("T", " ")} ${pad(x.harness, 7)} ${pad(x.issue ?? "-", 12)} ${x.text.replace(/\s+/g, " ").slice(0, 100)}`)] : ["프롬프트 기록이 없다"];
+    const list4 = d.prompts ?? [];
+    return list4.length ? [`프롬프트 ${String(d.total)}건 중 ${list4.length}건`, ...list4.map((x) => `${x.at.slice(0, 16).replace("T", " ")} ${pad(x.harness, 7)} ${pad(x.issue ?? "-", 12)} ${x.text.replace(/\s+/g, " ").slice(0, 100)}`)] : ["프롬프트 기록이 없다"];
   });
 }
 
 // src/commands/status.ts
-var import_node_fs61 = __toESM(require("node:fs"));
-var import_node_path69 = __toESM(require("node:path"));
+var import_node_fs67 = __toESM(require("node:fs"));
+var import_node_path75 = __toESM(require("node:path"));
 function registryProjects(ctx) {
   const home = homeOf(ctx);
   return new Projects(() => readRegistry(home, ctx.io.env), { env: ctx.io.env, home, readOnly: true, multi: true, deps: dashboardDeps() });
@@ -14729,8 +16330,8 @@ function overviewLines(d) {
   ];
 }
 function issueLines(d) {
-  const list3 = d.issues ?? [];
-  return list3.length ? list3.map((i) => `${i.key.padEnd(12)} ${i.stage.padEnd(13)} ${(i.area ?? "").padEnd(12)} ${i.source.padEnd(8)} ${i.name}`) : ["이슈 없음"];
+  const list4 = d.issues ?? [];
+  return list4.length ? list4.map((i) => `${i.key.padEnd(12)} ${i.stage.padEnd(13)} ${(i.area ?? "").padEnd(12)} ${i.source.padEnd(8)} ${i.name}`) : ["이슈 없음"];
 }
 async function runStatus(ctx) {
   const v = ctx.values;
@@ -14761,14 +16362,14 @@ async function runStatus(ctx) {
 async function runSessions(ctx) {
   if (bool(ctx.values, "machine")) {
     const p = await openProject(ctx).catch(() => null);
-    const list3 = (await registryProjects(ctx).list()).map((s) => s.project).filter((x) => x !== null);
-    if (p && !list3.some((x) => x.id === p.id)) list3.unshift(p);
-    const data = await machineSessions(list3);
+    const list4 = (await registryProjects(ctx).list()).map((s3) => s3.project).filter((x) => x !== null);
+    if (p && !list4.some((x) => x.id === p.id)) list4.unshift(p);
+    const data = await machineSessions(list4);
     return { code: EXIT.OK, data, lines: jsonLines(data) };
   }
   return run3(ctx, "GET", "/sessions", {}, (d) => {
-    const list3 = d.sessions ?? [];
-    return list3.length ? list3.map((s) => `${s.id.padEnd(20)} ${String(s.harness).padEnd(7)} ${String(s.role).padEnd(10)} ${String(s.issue ?? "—").padEnd(12)} ${s.state.padEnd(15)} ${String(s.turn)}${s.permissionMode === "bypassPermissions" ? " · bypassPermissions(요청이 사람 승인 없이 돈다)" : ""}`) : ["등록된 세션이 없다"];
+    const list4 = d.sessions ?? [];
+    return list4.length ? list4.map((s3) => `${s3.id.padEnd(20)} ${String(s3.harness).padEnd(7)} ${String(s3.role).padEnd(10)} ${String(s3.issue ?? "—").padEnd(12)} ${s3.state.padEnd(15)} ${String(s3.turn)}${s3.permissionMode === "bypassPermissions" ? " · bypassPermissions(요청이 사람 승인 없이 돈다)" : ""}`) : ["등록된 세션이 없다"];
   });
 }
 async function runQuality(ctx) {
@@ -14789,8 +16390,8 @@ async function runFlow(ctx) {
   const remove = str(ctx.values, "remove");
   if (add === void 0 && remove === void 0) return run3(ctx, "GET", "/flow/gates", {}, (d) => [`게이트: ${d.gates.join(" → ")}`, `바닥(줄일 수 없음): ${d.floor.join(" · ")}`]);
   const p = await openProject(ctx);
-  const file = import_node_path69.default.join(p.root, ".agents/harness-kit.json");
-  const meta = JSON.parse(import_node_fs61.default.readFileSync(file, "utf8"));
+  const file = import_node_path75.default.join(p.root, ".agents/harness-kit.json");
+  const meta = JSON.parse(import_node_fs67.default.readFileSync(file, "utf8"));
   const flow2 = meta.flow && typeof meta.flow === "object" ? meta.flow : {};
   let gates = p.gates();
   if (remove !== void 0) {
@@ -14806,15 +16407,15 @@ async function runFlow(ctx) {
   }
   const next = { ...meta, flow: { ...flow2, gates } };
   const tmp = `${file}.${process.pid}.tmp`;
-  import_node_fs61.default.writeFileSync(tmp, formatJson(next));
-  import_node_fs61.default.renameSync(tmp, file);
+  import_node_fs67.default.writeFileSync(tmp, formatJson(next));
+  import_node_fs67.default.renameSync(tmp, file);
   return { code: EXIT.OK, data: { gates, floor: GATE_FLOOR, file: ".agents/harness-kit.json" }, lines: [`flow.gates: ${gates.join(" → ")}`, "팀 설정이다. MR 로 올린다"] };
 }
 
 // src/commands/uninstall.ts
 var import_node_child_process11 = require("node:child_process");
-var import_node_fs62 = __toESM(require("node:fs"));
-var import_node_path70 = __toESM(require("node:path"));
+var import_node_fs68 = __toESM(require("node:fs"));
+var import_node_path76 = __toESM(require("node:path"));
 var ACTIONS2 = ["delete", "keep-modified", "absent", "keep-user", "keep-external", "keep-pack", "unmerge"];
 var COUNT_ONLY = /* @__PURE__ */ new Set(["absent", "keep-user", "keep-external", "keep-pack"]);
 var HOOKS_PATH = "scripts/git-hooks";
@@ -14829,12 +16430,12 @@ function planMergeEntry(p, e) {
     p.ops.push({ path: e.path, owner: e.owner, action: "keep-modified", reason: "병합 파일을 해석하지 못했다" });
     return;
   }
-  const text3 = cur.bytes.toString("utf8");
+  const text4 = cur.bytes.toString("utf8");
   const want = fullMergeWant(kind, p.spec, p.tokens, loadSources(new FsView(p.target)));
-  const r = unmergeWith(kind, text3, mergeKeysOf(e, kind, want), want);
+  const r = unmergeWith(kind, text4, mergeKeysOf(e, kind, want), want);
   if (!r.ok) p.ops.push({ path: e.path, owner: e.owner, action: "keep-modified", reason: r.reason });
   else if (r.empty && e.createdByKit === true) p.ops.push({ path: e.path, owner: e.owner, action: "delete", reason: "킷 키만 있던 병합 파일" });
-  else p.ops.push({ path: e.path, owner: e.owner, action: "unmerge", reason: "킷 키만 뺐다", ...r.text === text3 ? {} : { text: r.text } });
+  else p.ops.push({ path: e.path, owner: e.owner, action: "unmerge", reason: "킷 키만 뺐다", ...r.text === text4 ? {} : { text: r.text } });
 }
 function mergeKeysOf(e, kind, want) {
   if (Array.isArray(e.keys)) return e.keys;
@@ -14855,7 +16456,7 @@ function planProjectionEntry(p, e) {
   if (!dir && cur.kind !== "other" && current3(p, `${e.path}.new`).kind === "file") p.ops.push({ path: `${e.path}.new`, owner: e.owner, action: "delete", reason: "update 가 둔 .new" });
 }
 function full10(target, rel2) {
-  return import_node_path70.default.join(target, ...rel2.split("/"));
+  return import_node_path76.default.join(target, ...rel2.split("/"));
 }
 function current3(p, rel2) {
   if (p.ancestors.state(rel2) === "blocked") return { kind: "other", what: BLOCKED };
@@ -14898,9 +16499,9 @@ function planManifest(p, inst) {
   else p.ops.push({ path: MANIFEST_PATH, owner: "kit", action: "keep-modified", reason: "킷 판과 다르다" });
 }
 function uninstallSpec(ctx, target) {
-  const installed = import_node_path70.default.join(target, "scripts/harness/projection.json");
+  const installed = import_node_path76.default.join(target, "scripts/harness/projection.json");
   try {
-    if (import_node_fs62.default.existsSync(installed)) return parseSpec(import_node_fs62.default.readFileSync(installed, "utf8"));
+    if (import_node_fs68.default.existsSync(installed)) return parseSpec(import_node_fs68.default.readFileSync(installed, "utf8"));
     const { io: io2 } = ctx;
     return loadSpecOrNull(locateTemplates({ flag: str(ctx.values, "templates"), env: io2.env, cliFile: io2.cliFile, cwd: io2.cwd, version: VERSION }).dir);
   } catch (err) {
@@ -14909,18 +16510,18 @@ function uninstallSpec(ctx, target) {
   }
 }
 function planNotice2(p) {
-  const file = import_node_path70.default.join(p.target, ...NOTICE_REL.split("/"));
-  let text3;
+  const file = import_node_path76.default.join(p.target, ...NOTICE_REL.split("/"));
+  let text4;
   try {
-    text3 = import_node_fs62.default.readFileSync(file, "utf8");
+    text4 = import_node_fs68.default.readFileSync(file, "utf8");
   } catch {
     return;
   }
-  if (isKitNotice(text3)) p.ops.push({ path: NOTICE_REL, owner: "kit", action: "delete", reason: "업그레이드 공지" });
+  if (isKitNotice(text4)) p.ops.push({ path: NOTICE_REL, owner: "kit", action: "delete", reason: "업그레이드 공지" });
 }
 function buildUninstall(ctx, target, inst, keepPacks, keepState, ambiguous) {
   const spec = inst.lock.entries.some((e) => e.op === "merge") ? uninstallSpec(ctx, target) : null;
-  const p = { target, ancestors: new AncestorCheck(target, import_node_fs62.default.realpathSync(target)), keepPacks, ops: [], ambiguous, spec, tokens: inst.meta.tokens };
+  const p = { target, ancestors: new AncestorCheck(target, import_node_fs68.default.realpathSync(target)), keepPacks, ops: [], ambiguous, spec, tokens: inst.meta.tokens };
   for (const e of inst.lock.entries) planEntry(p, e);
   planManifest(p, inst);
   planNotice2(p);
@@ -14934,11 +16535,11 @@ function unhookGit(target, env, dryRun) {
   if (top.status !== 0) return { status: "none" };
   let topReal;
   try {
-    topReal = import_node_fs62.default.realpathSync(top.stdout.trim());
+    topReal = import_node_fs68.default.realpathSync(top.stdout.trim());
   } catch {
     return { status: "none" };
   }
-  if (topReal !== import_node_fs62.default.realpathSync(target)) return { status: "none" };
+  if (topReal !== import_node_fs68.default.realpathSync(target)) return { status: "none" };
   const get = git3("config", "--local", "--get", "core.hooksPath");
   if (get.status !== 0) return { status: "none" };
   const value2 = get.stdout.trim();
@@ -14950,17 +16551,17 @@ function applyUninstall(target, inst, ops, unhook) {
   const state = /* @__PURE__ */ new Set([LOCK_REL, META_REL]);
   let current4 = "";
   try {
-    for (const o of ops) {
-      current4 = o.path;
-      if (o.action === "unmerge" && o.text !== void 0) writeFileAtomic(import_node_path70.default.join(target, ...o.path.split("/")), Buffer.from(o.text, "utf8"), false);
-      if (o.action !== "delete" || state.has(o.path)) continue;
-      if (o.dir) removeTarget(target, o.path, true);
-      else removeFile(target, o.path);
+    for (const o3 of ops) {
+      current4 = o3.path;
+      if (o3.action === "unmerge" && o3.text !== void 0) writeFileAtomic(import_node_path76.default.join(target, ...o3.path.split("/")), Buffer.from(o3.text, "utf8"), false);
+      if (o3.action !== "delete" || state.has(o3.path)) continue;
+      if (o3.dir) removeTarget(target, o3.path, true);
+      else removeFile(target, o3.path);
     }
     current4 = "git hook 연결";
     unhook();
     for (const rel2 of [LOCK_REL, META_REL]) {
-      if (!ops.some((o) => o.path === rel2 && o.action === "delete")) continue;
+      if (!ops.some((o3) => o3.path === rel2 && o3.action === "delete")) continue;
       current4 = rel2;
       removeFile(target, rel2);
     }
@@ -14971,23 +16572,23 @@ function applyUninstall(target, inst, ops, unhook) {
   }
 }
 function counts(ops) {
-  const c = Object.fromEntries(ACTIONS2.map((a) => [a, 0]));
-  for (const o of ops) c[o.action] += 1;
+  const c = Object.fromEntries(ACTIONS2.map((a3) => [a3, 0]));
+  for (const o3 of ops) c[o3.action] += 1;
   return c;
 }
-var opLine4 = (o) => `  ${o.action.padEnd(13)} ${o.path}${o.reason ? `  ${o.reason}` : ""}`;
+var opLine4 = (o3) => `  ${o3.action.padEnd(13)} ${o3.path}${o3.reason ? `  ${o3.reason}` : ""}`;
 async function confirm(ctx, ops) {
   const { io: io2 } = ctx;
   const p = createPrompter(io2.stdin, io2.stderr);
   try {
-    const del = ops.filter((o) => o.action === "delete");
-    const keep = ops.filter((o) => o.action === "keep-modified");
+    const del = ops.filter((o3) => o3.action === "delete");
+    const keep = ops.filter((o3) => o3.action === "keep-modified");
     io2.stderr(`지울 파일 ${del.length}개${ctx.quiet ? "" : ":"}
 `);
-    if (!ctx.quiet) for (const o of del) io2.stderr(`${opLine4(o)}
+    if (!ctx.quiet) for (const o3 of del) io2.stderr(`${opLine4(o3)}
 `);
     if (keep.length) io2.stderr(`남길 파일(사람이 고침) ${keep.length}개:
-${keep.map((o) => `${opLine4(o)}
+${keep.map((o3) => `${opLine4(o3)}
 `).join("")}`);
     if (!await p.confirm("지울까?")) throw new CliError(EXIT.ABORT, "중단했다(아무것도 지우지 않았다)");
   } finally {
@@ -15026,14 +16627,14 @@ async function runUninstall(ctx) {
     gitHooks = unhookGit(target, io2.env, false);
   });
   const c = counts(ops);
-  const listed = ops.filter((o) => !COUNT_ONLY.has(o.action) && (o.action === "keep-modified" || dryRun && !ctx.quiet));
-  const keep = ops.filter((o) => o.action === "keep-modified").map((o) => o.path);
+  const listed = ops.filter((o3) => !COUNT_ONLY.has(o3.action) && (o3.action === "keep-modified" || dryRun && !ctx.quiet));
+  const keep = ops.filter((o3) => o3.action === "keep-modified").map((o3) => o3.path);
   const data = {
     command: "uninstall",
     target,
     dryRun,
     counts: c,
-    ops: listed.map((o) => ({ path: o.path, owner: o.owner, action: o.action, ...o.reason ? { reason: o.reason } : {} })),
+    ops: listed.map((o3) => ({ path: o3.path, owner: o3.owner, action: o3.action, ...o3.reason ? { reason: o3.reason } : {} })),
     keep,
     gitHooks,
     keepState
@@ -15051,8 +16652,8 @@ async function runUninstall(ctx) {
 }
 
 // src/commands/pack.ts
-var import_node_fs63 = __toESM(require("node:fs"));
-var import_node_path71 = __toESM(require("node:path"));
+var import_node_fs69 = __toESM(require("node:fs"));
+var import_node_path77 = __toESM(require("node:path"));
 var TEST_PY = `"""팩 자체 검사(설계 04 §3.2 검증) — 이 폴더에서 python3 -m unittest tests.test_pack 으로 돈다. 팩과 함께 설치하지 않는다."""
 
 import json
@@ -15099,8 +16700,8 @@ function defaultRange() {
   return m ? `>=${m[1]}.${m[2]}.0 <${Number(m[1]) + 1}.0.0` : ">=2.0.0 <3.0.0";
 }
 function reverseMap(layout2, dest) {
-  const segs = layout2.segments.filter((s) => s.harness === null && s.from !== "" && s.from !== "root/" && s.from.endsWith("/"));
-  const best = segs.filter((s) => dest.startsWith(s.to)).sort((a, b) => b.to.length - a.to.length)[0];
+  const segs = layout2.segments.filter((s3) => s3.harness === null && s3.from !== "" && s3.from !== "root/" && s3.from.endsWith("/"));
+  const best = segs.filter((s3) => dest.startsWith(s3.to)).sort((a3, b) => b.to.length - a3.to.length)[0];
   return best ? `common/${best.from}${dest.slice(best.to.length)}` : null;
 }
 function classify(dest, provides, name) {
@@ -15116,16 +16717,16 @@ function classify(dest, provides, name) {
   return true;
 }
 function filesUnder(target, rel2) {
-  const abs = import_node_path71.default.join(target, ...rel2.split("/"));
-  const st = import_node_fs63.default.lstatSync(abs);
+  const abs = import_node_path77.default.join(target, ...rel2.split("/"));
+  const st = import_node_fs69.default.lstatSync(abs);
   if (st.isSymbolicLink()) throw usageError(`--from 은 링크를 받지 않는다: ${rel2}`);
   if (st.isFile()) return [rel2];
-  return import_node_fs63.default.readdirSync(abs).sort(byteCompare).flatMap((n) => filesUnder(target, `${rel2}/${n}`));
+  return import_node_fs69.default.readdirSync(abs).sort(byteCompare).flatMap((n) => filesUnder(target, `${rel2}/${n}`));
 }
 function pickItem(target, rel2, id, key) {
   let doc;
   try {
-    doc = JSON.parse(import_node_fs63.default.readFileSync(import_node_path71.default.join(target, ...rel2.split("/")), "utf8"));
+    doc = JSON.parse(import_node_fs69.default.readFileSync(import_node_path77.default.join(target, ...rel2.split("/")), "utf8"));
   } catch (err) {
     throw usageError(`--from ${rel2}#${id}: 읽을 수 없다(${err instanceof Error ? err.message : String(err)})`);
   }
@@ -15142,10 +16743,10 @@ function runPack(ctx) {
   const dirFlag = str(ctx.values, "dir");
   if (!dirFlag) throw usageError("pack new 는 --dir <경로> 가 필요하다(빈 폴더나 없는 경로)");
   const target = targetOf(ctx);
-  const dir = import_node_path71.default.resolve(ctx.io.cwd, dirFlag);
-  const relToRepo = import_node_path71.default.relative(import_node_path71.default.join(target, ".agents"), dir);
-  if (!relToRepo.startsWith("..") && !import_node_path71.default.isAbsolute(relToRepo)) throw usageError(`--dir 은 리포 .agents/ 안일 수 없다: ${dir}`);
-  if (import_node_fs63.default.existsSync(dir) && (!import_node_fs63.default.statSync(dir).isDirectory() || import_node_fs63.default.readdirSync(dir).length)) throw usageError(`--dir 은 빈 폴더나 없는 경로다: ${dir}`);
+  const dir = import_node_path77.default.resolve(ctx.io.cwd, dirFlag);
+  const relToRepo = import_node_path77.default.relative(import_node_path77.default.join(target, ".agents"), dir);
+  if (!relToRepo.startsWith("..") && !import_node_path77.default.isAbsolute(relToRepo)) throw usageError(`--dir 은 리포 .agents/ 안일 수 없다: ${dir}`);
+  if (import_node_fs69.default.existsSync(dir) && (!import_node_fs69.default.statSync(dir).isDirectory() || import_node_fs69.default.readdirSync(dir).length)) throw usageError(`--dir 은 빈 폴더나 없는 경로다: ${dir}`);
   const inst = loadInstalled(target, "pack new");
   const loc = locateTemplates({ flag: str(ctx.values, "templates"), env: ctx.io.env, cliFile: ctx.io.cliFile, cwd: ctx.io.cwd, version: VERSION });
   const layout2 = loadLayout(loc.dir);
@@ -15179,7 +16780,7 @@ function runPack(ctx) {
       } else throw usageError(`--from <파일>#<id> 는 .agents/hooks.json · hooks.d · verify-checks.json · verify-checks.d 에만 쓴다: ${raw}`);
       continue;
     }
-    if (!import_node_fs63.default.existsSync(import_node_path71.default.join(target, ...rel2.split("/")))) throw usageError(`--from 파일이 없다: ${rel2}`);
+    if (!import_node_fs69.default.existsSync(import_node_path77.default.join(target, ...rel2.split("/")))) throw usageError(`--from 파일이 없다: ${rel2}`);
     for (const f of filesUnder(target, rel2)) {
       const packPath = reverseMap(layout2, f);
       if (!packPath) throw usageError(`팩이 가질 수 없는 경로다(하네스 파일 · 루트 문서): ${f}`, "원본(.agents/ · scripts/)을 준다");
@@ -15187,8 +16788,8 @@ function runPack(ctx) {
         overrides.push(f);
         warnings.push(`${f} 는 킷 경로다 — overrides 에 넣었다(킷 판을 덮는다)`);
       } else if (!classify(f, provides, name)) throw usageError(`provides 로 나눌 수 없는 경로다: ${f}`, "규칙 · 스킬 · 역할 · 가드 · scripts · _spec-templates · tools/<팩>/ 만 옮긴다");
-      const abs = import_node_path71.default.join(target, ...f.split("/"));
-      files.set(packPath, { data: import_node_fs63.default.readFileSync(abs), executable: (import_node_fs63.default.statSync(abs).mode & 73) !== 0 });
+      const abs = import_node_path77.default.join(target, ...f.split("/"));
+      files.set(packPath, { data: import_node_fs69.default.readFileSync(abs), executable: (import_node_fs69.default.statSync(abs).mode & 73) !== 0 });
     }
   }
   const range = str(ctx.values, "kit-range") ?? defaultRange();
@@ -15210,8 +16811,8 @@ function runPack(ctx) {
     ...files
   ]);
   try {
-    import_node_fs63.default.mkdirSync(import_node_path71.default.join(dir, "common"), { recursive: true });
-    for (const [rel2, f] of out) writeFileAtomic(import_node_path71.default.join(dir, ...rel2.split("/")), f.data, f.executable);
+    import_node_fs69.default.mkdirSync(import_node_path77.default.join(dir, "common"), { recursive: true });
+    for (const [rel2, f] of out) writeFileAtomic(import_node_path77.default.join(dir, ...rel2.split("/")), f.data, f.executable);
   } catch (err) {
     throw new CliError(EXIT.ENV, `팩 골격을 쓰지 못했다: ${err instanceof Error ? err.message : String(err)}`);
   }
@@ -15228,8 +16829,8 @@ function runPack(ctx) {
 }
 
 // src/commands/work.ts
-var import_node_fs64 = __toESM(require("node:fs"));
-var import_node_path72 = __toESM(require("node:path"));
+var import_node_fs70 = __toESM(require("node:fs"));
+var import_node_path78 = __toESM(require("node:path"));
 var ISSUE_ROLE = /^([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5}):([a-z][a-z0-9-]*)$/;
 async function runDispatch(ctx) {
   const [sub2, id, extra] = ctx.positionals;
@@ -15245,24 +16846,24 @@ async function runDispatch(ctx) {
   if (marker) throw new CliError(EXIT.STATE, `에이전트 세션에서는 다른 세션에 작업 요청을 보내지 않는다(판정: ${marker}) — 받는 세션이 턴을 돌려 토큰을 쓴다`, "사람이 자기 터미널이나 관리 페이지에서 고른다");
   const to = str(ctx.values, "to");
   if (!to) throw usageError("--to <세션 id | 키:역할 | 세션 이름> 이 필요하다");
-  const text3 = str(ctx.values, "text");
-  const kind = str(ctx.values, "kind") ?? (text3 ? "custom" : "doc-changed");
+  const text4 = str(ctx.values, "text");
+  const kind = str(ctx.values, "kind") ?? (text4 ? "custom" : "doc-changed");
   const m = ISSUE_ROLE.exec(to);
   const p = await openProject(ctx);
-  const isSession = import_node_fs64.default.existsSync(import_node_path72.default.join(p.root, ".agents/state/sessions", `${to}.json`));
+  const isSession = import_node_fs70.default.existsSync(import_node_path78.default.join(p.root, ".agents/state/sessions", `${to}.json`));
   const target = m ? { issue: m[1], role: m[2] } : isSession ? { sessionId: to } : { name: to };
   const via = str(ctx.values, "via");
   return run3(
     ctx,
     "POST",
     "/dispatch",
-    { project: p, body: { target, kind, paths: list(ctx.values, "path"), text: text3, ...via ? { via } : {} } },
+    { project: p, body: { target, kind, paths: list(ctx.values, "path"), text: text4, ...via ? { via } : {} } },
     (d) => d.method === "deeplink" ? [`deep link(새 터미널에서 Enter 는 사람이 누른다): ${String(d.url)}`] : d.method === "queue" ? [`대기함에 넣었다: ${String(d.id)} — 받는 세션의 다음 프롬프트 제출 때 보인다`] : ["세션 수신함 소켓에 보냈다(수신 확인 신호는 없다)"]
   );
 }
-function pair(s, flag) {
-  const m = /^(U-\d+):(U-\d+)$/.exec(s);
-  if (!m) throw usageError(`${flag} 는 U-a:U-b 다: ${s}`);
+function pair(s3, flag) {
+  const m = /^(U-\d+):(U-\d+)$/.exec(s3);
+  if (!m) throw usageError(`${flag} 는 U-a:U-b 다: ${s3}`);
   return [m[1], m[2]];
 }
 async function runUnits(ctx) {
@@ -15272,20 +16873,20 @@ async function runUnits(ctx) {
   const reason = str(ctx.values, "reason");
   const changes = [];
   const withReason = (c) => reason ? { ...c, reason } : c;
-  for (const s of list(ctx.values, "add-dep")) {
-    const [unit, dep] = pair(s, "--add-dep");
+  for (const s3 of list(ctx.values, "add-dep")) {
+    const [unit, dep] = pair(s3, "--add-dep");
     changes.push(withReason({ op: "add-dep", unit, dependsOn: dep }));
   }
-  for (const s of list(ctx.values, "remove-dep")) {
-    const [unit, dep] = pair(s, "--remove-dep");
+  for (const s3 of list(ctx.values, "remove-dep")) {
+    const [unit, dep] = pair(s3, "--remove-dep");
     changes.push(withReason({ op: "remove-dep", unit, dependsOn: dep }));
   }
-  for (const s of list(ctx.values, "split")) {
-    const m = /^(U-\d+)=(.+)$/.exec(s);
-    if (!m) throw usageError(`--split 는 U-n=제목1|제목2 다: ${s}`);
+  for (const s3 of list(ctx.values, "split")) {
+    const m = /^(U-\d+)=(.+)$/.exec(s3);
+    if (!m) throw usageError(`--split 는 U-n=제목1|제목2 다: ${s3}`);
     changes.push(withReason({ op: "split", unit: m[1], into: m[2].split("|").map((x) => x.trim()).filter(Boolean) }));
   }
-  for (const s of list(ctx.values, "merge")) changes.push(withReason({ op: "merge", units: s.split(",").map((x) => x.trim()) }));
+  for (const s3 of list(ctx.values, "merge")) changes.push(withReason({ op: "merge", units: s3.split(",").map((x) => x.trim()) }));
   const order = str(ctx.values, "order");
   if (order) changes.push(withReason({ op: "order", units: order.split(",").map((x) => x.trim()) }));
   if (!changes.length) throw usageError("바꿀 것이 없다(--add-dep · --remove-dep · --split · --merge · --order)");
@@ -15310,7 +16911,7 @@ async function runProjects(ctx) {
       return { code: EXIT.OK, data, lines: rows.length ? rows.map((r) => `${r.name.padEnd(24)} ${r.state === "ok" ? "" : `(${r.state}) `}${r.path}`) : ["등록한 프로젝트가 없다"] };
     }
     if (sub2 === "add" && arg && !extra) {
-      const r = addProject(home, import_node_path72.default.resolve(ctx.io.cwd, arg), today(ctx.io), ctx.io.env);
+      const r = addProject(home, import_node_path78.default.resolve(ctx.io.cwd, arg), today(ctx.io), ctx.io.env);
       return { code: EXIT.OK, data: { added: r.added, project: r.entry }, lines: [r.added ? `등록했다: ${r.entry.name} ${r.entry.path}` : `이미 있다: ${r.entry.name}`] };
     }
     if (sub2 === "remove" && arg && !extra) {
@@ -15381,15 +16982,15 @@ var USAGE2 = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 킷
   pack       pack new <이름> --dir <경로> --from <파일>… — 프로젝트 파일로 회사 팩 골격을 만든다
   local      local sync | list — 개인 층(.agents/local/)을 하네스 폴더에 배치한다(공유 lock 밖)
   mob        몹 정리 세션 start | next | close | status(진행자 터미널, 회차를 닫아도 세션에 요청하지 않는다)
-  sync       외부 도구 산출물 가져오기 — sync aidlc [--intent <AI-DLC 폴더>] [--check]
+  sync       맞추기 — sync aidlc [--intent <AI-DLC 폴더>] [--check] · sync jira [--approvals | --verify] · sync units [--check] [--unit <id>] [--adopt]
   checkpoints  Entire 체크포인트 목록 · 설명(entire 모듈을 켠 리포)
-  intake     요구사항 접수 — 글 · 첨부를 Intent 폴더(bug 는 이슈 폴더)로 받는다(신뢰하지 않는 입력으로 표시)
+  intake     요구사항 접수 — 글 · 첨부(--from jira:<키>|notion:<페이지> 면 외부 출처)를 Intent 폴더(bug 는 이슈 폴더)로 받는다(신뢰하지 않는 입력으로 표시)
 
 공통 플래그: --cwd <폴더> --dry-run --yes --json --templates <폴더> --quiet --no-color --help
 init · plan: --stack --arch --domain --lang --agents <목록|all> --modules <목록|all|none>
              --name --slug --package-ns --protected-path --token KEY=VALUE --issue-source kit|jira
              --issue-prefix --base --adopt --force --no-register(등록부에 더하지 않는다) --install-tools --allow-unverified(외부 도구 모듈 aidlc · entire 는 이름을 줄 때만 켠다)
-add · remove: <이름>…(하네스 claude codex cursor kiro · 모듈 jira-workflow multi-harness aidlc entire)
+add · remove: <이름>…(하네스 claude codex cursor kiro · 모듈 jira-workflow multi-harness aidlc entire notion)
              add: --install-tools(도구가 없을 때 사람 터미널에서만 설치) --allow-unverified(검증 범위 밖 도구 버전을 허용)
 dashboard: --port --open --read-only --export <폴더> --all --root <dir> --workspace <file> · 관리 페이지 명령은 harness-kit <명령> --help
 update: --accept-all --prune --forget <경로>(반복) --to <CLI 버전> --packs(메타 packs 의 팩만 받아 깐다) --tools(켠 외부 도구의 지금 · 최신 버전을 보이고 사람이 고른 것만 올린다 · --allow-unverified) · outdated: --check --source <git 원격>
@@ -15423,8 +17024,8 @@ var COMMAND_HELP = {
   skills: "harness-kit skills [--stage <단계>] [--harness <h>] [--conflicts] [--errors] [--all] [--no-user] [--refresh] [--json] — 읽기만 한다. 단계는 설계 · 구현 · 검증 · 반영 · 운영(영어도 된다)\n",
   usage: "harness-kit usage [--days n] [--harness h] [--sources] | usage --now | usage --kit [--json] — 대화 기록 읽기가 꺼져 있으면(기본) 킷이 덧붙인 양(--kit)만 보인다\n",
   pack: 'harness-kit pack new <이름> --dir <경로> [--from <파일|폴더>[#훅·검사 id]]… [--kit-range ">=2.0.0 <3.0.0"] [--json] — --dir 은 빈 폴더나 없는 경로\n',
-  intake: "harness-kit intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--area <영역>] [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]… [--json] — 비밀값이 든 글은 접수하지 않는다(exit 1)\n",
-  sync: "harness-kit sync aidlc [--intent <AI-DLC Intent 폴더>] [--key <Intent 키>] [--check] [--json] — AI-DLC 산출물을 intent.json · units.json 으로 옮긴다. 같은 입력이면 쓰지 않는다. --check 는 쓰지 않고 차이가 있으면 exit 1. sync units · jira 는 HK-20b\n",
+  intake: "harness-kit intake --from jira:<키>|notion:<페이지 URL|id> --name <영문-kebab> [--kind …] [--key <Intent 키>] [--depth n] [--yes] — 외부 출처를 같은 형식 · 제한 · 비밀값 검사로 가져온다. 이미 가져온 출처면 diff 만 보이고(exit 4) --yes 로 반영한다. 토큰은 환경 변수(JIRA_API_TOKEN · JIRA_USER_EMAIL · NOTION_TOKEN)만 읽는다\n  harness-kit intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--area <영역>] [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]… [--json] — 비밀값이 든 글은 접수하지 않는다(exit 1)\n",
+  sync: "harness-kit sync aidlc [--intent <AI-DLC Intent 폴더>] [--key <Intent 키>] [--check] [--json] — AI-DLC 산출물을 intent.json · units.json 으로 옮긴다. 같은 입력이면 쓰지 않는다. --check 는 쓰지 않고 차이가 있으면 exit 1. sync jira [--approvals | --verify] [--issue <키> --to <상태>] [--dry-run] — Jira 와 맞춘다(jira-workflow 모듈, 에이전트 몫 전이만 · 승인 전이는 하지 않는다. --approvals 는 사람이 한 승인 전이를 approvals.md 로 가져온다. 모듈이 꺼져 있으면 exit 0). sync units [--check] [--unit <id>] [--adopt] — 배포 단위(tools/harness/units.json)에 공통 하네스를 복사한다. --check 줄 형식은 tools/harness/sync.py 와 같다\n",
   checkpoints: "harness-kit checkpoints [--issue <키>] [--json] | checkpoints <체크포인트 id> [--json] — Entire 체크포인트 목록(이슈 브랜치 커밋의 Entire-Checkpoint 트레일러) · 설명(entire checkpoint explain, 10초 제한)\n",
   local: "harness-kit local sync [--dry-run] | local list [--json] — 개인 스킬 · Kiro 규칙 · 개인 훅(.claude/settings.local.json · .kiro/hooks/local-*). 공유 원본과 이름이 같으면 배치하지 않는다\n"
 };
@@ -15491,8 +17092,8 @@ async function main(argv2, io2) {
 
 // src/cli.ts
 var io = {
-  stdout: (s) => process.stdout.write(s),
-  stderr: (s) => process.stderr.write(s),
+  stdout: (s3) => process.stdout.write(s3),
+  stderr: (s3) => process.stderr.write(s3),
   env: process.env,
   cwd: process.cwd(),
   cliFile: __filename,
