@@ -175,6 +175,7 @@ class VerifyChangedTest(unittest.TestCase):
         subprocess.run(["git", "-C", str(self.root), *identity, "commit", "-q", "-am", "remove"], check=True, capture_output=True)
         plan = self.plan("--files", "tool/gone.sh")
         self.assertFalse([item for item in plan["incomplete"] if "unknown to git" in item], plan["incomplete"])
+        self.assertFalse([item for item in plan.get("unverified", []) if item.get("file") == "tool/gone.sh"], plan.get("unverified"))
 
     def test_test_path_that_git_never_had_is_not_treated_as_deleted(self):
         self.mixed_tool_project()

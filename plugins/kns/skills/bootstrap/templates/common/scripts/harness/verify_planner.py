@@ -470,6 +470,9 @@ def widen_untested(root, unit, sources, planned):
         if found == CONTRACT:
             unverified.append({"file": relative, "reason": "build-contract"})
         elif found is None or found.arguments is None:
+            # 지운 파일은 돌릴 것이 없다 — 모듈 시험이 없으면 남길 것도 없다(HK-22b, 모듈 remove 가 지운 훅 스크립트). 모듈 시험이 있으면 위처럼 넓힌다
+            if not source.exists():
+                continue
             unverified.append({"file": relative, "reason": "no-module-test"})
         elif found.missing:
             missing.append(f"{unit['id']}: {found.missing}")
