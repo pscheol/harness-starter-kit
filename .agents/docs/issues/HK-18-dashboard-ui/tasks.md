@@ -51,7 +51,7 @@ created: 2026-11-24
 | `pnpm -C packages/flow-view test` | 타입 검사 + vitest **5개 통과** |
 | `pnpm -C packages/cli build` → `node scripts/gen-plugins.mjs` → `--check` | 생성물 일치(파일 416개) |
 | `python3 -m unittest tests.test_template_wording tests.test_generated` | 23개 통과(템플릿 파일 수는 바뀌지 않아 `manifest.md` 수 행은 그대로) |
-| 전체 `python3 -m unittest discover -s tests -p "test_*.py"` | 아래 "전체 킷 시험" |
+| 전체 `python3 -m unittest discover -s tests -p "test_*.py"` | 117개 통과(아래 "전체 킷 시험") |
 
 ### 번들 크기
 
@@ -75,7 +75,7 @@ CLI 런타임 의존성은 여전히 0이다(`react` · `react-dom` · `@xyflow/
 
 ### 전체 킷 시험
 
-(아래 기록)
+`python3 -m unittest discover -s tests -p "test_*.py"` — 117개 통과(1,541초, OK). 이 이슈는 템플릿 · Python 을 건드리지 않았고 생성물(`plugins/harness-kit/`)만 바뀌었다.
 
 ## 사람 확인 필요
 
