@@ -109,11 +109,11 @@ describe("remove — 하네스 · 모듈", () => {
     expect(readTree(target)).toEqual(before);
   });
 
-  it.each(["aidlc", "entire", "notion", "bogus"])("%s 는 exit 2", async (name) => {
+  it.each(["notion", "bogus"])("%s 는 exit 2", async (name) => {
     const { cli } = await installed("claude,codex");
     const r = await cli([name]);
     expect(r.code).toBe(2);
-    if (name !== "bogus") expect(r.stderr).toContain("P22");
+    if (name !== "bogus") expect(r.stderr).toContain("HK-20b");
   });
 });
 

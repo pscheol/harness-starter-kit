@@ -1,6 +1,6 @@
 {
   "schema": "harness-kit.layout/v1",
-  "ignore": [".DS_Store", "ABOUT"],
+  "ignore": [".DS_Store", "ABOUT", "module.json"],
   "overlap": "last",
   "layers": [
     { "id": "common", "dir": "common" },
@@ -49,6 +49,7 @@
   },
   "defaultHarnesses": ["claude"],
   "modules": ["jira-workflow", "multi-harness"],
+  "externalModules": ["aidlc", "entire"],
   "domains": ["backend", "frontend"],
   "defaultStack": "jvm",
   "stacks": {

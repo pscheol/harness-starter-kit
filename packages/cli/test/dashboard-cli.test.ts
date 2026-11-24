@@ -109,6 +109,9 @@ const PAIRS: [string, string[]][] = [
   ["/api/v1/sessions", ["sessions"]],
   ["/api/v1/dispatch/queue", ["dispatch", "list"]],
   ["/api/v1/questions?target=INT-7", ["answer", "INT-7", "--list"]],
+  ["/api/v1/checkpoints", ["checkpoints"]],
+  ["/api/v1/checkpoints?issue=DEMO-1", ["checkpoints", "--issue", "DEMO-1"]],
+  ["/api/v1/checkpoints/DEMO-1", ["checkpoints", "DEMO-1"]],
 ];
 
 describe("REST 경로마다 CLI 명령(06 §3.15)", () => {

@@ -233,6 +233,15 @@ def cycle_of(units: dict[str, dict]) -> list[str] | None:
     return None
 
 
+def aidlc_stories(folder: Path) -> list[str] | None:
+    """AI-DLC 를 켠 Intent(intent.json 만 있음)의 스토리 ID. 그 밖이면 None(10 §3.2 어댑터가 intent.json 에 적는다)."""
+    if not ((folder / "intent.json").is_file() and not (folder / "intent.md").is_file()):
+        return None
+    link = read_json(folder / "intent.json")
+    items = link.get("stories") if isinstance(link, dict) and isinstance(link.get("stories"), list) else []
+    return [s["id"] for s in items if isinstance(s, dict) and isinstance(s.get("id"), str)]
+
+
 def units_problems(folder: Path, data, intent_text: str, key: str) -> list[str]:
     out: list[str] = []
     if not isinstance(data, dict) or data.get("schema") != "harness-kit.units/v1":
@@ -275,7 +284,8 @@ def units_problems(folder: Path, data, intent_text: str, key: str) -> list[str]:
     if cyc:
         out.append("units.json: 의존 고리 " + " → ".join(cyc) + "(DS-R7)")
     # DS-R8: 스토리 배정
-    live = [s["id"] for s in stories_of(intent_text) if not s["removed"]]
+    external = aidlc_stories(folder)
+    live = external if external is not None else [s["id"] for s in stories_of(intent_text) if not s["removed"]]
     where: dict[str, list[str]] = {}
     for uid, u in planned.items():
         for s in u.get("stories") or []:
@@ -292,6 +302,8 @@ def units_problems(folder: Path, data, intent_text: str, key: str) -> list[str]:
     for s in where:
         if s not in live:
             out.append(f"units.json: 없는(또는 뺀) 스토리 {s} 가 Unit 에 있다")
+    if external is not None:
+        return out  # DS-R5 분해 판정은 AI-DLC 가 한다(intent.md 가 없다)
     # DS-R5: 분해 판정
     c = counts_of(intent_text)
     reasons = split_reasons(c)

@@ -49,6 +49,8 @@ export interface Layout {
   harnessDetect: Record<string, HarnessDetect>;
   defaultHarnesses: string[];
   modules: string[];
+  /** 외부 도구를 쓰는 모듈(aidlc · entire, 설계 10). init --modules all 에 넣지 않고 add · init 이름으로만 켠다 */
+  externalModules: string[];
   domains: string[];
   defaultStack: string;
   stacks: Record<string, StackSpec>;
@@ -158,6 +160,7 @@ export function parseLayout(raw: unknown): Layout {
     ),
     defaultHarnesses: strList(o.defaultHarnesses ?? [], "defaultHarnesses"),
     modules: strList(o.modules, "modules"),
+    externalModules: o.externalModules === undefined ? [] : strList(o.externalModules, "externalModules"),
     domains: strList(o.domains, "domains"),
     defaultStack: str(o.defaultStack, "defaultStack"),
     stacks: Object.fromEntries(Object.entries(stacksRaw).map(([k, v]) => [k, stackSpec(v, `stacks.${k}`)])),

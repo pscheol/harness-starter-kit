@@ -11,9 +11,7 @@ import { isRetiredModule, type Selection } from "./selection";
 
 /** 나중 단계 모듈. 이번 판에서는 이름만 알아보고 exit 2 와 제공 단계를 낸다. */
 export const LATER_MODULES: Record<string, string> = {
-  aidlc: "P22(외부 도구 모듈, 설계 10 §3.2)",
-  entire: "P22(외부 도구 모듈, 설계 10 §3.3)",
-  notion: "P22(접수 출처 모듈, 설계 10 §3.6)",
+  notion: "HK-20b(접수 출처 모듈, 설계 10 §3.6)",
 };
 
 export interface Names {
@@ -26,18 +24,19 @@ export interface Names {
 /** 위치 인자(공백 · 쉼표 목록) → 하네스 · 모듈. 적은 순서를 지키고 중복은 뺀다. */
 export function parseNames(layout: Layout, raw: string[], command: string): Names {
   const words = raw.flatMap((r) => r.split(/[\s,]+/)).filter(Boolean);
-  const choices = `하네스: ${layout.harnesses.join(" ")} · 모듈: ${layout.modules.join(" ")}`;
+  const modules = [...layout.modules, ...layout.externalModules];
+  const choices = `하네스: ${layout.harnesses.join(" ")} · 모듈: ${modules.join(" ")}`;
   if (words.length === 0) throw usageError(`${command}: 이름이 없다`, `harness-kit ${command} <이름>… (${choices})`);
   const later = words.find((w) => Object.hasOwn(LATER_MODULES, w));
   if (later) throw usageError(`'${later}' 모듈은 아직 없다 — ${LATER_MODULES[later]}에서 제공한다`, choices);
   if (words.some((w) => w === "all" || w === "none")) throw usageError(`${command}: all · none 은 받지 않는다(하네스인지 모듈인지 갈리지 않는다)`, choices);
-  const unknown = words.filter((w) => !layout.harnesses.includes(w) && !layout.modules.includes(w) && !isRetiredModule(w));
+  const unknown = words.filter((w) => !layout.harnesses.includes(w) && !modules.includes(w) && !isRetiredModule(w));
   if (unknown.length) throw usageError(`${command}: 모르는 이름 ${unknown.join(" ")}`, choices);
   const uniq = words.filter((w, i) => words.indexOf(w) === i);
   return {
     harnesses: uniq.filter((w) => layout.harnesses.includes(w)),
-    modules: uniq.filter((w) => layout.modules.includes(w)),
-    retired: uniq.filter((w) => isRetiredModule(w) && !layout.modules.includes(w)),
+    modules: uniq.filter((w) => modules.includes(w)),
+    retired: uniq.filter((w) => isRetiredModule(w) && !modules.includes(w)),
   };
 }
 

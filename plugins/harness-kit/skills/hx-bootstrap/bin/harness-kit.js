@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 e1ee1e70c4393c226c5ff7be66df97eab09a39bb889fbc3d5c8d183630c80345 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 ea6b1bbefd9601e956ee2e9f9dba6990772955a2deef66a20bcdff25d9b9b627 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -586,7 +586,10 @@ var INIT = {
   base: { type: "string" },
   adopt: { type: "boolean" },
   force: { type: "boolean" },
-  "no-register": { type: "boolean" }
+  "no-register": { type: "boolean" },
+  // 외부 도구 모듈(HK-20, 설계 10 §3.1)
+  "install-tools": { type: "boolean" },
+  "allow-unverified": { type: "boolean" }
 };
 var COMMAND_OPTIONS = {
   init: INIT,
@@ -599,11 +602,12 @@ var COMMAND_OPTIONS = {
     forget: { type: "string", multiple: true },
     to: { type: "string" },
     packs: { type: "boolean" },
-    tools: { type: "boolean" }
+    tools: { type: "boolean" },
+    "allow-unverified": { type: "boolean" }
   },
   repair: { only: { type: "string" } },
   uninstall: { "keep-state": { type: "boolean" }, "keep-packs": { type: "boolean" } },
-  add: {},
+  add: { "install-tools": { type: "boolean" }, "allow-unverified": { type: "boolean" } },
   remove: {},
   outdated: { check: { type: "boolean" }, source: { type: "string" } },
   // 관리 페이지 서버 · 화면 없이 쓰기(HK-17, 설계 06 §3.15)
@@ -667,14 +671,17 @@ var COMMAND_OPTIONS = {
   // 확장 층(HK-14, 설계 04)
   pack: { dir: { type: "string" }, from: { type: "string", multiple: true }, "kit-range": { type: "string" } },
   local: {},
+  // 외부 도구 모듈의 어댑터 · 체크포인트(HK-20, 설계 10 §3.2 · §3.3)
+  sync: { intent: { type: "string" }, check: { type: "boolean" }, key: { type: "string" } },
+  checkpoints: { issue: { type: "string" } },
   // 설계 단계(HK-19, 설계 08)
   intake: { title: { type: "string" }, kind: { type: "string" }, name: { type: "string" }, area: { type: "string" }, text: { type: "string" }, "text-file": { type: "string" }, attach: { type: "string", multiple: true }, link: { type: "string", multiple: true } }
 };
-var POSITIONAL = /* @__PURE__ */ new Set(["add", "remove", "projects", "approve", "answer", "review", "dispatch", "units", "flow", "pack", "local", "mob"]);
-function parseCommandArgs(command, argv) {
+var POSITIONAL = /* @__PURE__ */ new Set(["add", "remove", "projects", "approve", "answer", "review", "dispatch", "units", "flow", "pack", "local", "mob", "sync", "checkpoints"]);
+function parseCommandArgs(command, argv2) {
   const options = { ...COMMON, ...COMMAND_OPTIONS[command] ?? {} };
   try {
-    const { values, positionals } = (0, import_node_util.parseArgs)({ args: argv, options, strict: true, allowPositionals: POSITIONAL.has(command) });
+    const { values, positionals } = (0, import_node_util.parseArgs)({ args: argv2, options, strict: true, allowPositionals: POSITIONAL.has(command) });
     return { values, positionals };
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -825,7 +832,7 @@ function parseLayout(raw) {
   if (o.overlap !== "first" && o.overlap !== "last") throw bad("overlap 은 first 또는 last");
   if (!Array.isArray(o.layers) || o.layers.length === 0) throw bad("layers 가 비었다");
   if (!Array.isArray(o.segments) || o.segments.length === 0) throw bad("segments 가 비었다");
-  const layers = o.layers.map((l, i) => {
+  const layers2 = o.layers.map((l, i) => {
     const x = obj(l, `layers[${i}]`);
     if (x.each !== void 0 && x.each !== "modules") throw bad(`layers[${i}].each 는 modules 만 된다`);
     return {
@@ -848,7 +855,7 @@ function parseLayout(raw) {
     schema: LAYOUT_SCHEMA,
     ignore: strList(o.ignore, "ignore"),
     overlap: o.overlap,
-    layers,
+    layers: layers2,
     segments,
     pathTokens: strMap(o.pathTokens ?? {}, "pathTokens"),
     executable,
@@ -863,6 +870,7 @@ function parseLayout(raw) {
     ),
     defaultHarnesses: strList(o.defaultHarnesses ?? [], "defaultHarnesses"),
     modules: strList(o.modules, "modules"),
+    externalModules: o.externalModules === void 0 ? [] : strList(o.externalModules, "externalModules"),
     domains: strList(o.domains, "domains"),
     defaultStack: str2(o.defaultStack, "defaultStack"),
     stacks: Object.fromEntries(Object.entries(stacksRaw).map(([k, v]) => [k, stackSpec(v, `stacks.${k}`)])),
@@ -872,15 +880,15 @@ function parseLayout(raw) {
 }
 function loadLayout(templatesDir) {
   const file = import_node_path2.default.join(templatesDir, "layout.json");
-  let text2;
+  let text3;
   try {
-    text2 = import_node_fs3.default.readFileSync(file, "utf8");
+    text3 = import_node_fs3.default.readFileSync(file, "utf8");
   } catch {
     throw new CliError(EXIT.ENV, `layout.json 이 없다: ${file}`);
   }
   let raw;
   try {
-    raw = JSON.parse(text2);
+    raw = JSON.parse(text3);
   } catch (err) {
     throw bad(err instanceof Error ? err.message : String(err));
   }
@@ -978,9 +986,9 @@ function v1ProjectionEntry(sha, label, rel2) {
   if (label === "merge") return { path: rel2, op: "merge", owner: "kit" };
   return { path: rel2, op: label, owner: "kit", sha256: sha === "-" ? null : sha };
 }
-function parseV1(text2) {
+function parseV1(text3) {
   const seen = /* @__PURE__ */ new Map();
-  const lines3 = text2.split("\n");
+  const lines3 = text3.split("\n");
   for (let i = 1; i < lines3.length; i += 1) {
     const line = lines3[i].replace(/\r$/, "");
     if (line === "" || line.startsWith("#")) continue;
@@ -998,8 +1006,8 @@ function parseV1(text2) {
   const entries = [...seen.keys()].sort(byteCompare).map((p) => seen.get(p));
   return { schema: LOCK_SCHEMA, kit: { version: null, source: null }, packs: [], entries };
 }
-function parseV2(text2) {
-  const raw = JSON.parse(text2);
+function parseV2(text3) {
+  const raw = JSON.parse(text3);
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) throw new Error("최상위가 객체가 아니다");
   const o = raw;
   if (o.schema !== LOCK_SCHEMA) throw new Error(`모르는 schema: ${String(o.schema)}`);
@@ -1022,24 +1030,24 @@ function parseV2(text2) {
     entries
   };
 }
-function parseLockText(text2) {
-  if (text2.startsWith(V1_HEADER)) {
-    const marked = text2.split("\n").some((l) => l.replace(/\r$/, "") === V1_MARK);
-    return { format: "v1", lock: parseV1(text2), ambiguous: !marked };
+function parseLockText(text3) {
+  if (text3.startsWith(V1_HEADER)) {
+    const marked = text3.split("\n").some((l) => l.replace(/\r$/, "") === V1_MARK);
+    return { format: "v1", lock: parseV1(text3), ambiguous: !marked };
   }
-  if (text2.trim() === "") throw new Error("비어 있다");
-  return { format: "v2", lock: parseV2(text2), ambiguous: false };
+  if (text3.trim() === "") throw new Error("비어 있다");
+  return { format: "v2", lock: parseV2(text3), ambiguous: false };
 }
 function readLock(file) {
-  let text2;
+  let text3;
   try {
-    text2 = import_node_fs4.default.readFileSync(file, "utf8");
+    text3 = import_node_fs4.default.readFileSync(file, "utf8");
   } catch (err) {
     if (err.code === "ENOENT") return { status: "missing" };
     return { status: "invalid", error: err instanceof Error ? err.message : String(err) };
   }
   try {
-    return { status: "ok", ...parseLockText(text2) };
+    return { status: "ok", ...parseLockText(text3) };
   } catch (err) {
     return { status: "invalid", error: err instanceof Error ? err.message : String(err) };
   }
@@ -1194,16 +1202,16 @@ function fromV2(m) {
   };
 }
 function readMeta(file) {
-  let text2;
+  let text3;
   try {
-    text2 = import_node_fs5.default.readFileSync(file, "utf8");
+    text3 = import_node_fs5.default.readFileSync(file, "utf8");
   } catch (err) {
     if (err.code === "ENOENT") return { status: "missing" };
     return { status: "invalid", error: err instanceof Error ? err.message : String(err) };
   }
   let raw;
   try {
-    raw = JSON.parse(text2);
+    raw = JSON.parse(text3);
   } catch (err) {
     return { status: "invalid", error: `JSON 해석 실패: ${err instanceof Error ? err.message : String(err)}` };
   }
@@ -1335,11 +1343,11 @@ function check(h, i, map, seen) {
   }
   return h;
 }
-function parseHooks(text2, map) {
-  if (text2 === null) return null;
+function parseHooks(text3, map) {
+  if (text3 === null) return null;
   let data;
   try {
-    data = JSON.parse(text2);
+    data = JSON.parse(text3);
   } catch (err) {
     throw new HooksError(`hooks.json 을 해석할 수 없다: ${err instanceof Error ? err.message : String(err)}`);
   }
@@ -1427,8 +1435,8 @@ function hookDocPaths(names) {
 function mergeHookDocs(docs, map, floor) {
   const hooks = [];
   const findings = [];
-  for (const { rel: rel2, text: text2 } of docs) {
-    const items = parseHooks(text2, map) ?? [];
+  for (const { rel: rel2, text: text3 } of docs) {
+    const items = parseHooks(text3, map) ?? [];
     const project = rel2 === `${HOOKS_DIR}/${PROJECT_HOOKS}`;
     const index = new Map(hooks.map((h, i) => [h.id, i]));
     for (const item of items) {
@@ -1447,11 +1455,11 @@ function mergeHookDocs(docs, map, floor) {
 // src/projection/frontmatter.ts
 var FM_KEY = /^([A-Za-z0-9_-]+):(.*)$/;
 var LIST_ITEM = /^\s+-\s?(.*)$/;
-function splitFrontmatter(text2) {
-  if (!text2.startsWith("---\n")) return { block: null, body: text2 };
-  const end = text2.indexOf("\n---\n", 3);
-  if (end < 0) return { block: null, body: text2 };
-  return { block: end >= 4 ? text2.slice(4, end) : "", body: text2.slice(end + 5) };
+function splitFrontmatter(text3) {
+  if (!text3.startsWith("---\n")) return { block: null, body: text3 };
+  const end = text3.indexOf("\n---\n", 3);
+  if (end < 0) return { block: null, body: text3 };
+  return { block: end >= 4 ? text3.slice(4, end) : "", body: text3.slice(end + 5) };
 }
 function splitFlow(inner) {
   const parts = [];
@@ -1546,8 +1554,8 @@ function basename(p) {
 function decode(data) {
   return data.toString("utf8");
 }
-function parsed(text2) {
-  const { block: block2, body } = splitFrontmatter(text2);
+function parsed(text3) {
+  const { block: block2, body } = splitFrontmatter(text3);
   return { fm: block2 === null ? {} : parseFrontmatter(block2), body, hasBlock: block2 !== null };
 }
 function parseRule(source, data) {
@@ -1580,10 +1588,10 @@ function parseRole(source, data) {
 function isObject(v) {
   return v !== null && typeof v === "object" && !Array.isArray(v);
 }
-function parsePolicy(text2) {
+function parsePolicy(text3) {
   let raw = null;
   try {
-    raw = text2 === null ? null : JSON.parse(text2);
+    raw = text3 === null ? null : JSON.parse(text3);
   } catch {
     raw = null;
   }
@@ -1668,8 +1676,8 @@ function kiroTools(tools) {
   for (const [k, name] of KIRO_TOOLS) if (tools.includes(k) && !out.includes(name)) out.push(name);
   return out;
 }
-function withNewline(text2) {
-  return text2 === "" || text2.endsWith("\n") ? text2 : `${text2}
+function withNewline(text3) {
+  return text3 === "" || text3.endsWith("\n") ? text3 : `${text3}
 `;
 }
 function renderClaudeRole(r, fields) {
@@ -1734,26 +1742,26 @@ var SPACE = " 	\r\n\uFEFF";
 var DEFAULT_INDENT = "  ";
 var vscodeSettingsWant = () => ({ key: VSCODE_KEY, value: "true" });
 var fail = (reason) => ({ ok: false, reason });
-function tokenize(text2) {
+function tokenize(text3) {
   const toks = [];
   let i = 0;
   let comment = false;
-  const n = text2.length;
+  const n = text3.length;
   while (i < n) {
-    const c = text2[i];
+    const c = text3[i];
     if (SPACE.includes(c)) i += 1;
-    else if (text2.startsWith("//", i)) {
+    else if (text3.startsWith("//", i)) {
       comment = true;
-      const end = text2.indexOf("\n", i);
+      const end = text3.indexOf("\n", i);
       i = end < 0 ? n : end + 1;
-    } else if (text2.startsWith("/*", i)) {
+    } else if (text3.startsWith("/*", i)) {
       comment = true;
-      const end = text2.indexOf("*/", i + 2);
+      const end = text3.indexOf("*/", i + 2);
       if (end < 0) return null;
       i = end + 2;
     } else if (c === '"') {
       let j = i + 1;
-      while (j < n && text2[j] !== '"') j += text2[j] === "\\" ? 2 : 1;
+      while (j < n && text3[j] !== '"') j += text3[j] === "\\" ? 2 : 1;
       if (j >= n) return null;
       toks.push({ kind: "str", start: i, end: j + 1 });
       i = j + 1;
@@ -1762,15 +1770,15 @@ function tokenize(text2) {
       i += 1;
     } else {
       let j = i;
-      while (j < n && !SPACE.includes(text2[j]) && !PUNCT.includes(text2[j]) && text2[j] !== '"' && !text2.startsWith("//", j) && !text2.startsWith("/*", j)) j += 1;
+      while (j < n && !SPACE.includes(text3[j]) && !PUNCT.includes(text3[j]) && text3[j] !== '"' && !text3.startsWith("//", j) && !text3.startsWith("/*", j)) j += 1;
       toks.push({ kind: "lit", start: i, end: j });
       i = j;
     }
   }
   return { toks, comment };
 }
-function scan(text2) {
-  const tokenized = tokenize(text2);
+function scan(text3) {
+  const tokenized = tokenize(text3);
   if (tokenized === null) return null;
   const { toks, comment } = tokenized;
   if (!toks.length || toks[0].kind !== "{") return null;
@@ -1800,7 +1808,7 @@ function scan(text2) {
     if (t.kind !== "str" || pos + 2 >= close || toks[pos + 1].kind !== ":") return null;
     let key;
     try {
-      key = JSON.parse(text2.slice(t.start, t.end));
+      key = JSON.parse(text3.slice(t.start, t.end));
     } catch {
       return null;
     }
@@ -1819,19 +1827,19 @@ function scan(text2) {
   return { toks, comment, close, members };
 }
 var findMember = (s) => [...s.members].reverse().find((m) => m.key === VSCODE_KEY);
-var isTrue = (text2, m) => text2.slice(m.vs, m.ve) === "true";
-var lineStart = (text2, index) => index === 0 ? 0 : text2.lastIndexOf("\n", index - 1) + 1;
-function indentOf(text2, s) {
+var isTrue = (text3, m) => text3.slice(m.vs, m.ve) === "true";
+var lineStart = (text3, index) => index === 0 ? 0 : text3.lastIndexOf("\n", index - 1) + 1;
+function indentOf(text3, s) {
   const first = s.members[0];
   if (!first) return DEFAULT_INDENT;
-  const prefix = text2.slice(lineStart(text2, first.ks), first.ks);
+  const prefix = text3.slice(lineStart(text3, first.ks), first.ks);
   return prefix !== "" && prefix.trim() === "" ? prefix : DEFAULT_INDENT;
 }
-function blankAfter(text2, index) {
-  const end = text2.indexOf("\n", index);
-  const rest = end < 0 ? text2.slice(index) : text2.slice(index, end);
+function blankAfter(text3, index) {
+  const end = text3.indexOf("\n", index);
+  const rest = end < 0 ? text3.slice(index) : text3.slice(index, end);
   if (rest.trim() !== "") return -1;
-  return end < 0 ? text2.length : end + 1;
+  return end < 0 ? text3.length : end + 1;
 }
 var vscodeSettings = {
   merge(cur, _want, prev = []) {
@@ -1850,9 +1858,9 @@ var vscodeSettings = {
     else edits.push([closeAt, 1, `
 ${line}
 `]);
-    let text2 = cur;
-    for (const [at, , piece] of [...edits].sort((a, b) => b[0] - a[0] || b[1] - a[1])) text2 = text2.slice(0, at) + piece + text2.slice(at);
-    return { ok: true, text: text2, keys: [VSCODE_LOCK_KEY], created: false };
+    let text3 = cur;
+    for (const [at, , piece] of [...edits].sort((a, b) => b[0] - a[0] || b[1] - a[1])) text3 = text3.slice(0, at) + piece + text3.slice(at);
+    return { ok: true, text: text3, keys: [VSCODE_LOCK_KEY], created: false };
   },
   unmerge(cur, keys) {
     const s = scan(cur);
@@ -1875,10 +1883,10 @@ ${line}
     const before = s.toks[found.kidx - 1];
     if (!trailing && found.kidx > 1 && before?.kind === ",") edits.push([before.start, before.end]);
     edits.push([start, end]);
-    let text2 = cur;
-    for (const [at, stop] of [...edits].sort((a, b) => b[0] - a[0])) text2 = text2.slice(0, at) + text2.slice(stop);
-    const rest = scan(text2);
-    return { ok: true, text: text2, empty: rest !== null && !rest.members.length && !rest.comment };
+    let text3 = cur;
+    for (const [at, stop] of [...edits].sort((a, b) => b[0] - a[0])) text3 = text3.slice(0, at) + text3.slice(stop);
+    const rest = scan(text3);
+    return { ok: true, text: text3, empty: rest !== null && !rest.members.length && !rest.comment };
   },
   missing(cur, keys) {
     if (!keys.includes(VSCODE_LOCK_KEY)) return [];
@@ -1907,8 +1915,8 @@ var MERGE_KIND = {
 };
 var fail2 = (reason) => ({ ok: false, reason });
 var isBlank = (l) => l.trim() === "";
-function splitLines(text2) {
-  const lines3 = text2.split("\n");
+function splitLines(text3) {
+  const lines3 = text3.split("\n");
   if (lines3.length && lines3[lines3.length - 1] === "") lines3.pop();
   return lines3;
 }
@@ -2457,17 +2465,17 @@ function stem(source) {
   const base = source.slice(source.lastIndexOf("/") + 1);
   return base.endsWith(".md") ? base.slice(0, -".md".length) : base;
 }
-function mirrorDir(path64, harness, skill, deferred) {
+function mirrorDir(path73, harness, skill, deferred) {
   const t = treeSha(skill.files);
-  return { op: "mirror", path: path64, harness, from: skill.source, kind: "dir", files: skill.files, data: Buffer.alloc(0), executable: false, sha256: t, fromSha256: t, deferred: deferred.has(skill.source) };
+  return { op: "mirror", path: path73, harness, from: skill.source, kind: "dir", files: skill.files, data: Buffer.alloc(0), executable: false, sha256: t, fromSha256: t, deferred: deferred.has(skill.source) };
 }
-function mirrorFile(path64, harness, rule, view, deferred) {
+function mirrorFile(path73, harness, rule, view, deferred) {
   const s = sha256(rule.data);
-  return { op: "mirror", path: path64, harness, from: rule.source, kind: "file", files: [], data: rule.data, executable: view.executable(rule.source), sha256: s, fromSha256: s, deferred: deferred.has(rule.source) };
+  return { op: "mirror", path: path73, harness, from: rule.source, kind: "file", files: [], data: rule.data, executable: view.executable(rule.source), sha256: s, fromSha256: s, deferred: deferred.has(rule.source) };
 }
-function renderWant(path64, harness, from, text2, sourceData, deferred) {
-  const data = Buffer.from(text2, "utf8");
-  return { op: "render", path: path64, harness, from, kind: "file", files: [], data, executable: false, sha256: sha256(data), fromSha256: sha256(sourceData), deferred: deferred.has(from) };
+function renderWant(path73, harness, from, text3, sourceData, deferred) {
+  const data = Buffer.from(text3, "utf8");
+  return { op: "render", path: path73, harness, from, kind: "file", files: [], data, executable: false, sha256: sha256(data), fromSha256: sha256(sourceData), deferred: deferred.has(from) };
 }
 function skillData(skill) {
   return skill.files.find((f) => f.rel === "SKILL.md")?.bytes ?? Buffer.alloc(0);
@@ -3182,10 +3190,10 @@ function walk(v, at) {
     walk(x, `${at}.${k}`);
   }
 }
-function parseSpec(text2) {
+function parseSpec(text3) {
   let raw;
   try {
-    raw = JSON.parse(text2);
+    raw = JSON.parse(text3);
   } catch (err) {
     throw bad2(err instanceof Error ? err.message : String(err));
   }
@@ -3605,24 +3613,23 @@ function resolvedLock(inst, target, shaOf2) {
 // src/core/selection-change.ts
 var import_node_path12 = __toESM(require("node:path"));
 var LATER_MODULES = {
-  aidlc: "P22(외부 도구 모듈, 설계 10 §3.2)",
-  entire: "P22(외부 도구 모듈, 설계 10 §3.3)",
-  notion: "P22(접수 출처 모듈, 설계 10 §3.6)"
+  notion: "HK-20b(접수 출처 모듈, 설계 10 §3.6)"
 };
 function parseNames(layout2, raw, command) {
   const words = raw.flatMap((r) => r.split(/[\s,]+/)).filter(Boolean);
-  const choices = `하네스: ${layout2.harnesses.join(" ")} · 모듈: ${layout2.modules.join(" ")}`;
+  const modules = [...layout2.modules, ...layout2.externalModules];
+  const choices = `하네스: ${layout2.harnesses.join(" ")} · 모듈: ${modules.join(" ")}`;
   if (words.length === 0) throw usageError(`${command}: 이름이 없다`, `harness-kit ${command} <이름>… (${choices})`);
   const later = words.find((w) => Object.hasOwn(LATER_MODULES, w));
   if (later) throw usageError(`'${later}' 모듈은 아직 없다 — ${LATER_MODULES[later]}에서 제공한다`, choices);
   if (words.some((w) => w === "all" || w === "none")) throw usageError(`${command}: all · none 은 받지 않는다(하네스인지 모듈인지 갈리지 않는다)`, choices);
-  const unknown = words.filter((w) => !layout2.harnesses.includes(w) && !layout2.modules.includes(w) && !isRetiredModule(w));
+  const unknown = words.filter((w) => !layout2.harnesses.includes(w) && !modules.includes(w) && !isRetiredModule(w));
   if (unknown.length) throw usageError(`${command}: 모르는 이름 ${unknown.join(" ")}`, choices);
   const uniq = words.filter((w, i) => words.indexOf(w) === i);
   return {
     harnesses: uniq.filter((w) => layout2.harnesses.includes(w)),
-    modules: uniq.filter((w) => layout2.modules.includes(w)),
-    retired: uniq.filter((w) => isRetiredModule(w) && !layout2.modules.includes(w))
+    modules: uniq.filter((w) => modules.includes(w)),
+    retired: uniq.filter((w) => isRetiredModule(w) && !modules.includes(w))
   };
 }
 function assertModuleDirs(templatesDir, modules) {
@@ -3789,9 +3796,41 @@ function buildUpdatePlan(input) {
   return { ops, entries, counts: counts2, overlaps, excludedByHarness, wantPaths: new Set(want.keys()) };
 }
 
+// src/modules/engine.ts
+var import_node_fs29 = __toESM(require("node:fs"));
+var import_node_path33 = __toESM(require("node:path"));
+
+// src/cli/prompt.ts
+var import_node_readline = __toESM(require("node:readline"));
+function createPrompter(input, write) {
+  const rl = import_node_readline.default.createInterface({ input, terminal: false });
+  const lines3 = rl[Symbol.asyncIterator]();
+  const next = async () => {
+    const r = await lines3.next();
+    return r.done ? null : String(r.value);
+  };
+  return {
+    async ask(question, fallback) {
+      write(`${question}${fallback ? ` (${fallback})` : ""}: `);
+      const a = await next();
+      const v = (a ?? "").trim();
+      return v === "" ? fallback : v;
+    },
+    async confirm(question) {
+      write(`${question} [Y/n]: `);
+      const a = await next();
+      if (a === null) return false;
+      return !/^(n|no|아니오|아니)$/i.test(a.trim());
+    },
+    close() {
+      rl.close();
+    }
+  };
+}
+
 // src/commands/change.ts
-var import_node_fs22 = __toESM(require("node:fs"));
-var import_node_path24 = __toESM(require("node:path"));
+var import_node_fs23 = __toESM(require("node:fs"));
+var import_node_path26 = __toESM(require("node:path"));
 
 // src/cli/context.ts
 var import_node_path14 = __toESM(require("node:path"));
@@ -3902,8 +3941,8 @@ function locateTemplates(opts) {
 }
 
 // src/commands/update.ts
-var import_node_fs21 = __toESM(require("node:fs"));
-var import_node_path23 = __toESM(require("node:path"));
+var import_node_fs22 = __toESM(require("node:fs"));
+var import_node_path25 = __toESM(require("node:path"));
 
 // src/core/board.ts
 var import_node_child_process2 = require("node:child_process");
@@ -3955,9 +3994,9 @@ function cmp(a, b) {
   for (let i = 0; i < 3; i += 1) if (a[i] !== b[i]) return a[i] - b[i];
   return 0;
 }
-function upgradeSections(text2) {
+function upgradeSections(text3) {
   const out = [];
-  for (const line of text2.replace(/\r\n/g, "\n").split("\n")) {
+  for (const line of text3.replace(/\r\n/g, "\n").split("\n")) {
     const h = /^## +(\S+)\s*$/.exec(line);
     if (h) out.push({ version: h[1], body: [] });
     else if (out.length) out[out.length - 1].body.push(line);
@@ -3975,8 +4014,8 @@ function addDays(day, n) {
   const [y, m, d] = day.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 }
-function isKitNotice(text2) {
-  const lines3 = text2.replace(/\r\n/g, "\n").split("\n");
+function isKitNotice(text3) {
+  const lines3 = text3.replace(/\r\n/g, "\n").split("\n");
   if (lines3[0]?.trim() !== "---") return false;
   const end = lines3.indexOf("---", 1);
   const head = lines3.slice(1, end < 0 ? 1 : end);
@@ -3990,11 +4029,11 @@ function planNotice(args) {
   if (!sections.length) return { action: kit && noticeExpired(args.existing, args.today) ? "delete" : "none" };
   if (args.existing !== null && !kit) return { action: "keep-human" };
   const body = sections.flatMap((s) => s.body);
-  const text2 = ["---", `kitFrom: ${args.from}`, `kitTo: ${args.to}`, `date: ${args.today}`, `expires: ${addDays(args.today, NOTICE_DAYS)}`, "---", `# 하네스 업데이트 ${args.from} → ${args.to}`, "", ...body, ""].join("\n");
-  return { action: "write", text: text2 };
+  const text3 = ["---", `kitFrom: ${args.from}`, `kitTo: ${args.to}`, `date: ${args.today}`, `expires: ${addDays(args.today, NOTICE_DAYS)}`, "---", `# 하네스 업데이트 ${args.from} → ${args.to}`, "", ...body, ""].join("\n");
+  return { action: "write", text: text3 };
 }
-function noticeExpired(text2, today2) {
-  const m = /^expires:\s*(\S+)/m.exec(text2);
+function noticeExpired(text3, today2) {
+  const m = /^expires:\s*(\S+)/m.exec(text3);
   return Boolean(m && m[1] < today2);
 }
 
@@ -4303,10 +4342,10 @@ function planPack(pack, input) {
 function fragment(pack, f, input, problems) {
   const m = pack.manifest;
   const where = `${m.name}(${pack.source})`;
-  const text2 = f.data.toString("utf8");
+  const text3 = f.data.toString("utf8");
   if (f.rel === "fragments/hooks.json") {
     try {
-      const hooks = parseHooks(text2, input.hookMap) ?? [];
+      const hooks = parseHooks(text3, input.hookMap) ?? [];
       for (const h of hooks) {
         if (!h.id.startsWith(`harness-${m.name}-`)) problems.push(`${where}: 훅 id ${h.id} 는 harness-${m.name}- 로 시작한다`);
         if (FLOOR_HOOKS.includes(h.id)) problems.push(`${where}: 하한 훅 ${h.id} 는 팩이 정의하지 못한다`);
@@ -4321,7 +4360,7 @@ function fragment(pack, f, input, problems) {
   if (f.rel === "fragments/verify-checks.json") {
     let checks = [];
     try {
-      const raw = JSON.parse(text2);
+      const raw = JSON.parse(text3);
       checks = Array.isArray(raw.checks) ? raw.checks : [];
     } catch (err) {
       problems.push(`${where}: fragments/verify-checks.json 을 해석할 수 없다: ${err instanceof Error ? err.message : String(err)}`);
@@ -4374,15 +4413,15 @@ function extension(rel2) {
   const dot = name.lastIndexOf(".");
   return dot >= 0 ? name.slice(dot).toLowerCase() : "";
 }
-function hasKitHeader(text2) {
-  return text2.split("\n").slice(0, HEADER_LINES).some((l) => l.includes(KIT_HEADER));
+function hasKitHeader(text3) {
+  return text3.split("\n").slice(0, HEADER_LINES).some((l) => l.includes(KIT_HEADER));
 }
 function planV1Merge(rel2, current4, kit) {
   if (KIT_FOLDERS.some((f) => rel2.startsWith(f))) return { kind: "kit", content: kit };
   const ext = extension(rel2);
   if (ext === ".md" || ext === ".txt") {
-    const text2 = decode2(current4);
-    if (text2 !== null && hasKitHeader(text2)) return { kind: "kit", content: kit };
+    const text3 = decode2(current4);
+    if (text3 !== null && hasKitHeader(text3)) return { kind: "kit", content: kit };
     const merged = mergeLines(current4, kit);
     return merged ? { kind: "lines", content: merged } : { kind: "new", content: null };
   }
@@ -4396,8 +4435,8 @@ function significant(line) {
   return /[A-Za-z0-9\u0080-\uffff]/.test(line);
 }
 var isBlank2 = (line) => /^[ \t\r]*$/.test(line);
-function splitLines2(text2) {
-  const lines3 = text2.split("\n");
+function splitLines2(text3) {
+  const lines3 = text3.split("\n");
   if (lines3[lines3.length - 1] === "") return { lines: lines3.slice(0, -1), eol: true };
   return { lines: lines3, eol: false };
 }
@@ -4489,27 +4528,27 @@ var BadJson = class extends Error {
 var LONE_SURROGATE = /[\ud800-\udbff](?![\udc00-\udfff])|(?<![\ud800-\udbff])[\udc00-\udfff]/;
 var NUMBER = /-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/y;
 var ESCAPES = { '"': '"', "\\": "\\", "/": "/", b: "\b", f: "\f", n: "\n", r: "\r", t: "	" };
-function parseStrict(text2) {
+function parseStrict(text3) {
   let i = 0;
   const ws = () => {
-    while (i < text2.length && (text2[i] === " " || text2[i] === "	" || text2[i] === "\n" || text2[i] === "\r")) i += 1;
+    while (i < text3.length && (text3[i] === " " || text3[i] === "	" || text3[i] === "\n" || text3[i] === "\r")) i += 1;
   };
   const str6 = () => {
-    if (text2[i] !== '"') throw new BadJson("문자열");
+    if (text3[i] !== '"') throw new BadJson("문자열");
     i += 1;
     let out = "";
     for (; ; ) {
-      if (i >= text2.length) throw new BadJson("문자열 끝");
-      const ch = text2[i];
+      if (i >= text3.length) throw new BadJson("문자열 끝");
+      const ch = text3[i];
       if (ch === '"') {
         i += 1;
         break;
       }
       if (ch < " ") throw new BadJson("제어 문자");
       if (ch === "\\") {
-        const e = text2[i + 1];
+        const e = text3[i + 1];
         if (e === "u") {
-          const hex = text2.slice(i + 2, i + 6);
+          const hex = text3.slice(i + 2, i + 6);
           if (!/^[0-9a-fA-F]{4}$/.test(hex)) throw new BadJson("\\u");
           out += String.fromCharCode(parseInt(hex, 16));
           i += 6;
@@ -4527,13 +4566,13 @@ function parseStrict(text2) {
   };
   const value2 = () => {
     ws();
-    const ch = text2[i];
+    const ch = text3[i];
     if (ch === "{") {
       i += 1;
       const pairs = [];
       const keys = /* @__PURE__ */ new Set();
       ws();
-      if (text2[i] === "}") {
+      if (text3[i] === "}") {
         i += 1;
         return { t: "obj", pairs };
       }
@@ -4543,15 +4582,15 @@ function parseStrict(text2) {
         if (keys.has(k)) throw new BadJson("같은 키");
         keys.add(k);
         ws();
-        if (text2[i] !== ":") throw new BadJson(":");
+        if (text3[i] !== ":") throw new BadJson(":");
         i += 1;
         pairs.push([k, value2()]);
         ws();
-        if (text2[i] === ",") {
+        if (text3[i] === ",") {
           i += 1;
           continue;
         }
-        if (text2[i] === "}") {
+        if (text3[i] === "}") {
           i += 1;
           return { t: "obj", pairs };
         }
@@ -4562,18 +4601,18 @@ function parseStrict(text2) {
       i += 1;
       const items = [];
       ws();
-      if (text2[i] === "]") {
+      if (text3[i] === "]") {
         i += 1;
         return { t: "arr", items };
       }
       for (; ; ) {
         items.push(value2());
         ws();
-        if (text2[i] === ",") {
+        if (text3[i] === ",") {
           i += 1;
           continue;
         }
-        if (text2[i] === "]") {
+        if (text3[i] === "]") {
           i += 1;
           return { t: "arr", items };
         }
@@ -4582,27 +4621,27 @@ function parseStrict(text2) {
     }
     if (ch === '"') return { t: "str", v: str6() };
     for (const lit of ["true", "false", "null"]) {
-      if (text2.startsWith(lit, i)) {
+      if (text3.startsWith(lit, i)) {
         i += lit.length;
         return { t: "raw", v: lit };
       }
     }
     NUMBER.lastIndex = i;
-    const m = NUMBER.exec(text2);
+    const m = NUMBER.exec(text3);
     if (!m) throw new BadJson("값");
     i += m[0].length;
     return { t: "raw", v: m[0] };
   };
   const v = value2();
   ws();
-  if (i !== text2.length) throw new BadJson("끝 뒤 글자");
+  if (i !== text3.length) throw new BadJson("끝 뒤 글자");
   return v;
 }
 function parseObject2(data) {
-  const text2 = decode2(data);
-  if (text2 === null) return null;
+  const text3 = decode2(data);
+  if (text3 === null) return null;
   try {
-    const v = parseStrict(text2);
+    const v = parseStrict(text3);
     return v.t === "obj" ? v : null;
   } catch {
     return null;
@@ -4856,8 +4895,8 @@ function planLocal(target, agents, spec, sharedHookIds2) {
   }
   let hooks = [];
   try {
-    const text2 = exists2(LOCAL_HOOKS) ? import_node_fs18.default.readFileSync(import_node_path20.default.join(target, ...LOCAL_HOOKS.split("/")), "utf8") : null;
-    hooks = parseHooks(text2, spec.hookMap) ?? [];
+    const text3 = exists2(LOCAL_HOOKS) ? import_node_fs18.default.readFileSync(import_node_path20.default.join(target, ...LOCAL_HOOKS.split("/")), "utf8") : null;
+    hooks = parseHooks(text3, spec.hookMap) ?? [];
   } catch (err) {
     plan.findings.push({ kind: "local-invalid", severity: "error", path: LOCAL_HOOKS, hint: err instanceof HooksError ? err.message : String(err) });
   }
@@ -4885,13 +4924,13 @@ function writeExclude(target, paths) {
   const r = (0, import_node_child_process4.spawnSync)("git", ["-C", target, "rev-parse", "--path-format=absolute", "--git-common-dir"], { encoding: "utf8" });
   if (r.status !== 0) return;
   const file = import_node_path20.default.join(r.stdout.trim(), "info", "exclude");
-  let text2 = "";
+  let text3 = "";
   try {
-    text2 = import_node_fs18.default.readFileSync(file, "utf8");
+    text3 = import_node_fs18.default.readFileSync(file, "utf8");
   } catch {
-    text2 = "";
+    text3 = "";
   }
-  const lines3 = text2.split("\n");
+  const lines3 = text3.split("\n");
   const b = lines3.indexOf(EXCLUDE_BEGIN);
   const e = lines3.indexOf(EXCLUDE_END);
   const outside = b >= 0 && e > b ? [...lines3.slice(0, b), ...lines3.slice(e + 1)] : lines3;
@@ -4899,7 +4938,7 @@ function writeExclude(target, paths) {
   const block2 = paths.length ? [EXCLUDE_BEGIN, ...paths.map((p) => `/${p}`), EXCLUDE_END] : [];
   const next = `${[body, ...block2.length ? [block2.join("\n")] : []].filter(Boolean).join("\n")}
 `;
-  if (next !== text2) writeFileAtomic(file, Buffer.from(next, "utf8"), false);
+  if (next !== text3) writeFileAtomic(file, Buffer.from(next, "utf8"), false);
 }
 function syncLocal(target, plan, dryRun) {
   const prev = readLocalLock(target);
@@ -4970,14 +5009,14 @@ function syncLocal(target, plan, dryRun) {
 
 // src/commands/local.ts
 function sharedHookIds(target, spec) {
-  const read = (rel2) => {
+  const read2 = (rel2) => {
     try {
       return import_node_fs19.default.readFileSync(import_node_path21.default.join(target, ...rel2.split("/")), "utf8");
     } catch {
       return null;
     }
   };
-  const kit = read(HOOKS_REL);
+  const kit = read2(HOOKS_REL);
   if (kit === null) return [];
   let names = [];
   try {
@@ -4985,7 +5024,7 @@ function sharedHookIds(target, spec) {
   } catch {
     names = [];
   }
-  const docs = [{ rel: HOOKS_REL, text: kit }, ...hookDocPaths(names).map((rel2) => ({ rel: rel2, text: read(rel2) ?? "" }))];
+  const docs = [{ rel: HOOKS_REL, text: kit }, ...hookDocPaths(names).map((rel2) => ({ rel: rel2, text: read2(rel2) ?? "" }))];
   try {
     return mergeHookDocs(docs, spec.hookMap, FLOOR_HOOKS).hooks.map((h) => h.id);
   } catch {
@@ -5026,8 +5065,8 @@ function runLocal(ctx) {
     ...localLines(result, config.ignored, ctx.quiet),
     ...dryRun ? ["  (쓰지 않았다)"] : []
   ];
-  const bad4 = plan.findings.some((f) => f.severity === "error") || result.settings === "conflict" || Boolean(config.error);
-  return { code: bad4 ? EXIT.HUMAN : EXIT.OK, data, lines: lines3 };
+  const bad5 = plan.findings.some((f) => f.severity === "error") || result.settings === "conflict" || Boolean(config.error);
+  return { code: bad5 ? EXIT.HUMAN : EXIT.OK, data, lines: lines3 };
 }
 
 // src/commands/update-packs.ts
@@ -5196,13 +5235,382 @@ ${problems.map((p) => `  ${p}`).join("\n")}`, "팩을 고쳐 새 판을 내거�
   return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines: lines3 };
 }
 
+// src/modules/declaration.ts
+var import_node_fs21 = __toESM(require("node:fs"));
+var import_node_path23 = __toESM(require("node:path"));
+var MODULE_SCHEMA = "harness-kit.module/v1";
+var MODULE_FILE = "module.json";
+var PLATFORMS = ["darwin", "linux", "win32"];
+var isObj6 = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+function bad3(id, message2) {
+  return new CliError(EXIT.ENV, `module.json 형식 오류(${id}): ${message2}`, "킷 템플릿을 다시 받는다");
+}
+function strList3(id, v, what, optional = true) {
+  if (v === void 0 && optional) return [];
+  if (!Array.isArray(v) || !v.every((x) => typeof x === "string")) throw bad3(id, `${what} 는 문자열 배열이어야 한다`);
+  return [...v];
+}
+function argv(id, v, what) {
+  const l = strList3(id, v, what, false);
+  if (l.length === 0) throw bad3(id, `${what} 가 비었다`);
+  return l;
+}
+function toolOf(id, raw, i) {
+  const where = `requires.tools[${i}]`;
+  if (!isObj6(raw)) throw bad3(id, `${where} 가 객체가 아니다`);
+  if (typeof raw.name !== "string" || !/^[a-z][a-z0-9-]*$/.test(raw.name)) throw bad3(id, `${where}.name`);
+  if (typeof raw.range !== "string") throw bad3(id, `${where}.range`);
+  const names = isObj6(raw.harnessNames) ? raw.harnessNames : {};
+  const inst = isObj6(raw.install) ? raw.install : {};
+  const upd = isObj6(raw.update) ? raw.update : {};
+  const commands = {};
+  const updates = {};
+  for (const p of PLATFORMS) {
+    commands[p] = inst[p] === null || inst[p] === void 0 ? null : argv(id, inst[p], `${where}.install.${p}`);
+    updates[p] = upd[p] === null || upd[p] === void 0 ? null : argv(id, upd[p], `${where}.update.${p}`);
+  }
+  const latest = isObj6(raw.latest) ? { cmd: argv(id, raw.latest.cmd, `${where}.latest.cmd`), json: typeof raw.latest.json === "string" ? raw.latest.json : "" } : null;
+  return {
+    name: raw.name,
+    versionCmd: argv(id, raw.versionCmd, `${where}.versionCmd`),
+    rangeKey: typeof raw.rangeKey === "string" ? raw.rangeKey : `versions.${raw.name}`,
+    range: raw.range,
+    harnessNames: Object.fromEntries(Object.entries(names).filter(([, v]) => typeof v === "string")),
+    install: { commands, doc: typeof inst.doc === "string" ? inst.doc : "", hint: strList3(id, inst.hint, `${where}.install.hint`) },
+    update: updates,
+    latest
+  };
+}
+function stepOf(id, raw, where) {
+  if (!isObj6(raw)) throw bad3(id, `${where} 가 객체가 아니다`);
+  if (raw.run !== void 0) return { kind: "run", argv: argv(id, raw.run, `${where}.run`), confirm: raw.confirm === true, allowFail: raw.allowFail === true };
+  if (typeof raw.call === "string") return { kind: "call", name: raw.call };
+  if (raw.registerExternal === true) return { kind: "registerExternal" };
+  if (raw.applyKit === true) return { kind: "applyKit" };
+  if (raw.removeKit === true) return { kind: "removeKit" };
+  if (raw.setConfig === true) return { kind: "setConfig" };
+  if (raw.unsetConfig === true) return { kind: "unsetConfig" };
+  if (typeof raw.doctor === "string") return { kind: "doctor", id: raw.doctor };
+  if (typeof raw.print === "string") return { kind: "print", text: raw.print };
+  throw bad3(id, `${where}: 모르는 단계 ${JSON.stringify(raw)}`);
+}
+function stepsOf(id, v, what) {
+  if (!Array.isArray(v)) throw bad3(id, `steps.${what} 가 배열이 아니다`);
+  return v.map((s, i) => stepOf(id, s, `steps.${what}[${i}]`));
+}
+function parseModule(text3, expectId) {
+  let raw;
+  try {
+    raw = JSON.parse(text3);
+  } catch (err) {
+    throw bad3(expectId ?? "?", err instanceof Error ? err.message : String(err));
+  }
+  if (!isObj6(raw)) throw bad3(expectId ?? "?", "최상위가 객체가 아니다");
+  const id = typeof raw.id === "string" ? raw.id : "?";
+  if (raw.schema !== MODULE_SCHEMA) throw bad3(id, `schema 가 ${MODULE_SCHEMA} 가 아니다`);
+  if (!/^[a-z][a-z0-9-]*$/.test(id)) throw bad3(id, "id 형식");
+  if (expectId !== void 0 && id !== expectId) throw bad3(id, `폴더 이름 ${expectId} 와 id 가 다르다`);
+  if (raw.kind !== "kit" && raw.kind !== "external") throw bad3(id, "kind 는 kit 또는 external");
+  if (typeof raw.title !== "string" || typeof raw.summary !== "string") throw bad3(id, "title · summary 는 문자열");
+  const req = isObj6(raw.requires) ? raw.requires : {};
+  const tools = Array.isArray(req.tools) ? req.tools.map((t, i) => toolOf(id, t, i)) : [];
+  if (raw.kind === "kit" && tools.length) throw bad3(id, "kind kit 은 외부 도구를 요구하지 않는다");
+  let files;
+  if (raw.files === "layer") files = "layer";
+  else if (Array.isArray(raw.files)) {
+    files = raw.files.map((f, i) => {
+      if (!isObj6(f) || typeof f.from !== "string" || f.from.includes("..") || import_node_path23.default.isAbsolute(f.from)) throw bad3(id, `files[${i}].from`);
+      if (f.op !== void 0 && f.op !== "copy") throw bad3(id, `files[${i}].op 는 copy 만 쓴다`);
+      return { from: f.from, op: "copy" };
+    });
+  } else throw bad3(id, 'files 는 "layer" 또는 목록');
+  const hooks = (Array.isArray(raw.hooks) ? raw.hooks : []).map((h, i) => {
+    if (!isObj6(h) || typeof h.id !== "string" || typeof h.event !== "string" || typeof h.script !== "string") throw bad3(id, `hooks[${i}]`);
+    return { id: h.id, event: h.event, harnesses: strList3(id, h.harnesses, `hooks[${i}].harnesses`), script: h.script };
+  });
+  const settings2 = (Array.isArray(raw.settings) ? raw.settings : []).map((s, i) => {
+    if (!isObj6(s) || typeof s.path !== "string") throw bad3(id, `settings[${i}]`);
+    return { path: s.path, keys: strList3(id, s.keys, `settings[${i}].keys`) };
+  });
+  const cfg = isObj6(raw.config) ? raw.config : {};
+  const steps = isObj6(raw.steps) ? raw.steps : {};
+  const decl = {
+    id,
+    title: raw.title,
+    summary: raw.summary,
+    kind: raw.kind,
+    requires: { kit: typeof req.kit === "string" ? req.kit : null, modules: strList3(id, req.modules, "requires.modules"), tools },
+    conflicts: strList3(id, raw.conflicts, "conflicts"),
+    files,
+    hooks,
+    settings: settings2,
+    externalPaths: strList3(id, raw.externalPaths, "externalPaths"),
+    externalHooks: strList3(id, raw.externalHooks, "externalHooks"),
+    harnessWarnings: isObj6(raw.harnessWarnings) ? Object.fromEntries(Object.entries(raw.harnessWarnings).filter(([, v]) => typeof v === "string")) : {},
+    config: { set: isObj6(cfg.set) ? cfg.set : {}, unset: isObj6(cfg.unset) ? cfg.unset : {} },
+    steps: { add: stepsOf(id, steps.add ?? [], "add"), remove: stepsOf(id, steps.remove ?? [], "remove") },
+    doctor: strList3(id, raw.doctor, "doctor")
+  };
+  checkOrder(decl);
+  return decl;
+}
+function checkOrder(m) {
+  const add = m.steps.add.map((s) => s.kind);
+  const reg = add.indexOf("registerExternal");
+  const apply = add.indexOf("applyKit");
+  if (reg >= 0 && apply >= 0 && reg > apply) throw bad3(m.id, "registerExternal 은 applyKit 앞에 둔다");
+  if (m.kind === "kit" && [...m.steps.add, ...m.steps.remove].some((s) => s.kind === "run" || s.kind === "call" || s.kind === "registerExternal")) {
+    throw bad3(m.id, "kind kit 은 외부 명령 단계를 갖지 않는다");
+  }
+  if (!add.includes("applyKit")) throw bad3(m.id, "steps.add 에 applyKit 이 없다");
+  if (!m.steps.remove.some((s) => s.kind === "removeKit")) throw bad3(m.id, "steps.remove 에 removeKit 이 없다");
+}
+function modulePath(templatesDir, id) {
+  return import_node_path23.default.join(templatesDir, "optional", id, MODULE_FILE);
+}
+function loadModule(templatesDir, id) {
+  const file = modulePath(templatesDir, id);
+  let text3;
+  try {
+    text3 = import_node_fs21.default.readFileSync(file, "utf8");
+  } catch {
+    throw new CliError(EXIT.ENV, `module.json 이 없다: ${file}`);
+  }
+  return parseModule(text3, id);
+}
+function listModuleIds(templatesDir) {
+  const dir = import_node_path23.default.join(templatesDir, "optional");
+  if (!isDir(dir)) return [];
+  return import_node_fs21.default.readdirSync(dir).filter((n) => isDir(import_node_path23.default.join(dir, n)) && import_node_fs21.default.existsSync(import_node_path23.default.join(dir, n, MODULE_FILE))).sort();
+}
+function loadModuleOrNull(templatesDir, id) {
+  return import_node_fs21.default.existsSync(modulePath(templatesDir, id)) ? loadModule(templatesDir, id) : null;
+}
+
+// src/modules/tools.ts
+var import_node_child_process6 = require("node:child_process");
+
+// ../dashboard/src/agent.ts
+var import_node_child_process5 = require("node:child_process");
+var import_node_path24 = __toESM(require("node:path"));
+var HARNESS = /* @__PURE__ */ new Set(["claude", "codex", "kiro", "kiro-cli", "cursor-agent"]);
+var INTERPRETERS = /* @__PURE__ */ new Set(["node", "nodejs", "bun", "deno"]);
+var PERSONAL = /* @__PURE__ */ new Set(["CODEX_HOME", "KIRO_HOME"]);
+var DEPTH = 20;
+function envMarker(env) {
+  if (env.CLAUDECODE === "1") return "CLAUDECODE=1";
+  if (env.CLAUDE_CODE_MESSAGING_SOCKET) return "CLAUDE_CODE_MESSAGING_SOCKET";
+  for (const key of Object.keys(env).sort()) {
+    if (PERSONAL.has(key) || !env[key]) continue;
+    if (key.startsWith("CODEX_") || key.startsWith("KIRO_")) return key;
+  }
+  if (env.CURSOR_AGENT) return "CURSOR_AGENT";
+  return null;
+}
+function row(pid) {
+  const a = (0, import_node_child_process5.spawnSync)("ps", ["-o", "ppid=", "-o", "comm=", "-p", String(pid)], { encoding: "utf8", timeout: 5e3 });
+  const b = (0, import_node_child_process5.spawnSync)("ps", ["-o", "args=", "-p", String(pid)], { encoding: "utf8", timeout: 5e3 });
+  const text3 = (a.stdout ?? "").trim();
+  if (a.status !== 0 || !text3) return null;
+  const m = /^(\d+)\s+(.*)$/.exec(text3);
+  if (!m) return null;
+  return [Number(m[1]), m[2].trim(), (b.stdout ?? "").trim()];
+}
+function harnessName(command, args) {
+  const names = /* @__PURE__ */ new Set([import_node_path24.default.basename(command).replace(/^-+/, "")]);
+  const tokens = args.split(/\s+/).filter(Boolean);
+  if (tokens.length) {
+    const first = import_node_path24.default.basename(tokens[0]).replace(/^-+/, "");
+    names.add(first);
+    if (INTERPRETERS.has(first) && tokens.length > 1) names.add(import_node_path24.default.basename(tokens[1]));
+  }
+  const found = [...names].filter((n) => HARNESS.has(n)).sort();
+  return found[0] ?? null;
+}
+function parentMarker(start = process.ppid) {
+  let current4 = start;
+  for (let i = 0; i < DEPTH; i += 1) {
+    if (current4 <= 1) return null;
+    const r = row(current4);
+    if (!r) return null;
+    const name = harnessName(r[1], r[2]);
+    if (name) return `부모 프로세스 ${name}`;
+    current4 = r[0];
+  }
+  return null;
+}
+function agentSession(env) {
+  return envMarker(env) ?? parentMarker();
+}
+
+// src/modules/tools.ts
+function runCmd(io2, cwd, argv2, opts = {}) {
+  const [cmd, ...args] = argv2;
+  const env = { ...io2.env, PATH: io2.env.PATH ?? process.env.PATH, HOME: io2.env.HOME ?? process.env.HOME };
+  const r = (0, import_node_child_process6.spawnSync)(cmd, args, {
+    cwd,
+    env,
+    encoding: "utf8",
+    stdio: opts.inherit ? "inherit" : ["ignore", "pipe", "pipe"],
+    timeout: opts.timeout ?? 12e4
+  });
+  const missing = r.error?.code === "ENOENT";
+  return { status: r.status, stdout: typeof r.stdout === "string" ? r.stdout : "", stderr: typeof r.stderr === "string" ? r.stderr : "", missing };
+}
+function platformOf(io2) {
+  const p = io2.env.HARNESS_KIT_PLATFORM ?? process.platform;
+  return p === "darwin" || p === "win32" ? p : "linux";
+}
+function norm(v) {
+  const m = /^v?(\d+)(?:\.(\d+))?(?:\.(\d+))?/.exec(v.trim());
+  return m ? `${m[1]}.${m[2] ?? "0"}.${m[3] ?? "0"}` : null;
+}
+function parseVersion(text3) {
+  const m = /(?:^|[^\d.])v?(\d+\.\d+(?:\.\d+)?(?:-[0-9A-Za-z.-]+)?)/.exec(text3);
+  return m ? m[1] : null;
+}
+function satisfiesRange(version, range) {
+  const v = norm(version);
+  if (!v) return null;
+  const parts = range.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return true;
+  for (const part of parts) {
+    const m = /^(>=|<=|>|<|=)?(\d+(?:\.\d+){0,2})$/.exec(part);
+    if (!m) return null;
+    const cmp2 = compareSemver(v, norm(m[2]));
+    if (cmp2 === null) return null;
+    const op = m[1] ?? "=";
+    const ok2 = op === ">=" ? cmp2 >= 0 : op === "<=" ? cmp2 <= 0 : op === ">" ? cmp2 > 0 : op === "<" ? cmp2 < 0 : cmp2 === 0;
+    if (!ok2) return false;
+  }
+  return true;
+}
+function rangeOf(tool, meta) {
+  const versions = meta.versions && typeof meta.versions === "object" ? meta.versions : {};
+  const key = tool.rangeKey.replace(/^versions\./, "");
+  return typeof versions[key] === "string" ? versions[key] : tool.range;
+}
+function checkTool(io2, cwd, tool, range) {
+  const r = runCmd(io2, cwd, tool.versionCmd, { timeout: 15e3 });
+  if (r.missing || r.status === null) return { name: tool.name, installed: false, version: null, range, inRange: null };
+  const version = parseVersion(`${r.stdout}
+${r.stderr}`);
+  return { name: tool.name, installed: true, version, range, inRange: version === null ? null : satisfiesRange(version, range) };
+}
+var SUDO = /(^|[\s;&|()])sudo(\s|$)/;
+function needsSudo(argv2) {
+  return argv2[0] === "sudo" || argv2.slice(1).some((a) => SUDO.test(a));
+}
+function displayCmd(argv2) {
+  return argv2.map((a) => /^[A-Za-z0-9_./@%+=:,-]+$/.test(a) ? a : a.includes("'") ? `"${a}"` : `'${a}'`).join(" ");
+}
+function installOffer(tool, platform) {
+  const command = tool.install.commands[platform] ?? null;
+  const lines3 = [`  ${tool.name} 가 없다. 공식 설치 명령${command ? "" : "(이 OS 는 명령을 적어 두지 않았다)"}:`];
+  if (command) lines3.push(`    ${displayCmd(command)}`);
+  for (const h of tool.install.hint) lines3.push(`    ${h}`);
+  if (tool.install.doc) lines3.push(`    문서: ${tool.install.doc}`);
+  return { command, lines: lines3 };
+}
+function agentSessionOf(io2) {
+  return (io2.agentSession ?? (() => agentSession(io2.env)))();
+}
+async function decideInstall(io2, tool, opts) {
+  const offer = installOffer(tool, platformOf(io2));
+  if (!offer.command) return { action: "print", reason: "no-command", command: null };
+  if (needsSudo(offer.command)) return { action: "print", reason: "sudo", command: offer.command };
+  if (agentSessionOf(io2)) return { action: "print", reason: "agent", command: offer.command };
+  if (opts.installTools) return { action: "run", command: offer.command };
+  if (!io2.isTTY) return { action: "print", reason: "no-tty", command: offer.command };
+  const yes = await opts.confirm(`${tool.name} 를 설치한다(${displayCmd(offer.command)})`);
+  return yes ? { action: "run", command: offer.command } : { action: "print", reason: "declined", command: offer.command };
+}
+function dig(v, dotted) {
+  let cur = v;
+  for (const key of dotted.split(".").filter(Boolean)) {
+    if (cur === null || typeof cur !== "object") return void 0;
+    cur = cur[Array.isArray(cur) ? Number(key) : key];
+  }
+  return cur;
+}
+function latestVersion(io2, cwd, tool) {
+  if (!tool.latest) return null;
+  const r = runCmd(io2, cwd, tool.latest.cmd, { timeout: 3e4 });
+  if (r.missing || !r.stdout.trim()) return null;
+  if (!tool.latest.json) return parseVersion(r.stdout);
+  try {
+    const found = dig(JSON.parse(r.stdout), tool.latest.json);
+    return typeof found === "string" ? found : null;
+  } catch {
+    return null;
+  }
+}
+
+// src/commands/update-tools.ts
+async function runUpdateTools(ctx) {
+  const { io: io2 } = ctx;
+  const target = targetOf(ctx);
+  const inst = loadInstalled(target, "update");
+  const kit = kitOf(ctx);
+  const agent = agentSessionOf(io2);
+  const human = !agent && io2.isTTY && io2.stdin !== void 0 && !ctx.json;
+  const prompter = human ? createPrompter(io2.stdin, io2.stderr) : null;
+  const rows = [];
+  const lines3 = [`harness-kit update --tools — ${target}`];
+  try {
+    for (const id of inst.meta.modules) {
+      const decl = loadModuleOrNull(kit.loc.dir, id);
+      if (!decl || decl.kind !== "external") continue;
+      for (const tool of decl.requires.tools) {
+        const range = rangeOf(tool, inst.meta);
+        const state = checkTool(io2, target, tool, range);
+        const latest = state.installed ? latestVersion(io2, target, tool) : null;
+        const cmd = tool.update[platformOf(io2)] ?? null;
+        const row2 = { module: id, tool: tool.name, current: state.version, latest, range, latestInRange: latest ? satisfiesRange(latest, range) : null, update: cmd, action: "listed" };
+        const newer2 = state.installed && latest !== null && state.version !== null && latest !== state.version;
+        lines3.push(`  ${tool.name.padEnd(8)} 지금 ${state.installed ? state.version ?? "?" : "없음"} · 최신 ${latest ?? "알 수 없음"} · 검증 범위 ${range}${state.installed ? "" : "  (설치되어 있지 않다 — harness-kit add " + id + ")"}`);
+        if (!newer2) {
+          row2.action = "none";
+          rows.push(row2);
+          continue;
+        }
+        if (row2.latestInRange === false && !bool(ctx.values, "allow-unverified")) {
+          row2.action = "blocked";
+          row2.note = "최신 판이 검증된 범위 밖이다";
+          lines3.push(`    ⚠ 최신 ${latest} 는 검증된 범위(${range}) 밖이다 — 올리려면 --allow-unverified`);
+        } else if (!cmd) {
+          row2.action = "print";
+          lines3.push(`    이 OS 의 업데이트 명령을 적어 두지 않았다. 문서: ${tool.install.doc}`);
+        } else if (needsSudo(cmd)) {
+          row2.action = "print";
+          lines3.push(`    sudo 가 필요한 명령은 실행하지 않는다: ${displayCmd(cmd)}`);
+        } else if (!prompter) {
+          row2.action = "listed";
+          lines3.push(`    업데이트 명령: ${displayCmd(cmd)}${agent ? "  (에이전트 세션이라 실행하지 않는다 — 사람이 터미널에서 실행한다)" : "  (사람 터미널에서 다시 하면 묻는다)"}`);
+        } else if (await prompter.confirm(`${tool.name} ${state.version} → ${latest} 로 올린다(${displayCmd(cmd)})`)) {
+          const r = runCmd(io2, target, cmd, { inherit: true, timeout: 9e5 });
+          const after = checkTool(io2, target, tool, range);
+          row2.action = r.status === 0 ? "updated" : "failed";
+          lines3.push(`    ${row2.action === "updated" ? `올렸다 → ${after.version ?? "?"}` : `실패(exit ${String(r.status)})`}`);
+        } else {
+          row2.action = "declined";
+          lines3.push("    올리지 않았다");
+        }
+        rows.push(row2);
+      }
+    }
+  } finally {
+    prompter?.close();
+  }
+  if (rows.length === 0) lines3.push("  켜 둔 외부 도구 모듈이 없다(harness-kit add aidlc · entire)");
+  return { code: EXIT.OK, data: { command: "update", tools: rows, target }, lines: lines3 };
+}
+
 // src/commands/update.ts
 var V1_LOCK_BACKUP = ".agents/state/harness-kit.lock.v1.bak";
-var LATER_FLAGS = {
-  tools: "--tools(외부 도구 갱신)는 P22(외부 도구 모듈, 설계 10)에서 제공한다"
-};
+var LATER_FLAGS = {};
 function full8(target, rel2) {
-  return import_node_path23.default.join(target, ...rel2.split("/"));
+  return import_node_path25.default.join(target, ...rel2.split("/"));
 }
 function checkFlags(ctx) {
   for (const [flag, message2] of Object.entries(LATER_FLAGS)) if (bool(ctx.values, flag)) throw usageError(message2);
@@ -5265,7 +5673,7 @@ function applyUpdate(target, plan, w, projection) {
       current4 = o.path;
       if (WRITES.has(o.action)) writeFileAtomic(full8(target, o.path), o.content, o.executable === true);
       else if (o.action === "replace") {
-        import_node_fs21.default.renameSync(full8(target, o.path), full8(target, o.backup));
+        import_node_fs22.default.renameSync(full8(target, o.path), full8(target, o.backup));
         writeFileAtomic(full8(target, o.path), o.content, o.executable === true);
       } else if (o.action === "conflict" && o.newFile) writeFileAtomic(full8(target, o.newFile), o.content, false);
       else if (o.action === "delete" && o.removeFile) {
@@ -5321,7 +5729,7 @@ function writtenState(ctx, target, inst, entries, sel, tokens, source, mergeBack
   const lockText2 = serializeLock({ schema: "harness-kit.lock/v2", kit: { version: VERSION, source }, packs: inst.lock.packs, entries });
   const meta = mergeMetaForUpdate(inst.meta, { version: VERSION, selection: sel, tokens, today: today(ctx.io) });
   const manifest = lstatOrNull(full8(target, MANIFEST_PATH)) ? null : manifestContent(sel, tokens);
-  const v1Backup = inst.lockFormat === "v1" ? import_node_fs21.default.readFileSync(full8(target, LOCK_REL)) : null;
+  const v1Backup = inst.lockFormat === "v1" ? import_node_fs22.default.readFileSync(full8(target, LOCK_REL)) : null;
   return { lockText: lockText2, metaText: serializeMeta(meta), manifest, v1Backup, mergeBackups };
 }
 var ANY_SKIP = /* @__PURE__ */ new Set(["conflict", "skip-user", "skip-external", "skip-pack"]);
@@ -5332,6 +5740,7 @@ var AMBIGUOUS_ACTIONS = /* @__PURE__ */ new Set(["conflict", "replace", "orphan"
 function runUpdate(ctx) {
   const { io: io2 } = ctx;
   if (bool(ctx.values, "packs")) return runUpdatePacks(ctx);
+  if (bool(ctx.values, "tools")) return runUpdateTools(ctx);
   const to = checkFlags(ctx);
   const target = targetOf(ctx);
   const inst = loadInstalled(target, "update");
@@ -5415,14 +5824,14 @@ var NOTICE_LINES = {
   none: null
 };
 function noticeFor(target, templatesDir, from, day) {
-  const read = (file) => {
+  const read2 = (file) => {
     try {
-      return import_node_fs21.default.readFileSync(file, "utf8");
+      return import_node_fs22.default.readFileSync(file, "utf8");
     } catch {
       return null;
     }
   };
-  return planNotice({ upgradeText: read(import_node_path23.default.join(templatesDir, UPGRADE_FILE)), from, to: VERSION, today: day, existing: read(full8(target, NOTICE_REL)) });
+  return planNotice({ upgradeText: read2(import_node_path25.default.join(templatesDir, UPGRADE_FILE)), from, to: VERSION, today: day, existing: read2(full8(target, NOTICE_REL)) });
 }
 function applyNotice(target, notice) {
   try {
@@ -5491,30 +5900,30 @@ function loadForChange(ctx, command, kit) {
 }
 function currentOf(target, ancestors, rel2) {
   if (ancestors.state(rel2) === "blocked") return { kind: "other", what: BLOCKED };
-  const cur = existing(import_node_path24.default.join(target, ...rel2.split("/")));
+  const cur = existing(import_node_path26.default.join(target, ...rel2.split("/")));
   return cur.kind === "file" ? { kind: "file", sha: sha256(cur.bytes) } : cur;
 }
 function ancestorsOf(target) {
-  return new AncestorCheck(target, import_node_fs22.default.realpathSync(target));
+  return new AncestorCheck(target, import_node_fs23.default.realpathSync(target));
 }
 var isKitCopy = (e) => ownerKind2(e.owner) === "kit" && e.op === "copy";
 function manifestChange(l, ancestors, after) {
   if (l.before.agents.join(",") === after.agents.join(",")) return null;
   const want = manifestContent(after, l.tokens);
   if (ancestors.state(MANIFEST_PATH) === "blocked") return { action: "conflict", content: want };
-  const cur = existing(import_node_path24.default.join(l.target, ...MANIFEST_PATH.split("/")));
+  const cur = existing(import_node_path26.default.join(l.target, ...MANIFEST_PATH.split("/")));
   if (cur.kind === "none") return { action: "create", content: want };
   if (cur.kind === "file" && cur.bytes.equals(want)) return { action: "same", content: want };
   if (cur.kind === "file" && cur.bytes.equals(manifestContent(l.before, l.tokens))) return { action: "replace", content: want };
   const neu = `${MANIFEST_PATH}.new`;
-  return existing(import_node_path24.default.join(l.target, ...neu.split("/"))).kind === "other" ? { action: "conflict", content: want } : { action: "conflict", content: want, newFile: neu };
+  return existing(import_node_path26.default.join(l.target, ...neu.split("/"))).kind === "other" ? { action: "conflict", content: want } : { action: "conflict", content: want, newFile: neu };
 }
 function featureDocsAllowed2(target, entries) {
-  const docs = entries.filter((e) => e.path.startsWith(`${import_node_path24.default.posix.dirname(FEATURE_DOCS)}/`));
+  const docs = entries.filter((e) => e.path.startsWith(`${import_node_path26.default.posix.dirname(FEATURE_DOCS)}/`));
   if (!docs.some((e) => e.path === FEATURE_DOCS)) return false;
   return docs.every((e) => {
     if (!isKitCopy(e) || !e.sha256) return false;
-    const cur = existing(import_node_path24.default.join(target, ...e.path.split("/")));
+    const cur = existing(import_node_path26.default.join(target, ...e.path.split("/")));
     return cur.kind === "file" && sha256(cur.bytes) === e.sha256;
   });
 }
@@ -5527,9 +5936,13 @@ function changeOverlay(ops) {
   }
   return { writes, deletes };
 }
+function withAfterMeta(l, after, writes) {
+  const meta = { ...l.inst.meta, modules: [...after.modules] };
+  return new Map([...writes, [META_REL, { content: Buffer.from(serializeMeta(meta), "utf8"), executable: false }]]);
+}
 function applyChange(ctx, l, after, r) {
   const { target, inst } = l;
-  const full11 = (rel2) => import_node_path24.default.join(target, ...rel2.split("/"));
+  const full11 = (rel2) => import_node_path26.default.join(target, ...rel2.split("/"));
   let current4 = "";
   try {
     const deleted = [];
@@ -5558,7 +5971,7 @@ function applyChange(ctx, l, after, r) {
   const lockText2 = serializeLock({ schema: "harness-kit.lock/v2", kit: { version: inst.lock.kit.version ?? inst.meta.kit.version, source: inst.lock.kit.source }, packs: inst.lock.packs, entries });
   const meta = mergeMetaForUpdate(inst.meta, { version: inst.meta.kit.version, selection: after, tokens: l.tokens, today: today(ctx.io) });
   const state = [
-    ...inst.lockFormat === "v1" ? [[V1_LOCK_BACKUP, import_node_fs22.default.readFileSync(full11(LOCK_REL))]] : [],
+    ...inst.lockFormat === "v1" ? [[V1_LOCK_BACKUP, import_node_fs23.default.readFileSync(full11(LOCK_REL))]] : [],
     [LOCK_REL, Buffer.from(lockText2, "utf8")],
     [META_REL, Buffer.from(serializeMeta(meta), "utf8")]
   ];
@@ -5650,6 +6063,1203 @@ function retiredOnly(ctx, command, names) {
 }
 var retiredNotes = (names) => names.retired.map((m) => retiredNote(m, "flag"));
 
+// src/commands/remove.ts
+var import_node_path27 = __toESM(require("node:path"));
+function keepAction(e) {
+  const owner = ownerKind2(e.owner);
+  if (owner === "external") return "skip-external";
+  if (owner === "pack") return "skip-pack";
+  if (owner !== "kit" || entryKind(e) === "none") return "keep-user";
+  return null;
+}
+function judgeDrop(l, p, e, cur, ambiguous) {
+  const keep = keepAction(e);
+  const layer = e.layer ?? null;
+  if (keep) return { op: { path: p, owner: e.owner, layer, action: keep }, entry: e };
+  if (cur.kind === "none") return { op: { path: p, owner: e.owner, layer, action: "absent" }, entry: void 0 };
+  if (cur.kind === "file" && e.sha256 && cur.sha === e.sha256) {
+    const neu = `${p}.new`;
+    const alsoNew = existing(import_node_path27.default.join(l.target, ...neu.split("/"))).kind === "file" ? { alsoNew: neu } : {};
+    return { op: { path: p, owner: e.owner, layer, action: "delete", ...alsoNew }, entry: void 0 };
+  }
+  const reason = cur.kind === "other" ? cur.what : ambiguous.has(p) ? AMBIGUOUS_REASON : e.sha256 ? "사람이 고친 파일이다" : "lock 에 기준 해시가 없다(고친 파일로 본다)";
+  return { op: { path: p, owner: e.owner, layer, action: "keep-modified", reason }, entry: { path: p, op: "copy", owner: "user", sha256: null, ...e.layer ? { layer: e.layer } : {} } };
+}
+function judgeRelayer(l, p, w, e, cur) {
+  const skip = skipByOwner(e);
+  if (skip) return { op: { path: p, owner: e.owner, layer: e.layer ?? null, action: skip.action }, entry: e };
+  const kit = { path: p, op: "copy", owner: "kit", sha256: w.sha256, layer: w.layer };
+  const withD3 = { owner: "kit", layer: w.layer, executable: w.executable, content: w.content };
+  if (cur.kind === "other") return { op: { path: p, owner: e.owner, layer: w.layer, action: "skip-user", reason: cur.what }, entry: e };
+  if (cur.kind === "none") return { op: { path: p, owner: e.owner, layer: w.layer, action: "relayer", reason: "파일이 없다 — repair · update 가 되살린다" }, entry: { ...e, layer: w.layer } };
+  if (cur.sha === w.sha256) return { op: { path: p, owner: "kit", layer: w.layer, action: "same" }, entry: kit };
+  if (e.sha256 && cur.sha === e.sha256) return { op: { path: p, ...withD3, action: "update" }, entry: kit };
+  const neu = `${p}.new`;
+  const newFile = existing(import_node_path27.default.join(l.target, ...neu.split("/"))).kind === "other" ? {} : { newFile: neu };
+  return { op: { path: p, ...withD3, action: "conflict", ...newFile }, entry: { ...e, layer: w.layer } };
+}
+function planRemove(l, after) {
+  const beforeLayers = winnerLayers(l.layout, l.loc.dir, l.before, l.tokens);
+  const afterLayers = winnerLayers(l.layout, l.loc.dir, after, l.tokens);
+  const oldWant = wanted({ layout: l.layout, templatesDir: l.loc.dir, selection: l.before, tokens: l.tokens }).want;
+  const newWant = wanted({ layout: l.layout, templatesDir: l.loc.dir, selection: after, tokens: l.tokens }).want;
+  const shaOf2 = () => new Map([...oldWant, ...newWant].map(([p2, d]) => [p2, d.sha256]));
+  const { lock, ambiguous } = resolvedLock(l.inst, l.target, shaOf2);
+  const locked = new Map(lock.entries.map((e) => [e.path, e]));
+  const ancestors = ancestorsOf(l.target);
+  const ops = [];
+  for (const p2 of [...beforeLayers.keys()].filter((x) => !afterLayers.has(x)).sort(byteCompare)) {
+    const e = locked.get(p2);
+    if (!e) continue;
+    const j = judgeDrop(l, p2, e, currentOf(l.target, ancestors, p2), ambiguous);
+    ops.push(j.op);
+    if (j.entry) locked.set(p2, j.entry);
+    else locked.delete(p2);
+  }
+  for (const p2 of relayered(beforeLayers, afterLayers)) {
+    const e = locked.get(p2);
+    if (!e) continue;
+    const j = judgeRelayer(l, p2, newWant.get(p2), e, currentOf(l.target, ancestors, p2));
+    ops.push(j.op);
+    locked.set(p2, j.entry);
+  }
+  const manifest = manifestChange(l, ancestors, after);
+  const spec = loadSpecOrNull(l.loc.dir);
+  if (!spec) return { ops, entries: [...locked.values()], manifest, projection: null };
+  const { writes: copyWrites, deletes } = changeOverlay(ops);
+  const writes = withAfterMeta(l, after, copyWrites);
+  const p = prepare({ target: l.target, spec, tokens: l.tokens, agents: after.agents, writes, deletes, copyPaths: newWant.keys() });
+  const projection = judgeUpdate({ target: l.target, spec, tokens: l.tokens, sources: p.sources, wants: p.wants, prev: l.inst.lock.entries, copyNow: new Set(newWant.keys()), acceptAll: false, retire: false });
+  return { ops, entries: [...locked.values()], manifest, projection, projectionFindings: p.findings };
+}
+async function runRemove(ctx) {
+  const kit = kitOf(ctx);
+  const asked = parseNames(kit.layout, ctx.positionals, "remove");
+  const only = retiredOnly(ctx, "remove", asked);
+  if (only) return { ...only, data: { ...only.data, names: { ...asked, notOn: [] } } };
+  const external = asked.modules.filter((m) => isExternalModule(kit.loc.dir, m));
+  if (external.length) return runModuleRemove(ctx, kit, { ...asked, modules: asked.modules.filter((m) => !external.includes(m)) }, external);
+  return runKitRemove(ctx, kit, asked);
+}
+function runKitRemove(ctx, kit, asked) {
+  const l = loadForChange(ctx, "remove", kit);
+  const notOn = [...asked.harnesses.filter((h) => !l.before.agents.includes(h)), ...asked.modules.filter((m) => !l.before.modules.includes(m))];
+  const names = { harnesses: asked.harnesses.filter((h) => !notOn.includes(h)), modules: asked.modules.filter((m) => !notOn.includes(m)), retired: asked.retired };
+  const after = withoutNames(l.before, names);
+  if (after.agents.length === 0) throw usageError("하네스를 모두 뺄 수 없다 — 하나는 남는다", "킷을 통째로 지우려면 harness-kit uninstall");
+  const dryRun = dryRunOf(ctx);
+  const nothing = names.harnesses.length + names.modules.length === 0;
+  const result = nothing ? { ops: [], entries: l.inst.lock.entries, manifest: null } : planRemove(l, after);
+  const featureDocs = dryRun || nothing ? null : applyChange(ctx, l, after, result);
+  const notes = [...retiredNotes(asked), ...notOn.length ? [`  · 켜져 있지 않다 — 건너뛴다: ${notOn.join(", ")}`] : []];
+  const keep = [...result.ops.filter((o) => o.action === "keep-modified").map((o) => o.path), ...(result.projection?.ops ?? []).filter((o) => o.action === "keep-modified").map((o) => o.path)];
+  const { data, lines: lines3 } = report(ctx, l, { command: "remove", names: { ...names, notOn }, after, result, dryRun, featureDocs, notes, extra: { keep } });
+  if (keep.length) lines3.splice(lines3.length - 1, 0, "  고친 파일은 남겼다(lock 은 owner user). 필요 없으면 직접 지운다");
+  const human = keep.length > 0 || result.ops.some((o) => o.action === "conflict") || result.manifest?.action === "conflict" || needsHuman(result.projection ?? null, result.projectionFindings ?? []);
+  return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines: lines3 };
+}
+
+// src/core/measure.ts
+var import_node_fs24 = __toESM(require("node:fs"));
+var import_node_path28 = __toESM(require("node:path"));
+var HARNESS_LOAD = {
+  claude: { entries: ["CLAUDE.md", ".claude/CLAUDE.md"], rules: ".claude/rules", skills: ".claude/skills", agents: ".claude/agents", hookFiles: [".claude/settings.json"] },
+  codex: { entries: ["AGENTS.md"], rules: null, skills: ".agents/skills", agents: null, hookFiles: [".codex/hooks.json"] },
+  cursor: { entries: ["AGENTS.md"], rules: ".cursor/rules", skills: ".cursor/skills", agents: ".cursor/agents", hookFiles: [".cursor/hooks.json"] },
+  kiro: { entries: ["AGENTS.md"], rules: ".kiro/steering", skills: ".kiro/skills", agents: null, hookFiles: [] }
+};
+var IMPORT_DEPTH = 5;
+var KIT_HOOK_MARKS = ["scripts/hooks/dispatch.sh", "scripts/hooks/"];
+function readText(file) {
+  try {
+    const st = import_node_fs24.default.statSync(file);
+    return st.isFile() ? import_node_fs24.default.readFileSync(file, "utf8") : null;
+  } catch {
+    return null;
+  }
+}
+function frontmatter(text3) {
+  const m = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(text3);
+  return m ? { head: m[1], body: text3.slice(m[0].length) } : null;
+}
+function headValue(head, key) {
+  const lines3 = head.split(/\r?\n/);
+  const i = lines3.findIndex((l) => l.startsWith(`${key}:`));
+  if (i < 0) return null;
+  let value2 = lines3[i].slice(key.length + 1).trim();
+  const out = [];
+  for (let j = i + 1; j < lines3.length && /^\s+\S/.test(lines3[j]); j += 1) out.push(lines3[j].trim());
+  if (/^[>|][+-]?$/.test(value2)) value2 = "";
+  return [value2, ...out].filter(Boolean).join(" ");
+}
+var hasPaths = (head) => head.split(/\r?\n/).some((l) => /^(paths|globs):/.test(l));
+function ownerResolver(entries) {
+  const map = new Map(entries.map((e) => [e.path, e.owner]));
+  return (rel2) => {
+    let p = rel2;
+    for (; ; ) {
+      const o = map.get(p);
+      if (o !== void 0) return o;
+      const i = p.lastIndexOf("/");
+      if (i < 0) return "user";
+      p = p.slice(0, i);
+    }
+  };
+}
+function listDir2(root, rel2) {
+  try {
+    return import_node_fs24.default.readdirSync(import_node_path28.default.join(root, rel2), { withFileTypes: true }).map((d) => ({ name: d.name, dir: d.isDirectory() })).sort((a, b) => a.name < b.name ? -1 : 1);
+  } catch {
+    return [];
+  }
+}
+function importsOf(root, rel2, text3) {
+  const out = [];
+  for (const line of text3.split(/\r?\n/)) {
+    const m = /^\s*@(\S+)\s*$/.exec(line);
+    if (!m) continue;
+    const target = m[1];
+    for (const base of [import_node_path28.default.posix.dirname(rel2), ""]) {
+      const cand = import_node_path28.default.posix.normalize(import_node_path28.default.posix.join(base, target));
+      if (cand.startsWith("..") || import_node_path28.default.posix.isAbsolute(cand)) continue;
+      if (readText(import_node_path28.default.join(root, cand)) !== null) {
+        out.push(cand);
+        break;
+      }
+    }
+  }
+  return out;
+}
+function measureSession(root, opts) {
+  const spec = HARNESS_LOAD[opts.harness] ?? HARNESS_LOAD.claude;
+  const ownerOf = ownerResolver(opts.entries);
+  const files = [];
+  const seen = /* @__PURE__ */ new Set();
+  const add = (rel2, kind, bytes) => {
+    if (seen.has(`${kind}:${rel2}`)) return;
+    seen.add(`${kind}:${rel2}`);
+    files.push({ path: rel2, owner: ownerOf(rel2), kind, bytes });
+  };
+  const walkImports = (rel2, depth) => {
+    const text3 = readText(import_node_path28.default.join(root, rel2));
+    if (text3 === null || seen.has(`entry:${rel2}`)) return;
+    add(rel2, "entry", Buffer.byteLength(text3));
+    if (depth >= IMPORT_DEPTH) return;
+    for (const next of importsOf(root, rel2, text3)) walkImports(next, depth + 1);
+  };
+  for (const rel2 of spec.entries) walkImports(rel2, 0);
+  const rulesDir = spec.rules;
+  if (rulesDir) {
+    const stack = [rulesDir];
+    while (stack.length) {
+      const dir = stack.pop();
+      for (const e of listDir2(root, dir)) {
+        const rel2 = `${dir}/${e.name}`;
+        if (e.dir) {
+          stack.push(rel2);
+          continue;
+        }
+        const text3 = readText(import_node_path28.default.join(root, rel2));
+        if (text3 === null || !/\.(md|mdc)$/.test(e.name)) continue;
+        const fm = frontmatter(text3);
+        if (fm && hasPaths(fm.head)) continue;
+        add(rel2, "rule", Buffer.byteLength(text3));
+        for (const next of importsOf(root, rel2, text3)) walkImports(next, 1);
+      }
+    }
+  }
+  const described = (dir, kind, file) => {
+    if (!dir) return;
+    for (const e of listDir2(root, dir)) {
+      const f = file(e.name, e.dir);
+      if (!f) continue;
+      const rel2 = `${dir}/${f}`;
+      const text3 = readText(import_node_path28.default.join(root, rel2));
+      const fm = text3 === null ? null : frontmatter(text3);
+      if (!fm) continue;
+      const name = headValue(fm.head, "name") ?? e.name;
+      const desc = headValue(fm.head, "description") ?? "";
+      add(rel2, kind, Buffer.byteLength(`${name}: ${desc}`));
+    }
+  };
+  described(spec.skills, "skill", (n, d) => d ? `${n}/SKILL.md` : null);
+  described(spec.agents, "agent", (n, d) => !d && n.endsWith(".md") ? n : null);
+  const owners = {};
+  const slot = (o) => owners[o] ??= { bytes: 0, files: 0, entries: 0, rules: 0, skills: 0, agents: 0 };
+  for (const f of files) {
+    const m = slot(f.owner);
+    m.bytes += f.bytes;
+    m.files += 1;
+    if (f.kind === "entry") m.entries += 1;
+    else if (f.kind === "rule") m.rules += 1;
+    else if (f.kind === "skill") m.skills += 1;
+    else m.agents += 1;
+  }
+  const hooks = {};
+  for (const hf of spec.hookFiles) {
+    const text3 = readText(import_node_path28.default.join(root, hf));
+    if (text3 === null) continue;
+    let data;
+    try {
+      data = JSON.parse(text3);
+    } catch {
+      continue;
+    }
+    const table = data !== null && typeof data === "object" ? data.hooks : void 0;
+    if (table === null || typeof table !== "object" || Array.isArray(table)) continue;
+    for (const [event, groups] of Object.entries(table)) {
+      if (!Array.isArray(groups)) continue;
+      for (const g of groups) {
+        const inner = g !== null && typeof g === "object" && Array.isArray(g.hooks) ? g.hooks : [g];
+        for (const h of inner) {
+          const cmd = h !== null && typeof h === "object" && typeof h.command === "string" ? h.command : "";
+          const owner = hookOwnerOf(cmd, opts.hookOwners);
+          const byEvent = hooks[owner] ??= {};
+          byEvent[event] = (byEvent[event] ?? 0) + 1;
+        }
+      }
+    }
+  }
+  for (const o of Object.keys(hooks)) slot(o);
+  const total = files.reduce((s, f) => s + f.bytes, 0);
+  return { harness: opts.harness, owners: Object.fromEntries(Object.entries(owners).sort(([a], [b]) => a < b ? -1 : 1)), hooks, total, files };
+}
+function hookOwnerOf(command, patterns) {
+  for (const [owner, texts] of patterns) if (texts.some((t) => command.includes(t))) return owner;
+  if (KIT_HOOK_MARKS.some((m) => command.includes(m))) return "kit";
+  return "user";
+}
+var hookCount = (m, owner) => Object.values(m.hooks[owner] ?? {}).reduce((s, n) => s + n, 0);
+var estTokens = (bytes) => Math.round(bytes / 3);
+var THRESHOLD_BYTES = 4096;
+function compare(before, after) {
+  const names = [.../* @__PURE__ */ new Set([...Object.keys(before.owners), ...Object.keys(after.owners)])].sort((a, b) => a === "kit" ? -1 : b === "kit" ? 1 : a < b ? -1 : 1);
+  const rows = names.map((owner) => {
+    const a = after.owners[owner];
+    const parts = a ? [a.rules ? `규칙 ${a.rules}` : "", a.skills ? `스킬 설명 ${a.skills}` : "", a.agents ? `에이전트 설명 ${a.agents}` : "", a.entries ? `진입 파일 ${a.entries}` : ""].filter(Boolean) : [];
+    return { owner, before: before.owners[owner]?.bytes ?? 0, after: a?.bytes ?? 0, detail: parts.join(" · ") };
+  });
+  const events = [...new Set([...Object.values(before.hooks), ...Object.values(after.hooks)].flatMap((h) => Object.keys(h)))].sort();
+  const sum = (m, ev) => Object.values(m.hooks).reduce((s, h) => s + (h[ev] ?? 0), 0);
+  return { rows, added: Math.max(0, after.total - before.total), hookRows: events.map((event) => ({ event, before: sum(before, event), after: sum(after, event) })) };
+}
+function measureLines(command, before, after) {
+  const c = compare(before, after);
+  const fmt3 = (n) => n.toLocaleString("en-US").padStart(8);
+  const lines3 = [`${command} — 세션마다 실리는 양(바이트, 하네스 ${after.harness})`];
+  for (const r of c.rows) lines3.push(`  ${r.owner.padEnd(16)}${fmt3(r.before)} →${fmt3(r.after)}${r.detail ? `   ${r.detail}` : ""}`);
+  const changed = c.hookRows.filter((h) => h.before !== h.after || h.after > 0);
+  if (changed.length) lines3.push(`  훅  ${changed.map((h) => `${h.event} ${h.before} → ${h.after}`).join(" · ")}`);
+  lines3.push(`늘어남 ${c.added.toLocaleString("en-US")}바이트(추정 약 ${estTokens(c.added).toLocaleString("en-US")}토큰 / 세션). 이 양은 킷 상한 밖이고 켠 모듈 몫이다.`);
+  return lines3;
+}
+
+// src/modules/doctor.ts
+var import_node_fs26 = __toESM(require("node:fs"));
+var import_node_path30 = __toESM(require("node:path"));
+
+// src/core/git.ts
+var import_node_child_process7 = require("node:child_process");
+function gitEnv(env) {
+  const out = { ...env, PATH: env.PATH ?? process.env.PATH, HOME: env.HOME ?? process.env.HOME, GIT_TERMINAL_PROMPT: "0" };
+  for (const k of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_CONFIG"]) delete out[k];
+  return out;
+}
+function git(args, env, timeout = 3e4) {
+  const r = (0, import_node_child_process7.spawnSync)("git", args, { env: gitEnv(env), encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout });
+  const missing = r.error?.code === "ENOENT";
+  const run4 = { status: r.status, stdout: r.stdout ?? "", stderr: r.stderr ?? "", missing };
+  if (r.error) run4.error = r.error.message;
+  return run4;
+}
+function gitRepoPath(dir, env) {
+  const inside2 = git(["-C", dir, "rev-parse", "--git-dir"], env);
+  if (inside2.status !== 0) return null;
+  const top = git(["-C", dir, "rev-parse", "--show-toplevel"], env);
+  return top.status === 0 && top.stdout.trim() ? top.stdout.trim() : dir;
+}
+function remoteVersions(source, env) {
+  const r = git(["ls-remote", "--tags", "--refs", source], env, 15e3);
+  if (r.missing) return { ok: false, reason: "git 이 없다" };
+  if (r.status !== 0) {
+    const tail = (r.stderr || r.error || `exit ${String(r.status)}`).trim().split("\n").slice(-1)[0] ?? "";
+    return { ok: false, reason: `git ls-remote 실패: ${tail}` };
+  }
+  const versions = [];
+  for (const line of r.stdout.split("\n")) {
+    const ref = line.split("	")[1] ?? "";
+    const m = /^refs\/tags\/v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/.exec(ref.trim());
+    if (m && compareSemver(m[1], m[1]) === 0) versions.push(m[1]);
+  }
+  return { ok: true, versions };
+}
+function maxVersion(versions) {
+  let best = null;
+  for (const v of versions) if (best === null || (compareSemver(v, best) ?? 0) > 0) best = v;
+  return best;
+}
+
+// src/modules/entire/visibility.ts
+function remoteUrl(io2, root) {
+  const r = git(["-C", root, "remote", "get-url", "origin"], io2.env);
+  return r.status === 0 && r.stdout.trim() ? r.stdout.trim() : null;
+}
+function hostOf(url) {
+  const m = /^(?:[a-z+]+:\/\/)?(?:[^@/]+@)?([^/:]+)/i.exec(url.trim());
+  const host = (m?.[1] ?? "").toLowerCase();
+  if (host === "github.com") return "github";
+  if (host === "gitlab.com" || host.startsWith("gitlab.")) return "gitlab";
+  return "other";
+}
+function parseVisibility(text3) {
+  try {
+    const j = JSON.parse(text3);
+    const v = typeof j.visibility === "string" ? j.visibility.toLowerCase() : "";
+    return v === "public" || v === "private" || v === "internal" ? v : "unknown";
+  } catch {
+    return "unknown";
+  }
+}
+function checkVisibility(io2, root) {
+  const remote = remoteUrl(io2, root);
+  if (!remote) return { host: "none", remote: null, visibility: "unknown", via: "origin 원격이 없다" };
+  const host = hostOf(remote);
+  if (host === "other") return { host, remote, visibility: "unknown", via: "GitHub · GitLab.com 이 아니다(자체 호스팅은 확인하지 않는다)" };
+  const argv2 = host === "github" ? ["gh", "repo", "view", "--json", "visibility"] : ["glab", "repo", "view", "-F", "json"];
+  const r = runCmd(io2, root, argv2, { timeout: 2e4 });
+  if (r.missing) return { host, remote, visibility: "unknown", via: `${argv2[0]} 가 없다` };
+  if (r.status !== 0) return { host, remote, visibility: "unknown", via: `${argv2[0]} 실패(인증 · 접근 확인)` };
+  const visibility = parseVisibility(r.stdout);
+  return { host, remote, visibility, via: visibility === "unknown" ? `${argv2[0]} 출력에 visibility 가 없다` : `${argv2.slice(0, 3).join(" ")}` };
+}
+var uploadsAllowed = (v) => v === "private" || v === "internal";
+
+// src/modules/entire/settings.ts
+var import_node_fs25 = __toESM(require("node:fs"));
+var import_node_path29 = __toESM(require("node:path"));
+function readJson(file) {
+  try {
+    const j = JSON.parse(import_node_fs25.default.readFileSync(file, "utf8"));
+    return j !== null && typeof j === "object" && !Array.isArray(j) ? j : null;
+  } catch {
+    return null;
+  }
+}
+function readPushState(root) {
+  const shared = readJson(import_node_path29.default.join(root, ".entire/settings.json"));
+  const local = readJson(import_node_path29.default.join(root, ".entire/settings.local.json"));
+  const pick = (j) => {
+    const o = j && typeof j.strategy_options === "object" && j.strategy_options !== null ? j.strategy_options : null;
+    return o && typeof o.push_sessions === "boolean" ? o.push_sessions : null;
+  };
+  const pushSessions = pick(local) ?? pick(shared);
+  let policy = null;
+  try {
+    policy = import_node_fs25.default.readFileSync(import_node_path29.default.join(root, ".git/entire/checkpoint-push-policy"), "utf8").trim() || null;
+  } catch {
+    policy = null;
+  }
+  return { uploads: pushSessions !== false && policy !== "manual", pushSessions, policy };
+}
+var HOOK_FILES = [
+  [".claude/settings.json", "claude"],
+  [".claude/settings.local.json", "claude"],
+  [".codex/hooks.json", "codex"],
+  [".codex/config.toml", "codex"],
+  [".cursor/hooks.json", "cursor"]
+];
+function entireHarnesses(root) {
+  const out = /* @__PURE__ */ new Set();
+  for (const [rel2, h] of HOOK_FILES) {
+    try {
+      if (import_node_fs25.default.readFileSync(import_node_path29.default.join(root, rel2), "utf8").includes("entire hooks ")) out.add(h);
+    } catch {
+    }
+  }
+  return [...out].sort();
+}
+
+// src/modules/roles.ts
+var DEFAULTS = { design: "claude", implement: "claude", review: "codex", docs: "kiro" };
+function roleHarness(meta, role) {
+  const roles = meta.roles && typeof meta.roles === "object" ? meta.roles : {};
+  const r = roles[role];
+  const h = r !== null && typeof r === "object" ? r.harness : void 0;
+  return typeof h === "string" && h ? h : DEFAULTS[role];
+}
+var designHarness = (meta) => roleHarness(meta, "design");
+var implementHarness = (meta) => roleHarness(meta, "implement");
+function toolHarnessName(tool, harness, role) {
+  const name = tool.harnessNames[harness];
+  if (!name) {
+    throw new CliError(EXIT.STATE, `${tool.name} 는 ${harness} 하네스를 지원하지 않는다(${role} 역할 하네스)`, `지원: ${Object.keys(tool.harnessNames).join(" · ")}. harness-kit.json 의 roles.${role}.harness 를 바꾼 뒤 다시 한다`);
+  }
+  return name;
+}
+function fillPlaceholders(argv2, meta, tool) {
+  return argv2.map(
+    (a) => a.replace(/\{(design|implement)Harness(Name)?\}/g, (_m, role, name) => {
+      const h = roleHarness(meta, role);
+      if (!name) return h;
+      if (!tool) throw new CliError(EXIT.ENV, `${a}: 이름 자리표는 도구가 있는 모듈에서만 쓴다`);
+      return toolHarnessName(tool, h, role);
+    })
+  );
+}
+
+// src/modules/doctor.ts
+var MODULE_KINDS = [
+  "tool-missing",
+  "tool-version",
+  "design-harness",
+  "construction-artifacts",
+  "aidlc-freshness",
+  "implement-only",
+  "trailer-allowed",
+  "push-policy",
+  "global-hooks-path",
+  "gitlab-squash-template",
+  "concurrent-sessions",
+  "external-hooks-left",
+  "module-conflict",
+  "module-decl",
+  "module-undeclared"
+];
+var HARNESS_DIRS2 = [[".claude/", "claude"], [".codex/", "codex"], [".cursor/", "cursor"], [".kiro/", "kiro"]];
+function harnessesOfOwner(entries, owner) {
+  const out = /* @__PURE__ */ new Set();
+  for (const e of entries) if (e.owner === owner) {
+    for (const [dir, h] of HARNESS_DIRS2) if (e.path.startsWith(dir)) out.add(h);
+  }
+  return [...out].sort();
+}
+function externalHookCount(m, measure, owner) {
+  void m;
+  return Object.values(measure.hooks[owner] ?? {}).reduce((s, n) => s + n, 0);
+}
+function readText2(file) {
+  try {
+    return import_node_fs26.default.readFileSync(file, "utf8");
+  } catch {
+    return null;
+  }
+}
+function hookOwnerTable(templatesDir) {
+  if (!templatesDir) return [];
+  const out = [];
+  for (const id of listModuleIds(templatesDir)) {
+    const m = loadModuleOrNull(templatesDir, id);
+    if (m && m.externalHooks.length) out.push([`external:${m.requires.tools[0]?.name ?? m.id}`, m.externalHooks]);
+  }
+  return out;
+}
+function measureFor(c, harness) {
+  return measureSession(c.root, { harness, entries: c.entries.map((e) => ({ path: e.path, owner: e.owner })), hookOwners: hookOwnerTable(c.templatesDir) });
+}
+function toolFindings(c, m) {
+  const out = [];
+  for (const t of m.requires.tools) {
+    const range = rangeOf(t, c.meta);
+    const s = checkTool(c.io, c.root, t, range);
+    if (!s.installed) out.push({ kind: "tool-missing", severity: "warn", owner: m.id, hint: `${m.id} 모듈이 켜져 있는데 ${t.name} 가 없다. 설치 명령은 harness-kit add ${m.id} --dry-run 에 나온다` });
+    else if (s.inRange === false) out.push({ kind: "tool-version", severity: "warn", owner: m.id, hint: `${t.name} ${s.version} 은 검증된 범위(${range}) 밖이다`, detail: { version: s.version, range } });
+    else if (s.inRange === null) out.push({ kind: "tool-version", severity: "info", owner: m.id, hint: `${t.name} 버전을 읽지 못했다(범위 ${range})` });
+  }
+  return out;
+}
+function aidlcFindings(c, m) {
+  const out = [];
+  const owner = `external:${m.requires.tools[0]?.name ?? m.id}`;
+  const installed = harnessesOfOwner(c.entries, owner);
+  const design = designHarness(c.meta);
+  if (installed.length && !installed.includes(design)) {
+    out.push({ kind: "design-harness", severity: "warn", owner: m.id, hint: `설계 역할은 ${design} 인데 AI-DLC 는 ${installed.join(", ")} 에만 있다`, detail: { design, installed } });
+  }
+  const spaces = import_node_path30.default.join(c.root, "aidlc", "spaces");
+  const construction = [];
+  if (isDir(spaces)) {
+    for (const space of import_node_fs26.default.readdirSync(spaces)) {
+      const intents = import_node_path30.default.join(spaces, space, "intents");
+      if (!isDir(intents)) continue;
+      for (const rec of import_node_fs26.default.readdirSync(intents)) {
+        const cd = import_node_path30.default.join(intents, rec, "construction");
+        if (isDir(cd) && import_node_fs26.default.readdirSync(cd).length) construction.push(`aidlc/spaces/${space}/intents/${rec}/construction`);
+      }
+    }
+  }
+  if (construction.length) {
+    out.push({ kind: "construction-artifacts", severity: "warn", owner: m.id, hint: "AI-DLC 구현 쪽 산출물이 생겼다. 구현은 킷 SDD 가 맡는다 — 두 곳에서 구현하지 않는다", detail: { paths: construction } });
+  }
+  for (const w of Object.entries(m.harnessWarnings)) {
+    if (installed.includes(w[0])) out.push({ kind: "design-harness", severity: "info", owner: m.id, hint: `${w[0]}: ${w[1]}` });
+  }
+  return out;
+}
+function trailerFinding(c) {
+  const files = ["scripts/git-hooks/commit-msg", ".githooks/commit-msg", ".husky/commit-msg"];
+  for (const rel2 of files) {
+    const text3 = readText2(import_node_path30.default.join(c.root, rel2));
+    if (text3 === null || /Entire-Checkpoint/.test(text3)) continue;
+    if (/trailer|Co-Authored-By|Signed-off-by|sed -i|grep -v/i.test(text3)) {
+      return { kind: "trailer-allowed", severity: "warn", path: rel2, owner: "entire", hint: "커밋 메시지 검사가 트레일러를 지우거나 거부할 수 있다. Entire-Checkpoint: 를 허용 목록에 더한다" };
+    }
+  }
+  return null;
+}
+function sessionFinding(c) {
+  const dir = import_node_path30.default.join(c.root, ".agents/state/sessions");
+  if (!isDir(dir)) return null;
+  const byCwd = /* @__PURE__ */ new Map();
+  const cutoff = Date.now() - 36e5;
+  for (const f of import_node_fs26.default.readdirSync(dir).filter((n) => n.endsWith(".json"))) {
+    try {
+      const j = JSON.parse(import_node_fs26.default.readFileSync(import_node_path30.default.join(dir, f), "utf8"));
+      if (j.role !== "implement" || typeof j.cwd !== "string") continue;
+      const seen = typeof j.lastSeenAt === "string" ? Date.parse(j.lastSeenAt) : NaN;
+      if (Number.isFinite(seen) && seen < cutoff) continue;
+      byCwd.set(j.cwd, (byCwd.get(j.cwd) ?? 0) + 1);
+    } catch {
+    }
+  }
+  const dup = [...byCwd].filter(([, n]) => n > 1);
+  return dup.length ? { kind: "concurrent-sessions", severity: "warn", owner: "entire", hint: `같은 폴더에 구현 세션이 둘 이상이다(${dup[0]?.[0]}). 기록이 섞인다, 둘째 세션은 worktree 로 연다` } : null;
+}
+function entireFindings(c, m) {
+  const out = [];
+  const impl = implementHarness(c.meta);
+  const have = entireHarnesses(c.root);
+  const extra = have.filter((h) => h !== impl);
+  if (extra.length) out.push({ kind: "implement-only", severity: "warn", owner: m.id, hint: `Entire 훅이 구현 하네스(${impl}) 밖에도 있다: ${extra.join(", ")}. 리뷰 하네스에는 켜지 않는다`, detail: { implement: impl, found: have } });
+  else if (have.length === 0) out.push({ kind: "implement-only", severity: "warn", owner: m.id, hint: `구현 하네스(${impl})에 Entire 훅이 없다. harness-kit add entire 를 다시 하거나 entire agent add 로 켠다` });
+  else if (impl === "claude" || have.includes(impl)) {
+    const review = c.meta.roles?.review?.harness ?? "codex";
+    if (review === impl) out.push({ kind: "implement-only", severity: "info", owner: m.id, hint: "리뷰 하네스가 구현 하네스와 같다. 같은 폴더의 리뷰 세션 대화도 기록된다, 리뷰는 원격 diff 만 읽는다" });
+  }
+  const t = trailerFinding(c);
+  if (t) out.push(t);
+  const vis = checkVisibility(c.io, c.root);
+  const push = readPushState(c.root);
+  if (!uploadsAllowed(vis.visibility) && push.uploads) {
+    out.push({ kind: "push-policy", severity: "error", path: ".entire/settings.json", owner: m.id, hint: `원격 공개 여부가 ${vis.visibility}(${vis.via}). 체크포인트를 올리지 않는 설정이 아니다 — entire configure --project --skip-push-sessions`, detail: { visibility: vis.visibility, via: vis.via } });
+  }
+  const hooksPath = git(["-C", c.root, "config", "--show-scope", "--get", "core.hooksPath"], c.io.env);
+  if (hooksPath.status === 0 && hooksPath.stdout.trim()) {
+    const [scope, value2] = hooksPath.stdout.trim().split(/\s+/, 2);
+    if (scope === "global" || scope === "system") {
+      out.push({ kind: "global-hooks-path", severity: "warn", owner: m.id, hint: `전역 core.hooksPath(${value2})가 있다. Entire 는 git 훅을 그 폴더에 설치해 이 컴퓨터의 모든 리포에 영향을 준다 — 리포별 폴더를 쓰려면 먼저 git config --global --unset core.hooksPath`, detail: { scope, value: value2 } });
+    }
+  }
+  if (vis.host === "gitlab") {
+    const r = runCmd(c.io, c.root, ["glab", "api", "projects/:id"], { timeout: 2e4 });
+    let tpl = null;
+    try {
+      const j = JSON.parse(r.stdout);
+      tpl = typeof j.squash_commit_template === "string" ? j.squash_commit_template : null;
+    } catch {
+      tpl = null;
+    }
+    if (tpl === null || !tpl.includes("%{all_commits}")) {
+      out.push({ kind: "gitlab-squash-template", severity: tpl === null ? "info" : "warn", owner: m.id, hint: "GitLab squash 커밋 메시지 템플릿에 %{all_commits} 가 있어야 Entire-Checkpoint 트레일러가 남는다. Settings → Merge requests → Squash commit message template 을 '%{title} (%{reference})' 다음 줄에 '%{all_commits}' 로 바꾼다" + (tpl === null ? "(템플릿을 API 로 읽지 못해 안내만 한다)" : "") });
+    }
+  }
+  const s = sessionFinding(c);
+  if (s) out.push(s);
+  return out;
+}
+function leftoverFindings(c, off) {
+  const out = [];
+  const table = hookOwnerTable(c.templatesDir);
+  for (const m of off) {
+    if (!m.externalHooks.length) continue;
+    const owner = `external:${m.requires.tools[0]?.name ?? m.id}`;
+    let n = 0;
+    for (const h of Object.keys(HARNESS_LOAD)) n += externalHookCount(m, measureSession(c.root, { harness: h, entries: [], hookOwners: table }), owner);
+    if (n > 0) out.push({ kind: "external-hooks-left", severity: "info", owner: m.id, hint: `${m.id} 모듈은 꺼졌지만 ${owner} 훅이 하네스 설정에 ${n}개 남아 있다. 그 도구의 명령으로 뺀다(킷은 건드리지 않는다)`, detail: { count: n } });
+  }
+  return out;
+}
+function moduleFindings(c) {
+  if (!c.templatesDir) return [];
+  const out = [];
+  const on = c.meta.modules;
+  const off = [];
+  for (const id of listModuleIds(c.templatesDir)) {
+    let m;
+    try {
+      m = loadModuleOrNull(c.templatesDir, id);
+    } catch (err) {
+      out.push({ kind: "module-decl", severity: "warn", owner: id, hint: err instanceof Error ? err.message : String(err) });
+      continue;
+    }
+    if (!m) continue;
+    if (!on.includes(id)) {
+      if (m.kind === "external") off.push(m);
+      continue;
+    }
+    for (const other of m.conflicts) if (on.includes(other)) out.push({ kind: "module-conflict", severity: "error", owner: id, hint: `${id} 와 ${other} 는 같이 켤 수 없다` });
+    if (m.kind !== "external") continue;
+    out.push(...toolFindings(c, m));
+    if (m.id === "aidlc") out.push(...aidlcFindings(c, m));
+    if (m.id === "entire") out.push(...entireFindings(c, m));
+    out.push(...declaredHookFindings(c, m));
+  }
+  out.push(...leftoverFindings(c, off));
+  return out;
+}
+function declaredHookFindings(c, m) {
+  if (!m.hooks.length) return [];
+  const dir = import_node_path30.default.join(c.root, ".agents/hooks.d");
+  const ids2 = /* @__PURE__ */ new Set();
+  if (isDir(dir)) {
+    for (const f of import_node_fs26.default.readdirSync(dir).filter((n) => n.endsWith(".json"))) {
+      try {
+        const j = JSON.parse(import_node_fs26.default.readFileSync(import_node_path30.default.join(dir, f), "utf8"));
+        for (const h of j.hooks ?? []) if (typeof h.id === "string") ids2.add(h.id);
+      } catch {
+      }
+    }
+  }
+  const missing = m.hooks.filter((h) => !ids2.has(h.id)).map((h) => h.id);
+  return missing.length ? [{ kind: "module-undeclared", severity: "error", owner: m.id, hint: `module.json 이 선언한 훅 ${missing.join(" · ")} 가 .agents/hooks.d 에 없다. harness-kit repair`, detail: { missing } }] : [];
+}
+
+// src/modules/external.ts
+var import_node_fs27 = __toESM(require("node:fs"));
+var import_node_path31 = __toESM(require("node:path"));
+var SNAPSHOT_DIR = ".agents/state/module-snapshots";
+var SKIP_DIRS = /* @__PURE__ */ new Set([".git", "node_modules"]);
+var WALK_LIMIT = 5e4;
+var HARNESS_SETTINGS = [".claude/settings.json", ".claude/settings.local.json", ".codex/config.toml", ".codex/hooks.json", ".cursor/hooks.json", ".cursor/cli.json", ".kiro/settings", "AGENTS.md", ".gitignore"];
+function toolOwner(m) {
+  return `external:${m.requires.tools[0]?.name ?? m.id}`;
+}
+function walkRoot(glob) {
+  const parts = glob.split("/");
+  const out = [];
+  for (const p of parts.slice(0, -1)) {
+    if (/[*?]/.test(p)) break;
+    out.push(p);
+  }
+  return out.join("/");
+}
+function walkFiles2(root, start = "") {
+  const out = [];
+  const stack = [start];
+  while (stack.length && out.length < WALK_LIMIT) {
+    const rel2 = stack.pop();
+    let ents;
+    try {
+      ents = import_node_fs27.default.readdirSync(import_node_path31.default.join(root, rel2), { withFileTypes: true });
+    } catch {
+      continue;
+    }
+    for (const e of ents) {
+      const child = rel2 ? `${rel2}/${e.name}` : e.name;
+      if (e.isDirectory()) {
+        if (!SKIP_DIRS.has(e.name)) stack.push(child);
+      } else if (e.isFile()) out.push(child);
+    }
+  }
+  return out.sort(byteCompare);
+}
+function matchExternal(root, globs) {
+  const res = globs.map((g) => ({ re: globToRegExp(g), start: walkRoot(g) }));
+  const starts = [...new Set(res.map((r) => r.start))];
+  const files = /* @__PURE__ */ new Set();
+  for (const s of starts) {
+    const base = s && !import_node_fs27.default.existsSync(import_node_path31.default.join(root, s)) ? null : s;
+    if (base === null) continue;
+    for (const f of walkFiles2(root, base)) files.add(f);
+  }
+  return [...files].filter((f) => res.some((r) => r.re.test(f))).sort(byteCompare);
+}
+function shaOfFile(file) {
+  try {
+    return sha256(import_node_fs27.default.readFileSync(file));
+  } catch {
+    return null;
+  }
+}
+function takeSnapshot(root, m, at) {
+  const external = {};
+  for (const f of matchExternal(root, m.externalPaths)) external[f] = shaOfFile(import_node_path31.default.join(root, f)) ?? "";
+  const settings2 = {};
+  for (const f of HARNESS_SETTINGS) {
+    const s = shaOfFile(import_node_path31.default.join(root, f));
+    if (s) settings2[f] = s;
+  }
+  return { schema: "harness-kit.module-snapshot/v1", module: m.id, at, external, settings: settings2, files: walkFiles2(root), lock: shaOfFile(import_node_path31.default.join(root, ".agents/harness-kit.lock")), meta: shaOfFile(import_node_path31.default.join(root, ".agents/harness-kit.json")) };
+}
+function writeSnapshot(root, snap) {
+  const stamp = snap.at.replace(/[^0-9A-Za-z]/g, "");
+  const rel2 = `${SNAPSHOT_DIR}/${snap.module}-${stamp}.json`;
+  writeFileAtomic(import_node_path31.default.join(root, ...rel2.split("/")), Buffer.from(`${JSON.stringify(snap, null, 2)}
+`, "utf8"), false);
+  return rel2;
+}
+function registerExternal(root, m, lock, before) {
+  const have = new Map(lock.map((e) => [e.path, e]));
+  const owner = toolOwner(m);
+  const entries = [];
+  let created = 0;
+  let existing2 = 0;
+  const matched = matchExternal(root, m.externalPaths);
+  for (const f of matched) {
+    if (have.has(f)) continue;
+    entries.push({ path: f, op: "none", owner });
+    if (Object.hasOwn(before.external, f)) existing2 += 1;
+    else created += 1;
+  }
+  const covered = new Set(matched);
+  const beforeFiles = new Set(before.files);
+  const unknown = walkFiles2(root).filter((f) => !beforeFiles.has(f) && !covered.has(f) && !have.has(f) && !f.startsWith(`${SNAPSHOT_DIR}/`));
+  return { entries, created, existing: existing2, unknown };
+}
+function setDotted(obj2, dotted, value2) {
+  const keys = dotted.split(".");
+  const out = { ...obj2 };
+  let cur = out;
+  keys.slice(0, -1).forEach((k, i) => {
+    const next = cur[k];
+    if (next === void 0) cur[k] = {};
+    else if (next === null || typeof next !== "object" || Array.isArray(next)) throw new CliError(EXIT.STATE, `설정 ${keys.slice(0, i + 1).join(".")} 가 객체가 아니라 ${dotted} 를 쓸 수 없다`);
+    else cur[k] = { ...next };
+    cur = cur[k];
+  });
+  cur[keys[keys.length - 1]] = value2;
+  return out;
+}
+
+// src/modules/handlers.ts
+var entirePushPolicy = (a) => {
+  const vis = checkVisibility(a.ctx.io, a.root);
+  const lines3 = [`  원격 공개 여부: ${vis.visibility}(${vis.via})${vis.remote ? ` · ${vis.host}` : ""}`];
+  if (uploadsAllowed(vis.visibility)) {
+    lines3.push("  체크포인트 push 정책: 같은 원격에 올린다(Entire 기본값)");
+    return { lines: lines3 };
+  }
+  const argv2 = ["entire", "configure", "--project", "--skip-push-sessions"];
+  const r = runCmd(a.ctx.io, a.root, argv2, { timeout: 6e4 });
+  lines3.push(`  실행: ${displayCmd(argv2)} → exit ${String(r.status)}`);
+  if (r.status !== 0) throw new CliError(EXIT.STATE, "체크포인트를 올리지 않는 설정에 실패했다", (r.stderr || r.stdout).trim().split("\n").slice(-3).join("\n"));
+  lines3.push("  체크포인트 push 정책: 올리지 않는다(공개이거나 확인하지 못했다). 비공개 원격에 따로 올리려면 entire configure --checkpoint-remote github:<그룹>/<리포>");
+  return { lines: lines3 };
+};
+var HANDLERS = { "entire.pushPolicy": entirePushPolicy };
+function callHandler(name, args) {
+  const h = HANDLERS[name];
+  if (!h) throw new CliError(EXIT.ENV, `module.json 이 모르는 처리기를 부른다: ${name}`);
+  return h(args);
+}
+
+// src/modules/rollback.ts
+var import_node_fs28 = __toESM(require("node:fs"));
+var import_node_path32 = __toESM(require("node:path"));
+var Rollback = class _Rollback {
+  constructor(root, roots) {
+    this.root = root;
+    this.roots = roots;
+  }
+  root;
+  saved = /* @__PURE__ */ new Map();
+  roots;
+  /** paths 는 파일 또는 폴더(배치가 폴더를 만든다). 있는 파일은 바이트를 잡고, 없던 경로는 되돌릴 때 지운다. */
+  static capture(root, paths) {
+    const rb = new _Rollback(root, [...new Set(paths)]);
+    for (const p of rb.roots) {
+      const abs = import_node_path32.default.join(root, ...p.split("/"));
+      let st = null;
+      try {
+        st = import_node_fs28.default.lstatSync(abs);
+      } catch {
+        st = null;
+      }
+      if (!st) continue;
+      if (st.isDirectory()) for (const f of walkFiles2(root, p)) rb.save(f);
+      else if (st.isFile()) rb.save(p);
+    }
+    return rb;
+  }
+  save(rel2) {
+    const abs = import_node_path32.default.join(this.root, ...rel2.split("/"));
+    this.saved.set(rel2, { bytes: import_node_fs28.default.readFileSync(abs), mode: import_node_fs28.default.statSync(abs).mode & 511 });
+  }
+  /** 되돌린 경로 수 */
+  restore() {
+    let n = 0;
+    for (const [rel2, s] of this.saved) {
+      const abs = import_node_path32.default.join(this.root, ...rel2.split("/"));
+      let same2 = false;
+      try {
+        same2 = import_node_fs28.default.readFileSync(abs).equals(s.bytes);
+      } catch {
+        same2 = false;
+      }
+      if (same2) continue;
+      writeFileAtomic(abs, s.bytes, (s.mode & 73) !== 0);
+      n += 1;
+    }
+    const gone = [];
+    for (const p of this.roots) {
+      const abs = import_node_path32.default.join(this.root, ...p.split("/"));
+      let st = null;
+      try {
+        st = import_node_fs28.default.lstatSync(abs);
+      } catch {
+        st = null;
+      }
+      if (!st) continue;
+      const now = st.isDirectory() ? walkFiles2(this.root, p) : [p];
+      for (const f of now) {
+        if (this.saved.has(f)) continue;
+        import_node_fs28.default.rmSync(import_node_path32.default.join(this.root, ...f.split("/")), { force: true });
+        gone.push(f);
+        n += 1;
+      }
+    }
+    removeEmptyDirs(this.root, [...gone, ...this.roots.map((r) => `${r}/x`)]);
+    return n;
+  }
+};
+
+// src/modules/engine.ts
+function isExternalModule(templatesDir, id) {
+  return loadModuleOrNull(templatesDir, id)?.kind === "external";
+}
+var asRecord = (v) => v;
+function prompterOf(ctx) {
+  const { io: io2 } = ctx;
+  return io2.isTTY && io2.stdin !== void 0 && !ctx.json ? createPrompter(io2.stdin, io2.stderr) : null;
+}
+function measureHarness(meta, decl, agents) {
+  const h = decl.id === "aidlc" ? designHarness(meta) : implementHarness(meta);
+  return agents.includes(h) || agents.length === 0 ? h : agents[0];
+}
+function measureOf(l, root, templatesDir, harness) {
+  const lockEntries = readEntries(root) ?? l.inst.lock.entries;
+  return measureSession(root, { harness, entries: lockEntries.map((e) => ({ path: e.path, owner: e.owner })), hookOwners: hookOwnerTable(templatesDir) });
+}
+function readEntries(root) {
+  try {
+    const j = JSON.parse(import_node_fs29.default.readFileSync(import_node_path33.default.join(root, LOCK_REL), "utf8"));
+    return Array.isArray(j.entries) ? j.entries : null;
+  } catch {
+    return null;
+  }
+}
+function checkKitRange(decl) {
+  if (decl.requires.kit && !satisfiesKit(VERSION, decl.requires.kit)) {
+    throw new CliError(EXIT.STATE, `${decl.id} 모듈은 kit ${decl.requires.kit} 을 요구한다(이 CLI ${VERSION})`);
+  }
+}
+function checkRequires(l, decl) {
+  const on = l.before.modules;
+  const hit2 = decl.conflicts.filter((c) => on.includes(c));
+  if (hit2.length) throw new CliError(EXIT.STATE, `${decl.id} 모듈은 ${hit2.join(", ")} 와 같이 켤 수 없다(충돌)`, `먼저 harness-kit remove ${hit2.join(" ")}`);
+  const missing = decl.requires.modules.filter((r) => !on.includes(r));
+  if (missing.length) throw new CliError(EXIT.STATE, `${decl.id} 모듈은 먼저 ${missing.join(", ")} 를 켜야 한다`, missing.map((m) => `harness-kit add ${m}`).join(" · "));
+}
+async function ensureTool(ctx, l, tool, prompter, dryRun) {
+  const { io: io2 } = ctx;
+  const range = rangeOf(tool, asRecord(l.inst.meta));
+  let state = checkTool(io2, l.target, tool, range);
+  const lines3 = [];
+  if (!state.installed) {
+    const offer = installOffer(tool, platformOf(io2));
+    lines3.push(...offer.lines);
+    if (dryRun) {
+      lines3.push("  (dry-run — 설치하지 않았다)");
+      return { state, lines: lines3 };
+    }
+    const decision = await decideInstall(io2, tool, { installTools: bool(ctx.values, "install-tools"), confirm: (q2) => prompter ? prompter.confirm(q2) : Promise.resolve(false) });
+    if (decision.action === "print") {
+      const why = {
+        agent: "에이전트 세션에서는 설치하지 않는다(--install-tools 도 같다). 사람 터미널에서 위 명령을 실행한 뒤 다시 한다",
+        "no-tty": "사람 터미널이 아니다. 위 명령을 실행하거나 터미널에서 --install-tools 로 다시 한다",
+        declined: "설치하지 않았다. 위 명령을 직접 실행한 뒤 다시 한다",
+        sudo: "sudo 가 필요한 명령은 실행하지 않는다. 직접 실행한 뒤 다시 한다",
+        "no-command": "이 OS 의 설치 명령을 적어 두지 않았다. 문서를 보고 직접 설치한 뒤 다시 한다"
+      };
+      throw new CliError(EXIT.ENV, `${tool.name} 가 없다 — ${why[decision.reason]}`, lines3.join("\n"));
+    }
+    lines3.push(`  설치: ${displayCmd(decision.command)}`);
+    const r = runCmd(io2, l.target, decision.command, { inherit: io2.isTTY && !ctx.json, timeout: 6e5 });
+    if (r.status !== 0) throw new CliError(EXIT.ENV, `${tool.name} 설치 명령이 실패했다(exit ${String(r.status)})`, (r.stderr || r.stdout).trim().split("\n").slice(-3).join("\n"));
+    state = checkTool(io2, l.target, tool, range);
+    if (!state.installed) throw new CliError(EXIT.ENV, `${tool.name} 를 설치했지만 PATH 에서 찾지 못했다`, "새 터미널을 열거나 PATH 를 확인한다");
+  }
+  lines3.push(`  ${tool.name} ${state.version ?? "(버전 확인 못 함)"} · 검증 범위 ${range}`);
+  if (state.inRange === false) {
+    lines3.push(`  ⚠ ${tool.name} ${state.version} 은 검증된 범위(${range}) 밖이다`);
+    if (!bool(ctx.values, "allow-unverified") && !dryRun) {
+      throw new CliError(EXIT.HUMAN, `${tool.name} ${state.version} 은 검증된 범위(${range}) 밖이다`, "그래도 쓰려면 --allow-unverified");
+    }
+  } else if (state.inRange === null) lines3.push(`  ⚠ ${tool.name} 버전을 해석하지 못해 범위(${range})를 확인하지 못했다`);
+  return { state, lines: lines3 };
+}
+function planLines(decl, steps, meta, tool, kitResult, harness) {
+  const lines3 = [`  계획 — ${decl.id}(${decl.title})`];
+  const files = kitResult.ops.filter((o) => o.action !== "keep" && o.action !== "same");
+  lines3.push(`    킷 파일 ${files.length}개: ${files.slice(0, 6).map((o) => o.path).join(", ")}${files.length > 6 ? " …" : ""}`);
+  if (decl.hooks.length) lines3.push(`    병합할 훅: ${decl.hooks.map((h) => `${h.id}(${h.event}, ${h.harnesses.join("/") || "전체"})`).join(", ")}`);
+  const runs = steps.filter((s) => s.kind === "run");
+  for (const r of runs) lines3.push(`    외부 명령: ${displayCmd(fillPlaceholders(r.argv, meta, tool))}${r.confirm ? "  (확인)" : ""}`);
+  for (const s of steps) if (s.kind === "call") lines3.push(`    도구 설정 단계: ${s.name}`);
+  const set = Object.entries(decl.config.set);
+  if (set.length) lines3.push(`    바뀔 설정(${META_REL}): ${set.map(([k, v]) => `${k} = ${JSON.stringify(v)}`).join(", ")}`);
+  if (decl.settings.length) lines3.push(`    병합할 설정 키: ${decl.settings.map((s) => `${s.path} ${s.keys.join(",")}`).join(" · ")}`);
+  const warn = decl.harnessWarnings[harness];
+  if (warn) lines3.push(`    ⚠ ${warn}`);
+  return lines3;
+}
+function rollbackPaths(r) {
+  const out = [LOCK_REL, META_REL, ...r.ops.flatMap((o) => [o.path, ...o.newFile ? [o.newFile] : []])];
+  for (const p of r.projection?.ops ?? []) {
+    out.push(p.path, ...p.newFiles ?? [], ...p.backups ?? []);
+    for (const x of p.effect?.extra ?? []) out.push(x.path);
+    for (const [from, to] of p.effect?.renames ?? []) out.push(from, to);
+  }
+  if (r.manifest) out.push(".agents/MANIFEST.md");
+  return out;
+}
+function writeMeta(l, mutate) {
+  const file = import_node_path33.default.join(l.target, ...META_REL.split("/"));
+  const cur = JSON.parse(import_node_fs29.default.readFileSync(file, "utf8"));
+  writeFileAtomic(file, Buffer.from(serializeMeta(mutate(cur)), "utf8"), false);
+}
+function applyConfig(l, values) {
+  writeMeta(l, (m) => Object.entries(values).reduce((acc, [k, v]) => setDotted(acc, k, v), m));
+}
+function runOne(ctx, l, step, tool, interactive, log, lines3) {
+  const argv2 = fillPlaceholders(step.argv, asRecord(l.inst.meta), tool);
+  const inherit = interactive && !ctx.json;
+  const r = runCmd(ctx.io, l.target, argv2, { inherit, timeout: 9e5 });
+  log.push({ step: "run", argv: argv2, status: r.status });
+  lines3.push(`  실행: ${displayCmd(argv2)} → exit ${String(r.status)}`);
+  if (!inherit) {
+    const out = `${r.stdout}${r.stderr}`.trim().split("\n").filter(Boolean);
+    for (const o of out.slice(-12)) lines3.push(`    ${o}`);
+  }
+  if (r.missing) throw new CliError(EXIT.ENV, `${argv2[0]} 를 찾지 못했다`);
+  if (r.status !== 0 && !step.allowFail) throw new CliError(EXIT.STATE, `${displayCmd(argv2)} 가 실패했다(exit ${String(r.status)})`, "외부 도구가 만든 파일은 남겼다. 킷 몫은 아직 적용하지 않았다");
+  return { ok: r.status === 0 };
+}
+async function confirmRun(ctx, step, argv2, prompter) {
+  if (!step.confirm || bool(ctx.values, "yes")) return true;
+  if (!prompter) {
+    throw new CliError(EXIT.ENV, `외부 명령을 실행하려면 확인이 필요하다: ${displayCmd(argv2)}`, "사람 터미널에서 묻는 대로 답하거나 --yes 를 준다");
+  }
+  return prompter.confirm(`실행한다: ${displayCmd(argv2)}`);
+}
+function doctorLines(findings, id) {
+  const mine = findings.filter((f) => f.owner === id || f.owner === void 0);
+  return mine.length ? mine.map((f) => `  ${f.severity === "error" ? "✖" : f.severity === "warn" ? "⚠" : "·"} ${f.kind} — ${f.hint ?? ""}`) : ["  모듈 점검: 문제 없음"];
+}
+function doctorFor(ctx, kit, id) {
+  const l = loadForChange(ctx, "doctor", kit);
+  return moduleFindings({ io: ctx.io, root: l.target, templatesDir: kit.loc.dir, meta: l.inst.meta, entries: readEntries(l.target) ?? l.inst.lock.entries }).filter((f) => f.owner === id);
+}
+async function addExternal(ctx, kit, id) {
+  const dryRun = dryRunOf(ctx);
+  const decl = loadModule(kit.loc.dir, id);
+  checkKitRange(decl);
+  const l0 = loadForChange(ctx, "add", kit);
+  checkRequires(l0, decl);
+  const meta0 = asRecord(l0.inst.meta);
+  const tool = decl.requires.tools[0] ?? null;
+  const prompter = prompterOf(ctx);
+  const lines3 = [`harness-kit add ${id} — ${l0.target}`];
+  const log = [];
+  try {
+    const toolOutcomes = [];
+    for (const t of decl.requires.tools) toolOutcomes.push(await ensureTool(ctx, l0, t, prompter, dryRun));
+    for (const o of toolOutcomes) lines3.push(...o.lines);
+    for (const s of decl.steps.add) if (s.kind === "run") fillPlaceholders(s.argv, meta0, tool);
+    const harness = measureHarness(meta0, decl, l0.before.agents);
+    const before = measureOf(l0, l0.target, kit.loc.dir, harness);
+    const names = { harnesses: [], modules: [id], retired: [] };
+    const plan = planAdd(l0, names);
+    lines3.push(...planLines(decl, decl.steps.add, meta0, tool, plan.result, harness));
+    const data = {
+      command: "add",
+      module: id,
+      target: l0.target,
+      dryRun,
+      tools: toolOutcomes.map((o) => o.state),
+      plan: { kitFiles: plan.result.ops.filter((o) => o.action !== "keep" && o.action !== "same").length, hooks: decl.hooks.map((h) => h.id), config: decl.config.set, run: decl.steps.add.filter((s) => s.kind === "run").map((s) => fillPlaceholders(s.argv, meta0, tool)) }
+    };
+    if (dryRun) {
+      lines3.push("  (dry-run — 쓰지 않았다)");
+      return { code: EXIT.OK, lines: lines3, data };
+    }
+    for (const s of decl.steps.add) {
+      if (s.kind !== "run") continue;
+      const argv2 = fillPlaceholders(s.argv, meta0, tool);
+      if (!await confirmRun(ctx, s, argv2, prompter)) throw new CliError(EXIT.ABORT, "중단했다(아무것도 쓰지 않았다)");
+    }
+    const at = (/* @__PURE__ */ new Date()).toISOString();
+    const snap = takeSnapshot(l0.target, decl, at);
+    const snapPath = writeSnapshot(l0.target, snap);
+    data.snapshot = snapPath;
+    let registration = null;
+    let rollback = null;
+    let kitReport = null;
+    let kitCode = EXIT.OK;
+    const interactive = ctx.io.isTTY && prompter !== null;
+    try {
+      for (const s of decl.steps.add) {
+        if (s.kind === "run") runOne(ctx, l0, s, tool, interactive, log, lines3);
+        else if (s.kind === "call") {
+          const r = callHandler(s.name, { ctx, root: l0.target, decl, meta: meta0, tool, harness: toolHarnessName(tool, implementHarness(meta0), "implement") });
+          lines3.push(...r.lines);
+          log.push({ step: `call ${s.name}` });
+        } else if (s.kind === "registerExternal") {
+          const lockNow = readEntries(l0.target) ?? l0.inst.lock.entries;
+          registration = registerExternal(l0.target, decl, lockNow, snap);
+          lines3.push(`  외부 소유로 기록 ${registration.entries.length}개(owner ${toolOwner(decl)}, op none) — 새로 ${registration.created} · 이미 있던 것 ${registration.existing}`);
+          if (registration.unknown.length) lines3.push(`  알 수 없는 파일 ${registration.unknown.length}개(externalPaths 밖이라 등록하지 않았다): ${registration.unknown.slice(0, 5).join(", ")}${registration.unknown.length > 5 ? " …" : ""}`);
+          log.push({ step: "registerExternal" });
+        } else if (s.kind === "applyKit") {
+          const l = loadForChange(ctx, "add", kit);
+          const planned = planAdd(l, names);
+          const extra = new Map((registration?.entries ?? []).map((e) => [e.path, e]));
+          const result = { ...planned.result, entries: [...planned.result.entries.filter((e) => !extra.has(e.path)), ...extra.values()] };
+          rollback = Rollback.capture(l.target, rollbackPaths(result));
+          const featureDocs = applyChange(ctx, l, planned.after, result);
+          kitReport = report(ctx, l, { command: "add", names: { ...names, already: [] }, after: planned.after, result, dryRun: false, featureDocs, notes: [] });
+          const conflict = result.ops.some((o) => o.action === "conflict") || result.manifest?.action === "conflict";
+          if (conflict) kitCode = EXIT.HUMAN;
+          lines3.push(...kitReport.lines.slice(1, -1));
+          log.push({ step: "applyKit" });
+        } else if (s.kind === "setConfig") {
+          applyConfig(loadForChange(ctx, "add", kit), decl.config.set);
+          lines3.push(`  설정: ${Object.entries(decl.config.set).map(([k, v]) => `${k} = ${JSON.stringify(v)}`).join(", ")}`);
+          log.push({ step: "setConfig" });
+        } else if (s.kind === "doctor") {
+          const f = doctorFor(ctx, kit, s.id);
+          lines3.push(...doctorLines(f, s.id));
+          data.doctor = f;
+          log.push({ step: "doctor" });
+        } else if (s.kind === "print") lines3.push(`  ${s.text}`);
+      }
+    } catch (err) {
+      let note;
+      if (rollback) {
+        const n = rollback.restore();
+        note = `킷 몫을 되돌렸다(경로 ${n}개). 외부 도구가 만든 파일은 남겼다(스냅숏 ${snapPath})`;
+      } else note = `킷 몫은 아직 쓰지 않았다. 외부 도구가 만든 파일은 남겼다(스냅숏 ${snapPath})`;
+      throw withNote(err, [...lines3.slice(1), note]);
+    }
+    const lAfter = loadForChange(ctx, "add", kit);
+    const after = measureOf(lAfter, l0.target, kit.loc.dir, harness);
+    lines3.push(...measureLines(`add ${id}`, before, after));
+    data.measure = { harness, before: compactMeasure(before), after: compactMeasure(after), added: compare(before, after).added };
+    data.steps = log;
+    data.registered = registration ? { created: registration.created, existing: registration.existing, unknown: registration.unknown } : null;
+    if (kitReport) data.kit = kitReport.data;
+    const added = compare(before, after).added;
+    if (added > THRESHOLD_BYTES && prompter && !bool(ctx.values, "yes")) {
+      const keep = await prompter.confirm(`세션마다 ${added.toLocaleString("en-US")}바이트가 늘었다. 계속 쓸까요?`);
+      if (!keep) {
+        const undone = removeKitPart(ctx, kit, decl);
+        lines3.push(`  켜지 않기로 했다 — 킷 몫을 뺐다(${undone}). 외부 도구가 만든 파일은 남았다`);
+        data.reverted = true;
+        return { code: EXIT.HUMAN, lines: lines3, data };
+      }
+    } else if (added > THRESHOLD_BYTES) lines3.push(`  ⚠ 늘어난 양이 ${THRESHOLD_BYTES.toLocaleString("en-US")}바이트를 넘는다 — 되돌리려면 harness-kit remove ${id}`);
+    lines3.push("  다음: harness-kit doctor");
+    return { code: kitCode, lines: lines3, data };
+  } finally {
+    prompter?.close();
+  }
+}
+function withNote(err, notes) {
+  const e = err instanceof CliError ? err : new CliError(EXIT.STATE, err instanceof Error ? err.message : String(err));
+  return new CliError(e.code, e.message, [...e.hint ? [e.hint] : [], ...notes].join("\n"));
+}
+function compactMeasure(m) {
+  return { total: m.total, owners: m.owners, hooks: m.hooks, hookTotals: Object.fromEntries(Object.keys(m.hooks).map((o) => [o, hookCount(m, o)])) };
+}
+function removeKitPart(ctx, kit, decl) {
+  const l = loadForChange(ctx, "remove", kit);
+  const names = { harnesses: [], modules: [decl.id], retired: [] };
+  const after = withoutNames(l.before, names);
+  const result = dropExternal(planRemove(l, after), decl);
+  applyChange(ctx, l, after, result);
+  applyConfig(loadForChange(ctx, "remove", kit), decl.config.unset);
+  return `파일 ${result.ops.filter((o) => o.action === "delete").length}개 삭제`;
+}
+function dropExternal(r, decl) {
+  const owner = toolOwner(decl);
+  return { ...r, entries: r.entries.filter((e) => e.owner !== owner) };
+}
+async function removeExternal(ctx, kit, id) {
+  const dryRun = dryRunOf(ctx);
+  const decl = loadModule(kit.loc.dir, id);
+  const l = loadForChange(ctx, "remove", kit);
+  const lines3 = [`harness-kit remove ${id} — ${l.target}`];
+  if (!l.before.modules.includes(id)) {
+    lines3.push(`  · 켜져 있지 않다 — 건너뛴다: ${id}`);
+    return { code: EXIT.OK, lines: lines3, data: { command: "remove", module: id, target: l.target, dryRun, notOn: true } };
+  }
+  const meta = asRecord(l.inst.meta);
+  const harness = measureHarness(meta, decl, l.before.agents);
+  const before = measureOf(l, l.target, kit.loc.dir, harness);
+  const data = { command: "remove", module: id, target: l.target, dryRun };
+  const names = { harnesses: [], modules: [id], retired: [] };
+  const tool = decl.requires.tools[0] ?? null;
+  let code = EXIT.OK;
+  for (const s of decl.steps.remove) {
+    if (s.kind === "removeKit") {
+      const after = withoutNames(l.before, names);
+      const result = dropExternal(planRemove(l, after), decl);
+      const featureDocs = dryRun ? null : applyChange(ctx, l, after, result);
+      const rep = report(ctx, l, { command: "remove", names: { ...names, notOn: [] }, after, result, dryRun, featureDocs, notes: [] });
+      lines3.push(...rep.lines.slice(1, dryRun ? void 0 : -1));
+      data.kit = rep.data;
+      const external = l.inst.lock.entries.filter((e) => e.owner === toolOwner(decl)).length;
+      lines3.push(`  외부 소유 항목 ${external}개는 lock 에서만 뺐다(파일은 그대로)`);
+      const keep = result.ops.filter((o) => o.action === "keep-modified");
+      if (keep.length || result.ops.some((o) => o.action === "conflict")) code = EXIT.HUMAN;
+    } else if (s.kind === "unsetConfig") {
+      if (!dryRun) applyConfig(loadForChange(ctx, "remove", kit), decl.config.unset);
+      lines3.push(`  설정: ${Object.entries(decl.config.unset).map(([k, v]) => `${k} = ${JSON.stringify(v)}`).join(", ")}`);
+    } else if (s.kind === "print") {
+      lines3.push(`  ${fillPlaceholders([s.text], meta, tool)[0]}`);
+    }
+  }
+  if (!dryRun) {
+    const lAfter = loadForChange(ctx, "remove", kit);
+    const after = measureOf(lAfter, l.target, kit.loc.dir, harness);
+    lines3.push(...measureLines(`remove ${id}`, before, after).map((x) => x));
+    data.measure = { harness, before: compactMeasure(before), after: compactMeasure(after) };
+    const left = doctorFor(ctx, kit, id).filter((f) => f.kind === "external-hooks-left");
+    for (const f of left) lines3.push(`  · ${f.hint}`);
+    lines3.push("  다음: harness-kit doctor");
+  } else lines3.push("  (dry-run — 쓰지 않았다)");
+  return { code, lines: lines3, data };
+}
+function merge(outs, command) {
+  if (outs.length === 1) return outs[0];
+  return { code: Math.max(...outs.map((o) => o.code)), lines: outs.flatMap((o) => o.lines), data: { command, results: outs.map((o) => o.data) } };
+}
+async function runModuleAdd(ctx, kit, rest, externals) {
+  const outs = [];
+  if (rest.harnesses.length + rest.modules.length + rest.retired.length > 0) outs.push(runKitAdd(ctx, kit, rest));
+  for (const id of externals) {
+    const o = await addExternal(ctx, kit, id);
+    outs.push(o);
+    if (o.code === EXIT.HUMAN && Object.hasOwn(o.data, "reverted")) break;
+  }
+  return merge(outs, "add");
+}
+async function runModuleRemove(ctx, kit, rest, externals) {
+  const outs = [];
+  if (rest.harnesses.length + rest.modules.length + rest.retired.length > 0) outs.push(runKitRemove(ctx, kit, rest));
+  for (const id of externals) outs.push(await removeExternal(ctx, kit, id));
+  return merge(outs, "remove");
+}
+
 // src/commands/add.ts
 var kitEntry3 = (p, w) => ({ path: p, op: "copy", owner: "kit", sha256: w.sha256, layer: w.layer });
 var userEntry3 = (p, layer) => ({ path: p, op: "copy", owner: "user", sha256: null, layer });
@@ -5692,17 +7302,23 @@ function planAdd(l, names) {
   const manifest = manifestChange(l, ancestors, after);
   const spec = loadSpecOrNull(l.loc.dir);
   if (!spec) return { after, result: { ops, entries: [...locked.values()], manifest, projection: null } };
-  const { writes, deletes } = changeOverlay(ops);
+  const { writes: copyWrites, deletes } = changeOverlay(ops);
+  const writes = withAfterMeta(l, after, copyWrites);
   const p = prepare({ target: l.target, spec, tokens: l.tokens, agents: after.agents, writes, deletes, copyPaths: want.keys() });
   const projection = judgeInstall({ target: l.target, spec, tokens: l.tokens, sources: p.sources, wants: p.wants, prev: l.inst.lock.entries, force: false });
   return { after, result: { ops, entries: [...locked.values()], manifest, projection, projectionFindings: p.findings } };
 }
-function runAdd(ctx) {
+async function runAdd(ctx) {
   const kit = kitOf(ctx);
   const names = parseNames(kit.layout, ctx.positionals, "add");
   const only = retiredOnly(ctx, "add", names);
   if (only) return { ...only, data: { ...only.data, names: { ...names, already: [] } } };
   assertModuleDirs(kit.loc.dir, names.modules);
+  const external = names.modules.filter((m) => isExternalModule(kit.loc.dir, m));
+  if (external.length) return runModuleAdd(ctx, kit, { ...names, modules: names.modules.filter((m) => !external.includes(m)) }, external);
+  return runKitAdd(ctx, kit, names);
+}
+function runKitAdd(ctx, kit, names) {
   const l = loadForChange(ctx, "add", kit);
   const already = [...names.harnesses.filter((h) => l.before.agents.includes(h)), ...names.modules.filter((m) => l.before.modules.includes(m))];
   const { after, result } = planAdd(l, names);
@@ -5715,49 +7331,49 @@ function runAdd(ctx) {
 }
 
 // src/commands/dashboard.ts
-var import_node_child_process9 = require("node:child_process");
-var import_node_path54 = __toESM(require("node:path"));
+var import_node_child_process10 = require("node:child_process");
+var import_node_path62 = __toESM(require("node:path"));
 
 // ../dashboard/src/export.ts
-var import_node_fs32 = __toESM(require("node:fs"));
+var import_node_fs39 = __toESM(require("node:fs"));
 var import_node_os = __toESM(require("node:os"));
-var import_node_path35 = __toESM(require("node:path"));
+var import_node_path44 = __toESM(require("node:path"));
 
 // ../dashboard/src/flow.ts
-var import_node_fs25 = __toESM(require("node:fs"));
-var import_node_path27 = __toESM(require("node:path"));
+var import_node_fs32 = __toESM(require("node:fs"));
+var import_node_path36 = __toESM(require("node:path"));
 
 // ../dashboard/src/util.ts
-var import_node_child_process5 = require("node:child_process");
+var import_node_child_process8 = require("node:child_process");
 var import_node_crypto4 = __toESM(require("node:crypto"));
-var import_node_fs23 = __toESM(require("node:fs"));
-var import_node_path25 = __toESM(require("node:path"));
+var import_node_fs30 = __toESM(require("node:fs"));
+var import_node_path34 = __toESM(require("node:path"));
 function sha2562(data) {
   return import_node_crypto4.default.createHash("sha256").update(data).digest("hex");
 }
 function atomicWrite(file, data, mode) {
-  const dir = import_node_path25.default.dirname(file);
-  import_node_fs23.default.mkdirSync(dir, { recursive: true });
-  const tmp = import_node_path25.default.join(dir, `.${import_node_path25.default.basename(file)}.${import_node_crypto4.default.randomBytes(4).toString("hex")}.tmp`);
+  const dir = import_node_path34.default.dirname(file);
+  import_node_fs30.default.mkdirSync(dir, { recursive: true });
+  const tmp = import_node_path34.default.join(dir, `.${import_node_path34.default.basename(file)}.${import_node_crypto4.default.randomBytes(4).toString("hex")}.tmp`);
   let keep = mode;
   try {
-    const st = import_node_fs23.default.lstatSync(file);
+    const st = import_node_fs30.default.lstatSync(file);
     if (st.isFile()) keep = st.mode & 511;
   } catch {
   }
-  const fd = import_node_fs23.default.openSync(tmp, import_node_fs23.default.constants.O_WRONLY | import_node_fs23.default.constants.O_CREAT | import_node_fs23.default.constants.O_EXCL, keep ?? 420);
+  const fd = import_node_fs30.default.openSync(tmp, import_node_fs30.default.constants.O_WRONLY | import_node_fs30.default.constants.O_CREAT | import_node_fs30.default.constants.O_EXCL, keep ?? 420);
   try {
-    import_node_fs23.default.writeSync(fd, typeof data === "string" ? Buffer.from(data, "utf8") : data);
-    import_node_fs23.default.fsyncSync(fd);
+    import_node_fs30.default.writeSync(fd, typeof data === "string" ? Buffer.from(data, "utf8") : data);
+    import_node_fs30.default.fsyncSync(fd);
   } finally {
-    import_node_fs23.default.closeSync(fd);
+    import_node_fs30.default.closeSync(fd);
   }
-  if (keep !== void 0) import_node_fs23.default.chmodSync(tmp, keep);
-  import_node_fs23.default.renameSync(tmp, file);
+  if (keep !== void 0) import_node_fs30.default.chmodSync(tmp, keep);
+  import_node_fs30.default.renameSync(tmp, file);
 }
 function ensureDir(dir, mode) {
-  import_node_fs23.default.mkdirSync(dir, { recursive: true, mode });
-  import_node_fs23.default.chmodSync(dir, mode);
+  import_node_fs30.default.mkdirSync(dir, { recursive: true, mode });
+  import_node_fs30.default.chmodSync(dir, mode);
 }
 var CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 function ulid(now = Date.now()) {
@@ -5782,17 +7398,17 @@ function childEnv(env) {
 }
 function run2(cmd, args, opts) {
   return new Promise((resolve) => {
-    (0, import_node_child_process5.execFile)(cmd, args, { cwd: opts.cwd, env: childEnv(opts.env), timeout: opts.timeout ?? 3e4, maxBuffer: opts.maxBuffer ?? 32 * 1024 * 1024, encoding: "utf8" }, (err, stdout, stderr) => {
+    (0, import_node_child_process8.execFile)(cmd, args, { cwd: opts.cwd, env: childEnv(opts.env), timeout: opts.timeout ?? 3e4, maxBuffer: opts.maxBuffer ?? 32 * 1024 * 1024, encoding: "utf8" }, (err, stdout, stderr) => {
       const code = err ? typeof err.code === "number" ? err.code : 1 : 0;
       resolve({ code, stdout: stdout ?? "", stderr: stderr ?? "" });
     });
   });
 }
-function git(cwd, env, ...args) {
+function git2(cwd, env, ...args) {
   return run2("git", ["--no-optional-locks", "-c", "core.quotePath=false", ...args], { cwd, env });
 }
 async function gitOut(cwd, env, ...args) {
-  const r = await git(cwd, env, ...args);
+  const r = await git2(cwd, env, ...args);
   return r.code === 0 ? r.stdout.replace(/\n$/, "") : null;
 }
 function python(cwd, env, args, timeout = 6e4) {
@@ -5800,24 +7416,33 @@ function python(cwd, env, args, timeout = 6e4) {
 }
 function kitConfigDir(home, env = {}) {
   const o = env.HARNESS_KIT_CONFIG_DIR;
-  return o && import_node_path25.default.isAbsolute(o) ? o : import_node_path25.default.join(home, ".config/harness-kit");
+  return o && import_node_path34.default.isAbsolute(o) ? o : import_node_path34.default.join(home, ".config/harness-kit");
 }
-function readJson(file) {
+function readJson2(file) {
   try {
-    const v = JSON.parse(import_node_fs23.default.readFileSync(file, "utf8"));
+    const v = JSON.parse(import_node_fs30.default.readFileSync(file, "utf8"));
     return v && typeof v === "object" && !Array.isArray(v) ? v : null;
   } catch {
     return null;
   }
 }
-function isObj6(v) {
+function isObj7(v) {
   return v !== null && typeof v === "object" && !Array.isArray(v);
 }
 function rel(from, to) {
-  return import_node_path25.default.relative(from, to).split(import_node_path25.default.sep).join("/") || ".";
+  return import_node_path34.default.relative(from, to).split(import_node_path34.default.sep).join("/") || ".";
 }
 function oneLine(s) {
   return s.replace(/[\u0000-\u001f\u007f]+/g, " ").replace(/\s+/g, " ").trim();
+}
+function cutBytes(s, limit) {
+  if (Buffer.byteLength(s) <= limit) return s;
+  let out = "";
+  for (const ch of s) {
+    if (Buffer.byteLength(out + ch) > limit) break;
+    out += ch;
+  }
+  return out;
 }
 
 // ../dashboard/src/approvals.ts
@@ -5951,8 +7576,8 @@ function finish(entry, seen, errors, ids2) {
   entry.valid = entry.errors.length === 0;
   return entry;
 }
-function parse(text2) {
-  const src = typeof text2 === "string" ? text2 : Buffer.from(text2).toString("utf8");
+function parse(text3) {
+  const src = typeof text3 === "string" ? text3 : Buffer.from(text3).toString("utf8");
   let key = null;
   const entries = [];
   const fileErrors = [];
@@ -6104,11 +7729,11 @@ function renderEntry(entry) {
 `;
 }
 function appendedText(current4, key, entries) {
-  let text2 = current4 ?? newFileText(key);
-  if (text2 && !text2.endsWith("\n")) text2 += "\n";
-  for (const e of entries) text2 += `
+  let text3 = current4 ?? newFileText(key);
+  if (text3 && !text3.endsWith("\n")) text3 += "\n";
+  for (const e of entries) text3 += `
 ${renderEntry(e)}`;
-  return text2;
+  return text3;
 }
 function policyOf(meta) {
   const m = meta ?? {};
@@ -6122,11 +7747,11 @@ function policyOf(meta) {
 }
 
 // ../dashboard/src/cache.ts
-var import_node_fs24 = __toESM(require("node:fs"));
-var import_node_path26 = __toESM(require("node:path"));
+var import_node_fs31 = __toESM(require("node:fs"));
+var import_node_path35 = __toESM(require("node:path"));
 function fileStamp(file) {
   try {
-    const st = import_node_fs24.default.statSync(file);
+    const st = import_node_fs31.default.statSync(file);
     return `${file}:${st.mtimeMs}:${st.size}:${st.ino}`;
   } catch {
     return `${file}:-`;
@@ -6137,17 +7762,17 @@ function treeStamp(dir, depth = 4, filter = () => true) {
   const walk4 = (d, left) => {
     let names;
     try {
-      names = import_node_fs24.default.readdirSync(d).sort();
+      names = import_node_fs31.default.readdirSync(d).sort();
     } catch {
       out.push(`${d}:-`);
       return;
     }
     for (const n of names) {
       if (!filter(n)) continue;
-      const f = import_node_path26.default.join(d, n);
+      const f = import_node_path35.default.join(d, n);
       let st;
       try {
-        st = import_node_fs24.default.lstatSync(f);
+        st = import_node_fs31.default.lstatSync(f);
       } catch {
         continue;
       }
@@ -6198,7 +7823,7 @@ var ApiError = class extends Error {
     return { ok: false, error: { code: this.code, message: this.message, ...this.details ? { details: this.details } : {} } };
   }
 };
-var bad3 = (message2, details) => new ApiError(400, "bad_request", message2, details);
+var bad4 = (message2, details) => new ApiError(400, "bad_request", message2, details);
 var notFound = (message2) => new ApiError(404, "not_found", message2);
 var forbiddenPath = (p) => new ApiError(403, "forbidden_path", `쓰기 허용 경로가 아니다: ${p.slice(0, 200)}`);
 var readOnly = () => new ApiError(403, "read_only", "읽기 전용 모드다(에이전트 세션 또는 --read-only). 사람이 자기 터미널에서 연 관리 페이지에서 한다");
@@ -6209,9 +7834,9 @@ var LINE = /^([a-z][a-zA-Z0-9]*):\s*([^\n]*?)(\s+#[^\n]*)?$/;
 var FENCE = "---";
 var FrontmatterError = class extends Error {
 };
-function split(text2) {
-  const lines3 = text2.split("\n");
-  if (lines3.length === 0 || lines3[0].replace(/\r$/, "") !== FENCE) return [null, text2];
+function split(text3) {
+  const lines3 = text3.split("\n");
+  if (lines3.length === 0 || lines3[0].replace(/\r$/, "") !== FENCE) return [null, text3];
   for (let i = 1; i < lines3.length; i += 1) {
     if (lines3[i].replace(/\r$/, "") === FENCE) return [lines3.slice(1, i), lines3.slice(i + 1).join("\n")];
   }
@@ -6221,8 +7846,8 @@ function unquote2(value2) {
   if (value2.length >= 2 && value2[0] === value2[value2.length - 1] && (value2[0] === '"' || value2[0] === "'")) return value2.slice(1, -1);
   return value2;
 }
-function parse2(text2) {
-  const [head] = split(text2);
+function parse2(text3) {
+  const [head] = split(text3);
   if (head === null) return null;
   const fields = {};
   head.forEach((raw, i) => {
@@ -6236,17 +7861,17 @@ function parse2(text2) {
   });
   return fields;
 }
-function parseLoose(text2) {
+function parseLoose(text3) {
   try {
-    return parse2(text2);
+    return parse2(text3);
   } catch {
     return {};
   }
 }
-function setField2(text2, key, value2) {
-  const eol = text2.includes("\r\n") ? "\r\n" : "\n";
-  const lines3 = text2.split("\n");
-  if ((lines3[0] ?? "").replace(/\r$/, "") !== FENCE) return `${FENCE}${eol}${key}: ${value2}${eol}${FENCE}${eol}${text2}`;
+function setField2(text3, key, value2) {
+  const eol = text3.includes("\r\n") ? "\r\n" : "\n";
+  const lines3 = text3.split("\n");
+  if ((lines3[0] ?? "").replace(/\r$/, "") !== FENCE) return `${FENCE}${eol}${key}: ${value2}${eol}${FENCE}${eol}${text3}`;
   let end = -1;
   for (let i = 1; i < lines3.length; i += 1) {
     if (lines3[i].replace(/\r$/, "") === FENCE) {
@@ -6275,8 +7900,8 @@ var HEAD = /^## (Q-\d+) · (범위|보안|개인정보|UX|기술|운영) · 답�
 var CHOICE = /^- ([A-D])\. (.+?) — 영향: (.+)$/;
 var RECOMMEND = /^- 권장: ([A-D])\b/;
 var ANSWER = /^- 답:\s*(.*)$/;
-function parseQuestions(text2) {
-  const lines3 = text2.split("\n").map((l) => l.replace(/\r$/, ""));
+function parseQuestions(text3) {
+  const lines3 = text3.split("\n").map((l) => l.replace(/\r$/, ""));
   const questions = [];
   let cur = null;
   lines3.forEach((line, i) => {
@@ -6304,12 +7929,12 @@ function parseQuestions(text2) {
     else if (line.startsWith("- 의견:")) q2.opinions.push(line.slice("- 의견:".length).trim());
     else if (!line.startsWith("- ") && line.trim() && q2.choices.length === 0) q2.text = q2.text ? `${q2.text} ${line.trim()}` : line.trim();
   });
-  return { frontmatter: parseLoose(text2) ?? {}, questions };
+  return { frontmatter: parseLoose(text3) ?? {}, questions };
 }
-function writeAnswer(text2, input) {
-  const eol = text2.includes("\r\n") ? "\r\n" : "\n";
+function writeAnswer(text3, input) {
+  const eol = text3.includes("\r\n") ? "\r\n" : "\n";
   const cr = eol === "\r\n" ? "\r" : "";
-  const lines3 = text2.split("\n");
+  const lines3 = text3.split("\n");
   const bareOf = (i) => lines3[i].replace(/\r$/, "");
   let start = -1;
   for (let i = 0; i < lines3.length; i += 1) {
@@ -6361,10 +7986,10 @@ function writeAnswer(text2, input) {
 // ../dashboard/src/flow.ts
 var INTENT_FOLDER = /^([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5})-(.+)$/;
 function intentFolders(root) {
-  const dir = import_node_path27.default.join(root, ".agents/docs/intents");
+  const dir = import_node_path36.default.join(root, ".agents/docs/intents");
   let names = [];
   try {
-    names = import_node_fs25.default.readdirSync(dir).sort();
+    names = import_node_fs32.default.readdirSync(dir).sort();
   } catch {
     return [];
   }
@@ -6373,11 +7998,11 @@ function intentFolders(root) {
     const m = INTENT_FOLDER.exec(n);
     if (!m) continue;
     try {
-      if (!import_node_fs25.default.lstatSync(import_node_path27.default.join(dir, n)).isDirectory()) continue;
+      if (!import_node_fs32.default.lstatSync(import_node_path36.default.join(dir, n)).isDirectory()) continue;
     } catch {
       continue;
     }
-    out.push({ key: m[1], name: m[2], dir: `.agents/docs/intents/${n}`, abs: import_node_path27.default.join(dir, n) });
+    out.push({ key: m[1], name: m[2], dir: `.agents/docs/intents/${n}`, abs: import_node_path36.default.join(dir, n) });
   }
   return out;
 }
@@ -6388,17 +8013,17 @@ function findIntent(root, key) {
   return found[0];
 }
 function readUnitsFile(abs) {
-  const file = import_node_path27.default.join(abs, "units.json");
+  const file = import_node_path36.default.join(abs, "units.json");
   let raw = null;
   try {
-    raw = import_node_fs25.default.readFileSync(file);
+    raw = import_node_fs32.default.readFileSync(file);
   } catch {
     return { raw: null, data: null, units: [] };
   }
   let data = null;
   try {
     const v = JSON.parse(raw.toString("utf8"));
-    data = isObj6(v) ? v : null;
+    data = isObj7(v) ? v : null;
   } catch {
     data = null;
   }
@@ -6421,7 +8046,7 @@ function readUnitsFile(abs) {
 var num = (id) => Number(/(\d+)$/.exec(id)?.[1] ?? 0);
 var byId = (a, b) => num(a.id) - num(b.id);
 var STEPS = ["requirements", "design", "tasks", "impl", "verify", "mr", "done"];
-function stepsOf(issue, withDeploy) {
+function stepsOf2(issue, withDeploy) {
   const steps = withDeploy ? [...STEPS, "deploy"] : [...STEPS];
   if (!issue) return steps;
   let current4;
@@ -6462,14 +8087,14 @@ function layout(units) {
   return { nodes, edges };
 }
 function proposalOf(abs) {
-  return readJson(import_node_path27.default.join(abs, "units.proposed.json"));
+  return readJson2(import_node_path36.default.join(abs, "units.proposed.json"));
 }
 function intentModel(p, info, issues) {
-  const intentMd = import_node_path27.default.join(info.abs, "intent.md");
+  const intentMd = import_node_path36.default.join(info.abs, "intent.md");
   let fm = {};
   let iSha = null;
   try {
-    const b = import_node_fs25.default.readFileSync(intentMd);
+    const b = import_node_fs32.default.readFileSync(intentMd);
     fm = parseLoose(b.toString("utf8")) ?? {};
     iSha = approvalSha(b);
   } catch {
@@ -6478,19 +8103,19 @@ function intentModel(p, info, issues) {
   const { units } = readUnitsFile(info.abs);
   let questions = { open: 0, total: 0 };
   try {
-    const q2 = parseQuestions(import_node_fs25.default.readFileSync(import_node_path27.default.join(info.abs, "questions.md"), "utf8"));
+    const q2 = parseQuestions(import_node_fs32.default.readFileSync(import_node_path36.default.join(info.abs, "questions.md"), "utf8"));
     questions = { open: q2.questions.filter((x) => x.open).length, total: q2.questions.length };
   } catch {
   }
   let plans = [];
   try {
-    plans = import_node_fs25.default.readdirSync(import_node_path27.default.join(info.abs, "plans"), { recursive: true }).map((n) => String(n).split(import_node_path27.default.sep).join("/")).filter((n) => n.endsWith(".md")).sort().map((n) => `${info.dir}/plans/${n}`);
+    plans = import_node_fs32.default.readdirSync(import_node_path36.default.join(info.abs, "plans"), { recursive: true }).map((n) => String(n).split(import_node_path36.default.sep).join("/")).filter((n) => n.endsWith(".md")).sort().map((n) => `${info.dir}/plans/${n}`);
   } catch {
     plans = [];
   }
   let entries = [];
   try {
-    entries = parse(import_node_fs25.default.readFileSync(import_node_path27.default.join(info.abs, "approvals.md"))).entries;
+    entries = parse(import_node_fs32.default.readFileSync(import_node_path36.default.join(info.abs, "approvals.md"))).entries;
   } catch {
     entries = [];
   }
@@ -6498,7 +8123,7 @@ function intentModel(p, info, issues) {
   const plansState = approvalState(entries, "plans", null, p.policy());
   let csSha = null;
   try {
-    csSha = approvalSha(import_node_fs25.default.readFileSync(import_node_path27.default.join(info.abs, "current-state.md")));
+    csSha = approvalSha(import_node_fs32.default.readFileSync(import_node_path36.default.join(info.abs, "current-state.md")));
   } catch {
     csSha = null;
   }
@@ -6510,7 +8135,7 @@ function intentModel(p, info, issues) {
     name: info.name,
     dir: info.dir,
     title: fm.title ?? null,
-    source: import_node_fs25.default.existsSync(import_node_path27.default.join(info.abs, "intent.json")) ? "aidlc" : "kit",
+    source: import_node_fs32.default.existsSync(import_node_path36.default.join(info.abs, "intent.json")) ? "aidlc" : "kit",
     status: fm.status ?? null,
     units: units.map((u) => {
       const issue = u.issue ? issues.find((i) => i.key === u.issue) : void 0;
@@ -6527,13 +8152,13 @@ function flowData(p, info, issues, sessions) {
   const { units, data, raw } = readUnitsFile(info.abs);
   let fm = {};
   try {
-    fm = parseLoose(import_node_fs25.default.readFileSync(import_node_path27.default.join(info.abs, "intent.md"), "utf8")) ?? {};
+    fm = parseLoose(import_node_fs32.default.readFileSync(import_node_path36.default.join(info.abs, "intent.md"), "utf8")) ?? {};
   } catch {
     fm = {};
   }
   let approved = null;
   try {
-    const entries = parse(import_node_fs25.default.readFileSync(import_node_path27.default.join(info.abs, "approvals.md"))).entries.filter((e) => e.valid && e.gate === "intent" && e.decision === "approved");
+    const entries = parse(import_node_fs32.default.readFileSync(import_node_path36.default.join(info.abs, "approvals.md"))).entries.filter((e) => e.valid && e.gate === "intent" && e.decision === "approved");
     const last = entries[entries.length - 1];
     if (last) approved = { at: last.at, by: last.approver?.name ?? last.approver?.email ?? "" };
   } catch {
@@ -6541,12 +8166,12 @@ function flowData(p, info, issues, sessions) {
   }
   const withDeploy = p.gates().includes("deploy");
   const { nodes, edges } = layout(units);
-  const intentMeta = data && isObj6(data.intent) ? data.intent : {};
+  const intentMeta = data && isObj7(data.intent) ? data.intent : {};
   return {
     intent: { key: info.key, title: fm.title ?? (typeof intentMeta.title === "string" ? intentMeta.title : null), approved },
     nodes: nodes.map((n) => {
       const issue = n.unit.issue ? issues.find((i) => i.key === n.unit.issue) : void 0;
-      if (n.type === "contract-unit") return { id: n.id, type: n.type, position: n.position, data: { title: n.unit.title, contracts: n.unit.provides, issue: n.unit.issue, steps: stepsOf(issue, withDeploy) } };
+      if (n.type === "contract-unit") return { id: n.id, type: n.type, position: n.position, data: { title: n.unit.title, contracts: n.unit.provides, issue: n.unit.issue, steps: stepsOf2(issue, withDeploy) } };
       const s = issue ? sessions.find((x) => x.issue === issue.key && x.state !== "gone") : void 0;
       const flags = [];
       if (issue?.review?.open.CRITICAL) flags.push(`critical:${issue.review.open.CRITICAL}`);
@@ -6557,7 +8182,7 @@ function flowData(p, info, issues, sessions) {
         id: n.id,
         type: n.type,
         position: n.position,
-        data: { issue: n.unit.issue, area: n.unit.area, title: n.unit.title, session: s ? { name: s.name, harness: s.harness } : null, steps: stepsOf(issue, withDeploy), flags, bolts: b ? { done: b.done, total: b.total, estimated: false } : { done: 0, total: Math.max(1, Math.ceil(n.unit.stories.length / 3)), estimated: true } }
+        data: { issue: n.unit.issue, area: n.unit.area, title: n.unit.title, session: s ? { name: s.name, harness: s.harness } : null, steps: stepsOf2(issue, withDeploy), flags, bolts: b ? { done: b.done, total: b.total, estimated: false } : { done: 0, total: Math.max(1, Math.ceil(n.unit.stories.length / 3)), estimated: true } }
       };
     }),
     edges,
@@ -6567,9 +8192,9 @@ function flowData(p, info, issues, sessions) {
   };
 }
 function validChanges(input) {
-  if (!Array.isArray(input) || input.length > 100) throw bad3("changes 는 100개 이하의 배열이다");
+  if (!Array.isArray(input) || input.length > 100) throw bad4("changes 는 100개 이하의 배열이다");
   return input.map((c) => {
-    if (!isObj6(c) || typeof c.op !== "string" || !["add-dep", "remove-dep", "split", "merge", "order"].includes(c.op)) throw bad3("op 는 add-dep · remove-dep · split · merge · order 다");
+    if (!isObj7(c) || typeof c.op !== "string" || !["add-dep", "remove-dep", "split", "merge", "order"].includes(c.op)) throw bad4("op 는 add-dep · remove-dep · split · merge · order 다");
     const out = { op: c.op };
     if (c.unit !== void 0) out.unit = String(c.unit);
     if (c.dependsOn !== void 0) out.dependsOn = String(c.dependsOn);
@@ -6595,7 +8220,7 @@ function applyChanges(units, changes) {
       list3 = list3.map((x) => x.id !== u.id ? x : { ...x, dependsOn: c.op === "add-dep" ? [.../* @__PURE__ */ new Set([...x.dependsOn, d.id])] : x.dependsOn.filter((y) => y !== d.id) });
     } else if (c.op === "merge") {
       const [a, b] = (c.units ?? []).map((id) => get(id));
-      if (!a || !b || a.id === b.id) throw bad3("merge 는 서로 다른 Unit 둘이다");
+      if (!a || !b || a.id === b.id) throw bad4("merge 는 서로 다른 Unit 둘이다");
       if (a.kind === "contract" || b.kind === "contract") throw new ApiError(422, "contract_merge", "계약 Unit 은 합치지 않는다");
       list3 = list3.map((x) => {
         if (x.id === a.id) return { ...x, stories: [.../* @__PURE__ */ new Set([...x.stories, ...b.stories])], dependsOn: [.../* @__PURE__ */ new Set([...x.dependsOn, ...b.dependsOn])].filter((y) => y !== a.id && y !== b.id) };
@@ -6605,7 +8230,7 @@ function applyChanges(units, changes) {
     } else if (c.op === "split") {
       const u = get(c.unit);
       const titles = c.into ?? [];
-      if (titles.length < 2) throw bad3("split 의 into 는 제목 2개 이상이다");
+      if (titles.length < 2) throw bad4("split 의 into 는 제목 2개 이상이다");
       const made = titles.map((t, i) => ({ ...u, id: `U-${++next}`, title: t, stories: i === 0 ? [...u.stories] : [], issue: null, planned: true }));
       const madeIds = made.map((m) => m.id);
       list3 = [...list3.map((x) => x.id === u.id ? { ...x, planned: false } : { ...x, dependsOn: x.dependsOn.flatMap((y) => y === u.id ? madeIds : [y]) }), ...made];
@@ -6636,7 +8261,7 @@ function applyChanges(units, changes) {
   return list3;
 }
 function proposalBody(body) {
-  if (!isObj6(body) || typeof body.intent !== "string" || typeof body.baseSha256 !== "string") throw bad3("intent · baseSha256 · changes 가 필요하다");
+  if (!isObj7(body) || typeof body.intent !== "string" || typeof body.baseSha256 !== "string") throw bad4("intent · baseSha256 · changes 가 필요하다");
   return { intent: body.intent, baseSha256: body.baseSha256, proposalSha256: typeof body.proposalSha256 === "string" ? body.proposalSha256 : null, changes: validChanges(body.changes) };
 }
 function appliedUnitsBytes(raw, data, units, changes) {
@@ -6651,13 +8276,13 @@ function appliedUnitsBytes(raw, data, units, changes) {
     if (Object.hasOwn(before, "order") || u.order !== null) out.order = u.order;
     return out;
   });
-  const text2 = `${JSON.stringify({ ...data, units: merged }, null, 2)}${raw.toString("utf8").endsWith("\n") ? "\n" : ""}`;
-  return Buffer.from(text2, "utf8");
+  const text3 = `${JSON.stringify({ ...data, units: merged }, null, 2)}${raw.toString("utf8").endsWith("\n") ? "\n" : ""}`;
+  return Buffer.from(text3, "utf8");
 }
 var unitsSha = (raw) => raw ? sha2562(raw) : null;
 
 // ../dashboard/src/md.ts
-var import_node_path28 = __toESM(require("node:path"));
+var import_node_path37 = __toESM(require("node:path"));
 function escapeHtml(s) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
@@ -6673,13 +8298,13 @@ function imageSrc(url, opts) {
   const u = url.trim();
   if (!u || SCHEME.test(u) || u.startsWith("/") || u.startsWith("\\") || u.includes("\\")) return null;
   const clean = u.split(/[?#]/)[0];
-  const joined = import_node_path28.default.posix.normalize(import_node_path28.default.posix.join(import_node_path28.default.posix.dirname(opts.docPath), clean));
+  const joined = import_node_path37.default.posix.normalize(import_node_path37.default.posix.join(import_node_path37.default.posix.dirname(opts.docPath), clean));
   if (joined.startsWith("../") || joined === ".." || !joined.startsWith(".agents/docs/")) return null;
   return opts.sign ? opts.sign(joined) : null;
 }
-function inline2(text2, opts) {
+function inline2(text3, opts) {
   const codes = [];
-  let s = text2.replace(/`([^`]+)`/g, (_m, c) => {
+  let s = text3.replace(/`([^`]+)`/g, (_m, c) => {
     codes.push(`<code>${escapeHtml(c)}</code>`);
     return `\0C${codes.length - 1}\0`;
   });
@@ -6828,17 +8453,17 @@ function renderMarkdown(source, opts) {
 }
 
 // ../dashboard/src/model.ts
-var import_node_fs31 = __toESM(require("node:fs"));
-var import_node_path34 = __toESM(require("node:path"));
+var import_node_fs38 = __toESM(require("node:fs"));
+var import_node_path43 = __toESM(require("node:path"));
 
 // ../dashboard/src/project.ts
 var import_node_crypto5 = __toESM(require("node:crypto"));
-var import_node_fs27 = __toESM(require("node:fs"));
-var import_node_path30 = __toESM(require("node:path"));
+var import_node_fs34 = __toESM(require("node:fs"));
+var import_node_path39 = __toESM(require("node:path"));
 
 // ../dashboard/src/repo.ts
-var import_node_fs26 = __toESM(require("node:fs"));
-var import_node_path29 = __toESM(require("node:path"));
+var import_node_fs33 = __toESM(require("node:fs"));
+var import_node_path38 = __toESM(require("node:path"));
 var ISSUE_BRANCH = /^(feat|fix|chore|docs|refactor|exp)\/([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5})-(.+)$/;
 var KEY = /^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5}$/;
 var FOLDER = /^([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5})-(.+)$/;
@@ -6847,40 +8472,40 @@ var LocateError = class extends Error {
 async function locate(cwd, env) {
   let start;
   try {
-    start = import_node_fs26.default.realpathSync(cwd);
+    start = import_node_fs33.default.realpathSync(cwd);
   } catch {
     throw new LocateError(`폴더가 없다: ${cwd}`);
   }
   let harness = null;
-  for (let cur = start; ; cur = import_node_path29.default.dirname(cur)) {
-    if (import_node_fs26.default.existsSync(import_node_path29.default.join(cur, ".agents/harness-kit.json"))) {
+  for (let cur = start; ; cur = import_node_path38.default.dirname(cur)) {
+    if (import_node_fs33.default.existsSync(import_node_path38.default.join(cur, ".agents/harness-kit.json"))) {
       harness = cur;
       break;
     }
-    if (import_node_path29.default.dirname(cur) === cur) break;
+    if (import_node_path38.default.dirname(cur) === cur) break;
   }
   if (!harness) throw new LocateError(`하네스 루트(.agents/harness-kit.json)를 찾지 못했다: ${start}`);
   const top = await gitOut(harness, env, "rev-parse", "--show-toplevel");
   const common = await gitOut(harness, env, "rev-parse", "--path-format=absolute", "--git-common-dir");
   if (!top || !common) throw new LocateError(`git 저장소가 아니다: ${harness}`);
-  const realTop = import_node_fs26.default.realpathSync(top);
-  const prefix = import_node_path29.default.relative(realTop, harness).split(import_node_path29.default.sep).join("/");
-  const realCommon = import_node_fs26.default.realpathSync(common);
-  const mainTop = import_node_path29.default.basename(realCommon) === ".git" ? import_node_path29.default.dirname(realCommon) : realTop;
-  const root = prefix ? import_node_path29.default.join(mainTop, prefix) : mainTop;
-  return { root: import_node_fs26.default.existsSync(root) ? import_node_fs26.default.realpathSync(root) : root, top: mainTop, prefix, common: realCommon };
+  const realTop = import_node_fs33.default.realpathSync(top);
+  const prefix = import_node_path38.default.relative(realTop, harness).split(import_node_path38.default.sep).join("/");
+  const realCommon = import_node_fs33.default.realpathSync(common);
+  const mainTop = import_node_path38.default.basename(realCommon) === ".git" ? import_node_path38.default.dirname(realCommon) : realTop;
+  const root = prefix ? import_node_path38.default.join(mainTop, prefix) : mainTop;
+  return { root: import_node_fs33.default.existsSync(root) ? import_node_fs33.default.realpathSync(root) : root, top: mainTop, prefix, common: realCommon };
 }
 function gitStamp(common) {
   return [
-    fileStamp(import_node_path29.default.join(common, "HEAD")),
-    fileStamp(import_node_path29.default.join(common, "packed-refs")),
-    treeStamp(import_node_path29.default.join(common, "worktrees"), 1, (n) => n === "HEAD" || !n.includes(".")),
-    treeStamp(import_node_path29.default.join(common, "refs/heads"), 6)
+    fileStamp(import_node_path38.default.join(common, "HEAD")),
+    fileStamp(import_node_path38.default.join(common, "packed-refs")),
+    treeStamp(import_node_path38.default.join(common, "worktrees"), 1, (n) => n === "HEAD" || !n.includes(".")),
+    treeStamp(import_node_path38.default.join(common, "refs/heads"), 6)
   ].join("\n");
 }
 function real(p) {
   try {
-    return import_node_fs26.default.realpathSync(p);
+    return import_node_fs33.default.realpathSync(p);
   } catch {
     return p;
   }
@@ -6895,7 +8520,7 @@ async function checkouts(p) {
         const top = real(cur.path);
         const branch = cur.branch ?? null;
         const m = branch ? ISSUE_BRANCH.exec(branch) : null;
-        list3.push({ path: top, root: p.loc.prefix ? import_node_path29.default.join(top, p.loc.prefix) : top, branch, head: cur.head ?? null, main: list3.length === 0, key: m ? m[2] : null });
+        list3.push({ path: top, root: p.loc.prefix ? import_node_path38.default.join(top, p.loc.prefix) : top, branch, head: cur.head ?? null, main: list3.length === 0, key: m ? m[2] : null });
       }
       cur = {};
     };
@@ -6922,10 +8547,10 @@ function lstatChain(root, rel2) {
   let cur = root;
   const parts = rel2.split("/");
   for (let i = 0; i < parts.length; i += 1) {
-    cur = import_node_path29.default.join(cur, parts[i]);
+    cur = import_node_path38.default.join(cur, parts[i]);
     let st;
     try {
-      st = import_node_fs26.default.lstatSync(cur);
+      st = import_node_fs33.default.lstatSync(cur);
     } catch {
       return "missing";
     }
@@ -6964,7 +8589,7 @@ async function gitUser(root, env) {
   return { email: email || null, name: name || null };
 }
 async function gitStatus(root, env) {
-  const s = await git(root, env, "status", "--porcelain", "--untracked-files=normal");
+  const s = await git2(root, env, "status", "--porcelain", "--untracked-files=normal");
   const u = await gitOut(root, env, "rev-list", "--count", "HEAD", "--not", "--remotes");
   return { dirty: s.code === 0 ? s.stdout.trim().length > 0 : false, unpushed: u === null ? null : Number(u) };
 }
@@ -6973,9 +8598,9 @@ async function gitStatus(root, env) {
 var DEFAULT_GATES2 = ["codebase", "intent", "plans", "requirements", "design", "tasks", "mr", "done", "deploy"];
 var ISSUE_GATES = ["requirements", "design", "tasks", "mr", "done"];
 function projectIdOf(dir) {
-  let p = import_node_path30.default.resolve(dir);
+  let p = import_node_path39.default.resolve(dir);
   try {
-    p = import_node_fs27.default.realpathSync(p);
+    p = import_node_fs34.default.realpathSync(p);
   } catch {
   }
   return import_node_crypto5.default.createHash("sha256").update(p).digest("hex").slice(0, 12);
@@ -7007,27 +8632,27 @@ var Project = class _Project {
   }
   /** 공유 메타(.agents/harness-kit.json). 개인 층은 roles · git.ide 만 덮을 수 있어 여기서는 읽지 않는다(README §5). */
   meta() {
-    const file = import_node_path30.default.join(this.root, ".agents/harness-kit.json");
+    const file = import_node_path39.default.join(this.root, ".agents/harness-kit.json");
     const stamp = fileStamp(file);
     const hit2 = this.metaCache;
     if (hit2 && hit2.stamp === stamp) return hit2.value;
-    const value2 = readJson(file) ?? {};
+    const value2 = readJson2(file) ?? {};
     this.metaCache = { stamp, value: value2 };
     return value2;
   }
   metaCache = null;
   name() {
     const project = this.meta().project;
-    return isObj6(project) && typeof project.name === "string" && project.name ? project.name : import_node_path30.default.basename(this.root);
+    return isObj7(project) && typeof project.name === "string" && project.name ? project.name : import_node_path39.default.basename(this.root);
   }
   gates() {
     const flow2 = this.meta().flow;
-    const g = isObj6(flow2) && Array.isArray(flow2.gates) ? flow2.gates.filter((x) => typeof x === "string") : null;
+    const g = isObj7(flow2) && Array.isArray(flow2.gates) ? flow2.gates.filter((x) => typeof x === "string") : null;
     return g && g.length ? g : DEFAULT_GATES2;
   }
   base() {
     const g = this.meta().git;
-    return isObj6(g) && typeof g.base === "string" && g.base ? g.base : "develop";
+    return isObj7(g) && typeof g.base === "string" && g.base ? g.base : "develop";
   }
   policy() {
     return policyOf(this.meta());
@@ -7038,11 +8663,11 @@ var Project = class _Project {
   }
   /** 이 컴퓨터 설정 ~/.config/harness-kit/config.json(사람이 쓴다, 킷은 읽기만, 06 §3.17). */
   machineConfig() {
-    return readJson(import_node_path30.default.join(kitConfigDir(this.home, this.env), "config.json")) ?? {};
+    return readJson2(import_node_path39.default.join(kitConfigDir(this.home, this.env), "config.json")) ?? {};
   }
   async user(root = this.root) {
-    return this.cache.get(`user:${root}`, `${fileStamp(import_node_path30.default.join(this.loc.common, "config"))}
-${fileStamp(import_node_path30.default.join(this.home, ".gitconfig"))}`, () => gitUser(root, this.env));
+    return this.cache.get(`user:${root}`, `${fileStamp(import_node_path39.default.join(this.loc.common, "config"))}
+${fileStamp(import_node_path39.default.join(this.home, ".gitconfig"))}`, () => gitUser(root, this.env));
   }
   /** 경로별 프로세스 안 잠금(06 §3.6 저장 순서 1). */
   async withLock(key, fn) {
@@ -7064,14 +8689,14 @@ ${fileStamp(import_node_path30.default.join(this.home, ".gitconfig"))}`, () => g
 };
 
 // ../dashboard/src/readers/issues.ts
-var import_node_fs28 = __toESM(require("node:fs"));
-var import_node_path31 = __toESM(require("node:path"));
+var import_node_fs35 = __toESM(require("node:fs"));
+var import_node_path40 = __toESM(require("node:path"));
 var CLARIFY = "[NEEDS CLARIFICATION";
-function clarifyCount(text2) {
-  return text2.split(CLARIFY).length - 1;
+function clarifyCount(text3) {
+  return text3.split(CLARIFY).length - 1;
 }
-function bolts(text2) {
-  const lines3 = text2.split(/\r?\n/);
+function bolts(text3) {
+  const lines3 = text3.split(/\r?\n/);
   let total = 0;
   let done = 0;
   let open = 0;
@@ -7094,50 +8719,50 @@ function bolts(text2) {
   return { total, done };
 }
 function docInfo(bytes, gate, entries, p, mtimeMs, need = 1) {
-  const text2 = bytes.toString("utf8");
-  const fm = parseLoose(text2) ?? {};
+  const text3 = bytes.toString("utf8");
+  const fm = parseLoose(text3) ?? {};
   const aSha = approvalSha(bytes);
   const info = {
     status: fm.status ?? null,
     sha256: sha2562(bytes),
     approvalSha256: aSha,
-    clarify: clarifyCount(text2),
+    clarify: clarifyCount(text3),
     approval: approvalState(entries, gate, gate === "tasks" ? null : aSha, p.policy(), need)
   };
   if (mtimeMs !== void 0) info.mtimeMs = mtimeMs;
   if (gate === "tasks") {
     info.state = fm.state ?? null;
-    info.bolts = bolts(text2);
+    info.bolts = bolts(text3);
   }
   return info;
 }
 function snapStamp(p, co) {
   const r = co.root;
-  const docs = import_node_path31.default.join(r, ".agents/docs");
+  const docs = import_node_path40.default.join(r, ".agents/docs");
   let specs = [];
   try {
-    specs = import_node_fs28.default.readdirSync(docs).filter((n) => n.endsWith("-specs"));
+    specs = import_node_fs35.default.readdirSync(docs).filter((n) => n.endsWith("-specs"));
   } catch {
     specs = [];
   }
   return [
-    treeStamp(import_node_path31.default.join(docs, "issues"), 2),
-    ...specs.map((s) => treeStamp(import_node_path31.default.join(docs, s), 4)),
-    fileStamp(import_node_path31.default.join(r, ".agents/harness-kit.json")),
-    fileStamp(import_node_path31.default.join(r, ".agents/state/verify-last.json")),
-    fileStamp(import_node_path31.default.join(r, ".agents/reports/quality-gate-last.json")),
-    treeStamp(import_node_path31.default.join(r, ".agents/reports/review"), 0),
-    treeStamp(import_node_path31.default.join(p.root, ".agents/reports/review"), 0),
+    treeStamp(import_node_path40.default.join(docs, "issues"), 2),
+    ...specs.map((s) => treeStamp(import_node_path40.default.join(docs, s), 4)),
+    fileStamp(import_node_path40.default.join(r, ".agents/harness-kit.json")),
+    fileStamp(import_node_path40.default.join(r, ".agents/state/verify-last.json")),
+    fileStamp(import_node_path40.default.join(r, ".agents/reports/quality-gate-last.json")),
+    treeStamp(import_node_path40.default.join(r, ".agents/reports/review"), 0),
+    treeStamp(import_node_path40.default.join(p.root, ".agents/reports/review"), 0),
     gitStamp(p.loc.common),
-    treeStamp(import_node_path31.default.join(p.loc.common, "refs/remotes"), 4)
+    treeStamp(import_node_path40.default.join(p.loc.common, "refs/remotes"), 4)
   ].join("\n");
 }
 var EMPTY = { board: { issues: [] }, gates: [], reviews: [], errors: [] };
 async function snapshot(p, co) {
   return p.cache.get(`snap:${co.root}`, snapStamp(p, co), async () => {
-    const own = import_node_path31.default.join(co.root, "scripts/harness/dashboard_snapshot.py");
-    const script = import_node_fs28.default.existsSync(own) ? own : import_node_path31.default.join(p.root, "scripts/harness/dashboard_snapshot.py");
-    if (!import_node_fs28.default.existsSync(script)) return { ...EMPTY, errors: [{ part: "snapshot", message: "scripts/harness/dashboard_snapshot.py 없음" }] };
+    const own = import_node_path40.default.join(co.root, "scripts/harness/dashboard_snapshot.py");
+    const script = import_node_fs35.default.existsSync(own) ? own : import_node_path40.default.join(p.root, "scripts/harness/dashboard_snapshot.py");
+    if (!import_node_fs35.default.existsSync(script)) return { ...EMPTY, errors: [{ part: "snapshot", message: "scripts/harness/dashboard_snapshot.py 없음" }] };
     const r = await python(co.root, p.env, [script, "--root", co.root], 12e4);
     if (r.code !== 0) return { ...EMPTY, errors: [{ part: "snapshot", message: (r.stderr.trim().split("\n").pop() ?? "").slice(0, 300) }] };
     try {
@@ -7147,15 +8772,15 @@ async function snapshot(p, co) {
     }
   });
 }
-function readEntries(file) {
+function readEntries2(file) {
   try {
-    return parse(import_node_fs28.default.readFileSync(file)).entries;
+    return parse(import_node_fs35.default.readFileSync(file)).entries;
   } catch {
     return [];
   }
 }
 function verifyOf(root) {
-  const v = readJson(import_node_path31.default.join(root, ".agents/state/verify-last.json"));
+  const v = readJson2(import_node_path40.default.join(root, ".agents/state/verify-last.json"));
   if (!v) return null;
   const steps = Array.isArray(v.steps) ? v.steps : [];
   let slow = null;
@@ -7216,8 +8841,8 @@ function waitingOf(p, stage, gates, docs, email) {
 function rolesOf(p) {
   const roles = p.meta().roles;
   const out = {};
-  if (isObj6(roles)) {
-    for (const [k, v] of Object.entries(roles)) if (isObj6(v) && typeof v.harness === "string") out[k] = v.harness;
+  if (isObj7(roles)) {
+    for (const [k, v] of Object.entries(roles)) if (isObj7(v) && typeof v.harness === "string") out[k] = v.harness;
   }
   return out;
 }
@@ -7225,16 +8850,16 @@ function readFolder(root, folderRel, name) {
   const files = {};
   const mtimes = {};
   for (const d of ["requirements", "design", "tasks"]) {
-    const f = import_node_path31.default.join(root, folderRel, `${d}.md`);
+    const f = import_node_path40.default.join(root, folderRel, `${d}.md`);
     try {
-      const st = import_node_fs28.default.lstatSync(f);
-      files[d] = st.isFile() ? import_node_fs28.default.readFileSync(f) : null;
+      const st = import_node_fs35.default.lstatSync(f);
+      files[d] = st.isFile() ? import_node_fs35.default.readFileSync(f) : null;
       mtimes[d] = st.mtimeMs;
     } catch {
       files[d] = null;
     }
   }
-  return { folder: folderRel, name, files, mtimes, entries: readEntries(import_node_path31.default.join(root, folderRel, "approvals.md")) };
+  return { folder: folderRel, name, files, mtimes, entries: readEntries2(import_node_path40.default.join(root, folderRel, "approvals.md")) };
 }
 function riskOf(files) {
   const values = Object.values(files).map((b) => b ? (parseLoose(b.toString("utf8")) ?? {}).risk : void 0);
@@ -7284,7 +8909,7 @@ function build(ctx, key, f, extra, snap, verify, root) {
     stage,
     gates,
     waitingOn: waitingOf(p, stage, gates, docs, ctx.email),
-    review: review ? { open: review.open, report: review.report ? rel(p.root, import_node_path31.default.resolve(root ?? p.root, review.report)) : null, stale: review.stale } : null,
+    review: review ? { open: review.open, report: review.report ? rel(p.root, import_node_path40.default.resolve(root ?? p.root, review.report)) : null, stale: review.stale } : null,
     verify,
     roles: rolesOf(p),
     sessions: ctx.sessions.filter((s) => s.issue === key && s.state !== "gone").map((s) => s.id),
@@ -7312,7 +8937,7 @@ async function fromGitObjects(p, ref) {
         files[d] = null;
         continue;
       }
-      const shown = await git(p.loc.top, p.env, "show", `${ref}:${prefix}.agents/docs/issues/${folder}/${d}.md`);
+      const shown = await git2(p.loc.top, p.env, "show", `${ref}:${prefix}.agents/docs/issues/${folder}/${d}.md`);
       files[d] = shown.code === 0 ? Buffer.from(shown.stdout, "utf8") : null;
     }
     const ap = names.includes("approvals.md") ? await gitOut(p.loc.top, p.env, "show", `${ref}:${prefix}.agents/docs/issues/${folder}/approvals.md`) : null;
@@ -7326,10 +8951,10 @@ async function branchIssues(p, ref) {
   return p.cache.get(`objects:${ref}`, sha, () => fromGitObjects(p, ref));
 }
 function issueFolders(root) {
-  const dir = import_node_path31.default.join(root, ".agents/docs/issues");
+  const dir = import_node_path40.default.join(root, ".agents/docs/issues");
   let names = [];
   try {
-    names = import_node_fs28.default.readdirSync(dir).sort();
+    names = import_node_fs35.default.readdirSync(dir).sort();
   } catch {
     return [];
   }
@@ -7339,7 +8964,7 @@ function issueFolders(root) {
     const m = FOLDER.exec(n);
     if (!m) continue;
     try {
-      if (!import_node_fs28.default.lstatSync(import_node_path31.default.join(dir, n)).isDirectory()) continue;
+      if (!import_node_fs35.default.lstatSync(import_node_path40.default.join(dir, n)).isDirectory()) continue;
     } catch {
       continue;
     }
@@ -7451,15 +9076,15 @@ function publicIssue(i) {
 }
 
 // ../dashboard/src/readers/sessions.ts
-var import_node_child_process6 = require("node:child_process");
-var import_node_fs29 = __toESM(require("node:fs"));
+var import_node_child_process9 = require("node:child_process");
+var import_node_fs36 = __toESM(require("node:fs"));
 var import_node_net = __toESM(require("node:net"));
-var import_node_path32 = __toESM(require("node:path"));
+var import_node_path41 = __toESM(require("node:path"));
 var SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$/;
 var DAY = 24 * 3600 * 1e3;
 function pidStart(pid) {
   return new Promise((resolve) => {
-    const c = (0, import_node_child_process6.spawn)("ps", ["-o", "lstart=", "-p", String(pid)], { stdio: ["ignore", "pipe", "ignore"] });
+    const c = (0, import_node_child_process9.spawn)("ps", ["-o", "lstart=", "-p", String(pid)], { stdio: ["ignore", "pipe", "ignore"] });
     let out = "";
     c.stdout.on("data", (d) => {
       out += d.toString();
@@ -7496,18 +9121,18 @@ async function liveness(data) {
   if (!pid || !alive(pid)) return "gone";
   const started = await pidStart(pid);
   if (typeof data.pidStartedAt === "string" && data.pidStartedAt && started !== data.pidStartedAt) return "gone";
-  const inbox = isObj6(data.inbox) && typeof data.inbox.path === "string" ? data.inbox.path : null;
+  const inbox = isObj7(data.inbox) && typeof data.inbox.path === "string" ? data.inbox.path : null;
   if (!inbox) return "alive-no-inbox";
   return await probeSocket(inbox) ? "alive" : "alive-no-inbox";
 }
 var str3 = (v) => typeof v === "string" ? v : null;
 async function leases(p, root) {
-  const state = import_node_path32.default.join(root, ".agents/coordination/state.json");
-  if (!import_node_fs29.default.existsSync(state)) return /* @__PURE__ */ new Map();
+  const state = import_node_path41.default.join(root, ".agents/coordination/state.json");
+  if (!import_node_fs36.default.existsSync(state)) return /* @__PURE__ */ new Map();
   return p.cache.get(`leases:${root}`, fileStamp(state), async () => {
     const out = /* @__PURE__ */ new Map();
-    const script = import_node_path32.default.join(root, "scripts/session-coordination.py");
-    if (!import_node_fs29.default.existsSync(script)) return out;
+    const script = import_node_path41.default.join(root, "scripts/session-coordination.py");
+    if (!import_node_fs36.default.existsSync(script)) return out;
     const r = await python(root, p.env, [script, "--root", root, "context", "--json"], 2e4);
     if (r.code !== 0) return out;
     try {
@@ -7523,10 +9148,10 @@ async function leases(p, root) {
   });
 }
 async function readSessions(p) {
-  const dir = import_node_path32.default.join(p.root, ".agents/state/sessions");
+  const dir = import_node_path41.default.join(p.root, ".agents/state/sessions");
   let names = [];
   try {
-    names = import_node_fs29.default.readdirSync(dir).filter((n) => n.endsWith(".json")).sort();
+    names = import_node_fs36.default.readdirSync(dir).filter((n) => n.endsWith(".json")).sort();
   } catch {
     return [];
   }
@@ -7534,22 +9159,22 @@ async function readSessions(p) {
   const out = [];
   await Promise.all(
     names.map(async (n) => {
-      const file = import_node_path32.default.join(dir, n);
-      const data = readJson(file);
+      const file = import_node_path41.default.join(dir, n);
+      const data = readJson2(file);
       const id = data && typeof data.id === "string" ? data.id : n.slice(0, -5);
       if (!data || !SESSION_ID.test(id)) return;
       const state = await liveness(data);
       if (state === "gone" && !p.multi && !p.readOnly) {
         try {
-          if (Date.now() - import_node_fs29.default.statSync(file).mtimeMs > DAY) {
-            import_node_fs29.default.unlinkSync(file);
+          if (Date.now() - import_node_fs36.default.statSync(file).mtimeMs > DAY) {
+            import_node_fs36.default.unlinkSync(file);
             return;
           }
         } catch {
           return;
         }
       }
-      const socket = isObj6(data.inbox) && typeof data.inbox.path === "string" ? data.inbox.path : null;
+      const socket = isObj7(data.inbox) && typeof data.inbox.path === "string" ? data.inbox.path : null;
       const cwdAbs = str3(data.cwd);
       out.push({
         id,
@@ -7560,7 +9185,7 @@ async function readSessions(p) {
         issue: str3(data.issue),
         checkout: str3(data.checkout),
         branch: str3(data.branch),
-        cwd: cwdAbs && import_node_path32.default.isAbsolute(cwdAbs) ? rel(p.loc.top, cwdAbs) : null,
+        cwd: cwdAbs && import_node_path41.default.isAbsolute(cwdAbs) ? rel(p.loc.top, cwdAbs) : null,
         turn: str3(data.turn),
         startedAt: str3(data.startedAt),
         lastSeenAt: str3(data.lastSeenAt),
@@ -7580,7 +9205,7 @@ function publicSession(s) {
   return rest;
 }
 function queueDir(p) {
-  return import_node_path32.default.join(p.root, ".agents/state/dispatch-queue");
+  return import_node_path41.default.join(p.root, ".agents/state/dispatch-queue");
 }
 async function readQueue(p) {
   const dir = queueDir(p);
@@ -7589,18 +9214,18 @@ async function readQueue(p) {
     const out = [];
     let names = [];
     try {
-      names = import_node_fs29.default.readdirSync(dir).filter((n) => n.endsWith(".json")).sort();
+      names = import_node_fs36.default.readdirSync(dir).filter((n) => n.endsWith(".json")).sort();
     } catch {
       return out;
     }
     for (const n of names) {
-      const d = readJson(import_node_path32.default.join(dir, n));
+      const d = readJson2(import_node_path41.default.join(dir, n));
       if (!d) continue;
       out.push({
         id: str3(d.id) ?? n.slice(0, -5),
         createdAt: str3(d.createdAt),
         createdBy: str3(d.createdBy),
-        target: isObj6(d.target) ? d.target : {},
+        target: isObj7(d.target) ? d.target : {},
         kind: str3(d.kind),
         message: str3(d.message) ?? "",
         paths: Array.isArray(d.paths) ? d.paths.filter((x) => typeof x === "string") : [],
@@ -7615,68 +9240,68 @@ async function readQueue(p) {
   return items.map((i) => ({ ...i, stale: i.createdAt ? now - Date.parse(i.createdAt) > DAY : false }));
 }
 function cleanConsumed(dir, now) {
-  const consumed = import_node_path32.default.join(dir, "consumed");
+  const consumed = import_node_path41.default.join(dir, "consumed");
   let names = [];
   try {
-    names = import_node_fs29.default.readdirSync(consumed);
+    names = import_node_fs36.default.readdirSync(consumed);
   } catch {
     return;
   }
   for (const n of names) {
-    const f = import_node_path32.default.join(consumed, n);
+    const f = import_node_path41.default.join(consumed, n);
     try {
-      if (now - import_node_fs29.default.statSync(f).mtimeMs > 7 * DAY) import_node_fs29.default.unlinkSync(f);
+      if (now - import_node_fs36.default.statSync(f).mtimeMs > 7 * DAY) import_node_fs36.default.unlinkSync(f);
     } catch {
     }
   }
 }
 
 // ../dashboard/src/readers/state.ts
-var import_node_fs30 = __toESM(require("node:fs"));
-var import_node_path33 = __toESM(require("node:path"));
+var import_node_fs37 = __toESM(require("node:fs"));
+var import_node_path42 = __toESM(require("node:path"));
 var SEVERITIES = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
 async function readVerify(p, issue) {
   const out = [];
   for (const co of await checkouts(p)) {
     if (issue && co.key !== issue) continue;
-    const file = import_node_path33.default.join(co.root, ".agents/state/verify-last.json");
-    const v = await p.cache.get(`verify:${co.root}`, fileStamp(file), () => readJson(file));
+    const file = import_node_path42.default.join(co.root, ".agents/state/verify-last.json");
+    const v = await p.cache.get(`verify:${co.root}`, fileStamp(file), () => readJson2(file));
     const steps = v && Array.isArray(v.steps) ? v.steps : [];
     const shaped = steps.map((s) => ({ label: s.label ?? s.command ?? s.id ?? null, status: s.status ?? null, durationMs: typeof s.durationMs === "number" ? s.durationMs : null }));
     const slowest = shaped.filter((s) => s.durationMs !== null).sort((a, b) => b.durationMs - a.durationMs)[0] ?? null;
     out.push({
       checkout: { kind: co.main ? "main" : "worktree", path: rel(p.loc.top, co.path), branch: co.branch },
       issue: co.key,
-      record: v ? { level: v.level ?? null, status: v.status ?? null, startedAt: v.startedAt ?? null, finishedAt: v.finishedAt ?? null, durationMs: v.durationMs ?? null, head: isObj6(v.head) ? v.head : null, exitCode: v.exitCode ?? null, steps: shaped } : null,
+      record: v ? { level: v.level ?? null, status: v.status ?? null, startedAt: v.startedAt ?? null, finishedAt: v.finishedAt ?? null, durationMs: v.durationMs ?? null, head: isObj7(v.head) ? v.head : null, exitCode: v.exitCode ?? null, steps: shaped } : null,
       slowest
     });
   }
   return out;
 }
 function reportsDir(p) {
-  return import_node_path33.default.join(p.root, ".agents/reports");
+  return import_node_path42.default.join(p.root, ".agents/reports");
 }
 async function readSummary(p) {
   const dir = reportsDir(p);
-  const gateFile = import_node_path33.default.join(dir, "quality-gate-last.json");
-  const findingsFile = import_node_path33.default.join(dir, "findings-latest.json");
-  const metricsFile = import_node_path33.default.join(dir, "metrics/latest.json");
+  const gateFile = import_node_path42.default.join(dir, "quality-gate-last.json");
+  const findingsFile = import_node_path42.default.join(dir, "findings-latest.json");
+  const metricsFile = import_node_path42.default.join(dir, "metrics/latest.json");
   return p.cache.get("summary", [gateFile, findingsFile, metricsFile].map(fileStamp).join("\n"), () => {
-    const gate = readJson(gateFile);
-    const f = readJson(findingsFile);
+    const gate = readJson2(gateFile);
+    const f = readJson2(findingsFile);
     const list3 = f && Array.isArray(f.findings) ? f.findings : [];
     const bySeverity = Object.fromEntries(SEVERITIES.map((s) => [s, list3.filter((x) => x.severity === s).length]));
     const newBySeverity = Object.fromEntries(SEVERITIES.map((s) => [s, list3.filter((x) => x.severity === s && x.new === true).length]));
     return {
       gate: gate ? { status: gate.status ?? null, level: gate.level ?? null, head: gate.head ?? null, base: gate.base ?? null, mode: gate.mode ?? null, checks: gate.checks ?? [], incomplete: gate.incomplete ?? [] } : null,
       findings: f ? { at: f.at ?? null, head: f.head ?? null, level: f.level ?? null, total: list3.length, bySeverity, new: newBySeverity, truncated: f.truncated === true, analyzers: f.analyzers ?? {} } : null,
-      metrics: readJson(metricsFile)
+      metrics: readJson2(metricsFile)
     };
   });
 }
 async function readFindings(p, q2) {
-  const file = import_node_path33.default.join(reportsDir(p), "findings-latest.json");
-  const f = await p.cache.get("findings", fileStamp(file), () => readJson(file));
+  const file = import_node_path42.default.join(reportsDir(p), "findings-latest.json");
+  const f = await p.cache.get("findings", fileStamp(file), () => readJson2(file));
   let list3 = f && Array.isArray(f.findings) ? f.findings : [];
   if (q2.severity) list3 = list3.filter((x) => x.severity === q2.severity);
   if (q2.onlyNew) list3 = list3.filter((x) => x.new === true);
@@ -7687,20 +9312,20 @@ async function readFindings(p, q2) {
   return { head: f?.head ?? null, branch: f?.branch ?? null, at: f?.at ?? null, findings: list3 };
 }
 async function readReview(p, root, folderRel) {
-  const script = import_node_fs30.default.existsSync(import_node_path33.default.join(root, "scripts/harness/review_state.py")) ? import_node_path33.default.join(root, "scripts/harness/review_state.py") : import_node_path33.default.join(p.root, "scripts/harness/review_state.py");
+  const script = import_node_fs37.default.existsSync(import_node_path42.default.join(root, "scripts/harness/review_state.py")) ? import_node_path42.default.join(root, "scripts/harness/review_state.py") : import_node_path42.default.join(p.root, "scripts/harness/review_state.py");
   const key = /issues\/([A-Z][A-Z0-9]*-\d+)-/.exec(folderRel)?.[1] ?? "";
   const stamp = [
-    fileStamp(import_node_path33.default.join(root, folderRel, "approvals.md")),
-    fileStamp(import_node_path33.default.join(root, folderRel, "review.md")),
-    fileStamp(import_node_path33.default.join(root, ".agents/reports/review", `${key}.md`)),
-    fileStamp(import_node_path33.default.join(p.root, ".agents/reports/review", `${key}.md`))
+    fileStamp(import_node_path42.default.join(root, folderRel, "approvals.md")),
+    fileStamp(import_node_path42.default.join(root, folderRel, "review.md")),
+    fileStamp(import_node_path42.default.join(root, ".agents/reports/review", `${key}.md`)),
+    fileStamp(import_node_path42.default.join(p.root, ".agents/reports/review", `${key}.md`))
   ].join("\n");
   return p.cache.get(`review:${root}:${folderRel}`, stamp, async () => {
-    const r = await python(root, p.env, [script, import_node_path33.default.join(root, folderRel), "--json"], 3e4);
+    const r = await python(root, p.env, [script, import_node_path42.default.join(root, folderRel), "--json"], 3e4);
     if (r.code === 2) return { key, report: null, head: null, stale: false, open: { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 }, findings: [] };
     if (r.code !== 0 && r.code !== 1) throw new ApiError(500, "internal", "리뷰 상태를 읽지 못했다");
     const data = JSON.parse(r.stdout);
-    if (typeof data.report === "string" && import_node_path33.default.isAbsolute(data.report)) data.report = rel(p.root, data.report);
+    if (typeof data.report === "string" && import_node_path42.default.isAbsolute(data.report)) data.report = rel(p.root, data.report);
     return data;
   });
 }
@@ -7708,7 +9333,7 @@ async function readWorktrees(p) {
   const cos = await checkouts(p);
   const base = p.base();
   const g = p.meta().git;
-  const max = isObj6(g) && typeof g.maxPerRepo === "number" ? g.maxPerRepo : 3;
+  const max = isObj7(g) && typeof g.maxPerRepo === "number" ? g.maxPerRepo : 3;
   const items = await Promise.all(
     cos.map(async (co) => {
       const st = await gitStatus(co.path, p.env);
@@ -7719,12 +9344,12 @@ async function readWorktrees(p) {
       }
       let lastUsed = null;
       try {
-        lastUsed = new Date(import_node_fs30.default.statSync(co.path).mtimeMs).toISOString();
+        lastUsed = new Date(import_node_fs37.default.statSync(co.path).mtimeMs).toISOString();
       } catch {
         lastUsed = null;
       }
       const done = !co.main && !st.dirty && st.unpushed === 0 && merged === true;
-      const name = import_node_path33.default.basename(co.path);
+      const name = import_node_path42.default.basename(co.path);
       return { path: co.main ? "." : rel(p.loc.top, co.path), name, kind: co.main ? "main" : "worktree", branch: co.branch, head: co.head, issue: co.key, dirty: st.dirty, unpushed: st.unpushed, merged, done, lastUsed, abs: co.path };
     })
   );
@@ -7745,7 +9370,7 @@ async function sessionInfo(p, mode) {
   const meta = p.meta();
   const user = await p.user();
   const groups = p.policy().groups ?? {};
-  const flow2 = isObj6(meta.flow) ? meta.flow : {};
+  const flow2 = isObj7(meta.flow) ? meta.flow : {};
   return {
     repo: p.name(),
     projectId: p.id,
@@ -7763,7 +9388,7 @@ async function sessionInfo(p, mode) {
 async function doctorOf(p) {
   const doctor = p.deps.doctor;
   if (!doctor) return null;
-  const stamp = [fileStamp(import_node_path34.default.join(p.root, ".agents/harness-kit.lock")), fileStamp(import_node_path34.default.join(p.root, ".agents/harness-kit.json"))].join("\n");
+  const stamp = [fileStamp(import_node_path43.default.join(p.root, ".agents/harness-kit.lock")), fileStamp(import_node_path43.default.join(p.root, ".agents/harness-kit.json"))].join("\n");
   try {
     return await p.cache.get("doctor", stamp, () => doctor(p.root, p.env), 6e4);
   } catch {
@@ -7773,14 +9398,14 @@ async function doctorOf(p) {
 var isoOf = (ms) => new Date(ms && Number.isFinite(ms) ? ms : 0).toISOString();
 var mtime = (f) => {
   try {
-    return import_node_fs31.default.statSync(f).mtimeMs;
+    return import_node_fs38.default.statSync(f).mtimeMs;
   } catch {
     return null;
   }
 };
 async function todos(p, loaded) {
   const out = [];
-  const fallback = mtime(import_node_path34.default.join(p.root, ".agents/harness-kit.json"));
+  const fallback = mtime(import_node_path43.default.join(p.root, ".agents/harness-kit.json"));
   const iso = (ms) => isoOf(ms ?? fallback);
   const user = await p.user();
   for (const i of loaded.issues) {
@@ -7788,7 +9413,7 @@ async function todos(p, loaded) {
     const open = i.review?.open ?? {};
     const blocking = (open.CRITICAL ?? 0) + (open.HIGH ?? 0);
     if (blocking > 0) {
-      out.push({ rank: 1, kind: "review-blocker", target: i.key, title: `${i.key} 리뷰 지적 CRITICAL ${open.CRITICAL ?? 0} · HIGH ${open.HIGH ?? 0}`, reason: "열린 CRITICAL · HIGH 지적이 있으면 mr 승인 · full 이 막힌다", since: iso(i.review?.report ? mtime(import_node_path34.default.join(p.root, i.review.report)) : null), link: `${link}/review`, mine: false });
+      out.push({ rank: 1, kind: "review-blocker", target: i.key, title: `${i.key} 리뷰 지적 CRITICAL ${open.CRITICAL ?? 0} · HIGH ${open.HIGH ?? 0}`, reason: "열린 CRITICAL · HIGH 지적이 있으면 mr 승인 · full 이 막힌다", since: iso(i.review?.report ? mtime(import_node_path43.default.join(p.root, i.review.report)) : null), link: `${link}/review`, mine: false });
     }
     if (i.waitingOn) {
       const d = i.docs[i.waitingOn.gate];
@@ -7810,11 +9435,11 @@ async function todos(p, loaded) {
     }
   }
   for (const info of intentFolders(p.root)) {
-    const qf = import_node_path34.default.join(info.abs, "questions.md");
-    if (!import_node_fs31.default.existsSync(qf)) continue;
+    const qf = import_node_path43.default.join(info.abs, "questions.md");
+    if (!import_node_fs38.default.existsSync(qf)) continue;
     const model = intentModel(p, info, loaded.issues);
     const stage = String(model.stage);
-    const open = parseQuestions(import_node_fs31.default.readFileSync(qf, "utf8")).questions.filter((q2) => q2.open && (q2.blocks === stage || q2.blocks === null));
+    const open = parseQuestions(import_node_fs38.default.readFileSync(qf, "utf8")).questions.filter((q2) => q2.open && (q2.blocks === stage || q2.blocks === null));
     if (open.length) out.push({ rank: 3, kind: "questions", target: info.key, title: `${info.key} 답할 질문 ${open.length}건`, reason: `막는 게이트: ${stage}`, since: iso(mtime(qf)), link: `/intents/${info.key}/questions`, mine: false });
   }
   for (const v of await readVerify(p, null)) {
@@ -7904,13 +9529,13 @@ function issueRow(i) {
   return `<tr><td><a href="issues/${encodeURIComponent(i.key)}.html">${escapeHtml(i.key)}</a></td><td>${escapeHtml(i.name)}</td><td>${escapeHtml(i.area ?? "")}</td><td>${escapeHtml(i.stage)}</td><td>${escapeHtml(i.source)}</td><td>${escapeHtml(i.checkout?.path ?? "")}</td></tr>`;
 }
 async function exportStatic(opts) {
-  const out = import_node_path35.default.resolve(opts.out);
-  if (import_node_fs32.default.existsSync(out) && import_node_fs32.default.readdirSync(out).length > 0) throw new ExportError("out_not_empty", `출력 폴더가 비어 있지 않다: ${out}`);
+  const out = import_node_path44.default.resolve(opts.out);
+  if (import_node_fs39.default.existsSync(out) && import_node_fs39.default.readdirSync(out).length > 0) throw new ExportError("out_not_empty", `출력 폴더가 비어 있지 않다: ${out}`);
   const home = opts.env.HOME ?? import_node_os.default.homedir();
   const p = await Project.open(opts.cwd, { env: opts.env, home, readOnly: true, multi: true, deps: {} });
   const cos = await checkouts(p);
   const map = [];
-  for (const co of cos.slice(1)) map.push([co.path, `<worktrees>/${import_node_path35.default.basename(co.path)}`]);
+  for (const co of cos.slice(1)) map.push([co.path, `<worktrees>/${import_node_path44.default.basename(co.path)}`]);
   map.push([p.loc.top, "."]);
   const loaded = await load(p);
   const issues = loaded.issues.map(publicIssue).map((i) => ({ ...i, sessions: [], checkout: i.checkout ? { ...i.checkout, path: i.checkout.path.replace(/^\.\.\/[^/]+\.worktrees\//, "<worktrees>/") } : null }));
@@ -7929,10 +9554,10 @@ async function exportStatic(opts) {
     data[`flow-${info.key}`] = { ...f, nodes: f.nodes.map((n) => ({ ...n, data: { ...n.data, session: null } })), proposal: proposal ? { ...proposal, createdBy: void 0 } : null };
   }
   const written = [];
-  const write = (rel2, text2) => {
-    const f = import_node_path35.default.join(out, rel2);
-    import_node_fs32.default.mkdirSync(import_node_path35.default.dirname(f), { recursive: true });
-    import_node_fs32.default.writeFileSync(f, text2);
+  const write = (rel2, text3) => {
+    const f = import_node_path44.default.join(out, rel2);
+    import_node_fs39.default.mkdirSync(import_node_path44.default.dirname(f), { recursive: true });
+    import_node_fs39.default.writeFileSync(f, text3);
     written.push(rel2);
   };
   try {
@@ -7952,15 +9577,15 @@ async function exportStatic(opts) {
       for (const doc of ["requirements", "design", "tasks"]) {
         const root = issue.root;
         if (!root) continue;
-        const f = import_node_path35.default.join(root, issue.dir, `${doc}.md`);
-        if (!import_node_fs32.default.existsSync(f)) continue;
-        parts.push(`<section><h2>${doc}.md</h2>${renderMarkdown(import_node_fs32.default.readFileSync(f, "utf8"), { docPath: `${issue.dir}/${doc}.md` })}</section>`);
+        const f = import_node_path44.default.join(root, issue.dir, `${doc}.md`);
+        if (!import_node_fs39.default.existsSync(f)) continue;
+        parts.push(`<section><h2>${doc}.md</h2>${renderMarkdown(import_node_fs39.default.readFileSync(f, "utf8"), { docPath: `${issue.dir}/${doc}.md` })}</section>`);
       }
       write(`issues/${issue.key}.html`, page(`${issue.key} — ${p.name()}`, scrub(parts.join("\n"), map)));
     }
     check2(out, p, home);
   } catch (err) {
-    import_node_fs32.default.rmSync(out, { recursive: true, force: true });
+    import_node_fs39.default.rmSync(out, { recursive: true, force: true });
     throw err;
   }
   return { out, files: written.sort() };
@@ -7970,7 +9595,7 @@ function check2(out, p, home) {
   for (const h of [home, import_node_os.default.homedir()]) if (h && h.length > 1) needles.add(h);
   const token = (() => {
     try {
-      return import_node_fs32.default.readFileSync(import_node_path35.default.join(p.root, ".agents/state/dashboard.token"), "utf8").trim();
+      return import_node_fs39.default.readFileSync(import_node_path44.default.join(p.root, ".agents/state/dashboard.token"), "utf8").trim();
     } catch {
       return "";
     }
@@ -7978,12 +9603,12 @@ function check2(out, p, home) {
   if (token) needles.add(token);
   const hits = [];
   const walk4 = (d) => {
-    for (const n of import_node_fs32.default.readdirSync(d)) {
-      const f = import_node_path35.default.join(d, n);
-      if (import_node_fs32.default.statSync(f).isDirectory()) walk4(f);
+    for (const n of import_node_fs39.default.readdirSync(d)) {
+      const f = import_node_path44.default.join(d, n);
+      if (import_node_fs39.default.statSync(f).isDirectory()) walk4(f);
       else {
-        const text2 = import_node_fs32.default.readFileSync(f, "utf8");
-        for (const needle of needles) if (text2.includes(needle)) hits.push(`${import_node_path35.default.relative(out, f)}: ${needle === token ? "<토큰>" : needle}`);
+        const text3 = import_node_fs39.default.readFileSync(f, "utf8");
+        for (const needle of needles) if (text3.includes(needle)) hits.push(`${import_node_path44.default.relative(out, f)}: ${needle === token ? "<토큰>" : needle}`);
       }
     }
   };
@@ -7993,67 +9618,14 @@ function check2(out, p, home) {
 
 // ../dashboard/src/server.ts
 var import_node_crypto7 = __toESM(require("node:crypto"));
-var import_node_fs45 = __toESM(require("node:fs"));
+var import_node_fs52 = __toESM(require("node:fs"));
 var import_node_http = __toESM(require("node:http"));
 var import_node_os3 = __toESM(require("node:os"));
-var import_node_path49 = __toESM(require("node:path"));
-
-// ../dashboard/src/agent.ts
-var import_node_child_process7 = require("node:child_process");
-var import_node_path36 = __toESM(require("node:path"));
-var HARNESS = /* @__PURE__ */ new Set(["claude", "codex", "kiro", "kiro-cli", "cursor-agent"]);
-var INTERPRETERS = /* @__PURE__ */ new Set(["node", "nodejs", "bun", "deno"]);
-var PERSONAL = /* @__PURE__ */ new Set(["CODEX_HOME", "KIRO_HOME"]);
-var DEPTH = 20;
-function envMarker(env) {
-  if (env.CLAUDECODE === "1") return "CLAUDECODE=1";
-  if (env.CLAUDE_CODE_MESSAGING_SOCKET) return "CLAUDE_CODE_MESSAGING_SOCKET";
-  for (const key of Object.keys(env).sort()) {
-    if (PERSONAL.has(key) || !env[key]) continue;
-    if (key.startsWith("CODEX_") || key.startsWith("KIRO_")) return key;
-  }
-  if (env.CURSOR_AGENT) return "CURSOR_AGENT";
-  return null;
-}
-function row(pid) {
-  const a = (0, import_node_child_process7.spawnSync)("ps", ["-o", "ppid=", "-o", "comm=", "-p", String(pid)], { encoding: "utf8", timeout: 5e3 });
-  const b = (0, import_node_child_process7.spawnSync)("ps", ["-o", "args=", "-p", String(pid)], { encoding: "utf8", timeout: 5e3 });
-  const text2 = (a.stdout ?? "").trim();
-  if (a.status !== 0 || !text2) return null;
-  const m = /^(\d+)\s+(.*)$/.exec(text2);
-  if (!m) return null;
-  return [Number(m[1]), m[2].trim(), (b.stdout ?? "").trim()];
-}
-function harnessName(command, args) {
-  const names = /* @__PURE__ */ new Set([import_node_path36.default.basename(command).replace(/^-+/, "")]);
-  const tokens = args.split(/\s+/).filter(Boolean);
-  if (tokens.length) {
-    const first = import_node_path36.default.basename(tokens[0]).replace(/^-+/, "");
-    names.add(first);
-    if (INTERPRETERS.has(first) && tokens.length > 1) names.add(import_node_path36.default.basename(tokens[1]));
-  }
-  const found = [...names].filter((n) => HARNESS.has(n)).sort();
-  return found[0] ?? null;
-}
-function parentMarker(start = process.ppid) {
-  let current4 = start;
-  for (let i = 0; i < DEPTH; i += 1) {
-    if (current4 <= 1) return null;
-    const r = row(current4);
-    if (!r) return null;
-    const name = harnessName(r[1], r[2]);
-    if (name) return `부모 프로세스 ${name}`;
-    current4 = r[0];
-  }
-  return null;
-}
-function agentSession(env) {
-  return envMarker(env) ?? parentMarker();
-}
+var import_node_path57 = __toESM(require("node:path"));
 
 // ../dashboard/src/api.ts
-var import_node_fs44 = __toESM(require("node:fs"));
-var import_node_path48 = __toESM(require("node:path"));
+var import_node_fs51 = __toESM(require("node:fs"));
+var import_node_path56 = __toESM(require("node:path"));
 
 // ../dashboard/src/burn.ts
 var DAY2 = 864e5;
@@ -8065,12 +9637,12 @@ var localDate = (ms) => {
 async function history(p, issue) {
   if (!issue.root) return [];
   const rel2 = `${issue.dir}/tasks.md`;
-  const log = await git(issue.root, p.env, "log", "--format=%H%x09%cI", "--", rel2);
+  const log = await git2(issue.root, p.env, "log", "--format=%H%x09%cI", "--", rel2);
   if (log.code !== 0) return [];
   const pts = [];
   for (const line of log.stdout.split("\n").filter(Boolean).reverse()) {
     const [sha, iso] = line.split("	");
-    const shown = await git(issue.root, p.env, "show", `${sha}:${rel2}`);
+    const shown = await git2(issue.root, p.env, "show", `${sha}:${rel2}`);
     if (shown.code !== 0) continue;
     const b = bolts(shown.stdout);
     pts.push({ at: Date.parse(iso), total: b.total, done: b.done });
@@ -8079,7 +9651,7 @@ async function history(p, issue) {
 }
 async function burnData(p, info, issues, daysText) {
   const days = daysText === null ? 14 : Number(daysText);
-  if (!Number.isInteger(days) || days < 1 || days > 90) throw bad3("days 는 1~90 이다");
+  if (!Number.isInteger(days) || days < 1 || days > 90) throw bad4("days 는 1~90 이다");
   const { units } = readUnitsFile(info.abs);
   const live = units.filter((u) => u.planned && !(u.kind === "contract" && !u.issue));
   const startDay = /* @__PURE__ */ new Date();
@@ -8124,33 +9696,93 @@ async function burnData(p, info, issues, daysText) {
   };
 }
 
+// ../dashboard/src/checkpoints.ts
+var EXPLAIN_LIMIT = 2e4;
+var EXPLAIN_TIMEOUT = 1e4;
+var LOG_LIMIT = 200;
+var ID = /^[0-9A-Za-z][0-9A-Za-z-]{5,63}$/;
+var KEY2 = /^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5}$/;
+var RS = "";
+var NUL = "\0";
+function enabled(p) {
+  const m = p.meta().modules;
+  return Array.isArray(m) && m.includes("entire");
+}
+async function localIds(p) {
+  const out = await gitOut(p.loc.top, p.env, "for-each-ref", "refs/entire/checkpoints/", "--format=%(refname)") ?? "";
+  return new Set(out.split("\n").filter(Boolean).map((r) => r.replace(/^refs\/entire\/checkpoints\//, "").replace(/\//g, "")));
+}
+async function revExists(p, ref) {
+  return (await git2(p.loc.top, p.env, "rev-parse", "--verify", "--quiet", ref)).code === 0;
+}
+async function checkpointsList(p, issue) {
+  if (issue !== null && !KEY2.test(issue)) throw bad4(`이슈 키 형식이 아니다: ${issue}`);
+  if (!enabled(p)) return { enabled: false, issue, branch: null, checkpoints: [], note: "entire 모듈이 꺼져 있다(harness-kit add entire)" };
+  let branch = null;
+  if (issue) {
+    const all = await branches(p);
+    branch = all.find((b) => /^[a-z]+\//.test(b) && b.slice(b.indexOf("/") + 1).startsWith(`${issue}-`)) ?? null;
+    if (!branch) return { enabled: true, issue, branch: null, base: p.base(), checkpoints: [], note: "이슈 브랜치가 없다" };
+  } else branch = await gitOut(p.loc.top, p.env, "rev-parse", "--abbrev-ref", "HEAD") ?? "HEAD";
+  const base = p.base();
+  const range = await revExists(p, `origin/${base}`) ? `origin/${base}..${branch}` : await revExists(p, base) ? `${base}..${branch}` : `-n${LOG_LIMIT} ${branch}`;
+  const fmt3 = "--format=%H%x00%h%x00%s%x00%(trailers:key=Entire-Checkpoint,valueonly,separator=%x2C)%x1e";
+  const r = await git2(p.loc.top, p.env, "log", fmt3, ...range.split(" "));
+  if (r.code !== 0) throw new ApiError(500, "git_failed", `git log 실패: ${r.stderr.trim().split("\n").pop() ?? ""}`);
+  const local = await localIds(p);
+  const rows = [];
+  let commits = 0;
+  for (const rec of r.stdout.split(RS)) {
+    const [sha, short, subject, trailers] = rec.replace(/^\n/, "").split(NUL);
+    if (!sha) continue;
+    commits += 1;
+    for (const id of (trailers ?? "").split(",").map((x) => x.trim().replace(/\s+/g, "")).filter(Boolean)) {
+      const has = local.has(id);
+      rows.push({ id, commit: short ?? sha.slice(0, 7), subject: subject ?? "", local: has, state: has ? "local" : "remote-or-missing" });
+    }
+  }
+  return { enabled: true, issue, branch, base, range, commits, checkpoints: rows };
+}
+function cleanText(s) {
+  return s.replace(/\u001b\[[0-9;?]*[ -/]*[@-~]/g, "").replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "");
+}
+async function checkpointExplain(p, id) {
+  if (!ID.test(id)) throw bad4(`체크포인트 id 형식이 아니다: ${id}`);
+  if (!enabled(p)) return { enabled: false, id, available: false, reason: "entire 모듈이 꺼져 있다" };
+  const r = await run2("entire", ["checkpoint", "explain", id], { cwd: p.loc.top, env: p.env, timeout: EXPLAIN_TIMEOUT });
+  const missing = r.code !== 0 && /ENOENT|not found|command not found/i.test(r.stderr + String(r.code));
+  if (missing || r.code === 1 && r.stdout === "" && r.stderr === "") return { enabled: true, id, available: false, reason: "entire 를 실행하지 못했다(없거나 10초 안에 끝나지 않았다)" };
+  const text3 = cutBytes(cleanText(r.stdout || r.stderr), EXPLAIN_LIMIT);
+  return { enabled: true, id, available: true, ok: r.code === 0, truncated: Buffer.byteLength(r.stdout) > EXPLAIN_LIMIT, text: text3, untrusted: true };
+}
+
 // ../dashboard/src/projects.ts
-var import_node_fs33 = __toESM(require("node:fs"));
-var import_node_path37 = __toESM(require("node:path"));
+var import_node_fs40 = __toESM(require("node:fs"));
+var import_node_path45 = __toESM(require("node:path"));
 function configDir(home, env = {}) {
   return kitConfigDir(home, env);
 }
 function registryFile(home, env = {}) {
-  return import_node_path37.default.join(configDir(home, env), "projects.json");
+  return import_node_path45.default.join(configDir(home, env), "projects.json");
 }
 function readRegistry(home, env = {}) {
-  const data = readJson(registryFile(home, env));
+  const data = readJson2(registryFile(home, env));
   const list3 = data && Array.isArray(data.projects) ? data.projects : [];
-  return list3.filter((x) => isObj6(x) && typeof x.path === "string").map((x) => ({ path: String(x.path), name: typeof x.name === "string" ? x.name : import_node_path37.default.basename(String(x.path)), addedAt: typeof x.addedAt === "string" ? x.addedAt : "" }));
+  return list3.filter((x) => isObj7(x) && typeof x.path === "string").map((x) => ({ path: String(x.path), name: typeof x.name === "string" ? x.name : import_node_path45.default.basename(String(x.path)), addedAt: typeof x.addedAt === "string" ? x.addedAt : "" }));
 }
 function writeRegistry(home, projects, env = {}) {
   ensureDir(configDir(home, env), 448);
   atomicWrite(registryFile(home, env), `${JSON.stringify({ schema: "harness-kit.projects/v1", projects }, null, 2)}
 `, 384);
-  import_node_fs33.default.chmodSync(registryFile(home, env), 384);
+  import_node_fs40.default.chmodSync(registryFile(home, env), 384);
 }
 function isHarnessRepo(dir) {
-  return import_node_fs33.default.existsSync(import_node_path37.default.join(dir, ".agents/harness-kit.json"));
+  return import_node_fs40.default.existsSync(import_node_path45.default.join(dir, ".agents/harness-kit.json"));
 }
 function addProject(home, dir, today2, env = {}) {
   let real2;
   try {
-    real2 = import_node_fs33.default.realpathSync(dir);
+    real2 = import_node_fs40.default.realpathSync(dir);
   } catch {
     throw new ApiError(404, "not_found", `폴더가 없다: ${dir}`);
   }
@@ -8158,9 +9790,9 @@ function addProject(home, dir, today2, env = {}) {
   const list3 = readRegistry(home, env);
   const found = list3.find((e) => e.path === real2);
   if (found) return { added: false, entry: found };
-  const meta = readJson(import_node_path37.default.join(real2, ".agents/harness-kit.json")) ?? {};
-  const project = isObj6(meta.project) ? meta.project : {};
-  const entry = { path: real2, name: typeof project.name === "string" && project.name ? project.name : import_node_path37.default.basename(real2), addedAt: today2 };
+  const meta = readJson2(import_node_path45.default.join(real2, ".agents/harness-kit.json")) ?? {};
+  const project = isObj7(meta.project) ? meta.project : {};
+  const entry = { path: real2, name: typeof project.name === "string" && project.name ? project.name : import_node_path45.default.basename(real2), addedAt: today2 };
   writeRegistry(home, [...list3, entry], env);
   return { added: true, entry };
 }
@@ -8168,9 +9800,9 @@ function removeProject(home, nameOrPath, env = {}) {
   const list3 = readRegistry(home, env);
   let real2 = nameOrPath;
   try {
-    real2 = import_node_fs33.default.realpathSync(nameOrPath);
+    real2 = import_node_fs40.default.realpathSync(nameOrPath);
   } catch {
-    real2 = import_node_path37.default.resolve(nameOrPath);
+    real2 = import_node_path45.default.resolve(nameOrPath);
   }
   const removed = list3.filter((e) => e.name === nameOrPath || e.path === nameOrPath || e.path === real2);
   if (removed.length === 0) throw new ApiError(404, "not_found", `등록부에 없다: ${nameOrPath}`);
@@ -8180,33 +9812,33 @@ function removeProject(home, nameOrPath, env = {}) {
 function discover(dir, depth = 3) {
   const out = [];
   const walk4 = (d, left) => {
-    if (isHarnessRepo(d)) out.push({ path: d, name: import_node_path37.default.basename(d), addedAt: "" });
+    if (isHarnessRepo(d)) out.push({ path: d, name: import_node_path45.default.basename(d), addedAt: "" });
     if (left === 0) return;
     let names = [];
     try {
-      names = import_node_fs33.default.readdirSync(d).sort();
+      names = import_node_fs40.default.readdirSync(d).sort();
     } catch {
       return;
     }
     for (const n of names) {
       if (n.startsWith(".") || n === "node_modules") continue;
-      const f = import_node_path37.default.join(d, n);
+      const f = import_node_path45.default.join(d, n);
       try {
-        if (import_node_fs33.default.lstatSync(f).isDirectory()) walk4(f, left - 1);
+        if (import_node_fs40.default.lstatSync(f).isDirectory()) walk4(f, left - 1);
       } catch {
       }
     }
   };
-  walk4(import_node_fs33.default.realpathSync(dir), depth);
+  walk4(import_node_fs40.default.realpathSync(dir), depth);
   return out;
 }
 function workspaceEntries(file) {
-  const data = readJson(file);
-  if (!data) throw bad3(`workspace 파일을 읽지 못했다: ${file}`);
+  const data = readJson2(file);
+  if (!data) throw bad4(`workspace 파일을 읽지 못했다: ${file}`);
   const list3 = Array.isArray(data.projects) ? data.projects : [];
-  return list3.map((x) => typeof x === "string" ? x : isObj6(x) && typeof x.path === "string" ? x.path : null).filter((x) => x !== null).map((p) => {
-    const abs = import_node_path37.default.resolve(import_node_path37.default.dirname(file), p);
-    return { path: abs, name: import_node_path37.default.basename(abs), addedAt: "" };
+  return list3.map((x) => typeof x === "string" ? x : isObj7(x) && typeof x.path === "string" ? x.path : null).filter((x) => x !== null).map((p) => {
+    const abs = import_node_path45.default.resolve(import_node_path45.default.dirname(file), p);
+    return { path: abs, name: import_node_path45.default.basename(abs), addedAt: "" };
   });
 }
 function modeEntries(mode, home, env = {}) {
@@ -8228,7 +9860,7 @@ var Projects = class {
       const id = projectIdOf(e.path);
       let slot = this.slots.get(id);
       if (!slot || slot.entry.path !== e.path) {
-        const exists2 = import_node_fs33.default.existsSync(e.path);
+        const exists2 = import_node_fs40.default.existsSync(e.path);
         const state = !exists2 ? "missing" : isHarnessRepo(e.path) ? "ok" : "not-harness";
         let project = null;
         if (state === "ok") {
@@ -8257,7 +9889,7 @@ async function projectsList(projects) {
       path: s.entry.path,
       addedAt: s.entry.addedAt || null,
       state: s.state,
-      version: s.project ? isObj6(s.project.meta().kit) ? s.project.meta().kit.version ?? null : null : null,
+      version: s.project ? isObj7(s.project.meta().kit) ? s.project.meta().kit.version ?? null : null : null,
       remove: s.state === "ok" ? null : `npx harness-kit projects remove ${s.entry.name}`
     }))
   };
@@ -8302,7 +9934,7 @@ async function projectsOverview(projects, timeoutMs = 3e3) {
   const nested = rows.map((r) => ({ ...r, children: [] }));
   const top = [];
   for (const r of nested) {
-    const parent = nested.find((o) => o !== r && String(r.path).startsWith(`${String(o.path)}${import_node_path37.default.sep}`));
+    const parent = nested.find((o) => o !== r && String(r.path).startsWith(`${String(o.path)}${import_node_path45.default.sep}`));
     if (parent) parent.children.push({ id: r.id, name: r.name, state: r.state });
     else top.push(r);
   }
@@ -8316,8 +9948,8 @@ async function machineSessions(projects) {
 
 // ../dashboard/src/skills.ts
 var import_node_crypto6 = __toESM(require("node:crypto"));
-var import_node_fs34 = __toESM(require("node:fs"));
-var import_node_path38 = __toESM(require("node:path"));
+var import_node_fs41 = __toESM(require("node:fs"));
+var import_node_path46 = __toESM(require("node:path"));
 
 // ../dashboard/src/yaml-lite.ts
 var YamlError = class extends Error {
@@ -8489,9 +10121,9 @@ function flow(s, depth) {
   if (i < s.length) throw new YamlError("흐름 값 뒤에 글이 남았다");
   return out;
 }
-function lines(text2) {
+function lines(text3) {
   const out = [];
-  text2.split("\n").forEach((raw, n) => {
+  text3.split("\n").forEach((raw, n) => {
     const line = raw.replace(/\r$/, "");
     if (/^\t/.test(line) || /^ *\t/.test(line)) {
       if (line.trim()) throw new YamlError(`탭 들여쓰기(${n + 1}째 줄)`);
@@ -8584,8 +10216,8 @@ function parseMap(r, indent, depth) {
     if (!l || l.indent < indent) return out;
     if (l.indent > indent) throw new YamlError(`들여쓰기가 맞지 않다(${l.no}째 줄)`);
     if (l.text.startsWith("- ") || l.text === "-") return out;
-    const text2 = stripComment(l.text);
-    const m = /^("(?:[^"\\]|\\.)*"|'(?:[^']|'')*'|[^\s:#][^:]*?)\s*:(?:\s+(.*))?$/.exec(text2);
+    const text3 = stripComment(l.text);
+    const m = /^("(?:[^"\\]|\\.)*"|'(?:[^']|'')*'|[^\s:#][^:]*?)\s*:(?:\s+(.*))?$/.exec(text3);
     if (!m) throw new YamlError(`'키: 값' 모양이 아니다(${l.no}째 줄)`);
     let key = m[1];
     if (key[0] === '"' || key[0] === "'") key = String(value(key, depth));
@@ -8646,8 +10278,8 @@ function flowClosed(s) {
   }
   return depth <= 0;
 }
-function parseYaml(text2) {
-  const r = new Reader(lines(text2));
+function parseYaml(text3) {
+  const r = new Reader(lines(text3));
   const first = r.peek();
   if (!first) return {};
   const res = parseBlock(r, first.indent, 0);
@@ -8665,13 +10297,13 @@ var MAX_FILE = 256 * 1024;
 var CONCURRENCY = 32;
 var TTL_MS = 10 * 60 * 1e3;
 var NESTED_DEPTH = 4;
-var SKIP_DIRS = /* @__PURE__ */ new Set([".git", "node_modules", "build", "dist", "target", ".venv", ".gradle"]);
+var SKIP_DIRS2 = /* @__PURE__ */ new Set([".git", "node_modules", "build", "dist", "target", ".venv", ".gradle"]);
 var KEEP_FIELDS = ["model", "effort", "context", "agent", "disable-model-invocation", "user-invocable", "allowed-tools", "argument-hint"];
 function display(p, home, repo) {
-  if (p === home || p.startsWith(`${home}${import_node_path38.default.sep}`)) return `~${p.slice(home.length)}`.split(import_node_path38.default.sep).join("/");
+  if (p === home || p.startsWith(`${home}${import_node_path46.default.sep}`)) return `~${p.slice(home.length)}`.split(import_node_path46.default.sep).join("/");
   if (p === repo) return ".";
-  if (p.startsWith(`${repo}${import_node_path38.default.sep}`)) return p.slice(repo.length + 1).split(import_node_path38.default.sep).join("/");
-  return p.split(import_node_path38.default.sep).join("/");
+  if (p.startsWith(`${repo}${import_node_path46.default.sep}`)) return p.slice(repo.length + 1).split(import_node_path46.default.sep).join("/");
+  return p.split(import_node_path46.default.sep).join("/");
 }
 async function mapLimit(items, limit, fn) {
   const out = new Array(items.length);
@@ -8687,7 +10319,7 @@ async function mapLimit(items, limit, fn) {
 }
 function exists(f) {
   try {
-    import_node_fs34.default.statSync(f);
+    import_node_fs41.default.statSync(f);
     return true;
   } catch {
     return false;
@@ -8698,23 +10330,23 @@ function nestedRoots(repo) {
   const walk4 = (dir, depth) => {
     let names;
     try {
-      names = import_node_fs34.default.readdirSync(dir).sort();
+      names = import_node_fs41.default.readdirSync(dir).sort();
     } catch {
       return;
     }
     for (const n of names) {
-      if (SKIP_DIRS.has(n) || n.endsWith(".worktrees") || n === "worktrees" && import_node_path38.default.basename(dir) === ".claude") continue;
-      const full11 = import_node_path38.default.join(dir, n);
+      if (SKIP_DIRS2.has(n) || n.endsWith(".worktrees") || n === "worktrees" && import_node_path46.default.basename(dir) === ".claude") continue;
+      const full11 = import_node_path46.default.join(dir, n);
       let st;
       try {
-        st = import_node_fs34.default.lstatSync(full11);
+        st = import_node_fs41.default.lstatSync(full11);
       } catch {
         continue;
       }
       if (!st.isDirectory()) continue;
       if (n === ".claude" || n === ".agents") {
-        const skills = import_node_path38.default.join(full11, "skills");
-        if (dir !== repo && exists(skills)) out.push({ abs: skills, sub: import_node_path38.default.relative(repo, dir).split(import_node_path38.default.sep).join("/"), kind: n === ".claude" ? "claude" : "agents" });
+        const skills = import_node_path46.default.join(full11, "skills");
+        if (dir !== repo && exists(skills)) out.push({ abs: skills, sub: import_node_path46.default.relative(repo, dir).split(import_node_path46.default.sep).join("/"), kind: n === ".claude" ? "claude" : "agents" });
         continue;
       }
       if (n.startsWith(".")) continue;
@@ -8725,7 +10357,7 @@ function nestedRoots(repo) {
   return out;
 }
 function projectRoots(repo, home) {
-  const mk = (rel2, harnesses, dirRank) => ({ abs: import_node_path38.default.join(repo, rel2), display: rel2, scope: "project", harnesses, kind: "project", dirRank });
+  const mk = (rel2, harnesses, dirRank) => ({ abs: import_node_path46.default.join(repo, rel2), display: rel2, scope: "project", harnesses, kind: "project", dirRank });
   return [
     mk(".agents/skills", ["codex", "cursor", "gemini"], 0),
     mk(".claude/skills", ["claude", "cursor"], 1),
@@ -8737,7 +10369,7 @@ function projectRoots(repo, home) {
   ];
 }
 function userRoots(home) {
-  const mk = (rel2, harnesses, dirRank) => ({ abs: import_node_path38.default.join(home, rel2), display: `~/${rel2}`, scope: "user", harnesses, kind: "user", dirRank });
+  const mk = (rel2, harnesses, dirRank) => ({ abs: import_node_path46.default.join(home, rel2), display: `~/${rel2}`, scope: "user", harnesses, kind: "user", dirRank });
   return [
     mk(".agents/skills", ["codex", "cursor", "gemini"], 0),
     mk(".claude/skills", ["claude", "cursor"], 1),
@@ -8757,24 +10389,24 @@ function cmpSemver(a, b) {
 }
 function pluginRoots(repo, home) {
   const out = { roots: [], errors: [], warning: null };
-  const base = import_node_path38.default.join(home, ".claude/plugins");
-  const installed = readJson(import_node_path38.default.join(base, "installed_plugins.json"));
+  const base = import_node_path46.default.join(home, ".claude/plugins");
+  const installed = readJson2(import_node_path46.default.join(base, "installed_plugins.json"));
   if (!installed) return out;
   if (installed.version !== 2) {
     out.warning = "installed_plugins.json 의 version 이 2 가 아니라 플러그인 해석을 건너뛴다";
     return out;
   }
-  const enabled = /* @__PURE__ */ new Map();
-  for (const f of [import_node_path38.default.join(home, ".claude/settings.json"), import_node_path38.default.join(repo, ".claude/settings.json"), import_node_path38.default.join(repo, ".claude/settings.local.json")]) {
-    const s = readJson(f);
-    const e = s && isObj6(s.enabledPlugins) ? s.enabledPlugins : {};
-    for (const [id, on] of Object.entries(e)) if (typeof on === "boolean") enabled.set(id, on);
+  const enabled2 = /* @__PURE__ */ new Map();
+  for (const f of [import_node_path46.default.join(home, ".claude/settings.json"), import_node_path46.default.join(repo, ".claude/settings.json"), import_node_path46.default.join(repo, ".claude/settings.local.json")]) {
+    const s = readJson2(f);
+    const e = s && isObj7(s.enabledPlugins) ? s.enabledPlugins : {};
+    for (const [id, on] of Object.entries(e)) if (typeof on === "boolean") enabled2.set(id, on);
   }
-  const plugins = isObj6(installed.plugins) ? installed.plugins : {};
-  const cacheRoot = import_node_path38.default.join(base, "cache");
-  for (const [id, on] of [...enabled].sort(([a], [b]) => a < b ? -1 : 1)) {
+  const plugins = isObj7(installed.plugins) ? installed.plugins : {};
+  const cacheRoot = import_node_path46.default.join(base, "cache");
+  for (const [id, on] of [...enabled2].sort(([a], [b]) => a < b ? -1 : 1)) {
     if (!on) continue;
-    const entries = (Array.isArray(plugins[id]) ? plugins[id] : []).filter(isObj6);
+    const entries = (Array.isArray(plugins[id]) ? plugins[id] : []).filter(isObj7);
     const repoReal = safeReal(repo);
     const usable = entries.filter((e) => e.scope === "user" || (e.scope === "project" || e.scope === "local") && typeof e.projectPath === "string" && safeReal(e.projectPath) === repoReal);
     usable.sort((a, b) => {
@@ -8792,14 +10424,14 @@ function pluginRoots(repo, home) {
       installPath = pick.installPath;
       version = typeof pick.version === "string" ? pick.version : "";
     } else if (market) {
-      const dir = import_node_path38.default.join(cacheRoot, market, pluginName);
+      const dir = import_node_path46.default.join(cacheRoot, market, pluginName);
       try {
-        const versions = import_node_fs34.default.readdirSync(dir).filter((v) => import_node_fs34.default.statSync(import_node_path38.default.join(dir, v)).isDirectory());
-        const scored = versions.map((v) => ({ v, key: semverKey(v), mtime: import_node_fs34.default.statSync(import_node_path38.default.join(dir, v)).mtimeMs }));
+        const versions = import_node_fs41.default.readdirSync(dir).filter((v) => import_node_fs41.default.statSync(import_node_path46.default.join(dir, v)).isDirectory());
+        const scored = versions.map((v) => ({ v, key: semverKey(v), mtime: import_node_fs41.default.statSync(import_node_path46.default.join(dir, v)).mtimeMs }));
         const semver = scored.filter((s) => s.key !== null).sort((a, b) => cmpSemver(b.key, a.key));
         const best = semver[0] ?? scored.sort((a, b) => b.mtime - a.mtime)[0];
         if (best) {
-          installPath = import_node_path38.default.join(dir, best.v);
+          installPath = import_node_path46.default.join(dir, best.v);
           version = best.v;
           versionSource = "cache-guess";
         }
@@ -8808,16 +10440,16 @@ function pluginRoots(repo, home) {
     }
     if (!installPath) continue;
     const real2 = safeReal(installPath);
-    if (!real2.startsWith(`${safeReal(cacheRoot)}${import_node_path38.default.sep}`)) {
+    if (!real2.startsWith(`${safeReal(cacheRoot)}${import_node_path46.default.sep}`)) {
       out.errors.push({ path: `plugin:${id}`, error: "install-path" });
       continue;
     }
-    const manifest = readJson(import_node_path38.default.join(real2, ".claude-plugin/plugin.json")) ?? readJson(import_node_path38.default.join(real2, "plugin.json")) ?? {};
+    const manifest = readJson2(import_node_path46.default.join(real2, ".claude-plugin/plugin.json")) ?? readJson2(import_node_path46.default.join(real2, "plugin.json")) ?? {};
     const sp = manifest.skills;
     const skillPaths = typeof sp === "string" ? [sp] : Array.isArray(sp) ? sp.filter((x) => typeof x === "string") : ["./skills/"];
     for (const p of skillPaths.length ? skillPaths : ["./skills/"]) {
-      const abs = import_node_path38.default.resolve(real2, p);
-      if (abs !== real2 && !abs.startsWith(`${real2}${import_node_path38.default.sep}`)) continue;
+      const abs = import_node_path46.default.resolve(real2, p);
+      if (abs !== real2 && !abs.startsWith(`${real2}${import_node_path46.default.sep}`)) continue;
       out.roots.push({ abs, display: `plugin:${id}`, scope: `plugin:${pluginName}`, harnesses: ["claude"], kind: "plugin", dirRank: 1, version, versionSource, plugin: pluginName });
     }
   }
@@ -8825,15 +10457,15 @@ function pluginRoots(repo, home) {
 }
 function safeReal(p) {
   try {
-    return import_node_fs34.default.realpathSync(p);
+    return import_node_fs41.default.realpathSync(p);
   } catch {
-    return import_node_path38.default.resolve(p);
+    return import_node_path46.default.resolve(p);
   }
 }
 async function readSkillFile(file) {
   let st;
   try {
-    st = import_node_fs34.default.statSync(file);
+    st = import_node_fs41.default.statSync(file);
   } catch (e) {
     return { sha256: null, fm: null, error: e.code === "ELOOP" ? "symlink-loop" : "unreadable" };
   }
@@ -8841,22 +10473,22 @@ async function readSkillFile(file) {
   if (st.size > MAX_FILE) return { sha256: null, fm: null, error: "too-large" };
   let bytes;
   try {
-    bytes = await import_node_fs34.default.promises.readFile(file);
+    bytes = await import_node_fs41.default.promises.readFile(file);
   } catch {
     return { sha256: null, fm: null, error: "unreadable" };
   }
   const sha2563 = import_node_crypto6.default.createHash("sha256").update(bytes).digest("hex");
-  let text2;
+  let text3;
   try {
-    text2 = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, READ_HEAD));
+    text3 = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, READ_HEAD));
   } catch {
     try {
-      text2 = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, Math.max(0, Math.min(bytes.length, READ_HEAD) - 3)));
+      text3 = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, Math.max(0, Math.min(bytes.length, READ_HEAD) - 3)));
     } catch {
       return { sha256: sha2563, fm: null, error: "encoding" };
     }
   }
-  const lines3 = text2.split("\n");
+  const lines3 = text3.split("\n");
   if ((lines3[0] ?? "").replace(/\r$/, "") !== "---") return { sha256: sha2563, fm: null, error: "no-frontmatter" };
   let end = -1;
   for (let i = 1; i < lines3.length; i += 1) {
@@ -8876,34 +10508,34 @@ async function readRoot(root, home, repo) {
   const res = { root, skills: [], count: 0, symlinks: 0, nested: 0, errors: 0 };
   let names;
   try {
-    names = import_node_fs34.default.readdirSync(root.abs).sort();
+    names = import_node_fs41.default.readdirSync(root.abs).sort();
   } catch (e) {
     const code = e.code;
     if (code !== "ENOENT" && code !== "ENOTDIR") res.error = code ?? "unreadable";
     return res;
   }
   const found = await mapLimit(names, CONCURRENCY, async (name) => {
-    const dir = import_node_path38.default.join(root.abs, name);
+    const dir = import_node_path46.default.join(root.abs, name);
     let dirLink = false;
     try {
-      dirLink = import_node_fs34.default.lstatSync(dir).isSymbolicLink();
-      if (!import_node_fs34.default.statSync(dir).isDirectory()) return null;
+      dirLink = import_node_fs41.default.lstatSync(dir).isSymbolicLink();
+      if (!import_node_fs41.default.statSync(dir).isDirectory()) return null;
     } catch (e) {
       if (dirLink || e.code === "ELOOP") {
         res.symlinks += dirLink ? 1 : 0;
-        const bad4 = import_node_path38.default.join(dir, "SKILL.md");
+        const bad5 = import_node_path46.default.join(dir, "SKILL.md");
         const loop = e.code === "ELOOP";
-        return loop ? rawError(root, dir, bad4, name, "symlink-loop", true, home, repo) : null;
+        return loop ? rawError(root, dir, bad5, name, "symlink-loop", true, home, repo) : null;
       }
       return null;
     }
-    const file = import_node_path38.default.join(dir, "SKILL.md");
+    const file = import_node_path46.default.join(dir, "SKILL.md");
     let lst;
     try {
-      lst = import_node_fs34.default.lstatSync(file);
+      lst = import_node_fs41.default.lstatSync(file);
     } catch {
       try {
-        for (const sub2 of import_node_fs34.default.readdirSync(dir)) if (exists(import_node_path38.default.join(dir, sub2, "SKILL.md"))) res.nested += 1;
+        for (const sub2 of import_node_fs41.default.readdirSync(dir)) if (exists(import_node_path46.default.join(dir, sub2, "SKILL.md"))) res.nested += 1;
       } catch {
       }
       return null;
@@ -8924,7 +10556,7 @@ async function readRoot(root, home, repo) {
     if (fname && fname !== name) warnings.push("name-dir-mismatch");
     const fields = {};
     for (const k of KEEP_FIELDS) if (k in f) fields[k] = f[k];
-    const meta = isObj6(f.metadata) ? f.metadata : {};
+    const meta = isObj7(f.metadata) ? f.metadata : {};
     const hx = meta["hx-stages"];
     const stages = Array.isArray(hx) ? hx.filter((x) => typeof x === "string") : typeof hx === "string" ? [hx] : [];
     return {
@@ -8961,9 +10593,9 @@ var WORDS = {
   docs: ["documentation", "docs", "changelog", "release note", "readme", "codemap", "문서", "릴리스 노트"],
   ops: ["deploy", "canary", "monitor", "incident", "retro", "rollback", "observability", "on-call", "배포", "장애", "운영", "회고"]
 };
-function hit(text2, word) {
-  if (/^[a-z]{1,3}$/.test(word)) return new RegExp(`(^|[^a-z0-9])${word}([^a-z0-9]|$)`).test(text2);
-  return text2.includes(word);
+function hit(text3, word) {
+  if (/^[a-z]{1,3}$/.test(word)) return new RegExp(`(^|[^a-z0-9])${word}([^a-z0-9]|$)`).test(text3);
+  return text3.includes(word);
 }
 function guessStages(name, description) {
   const n = name.toLowerCase();
@@ -8989,25 +10621,25 @@ function guessStages(name, description) {
   return { stages, matched: stages.flatMap((s) => matched[s]) };
 }
 function readSkillMap(repo) {
-  const raw = readJson(import_node_path38.default.join(repo, ".agents/skill-map.json"));
-  const local = readJson(import_node_path38.default.join(repo, ".agents/local/skill-map.local.json"));
+  const raw = readJson2(import_node_path46.default.join(repo, ".agents/skill-map.json"));
+  const local = readJson2(import_node_path46.default.join(repo, ".agents/local/skill-map.local.json"));
   const prepend = {};
-  if (local && isObj6(local.prepend)) {
+  if (local && isObj7(local.prepend)) {
     for (const [k, v] of Object.entries(local.prepend)) if (Array.isArray(v)) prepend[k] = v.filter((x) => typeof x === "string");
   }
   if (!raw) return { map: null, prepend };
   const stages = {};
-  if (isObj6(raw.stages)) {
+  if (isObj7(raw.stages)) {
     for (const [st, slots] of Object.entries(raw.stages)) {
-      if (!isObj6(slots)) continue;
+      if (!isObj7(slots)) continue;
       stages[st] = {};
       for (const [slot, ids2] of Object.entries(slots)) if (Array.isArray(ids2)) stages[st][slot] = ids2.filter((x) => typeof x === "string");
     }
   }
   const commands = {};
-  if (isObj6(raw.commands)) {
+  if (isObj7(raw.commands)) {
     for (const [c, v] of Object.entries(raw.commands)) {
-      if (!isObj6(v)) continue;
+      if (!isObj7(v)) continue;
       commands[c] = { slots: Array.isArray(v.slots) ? v.slots.filter((x) => typeof x === "string") : [], fallback: typeof v.fallback === "string" ? v.fallback : "builtin", ...typeof v.mode === "string" ? { mode: v.mode } : {} };
     }
   }
@@ -9063,7 +10695,7 @@ async function scan2(p, opts) {
       rootsOut.push({ path: r.root.display, scope: r.root.scope, count: 0, symlinks: 0, nested: 0, errors: 0, error: r.error });
       continue;
     }
-    if (!r.count && !import_node_fs34.default.existsSync(r.root.abs)) continue;
+    if (!r.count && !import_node_fs41.default.existsSync(r.root.abs)) continue;
     rootsOut.push({
       path: r.root.display,
       scope: r.root.scope,
@@ -9193,9 +10825,9 @@ async function stampOf(p, opts) {
   const roots = [...projectRoots(p.root, p.home), ...opts.user ? userRoots(p.home) : []];
   for (const r of roots) parts.push(fileStamp(r.abs));
   if (opts.user) {
-    parts.push(fileStamp(import_node_path38.default.join(p.home, ".claude/plugins/installed_plugins.json")), fileStamp(import_node_path38.default.join(p.home, ".claude/settings.json")));
+    parts.push(fileStamp(import_node_path46.default.join(p.home, ".claude/plugins/installed_plugins.json")), fileStamp(import_node_path46.default.join(p.home, ".claude/settings.json")));
   }
-  parts.push(fileStamp(import_node_path38.default.join(p.root, ".claude/settings.json")), fileStamp(import_node_path38.default.join(p.root, ".claude/settings.local.json")), fileStamp(import_node_path38.default.join(p.root, ".agents/skill-map.json")), fileStamp(import_node_path38.default.join(p.root, ".agents/local/skill-map.local.json")));
+  parts.push(fileStamp(import_node_path46.default.join(p.root, ".claude/settings.json")), fileStamp(import_node_path46.default.join(p.root, ".claude/settings.local.json")), fileStamp(import_node_path46.default.join(p.root, ".agents/skill-map.json")), fileStamp(import_node_path46.default.join(p.root, ".agents/local/skill-map.local.json")));
   return parts.join("\n");
 }
 async function skillsInventory(p, opts = {}) {
@@ -9221,8 +10853,8 @@ function filterInventory(inv, q2) {
 }
 
 // ../dashboard/src/usage.ts
-var import_node_fs35 = __toESM(require("node:fs"));
-var import_node_path39 = __toESM(require("node:path"));
+var import_node_fs42 = __toESM(require("node:fs"));
+var import_node_path47 = __toESM(require("node:path"));
 var HISTORY_LIMIT = 200;
 var PROMPT_CHARS = 2e3;
 var DAY3 = 864e5;
@@ -9243,23 +10875,23 @@ function enc(dir) {
 }
 function realOr(p) {
   try {
-    return import_node_fs35.default.realpathSync(p);
+    return import_node_fs42.default.realpathSync(p);
   } catch {
-    return import_node_path39.default.resolve(p);
+    return import_node_path47.default.resolve(p);
   }
 }
 function projectDirs(p) {
-  const git3 = isObj6(p.meta().git) ? p.meta().git : {};
+  const git3 = isObj7(p.meta().git) ? p.meta().git : {};
   const tpl = typeof git3.worktreeRoot === "string" ? git3.worktreeRoot : "../{repo}.worktrees";
   const root = realOr(p.root);
-  const wt = import_node_path39.default.resolve(root, tpl.replace("{repo}", import_node_path39.default.basename(root)));
+  const wt = import_node_path47.default.resolve(root, tpl.replace("{repo}", import_node_path47.default.basename(root)));
   return [.../* @__PURE__ */ new Set([root, p.root, wt, realOr(wt)])];
 }
 function inside(cwd, dirs) {
-  return !!cwd && dirs.some((d) => cwd === d || cwd.startsWith(`${d}${import_node_path39.default.sep}`));
+  return !!cwd && dirs.some((d) => cwd === d || cwd.startsWith(`${d}${import_node_path47.default.sep}`));
 }
 async function readAppended(file, st) {
-  const fh = await import_node_fs35.default.promises.open(file, "r");
+  const fh = await import_node_fs42.default.promises.open(file, "r");
   try {
     const stat = await fh.stat();
     if (stat.size < st.offset) {
@@ -9271,11 +10903,11 @@ async function readAppended(file, st) {
     if (len <= 0) return [];
     const buf = Buffer.alloc(len);
     const { bytesRead } = await fh.read(buf, 0, len, st.offset);
-    const text2 = buf.subarray(0, bytesRead).toString("utf8");
-    const cut = text2.lastIndexOf("\n");
+    const text3 = buf.subarray(0, bytesRead).toString("utf8");
+    const cut = text3.lastIndexOf("\n");
     if (cut < 0) return [];
-    st.offset += Buffer.byteLength(text2.slice(0, cut + 1), "utf8");
-    return text2.slice(0, cut).split("\n");
+    st.offset += Buffer.byteLength(text3.slice(0, cut + 1), "utf8");
+    return text3.slice(0, cut).split("\n");
   } finally {
     await fh.close();
   }
@@ -9288,12 +10920,12 @@ function parseClaude(line, st) {
     st.bad += 1;
     return;
   }
-  if (!isObj6(j)) return;
+  if (!isObj7(j)) return;
   if (str4(j.cwd)) st.cwd = str4(j.cwd);
   if (str4(j.sessionId)) st.session = str4(j.sessionId);
-  if (j.type !== "assistant" || !isObj6(j.message)) return;
+  if (j.type !== "assistant" || !isObj7(j.message)) return;
   const m = j.message;
-  const u = isObj6(m.usage) ? m.usage : null;
+  const u = isObj7(m.usage) ? m.usage : null;
   const ts = typeof j.timestamp === "string" ? Date.parse(j.timestamp) : NaN;
   if (!u || !Number.isFinite(ts)) return;
   const id = str4(m.id) ?? `${ts}:${st.recs.size}`;
@@ -9318,7 +10950,7 @@ function parseCodex(line, st) {
     st.bad += 1;
     return;
   }
-  if (!isObj6(j) || !isObj6(j.payload)) return;
+  if (!isObj7(j) || !isObj7(j.payload)) return;
   const pl = j.payload;
   if (j.type === "session_meta") {
     st.cwd = str4(pl.cwd) ?? st.cwd;
@@ -9330,8 +10962,8 @@ function parseCodex(line, st) {
     st.cwd = str4(pl.cwd) ?? st.cwd;
     return;
   }
-  if (j.type !== "event_msg" || pl.type !== "token_count" || !isObj6(pl.info)) return;
-  const last = isObj6(pl.info.last_token_usage) ? pl.info.last_token_usage : null;
+  if (j.type !== "event_msg" || pl.type !== "token_count" || !isObj7(pl.info)) return;
+  const last = isObj7(pl.info.last_token_usage) ? pl.info.last_token_usage : null;
   const ts = typeof j.timestamp === "string" ? Date.parse(j.timestamp) : NaN;
   if (!last || !Number.isFinite(ts)) return;
   const cached = num2(last.cached_input_tokens);
@@ -9351,12 +10983,12 @@ function parseCodex(line, st) {
 async function walk3(dir, depth, out, keep) {
   let ents;
   try {
-    ents = await import_node_fs35.default.promises.readdir(dir, { withFileTypes: true });
+    ents = await import_node_fs42.default.promises.readdir(dir, { withFileTypes: true });
   } catch {
     return;
   }
   for (const e of ents) {
-    const full11 = import_node_path39.default.join(dir, e.name);
+    const full11 = import_node_path47.default.join(dir, e.name);
     if (e.isDirectory() && depth > 0) await walk3(full11, depth - 1, out, keep);
     else if (e.isFile() && e.name.endsWith(".jsonl") && keep(e.name)) out.push(full11);
   }
@@ -9364,7 +10996,7 @@ async function walk3(dir, depth, out, keep) {
 async function loadFile(p, file, parse3, from) {
   let stat;
   try {
-    stat = await import_node_fs35.default.promises.stat(file);
+    stat = await import_node_fs42.default.promises.stat(file);
   } catch {
     return null;
   }
@@ -9396,18 +11028,18 @@ async function loadRecords(p, from, harness) {
   let unreadable = 0;
   const source = { id: "claude-projects", label: "~/.claude/projects/_/*.jsonl", kind: "tokens", files: 0, sessions: /* @__PURE__ */ new Set(), unreadable: 0 };
   if (!harness || harness === "claude") {
-    const base = import_node_path39.default.join(home, ".claude/projects");
+    const base = import_node_path47.default.join(home, ".claude/projects");
     const prefix = enc(realOr(p.root));
     const prefixes = [.../* @__PURE__ */ new Set([prefix, enc(p.root)])];
     let names = [];
     try {
-      names = await import_node_fs35.default.promises.readdir(base);
+      names = await import_node_fs42.default.promises.readdir(base);
     } catch {
       names = [];
     }
     for (const n of names.filter((x) => prefixes.some((pre) => x === pre || x.startsWith(`${pre}-`)))) {
       const files = [];
-      await walk3(import_node_path39.default.join(base, n), 0, files, () => true);
+      await walk3(import_node_path47.default.join(base, n), 0, files, () => true);
       for (const f of files) {
         const st = await loadFile(p, f, parseClaude, from);
         if (!st) continue;
@@ -9429,7 +11061,7 @@ async function loadRecords(p, from, harness) {
   const codex2 = { files: 0, sessions: /* @__PURE__ */ new Set(), unreadable: 0 };
   if (!harness || harness === "codex") {
     const files = [];
-    await walk3(import_node_path39.default.join(home, ".codex/sessions"), 4, files, () => true);
+    await walk3(import_node_path47.default.join(home, ".codex/sessions"), 4, files, () => true);
     for (const f of files) {
       const st = await loadFile(p, f, parseCodex, from);
       if (!st || !inside(st.cwd, dirs)) continue;
@@ -9463,9 +11095,9 @@ var localDate2 = (ms) => {
   const p2 = (n) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
 };
-function rangeOf(daysText) {
+function rangeOf2(daysText) {
   const days = daysText === null ? 7 : Number(daysText);
-  if (!Number.isInteger(days) || days < 1 || days > 90) throw bad3("days 는 1~90 이다");
+  if (!Number.isInteger(days) || days < 1 || days > 90) throw bad4("days 는 1~90 이다");
   const start = /* @__PURE__ */ new Date();
   start.setHours(0, 0, 0, 0);
   return { days, from: start.getTime() - (days - 1) * DAY3, to: Date.now() };
@@ -9478,15 +11110,15 @@ async function sessionMap(p) {
 }
 function priceOf(p, model) {
   const usage = p.machineConfig().usage;
-  const pricing = isObj6(usage) && isObj6(usage.pricing) ? usage.pricing : null;
+  const pricing = isObj7(usage) && isObj7(usage.pricing) ? usage.pricing : null;
   if (!pricing || !model) return null;
   const key = Object.keys(pricing).sort((a, b) => b.length - a.length).find((k) => model.startsWith(k));
   const v = key ? pricing[key] : null;
-  return isObj6(v) ? { input: num2(v.input), output: num2(v.output), cacheRead: num2(v.cacheRead), cacheWrite: num2(v.cacheWrite) } : null;
+  return isObj7(v) ? { input: num2(v.input), output: num2(v.output), cacheRead: num2(v.cacheRead), cacheWrite: num2(v.cacheWrite) } : null;
 }
 async function usageData(p, q2) {
-  const range = rangeOf(q2.days);
-  if (q2.harness && !["claude", "codex", "kiro"].includes(q2.harness)) throw bad3("harness 는 claude · codex · kiro 중 하나다");
+  const range = rangeOf2(q2.days);
+  if (q2.harness && !["claude", "codex", "kiro"].includes(q2.harness)) throw bad4("harness 는 claude · codex · kiro 중 하나다");
   if (!historyOn(p)) return { enabled: false, ...configHint(p), range: { days: range.days }, sources: sourcesOff(), totals: null, daily: [], roles: [], byIssue: [], cache: { average: null, daily: [] }, cost: null, unreadable: 0 };
   const { recs, sources, unreadable } = await loadRecords(p, range.from, q2.harness);
   const sess = await sessionMap(p);
@@ -9548,8 +11180,8 @@ async function usageNow(p) {
   const sess = await sessionMap(p);
   const last = recs.reduce((a, r) => !a || r.ts > a.ts ? r : a, null);
   if (!last) return { enabled: true, session: null };
-  const usage = isObj6(p.machineConfig().usage) ? p.machineConfig().usage : {};
-  const windows = isObj6(usage.contextWindows) ? usage.contextWindows : {};
+  const usage = isObj7(p.machineConfig().usage) ? p.machineConfig().usage : {};
+  const windows = isObj7(usage.contextWindows) ? usage.contextWindows : {};
   let window = null;
   if (last.model) {
     const w = windows[last.model];
@@ -9585,11 +11217,11 @@ function isSessionStart(event) {
   return /^session-?start$/i.test(event);
 }
 async function usageKit(p) {
-  const file = import_node_path39.default.join(p.root, ".agents/state/hook-output.jsonl");
+  const file = import_node_path47.default.join(p.root, ".agents/state/hook-output.jsonl");
   const by = /* @__PURE__ */ new Map();
   let skipped = 0;
   try {
-    for (const line of import_node_fs35.default.readFileSync(file, "utf8").split("\n")) {
+    for (const line of import_node_fs42.default.readFileSync(file, "utf8").split("\n")) {
       if (!line.trim()) continue;
       let j;
       try {
@@ -9598,7 +11230,7 @@ async function usageKit(p) {
         skipped += 1;
         continue;
       }
-      if (!isObj6(j) || typeof j.hook !== "string" || typeof j.event !== "string") {
+      if (!isObj7(j) || typeof j.hook !== "string" || typeof j.event !== "string") {
         skipped += 1;
         continue;
       }
@@ -9622,12 +11254,23 @@ async function usageKit(p) {
     skipped,
     sessionStart: { avgBytes: avgTotal, maxBytes: start.reduce((s, h) => s + h.maxBytes, 0), limit: SESSION_START_LIMIT, ratio: avgTotal / SESSION_START_LIMIT, within: avgTotal <= SESSION_START_LIMIT, estTokens: Math.round(avgTotal / 3) },
     modules: modulesOf(p),
+    load: loadOf(p),
     note: "바이트 ÷ 3 은 한글 위주 글의 토큰 추정이다"
   };
 }
+function loadOf(p) {
+  const lock = readJson2(import_node_path47.default.join(p.root, ".agents/harness-kit.lock"));
+  const entries = lock && Array.isArray(lock.entries) ? lock.entries.filter(isObj7) : [];
+  const pairs = entries.filter((e) => typeof e.path === "string" && typeof e.owner === "string").map((e) => ({ path: e.path, owner: e.owner }));
+  const tools = [...new Set(pairs.map((e) => e.owner).filter((o) => o.startsWith("external:")))];
+  const roles = isObj7(p.meta().roles) ? p.meta().roles : {};
+  const impl = isObj7(roles.implement) && typeof roles.implement.harness === "string" ? roles.implement.harness : "claude";
+  const m = measureSession(p.root, { harness: impl, entries: pairs, hookOwners: tools.map((o) => [o, [`${o.slice("external:".length)} `]]) });
+  return { harness: m.harness, total: m.total, estTokens: Math.round(m.total / 3), owners: m.owners, hooks: m.hooks };
+}
 function modulesOf(p) {
-  const lock = readJson(import_node_path39.default.join(p.root, ".agents/harness-kit.lock"));
-  const entries = lock && Array.isArray(lock.entries) ? lock.entries.filter(isObj6) : [];
+  const lock = readJson2(import_node_path47.default.join(p.root, ".agents/harness-kit.lock"));
+  const entries = lock && Array.isArray(lock.entries) ? lock.entries.filter(isObj7) : [];
   const out = /* @__PURE__ */ new Map();
   const get = (owner) => {
     const e = out.get(owner) ?? { owner, files: 0, bytes: 0, hooks: {} };
@@ -9638,7 +11281,7 @@ function modulesOf(p) {
     const rel2 = typeof e.path === "string" ? e.path : "";
     if (!LOADED_FILES.some((re) => re.test(rel2))) continue;
     try {
-      const st = import_node_fs35.default.statSync(import_node_path39.default.join(p.root, rel2));
+      const st = import_node_fs42.default.statSync(import_node_path47.default.join(p.root, rel2));
       if (!st.isFile()) continue;
       const o = get(typeof e.owner === "string" ? e.owner : "kit");
       o.files += 1;
@@ -9646,8 +11289,8 @@ function modulesOf(p) {
     } catch {
     }
   }
-  const hooks = readJson(import_node_path39.default.join(p.root, ".agents/hooks.json"));
-  for (const h of hooks && Array.isArray(hooks.hooks) ? hooks.hooks.filter(isObj6) : []) {
+  const hooks = readJson2(import_node_path47.default.join(p.root, ".agents/hooks.json"));
+  for (const h of hooks && Array.isArray(hooks.hooks) ? hooks.hooks.filter(isObj7) : []) {
     const o = get(typeof h.owner === "string" ? h.owner : "kit");
     const ev = typeof h.event === "string" ? h.event : "-";
     o.hooks[ev] = (o.hooks[ev] ?? 0) + 1;
@@ -9662,16 +11305,16 @@ async function historyData(p, q2) {
   let unreadable = 0;
   const readLines = (file) => {
     try {
-      return import_node_fs35.default.readFileSync(file, "utf8").split("\n");
+      return import_node_fs42.default.readFileSync(file, "utf8").split("\n");
     } catch {
       return [];
     }
   };
-  for (const line of readLines(import_node_path39.default.join(p.home, ".claude/history.jsonl"))) {
+  for (const line of readLines(import_node_path47.default.join(p.home, ".claude/history.jsonl"))) {
     if (!line.trim()) continue;
     try {
       const j = JSON.parse(line);
-      if (!isObj6(j) || typeof j.display !== "string" || !inside(str4(j.project), dirs)) continue;
+      if (!isObj7(j) || typeof j.display !== "string" || !inside(str4(j.project), dirs)) continue;
       const ts = typeof j.timestamp === "number" ? j.timestamp : NaN;
       if (!Number.isFinite(ts)) continue;
       const id = str4(j.sessionId);
@@ -9683,16 +11326,16 @@ async function historyData(p, q2) {
   }
   const codexCwd = /* @__PURE__ */ new Map();
   const files = [];
-  await walk3(import_node_path39.default.join(p.home, ".codex/sessions"), 4, files, () => true);
+  await walk3(import_node_path47.default.join(p.home, ".codex/sessions"), 4, files, () => true);
   for (const f of files) {
     const st = await loadFile(p, f, parseCodex, 0);
     if (st?.session) codexCwd.set(st.session, st.cwd);
   }
-  for (const line of readLines(import_node_path39.default.join(p.home, ".codex/history.jsonl"))) {
+  for (const line of readLines(import_node_path47.default.join(p.home, ".codex/history.jsonl"))) {
     if (!line.trim()) continue;
     try {
       const j = JSON.parse(line);
-      if (!isObj6(j) || typeof j.text !== "string") continue;
+      if (!isObj7(j) || typeof j.text !== "string") continue;
       const id = str4(j.session_id);
       if (!id || !inside(codexCwd.get(id) ?? null, dirs)) continue;
       const ts = typeof j.ts === "number" ? j.ts * 1e3 : NaN;
@@ -9708,22 +11351,22 @@ async function historyData(p, q2) {
 }
 
 // ../dashboard/src/writers/answers.ts
-var import_node_fs39 = __toESM(require("node:fs"));
-var import_node_path43 = __toESM(require("node:path"));
+var import_node_fs46 = __toESM(require("node:fs"));
+var import_node_path51 = __toESM(require("node:path"));
 
 // ../dashboard/src/writers/approvals.ts
-var import_node_fs37 = __toESM(require("node:fs"));
-var import_node_path41 = __toESM(require("node:path"));
+var import_node_fs44 = __toESM(require("node:fs"));
+var import_node_path49 = __toESM(require("node:path"));
 
 // ../dashboard/src/writers/intent-gates.ts
-var import_node_fs36 = __toESM(require("node:fs"));
-var import_node_path40 = __toESM(require("node:path"));
+var import_node_fs43 = __toESM(require("node:fs"));
+var import_node_path48 = __toESM(require("node:path"));
 var BUNDLE_GATES = ["codebase", "plans"];
 var CLARIFY2 = "[NEEDS CLARIFICATION";
 var STATUSES = ["draft", "in-review", "approved"];
 async function gateInfo(p, root, key, gate) {
-  const own = import_node_path40.default.join(root, "scripts/harness/intent_gate.py");
-  const script = import_node_fs36.default.existsSync(own) ? own : import_node_path40.default.join(p.root, "scripts/harness/intent_gate.py");
+  const own = import_node_path48.default.join(root, "scripts/harness/intent_gate.py");
+  const script = import_node_fs43.default.existsSync(own) ? own : import_node_path48.default.join(p.root, "scripts/harness/intent_gate.py");
   const r = await python(root, p.env, [script, key, gate, "--json"], 12e4);
   try {
     return JSON.parse(r.stdout);
@@ -9731,8 +11374,8 @@ async function gateInfo(p, root, key, gate) {
     throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건을 판정하지 못했다`, { reasons: [(r.stderr.trim().split("\n").pop() ?? "").slice(0, 300)] });
   }
 }
-function headValue(text2, key) {
-  const lines3 = text2.split("\n").map((l) => l.replace(/\r$/, ""));
+function headValue2(text3, key) {
+  const lines3 = text3.split("\n").map((l) => l.replace(/\r$/, ""));
   if (lines3[0] !== "---") return null;
   for (let i = 1; i < lines3.length && lines3[i] !== "---"; i += 1) {
     const m = new RegExp(`^${key}:\\s*(.*?)\\s*(?:#.*)?$`).exec(lines3[i]);
@@ -9749,7 +11392,7 @@ async function bundleOf(p, key, gate) {
   const co = await resolveIntentCheckout(p, key);
   const info = await gateInfo(p, co.root, key, gate);
   const files = info.files.map((f) => {
-    const bytes = import_node_fs36.default.readFileSync(import_node_path40.default.join(co.root, f.path));
+    const bytes = import_node_fs43.default.readFileSync(import_node_path48.default.join(co.root, f.path));
     return { name: f.name, path: f.path, sha256: sha2562(bytes), approvalSha256: approvalSha(bytes) };
   });
   return { co, info, files, sha256: bundleSha(files) };
@@ -9764,16 +11407,16 @@ async function approveBundle(p, gate, key, decision, phrase, body, via) {
   const { co, info, files, sha256: bundle } = await bundleOf(p, key, gate);
   if (!files.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 대상 파일이 없다`, { reasons: info.reasons });
   if (body.docSha256 !== bundle) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 대상 파일이 바뀌었다. 다시 읽고 승인한다", { currentSha256: bundle });
-  const approvalsFile = import_node_path40.default.join(co.root, info.folder, "approvals.md");
-  const current4 = import_node_fs36.default.existsSync(approvalsFile) ? import_node_fs36.default.readFileSync(approvalsFile, "utf8") : null;
+  const approvalsFile = import_node_path48.default.join(co.root, info.folder, "approvals.md");
+  const current4 = import_node_fs43.default.existsSync(approvalsFile) ? import_node_fs43.default.readFileSync(approvalsFile, "utf8") : null;
   const entries = current4 ? parse(current4).entries : [];
   const first = files[0];
-  const firstText = import_node_fs36.default.readFileSync(import_node_path40.default.join(co.root, first.path), "utf8");
-  const status = gate === "codebase" ? headValue(firstText, "status") : null;
+  const firstText = import_node_fs43.default.readFileSync(import_node_path48.default.join(co.root, first.path), "utf8");
+  const status = gate === "codebase" ? headValue2(firstText, "status") : null;
   if (gate === "codebase" && !STATUSES.includes(status ?? "")) throw new ApiError(422, "gate_precondition", `current-state.md 머리 status 가 ${status ?? "없음"} 이다`, { reasons: [`status ${status ?? "없음"}`] });
   if (decision === "approved") {
     if (files.every((f) => approvalState(entries, gate, f.approvalSha256, p.policy()) === "valid")) throw new ApiError(409, "already_approved", "같은 내용으로 승인한 기록이 있다");
-    const unclear = files.filter((f) => f.path.endsWith(".md") && import_node_fs36.default.readFileSync(import_node_path40.default.join(co.root, f.path), "utf8").includes(CLARIFY2));
+    const unclear = files.filter((f) => f.path.endsWith(".md") && import_node_fs43.default.readFileSync(import_node_path48.default.join(co.root, f.path), "utf8").includes(CLARIFY2));
     if (unclear.length) throw new ApiError(422, "needs_clarification", `${unclear.map((f) => f.name).join(", ")} 에 [NEEDS CLARIFICATION 가 남았다`);
     if (info.stale.length) throw new ApiError(422, "model_stale", "역공학 문서가 오래됐다 — /hx-intent 가 codebase_scan.py 로 갱신한 뒤 승인한다", { stale: info.stale });
     if (info.reasons.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건이 맞지 않는다`, { reasons: info.reasons });
@@ -9794,7 +11437,7 @@ async function approveBundle(p, gate, key, decision, phrase, body, via) {
   const writes = [{ file: approvalsFile, data: Buffer.from(appendedText(current4, key, made), "utf8") }];
   let statusChanged = null;
   if (gate === "codebase" && decision === "approved" && status !== "approved") {
-    writes.push({ file: import_node_path40.default.join(co.root, first.path), data: Buffer.from(setField2(firstText, "status", "approved"), "utf8") });
+    writes.push({ file: import_node_path48.default.join(co.root, first.path), data: Buffer.from(setField2(firstText, "status", "approved"), "utf8") });
     statusChanged = `${status ?? "없음"}→approved`;
   }
   writeAll(writes);
@@ -9811,7 +11454,7 @@ function riskOfFolder(abs) {
   const files = {};
   for (const name of Object.values(DOC_FILES)) {
     try {
-      files[name] = import_node_fs37.default.readFileSync(import_node_path41.default.join(abs, name));
+      files[name] = import_node_fs44.default.readFileSync(import_node_path49.default.join(abs, name));
     } catch {
       files[name] = null;
     }
@@ -9819,10 +11462,10 @@ function riskOfFolder(abs) {
   return riskOf(files);
 }
 function issueFolder(root, key) {
-  const dir = import_node_path41.default.join(root, ".agents/docs/issues");
+  const dir = import_node_path49.default.join(root, ".agents/docs/issues");
   let names = [];
   try {
-    names = import_node_fs37.default.readdirSync(dir);
+    names = import_node_fs44.default.readdirSync(dir);
   } catch {
     names = [];
   }
@@ -9837,18 +11480,18 @@ function writeAll(writes) {
     for (const w of writes) {
       let before = null;
       try {
-        before = import_node_fs37.default.readFileSync(w.file);
+        before = import_node_fs44.default.readFileSync(w.file);
       } catch {
         before = null;
       }
-      if (w.data === null) import_node_fs37.default.rmSync(w.file, { force: true });
+      if (w.data === null) import_node_fs44.default.rmSync(w.file, { force: true });
       else atomicWrite(w.file, w.data);
       done.push({ file: w.file, before });
     }
   } catch (err) {
     for (const d of done.reverse()) {
       try {
-        if (d.before === null) import_node_fs37.default.rmSync(d.file, { force: true });
+        if (d.before === null) import_node_fs44.default.rmSync(d.file, { force: true });
         else atomicWrite(d.file, d.before);
       } catch {
       }
@@ -9859,11 +11502,11 @@ function writeAll(writes) {
   }
 }
 function appendLog(root, record) {
-  const file = import_node_path41.default.join(root, LOG);
-  ensureDir(import_node_path41.default.dirname(file), 448);
-  const ignore = import_node_path41.default.join(import_node_path41.default.dirname(file), ".gitignore");
-  if (!import_node_fs37.default.existsSync(ignore)) import_node_fs37.default.writeFileSync(ignore, "*\n", { mode: 384 });
-  import_node_fs37.default.appendFileSync(file, `${JSON.stringify(record)}
+  const file = import_node_path49.default.join(root, LOG);
+  ensureDir(import_node_path49.default.dirname(file), 448);
+  const ignore = import_node_path49.default.join(import_node_path49.default.dirname(file), ".gitignore");
+  if (!import_node_fs44.default.existsSync(ignore)) import_node_fs44.default.writeFileSync(ignore, "*\n", { mode: 384 });
+  import_node_fs44.default.appendFileSync(file, `${JSON.stringify(record)}
 `, { mode: 384 });
 }
 async function approver(p, co, gate) {
@@ -9875,12 +11518,12 @@ async function approver(p, co, gate) {
 }
 function phraseOf(body, field = "phrase") {
   const v = body[field];
-  if (typeof v !== "string" || !v.trim()) throw bad3(`${field} 가 비었다(승인할 때 남길 문구)`);
+  if (typeof v !== "string" || !v.trim()) throw bad4(`${field} 가 비었다(승인할 때 남길 문구)`);
   return v.replace(/\s+/g, " ").trim().slice(0, 500);
 }
 async function preconditions(p, co, key, gate) {
-  const own = import_node_path41.default.join(co.root, "scripts/harness/sdd_gates.py");
-  const script = import_node_fs37.default.existsSync(own) ? own : import_node_path41.default.join(p.root, "scripts/harness/sdd_gates.py");
+  const own = import_node_path49.default.join(co.root, "scripts/harness/sdd_gates.py");
+  const script = import_node_fs44.default.existsSync(own) ? own : import_node_path49.default.join(p.root, "scripts/harness/sdd_gates.py");
   const r = await python(co.root, p.env, [script, "check", key, "--json", "--root", co.root], 6e4);
   if (r.code !== 0) throw new ApiError(422, "gate_precondition", "게이트 조건을 판정하지 못했다", { reasons: [(r.stderr.trim().split("\n").pop() ?? "").slice(0, 300)] });
   const data = JSON.parse(r.stdout);
@@ -9892,49 +11535,49 @@ async function aliveSessions(p, key) {
 }
 async function postApproval(p, body, via) {
   if (p.readOnly) throw readOnly();
-  if (!isObj6(body)) throw bad3("본문이 객체가 아니다");
+  if (!isObj7(body)) throw bad4("본문이 객체가 아니다");
   const gate = typeof body.gate === "string" ? body.gate : "";
   const decision = body.decision === "changes-requested" ? "changes-requested" : body.decision === "approved" ? "approved" : null;
-  if (!decision) throw bad3("decision 은 approved 또는 changes-requested 다");
+  if (!decision) throw bad4("decision 은 approved 또는 changes-requested 다");
   if (!p.gates().includes(gate)) throw new ApiError(422, "gate_not_in_flow", `${gate} 는 flow.gates 에 없다`, { gates: p.gates() });
   if (Object.hasOwn(LATER, gate)) throw new ApiError(422, "gate_precondition", `${gate} 게이트 승인은 이 판에 없다(${LATER[gate]})`, { later: LATER[gate], reasons: [`${LATER[gate]} 에서 제공한다`] });
   const phrase = phraseOf(body);
-  const target = isObj6(body.target) ? body.target : {};
+  const target = isObj7(body.target) ? body.target : {};
   if (gate === "intent" || BUNDLE_GATES.includes(gate)) {
-    if (typeof target.intent !== "string") throw bad3(`${gate} 게이트는 target.intent 가 필요하다`);
+    if (typeof target.intent !== "string") throw bad4(`${gate} 게이트는 target.intent 가 필요하다`);
     if (gate !== "intent") return approveBundle(p, gate, target.intent, decision, phrase, body, via);
     return approveIntent(p, target.intent, decision, phrase, body, via);
   }
   if (!ISSUE_GATES.includes(gate)) throw new ApiError(422, "gate_not_in_flow", `모르는 게이트: ${gate}`);
-  if (typeof target.issue !== "string") throw bad3("target.issue 가 필요하다");
+  if (typeof target.issue !== "string") throw bad4("target.issue 가 필요하다");
   const key = target.issue;
   const co = await resolveIssueCheckout(p, key, null);
   const folder = issueFolder(co.root, key);
-  const approvalsFile = import_node_path41.default.join(co.root, folder, "approvals.md");
-  const current4 = import_node_fs37.default.existsSync(approvalsFile) ? import_node_fs37.default.readFileSync(approvalsFile, "utf8") : null;
+  const approvalsFile = import_node_path49.default.join(co.root, folder, "approvals.md");
+  const current4 = import_node_fs44.default.existsSync(approvalsFile) ? import_node_fs44.default.readFileSync(approvalsFile, "utf8") : null;
   const entries = current4 ? parse(current4).entries : [];
   const writes = [];
   let targetRef;
   let statusChanged = null;
   if (Object.hasOwn(DOC_FILES, gate)) {
-    const docFile = import_node_path41.default.join(co.root, folder, DOC_FILES[gate]);
-    if (!import_node_fs37.default.existsSync(docFile)) throw notFound(`${DOC_FILES[gate]} 가 없다`);
-    const bytes = import_node_fs37.default.readFileSync(docFile);
-    const text2 = bytes.toString("utf8");
-    const fm = parseLoose(text2) ?? {};
+    const docFile = import_node_path49.default.join(co.root, folder, DOC_FILES[gate]);
+    if (!import_node_fs44.default.existsSync(docFile)) throw notFound(`${DOC_FILES[gate]} 가 없다`);
+    const bytes = import_node_fs44.default.readFileSync(docFile);
+    const text3 = bytes.toString("utf8");
+    const fm = parseLoose(text3) ?? {};
     const status = fm.status ?? null;
     const aSha = approvalSha(bytes);
     if (gate !== "tasks" && !["draft", "in-review", "approved"].includes(status ?? "")) throw new ApiError(422, "gate_precondition", `${DOC_FILES[gate]} 머리 status 가 ${status ?? "없음"} 이다(draft · in-review 만 승인한다)`, { reasons: [`status ${status ?? "없음"}`] });
-    const need = needOf(p.meta(), riskOfFolder(import_node_path41.default.join(co.root, folder)), gate);
+    const need = needOf(p.meta(), riskOfFolder(import_node_path49.default.join(co.root, folder)), gate);
     const state = approvalState(entries, gate, aSha, p.policy(), need);
     if (decision === "approved" && state === "valid") throw new ApiError(409, "already_approved", `${gate}: 같은 내용(sha ${aSha.slice(0, 12)})으로 승인한 기록이 있다`);
     const me = ((await gitUser(co.root, p.env)).email ?? "").toLowerCase();
     if (decision === "approved" && state === "partial" && me && approversOf(entries, gate, aSha).has(me)) throw new ApiError(409, "already_approved", `${gate}: 이미 승인했다 — risk: high 는 다른 승인자 한 명이 더 승인한다(DS-R26)`, { need });
-    if (decision === "approved" && text2.includes(CLARIFY3)) throw new ApiError(422, "needs_clarification", `${DOC_FILES[gate]} 에 [NEEDS CLARIFICATION 가 남았다`);
+    if (decision === "approved" && text3.includes(CLARIFY3)) throw new ApiError(422, "needs_clarification", `${DOC_FILES[gate]} 에 [NEEDS CLARIFICATION 가 남았다`);
     if (body.docSha256 !== sha2562(bytes)) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 문서가 바뀌었다. 다시 읽고 승인한다", { currentSha256: sha2562(bytes) });
     targetRef = { name: DOC_FILES[gate], sha256: aSha };
     if (decision === "approved" && status !== "approved" && gate !== "tasks") {
-      writes.push({ file: docFile, data: Buffer.from(setField2(text2, "status", "approved"), "utf8") });
+      writes.push({ file: docFile, data: Buffer.from(setField2(text3, "status", "approved"), "utf8") });
       statusChanged = `${status ?? "없음"}→approved`;
     }
   } else {
@@ -9958,29 +11601,29 @@ async function postApproval(p, body, via) {
 async function approveIntent(p, key, decision, phrase, body, via) {
   const co = await resolveIntentCheckout(p, key);
   const info = findIntent(co.root, key);
-  const intentFile = import_node_path41.default.join(info.abs, "intent.md");
-  if (!import_node_fs37.default.existsSync(intentFile)) throw notFound("intent.md 가 없다");
-  const bytes = import_node_fs37.default.readFileSync(intentFile);
-  const text2 = bytes.toString("utf8");
-  const status = parseLoose(text2)?.status ?? null;
-  const approvalsFile = import_node_path41.default.join(info.abs, "approvals.md");
-  const current4 = import_node_fs37.default.existsSync(approvalsFile) ? import_node_fs37.default.readFileSync(approvalsFile, "utf8") : null;
+  const intentFile = import_node_path49.default.join(info.abs, "intent.md");
+  if (!import_node_fs44.default.existsSync(intentFile)) throw notFound("intent.md 가 없다");
+  const bytes = import_node_fs44.default.readFileSync(intentFile);
+  const text3 = bytes.toString("utf8");
+  const status = parseLoose(text3)?.status ?? null;
+  const approvalsFile = import_node_path49.default.join(info.abs, "approvals.md");
+  const current4 = import_node_fs44.default.existsSync(approvalsFile) ? import_node_fs44.default.readFileSync(approvalsFile, "utf8") : null;
   const entries = current4 ? parse(current4).entries : [];
   const aSha = approvalSha(bytes);
   if (!["draft", "in-review", "approved"].includes(status ?? "")) throw new ApiError(422, "gate_precondition", `intent.md 머리 status 가 ${status ?? "없음"} 이다`, { reasons: [`status ${status ?? "없음"}`] });
   if (decision === "approved" && approvalState(entries, "intent", aSha, p.policy()) === "valid" && !proposalOf(info.abs)) throw new ApiError(409, "already_approved", "같은 내용으로 승인한 기록이 있다");
-  if (decision === "approved" && text2.includes(CLARIFY3)) throw new ApiError(422, "needs_clarification", "intent.md 에 [NEEDS CLARIFICATION 가 남았다");
+  if (decision === "approved" && text3.includes(CLARIFY3)) throw new ApiError(422, "needs_clarification", "intent.md 에 [NEEDS CLARIFICATION 가 남았다");
   if (body.docSha256 !== sha2562(bytes)) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 intent.md 가 바뀌었다", { currentSha256: sha2562(bytes) });
   if (decision === "approved") {
     const reasons = [];
     try {
-      const q2 = parseQuestions(import_node_fs37.default.readFileSync(import_node_path41.default.join(info.abs, "questions.md"), "utf8"));
+      const q2 = parseQuestions(import_node_fs44.default.readFileSync(import_node_path49.default.join(info.abs, "questions.md"), "utf8"));
       const open = q2.questions.filter((x) => x.open && x.blocks === "intent");
       if (open.length) reasons.push(`막는 게이트가 intent 인 열린 질문 ${open.length}건(${open.map((x) => x.id).join(", ")})`);
     } catch {
     }
-    const check3 = import_node_path41.default.join(co.root, "scripts/harness/intent.py");
-    if (import_node_fs37.default.existsSync(check3)) {
+    const check3 = import_node_path49.default.join(co.root, "scripts/harness/intent.py");
+    if (import_node_fs44.default.existsSync(check3)) {
       const r = await python(co.root, p.env, [check3, "check", info.abs, "--json"], 6e4);
       if (r.code !== 0) {
         let problems = [];
@@ -10002,12 +11645,12 @@ async function approveIntent(p, key, decision, phrase, body, via) {
   if (decision === "approved" && proposal) {
     if (!units.raw || !units.data || proposal.baseSha256 !== sha2562(units.raw)) throw new ApiError(409, "proposal_stale", "제안을 만든 뒤 units.json 이 바뀌었다. 제안을 다시 저장하거나 버린다");
     unitsBytes = appliedUnitsBytes(units.raw, units.data, units.units, proposal.changes ?? []);
-    writes.push({ file: import_node_path41.default.join(info.abs, "units.json"), data: unitsBytes });
-    writes.push({ file: import_node_path41.default.join(info.abs, "units.proposed.json"), data: null });
+    writes.push({ file: import_node_path49.default.join(info.abs, "units.json"), data: unitsBytes });
+    writes.push({ file: import_node_path49.default.join(info.abs, "units.proposed.json"), data: null });
   }
   let statusChanged = null;
   if (decision === "approved" && status !== "approved") {
-    writes.push({ file: intentFile, data: Buffer.from(setField2(text2, "status", "approved"), "utf8") });
+    writes.push({ file: intentFile, data: Buffer.from(setField2(text3, "status", "approved"), "utf8") });
     statusChanged = `${status ?? "없음"}→approved`;
   }
   const at = nowText();
@@ -10021,9 +11664,9 @@ async function approveIntent(p, key, decision, phrase, body, via) {
 async function reviewFinding(p, key, findingId) {
   const co = await resolveIssueCheckout(p, key, null);
   const folder = issueFolder(co.root, key);
-  const own = import_node_path41.default.join(co.root, "scripts/harness/review_state.py");
-  const script = import_node_fs37.default.existsSync(own) ? own : import_node_path41.default.join(p.root, "scripts/harness/review_state.py");
-  const r = await python(co.root, p.env, [script, import_node_path41.default.join(co.root, folder), "--json"], 3e4);
+  const own = import_node_path49.default.join(co.root, "scripts/harness/review_state.py");
+  const script = import_node_fs44.default.existsSync(own) ? own : import_node_path49.default.join(p.root, "scripts/harness/review_state.py");
+  const r = await python(co.root, p.env, [script, import_node_path49.default.join(co.root, folder), "--json"], 3e4);
   if (r.code === 2) throw notFound(`리뷰 보고서가 없다(.agents/reports/review/${key}.md)`);
   const data = JSON.parse(r.stdout);
   const item = data.findings.find((f) => f.id === findingId);
@@ -10032,15 +11675,15 @@ async function reviewFinding(p, key, findingId) {
 }
 async function postReviewDecision(p, key, findingId, body, via) {
   if (p.readOnly) throw readOnly();
-  if (!isObj6(body)) throw bad3("본문이 객체가 아니다");
-  if (!/^F-\d+$/.test(findingId)) throw bad3("발견 ID 는 F-<n> 이다");
+  if (!isObj7(body)) throw bad4("본문이 객체가 아니다");
+  if (!/^F-\d+$/.test(findingId)) throw bad4("발견 ID 는 F-<n> 이다");
   const decision = body.decision === "risk-accepted" || body.decision === "fix-required" ? body.decision : null;
-  if (!decision) throw bad3("decision 은 risk-accepted 또는 fix-required 다");
+  if (!decision) throw bad4("decision 은 risk-accepted 또는 fix-required 다");
   const phrase = phraseOf(body);
   const found = await reviewFinding(p, key, findingId);
   const who = await approver(p, found.co, "mr");
-  const approvalsFile = import_node_path41.default.join(found.co.root, found.folder, "approvals.md");
-  const current4 = import_node_fs37.default.existsSync(approvalsFile) ? import_node_fs37.default.readFileSync(approvalsFile, "utf8") : null;
+  const approvalsFile = import_node_path49.default.join(found.co.root, found.folder, "approvals.md");
+  const current4 = import_node_fs44.default.existsSync(approvalsFile) ? import_node_fs44.default.readFileSync(approvalsFile, "utf8") : null;
   const entry = { at: nowText(), gate: `review/${findingId}`, decision, approver: who, target: { name: `.agents/reports/review/${key}.md`, fingerprint: found.fp }, phrase, path: via, entryId: ulid() };
   writeAll([{ file: approvalsFile, data: Buffer.from(appendedText(current4, key, [entry]), "utf8") }]);
   appendLog(found.co.root, { entryId: entry.entryId, target: found.folder, gate: entry.gate, sha256: found.fp, at: entry.at, path: via });
@@ -10048,13 +11691,13 @@ async function postReviewDecision(p, key, findingId, body, via) {
 }
 
 // ../dashboard/src/writers/mob.ts
-var import_node_fs38 = __toESM(require("node:fs"));
-var import_node_path42 = __toESM(require("node:path"));
+var import_node_fs45 = __toESM(require("node:fs"));
+var import_node_path50 = __toESM(require("node:path"));
 var ACTIONS = /* @__PURE__ */ new Set(["start", "next", "close"]);
 var EMAIL = /^[^\s@,]+@[^\s@,]+$/;
 function openMob(intentAbs) {
   try {
-    const data = JSON.parse(import_node_fs38.default.readFileSync(import_node_path42.default.join(intentAbs, "mob.json"), "utf8"));
+    const data = JSON.parse(import_node_fs45.default.readFileSync(import_node_path50.default.join(intentAbs, "mob.json"), "utf8"));
     if (data.schema !== "harness-kit.mob/v1" || data.closedAt) return null;
     return Array.isArray(data.attendees) ? data : null;
   } catch {
@@ -10064,8 +11707,8 @@ function openMob(intentAbs) {
 async function runMob(p, key, args) {
   const co = await resolveIntentCheckout(p, key);
   findIntent(co.root, key);
-  const own = import_node_path42.default.join(co.root, "scripts/harness/mob.py");
-  const script = import_node_fs38.default.existsSync(own) ? own : import_node_path42.default.join(p.root, "scripts/harness/mob.py");
+  const own = import_node_path50.default.join(co.root, "scripts/harness/mob.py");
+  const script = import_node_fs45.default.existsSync(own) ? own : import_node_path50.default.join(p.root, "scripts/harness/mob.py");
   const r = await python(co.root, p.env, [script, ...args, "--json"], 6e4);
   let out;
   try {
@@ -10082,65 +11725,65 @@ async function getMob(p, key) {
 }
 async function postMob(p, key, body) {
   if (p.readOnly) throw readOnly();
-  if (!isObj6(body) || typeof body.action !== "string" || !ACTIONS.has(body.action)) throw bad3("action 은 start · next · close 다");
+  if (!isObj7(body) || typeof body.action !== "string" || !ACTIONS.has(body.action)) throw bad4("action 은 start · next · close 다");
   if (body.action !== "start") return runMob(p, key, [body.action, key]);
   const attendees = Array.isArray(body.attendees) ? body.attendees.filter((a) => typeof a === "string") : [];
-  if (!attendees.length || attendees.some((a) => !EMAIL.test(a))) throw bad3("attendees 는 email 목록이다");
+  if (!attendees.length || attendees.some((a) => !EMAIL.test(a))) throw bad4("attendees 는 email 목록이다");
   const timebox = typeof body.timeboxMin === "number" && Number.isInteger(body.timeboxMin) && body.timeboxMin > 0 ? body.timeboxMin : 30;
   return runMob(p, key, ["start", key, "--attendees", attendees.join(","), "--timebox", String(timebox)]);
 }
 
 // ../dashboard/src/writers/answers.ts
 async function locate2(p, target) {
-  if (!KEY.test(target)) throw bad3(`대상 키 형식이 아니다: ${target}`);
-  const isIntent = import_node_fs39.default.existsSync(import_node_path43.default.join(p.root, ".agents/docs/intents")) && import_node_fs39.default.readdirSync(import_node_path43.default.join(p.root, ".agents/docs/intents")).some((n) => INTENT_FOLDER.exec(n)?.[1] === target);
+  if (!KEY.test(target)) throw bad4(`대상 키 형식이 아니다: ${target}`);
+  const isIntent = import_node_fs46.default.existsSync(import_node_path51.default.join(p.root, ".agents/docs/intents")) && import_node_fs46.default.readdirSync(import_node_path51.default.join(p.root, ".agents/docs/intents")).some((n) => INTENT_FOLDER.exec(n)?.[1] === target);
   if (isIntent) {
     const co2 = await resolveIntentCheckout(p, target);
     const info = findIntent(co2.root, target);
-    return { co: co2, rel: `${info.dir}/questions.md`, abs: import_node_path43.default.join(info.abs, "questions.md"), intentAbs: info.abs };
+    return { co: co2, rel: `${info.dir}/questions.md`, abs: import_node_path51.default.join(info.abs, "questions.md"), intentAbs: info.abs };
   }
   const co = await resolveIssueCheckout(p, target, null);
   const folder = issueFolder(co.root, target);
-  return { co, rel: `${folder}/questions.md`, abs: import_node_path43.default.join(co.root, folder, "questions.md") };
+  return { co, rel: `${folder}/questions.md`, abs: import_node_path51.default.join(co.root, folder, "questions.md") };
 }
 async function getQuestions(p, target) {
-  if (!target) throw bad3("target 이 필요하다");
+  if (!target) throw bad4("target 이 필요하다");
   const { rel: rel2, abs } = await locate2(p, target);
-  if (!import_node_fs39.default.existsSync(abs)) return { target, path: rel2, sha256: null, status: null, questions: [] };
-  const bytes = import_node_fs39.default.readFileSync(abs);
+  if (!import_node_fs46.default.existsSync(abs)) return { target, path: rel2, sha256: null, status: null, questions: [] };
+  const bytes = import_node_fs46.default.readFileSync(abs);
   const doc = parseQuestions(bytes.toString("utf8"));
   return { target, path: rel2, sha256: sha2562(bytes), status: doc.frontmatter.status ?? null, round: doc.frontmatter.round ?? null, questions: doc.questions };
 }
 async function postAnswer(p, target, qid, body) {
   if (p.readOnly) throw readOnly();
-  if (!isObj6(body)) throw bad3("본문이 객체가 아니다");
+  if (!isObj7(body)) throw bad4("본문이 객체가 아니다");
   const { co, rel: rel2, abs, intentAbs } = await locate2(p, target);
-  if (!import_node_fs39.default.existsSync(abs)) throw notFound(`질문 파일이 없다: ${rel2}`);
+  if (!import_node_fs46.default.existsSync(abs)) throw notFound(`질문 파일이 없다: ${rel2}`);
   const mob = intentAbs ? openMob(intentAbs) : null;
   return p.withLock(abs, async () => {
-    const bytes = import_node_fs39.default.readFileSync(abs);
+    const bytes = import_node_fs46.default.readFileSync(abs);
     if (body.baseSha256 !== sha2562(bytes)) throw new ApiError(409, "conflict", "다른 곳에서 먼저 저장했다", { currentSha256: sha2562(bytes), currentMarkdown: bytes.toString("utf8") });
     const doc = parseQuestions(bytes.toString("utf8"));
     const q2 = doc.questions.find((x) => x.id === qid);
     if (!q2) throw notFound(`질문이 없다: ${qid}`);
     const choice = typeof body.choice === "string" ? body.choice : "";
-    if (choice !== "other" && !q2.choices.some((c) => c.id === choice)) throw bad3(`선택지가 아니다: ${choice} (${q2.choices.map((c) => c.id).join(" · ")} · other)`);
-    const text2 = typeof body.text === "string" && body.text.trim() ? body.text : null;
-    if (choice === "other" && !text2) throw bad3("other 는 text 가 필요하다");
+    if (choice !== "other" && !q2.choices.some((c) => c.id === choice)) throw bad4(`선택지가 아니다: ${choice} (${q2.choices.map((c) => c.id).join(" · ")} · other)`);
+    const text3 = typeof body.text === "string" && body.text.trim() ? body.text : null;
+    if (choice === "other" && !text3) throw bad4("other 는 text 가 필요하다");
     const u = await gitUser(co.root, p.env);
     if (!u.email) throw new ApiError(403, "not_an_approver", "git config user.email 이 비었다");
     let who = u.email;
     if (mob) {
       const by = typeof body.by === "string" ? body.by.trim() : "";
-      if (!by) throw bad3("몹 세션이 열려 있다 — by(답한 참석자 email)가 필요하다", { attendees: mob.attendees.map((a) => a.email) });
-      if (!mob.attendees.some((a) => a.email.toLowerCase() === by.toLowerCase())) throw bad3(`${by} 는 몹 세션 참석자가 아니다`, { attendees: mob.attendees.map((a) => a.email) });
+      if (!by) throw bad4("몹 세션이 열려 있다 — by(답한 참석자 email)가 필요하다", { attendees: mob.attendees.map((a) => a.email) });
+      if (!mob.attendees.some((a) => a.email.toLowerCase() === by.toLowerCase())) throw bad4(`${by} 는 몹 세션 참석자가 아니다`, { attendees: mob.attendees.map((a) => a.email) });
       who = by;
     }
     const groups = p.policy().groups ?? {};
     const members = Object.hasOwn(groups, q2.role) ? groups[q2.role] : void 0;
     const opinion = members !== void 0 && !members.some((m) => m.toLowerCase() === who.toLowerCase());
     const recordedBy = who.toLowerCase() === u.email.toLowerCase() ? null : u.email;
-    const out = writeAnswer(bytes.toString("utf8"), { qid, choice, text: text2, email: who, at: nowText(), opinion, recordedBy });
+    const out = writeAnswer(bytes.toString("utf8"), { qid, choice, text: text3, email: who, at: nowText(), opinion, recordedBy });
     atomicWrite(abs, out.text);
     const after = parseQuestions(out.text).questions;
     return { sha256: sha2562(Buffer.from(out.text, "utf8")), path: rel2, kind: opinion ? "opinion" : "answer", answered: after.filter((x) => !x.open).length, open: after.filter((x) => x.open).length, statusChanged: out.statusChanged };
@@ -10148,26 +11791,26 @@ async function postAnswer(p, target, qid, body) {
 }
 
 // ../dashboard/src/writers/dispatch.ts
-var import_node_fs40 = __toESM(require("node:fs"));
+var import_node_fs47 = __toESM(require("node:fs"));
 var import_node_net2 = __toESM(require("node:net"));
-var import_node_path44 = __toESM(require("node:path"));
+var import_node_path52 = __toESM(require("node:path"));
 var KINDS = ["doc-changed", "answers-ready", "approved", "changes-requested", "review-findings", "custom"];
 var MAX = 1e3;
 function dispatchBody(body) {
-  if (!isObj6(body)) throw bad3("본문이 객체가 아니다");
+  if (!isObj7(body)) throw bad4("본문이 객체가 아니다");
   const kind = body.kind;
-  if (!KINDS.includes(kind)) throw bad3(`kind 는 ${KINDS.join(" · ")} 중 하나다`);
-  const target = isObj6(body.target) ? body.target : {};
+  if (!KINDS.includes(kind)) throw bad4(`kind 는 ${KINDS.join(" · ")} 중 하나다`);
+  const target = isObj7(body.target) ? body.target : {};
   const t = {};
   for (const k of ["sessionId", "issue", "role", "name"]) if (typeof target[k] === "string" && target[k]) t[k] = String(target[k]);
-  if (!t.sessionId && !t.issue && !t.name && !t.role) throw bad3("target 은 {sessionId} · {issue, role} · {name} 중 하나다");
+  if (!t.sessionId && !t.issue && !t.name && !t.role) throw bad4("target 은 {sessionId} · {issue, role} · {name} 중 하나다");
   const paths = Array.isArray(body.paths) ? body.paths.filter((x) => typeof x === "string").map((x) => oneLine(x).slice(0, 300)).slice(0, 10) : [];
-  const text2 = typeof body.text === "string" ? oneLine(body.text) : null;
-  if (text2 && [...text2].length > 300) throw bad3("요청 글(text)은 300자 이하다");
-  if (kind === "custom" && !text2) throw bad3("custom 은 text 가 필요하다");
+  const text3 = typeof body.text === "string" ? oneLine(body.text) : null;
+  if (text3 && [...text3].length > 300) throw bad4("요청 글(text)은 300자 이하다");
+  if (kind === "custom" && !text3) throw bad4("custom 은 text 가 필요하다");
   const via = body.via === "socket" || body.via === "deeplink" || body.via === "queue" ? body.via : null;
-  const cs = isObj6(body.changeSummary) ? body.changeSummary : null;
-  return { target: t, kind, paths, text: text2, changeSummary: cs, via };
+  const cs = isObj7(body.changeSummary) ? body.changeSummary : null;
+  return { target: t, kind, paths, text: text3, changeSummary: cs, via };
 }
 function message(b, subject) {
   const where = b.paths.length ? ` 경로: ${b.paths.join(", ")}.` : "";
@@ -10191,13 +11834,13 @@ function chooseSession(sessions, t) {
   const live = sessions.filter((s) => s.state !== "gone" && (!t.issue || s.issue === t.issue) && (!t.role || s.role === t.role));
   return live.length === 1 ? live[0] : null;
 }
-function deeplink(cwd, text2) {
-  const q2 = `${text2} 먼저 경로의 파일을 읽는다.`;
+function deeplink(cwd, text3) {
+  const q2 = `${text3} 먼저 경로의 파일을 읽는다.`;
   return `claude-cli://open?cwd=${encodeURIComponent(cwd)}&q=${encodeURIComponent([...q2].slice(0, 5e3).join(""))}`;
 }
 function socketFormat(p) {
   const d = p.meta().dashboard;
-  const dispatch = isObj6(d) && isObj6(d.dispatch) ? d.dispatch : {};
+  const dispatch = isObj7(d) && isObj7(d.dispatch) ? d.dispatch : {};
   return dispatch.socketFormat === "json" ? "json" : "text";
 }
 function sendLine(socketPath, line) {
@@ -10229,24 +11872,24 @@ async function postDispatch(p, raw, createdBy) {
   const session = chooseSession(sessions, b.target);
   if ((b.target.sessionId || b.target.name) && !session) throw notFound("고른 세션이 없다");
   const subject = b.target.issue ?? session?.issue ?? "";
-  const text2 = message(b, subject);
+  const text3 = message(b, subject);
   const main2 = (await checkouts(p))[0];
   const cwd = session?.cwdAbs ?? main2?.path ?? p.root;
-  const options = () => ({ deeplink: session && session.harness === "claude" ? deeplink(cwd, text2) : session ? null : deeplink(cwd, text2), queueAvailable: true });
+  const options = () => ({ deeplink: session && session.harness === "claude" ? deeplink(cwd, text3) : session ? null : deeplink(cwd, text3), queueAvailable: true });
   const via = b.via ?? (session && session.state === "alive" ? "socket" : null);
   if (via === null) throw new ApiError(409, "socket_unavailable", "고른 세션의 수신함 소켓이 없다. deep link 또는 대기함을 고른다", options());
   if (via === "socket") {
     if (!session?.socket) throw new ApiError(409, "socket_unavailable", "고른 세션에 수신함 소켓이 없다", options());
-    const line = socketFormat(p) === "json" ? JSON.stringify({ type: "message", text: text2 }) : text2;
+    const line = socketFormat(p) === "json" ? JSON.stringify({ type: "message", text: text3 }) : text3;
     if (!await sendLine(session.socket, line)) throw new ApiError(409, "socket_unavailable", "수신함 소켓에 연결하지 못했다", options());
     return { status: 202, data: { method: "socket", status: "sent" } };
   }
   if (via === "deeplink") {
     if (session && session.harness !== "claude") throw new ApiError(409, "deeplink_unavailable", `${session.harness ?? "이"} 하네스에는 deep link 가 없다. 대기함을 쓴다`, { queueAvailable: true });
-    return { status: 202, data: { method: "deeplink", url: deeplink(cwd, text2) } };
+    return { status: 202, data: { method: "deeplink", url: deeplink(cwd, text3) } };
   }
   const dir = queueDir(p);
-  ensureDir(import_node_path44.default.dirname(dir), 448);
+  ensureDir(import_node_path52.default.dirname(dir), 448);
   ensureDir(dir, 448);
   const id = ulid();
   const created = /* @__PURE__ */ new Date();
@@ -10257,26 +11900,26 @@ async function postDispatch(p, raw, createdBy) {
     createdBy,
     target: { issue: b.target.issue ?? session?.issue ?? null, role: b.target.role ?? null, harness: "any", sessionId: b.target.sessionId ?? (b.target.name ? session?.id ?? null : null) },
     kind: b.kind,
-    message: text2,
+    message: text3,
     paths: b.paths,
     expiresAt: nowText(new Date(created.getTime() + 7 * 24 * 3600 * 1e3))
   };
-  atomicWrite(import_node_path44.default.join(dir, `${id}.json`), `${JSON.stringify(item, null, 2)}
+  atomicWrite(import_node_path52.default.join(dir, `${id}.json`), `${JSON.stringify(item, null, 2)}
 `, 384);
   return { status: 202, data: { method: "queue", id } };
 }
 function dropQueued(p, id) {
   if (p.readOnly) throw readOnly();
-  if (!/^[0-9A-HJKMNP-TV-Z]{26}$/.test(id)) throw bad3("대기함 id 형식이 아니다");
-  const file = import_node_path44.default.join(queueDir(p), `${id}.json`);
-  if (!import_node_fs40.default.existsSync(file)) throw notFound(`대기함 항목이 없다: ${id}`);
-  import_node_fs40.default.unlinkSync(file);
+  if (!/^[0-9A-HJKMNP-TV-Z]{26}$/.test(id)) throw bad4("대기함 id 형식이 아니다");
+  const file = import_node_path52.default.join(queueDir(p), `${id}.json`);
+  if (!import_node_fs47.default.existsSync(file)) throw notFound(`대기함 항목이 없다: ${id}`);
+  import_node_fs47.default.unlinkSync(file);
   return { id, dropped: true };
 }
 
 // ../dashboard/src/writers/docs.ts
-var import_node_fs41 = __toESM(require("node:fs"));
-var import_node_path45 = __toESM(require("node:path"));
+var import_node_fs48 = __toESM(require("node:fs"));
+var import_node_path53 = __toESM(require("node:path"));
 
 // ../dashboard/src/paths.ts
 var ISSUE_DOC = /^\.agents\/docs\/issues\/([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5})-[^/]+\/(requirements|design|tasks)\.md$/;
@@ -10344,11 +11987,11 @@ async function locateForRead(p, t) {
   if (t.kind === "issue" && t.key) {
     const cos = await checkouts(p);
     const co2 = cos.find((c) => c.key === t.key);
-    if (co2 && lstatChain(co2.root, t.rel) === "file") return { co: co2, ref: null, bytes: import_node_fs41.default.readFileSync(import_node_path45.default.join(co2.root, t.rel)) };
+    if (co2 && lstatChain(co2.root, t.rel) === "file") return { co: co2, ref: null, bytes: import_node_fs48.default.readFileSync(import_node_path53.default.join(co2.root, t.rel)) };
     const branch = (await branches(p)).find((b) => ISSUE_BRANCH.exec(b)?.[2] === t.key && !cos.some((c) => c.branch === b));
     if (branch) {
       const prefix = p.loc.prefix ? `${p.loc.prefix}/` : "";
-      const shown = await git(p.loc.top, p.env, "show", `${branch}:${prefix}${t.rel}`);
+      const shown = await git2(p.loc.top, p.env, "show", `${branch}:${prefix}${t.rel}`);
       if (shown.code === 0) return { co: null, ref: branch, bytes: Buffer.from(shown.stdout, "utf8") };
     }
   }
@@ -10362,21 +12005,21 @@ async function locateForRead(p, t) {
     }
   }
   if (lstatChain(co.root, t.rel) !== "file") throw notFound(`문서가 없다: ${t.rel}`);
-  return { co, ref: null, bytes: import_node_fs41.default.readFileSync(import_node_path45.default.join(co.root, t.rel)) };
+  return { co, ref: null, bytes: import_node_fs48.default.readFileSync(import_node_path53.default.join(co.root, t.rel)) };
 }
 async function readRaw(p, relPath) {
   const issue = /^\.agents\/docs\/issues\/([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5})-[^/]+\//.exec(relPath);
   const intent = /^\.agents\/docs\/intents\/([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5})-[^/]+\//.exec(relPath);
   const t = issue ? { rel: relPath, kind: "issue", key: issue[1], creatable: false } : intent ? { rel: relPath, kind: "intent", key: intent[1], creatable: false } : { rel: relPath, kind: "main", key: null, creatable: false };
   const found = await locateForRead(p, t);
-  if (found.bytes.length > 20 * LIMIT) throw bad3("파일이 너무 크다");
+  if (found.bytes.length > 20 * LIMIT) throw bad4("파일이 너무 크다");
   return found.bytes;
 }
 async function getDoc(p, relInput, sign) {
   const t = readTarget(relInput);
   const found = await locateForRead(p, t);
-  if (found.bytes.length > LIMIT) throw bad3("1 MiB 를 넘는 문서다");
-  const text2 = found.bytes.toString("utf8");
+  if (found.bytes.length > LIMIT) throw bad4("1 MiB 를 넘는 문서다");
+  const text3 = found.bytes.toString("utf8");
   let writable = t.writable && found.co !== null;
   if (writable) {
     try {
@@ -10389,9 +12032,9 @@ async function getDoc(p, relInput, sign) {
   return {
     path: t.rel,
     sha256: sha2562(found.bytes),
-    frontmatter: parseLoose(text2) ?? {},
-    html: renderMarkdown(text2, { docPath: t.rel, ...sign ? { sign } : {} }),
-    markdown: text2,
+    frontmatter: parseLoose(text3) ?? {},
+    html: renderMarkdown(text3, { docPath: t.rel, ...sign ? { sign } : {} }),
+    markdown: text3,
     writable: writable && !p.readOnly,
     checkout: found.co ? { kind: found.co.main ? "main" : "worktree", path: rel(p.loc.top, found.co.path), branch: found.co.branch } : { kind: "branch", path: null, branch: found.ref }
   };
@@ -10452,19 +12095,19 @@ function changeSummary(before, after) {
 }
 async function putDoc(p, body) {
   if (p.readOnly) throw readOnly();
-  if (!body || typeof body !== "object") throw bad3("본문이 객체가 아니다");
+  if (!body || typeof body !== "object") throw bad4("본문이 객체가 아니다");
   const b = body;
   const t = docTarget(b.path);
-  if (typeof b.baseSha256 !== "string" || typeof b.markdown !== "string") throw bad3("path · baseSha256 · markdown 이 필요하다");
-  if (Buffer.byteLength(b.markdown) > LIMIT) throw bad3("1 MiB 를 넘는다");
+  if (typeof b.baseSha256 !== "string" || typeof b.markdown !== "string") throw bad4("path · baseSha256 · markdown 이 필요하다");
+  if (Buffer.byteLength(b.markdown) > LIMIT) throw bad4("1 MiB 를 넘는다");
   const force = b.force === true;
   const co = await writeCheckout(p, t);
   const kind = lstatChain(co.root, t.rel);
   if (kind !== "file" && !(kind === "missing" && t.creatable)) throw kind === "missing" ? notFound(`문서가 없다: ${t.rel}`) : forbiddenPath(t.rel);
-  const abs = import_node_path45.default.join(co.root, t.rel);
+  const abs = import_node_path53.default.join(co.root, t.rel);
   return p.withLock(abs, async () => {
-    const current4 = kind === "file" ? import_node_fs41.default.readFileSync(abs) : Buffer.alloc(0);
-    if (current4.length > LIMIT) throw bad3("1 MiB 를 넘는 문서다");
+    const current4 = kind === "file" ? import_node_fs48.default.readFileSync(abs) : Buffer.alloc(0);
+    if (current4.length > LIMIT) throw bad4("1 MiB 를 넘는 문서다");
     const currentText = current4.toString("utf8");
     if (sha2562(current4) !== b.baseSha256) throw new ApiError(409, "conflict", "다른 곳에서 먼저 저장했다", { currentSha256: sha2562(current4), currentMarkdown: currentText });
     let next = b.markdown.replace(/\r\n/g, "\n");
@@ -10472,7 +12115,7 @@ async function putDoc(p, body) {
     try {
       after = parse2(next);
     } catch (err) {
-      throw bad3(`문서 머리를 읽지 못한다: ${err.message}`);
+      throw bad4(`문서 머리를 읽지 못한다: ${err.message}`);
     }
     const before = parseLoose(currentText);
     let statusChanged = null;
@@ -10507,40 +12150,40 @@ async function leaseHolder(p, co, relPath) {
 }
 
 // ../dashboard/src/writers/intake.ts
-var import_node_fs42 = __toESM(require("node:fs"));
+var import_node_fs49 = __toESM(require("node:fs"));
 var import_node_os2 = __toESM(require("node:os"));
-var import_node_path46 = __toESM(require("node:path"));
+var import_node_path54 = __toESM(require("node:path"));
 var KINDS2 = /* @__PURE__ */ new Set(["product", "feature", "change", "refactor", "bug"]);
 var NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 var FILE_NAME = /^[^/\\\0]{1,120}$/;
 var MAX_FILES = 20;
 function strings(v, field) {
   if (v === void 0) return [];
-  if (!Array.isArray(v) || !v.every((x) => typeof x === "string")) throw bad3(`${field} 는 문자열 목록이다`);
+  if (!Array.isArray(v) || !v.every((x) => typeof x === "string")) throw bad4(`${field} 는 문자열 목록이다`);
   return v;
 }
 function intakeBody(body, via) {
-  if (!isObj6(body)) throw bad3("본문은 JSON 객체다");
-  const { title, kind, name, area, text: text2 } = body;
-  if (typeof title !== "string" || !title.trim() || title.length > 200) throw bad3("title 은 1~200자 문자열이다");
-  if (typeof kind !== "string" || !KINDS2.has(kind)) throw bad3(`kind 는 ${[...KINDS2].join(" · ")}`);
-  if (typeof name !== "string" || !NAME.test(name) || name.length > 60) throw bad3("name 은 영문 소문자 · 숫자 kebab-case(60자 이하)다");
-  if (area !== void 0 && area !== null && (typeof area !== "string" || !NAME.test(area))) throw bad3("area 는 kebab-case 다");
-  if (text2 !== void 0 && typeof text2 !== "string") throw bad3("text 는 문자열이다");
+  if (!isObj7(body)) throw bad4("본문은 JSON 객체다");
+  const { title, kind, name, area, text: text3 } = body;
+  if (typeof title !== "string" || !title.trim() || title.length > 200) throw bad4("title 은 1~200자 문자열이다");
+  if (typeof kind !== "string" || !KINDS2.has(kind)) throw bad4(`kind 는 ${[...KINDS2].join(" · ")}`);
+  if (typeof name !== "string" || !NAME.test(name) || name.length > 60) throw bad4("name 은 영문 소문자 · 숫자 kebab-case(60자 이하)다");
+  if (area !== void 0 && area !== null && (typeof area !== "string" || !NAME.test(area))) throw bad4("area 는 kebab-case 다");
+  if (text3 !== void 0 && typeof text3 !== "string") throw bad4("text 는 문자열이다");
   const links = strings(body.links, "links");
-  if (links.some((l) => !/^https?:\/\/\S+$/.test(l))) throw bad3("링크는 http(s):// 로 시작한다");
+  if (links.some((l) => !/^https?:\/\/\S+$/.test(l))) throw bad4("링크는 http(s):// 로 시작한다");
   const paths = strings(body.paths, "paths");
-  if (paths.length && via !== "terminal") throw bad3("로컬 경로(paths)는 터미널(CLI)에서만 받는다 — 화면은 files(base64)로 보낸다");
+  if (paths.length && via !== "terminal") throw bad4("로컬 경로(paths)는 터미널(CLI)에서만 받는다 — 화면은 files(base64)로 보낸다");
   const raw = body.files === void 0 ? [] : body.files;
-  if (!Array.isArray(raw)) throw bad3("files 는 [{name, base64}] 목록이다");
-  if (raw.length + paths.length > MAX_FILES) throw bad3(`첨부는 ${MAX_FILES}개까지다`);
+  if (!Array.isArray(raw)) throw bad4("files 는 [{name, base64}] 목록이다");
+  if (raw.length + paths.length > MAX_FILES) throw bad4(`첨부는 ${MAX_FILES}개까지다`);
   const files = raw.map((f, i) => {
-    if (!isObj6(f) || typeof f.name !== "string" || !FILE_NAME.test(f.name) || f.name === "." || f.name === ".." || typeof f.base64 !== "string") {
-      throw bad3(`files[${i}] 는 {name: 파일 이름, base64: 내용} 이다`);
+    if (!isObj7(f) || typeof f.name !== "string" || !FILE_NAME.test(f.name) || f.name === "." || f.name === ".." || typeof f.base64 !== "string") {
+      throw bad4(`files[${i}] 는 {name: 파일 이름, base64: 내용} 이다`);
     }
     return { name: f.name, data: Buffer.from(f.base64, "base64") };
   });
-  return { title, kind, name, area: typeof area === "string" ? area : null, text: typeof text2 === "string" ? text2 : "", links, files, paths };
+  return { title, kind, name, area: typeof area === "string" ? area : null, text: typeof text3 === "string" ? text3 : "", links, files, paths };
 }
 function rejected(out) {
   const message2 = out.trim().split("\n").filter(Boolean).pop() ?? "접수하지 못했다";
@@ -10549,19 +12192,19 @@ function rejected(out) {
 async function postIntake(p, body, via) {
   if (p.readOnly) throw readOnly();
   const b = intakeBody(body, via);
-  const tmp = import_node_fs42.default.mkdtempSync(import_node_path46.default.join(import_node_os2.default.tmpdir(), "hk-intake-"));
+  const tmp = import_node_fs49.default.mkdtempSync(import_node_path54.default.join(import_node_os2.default.tmpdir(), "hk-intake-"));
   try {
-    import_node_fs42.default.chmodSync(tmp, 448);
-    const textFile = import_node_path46.default.join(tmp, "text.md");
-    import_node_fs42.default.writeFileSync(textFile, b.text, { mode: 384 });
+    import_node_fs49.default.chmodSync(tmp, 448);
+    const textFile = import_node_path54.default.join(tmp, "text.md");
+    import_node_fs49.default.writeFileSync(textFile, b.text, { mode: 384 });
     const attach = b.files.map((f, i) => {
-      const dir = import_node_path46.default.join(tmp, String(i));
-      import_node_fs42.default.mkdirSync(dir, { mode: 448 });
-      const file = import_node_path46.default.join(dir, import_node_path46.default.basename(f.name));
-      import_node_fs42.default.writeFileSync(file, f.data, { mode: 384 });
+      const dir = import_node_path54.default.join(tmp, String(i));
+      import_node_fs49.default.mkdirSync(dir, { mode: 448 });
+      const file = import_node_path54.default.join(dir, import_node_path54.default.basename(f.name));
+      import_node_fs49.default.writeFileSync(file, f.data, { mode: 384 });
       return file;
     });
-    const files = [...b.paths.map((x) => import_node_path46.default.resolve(p.root, x)), ...attach];
+    const files = [...b.paths.map((x) => import_node_path54.default.resolve(p.root, x)), ...attach];
     const args = ["scripts/harness/intake.py", "new", "--json", "--title", b.title, "--kind", b.kind, "--name", b.name, "--text-file", textFile];
     if (b.area) args.push("--area", b.area);
     for (const f of files) args.push("--attach", f);
@@ -10574,31 +12217,31 @@ async function postIntake(p, body, via) {
       throw new ApiError(500, "internal", `intake.py 출력이 JSON 이 아니다: ${r.stdout.slice(0, 200)}`);
     }
   } finally {
-    import_node_fs42.default.rmSync(tmp, { recursive: true, force: true });
+    import_node_fs49.default.rmSync(tmp, { recursive: true, force: true });
   }
 }
 
 // ../dashboard/src/writers/proposals.ts
-var import_node_fs43 = __toESM(require("node:fs"));
-var import_node_path47 = __toESM(require("node:path"));
+var import_node_fs50 = __toESM(require("node:fs"));
+var import_node_path55 = __toESM(require("node:path"));
 async function postProposal(p, body) {
   if (p.readOnly) throw readOnly();
   const b = proposalBody(body);
   const co = await resolveIntentCheckout(p, b.intent);
   const info = findIntent(co.root, b.intent);
-  return p.withLock(import_node_path47.default.join(info.abs, "units.proposed.json"), async () => {
+  return p.withLock(import_node_path55.default.join(info.abs, "units.proposed.json"), async () => {
     const units = readUnitsFile(info.abs);
     if (!units.raw) throw notFound("units.json 이 없다");
     if (sha2562(units.raw) !== b.baseSha256) throw new ApiError(409, "conflict", "units.json 이 바뀌었다. 다시 읽고 제안한다", { currentSha256: sha2562(units.raw) });
-    const file = import_node_path47.default.join(info.abs, "units.proposed.json");
-    if (b.proposalSha256 && import_node_fs43.default.existsSync(file) && sha2562(import_node_fs43.default.readFileSync(file)) !== b.proposalSha256) throw new ApiError(409, "conflict", "다른 곳에서 제안을 먼저 저장했다");
+    const file = import_node_path55.default.join(info.abs, "units.proposed.json");
+    if (b.proposalSha256 && import_node_fs50.default.existsSync(file) && sha2562(import_node_fs50.default.readFileSync(file)) !== b.proposalSha256) throw new ApiError(409, "conflict", "다른 곳에서 제안을 먼저 저장했다");
     applyChanges(units.units, b.changes);
     const u = await gitUser(co.root, p.env);
     const proposal = { schema: "harness-kit.units-proposal/v1", intent: b.intent, baseSha256: b.baseSha256, createdBy: u.email, createdAt: nowText(), changes: b.changes };
-    const text2 = `${JSON.stringify(proposal, null, 2)}
+    const text3 = `${JSON.stringify(proposal, null, 2)}
 `;
-    atomicWrite(file, text2);
-    return { intent: b.intent, path: `${info.dir}/units.proposed.json`, sha256: sha2562(Buffer.from(text2, "utf8")), changes: b.changes.length };
+    atomicWrite(file, text3);
+    return { intent: b.intent, path: `${info.dir}/units.proposed.json`, sha256: sha2562(Buffer.from(text3, "utf8")), changes: b.changes.length };
   });
 }
 async function deleteProposal(p, intent) {
@@ -10606,15 +12249,15 @@ async function deleteProposal(p, intent) {
   const co = await resolveIntentCheckout(p, intent);
   const info = findIntent(co.root, intent);
   if (!proposalOf(info.abs)) throw notFound("변경 제안이 없다");
-  import_node_fs43.default.unlinkSync(import_node_path47.default.join(info.abs, "units.proposed.json"));
+  import_node_fs50.default.unlinkSync(import_node_path55.default.join(info.abs, "units.proposed.json"));
   return { intent, discarded: true };
 }
 
 // ../dashboard/src/api.ts
 var ok = (data, status = 200, meta) => ({ status, data, ...meta ? { meta } : {} });
 async function intentNext(p, abs) {
-  const script = import_node_path48.default.join(p.root, "scripts/harness/intent.py");
-  if (!import_node_fs44.default.existsSync(script)) return null;
+  const script = import_node_path56.default.join(p.root, "scripts/harness/intent.py");
+  if (!import_node_fs51.default.existsSync(script)) return null;
   const r = await python(p.root, p.env, [script, "next", abs, "--json"], 3e4);
   try {
     return r.code === 0 ? JSON.parse(r.stdout) : null;
@@ -10637,9 +12280,9 @@ async function oneIssue(p, key) {
   if (!i) throw notFound(`이슈가 없다: ${key}`);
   return i;
 }
-var stub = (method, path64, stage, cli, what) => ({
+var stub = (method, path73, stage, cli, what) => ({
   method,
-  path: path64,
+  path: path73,
   stub: stage,
   cli,
   handler: async () => {
@@ -10758,9 +12401,9 @@ var ROUTES = [
     cli: "status --harness",
     handler: async (p) => {
       const meta = p.meta();
-      const kit = isObj6(meta.kit) ? meta.kit : {};
+      const kit = isObj7(meta.kit) ? meta.kit : {};
       const doctor = await doctorOf(p);
-      return ok({ doctor, kit: { version: kit.version ?? null }, agents: Array.isArray(meta.agents) ? meta.agents : [], modules: p.modules(), roles: isObj6(meta.roles) ? meta.roles : {}, gates: p.gates(), floor: GATE_FLOOR });
+      return ok({ doctor, kit: { version: kit.version ?? null }, agents: Array.isArray(meta.agents) ? meta.agents : [], modules: p.modules(), roles: isObj7(meta.roles) ? meta.roles : {}, gates: p.gates(), floor: GATE_FLOOR });
     }
   },
   {
@@ -10783,8 +12426,8 @@ var ROUTES = [
   },
   { method: "GET", path: "/dispatch/queue", cli: "dispatch list", handler: async (p) => ok({ items: await readQueue(p) }) },
   { method: "DELETE", path: "/dispatch/queue/{id}", cli: "dispatch drop <id>", handler: async (p, r) => ok(dropQueued(p, r.params.id)) },
-  stub("GET", "/checkpoints", "HK-20", "— (entire 모듈, HK-20)", "체크포인트 목록"),
-  stub("GET", "/checkpoints/{id}", "HK-20", "— (entire 모듈, HK-20)", "체크포인트 설명"),
+  { method: "GET", path: "/checkpoints", cli: "checkpoints [--issue <키>]", handler: async (p, r) => ok(await checkpointsList(p, q(r, "issue"))) },
+  { method: "GET", path: "/checkpoints/{id}", cli: "checkpoints <id>", handler: async (p, r) => ok(await checkpointExplain(p, r.params.id)) },
   stub("GET", "/ops", "HK-21", "status --ops(HK-21)", "운영 기록"),
   {
     method: "GET",
@@ -10792,7 +12435,7 @@ var ROUTES = [
     cli: "status --flow <INT>",
     handler: async (p, r) => {
       const key = q(r, "intent");
-      if (!key) throw bad3("intent 가 필요하다");
+      if (!key) throw bad4("intent 가 필요하다");
       const { issues, sessions } = await load(p);
       return ok(flowData(p, findIntent(p.root, key), issues, sessions));
     }
@@ -10842,10 +12485,10 @@ var COMPILED = ROUTES.map((route) => {
   })}$`);
   return { route, re, names };
 });
-function match(method, path64) {
+function match(method, path73) {
   const methods = [];
   for (const c of COMPILED) {
-    const m = c.re.exec(path64);
+    const m = c.re.exec(path73);
     if (!m) continue;
     if (c.route.method !== method) {
       methods.push(c.route.method);
@@ -10859,9 +12502,9 @@ function match(method, path64) {
   }
   return methods.length ? { methods } : null;
 }
-async function callApi(p, method, path64, opts = {}) {
-  const m = match(method, path64);
-  if (!m || !("route" in m)) throw notFound(`경로 없음: ${method} ${path64}`);
+async function callApi(p, method, path73, opts = {}) {
+  const m = match(method, path73);
+  if (!m || !("route" in m)) throw notFound(`경로 없음: ${method} ${path73}`);
   return m.route.handler(p, { method, params: m.params, query: new URLSearchParams(opts.query ?? {}), body: opts.body, via: opts.via ?? "terminal", mode: opts.mode ?? "single", ...opts.projects ? { projects: opts.projects } : {} });
 }
 
@@ -10894,22 +12537,22 @@ function same(a, b) {
   return x.length === y.length && import_node_crypto7.default.timingSafeEqual(x, y);
 }
 function stateFiles(root) {
-  const dir = import_node_path49.default.join(root, ".agents/state");
-  return { dir, token: import_node_path49.default.join(dir, "dashboard.token"), info: import_node_path49.default.join(dir, "dashboard.json") };
+  const dir = import_node_path57.default.join(root, ".agents/state");
+  return { dir, token: import_node_path57.default.join(dir, "dashboard.token"), info: import_node_path57.default.join(dir, "dashboard.json") };
 }
-function writeSecret(file, text2) {
+function writeSecret(file, text3) {
   try {
-    const st = import_node_fs45.default.lstatSync(file);
-    if (st.isSymbolicLink() || st.isFile()) import_node_fs45.default.unlinkSync(file);
+    const st = import_node_fs52.default.lstatSync(file);
+    if (st.isSymbolicLink() || st.isFile()) import_node_fs52.default.unlinkSync(file);
   } catch {
   }
-  const fd = import_node_fs45.default.openSync(file, import_node_fs45.default.constants.O_WRONLY | import_node_fs45.default.constants.O_CREAT | import_node_fs45.default.constants.O_EXCL | (import_node_fs45.default.constants.O_NOFOLLOW ?? 0), 384);
+  const fd = import_node_fs52.default.openSync(file, import_node_fs52.default.constants.O_WRONLY | import_node_fs52.default.constants.O_CREAT | import_node_fs52.default.constants.O_EXCL | (import_node_fs52.default.constants.O_NOFOLLOW ?? 0), 384);
   try {
-    import_node_fs45.default.writeSync(fd, text2);
+    import_node_fs52.default.writeSync(fd, text3);
   } finally {
-    import_node_fs45.default.closeSync(fd);
+    import_node_fs52.default.closeSync(fd);
   }
-  import_node_fs45.default.chmodSync(file, 384);
+  import_node_fs52.default.chmodSync(file, 384);
 }
 function pidAlive(pid) {
   try {
@@ -10941,14 +12584,14 @@ async function findRunning(cwd, env, agent = () => agentSession(env)) {
     return null;
   }
   const files = stateFiles(root);
-  const info = readJson(files.info);
+  const info = readJson2(files.info);
   if (!info || typeof info.pid !== "number" || typeof info.port !== "number") return null;
   if (!pidAlive(info.pid) || !await healthz(info.port)) return null;
   const base = `http://127.0.0.1:${info.port}/`;
   if (agent()) return { url: base, port: info.port };
   let token = "";
   try {
-    token = import_node_fs45.default.readFileSync(files.token, "utf8").trim();
+    token = import_node_fs52.default.readFileSync(files.token, "utf8").trim();
   } catch {
     token = "";
   }
@@ -11005,8 +12648,8 @@ async function startServer(opts) {
   let failures = 0;
   const files = single ? stateFiles(single.root) : null;
   if (files) {
-    import_node_fs45.default.mkdirSync(files.dir, { recursive: true, mode: 448 });
-    import_node_fs45.default.chmodSync(files.dir, 448);
+    import_node_fs52.default.mkdirSync(files.dir, { recursive: true, mode: 448 });
+    import_node_fs52.default.chmodSync(files.dir, 448);
     writeSecret(files.token, `${token}
 `);
   }
@@ -11083,18 +12726,18 @@ ${exp}`).digest("hex");
     };
     const out = await m.route.handler(target.p, request);
     const envelope = { ok: true, data: out.data, ...out.meta ? { meta: out.meta } : {} };
-    const text2 = JSON.stringify(envelope);
+    const text3 = JSON.stringify(envelope);
     if (method === "GET") {
-      const etag = `W/"${import_node_crypto7.default.createHash("sha256").update(text2).digest("hex").slice(0, 32)}"`;
+      const etag = `W/"${import_node_crypto7.default.createHash("sha256").update(text3).digest("hex").slice(0, 32)}"`;
       if (req.headers["if-none-match"] === etag) {
         res.writeHead(304, { ETag: etag, "Cache-Control": "no-store" });
         res.end();
         return;
       }
-      send(res, out.status, text2, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ETag: etag });
+      send(res, out.status, text3, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ETag: etag });
       return;
     }
-    send(res, out.status, text2, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
+    send(res, out.status, text3, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" });
   }
   async function handleRaw(res, url) {
     let rest = url.pathname;
@@ -11199,7 +12842,7 @@ ${exp}`).digest("hex");
         server.closeAllConnections?.();
       });
       if (files) {
-        for (const f of [files.token, files.info]) import_node_fs45.default.rmSync(f, { force: true });
+        for (const f of [files.token, files.info]) import_node_fs52.default.rmSync(f, { force: true });
       }
     }
   };
@@ -11209,22 +12852,22 @@ ${exp}`).digest("hex");
 var import_node_os4 = __toESM(require("node:os"));
 
 // src/commands/doctor.ts
-var import_node_fs48 = __toESM(require("node:fs"));
-var import_node_path52 = __toESM(require("node:path"));
+var import_node_fs55 = __toESM(require("node:fs"));
+var import_node_path60 = __toESM(require("node:path"));
 
 // src/commands/doctor-overrides.ts
-var import_node_fs46 = __toESM(require("node:fs"));
-var import_node_path50 = __toESM(require("node:path"));
-var isObj7 = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
-function readJson2(target, rel2) {
+var import_node_fs53 = __toESM(require("node:fs"));
+var import_node_path58 = __toESM(require("node:path"));
+var isObj8 = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+function readJson3(target, rel2) {
   try {
-    return JSON.parse(import_node_fs46.default.readFileSync(import_node_path50.default.join(target, ...rel2.split("/")), "utf8"));
+    return JSON.parse(import_node_fs53.default.readFileSync(import_node_path58.default.join(target, ...rel2.split("/")), "utf8"));
   } catch {
     return null;
   }
 }
 function ids(doc, key) {
-  return isObj7(doc) && Array.isArray(doc[key]) ? doc[key].map((x) => isObj7(x) && typeof x.id === "string" ? x.id : "").filter(Boolean) : [];
+  return isObj8(doc) && Array.isArray(doc[key]) ? doc[key].map((x) => isObj8(x) && typeof x.id === "string" ? x.id : "").filter(Boolean) : [];
 }
 function kitPaths(ctx, target, inst) {
   try {
@@ -11245,11 +12888,11 @@ function overridesReport(ctx, target, inst) {
     if (e.op !== "copy" && e.op !== "none") continue;
     const kitHas = kit?.has(e.path) ?? false;
     if (e.owner.startsWith("pack:") && kitHas) out.push({ target: e.path, winner: e.layer && e.layer.startsWith("pack:") ? e.layer : e.owner, losers: [kitVer], declared: true });
-    else if (e.owner === "user" && kitHas) out.push({ target: e.path, winner: "user", losers: [kitVer], note: import_node_fs46.default.existsSync(import_node_path50.default.join(target, ...`${e.path}.new`.split("/"))) ? ".new 있음" : ".new 없음" });
+    else if (e.owner === "user" && kitHas) out.push({ target: e.path, winner: "user", losers: [kitVer], note: import_node_fs53.default.existsSync(import_node_path58.default.join(target, ...`${e.path}.new`.split("/"))) ? ".new 있음" : ".new 없음" });
     else if (e.owner === "kit" && e.op === "copy" && typeof e.sha256 === "string") {
       let cur = null;
       try {
-        cur = sha256(import_node_fs46.default.readFileSync(import_node_path50.default.join(target, ...e.path.split("/"))));
+        cur = sha256(import_node_fs53.default.readFileSync(import_node_path58.default.join(target, ...e.path.split("/"))));
       } catch {
         cur = null;
       }
@@ -11260,24 +12903,24 @@ function overridesReport(ctx, target, inst) {
     [".agents/hooks.json", ".agents/hooks.d", "hooks"],
     [".agents/verify-checks.json", ".agents/verify-checks.d", "checks"]
   ]) {
-    const kitIds = ids(readJson2(target, base), key);
-    const project = ids(readJson2(target, `${dir}/project.json`), key);
+    const kitIds = ids(readJson3(target, base), key);
+    const project = ids(readJson3(target, `${dir}/project.json`), key);
     for (const id of project) if (kitIds.includes(id) && !FLOOR_HOOKS.includes(id)) out.push({ target: `${base}#${id}`, winner: "user", losers: ["kit"] });
   }
   const local = readLocalConfig(target);
-  const metaRoles = isObj7(inst.meta.roles) ? inst.meta.roles : {};
+  const metaRoles = isObj8(inst.meta.roles) ? inst.meta.roles : {};
   for (const [role, harness] of Object.entries(local.roles)) {
-    const project = isObj7(metaRoles[role]) && typeof metaRoles[role].harness === "string" ? String(metaRoles[role].harness) : null;
+    const project = isObj8(metaRoles[role]) && typeof metaRoles[role].harness === "string" ? String(metaRoles[role].harness) : null;
     if (project !== harness) out.push({ target: `roles.${role}.harness`, winner: "local", value: harness, losers: project ? [{ layer: "project", value: project }] : [] });
   }
   const floorViolations = [];
   const raw = inst.meta;
-  for (const g of missingFloorGates(isObj7(raw.flow) ? raw.flow.gates : void 0)) floorViolations.push({ kind: "gate-floor", target: `flow.gates#${g}` });
-  const kitHooks = ids(readJson2(target, ".agents/hooks.json"), "hooks");
+  for (const g of missingFloorGates(isObj8(raw.flow) ? raw.flow.gates : void 0)) floorViolations.push({ kind: "gate-floor", target: `flow.gates#${g}` });
+  const kitHooks = ids(readJson3(target, ".agents/hooks.json"), "hooks");
   if (kitHooks.length) {
     for (const id of FLOOR_HOOKS) if (!kitHooks.includes(id)) floorViolations.push({ kind: "floor-hook-missing", target: `.agents/hooks.json#${id}` });
   }
-  for (const id of ids(readJson2(target, ".agents/hooks.d/project.json"), "hooks")) if (FLOOR_HOOKS.includes(id)) floorViolations.push({ kind: "floor-override", target: `.agents/hooks.d/project.json#${id}` });
+  for (const id of ids(readJson3(target, ".agents/hooks.d/project.json"), "hooks")) if (FLOOR_HOOKS.includes(id)) floorViolations.push({ kind: "floor-override", target: `.agents/hooks.d/project.json#${id}` });
   const models = readLocalModelPolicy(target);
   for (const [cls, tier] of Object.entries(models.classes)) out.push({ target: `model-policy.classes.${cls}`, winner: "local", value: tier, losers: [] });
   const ignoredPersonal = [...local.ignored.map((key) => ({ key, file: LOCAL_CONFIG })), ...models.ignored.map((i) => ({ key: i.key, file: LOCAL_MODEL_POLICY }))];
@@ -11297,14 +12940,14 @@ function overridesLines(r) {
 }
 
 // src/projection/check.ts
-var import_node_fs47 = __toESM(require("node:fs"));
-var import_node_path51 = __toESM(require("node:path"));
+var import_node_fs54 = __toESM(require("node:fs"));
+var import_node_path59 = __toESM(require("node:path"));
 var PROJECTION_KINDS = ["stale", "symlink-found", "merge-missing", "relative-ref", "skill-model-field", "role-model-locked", "pending-new", "steering-size", "layout-conflict"];
 var LIMIT3 = 24 * 1024;
 var SOURCE_DIRS = [".agents/rules/", ".agents/skills/", ".agents/roles/"];
 function lstat2(p) {
   try {
-    return import_node_fs47.default.lstatSync(p);
+    return import_node_fs54.default.lstatSync(p);
   } catch {
     return null;
   }
@@ -11313,14 +12956,14 @@ function currentSha(p, isDir2) {
   const st = lstat2(p);
   if (!st || st.isSymbolicLink()) return null;
   if (isDir2) return st.isDirectory() ? treeSha(walkView(new FsView(p), "")) : null;
-  return st.isFile() ? sha256(import_node_fs47.default.readFileSync(p)) : null;
+  return st.isFile() ? sha256(import_node_fs54.default.readFileSync(p)) : null;
 }
 function linksInside(p, prefix = "") {
   const st = lstat2(p);
   if (!st?.isDirectory() || st.isSymbolicLink()) return [];
   const out = [];
-  for (const name of import_node_fs47.default.readdirSync(p).sort()) {
-    const q2 = import_node_path51.default.join(p, name);
+  for (const name of import_node_fs54.default.readdirSync(p).sort()) {
+    const q2 = import_node_path59.default.join(p, name);
     const s = lstat2(q2);
     const rel2 = prefix ? `${prefix}/${name}` : name;
     if (s?.isSymbolicLink()) out.push(rel2);
@@ -11328,43 +12971,43 @@ function linksInside(p, prefix = "") {
   }
   return out.sort();
 }
-function hasRelativeRef(text2) {
-  const stripped = text2.replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
+function hasRelativeRef(text3) {
+  const stripped = text3.replace(/```[\s\S]*?```/g, "").replace(/`[^`\n]*`/g, "");
   return /\[[^\]]*\]\((\.\.\/[^)\s]*)\)/.test(stripped);
 }
 function fmOf(file) {
-  const { block: block2 } = splitFrontmatter(import_node_fs47.default.readFileSync(file, "utf8"));
+  const { block: block2 } = splitFrontmatter(import_node_fs54.default.readFileSync(file, "utf8"));
   return block2 === null ? {} : parseFrontmatter(block2);
 }
 function kiroAlwaysBytes(target) {
-  const dir = import_node_path51.default.join(target, ".kiro/steering");
-  if (!import_node_fs47.default.existsSync(dir)) return 0;
+  const dir = import_node_path59.default.join(target, ".kiro/steering");
+  if (!import_node_fs54.default.existsSync(dir)) return 0;
   let total = 0;
-  for (const name of import_node_fs47.default.readdirSync(dir).filter((n) => n.endsWith(".md"))) {
-    const p = import_node_path51.default.join(dir, name);
+  for (const name of import_node_fs54.default.readdirSync(dir).filter((n) => n.endsWith(".md"))) {
+    const p = import_node_path59.default.join(dir, name);
     if (!lstat2(p)?.isFile()) continue;
     const inc = fmOf(p).inclusion;
-    if ((typeof inc === "string" && inc || "always") === "always") total += import_node_fs47.default.statSync(p).size;
+    if ((typeof inc === "string" && inc || "always") === "always") total += import_node_fs54.default.statSync(p).size;
   }
   return total;
 }
 function specAt(target) {
-  const file = import_node_path51.default.join(target, "scripts/harness/projection.json");
-  return import_node_fs47.default.existsSync(file) ? parseSpec(import_node_fs47.default.readFileSync(file, "utf8")) : null;
+  const file = import_node_path59.default.join(target, "scripts/harness/projection.json");
+  return import_node_fs54.default.existsSync(file) ? parseSpec(import_node_fs54.default.readFileSync(file, "utf8")) : null;
 }
 function layoutFindings(target, entries) {
   const out = [];
-  const meta = readMeta(import_node_path51.default.join(target, META_REL));
+  const meta = readMeta(import_node_path59.default.join(target, META_REL));
   const tokens = meta.status === "ok" ? meta.meta.tokens : {};
   const agents = meta.status === "ok" ? meta.meta.agents : [];
   let spec;
   for (const e of entries) {
     if (e.owner !== "kit") continue;
-    const p = import_node_path51.default.join(target, ...e.path.split("/"));
+    const p = import_node_path59.default.join(target, ...e.path.split("/"));
     const from = typeof e.from === "string" ? e.from : null;
     if (e.op === "mirror" || e.op === "render") {
       const st = lstat2(p);
-      const isDir2 = e.op === "mirror" && (Boolean(st?.isDirectory()) && !st?.isSymbolicLink() || Boolean(from && lstat2(import_node_path51.default.join(target, ...from.split("/")))?.isDirectory()));
+      const isDir2 = e.op === "mirror" && (Boolean(st?.isDirectory()) && !st?.isSymbolicLink() || Boolean(from && lstat2(import_node_path59.default.join(target, ...from.split("/")))?.isDirectory()));
       if (st?.isSymbolicLink()) {
         out.push({ kind: "symlink-found", severity: "error", path: e.path, hint: "링크 대신 실제 파일을 둔다 → npx harness-kit repair" });
         continue;
@@ -11380,7 +13023,7 @@ function layoutFindings(target, entries) {
         continue;
       }
       if (from && typeof e.fromSha256 === "string") {
-        const sp = import_node_path51.default.join(target, ...from.split("/"));
+        const sp = import_node_path59.default.join(target, ...from.split("/"));
         const now = from === HOOKS_REL ? hooksBundleSha(new FsView(target)) : currentSha(sp, Boolean(lstat2(sp)?.isDirectory()));
         if (now === null) out.push({ kind: "stale", severity: "error", path: e.path, hint: `원본 ${from} 이 없다 → npx harness-kit update` });
         else if (now !== e.fromSha256) out.push({ kind: "stale", severity: "error", path: e.path, hint: `원본 ${from} 가 바뀌었다 → npx harness-kit repair` });
@@ -11391,21 +13034,21 @@ function layoutFindings(target, entries) {
       if (spec === void 0) spec = specAt(target);
       if (!spec) continue;
       const st = lstat2(p);
-      const cur = st?.isFile() ? import_node_fs47.default.readFileSync(p, "utf8") : null;
+      const cur = st?.isFile() ? import_node_fs54.default.readFileSync(p, "utf8") : null;
       const keys = e.keys;
       const lost = cur === null ? keys : missingWith(kind, cur, keys, fullMergeWant(kind, spec, tokens, loadSources(new FsView(target))));
       if (lost.length) out.push({ kind: "merge-missing", severity: "error", path: e.path, hint: `킷 키 ${lost.slice(0, 3).join(", ")}${lost.length > 3 ? " …" : ""} 가 없다 → npx harness-kit repair` });
     } else if (e.op === "copy") {
       const st = lstat2(p);
       if (!st?.isFile()) continue;
-      if (SOURCE_DIRS.some((d) => e.path.startsWith(d)) && e.path.endsWith(".md") && hasRelativeRef(import_node_fs47.default.readFileSync(p, "utf8"))) {
+      if (SOURCE_DIRS.some((d) => e.path.startsWith(d)) && e.path.endsWith(".md") && hasRelativeRef(import_node_fs54.default.readFileSync(p, "utf8"))) {
         out.push({ kind: "relative-ref", severity: "error", path: e.path, hint: "킷 원본은 `../` 대신 리포 기준 경로(.agents/…)를 쓴다(복사본에서 깨진다)" });
       }
     }
   }
   for (const e of entries) {
     for (const side of [`${e.path}.new`, `${e.path}.bak`]) {
-      if (lstat2(import_node_path51.default.join(target, ...side.split("/")))) out.push({ kind: "pending-new", severity: "warn", path: side, hint: `병합하거나 지운다(diff -u ${e.path} ${side})` });
+      if (lstat2(import_node_path59.default.join(target, ...side.split("/")))) out.push({ kind: "pending-new", severity: "warn", path: side, hint: `병합하거나 지운다(diff -u ${e.path} ${side})` });
     }
   }
   try {
@@ -11428,7 +13071,7 @@ function layoutFindings(target, entries) {
 var FLOOR_KINDS = ["gate-floor", "floor-hook-missing", "floor-override", "full-allowed", "approvers"];
 var PACK_KINDS = ["pack-unpinned", "pack-local-path"];
 var LOCAL_KINDS = ["personal-ignored", "personal-weakens", "local-invalid"];
-var DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "version-mismatch", "missing", "drifted", "gitignore", "entry-size", "upgrade-notice-expired", ...FLOOR_KINDS, ...PACK_KINDS, ...LOCAL_KINDS, ...PROJECTION_KINDS];
+var DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "version-mismatch", "missing", "drifted", "gitignore", "entry-size", "upgrade-notice-expired", ...FLOOR_KINDS, ...PACK_KINDS, ...LOCAL_KINDS, ...PROJECTION_KINDS, ...MODULE_KINDS];
 var GITIGNORE_NEEDS = [".agents/state/", ".agents/local/", ".agents/reports/"];
 var ENTRY_FILES = ["AGENTS.md", "CLAUDE.md"];
 var ENTRY_LIMIT = 24 * 1024;
@@ -11473,7 +13116,7 @@ function copyFindings(target, lock) {
       continue;
     }
     if (e.op !== "copy" || e.owner !== "kit") continue;
-    const state = fileState(import_node_path52.default.join(target, ...e.path.split("/")), e.sha256);
+    const state = fileState(import_node_path60.default.join(target, ...e.path.split("/")), e.sha256);
     if (state === "ok") ok2 += 1;
     else if (state === "missing") {
       findings.push({ kind: "missing", severity: "error", path: e.path, owner: e.owner, hint: "킷 파일이 없다. harness-kit repair 로 되살린다" });
@@ -11491,7 +13134,7 @@ function copyFindings(target, lock) {
 function gitignoreFinding(target) {
   let lines3 = [];
   try {
-    lines3 = import_node_fs48.default.readFileSync(import_node_path52.default.join(target, ".gitignore"), "utf8").split(/\r?\n/).map((l) => l.trim());
+    lines3 = import_node_fs55.default.readFileSync(import_node_path60.default.join(target, ".gitignore"), "utf8").split(/\r?\n/).map((l) => l.trim());
   } catch {
     lines3 = [];
   }
@@ -11506,7 +13149,7 @@ function gitignoreFinding(target) {
 function entrySizeFinding(target) {
   let bytes = 0;
   for (const f of ENTRY_FILES) {
-    const st = lstatOrNull(import_node_path52.default.join(target, f));
+    const st = lstatOrNull(import_node_path60.default.join(target, f));
     if (st?.isFile()) bytes += st.size;
   }
   if (bytes <= ENTRY_LIMIT) return null;
@@ -11535,7 +13178,7 @@ function floorFindings(target, raw) {
   if (missingGates.length) out.push({ kind: "gate-floor", severity: "error", path: META_REL, hint: `flow.gates 에 하한 게이트 ${missingGates.join(" · ")} 가 없다. 하한은 빼지 못한다(check-sdd-prerequisites 는 설정과 상관없이 검사한다)`, detail: { missing: missingGates } });
   let hooks = null;
   try {
-    hooks = JSON.parse(import_node_fs48.default.readFileSync(import_node_path52.default.join(target, ".agents/hooks.json"), "utf8"));
+    hooks = JSON.parse(import_node_fs55.default.readFileSync(import_node_path60.default.join(target, ".agents/hooks.json"), "utf8"));
   } catch {
     hooks = null;
   }
@@ -11562,7 +13205,7 @@ function personalFindings(target) {
   for (const i of models.ignored) out.push({ kind: "personal-ignored", severity: "warn", path: LOCAL_MODEL_POLICY, hint: `${i.key} — ${i.why}(무시했다, MR-R7)` });
   let local = null;
   try {
-    local = JSON.parse(import_node_fs48.default.readFileSync(import_node_path52.default.join(target, ...SETTINGS_LOCAL.split("/")), "utf8"));
+    local = JSON.parse(import_node_fs55.default.readFileSync(import_node_path60.default.join(target, ...SETTINGS_LOCAL.split("/")), "utf8"));
   } catch {
     local = null;
   }
@@ -11572,35 +13215,35 @@ function personalFindings(target) {
 function approverFindings(raw) {
   if (!raw || raw.approvers === void 0) return [];
   const groups = isObjAny(raw.groups) ? raw.groups : {};
-  const bad4 = [];
-  if (!isObjAny(raw.approvers)) bad4.push("approvers 는 게이트 → 이름 목록 객체다");
+  const bad5 = [];
+  if (!isObjAny(raw.approvers)) bad5.push("approvers 는 게이트 → 이름 목록 객체다");
   else
     for (const [gate, names] of Object.entries(raw.approvers)) {
-      if (!Array.isArray(names) || names.some((n) => typeof n !== "string")) bad4.push(`approvers.${gate} 는 문자열 목록이다`);
-      else for (const n of names) if (!EMAIL2.test(n) && !Object.hasOwn(groups, n)) bad4.push(`approvers.${gate}: 그룹 '${n}' 이 groups 에 없다`);
+      if (!Array.isArray(names) || names.some((n) => typeof n !== "string")) bad5.push(`approvers.${gate} 는 문자열 목록이다`);
+      else for (const n of names) if (!EMAIL2.test(n) && !Object.hasOwn(groups, n)) bad5.push(`approvers.${gate}: 그룹 '${n}' 이 groups 에 없다`);
     }
-  for (const [name, members] of Object.entries(groups)) if (!Array.isArray(members) || members.some((m) => typeof m !== "string")) bad4.push(`groups.${name} 는 이메일 목록이다`);
-  return bad4.length ? [{ kind: "approvers", severity: "warn", path: META_REL, hint: bad4.join(" · "), detail: { problems: bad4 } }] : [];
+  for (const [name, members] of Object.entries(groups)) if (!Array.isArray(members) || members.some((m) => typeof m !== "string")) bad5.push(`groups.${name} 는 이메일 목록이다`);
+  return bad5.length ? [{ kind: "approvers", severity: "warn", path: META_REL, hint: bad5.join(" · "), detail: { problems: bad5 } }] : [];
 }
 function noticeFinding(target, day) {
-  let text2;
+  let text3;
   try {
-    text2 = import_node_fs48.default.readFileSync(import_node_path52.default.join(target, ...NOTICE_REL.split("/")), "utf8");
+    text3 = import_node_fs55.default.readFileSync(import_node_path60.default.join(target, ...NOTICE_REL.split("/")), "utf8");
   } catch {
     return null;
   }
-  if (!isKitNotice(text2) || !noticeExpired(text2, day)) return null;
+  if (!isKitNotice(text3) || !noticeExpired(text3, day)) return null;
   return { kind: "upgrade-notice-expired", severity: "info", path: NOTICE_REL, hint: "만료된 업그레이드 공지다. 다음 update 가 지운다(지금 지워도 된다)" };
 }
-function collect(target, day) {
-  const metaRead = readMeta(import_node_path52.default.join(target, META_REL));
+function collect(ctx, target, day) {
+  const metaRead = readMeta(import_node_path60.default.join(target, META_REL));
   if (metaRead.status === "missing") {
     throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 harness-kit init");
   }
   const findings = [];
   const meta = metaRead.status === "ok" ? metaRead.meta : null;
   if (metaRead.status === "invalid") findings.push({ kind: "meta-invalid", severity: "error", path: META_REL, hint: metaRead.error });
-  const lockRead = readLock(import_node_path52.default.join(target, LOCK_REL));
+  const lockRead = readLock(import_node_path60.default.join(target, LOCK_REL));
   const lock = lockRead.status === "ok" ? lockRead.lock : null;
   if (lockRead.status === "ok" && lockRead.format === "v1") {
     findings.push({ kind: "lock-v1", severity: "info", path: LOCK_REL, hint: "v1(TSV) lock 이다. update 가 v2 로 바꾼다" });
@@ -11615,9 +13258,21 @@ function collect(target, day) {
   findings.push(...layout2.map((f) => ({ kind: f.kind, severity: f.severity, path: f.path, hint: f.hint })));
   for (const f of [gitignoreFinding(target), entrySizeFinding(target), noticeFinding(target, day)]) if (f) findings.push(f);
   findings.push(...floorFindings(target, metaRead.status === "ok" ? metaRead.meta : null));
+  let load2;
+  if (meta && lock) {
+    let templatesDir = null;
+    try {
+      templatesDir = locateTemplates({ flag: str(ctx.values, "templates"), env: ctx.io.env, cliFile: ctx.io.cliFile, cwd: ctx.io.cwd, version: VERSION }).dir;
+    } catch {
+      templatesDir = null;
+    }
+    const dctx = { io: ctx.io, root: target, templatesDir, meta, entries: lock.entries };
+    findings.push(...moduleFindings(dctx).map((f) => ({ ...f })));
+    load2 = meta.agents.filter((h) => Object.hasOwn(HARNESS_LOAD, h)).map((h) => measureFor(dctx, h));
+  }
   const projectionTotal = lock ? lock.entries.filter((e) => PROJECTION_OPS.has(e.op) && e.owner === "kit").length : 0;
   const projectionBad = new Set(layout2.filter((f) => f.severity === "error" && !f.path.startsWith(".agents/")).map((f) => f.path)).size;
-  return { meta, lock, ok: copy.ok, findings, projection: { ok: Math.max(0, projectionTotal - projectionBad), errors: layout2.filter((f) => f.severity === "error").length } };
+  return { meta, lock, ok: copy.ok, findings, ...load2 ? { load: load2 } : {}, projection: { ok: Math.max(0, projectionTotal - projectionBad), errors: layout2.filter((f) => f.severity === "error").length } };
 }
 function summarize(findings, ok2) {
   const count = (pred) => findings.filter(pred).length;
@@ -11634,6 +13289,19 @@ function findingLine(f) {
   const hint = f.hint ? ` — ${f.hint}` : "";
   return `  ${MARK[f.severity]} ${f.kind.padEnd(16)} ${f.path ?? ""}${hint}`;
 }
+var fmt = (n) => n.toLocaleString("en-US");
+function loadLines(load2) {
+  const out = [];
+  for (const m of load2) {
+    const owners = Object.entries(m.owners).map(([o, v]) => `${o} ${fmt(v.bytes)}${hookCount(m, o) ? `(훅 ${hookCount(m, o)})` : ""}`);
+    const only = Object.keys(m.hooks).filter((o) => !m.owners[o]).map((o) => `${o} 훅 ${hookCount(m, o)}`);
+    out.push(`  세션마다 실리는 양(${m.harness}): ${[...owners, ...only].join(" · ") || "없음"} = ${fmt(m.total)}바이트`);
+  }
+  return out;
+}
+function loadJson(m) {
+  return { harness: m.harness, total: m.total, owners: m.owners, hooks: m.hooks };
+}
 function runDoctor(ctx) {
   const target = targetOf(ctx);
   if (str(ctx.values, "only") === "overrides") {
@@ -11642,7 +13310,7 @@ function runDoctor(ctx) {
     return { code: code2, data: { command: "doctor", target, only: "overrides", ...report2 }, lines: [`harness-kit doctor --only overrides — ${target}`, ...overridesLines(report2)] };
   }
   const only = parseOnly(str(ctx.values, "only"));
-  const c = collect(target, today(ctx.io));
+  const c = collect(ctx, target, today(ctx.io));
   const findings = only ? c.findings.filter((f) => only.includes(f.kind)) : c.findings;
   const summary = summarize(findings, c.ok);
   if (c.projection) summary.projection = c.projection;
@@ -11654,56 +13322,14 @@ function runDoctor(ctx) {
     `  copy 항목: ok ${summary.ok} · drifted ${summary.drifted} · missing ${summary.missing}`,
     ...c.projection ? [`  배치 항목: ok ${c.projection.ok} · 오류 ${c.projection.errors}`] : [],
     `  오류 ${summary.errors} · 경고 ${summary.warnings} · 정보 ${summary.infos}`,
-    ...ctx.quiet ? [] : findings.map(findingLine)
+    ...ctx.quiet ? [] : findings.map(findingLine),
+    ...ctx.quiet ? [] : loadLines(c.load ?? [])
   ];
-  return { code, data: { command: "doctor", target, kit, summary, findings }, lines: lines3 };
+  return { code, data: { command: "doctor", target, kit, summary, findings, ...c.load ? { load: c.load.map(loadJson) } : {} }, lines: lines3 };
 }
 
 // src/commands/outdated.ts
-var import_node_path53 = __toESM(require("node:path"));
-
-// src/core/git.ts
-var import_node_child_process8 = require("node:child_process");
-function gitEnv(env) {
-  const out = { ...env, PATH: env.PATH ?? process.env.PATH, HOME: env.HOME ?? process.env.HOME, GIT_TERMINAL_PROMPT: "0" };
-  for (const k of ["GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_CONFIG"]) delete out[k];
-  return out;
-}
-function git2(args, env, timeout = 3e4) {
-  const r = (0, import_node_child_process8.spawnSync)("git", args, { env: gitEnv(env), encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout });
-  const missing = r.error?.code === "ENOENT";
-  const run4 = { status: r.status, stdout: r.stdout ?? "", stderr: r.stderr ?? "", missing };
-  if (r.error) run4.error = r.error.message;
-  return run4;
-}
-function gitRepoPath(dir, env) {
-  const inside2 = git2(["-C", dir, "rev-parse", "--git-dir"], env);
-  if (inside2.status !== 0) return null;
-  const top = git2(["-C", dir, "rev-parse", "--show-toplevel"], env);
-  return top.status === 0 && top.stdout.trim() ? top.stdout.trim() : dir;
-}
-function remoteVersions(source, env) {
-  const r = git2(["ls-remote", "--tags", "--refs", source], env, 15e3);
-  if (r.missing) return { ok: false, reason: "git 이 없다" };
-  if (r.status !== 0) {
-    const tail = (r.stderr || r.error || `exit ${String(r.status)}`).trim().split("\n").slice(-1)[0] ?? "";
-    return { ok: false, reason: `git ls-remote 실패: ${tail}` };
-  }
-  const versions = [];
-  for (const line of r.stdout.split("\n")) {
-    const ref = line.split("	")[1] ?? "";
-    const m = /^refs\/tags\/v?(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/.exec(ref.trim());
-    if (m && compareSemver(m[1], m[1]) === 0) versions.push(m[1]);
-  }
-  return { ok: true, versions };
-}
-function maxVersion(versions) {
-  let best = null;
-  for (const v of versions) if (best === null || (compareSemver(v, best) ?? 0) > 0) best = v;
-  return best;
-}
-
-// src/commands/outdated.ts
+var import_node_path61 = __toESM(require("node:path"));
 var DEFAULT_SOURCE = "https://github.com/pscheol/harness-starter-kit.git";
 function fromKitSource(raw, env) {
   if (!raw) return null;
@@ -11714,7 +13340,7 @@ function fromKitSource(raw, env) {
   return null;
 }
 function sourceOf(ctx, target) {
-  const lock = readLock(import_node_path53.default.join(target, LOCK_REL));
+  const lock = readLock(import_node_path61.default.join(target, LOCK_REL));
   return pickSource(str(ctx.values, "source"), ctx.io.env, lock.status === "ok" ? lock.lock.kit.source : null);
 }
 function pickSource(flag, envVars, lockSource) {
@@ -11733,25 +13359,25 @@ var isPre = (v) => /^\d+\.\d+\.\d+-/.test(v);
 var newer = (a, b) => (compareSemver(a, b) ?? 0) > 0;
 function runOutdated(ctx) {
   const target = targetOf(ctx);
-  const m = readMeta(import_node_path53.default.join(target, META_REL));
+  const m = readMeta(import_node_path61.default.join(target, META_REL));
   if (m.status === "missing") throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 harness-kit init");
   if (m.status === "invalid") throw new CliError(EXIT.STATE, `메타를 해석하지 못했다: ${m.error}`, "harness-kit doctor 로 상태를 본다");
   const installed = m.meta.kit.version;
   const src = sourceOf(ctx, target);
   const preTrack = isPre(installed) || isPre(VERSION);
   let latest;
-  let latestVersion = null;
+  let latestVersion2 = null;
   if (src.url === null) latest = { status: "unknown", source: null, reason: src.reason };
   else {
     const tags = remoteVersions(src.url, ctx.io.env);
     if (!tags.ok) latest = { status: "unknown", source: src.url, reason: tags.reason };
     else {
       const stable = maxVersion(tags.versions.filter((v) => !isPre(v)));
-      latestVersion = preTrack ? maxVersion(tags.versions) : stable;
-      latest = { status: "ok", version: latestVersion, stable, source: src.url, from: src.from, tags: tags.versions.length };
+      latestVersion2 = preTrack ? maxVersion(tags.versions) : stable;
+      latest = { status: "ok", version: latestVersion2, stable, source: src.url, from: src.from, tags: tags.versions.length };
     }
   }
-  const newest = latestVersion && newer(latestVersion, VERSION) ? latestVersion : VERSION;
+  const newest = latestVersion2 && newer(latestVersion2, VERSION) ? latestVersion2 : VERSION;
   const isNewer = newer(newest, installed);
   const upgrade = !isNewer ? null : newest === VERSION ? "harness-kit update" : `npx harness-kit@${newest} update`;
   const data = { command: "outdated", target, installed, cli: VERSION, latest, newest, newer: isNewer, upgrade, packs: m.meta.packs };
@@ -11825,10 +13451,10 @@ function humanTerminal(ctx) {
   if (!ctx.io.isTTY) return new ApiError(403, "read_only", "TTY 가 아니다 — 사람이 터미널에서 직접 실행한다");
   return null;
 }
-async function run3(ctx, method, path64, opts, human) {
+async function run3(ctx, method, path73, opts, human) {
   try {
     const p = opts.project ?? await openProject(ctx);
-    const r = await callApi(p, method, path64, { ...opts.query ? { query: opts.query } : {}, body: opts.body, via: "terminal", mode: opts.mode ?? "single", ...opts.projects ? { projects: opts.projects } : {} });
+    const r = await callApi(p, method, path73, { ...opts.query ? { query: opts.query } : {}, body: opts.body, via: "terminal", mode: opts.mode ?? "single", ...opts.projects ? { projects: opts.projects } : {} });
     const data = r.data;
     return { code: EXIT.OK, data, lines: human(data) };
   } catch (err) {
@@ -11881,20 +13507,20 @@ function modeOf(ctx) {
   const ws = str(v, "workspace");
   if ([all, root !== void 0, ws !== void 0].filter(Boolean).length > 1) throw usageError("--all · --root · --workspace 는 하나만 준다");
   if (all) return { kind: "all" };
-  if (root !== void 0) return { kind: "root", dir: import_node_path54.default.resolve(ctx.io.cwd, root) };
-  if (ws !== void 0) return { kind: "workspace", file: import_node_path54.default.resolve(ctx.io.cwd, ws) };
+  if (root !== void 0) return { kind: "root", dir: import_node_path62.default.resolve(ctx.io.cwd, root) };
+  if (ws !== void 0) return { kind: "workspace", file: import_node_path62.default.resolve(ctx.io.cwd, ws) };
   return { kind: "single" };
 }
 function openBrowser(url) {
   const [cmd, args] = process.platform === "darwin" ? ["open", [url]] : process.platform === "win32" ? ["cmd", ["/c", "start", "", url]] : ["xdg-open", [url]];
   try {
-    (0, import_node_child_process9.spawn)(cmd, args, { stdio: "ignore", detached: true }).unref();
+    (0, import_node_child_process10.spawn)(cmd, args, { stdio: "ignore", detached: true }).unref();
   } catch {
   }
 }
 async function runExport(ctx, out) {
   try {
-    const r = await exportStatic({ cwd: targetOf(ctx), env: ctx.io.env, out: import_node_path54.default.resolve(ctx.io.cwd, out) });
+    const r = await exportStatic({ cwd: targetOf(ctx), env: ctx.io.env, out: import_node_path62.default.resolve(ctx.io.cwd, out) });
     return { code: EXIT.OK, data: { command: "dashboard", export: r.out, files: r.files }, lines: [`정적 내보내기: ${r.out} (파일 ${r.files.length}개, 스크립트 · 버튼 없음)`] };
   } catch (err) {
     if (err instanceof ExportLeakError) throw new CliError(EXIT.CHECK, `${err.message} — 출력 폴더를 지웠다`, err.hits.slice(0, 5).join(" · "));
@@ -11946,7 +13572,7 @@ async function runDashboard(ctx) {
 }
 
 // src/commands/decide.ts
-var KEY2 = /^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5}$/;
+var KEY3 = /^[A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5}$/;
 var INTENT_GATES = /* @__PURE__ */ new Set(["intent", "codebase", "plans"]);
 var DOC_GATES2 = { requirements: "requirements", design: "design", tasks: "tasks" };
 function approvedLines(d) {
@@ -11956,7 +13582,7 @@ async function runApprove(ctx) {
   const [key, extra] = ctx.positionals;
   const gate = str(ctx.values, "gate");
   const phrase = str(ctx.values, "phrase");
-  if (!key || extra || !KEY2.test(key) || !gate || !phrase) throw usageError('harness-kit approve <키> --gate <게이트> --phrase "<문구>" [--changes-requested [--rule-candidate]]');
+  if (!key || extra || !KEY3.test(key) || !gate || !phrase) throw usageError('harness-kit approve <키> --gate <게이트> --phrase "<문구>" [--changes-requested [--rule-candidate]]');
   const refused = humanTerminal(ctx);
   if (refused) return failure(ctx, refused);
   const decision = bool(ctx.values, "changes-requested") ? "changes-requested" : "approved";
@@ -12033,39 +13659,33 @@ async function runReview(ctx) {
   }
 }
 
-// src/commands/init.ts
-var import_node_fs49 = __toESM(require("node:fs"));
-var import_node_path55 = __toESM(require("node:path"));
-
-// src/cli/prompt.ts
-var import_node_readline = __toESM(require("node:readline"));
-function createPrompter(input, write) {
-  const rl = import_node_readline.default.createInterface({ input, terminal: false });
-  const lines3 = rl[Symbol.asyncIterator]();
-  const next = async () => {
-    const r = await lines3.next();
-    return r.done ? null : String(r.value);
-  };
-  return {
-    async ask(question, fallback) {
-      write(`${question}${fallback ? ` (${fallback})` : ""}: `);
-      const a = await next();
-      const v = (a ?? "").trim();
-      return v === "" ? fallback : v;
-    },
-    async confirm(question) {
-      write(`${question} [Y/n]: `);
-      const a = await next();
-      if (a === null) return false;
-      return !/^(n|no|아니오|아니)$/i.test(a.trim());
-    },
-    close() {
-      rl.close();
-    }
-  };
+// src/commands/checkpoints.ts
+async function runCheckpoints(ctx) {
+  const [id, ...extra] = ctx.positionals;
+  if (extra.length) throw usageError(`checkpoints: 위치 인자가 많다: ${extra.join(" ")}`);
+  if (id !== void 0) {
+    if (str(ctx.values, "issue") !== void 0) throw usageError("checkpoints: <id> 와 --issue 는 같이 쓰지 않는다");
+    return run3(ctx, "GET", `/checkpoints/${encodeURIComponent(id)}`, {}, (d) => {
+      if (d.enabled === false) return [`체크포인트 ${id}: ${String(d.reason)}`];
+      if (d.available === false) return [`체크포인트 ${id}: ${String(d.reason)}`];
+      return [`체크포인트 ${id}(신뢰하지 않는 내용)`, ...String(d.text ?? "").split("\n")];
+    });
+  }
+  const issue = str(ctx.values, "issue");
+  return run3(ctx, "GET", "/checkpoints", { query: issue ? { issue } : {} }, (d) => {
+    if (d.enabled === false) return [String(d.note)];
+    const rows = d.checkpoints ?? [];
+    return [
+      `체크포인트 ${rows.length}개 · 브랜치 ${String(d.branch ?? "-")}${d.range ? ` · ${String(d.range)}` : ""}`,
+      ...rows.map((r) => `  ${r.id}  ${r.commit}  ${r.state === "local" ? "local" : "원격에만 또는 없음"}  ${r.subject}`),
+      ...d.note ? [String(d.note)] : []
+    ];
+  });
 }
 
 // src/commands/init.ts
+var import_node_fs56 = __toESM(require("node:fs"));
+var import_node_path63 = __toESM(require("node:path"));
 var TOKEN_FLAGS = {
   name: "PROJECT_NAME",
   slug: "PROJECT_SLUG",
@@ -12101,7 +13721,7 @@ async function askMissing(p, input, layout2, templatesDir) {
   }
   if (out.agents === void 0) out.agents = await p.ask(`하네스 [${layout2.harnesses.join(",")}|all]`, "");
   if (out.agents === "") delete out.agents;
-  if (out.modules === void 0) out.modules = await p.ask(`모듈 [${layout2.modules.join(",")}|all|none]`, "none");
+  if (out.modules === void 0) out.modules = await p.ask(`모듈 [${[...layout2.modules, ...layout2.externalModules].join(",")}|all|none] (aidlc · entire 는 이름을 줄 때만)`, "none");
   return out;
 }
 function opJson3(o) {
@@ -12138,12 +13758,20 @@ function readOptions(ctx, layout2) {
 }
 function assertInstallable(target) {
   const st = lstatOrNull(target);
-  if (st && !(st.isDirectory() || st.isSymbolicLink() && import_node_fs49.default.statSync(target).isDirectory())) {
+  if (st && !(st.isDirectory() || st.isSymbolicLink() && import_node_fs56.default.statSync(target).isDirectory())) {
     throw new CliError(EXIT.STATE, `대상이 폴더가 아니다: ${target}`);
   }
-  if (import_node_fs49.default.existsSync(import_node_path55.default.join(target, META_REL))) {
-    throw new CliError(EXIT.STATE, `이미 설치된 리포다: ${import_node_path55.default.join(target, META_REL)}`, "킷 갱신은 harness-kit update, 하네스 · 모듈 추가는 harness-kit add 다. 지금 상태는 harness-kit doctor");
+  if (import_node_fs56.default.existsSync(import_node_path63.default.join(target, META_REL))) {
+    throw new CliError(EXIT.STATE, `이미 설치된 리포다: ${import_node_path63.default.join(target, META_REL)}`, "킷 갱신은 harness-kit update, 하네스 · 모듈 추가는 harness-kit add 다. 지금 상태는 harness-kit doctor");
   }
+}
+function splitExternal(layout2, input) {
+  if (input.modules === void 0) return { input, externals: [] };
+  const words = input.modules.split(/[\s,]+/).filter(Boolean);
+  const externals = words.filter((w, i) => layout2.externalModules.includes(w) && words.indexOf(w) === i);
+  if (externals.length === 0) return { input, externals };
+  const rest = words.filter((w) => !layout2.externalModules.includes(w));
+  return { input: { ...input, modules: rest.length ? rest.join(",") : "none" }, externals };
 }
 function selectionInput(ctx) {
   const keys = ["stack", "arch", "domain", "lang", "agents", "modules"];
@@ -12176,7 +13804,7 @@ function registerAfterInit(ctx, target) {
   const env = ctx.io.env;
   const override = env.HARNESS_KIT_CONFIG_DIR;
   const home = env.HOME ?? "";
-  if (!(override && import_node_path55.default.isAbsolute(override)) && !home) return { status: "skipped", reason: "HOME 이 없다" };
+  if (!(override && import_node_path63.default.isAbsolute(override)) && !home) return { status: "skipped", reason: "HOME 이 없다" };
   try {
     const r = addProject(home, target, today(ctx.io), env);
     return { status: r.added ? "added" : "exists", name: r.entry.name, file: registryFile(home, env) };
@@ -12201,9 +13829,10 @@ async function runInit(ctx) {
   const interactive = io2.isTTY && !bool(ctx.values, "yes") && !ctx.json && io2.stdin !== void 0;
   const prompter = interactive ? createPrompter(io2.stdin, io2.stderr) : null;
   try {
-    const input = prompter ? await askMissing(prompter, selectionInput(ctx), layout2, loc.dir) : selectionInput(ctx);
+    const asked = prompter ? await askMissing(prompter, selectionInput(ctx), layout2, loc.dir) : selectionInput(ctx);
+    const { input, externals } = splitExternal(layout2, asked);
     const selection = resolveSelection(layout2, loc.dir, input, { target, env: io2.env });
-    const tokens = resolveTokens(layout2, selection, { flags: opts.flags, env: io2.env, targetBasename: import_node_path55.default.basename(target) });
+    const tokens = resolveTokens(layout2, selection, { flags: opts.flags, env: io2.env, targetBasename: import_node_path63.default.basename(target) });
     checkSlug(tokens.PROJECT_SLUG ?? "");
     const plan = buildPlan({ layout: layout2, templatesDir: loc.dir, target, selection, tokens, mode: { force: opts.force, adopt: opts.adopt } });
     const shown = command === "plan" && !ctx.quiet ? plan.ops : plan.ops.filter(needsAttention);
@@ -12217,7 +13846,10 @@ async function runInit(ctx) {
     if (selection.retiredModules) data.retiredModules = selection.retiredModules;
     const projectionShown = projectionLines(plan.projection, plan.projectionFindings, ctx.quiet, command === "plan" && !ctx.quiet, /* @__PURE__ */ new Set(["create"]));
     if (command === "plan") {
-      lines3.push(...shown.map(opLine3), countsLine2(plan), ...projectionShown, STATE_LINE, "  (plan — 쓰지 않았다)");
+      lines3.push(...shown.map(opLine3), countsLine2(plan), ...projectionShown, STATE_LINE);
+      if (externals.length) lines3.push(`  외부 도구 모듈 ${externals.join(", ")}: init 뒤 add 단계로 켠다(도구 확인 · 설치 안내 · 외부 명령 · 측정 — harness-kit add ${externals.join(" ")} --dry-run 으로 계획을 본다)`);
+      lines3.push("  (plan — 쓰지 않았다)");
+      data.externalModules = externals;
       return { code: EXIT.OK, data, lines: lines3 };
     }
     if (prompter) {
@@ -12230,16 +13862,37 @@ async function runInit(ctx) {
     data.featureDocs = result.featureDocs;
     const registry = registerAfterInit(ctx, target);
     data.registry = registry;
-    lines3.push(countsLine2(plan), ...shown.map(opLine3), ...projectionShown, STATE_LINE, docsLine(result.featureDocs), registryLine(registry), "  다음: harness-kit doctor");
-    return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines: lines3 };
+    lines3.push(countsLine2(plan), ...shown.map(opLine3), ...projectionShown, STATE_LINE, docsLine(result.featureDocs), registryLine(registry));
+    let code = human ? EXIT.HUMAN : EXIT.OK;
+    if (externals.length) {
+      data.externalModules = externals;
+      const kit = kitOf(ctx);
+      const results = [];
+      for (const id of externals) {
+        try {
+          const o = await addExternal({ ...ctx, command: "add", values: { ...ctx.values, cwd: target }, positionals: [id] }, kit, id);
+          lines3.push(...o.lines.slice(1));
+          results.push(o.data);
+          if (o.code !== EXIT.OK) code = Math.max(code, o.code);
+        } catch (err) {
+          if (!(err instanceof CliError)) throw err;
+          lines3.push(`  ✖ ${id}: ${err.message}`, ...err.hint ? err.hint.split("\n").map((h) => `    ${h}`) : [], `  init 은 끝났다. 모듈은 도구를 준비한 뒤 harness-kit add ${id} 로 켠다`);
+          results.push({ module: id, error: { code: err.code, message: err.message } });
+          code = Math.max(code, err.code);
+        }
+      }
+      data.modulesResult = results;
+    }
+    lines3.push("  다음: harness-kit doctor");
+    return { code, data, lines: lines3 };
   } finally {
     prompter?.close();
   }
 }
 
 // src/commands/intake.ts
-var import_node_fs50 = __toESM(require("node:fs"));
-var import_node_path56 = __toESM(require("node:path"));
+var import_node_fs57 = __toESM(require("node:fs"));
+var import_node_path64 = __toESM(require("node:path"));
 var str5 = (ctx, k) => typeof ctx.values[k] === "string" ? ctx.values[k] : void 0;
 var list2 = (ctx, k) => Array.isArray(ctx.values[k]) ? ctx.values[k] : [];
 async function readStdin(ctx) {
@@ -12258,17 +13911,17 @@ async function runIntake(ctx) {
   const textFile = str5(ctx, "text-file");
   if (textArg !== void 0 && textFile !== void 0) throw usageError("--text 와 --text-file 은 하나만 쓴다");
   const cwd = targetOf(ctx);
-  let text2 = textArg === "-" ? await readStdin(ctx) : textArg ?? "";
+  let text3 = textArg === "-" ? await readStdin(ctx) : textArg ?? "";
   if (textFile !== void 0) {
-    const file = import_node_path56.default.resolve(ctx.io.cwd, textFile);
-    if (!import_node_fs50.default.existsSync(file)) throw usageError(`--text-file 이 없다: ${textFile}`);
-    text2 = import_node_fs50.default.readFileSync(file, "utf8");
+    const file = import_node_path64.default.resolve(ctx.io.cwd, textFile);
+    if (!import_node_fs57.default.existsSync(file)) throw usageError(`--text-file 이 없다: ${textFile}`);
+    text3 = import_node_fs57.default.readFileSync(file, "utf8");
   }
-  const paths = list2(ctx, "attach").map((a) => import_node_path56.default.resolve(ctx.io.cwd, a));
-  const missing = paths.find((a) => !import_node_fs50.default.statSync(a, { throwIfNoEntry: false })?.isFile());
-  if (missing) throw usageError(`첨부가 없다: ${import_node_path56.default.relative(cwd, missing) || missing}`);
+  const paths = list2(ctx, "attach").map((a) => import_node_path64.default.resolve(ctx.io.cwd, a));
+  const missing = paths.find((a) => !import_node_fs57.default.statSync(a, { throwIfNoEntry: false })?.isFile());
+  if (missing) throw usageError(`첨부가 없다: ${import_node_path64.default.relative(cwd, missing) || missing}`);
   const area = str5(ctx, "area");
-  const body = { title, kind, name, text: text2, links: list2(ctx, "link"), paths, ...area ? { area } : {} };
+  const body = { title, kind, name, text: text3, links: list2(ctx, "link"), paths, ...area ? { area } : {} };
   return run3(ctx, "POST", "/intake", { body }, (d) => {
     const warnings = Array.isArray(d.warnings) ? d.warnings : [];
     return [`✔ 접수: ${String(d.folder)}`, ...warnings.map((w) => `⚠ ${w}`), `다음: ${String(d.next)} (세션 요청은 사람이 고를 때만)`];
@@ -12310,7 +13963,7 @@ async function runMob2(ctx) {
 }
 
 // src/commands/list.ts
-var import_node_path57 = __toESM(require("node:path"));
+var import_node_path65 = __toESM(require("node:path"));
 function tally(values) {
   const out = /* @__PURE__ */ new Map();
   for (const v of values) out.set(v, (out.get(v) ?? 0) + 1);
@@ -12318,14 +13971,14 @@ function tally(values) {
 }
 function runList(ctx) {
   const target = targetOf(ctx);
-  const read = readMeta(import_node_path57.default.join(target, META_REL));
-  if (read.status === "missing") throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 harness-kit init");
-  if (read.status === "invalid") throw new CliError(EXIT.STATE, `메타를 해석하지 못했다: ${read.error}`, "harness-kit doctor 로 상태를 본다");
-  const m = read.meta;
+  const read2 = readMeta(import_node_path65.default.join(target, META_REL));
+  if (read2.status === "missing") throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 harness-kit init");
+  if (read2.status === "invalid") throw new CliError(EXIT.STATE, `메타를 해석하지 못했다: ${read2.error}`, "harness-kit doctor 로 상태를 본다");
+  const m = read2.meta;
   const data = {
     command: "list",
     target,
-    metaSchema: read.schema,
+    metaSchema: read2.schema,
     kit: { version: m.kit.version },
     project: m.project,
     stack: m.stack,
@@ -12341,13 +13994,13 @@ function runList(ctx) {
   };
   const lines3 = [
     `harness-kit list — ${target}`,
-    `  킷 ${m.kit.version} (메타 ${read.schema}) · 설치 ${m.installedAt || "?"} · 갱신 ${m.updatedAt || "?"}`,
+    `  킷 ${m.kit.version} (메타 ${read2.schema}) · 설치 ${m.installedAt || "?"} · 갱신 ${m.updatedAt || "?"}`,
     `  ${m.project.name} (${m.project.slug}) · 스택 ${m.stack} · 변형 ${m.arch} · 도메인 ${m.domain || "없음"}`,
     `  하네스 ${m.agents.join(", ") || "없음"} · 모듈 ${m.modules.join(", ") || "none"} · 팩 ${m.packs.length || "none"}`,
     `  이슈 키 ${m.issueKey.source}:${m.issueKey.prefix} · base ${m.git.base}`
   ];
   if (bool(ctx.values, "files")) {
-    const lr = readLock(import_node_path57.default.join(target, LOCK_REL));
+    const lr = readLock(import_node_path65.default.join(target, LOCK_REL));
     if (lr.status !== "ok") {
       throw new CliError(EXIT.STATE, `lock 을 읽지 못했다: ${lr.status === "missing" ? "없음" : lr.error}`, "harness-kit doctor 로 상태를 본다");
     }
@@ -12361,102 +14014,12 @@ function runList(ctx) {
   return { code: EXIT.OK, data, lines: lines3 };
 }
 
-// src/commands/remove.ts
-var import_node_path58 = __toESM(require("node:path"));
-function keepAction(e) {
-  const owner = ownerKind2(e.owner);
-  if (owner === "external") return "skip-external";
-  if (owner === "pack") return "skip-pack";
-  if (owner !== "kit" || entryKind(e) === "none") return "keep-user";
-  return null;
-}
-function judgeDrop(l, p, e, cur, ambiguous) {
-  const keep = keepAction(e);
-  const layer = e.layer ?? null;
-  if (keep) return { op: { path: p, owner: e.owner, layer, action: keep }, entry: e };
-  if (cur.kind === "none") return { op: { path: p, owner: e.owner, layer, action: "absent" }, entry: void 0 };
-  if (cur.kind === "file" && e.sha256 && cur.sha === e.sha256) {
-    const neu = `${p}.new`;
-    const alsoNew = existing(import_node_path58.default.join(l.target, ...neu.split("/"))).kind === "file" ? { alsoNew: neu } : {};
-    return { op: { path: p, owner: e.owner, layer, action: "delete", ...alsoNew }, entry: void 0 };
-  }
-  const reason = cur.kind === "other" ? cur.what : ambiguous.has(p) ? AMBIGUOUS_REASON : e.sha256 ? "사람이 고친 파일이다" : "lock 에 기준 해시가 없다(고친 파일로 본다)";
-  return { op: { path: p, owner: e.owner, layer, action: "keep-modified", reason }, entry: { path: p, op: "copy", owner: "user", sha256: null, ...e.layer ? { layer: e.layer } : {} } };
-}
-function judgeRelayer(l, p, w, e, cur) {
-  const skip = skipByOwner(e);
-  if (skip) return { op: { path: p, owner: e.owner, layer: e.layer ?? null, action: skip.action }, entry: e };
-  const kit = { path: p, op: "copy", owner: "kit", sha256: w.sha256, layer: w.layer };
-  const withD3 = { owner: "kit", layer: w.layer, executable: w.executable, content: w.content };
-  if (cur.kind === "other") return { op: { path: p, owner: e.owner, layer: w.layer, action: "skip-user", reason: cur.what }, entry: e };
-  if (cur.kind === "none") return { op: { path: p, owner: e.owner, layer: w.layer, action: "relayer", reason: "파일이 없다 — repair · update 가 되살린다" }, entry: { ...e, layer: w.layer } };
-  if (cur.sha === w.sha256) return { op: { path: p, owner: "kit", layer: w.layer, action: "same" }, entry: kit };
-  if (e.sha256 && cur.sha === e.sha256) return { op: { path: p, ...withD3, action: "update" }, entry: kit };
-  const neu = `${p}.new`;
-  const newFile = existing(import_node_path58.default.join(l.target, ...neu.split("/"))).kind === "other" ? {} : { newFile: neu };
-  return { op: { path: p, ...withD3, action: "conflict", ...newFile }, entry: { ...e, layer: w.layer } };
-}
-function planRemove(l, after) {
-  const beforeLayers = winnerLayers(l.layout, l.loc.dir, l.before, l.tokens);
-  const afterLayers = winnerLayers(l.layout, l.loc.dir, after, l.tokens);
-  const oldWant = wanted({ layout: l.layout, templatesDir: l.loc.dir, selection: l.before, tokens: l.tokens }).want;
-  const newWant = wanted({ layout: l.layout, templatesDir: l.loc.dir, selection: after, tokens: l.tokens }).want;
-  const shaOf2 = () => new Map([...oldWant, ...newWant].map(([p2, d]) => [p2, d.sha256]));
-  const { lock, ambiguous } = resolvedLock(l.inst, l.target, shaOf2);
-  const locked = new Map(lock.entries.map((e) => [e.path, e]));
-  const ancestors = ancestorsOf(l.target);
-  const ops = [];
-  for (const p2 of [...beforeLayers.keys()].filter((x) => !afterLayers.has(x)).sort(byteCompare)) {
-    const e = locked.get(p2);
-    if (!e) continue;
-    const j = judgeDrop(l, p2, e, currentOf(l.target, ancestors, p2), ambiguous);
-    ops.push(j.op);
-    if (j.entry) locked.set(p2, j.entry);
-    else locked.delete(p2);
-  }
-  for (const p2 of relayered(beforeLayers, afterLayers)) {
-    const e = locked.get(p2);
-    if (!e) continue;
-    const j = judgeRelayer(l, p2, newWant.get(p2), e, currentOf(l.target, ancestors, p2));
-    ops.push(j.op);
-    locked.set(p2, j.entry);
-  }
-  const manifest = manifestChange(l, ancestors, after);
-  const spec = loadSpecOrNull(l.loc.dir);
-  if (!spec) return { ops, entries: [...locked.values()], manifest, projection: null };
-  const { writes, deletes } = changeOverlay(ops);
-  const p = prepare({ target: l.target, spec, tokens: l.tokens, agents: after.agents, writes, deletes, copyPaths: newWant.keys() });
-  const projection = judgeUpdate({ target: l.target, spec, tokens: l.tokens, sources: p.sources, wants: p.wants, prev: l.inst.lock.entries, copyNow: new Set(newWant.keys()), acceptAll: false, retire: false });
-  return { ops, entries: [...locked.values()], manifest, projection, projectionFindings: p.findings };
-}
-function runRemove(ctx) {
-  const kit = kitOf(ctx);
-  const asked = parseNames(kit.layout, ctx.positionals, "remove");
-  const only = retiredOnly(ctx, "remove", asked);
-  if (only) return { ...only, data: { ...only.data, names: { ...asked, notOn: [] } } };
-  const l = loadForChange(ctx, "remove", kit);
-  const notOn = [...asked.harnesses.filter((h) => !l.before.agents.includes(h)), ...asked.modules.filter((m) => !l.before.modules.includes(m))];
-  const names = { harnesses: asked.harnesses.filter((h) => !notOn.includes(h)), modules: asked.modules.filter((m) => !notOn.includes(m)), retired: asked.retired };
-  const after = withoutNames(l.before, names);
-  if (after.agents.length === 0) throw usageError("하네스를 모두 뺄 수 없다 — 하나는 남는다", "킷을 통째로 지우려면 harness-kit uninstall");
-  const dryRun = dryRunOf(ctx);
-  const nothing = names.harnesses.length + names.modules.length === 0;
-  const result = nothing ? { ops: [], entries: l.inst.lock.entries, manifest: null } : planRemove(l, after);
-  const featureDocs = dryRun || nothing ? null : applyChange(ctx, l, after, result);
-  const notes = [...retiredNotes(asked), ...notOn.length ? [`  · 켜져 있지 않다 — 건너뛴다: ${notOn.join(", ")}`] : []];
-  const keep = [...result.ops.filter((o) => o.action === "keep-modified").map((o) => o.path), ...(result.projection?.ops ?? []).filter((o) => o.action === "keep-modified").map((o) => o.path)];
-  const { data, lines: lines3 } = report(ctx, l, { command: "remove", names: { ...names, notOn }, after, result, dryRun, featureDocs, notes, extra: { keep } });
-  if (keep.length) lines3.splice(lines3.length - 1, 0, "  고친 파일은 남겼다(lock 은 owner user). 필요 없으면 직접 지운다");
-  const human = keep.length > 0 || result.ops.some((o) => o.action === "conflict") || result.manifest?.action === "conflict" || needsHuman(result.projection ?? null, result.projectionFindings ?? []);
-  return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines: lines3 };
-}
-
 // src/commands/repair.ts
-var import_node_fs51 = __toESM(require("node:fs"));
-var import_node_path59 = __toESM(require("node:path"));
+var import_node_fs58 = __toESM(require("node:fs"));
+var import_node_path66 = __toESM(require("node:path"));
 var REPAIR_KINDS = ["missing", "drifted", "stale", "merge"];
 function full9(target, rel2) {
-  return import_node_path59.default.join(target, ...rel2.split("/"));
+  return import_node_path66.default.join(target, ...rel2.split("/"));
 }
 function parseOnly2(raw) {
   if (raw === void 0) return [...REPAIR_KINDS];
@@ -12466,7 +14029,7 @@ function parseOnly2(raw) {
   return only;
 }
 function survey(target, inst) {
-  const ancestors = new AncestorCheck(target, import_node_fs51.default.realpathSync(target));
+  const ancestors = new AncestorCheck(target, import_node_fs58.default.realpathSync(target));
   const out = { ok: 0, drifted: 0, skipped: 0, missing: [] };
   for (const e of inst.lock.entries) {
     if (ownerKind2(e.owner) !== "kit" || entryKind(e) !== "copy") {
@@ -12556,7 +14119,7 @@ function repairProjection(ctx, target, inst, only) {
 }
 function repairMerge(target, w, e, only) {
   const p = full9(target, w.path);
-  const cur = import_node_fs51.default.existsSync(p) && import_node_fs51.default.lstatSync(p).isFile() ? import_node_fs51.default.readFileSync(p, "utf8") : null;
+  const cur = import_node_fs58.default.existsSync(p) && import_node_fs58.default.lstatSync(p).isFile() ? import_node_fs58.default.readFileSync(p, "utf8") : null;
   const keys = e && Array.isArray(e.keys) ? e.keys : void 0;
   const lost = cur === null ? ["(파일 없음)"] : keys ? missingWith(w.kind, cur, keys, w.want) : [];
   if (lost.length === 0 && e || !chosen(only, cur === null ? "missing" : "merge")) return null;
@@ -12642,9 +14205,415 @@ var RESERVED = {
   deploy: "P24(배포 · 운영, 설계 14)",
   ops: "P24(배포 · 운영, 설계 14)",
   metrics: "P24(배포 · 운영, 설계 14)",
-  rules: "P24(배포 · 운영, 설계 14)",
-  sync: "P24(설계 10)"
+  rules: "P24(배포 · 운영, 설계 14)"
 };
+
+// src/modules/aidlc/sync.ts
+var import_node_fs60 = __toESM(require("node:fs"));
+var import_node_path68 = __toESM(require("node:path"));
+
+// src/modules/aidlc/adapter-v2.ts
+var import_node_fs59 = __toESM(require("node:fs"));
+var import_node_path67 = __toESM(require("node:path"));
+var READER_VERSION = "aidlc-v2";
+var UG = "inception/units-generation";
+function read(file) {
+  try {
+    return import_node_fs59.default.readFileSync(file, "utf8");
+  } catch {
+    return null;
+  }
+}
+function listInputs(folder) {
+  const out = [];
+  const walk4 = (rel2) => {
+    let ents;
+    try {
+      ents = import_node_fs59.default.readdirSync(import_node_path67.default.join(folder, rel2), { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of ents) {
+      if (e.name.startsWith(".aidlc-")) continue;
+      const child = rel2 ? `${rel2}/${e.name}` : e.name;
+      if (e.isDirectory()) walk4(child);
+      else if (e.isFile()) out.push(child);
+    }
+  };
+  walk4("");
+  return out.sort(byteCompare);
+}
+function inputSha(folder, files) {
+  return sha256(files.map((f) => `${f}\0${sha256(import_node_fs59.default.readFileSync(import_node_path67.default.join(folder, f)))}
+`).join(""));
+}
+function cells2(line) {
+  return line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
+}
+var isSep = (line) => /^\s*\|?\s*:?-{2,}/.test(line);
+function tableRows(text3, want) {
+  const lines3 = text3.split(/\r?\n/);
+  const rows = [];
+  for (let i = 0; i < lines3.length - 1; i += 1) {
+    const head = lines3[i].includes("|") ? cells2(lines3[i]).map((c) => c.toLowerCase().replace(/[*`]/g, "")) : null;
+    if (!head || !isSep(lines3[i + 1]) || !want.every((w) => head.includes(w))) continue;
+    for (let j = i + 2; j < lines3.length && lines3[j].includes("|"); j += 1) {
+      const row2 = cells2(lines3[j]);
+      rows.push(Object.fromEntries(head.map((h, k) => [h, (row2[k] ?? "").replace(/[*`]/g, "").trim()])));
+    }
+  }
+  return rows;
+}
+function parseEdgeBlock(text3) {
+  const m = /```ya?ml\s*\n([\s\S]*?)```/g;
+  let block2 = null;
+  for (let r = m.exec(text3); r; r = m.exec(text3)) if (/^units:\s*$/m.test(r[1])) block2 = r[1];
+  if (block2 === null) return null;
+  const edges = [];
+  let cur = null;
+  let listFor = null;
+  for (const raw of block2.split(/\r?\n/)) {
+    const line = raw.replace(/\s+#.*$/, "");
+    if (!line.trim() || /^units:\s*$/.test(line.trim())) continue;
+    const name = /^\s*-\s+name:\s*(\S+)\s*$/.exec(line);
+    if (name) {
+      cur = { name: name[1], kind: null, dependsOn: [] };
+      edges.push(cur);
+      listFor = null;
+      continue;
+    }
+    if (!cur) return null;
+    const kind = /^\s+kind:\s*(\S+)\s*$/.exec(line);
+    if (kind) {
+      cur.kind = kind[1];
+      listFor = null;
+      continue;
+    }
+    const dep = /^\s+depends_on:\s*(.*)$/.exec(line);
+    if (dep) {
+      const v = dep[1].trim();
+      if (v.startsWith("[")) {
+        cur.dependsOn = v.replace(/^\[|\]$/g, "").split(",").map((x) => x.trim()).filter(Boolean);
+        listFor = null;
+      } else listFor = "depends";
+      continue;
+    }
+    const item = /^\s+-\s+(\S+)\s*$/.exec(line);
+    if (item && listFor === "depends") cur.dependsOn.push(item[1]);
+  }
+  return edges;
+}
+var dirTitle = (name) => name.replace(/^u\d+-/, "").replace(/-/g, " ").trim() || name;
+function readAidlcIntent(folder) {
+  const missing = [];
+  const files = listInputs(folder);
+  const state = read(import_node_path67.default.join(folder, "aidlc-state.md"));
+  let title = null;
+  const desc = read(import_node_path67.default.join(folder, "project-description.json"));
+  if (desc !== null) {
+    try {
+      const j = JSON.parse(desc);
+      if (typeof j === "string" && j.trim()) title = j.trim();
+    } catch {
+      title = null;
+    }
+  }
+  if (title === null && state !== null) title = /^- \*\*Project\*\*:\s*(.+?)\s*$/m.exec(state)?.[1] ?? null;
+  if (title === null) missing.push("Intent 제목(project-description.json 또는 aidlc-state.md 의 Project 줄)");
+  const scope = state !== null ? /^- \*\*Scope\*\*:\s*(\S+)/m.exec(state)?.[1] ?? null : null;
+  const dep = read(import_node_path67.default.join(folder, UG, "unit-of-work-dependency.md"));
+  const uow = read(import_node_path67.default.join(folder, UG, "unit-of-work.md"));
+  const edges = dep === null ? null : parseEdgeBlock(dep);
+  if (dep === null) missing.push(`${UG}/unit-of-work-dependency.md`);
+  else if (edges === null || edges.length === 0) missing.push(`${UG}/unit-of-work-dependency.md 의 yaml units 블록`);
+  const table = uow === null ? [] : tableRows(uow, ["unit id", "directory"]);
+  if (uow === null) missing.push(`${UG}/unit-of-work.md`);
+  const byDir = new Map(table.map((r) => [r.directory ?? "", r]));
+  const titleKey = ["name", "title", "unit", "unit name"].find((k) => table[0] && k in table[0]);
+  const mapText = read(import_node_path67.default.join(folder, UG, "unit-of-work-story-map.md"));
+  const idToName = /* @__PURE__ */ new Map();
+  for (const r of table) if (r["unit id"] && r.directory) idToName.set(r["unit id"], r.directory);
+  const storyUnits = /* @__PURE__ */ new Map();
+  if (mapText !== null) {
+    for (const line of mapText.split(/\r?\n/)) {
+      if (!line.includes("|")) continue;
+      const c = cells2(line).map((x) => x.replace(/[*`]/g, ""));
+      const id = c[0] ?? "";
+      if (!/^(US\d+\.\d+|FR\d+(?:\.\d+)?|NFR\d+(?:\.\d+)?)$/.test(id)) continue;
+      const targets = (c[1] ?? "").split(/[;,]/).map((x) => x.trim()).filter(Boolean).map((x) => idToName.get(x) ?? x);
+      storyUnits.set(id, [...storyUnits.get(id) ?? [], ...targets]);
+    }
+  }
+  const storiesText = read(import_node_path67.default.join(folder, "inception/user-stories/stories.md"));
+  const stories = [];
+  const seen = /* @__PURE__ */ new Set();
+  if (storiesText !== null) {
+    for (const line of storiesText.split(/\r?\n/)) {
+      const m = /^\s*(?:#{1,6}\s+|[-*]\s+|\|\s*)?\**(US\d+\.\d+)\**[\s:|—–-]*(.*)$/.exec(line);
+      if (m && !seen.has(m[1])) {
+        seen.add(m[1]);
+        stories.push({ id: m[1], title: m[2].replace(/[|*`]/g, "").trim().slice(0, 120) });
+      }
+    }
+  }
+  const useUs = stories.length > 0;
+  if (!useUs) {
+    for (const id of storyUnits.keys()) if (!seen.has(id)) stories.push({ id, title: "" });
+  }
+  const kept = (id) => useUs ? id.startsWith("US") : true;
+  const units = (edges ?? []).map((e) => {
+    const row2 = byDir.get(e.name);
+    const mine = [...storyUnits].filter(([id, us]) => kept(id) && us[0] === e.name).map(([id]) => id);
+    return {
+      name: e.name,
+      sourceId: row2?.["unit id"] || e.name,
+      kind: e.kind,
+      title: titleKey && row2?.[titleKey] || dirTitle(e.name),
+      dependsOn: e.dependsOn,
+      stories: mine
+    };
+  });
+  const shared = [...storyUnits].filter(([id, us]) => kept(id) && new Set(us).size > 1).map(([story, us]) => ({ story, units: [...new Set(us)] }));
+  for (const u of units) for (const d of u.dependsOn) if (!units.some((x) => x.name === d)) missing.push(`Unit ${u.name} 의 depends_on ${d} 가 Unit 목록에 없다`);
+  let gateApprovals = 0;
+  for (const f of files.filter((x) => x.startsWith("audit/") && x.endsWith(".md"))) {
+    gateApprovals += (read(import_node_path67.default.join(folder, f)) ?? "").split(/\r?\n/).filter((l) => /^\*\*Event\*\*:\s*GATE_APPROVED\b/.test(l)).length;
+  }
+  return { folder, title, scope, units, stories, shared, inputSha256: inputSha(folder, files), fileCount: files.length, missing, gateApprovals };
+}
+
+// src/modules/aidlc/sync.ts
+var INTENTS = ".agents/docs/intents";
+var LABEL = /^\d{6}-(.+)$/;
+var FOLDER2 = /^([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5})-(.+)$/;
+var INT_KEY = /^INT-([1-9][0-9]{0,5})$/;
+var KEBAB = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+var isObj9 = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
+function readJson4(file) {
+  try {
+    const j = JSON.parse(import_node_fs60.default.readFileSync(file, "utf8"));
+    return isObj9(j) ? j : null;
+  } catch {
+    return null;
+  }
+}
+function candidates(root) {
+  const out = [];
+  const spaces = import_node_path68.default.join(root, "aidlc", "spaces");
+  if (!isDir(spaces)) return out;
+  for (const space of import_node_fs60.default.readdirSync(spaces).sort()) {
+    const intents = import_node_path68.default.join(spaces, space, "intents");
+    if (!isDir(intents)) continue;
+    for (const dir of import_node_fs60.default.readdirSync(intents).sort()) {
+      const abs = import_node_path68.default.join(intents, dir);
+      if (isDir(abs) && import_node_fs60.default.existsSync(import_node_path68.default.join(abs, "aidlc-state.md"))) out.push({ space, dir, abs });
+    }
+  }
+  return out;
+}
+function spaceOf(root, abs) {
+  const m = /aidlc\/spaces\/([^/]+)\/intents\/([^/]+)\/?$/.exec(import_node_path68.default.relative(root, abs).split(import_node_path68.default.sep).join("/"));
+  return { space: m?.[1] ?? "default", dir: m?.[2] ?? import_node_path68.default.basename(abs) };
+}
+function nextKey(root, base, env) {
+  const nums = [];
+  const add = (name) => {
+    const m = FOLDER2.exec(name);
+    const k = m ? INT_KEY.exec(m[1]) : null;
+    if (k) nums.push(Number(k[1]));
+  };
+  const dir = import_node_path68.default.join(root, INTENTS);
+  if (isDir(dir)) for (const n of import_node_fs60.default.readdirSync(dir)) add(n);
+  const listed = git(["-C", root, "ls-tree", "-d", "--name-only", `${base}:${INTENTS}`], env);
+  if (listed.status === 0) for (const n of listed.stdout.split(/\s+/).filter(Boolean)) add(n);
+  return `INT-${Math.max(0, ...nums) + 1}`;
+}
+function existingLink(root, aidlcPath) {
+  const base = import_node_path68.default.join(root, INTENTS);
+  if (!isDir(base)) return null;
+  for (const name of import_node_fs60.default.readdirSync(base).sort()) {
+    const link = readJson4(import_node_path68.default.join(base, name, "intent.json"));
+    const a = link && isObj9(link.aidlc) ? link.aidlc : null;
+    const m = FOLDER2.exec(name);
+    if (a && m && String(a.path).replace(/\/$/, "") === aidlcPath.replace(/\/$/, "")) return { folder: name, key: m[1] };
+  }
+  return null;
+}
+function layers(units) {
+  const by = new Map(units.map((u) => [u.name, u]));
+  const memo = /* @__PURE__ */ new Map();
+  const depth = (n, stack) => {
+    if (memo.has(n)) return memo.get(n);
+    if (stack.includes(n)) return 1;
+    const u = by.get(n);
+    const d = 1 + Math.max(0, ...(u?.dependsOn ?? []).filter((x) => by.has(x)).map((x) => depth(x, [...stack, n])));
+    memo.set(n, d);
+    return d;
+  };
+  for (const u of units) depth(u.name, []);
+  return memo;
+}
+var areaOf = (name) => {
+  const a = name.replace(/^u\d+-/, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+  return KEBAB.test(a) ? a : "unit";
+};
+function buildUnits(r, key, aidlcPath, existing2) {
+  const old = (existing2 && Array.isArray(existing2.units) ? existing2.units : []).filter(isObj9);
+  const bySource = new Map(old.filter((u) => typeof u.sourceId === "string").map((u) => [u.sourceId, u]));
+  let max = Math.max(0, ...old.map((u) => Number(/^U-(\d+)$/.exec(String(u.id))?.[1] ?? 0)));
+  const idOf = /* @__PURE__ */ new Map();
+  for (const u of r.units) {
+    const prev = bySource.get(u.sourceId);
+    idOf.set(u.name, prev ? String(prev.id) : `U-${max += 1}`);
+  }
+  const depth = layers(r.units);
+  const live = new Set(r.units.map((u) => u.sourceId));
+  const units = r.units.map((u) => {
+    const prev = bySource.get(u.sourceId);
+    return {
+      id: idOf.get(u.name),
+      name: u.name,
+      title: u.title,
+      kind: u.kind === "spec" ? "contract" : "feature",
+      area: areaOf(u.name),
+      repo: null,
+      stories: u.stories,
+      nfr: [],
+      risks: [],
+      dependsOn: u.dependsOn.map((d) => idOf.get(d)).filter(Boolean),
+      provides: [],
+      consumes: [],
+      order: depth.get(u.name) ?? 1,
+      issue: prev && typeof prev.issue === "string" ? prev.issue : null,
+      planned: true,
+      sourceId: u.sourceId
+    };
+  });
+  for (const u of old) if (typeof u.sourceId === "string" && !live.has(u.sourceId)) units.push({ ...u, planned: false });
+  units.sort((a, b) => Number(/^U-(\d+)$/.exec(String(a.id))?.[1]) - Number(/^U-(\d+)$/.exec(String(b.id))?.[1]));
+  const planned = units.filter((u) => u.planned !== false);
+  return {
+    schema: "harness-kit.units/v1",
+    intent: { key, title: r.title, doc: "intent.json" },
+    source: { kind: "aidlc", path: aidlcPath, inputSha256: r.inputSha256 },
+    decomposition: { stories: r.stories.length, domains: 0, userTypes: 0, integrations: 0, split: planned.length > 1, reasons: planned.length > 1 ? ["aidlc"] : [] },
+    units,
+    unassigned: []
+  };
+}
+var text2 = (o) => `${JSON.stringify(o, null, 2)}
+`;
+function toolVersion(ctx, root) {
+  const r = runCmd(ctx.io, root, ["aidlc", "--version"], { timeout: 15e3 });
+  return r.missing ? null : parseVersion(`${r.stdout}
+${r.stderr}`);
+}
+function runSyncAidlc(ctx) {
+  const root = targetOf(ctx);
+  const check3 = bool(ctx.values, "check");
+  const metaRead = readMeta(import_node_path68.default.join(root, META_REL));
+  if (metaRead.status !== "ok") throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL}): ${root}`, "설치는 harness-kit init");
+  const meta = metaRead.meta;
+  if (!meta.modules.includes("aidlc")) throw new CliError(EXIT.STATE, "aidlc 모듈이 꺼져 있다", "harness-kit add aidlc");
+  const flow2 = isObj9(meta.flow) ? meta.flow : {};
+  const base = isObj9(meta.git) && typeof meta.git.base === "string" ? meta.git.base : "develop";
+  const asked = str(ctx.values, "intent");
+  const all = candidates(root);
+  let picks;
+  if (asked !== void 0) {
+    const abs = import_node_path68.default.resolve(root, asked);
+    if (!isDir(abs)) throw usageError(`AI-DLC Intent 폴더가 없다: ${asked}`, "aidlc/spaces/<space>/intents/<폴더>");
+    const { space, dir } = spaceOf(root, abs);
+    picks = [{ space, dir, abs }];
+  } else picks = all;
+  if (picks.length === 0) {
+    return { code: EXIT.OK, data: { command: "sync", tool: "aidlc", target: root, check: check3, intents: [] }, lines: ["harness-kit sync aidlc — AI-DLC Intent 가 없다(aidlc/spaces/*/intents/*/aidlc-state.md)"] };
+  }
+  const version = toolVersion(ctx, root);
+  const adaptedAt = ctx.io.env.HARNESS_KIT_NOW ?? (/* @__PURE__ */ new Date()).toISOString();
+  const results = [];
+  let firstFail = null;
+  for (const p of picks) {
+    const aidlcPath = `${import_node_path68.default.relative(root, p.abs).split(import_node_path68.default.sep).join("/")}/`;
+    const r = readAidlcIntent(p.abs);
+    const one = { intent: p.dir, key: null, folder: null, action: "pending", units: r.units.length, stories: r.stories.length, missing: r.missing, notes: [], inputSha256: r.inputSha256 };
+    if (flow2.design !== "aidlc") one.notes.push("flow.design 이 aidlc 가 아니다(harness-kit add aidlc 가 설정한다)");
+    if (r.missing.length) {
+      if (asked !== void 0) firstFail ??= new CliError(EXIT.USAGE, `${p.dir}: 필수 항목이 없다 — ${r.missing.join(" · ")}`, "AI-DLC 에서 Units Generation 단계를 마친 뒤 다시 한다. 추측해서 채우지 않는다");
+      results.push(one);
+      continue;
+    }
+    const link = existingLink(root, aidlcPath);
+    const keyFlag = str(ctx.values, "key");
+    let key = link?.key ?? keyFlag ?? null;
+    if (key === null) {
+      if (meta.modules.includes("jira-workflow")) throw usageError("jira-workflow 모듈이 켜져 있다 — Intent 키는 Jira 에픽 키다", "--key <에픽 키> 로 준다");
+      key = nextKey(root, base, ctx.io.env);
+    }
+    const label = (LABEL.exec(p.dir)?.[1] ?? p.dir).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "intent";
+    const folderName = link?.folder ?? `${key}-${label}`;
+    const folderAbs = import_node_path68.default.join(root, INTENTS, folderName);
+    const linkFile = import_node_path68.default.join(folderAbs, "intent.json");
+    const unitsFile = import_node_path68.default.join(folderAbs, "units.json");
+    const oldLink = readJson4(linkFile);
+    const oldUnits = readJson4(unitsFile);
+    const sameInput = oldLink !== null && isObj9(oldLink.adapter) && oldLink.adapter.inputSha256 === r.inputSha256;
+    one.key = key;
+    one.folder = `${INTENTS}/${folderName}`;
+    const units = buildUnits(r, key, aidlcPath, oldUnits);
+    const unitsText = text2(units);
+    const unitsSame = import_node_fs60.default.existsSync(unitsFile) && import_node_fs60.default.readFileSync(unitsFile, "utf8") === unitsText;
+    for (const s of r.shared) one.notes.push(`스토리 ${s.story} 가 Unit 여럿에 적혀 있다(${s.units.join(", ")}) — 킷은 한 Unit 에만 둔다: ${s.units[0]}`);
+    if (r.gateApprovals) one.notes.push(`AI-DLC 승인 기록 ${r.gateApprovals}건: 승인자(이메일)가 기록에 없어 approvals.md 로 옮기지 않았다 — 사람이 관리 페이지 · harness-kit approve 로 승인한다`);
+    if (sameInput && unitsSame) {
+      one.action = "same";
+      results.push(one);
+      continue;
+    }
+    if (check3) {
+      one.action = "check-diff";
+      results.push(one);
+      continue;
+    }
+    const linkOut = {
+      schema: "harness-kit.intent-link/v1",
+      key,
+      title: r.title,
+      source: "aidlc",
+      aidlc: { space: p.space, intent: p.dir, path: aidlcPath, version },
+      adapter: { name: "harness-kit/aidlc", version: VERSION, reader: READER_VERSION, inputSha256: r.inputSha256, adaptedAt },
+      stories: r.stories
+    };
+    import_node_fs60.default.mkdirSync(folderAbs, { recursive: true });
+    if (!unitsSame) writeFileAtomic(unitsFile, Buffer.from(unitsText, "utf8"), false);
+    writeFileAtomic(linkFile, Buffer.from(text2(linkOut), "utf8"), false);
+    one.action = oldLink === null ? "created" : "updated";
+    results.push(one);
+  }
+  const diff = results.some((o) => o.action === "check-diff");
+  const lines3 = [`harness-kit sync aidlc${check3 ? " --check" : ""} — ${root}`];
+  for (const o of results) {
+    if (o.action === "pending") lines3.push(`  ${o.intent}: 아직 가져올 수 없다 — ${o.missing.join(" · ")}`);
+    else lines3.push(`  ${o.intent} → ${o.folder}: ${o.action === "same" ? "변화 없음" : o.action === "check-diff" ? "달라졌다(쓰지 않았다)" : o.action === "created" ? "만들었다" : "갱신했다"} · Unit ${o.units} · 스토리 ${o.stories}`);
+    for (const n of o.notes) lines3.push(`    · ${n}`);
+  }
+  if (firstFail) throw firstFail;
+  return { code: check3 && diff ? EXIT.CHECK : EXIT.OK, data: { command: "sync", tool: "aidlc", target: root, check: check3, intents: results }, lines: lines3 };
+}
+
+// src/commands/sync.ts
+var LATER2 = {
+  units: "HK-20b(multi-harness, 설계 10 §3.5)",
+  jira: "HK-20b(jira-workflow, 설계 10 §3.4)"
+};
+function runSync(ctx) {
+  const [what, ...extra] = ctx.positionals;
+  if (!what) throw usageError("sync: 무엇을 가져올지 없다", "harness-kit sync aidlc [--intent <폴더>] [--check]");
+  if (extra.length) throw usageError(`sync: 위치 인자가 많다: ${extra.join(" ")}`);
+  if (Object.hasOwn(LATER2, what)) throw usageError(`'sync ${what}' 는 아직 없다 — ${LATER2[what]}에서 제공한다`);
+  if (what !== "aidlc") throw usageError(`sync: 모르는 대상 ${what}`, "sync aidlc");
+  return runSyncAidlc(ctx);
+}
 
 // src/commands/skills.ts
 var STAGE_KO = { design: "설계", implement: "구현", verify: "검증", docs: "반영", ops: "운영" };
@@ -12684,7 +14653,7 @@ async function runSkills(ctx) {
   if (bool(v, "no-user")) query.user = "0";
   return run3(ctx, "GET", "/skills", { query }, (d) => skillLines(d, str(v, "stage")));
 }
-function fmt(n) {
+function fmt2(n) {
   const trim = (x) => x.toFixed(1).replace(/\.0$/, "");
   return n >= 1e6 ? `${trim(n / 1e6)}M` : n >= 1e3 ? `${trim(n / 1e3)}K` : String(n);
 }
@@ -12707,7 +14676,7 @@ async function runUsage(ctx) {
       if (d.enabled === false) return ['대화 기록 읽기가 꺼져 있다 — ~/.config/harness-kit/config.json 에 "history": "on"'];
       const s = d.session;
       if (!s) return ["이 리포의 최근 세션 기록이 없다"];
-      return [`${s.id} · ${s.model ?? "모델 모름"} · 컨텍스트 ${fmt(s.used)}${s.window ? ` / ${fmt(s.window)} (${Math.round((s.ratio ?? 0) * 100)}%)` : " (창 크기: 기록에 없다)"}${s.warn ? " · 알림 기준을 넘었다" : ""}${s.issue ? ` · ${s.issue}` : ""}`];
+      return [`${s.id} · ${s.model ?? "모델 모름"} · 컨텍스트 ${fmt2(s.used)}${s.window ? ` / ${fmt2(s.window)} (${Math.round((s.ratio ?? 0) * 100)}%)` : " (창 크기: 기록에 없다)"}${s.warn ? " · 알림 기준을 넘었다" : ""}${s.issue ? ` · ${s.issue}` : ""}`];
     });
   }
   const query = {};
@@ -12723,11 +14692,11 @@ async function runUsage(ctx) {
     const issues = d.byIssue ?? [];
     const cache = d.cache;
     return [
-      `토큰 ${fmt(t.sum)} (입력 ${fmt(t.input)} · 출력 ${fmt(t.output)} · 캐시 읽기 ${fmt(t.cacheRead)} · 캐시 쓰기 ${fmt(t.cacheWrite)}) · 요청 ${t.requests}회 · 캐시 읽기 비율 ${cache.average === null ? "-" : `${Math.round(cache.average * 100)}%`}`,
+      `토큰 ${fmt2(t.sum)} (입력 ${fmt2(t.input)} · 출력 ${fmt2(t.output)} · 캐시 읽기 ${fmt2(t.cacheRead)} · 캐시 쓰기 ${fmt2(t.cacheWrite)}) · 요청 ${t.requests}회 · 캐시 읽기 비율 ${cache.average === null ? "-" : `${Math.round(cache.average * 100)}%`}`,
       "하루 토큰",
-      ...daily.map((x) => `  ${x.date} ${fmt(x.sum)}`),
+      ...daily.map((x) => `  ${x.date} ${fmt2(x.sum)}`),
       "이슈별 토큰",
-      ...issues.slice(0, 10).map((x) => `  ${pad(x.issue, 14)} ${fmt(x.sum)}`),
+      ...issues.slice(0, 10).map((x) => `  ${pad(x.issue, 14)} ${fmt2(x.sum)}`),
       "읽는 곳",
       ...srcLines
     ];
@@ -12743,8 +14712,8 @@ async function runHistory(ctx) {
 }
 
 // src/commands/status.ts
-var import_node_fs52 = __toESM(require("node:fs"));
-var import_node_path60 = __toESM(require("node:path"));
+var import_node_fs61 = __toESM(require("node:fs"));
+var import_node_path69 = __toESM(require("node:path"));
 function registryProjects(ctx) {
   const home = homeOf(ctx);
   return new Projects(() => readRegistry(home, ctx.io.env), { env: ctx.io.env, home, readOnly: true, multi: true, deps: dashboardDeps() });
@@ -12821,8 +14790,8 @@ async function runFlow(ctx) {
   const remove = str(ctx.values, "remove");
   if (add === void 0 && remove === void 0) return run3(ctx, "GET", "/flow/gates", {}, (d) => [`게이트: ${d.gates.join(" → ")}`, `바닥(줄일 수 없음): ${d.floor.join(" · ")}`]);
   const p = await openProject(ctx);
-  const file = import_node_path60.default.join(p.root, ".agents/harness-kit.json");
-  const meta = JSON.parse(import_node_fs52.default.readFileSync(file, "utf8"));
+  const file = import_node_path69.default.join(p.root, ".agents/harness-kit.json");
+  const meta = JSON.parse(import_node_fs61.default.readFileSync(file, "utf8"));
   const flow2 = meta.flow && typeof meta.flow === "object" ? meta.flow : {};
   let gates = p.gates();
   if (remove !== void 0) {
@@ -12838,15 +14807,15 @@ async function runFlow(ctx) {
   }
   const next = { ...meta, flow: { ...flow2, gates } };
   const tmp = `${file}.${process.pid}.tmp`;
-  import_node_fs52.default.writeFileSync(tmp, formatJson(next));
-  import_node_fs52.default.renameSync(tmp, file);
+  import_node_fs61.default.writeFileSync(tmp, formatJson(next));
+  import_node_fs61.default.renameSync(tmp, file);
   return { code: EXIT.OK, data: { gates, floor: GATE_FLOOR, file: ".agents/harness-kit.json" }, lines: [`flow.gates: ${gates.join(" → ")}`, "팀 설정이다. MR 로 올린다"] };
 }
 
 // src/commands/uninstall.ts
-var import_node_child_process10 = require("node:child_process");
-var import_node_fs53 = __toESM(require("node:fs"));
-var import_node_path61 = __toESM(require("node:path"));
+var import_node_child_process11 = require("node:child_process");
+var import_node_fs62 = __toESM(require("node:fs"));
+var import_node_path70 = __toESM(require("node:path"));
 var ACTIONS2 = ["delete", "keep-modified", "absent", "keep-user", "keep-external", "keep-pack", "unmerge"];
 var COUNT_ONLY = /* @__PURE__ */ new Set(["absent", "keep-user", "keep-external", "keep-pack"]);
 var HOOKS_PATH = "scripts/git-hooks";
@@ -12861,12 +14830,12 @@ function planMergeEntry(p, e) {
     p.ops.push({ path: e.path, owner: e.owner, action: "keep-modified", reason: "병합 파일을 해석하지 못했다" });
     return;
   }
-  const text2 = cur.bytes.toString("utf8");
+  const text3 = cur.bytes.toString("utf8");
   const want = fullMergeWant(kind, p.spec, p.tokens, loadSources(new FsView(p.target)));
-  const r = unmergeWith(kind, text2, mergeKeysOf(e, kind, want), want);
+  const r = unmergeWith(kind, text3, mergeKeysOf(e, kind, want), want);
   if (!r.ok) p.ops.push({ path: e.path, owner: e.owner, action: "keep-modified", reason: r.reason });
   else if (r.empty && e.createdByKit === true) p.ops.push({ path: e.path, owner: e.owner, action: "delete", reason: "킷 키만 있던 병합 파일" });
-  else p.ops.push({ path: e.path, owner: e.owner, action: "unmerge", reason: "킷 키만 뺐다", ...r.text === text2 ? {} : { text: r.text } });
+  else p.ops.push({ path: e.path, owner: e.owner, action: "unmerge", reason: "킷 키만 뺐다", ...r.text === text3 ? {} : { text: r.text } });
 }
 function mergeKeysOf(e, kind, want) {
   if (Array.isArray(e.keys)) return e.keys;
@@ -12887,7 +14856,7 @@ function planProjectionEntry(p, e) {
   if (!dir && cur.kind !== "other" && current3(p, `${e.path}.new`).kind === "file") p.ops.push({ path: `${e.path}.new`, owner: e.owner, action: "delete", reason: "update 가 둔 .new" });
 }
 function full10(target, rel2) {
-  return import_node_path61.default.join(target, ...rel2.split("/"));
+  return import_node_path70.default.join(target, ...rel2.split("/"));
 }
 function current3(p, rel2) {
   if (p.ancestors.state(rel2) === "blocked") return { kind: "other", what: BLOCKED };
@@ -12930,9 +14899,9 @@ function planManifest(p, inst) {
   else p.ops.push({ path: MANIFEST_PATH, owner: "kit", action: "keep-modified", reason: "킷 판과 다르다" });
 }
 function uninstallSpec(ctx, target) {
-  const installed = import_node_path61.default.join(target, "scripts/harness/projection.json");
+  const installed = import_node_path70.default.join(target, "scripts/harness/projection.json");
   try {
-    if (import_node_fs53.default.existsSync(installed)) return parseSpec(import_node_fs53.default.readFileSync(installed, "utf8"));
+    if (import_node_fs62.default.existsSync(installed)) return parseSpec(import_node_fs62.default.readFileSync(installed, "utf8"));
     const { io: io2 } = ctx;
     return loadSpecOrNull(locateTemplates({ flag: str(ctx.values, "templates"), env: io2.env, cliFile: io2.cliFile, cwd: io2.cwd, version: VERSION }).dir);
   } catch (err) {
@@ -12941,18 +14910,18 @@ function uninstallSpec(ctx, target) {
   }
 }
 function planNotice2(p) {
-  const file = import_node_path61.default.join(p.target, ...NOTICE_REL.split("/"));
-  let text2;
+  const file = import_node_path70.default.join(p.target, ...NOTICE_REL.split("/"));
+  let text3;
   try {
-    text2 = import_node_fs53.default.readFileSync(file, "utf8");
+    text3 = import_node_fs62.default.readFileSync(file, "utf8");
   } catch {
     return;
   }
-  if (isKitNotice(text2)) p.ops.push({ path: NOTICE_REL, owner: "kit", action: "delete", reason: "업그레이드 공지" });
+  if (isKitNotice(text3)) p.ops.push({ path: NOTICE_REL, owner: "kit", action: "delete", reason: "업그레이드 공지" });
 }
 function buildUninstall(ctx, target, inst, keepPacks, keepState, ambiguous) {
   const spec = inst.lock.entries.some((e) => e.op === "merge") ? uninstallSpec(ctx, target) : null;
-  const p = { target, ancestors: new AncestorCheck(target, import_node_fs53.default.realpathSync(target)), keepPacks, ops: [], ambiguous, spec, tokens: inst.meta.tokens };
+  const p = { target, ancestors: new AncestorCheck(target, import_node_fs62.default.realpathSync(target)), keepPacks, ops: [], ambiguous, spec, tokens: inst.meta.tokens };
   for (const e of inst.lock.entries) planEntry(p, e);
   planManifest(p, inst);
   planNotice2(p);
@@ -12960,17 +14929,17 @@ function buildUninstall(ctx, target, inst, keepPacks, keepState, ambiguous) {
   return p.ops;
 }
 function unhookGit(target, env, dryRun) {
-  const git3 = (...args) => (0, import_node_child_process10.spawnSync)("git", ["-C", target, ...args], { env: gitEnv(env), encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 3e4 });
+  const git3 = (...args) => (0, import_node_child_process11.spawnSync)("git", ["-C", target, ...args], { env: gitEnv(env), encoding: "utf8", stdio: ["ignore", "pipe", "pipe"], timeout: 3e4 });
   const top = git3("rev-parse", "--show-toplevel");
   if (top.error) return { status: top.error.code === "ENOENT" ? "no-git" : "failed" };
   if (top.status !== 0) return { status: "none" };
   let topReal;
   try {
-    topReal = import_node_fs53.default.realpathSync(top.stdout.trim());
+    topReal = import_node_fs62.default.realpathSync(top.stdout.trim());
   } catch {
     return { status: "none" };
   }
-  if (topReal !== import_node_fs53.default.realpathSync(target)) return { status: "none" };
+  if (topReal !== import_node_fs62.default.realpathSync(target)) return { status: "none" };
   const get = git3("config", "--local", "--get", "core.hooksPath");
   if (get.status !== 0) return { status: "none" };
   const value2 = get.stdout.trim();
@@ -12984,7 +14953,7 @@ function applyUninstall(target, inst, ops, unhook) {
   try {
     for (const o of ops) {
       current4 = o.path;
-      if (o.action === "unmerge" && o.text !== void 0) writeFileAtomic(import_node_path61.default.join(target, ...o.path.split("/")), Buffer.from(o.text, "utf8"), false);
+      if (o.action === "unmerge" && o.text !== void 0) writeFileAtomic(import_node_path70.default.join(target, ...o.path.split("/")), Buffer.from(o.text, "utf8"), false);
       if (o.action !== "delete" || state.has(o.path)) continue;
       if (o.dir) removeTarget(target, o.path, true);
       else removeFile(target, o.path);
@@ -13083,8 +15052,8 @@ async function runUninstall(ctx) {
 }
 
 // src/commands/pack.ts
-var import_node_fs54 = __toESM(require("node:fs"));
-var import_node_path62 = __toESM(require("node:path"));
+var import_node_fs63 = __toESM(require("node:fs"));
+var import_node_path71 = __toESM(require("node:path"));
 var TEST_PY = `"""팩 자체 검사(설계 04 §3.2 검증) — 이 폴더에서 python3 -m unittest tests.test_pack 으로 돈다. 팩과 함께 설치하지 않는다."""
 
 import json
@@ -13148,16 +15117,16 @@ function classify(dest, provides, name) {
   return true;
 }
 function filesUnder(target, rel2) {
-  const abs = import_node_path62.default.join(target, ...rel2.split("/"));
-  const st = import_node_fs54.default.lstatSync(abs);
+  const abs = import_node_path71.default.join(target, ...rel2.split("/"));
+  const st = import_node_fs63.default.lstatSync(abs);
   if (st.isSymbolicLink()) throw usageError(`--from 은 링크를 받지 않는다: ${rel2}`);
   if (st.isFile()) return [rel2];
-  return import_node_fs54.default.readdirSync(abs).sort(byteCompare).flatMap((n) => filesUnder(target, `${rel2}/${n}`));
+  return import_node_fs63.default.readdirSync(abs).sort(byteCompare).flatMap((n) => filesUnder(target, `${rel2}/${n}`));
 }
 function pickItem(target, rel2, id, key) {
   let doc;
   try {
-    doc = JSON.parse(import_node_fs54.default.readFileSync(import_node_path62.default.join(target, ...rel2.split("/")), "utf8"));
+    doc = JSON.parse(import_node_fs63.default.readFileSync(import_node_path71.default.join(target, ...rel2.split("/")), "utf8"));
   } catch (err) {
     throw usageError(`--from ${rel2}#${id}: 읽을 수 없다(${err instanceof Error ? err.message : String(err)})`);
   }
@@ -13174,10 +15143,10 @@ function runPack(ctx) {
   const dirFlag = str(ctx.values, "dir");
   if (!dirFlag) throw usageError("pack new 는 --dir <경로> 가 필요하다(빈 폴더나 없는 경로)");
   const target = targetOf(ctx);
-  const dir = import_node_path62.default.resolve(ctx.io.cwd, dirFlag);
-  const relToRepo = import_node_path62.default.relative(import_node_path62.default.join(target, ".agents"), dir);
-  if (!relToRepo.startsWith("..") && !import_node_path62.default.isAbsolute(relToRepo)) throw usageError(`--dir 은 리포 .agents/ 안일 수 없다: ${dir}`);
-  if (import_node_fs54.default.existsSync(dir) && (!import_node_fs54.default.statSync(dir).isDirectory() || import_node_fs54.default.readdirSync(dir).length)) throw usageError(`--dir 은 빈 폴더나 없는 경로다: ${dir}`);
+  const dir = import_node_path71.default.resolve(ctx.io.cwd, dirFlag);
+  const relToRepo = import_node_path71.default.relative(import_node_path71.default.join(target, ".agents"), dir);
+  if (!relToRepo.startsWith("..") && !import_node_path71.default.isAbsolute(relToRepo)) throw usageError(`--dir 은 리포 .agents/ 안일 수 없다: ${dir}`);
+  if (import_node_fs63.default.existsSync(dir) && (!import_node_fs63.default.statSync(dir).isDirectory() || import_node_fs63.default.readdirSync(dir).length)) throw usageError(`--dir 은 빈 폴더나 없는 경로다: ${dir}`);
   const inst = loadInstalled(target, "pack new");
   const loc = locateTemplates({ flag: str(ctx.values, "templates"), env: ctx.io.env, cliFile: ctx.io.cliFile, cwd: ctx.io.cwd, version: VERSION });
   const layout2 = loadLayout(loc.dir);
@@ -13211,7 +15180,7 @@ function runPack(ctx) {
       } else throw usageError(`--from <파일>#<id> 는 .agents/hooks.json · hooks.d · verify-checks.json · verify-checks.d 에만 쓴다: ${raw}`);
       continue;
     }
-    if (!import_node_fs54.default.existsSync(import_node_path62.default.join(target, ...rel2.split("/")))) throw usageError(`--from 파일이 없다: ${rel2}`);
+    if (!import_node_fs63.default.existsSync(import_node_path71.default.join(target, ...rel2.split("/")))) throw usageError(`--from 파일이 없다: ${rel2}`);
     for (const f of filesUnder(target, rel2)) {
       const packPath = reverseMap(layout2, f);
       if (!packPath) throw usageError(`팩이 가질 수 없는 경로다(하네스 파일 · 루트 문서): ${f}`, "원본(.agents/ · scripts/)을 준다");
@@ -13219,8 +15188,8 @@ function runPack(ctx) {
         overrides.push(f);
         warnings.push(`${f} 는 킷 경로다 — overrides 에 넣었다(킷 판을 덮는다)`);
       } else if (!classify(f, provides, name)) throw usageError(`provides 로 나눌 수 없는 경로다: ${f}`, "규칙 · 스킬 · 역할 · 가드 · scripts · _spec-templates · tools/<팩>/ 만 옮긴다");
-      const abs = import_node_path62.default.join(target, ...f.split("/"));
-      files.set(packPath, { data: import_node_fs54.default.readFileSync(abs), executable: (import_node_fs54.default.statSync(abs).mode & 73) !== 0 });
+      const abs = import_node_path71.default.join(target, ...f.split("/"));
+      files.set(packPath, { data: import_node_fs63.default.readFileSync(abs), executable: (import_node_fs63.default.statSync(abs).mode & 73) !== 0 });
     }
   }
   const range = str(ctx.values, "kit-range") ?? defaultRange();
@@ -13242,8 +15211,8 @@ function runPack(ctx) {
     ...files
   ]);
   try {
-    import_node_fs54.default.mkdirSync(import_node_path62.default.join(dir, "common"), { recursive: true });
-    for (const [rel2, f] of out) writeFileAtomic(import_node_path62.default.join(dir, ...rel2.split("/")), f.data, f.executable);
+    import_node_fs63.default.mkdirSync(import_node_path71.default.join(dir, "common"), { recursive: true });
+    for (const [rel2, f] of out) writeFileAtomic(import_node_path71.default.join(dir, ...rel2.split("/")), f.data, f.executable);
   } catch (err) {
     throw new CliError(EXIT.ENV, `팩 골격을 쓰지 못했다: ${err instanceof Error ? err.message : String(err)}`);
   }
@@ -13260,8 +15229,8 @@ function runPack(ctx) {
 }
 
 // src/commands/work.ts
-var import_node_fs55 = __toESM(require("node:fs"));
-var import_node_path63 = __toESM(require("node:path"));
+var import_node_fs64 = __toESM(require("node:fs"));
+var import_node_path72 = __toESM(require("node:path"));
 var ISSUE_ROLE = /^([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5}):([a-z][a-z0-9-]*)$/;
 async function runDispatch(ctx) {
   const [sub2, id, extra] = ctx.positionals;
@@ -13277,18 +15246,18 @@ async function runDispatch(ctx) {
   if (marker) throw new CliError(EXIT.STATE, `에이전트 세션에서는 다른 세션에 작업 요청을 보내지 않는다(판정: ${marker}) — 받는 세션이 턴을 돌려 토큰을 쓴다`, "사람이 자기 터미널이나 관리 페이지에서 고른다");
   const to = str(ctx.values, "to");
   if (!to) throw usageError("--to <세션 id | 키:역할 | 세션 이름> 이 필요하다");
-  const text2 = str(ctx.values, "text");
-  const kind = str(ctx.values, "kind") ?? (text2 ? "custom" : "doc-changed");
+  const text3 = str(ctx.values, "text");
+  const kind = str(ctx.values, "kind") ?? (text3 ? "custom" : "doc-changed");
   const m = ISSUE_ROLE.exec(to);
   const p = await openProject(ctx);
-  const isSession = import_node_fs55.default.existsSync(import_node_path63.default.join(p.root, ".agents/state/sessions", `${to}.json`));
+  const isSession = import_node_fs64.default.existsSync(import_node_path72.default.join(p.root, ".agents/state/sessions", `${to}.json`));
   const target = m ? { issue: m[1], role: m[2] } : isSession ? { sessionId: to } : { name: to };
   const via = str(ctx.values, "via");
   return run3(
     ctx,
     "POST",
     "/dispatch",
-    { project: p, body: { target, kind, paths: list(ctx.values, "path"), text: text2, ...via ? { via } : {} } },
+    { project: p, body: { target, kind, paths: list(ctx.values, "path"), text: text3, ...via ? { via } : {} } },
     (d) => d.method === "deeplink" ? [`deep link(새 터미널에서 Enter 는 사람이 누른다): ${String(d.url)}`] : d.method === "queue" ? [`대기함에 넣었다: ${String(d.id)} — 받는 세션의 다음 프롬프트 제출 때 보인다`] : ["세션 수신함 소켓에 보냈다(수신 확인 신호는 없다)"]
   );
 }
@@ -13342,7 +15311,7 @@ async function runProjects(ctx) {
       return { code: EXIT.OK, data, lines: rows.length ? rows.map((r) => `${r.name.padEnd(24)} ${r.state === "ok" ? "" : `(${r.state}) `}${r.path}`) : ["등록한 프로젝트가 없다"] };
     }
     if (sub2 === "add" && arg && !extra) {
-      const r = addProject(home, import_node_path63.default.resolve(ctx.io.cwd, arg), today(ctx.io), ctx.io.env);
+      const r = addProject(home, import_node_path72.default.resolve(ctx.io.cwd, arg), today(ctx.io), ctx.io.env);
       return { code: EXIT.OK, data: { added: r.added, project: r.entry }, lines: [r.added ? `등록했다: ${r.entry.name} ${r.entry.path}` : `이미 있다: ${r.entry.name}`] };
     }
     if (sub2 === "remove" && arg && !extra) {
@@ -13385,7 +15354,9 @@ var COMMANDS = {
   pack: runPack,
   local: runLocal,
   intake: runIntake,
-  mob: runMob2
+  mob: runMob2,
+  sync: runSync,
+  checkpoints: runCheckpoints
 };
 var USAGE2 = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 킷
 
@@ -13411,15 +15382,18 @@ var USAGE2 = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 킷
   pack       pack new <이름> --dir <경로> --from <파일>… — 프로젝트 파일로 회사 팩 골격을 만든다
   local      local sync | list — 개인 층(.agents/local/)을 하네스 폴더에 배치한다(공유 lock 밖)
   mob        몹 정리 세션 start | next | close | status(진행자 터미널, 회차를 닫아도 세션에 요청하지 않는다)
+  sync       외부 도구 산출물 가져오기 — sync aidlc [--intent <AI-DLC 폴더>] [--check]
+  checkpoints  Entire 체크포인트 목록 · 설명(entire 모듈을 켠 리포)
   intake     요구사항 접수 — 글 · 첨부를 Intent 폴더(bug 는 이슈 폴더)로 받는다(신뢰하지 않는 입력으로 표시)
 
 공통 플래그: --cwd <폴더> --dry-run --yes --json --templates <폴더> --quiet --no-color --help
 init · plan: --stack --arch --domain --lang --agents <목록|all> --modules <목록|all|none>
              --name --slug --package-ns --protected-path --token KEY=VALUE --issue-source kit|jira
-             --issue-prefix --base --adopt --force --no-register(등록부에 더하지 않는다)
-add · remove: <이름>…(하네스 claude codex cursor kiro · 모듈 jira-workflow multi-harness)
+             --issue-prefix --base --adopt --force --no-register(등록부에 더하지 않는다) --install-tools --allow-unverified(외부 도구 모듈 aidlc · entire 는 이름을 줄 때만 켠다)
+add · remove: <이름>…(하네스 claude codex cursor kiro · 모듈 jira-workflow multi-harness aidlc entire)
+             add: --install-tools(도구가 없을 때 사람 터미널에서만 설치) --allow-unverified(검증 범위 밖 도구 버전을 허용)
 dashboard: --port --open --read-only --export <폴더> --all --root <dir> --workspace <file> · 관리 페이지 명령은 harness-kit <명령> --help
-update: --accept-all --prune --forget <경로>(반복) --to <CLI 버전> --packs(메타 packs 의 팩만 받아 깐다) · outdated: --check --source <git 원격>
+update: --accept-all --prune --forget <경로>(반복) --to <CLI 버전> --packs(메타 packs 의 팩만 받아 깐다) --tools(켠 외부 도구의 지금 · 최신 버전을 보이고 사람이 고른 것만 올린다 · --allow-unverified) · outdated: --check --source <git 원격>
 repair: --only missing,drifted,stale,merge · uninstall: --keep-state --keep-packs
 종료 코드: 0 성공 · 1 검사 문제 · 2 사용법 · 3 리포 상태 · 4 사람 판단 필요 · 5 실행 환경 · 130 중단
 `;
@@ -13428,7 +15402,7 @@ var COMMAND_HELP = {
   plan: "harness-kit plan [init 과 같은 플래그] — 작업 목록만 출력한다\n",
   doctor: "harness-kit doctor [--check] [--only 종류,…] [--json] — 종류: meta-invalid lock-invalid lock-v1 version-mismatch missing drifted gitignore entry-size\n",
   list: "harness-kit list [--files] [--json]\n",
-  add: "harness-kit add <하네스|모듈>… [--dry-run] [--json] — 그 몫만 깐다. 사람이 고친 매니페스트는 .new 로 받고 exit 4\n",
+  add: "harness-kit add <하네스|모듈>… [--dry-run] [--yes] [--install-tools] [--allow-unverified] [--json] — 그 몫만 깐다. 외부 도구 모듈(aidlc · entire)은 도구 확인 · 설치 안내 · 외부 명령 · 측정까지 한다. 도구가 없으면 exit 5, 검증 범위 밖이면 exit 4. 사람이 고친 매니페스트는 .new 로 받고 exit 4\n",
   remove: "harness-kit remove <하네스|모듈>… [--dry-run] [--json] — 고치지 않은 그 몫만 지운다. 고친 파일을 남기면 exit 4\n",
   outdated: "harness-kit outdated [--check] [--source <git 원격|경로>] [--json] — 소스: --source > HARNESS_KIT_SOURCE > lock kit.source. 닿지 못하면 '확인 못 함' 과 exit 0\n",
   update: "harness-kit update [--dry-run] [--accept-all] [--prune] [--forget 경로]… [--to 버전] [--templates 폴더] [--json] — conflict 가 있으면 exit 4. update --packs 는 팩만(검사 실패 exit 3 · 팩 충돌 exit 4)\n",
@@ -13451,6 +15425,8 @@ var COMMAND_HELP = {
   usage: "harness-kit usage [--days n] [--harness h] [--sources] | usage --now | usage --kit [--json] — 대화 기록 읽기가 꺼져 있으면(기본) 킷이 덧붙인 양(--kit)만 보인다\n",
   pack: 'harness-kit pack new <이름> --dir <경로> [--from <파일|폴더>[#훅·검사 id]]… [--kit-range ">=2.0.0 <3.0.0"] [--json] — --dir 은 빈 폴더나 없는 경로\n',
   intake: "harness-kit intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--area <영역>] [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]… [--json] — 비밀값이 든 글은 접수하지 않는다(exit 1)\n",
+  sync: "harness-kit sync aidlc [--intent <AI-DLC Intent 폴더>] [--key <Intent 키>] [--check] [--json] — AI-DLC 산출물을 intent.json · units.json 으로 옮긴다. 같은 입력이면 쓰지 않는다. --check 는 쓰지 않고 차이가 있으면 exit 1. sync units · jira 는 HK-20b\n",
+  checkpoints: "harness-kit checkpoints [--issue <키>] [--json] | checkpoints <체크포인트 id> [--json] — Entire 체크포인트 목록(이슈 브랜치 커밋의 Entire-Checkpoint 트레일러) · 설명(entire checkpoint explain, 10초 제한)\n",
   local: "harness-kit local sync [--dry-run] | local list [--json] — 개인 스킬 · Kiro 규칙 · 개인 훅(.claude/settings.local.json · .kiro/hooks/local-*). 공유 원본과 이름이 같으면 배치하지 않는다\n"
 };
 function emitError(io2, command, err, json) {
@@ -13466,8 +15442,8 @@ function emitError(io2, command, err, json) {
   }
   return err.code;
 }
-function commandOf2(argv, first, command) {
-  if (argv.length === 0) throw usageError("명령이 없다", USAGE2.trimEnd());
+function commandOf2(argv2, first, command) {
+  if (argv2.length === 0) throw usageError("명령이 없다", USAGE2.trimEnd());
   if (command === "") throw usageError(`명령이 먼저 온다: ${first}`, "harness-kit --help");
   if (Object.hasOwn(RESERVED, command)) {
     throw usageError(`'${command}' 는 아직 없다 — ${RESERVED[command]}에서 제공한다`, `지금 있는 명령: ${Object.keys(COMMANDS).join(" · ")}`);
@@ -13475,9 +15451,9 @@ function commandOf2(argv, first, command) {
   if (!Object.hasOwn(COMMANDS, command)) throw usageError(`모르는 명령: ${command}`, "harness-kit --help");
   return COMMANDS[command];
 }
-async function main(argv, io2) {
-  const json = argv.includes("--json");
-  const first = argv[0] ?? "";
+async function main(argv2, io2) {
+  const json = argv2.includes("--json");
+  const first = argv2[0] ?? "";
   const command = first.startsWith("-") ? "" : first;
   if (nodeTooOld(io2.nodeVersion)) {
     return emitError(io2, command, new CliError(EXIT.ENV, `Node ${MIN_NODE_TEXT} 이상이 필요하다(지금 v${io2.nodeVersion.replace(/^v/, "")})`, "Node 가 없으면 플러그인의 setup.sh 로 설치한다"), json);
@@ -13492,8 +15468,8 @@ async function main(argv, io2) {
     return EXIT.OK;
   }
   try {
-    const run4 = commandOf2(argv, first, command);
-    const { values, positionals } = parseCommandArgs(command, argv.slice(1));
+    const run4 = commandOf2(argv2, first, command);
+    const { values, positionals } = parseCommandArgs(command, argv2.slice(1));
     if (bool(values, "help")) {
       io2.stdout(Object.hasOwn(COMMAND_HELP, command) ? COMMAND_HELP[command] : USAGE2);
       return EXIT.OK;

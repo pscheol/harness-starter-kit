@@ -13,7 +13,8 @@ import { skipByOwner, wanted, type Want } from "../core/update-plan";
 import { judgeUpdate } from "../projection/engine";
 import { needsHuman, prepare } from "../projection/flow";
 import { loadSpecOrNull } from "../projection/spec";
-import { ancestorsOf, applyChange, changeOverlay, currentOf, dryRunOf, kitOf, loadForChange, manifestChange, report, retiredNotes, retiredOnly, type ChangeOp, type ChangeResult, type Cur, type Loaded } from "./change";
+import { isExternalModule, runModuleRemove } from "../modules/engine";
+import { ancestorsOf, withAfterMeta, applyChange, changeOverlay, currentOf, dryRunOf, kitOf, loadForChange, manifestChange, report, retiredNotes, retiredOnly, type ChangeOp, type ChangeResult, type Cur, type Loaded } from "./change";
 
 function keepAction(e: LockEntry): ChangeOp["action"] | null {
   const owner = ownerKind(e.owner);
@@ -53,7 +54,7 @@ function judgeRelayer(l: Loaded, p: string, w: Want, e: LockEntry, cur: Cur): { 
   return { op: { path: p, ...withD, action: "conflict", ...newFile }, entry: { ...e, layer: w.layer } };
 }
 
-function planRemove(l: Loaded, after: Selection): ChangeResult {
+export function planRemove(l: Loaded, after: Selection): ChangeResult {
   const beforeLayers = winnerLayers(l.layout, l.loc.dir, l.before, l.tokens);
   const afterLayers = winnerLayers(l.layout, l.loc.dir, after, l.tokens);
   const oldWant = wanted({ layout: l.layout, templatesDir: l.loc.dir, selection: l.before, tokens: l.tokens }).want;
@@ -82,17 +83,24 @@ function planRemove(l: Loaded, after: Selection): ChangeResult {
   const spec = loadSpecOrNull(l.loc.dir);
   if (!spec) return { ops, entries: [...locked.values()], manifest, projection: null };
   // 빠지는 하네스의 배치는 지우고(고쳤으면 남긴다), 남는 배치 · 병합은 새 선택값에 맞춘다(design §6.5).
-  const { writes, deletes } = changeOverlay(ops);
+  const { writes: copyWrites, deletes } = changeOverlay(ops);
+  const writes = withAfterMeta(l, after, copyWrites);
   const p = prepare({ target: l.target, spec, tokens: l.tokens, agents: after.agents, writes, deletes, copyPaths: newWant.keys() });
   const projection = judgeUpdate({ target: l.target, spec, tokens: l.tokens, sources: p.sources, wants: p.wants, prev: l.inst.lock.entries, copyNow: new Set(newWant.keys()), acceptAll: false, retire: false });
   return { ops, entries: [...locked.values()], manifest, projection, projectionFindings: p.findings };
 }
 
-export function runRemove(ctx: Ctx): CommandResult {
+export async function runRemove(ctx: Ctx): Promise<CommandResult> {
   const kit = kitOf(ctx);
   const asked = parseNames(kit.layout, ctx.positionals, "remove");
   const only = retiredOnly(ctx, "remove", asked);
   if (only) return { ...only, data: { ...only.data, names: { ...asked, notOn: [] } } };
+  const external = asked.modules.filter((m) => isExternalModule(kit.loc.dir, m));
+  if (external.length) return runModuleRemove(ctx, kit, { ...asked, modules: asked.modules.filter((m) => !external.includes(m)) }, external);
+  return runKitRemove(ctx, kit, asked);
+}
+
+export function runKitRemove(ctx: Ctx, kit: ReturnType<typeof kitOf>, asked: Names): CommandResult {
   const l = loadForChange(ctx, "remove", kit);
   const notOn = [...asked.harnesses.filter((h) => !l.before.agents.includes(h)), ...asked.modules.filter((m) => !l.before.modules.includes(m))];
   const names: Names = { harnesses: asked.harnesses.filter((h) => !notOn.includes(h)), modules: asked.modules.filter((m) => !notOn.includes(m)), retired: asked.retired };

@@ -146,6 +146,15 @@ export function changeOverlay(ops: ChangeOp[]): { writes: Map<string, OverlayWri
   return { writes, deletes };
 }
 
+/**
+ * 모듈 훅은 메타의 modules 로 거른다(hooks.json 의 module). 쓰기 전 원본 보기에는 바뀔 메타를 겹쳐
+ * 켜는 모듈의 훅은 병합하고 끄는 모듈의 훅은 뺀다(설계 10 §3.1 8단계).
+ */
+export function withAfterMeta(l: Loaded, after: Selection, writes: Map<string, OverlayWrite>): Map<string, OverlayWrite> {
+  const meta = { ...(l.inst.meta as unknown as Record<string, unknown>), modules: [...after.modules] };
+  return new Map([...writes, [META_REL, { content: Buffer.from(serializeMeta(meta), "utf8"), executable: false }]]);
+}
+
 /** 쓰기. 기능 문서 결과를 준다. */
 export function applyChange(ctx: Ctx, l: Loaded, after: Selection, r: ChangeResult): FeatureDocsResult {
   const { target, inst } = l;

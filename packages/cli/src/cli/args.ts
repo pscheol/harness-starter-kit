@@ -34,6 +34,9 @@ const INIT: OptSpec = {
   adopt: { type: "boolean" },
   force: { type: "boolean" },
   "no-register": { type: "boolean" },
+  // 외부 도구 모듈(HK-20, 설계 10 §3.1)
+  "install-tools": { type: "boolean" },
+  "allow-unverified": { type: "boolean" },
 };
 
 export const COMMAND_OPTIONS: Record<string, OptSpec> = {
@@ -48,10 +51,11 @@ export const COMMAND_OPTIONS: Record<string, OptSpec> = {
     to: { type: "string" },
     packs: { type: "boolean" },
     tools: { type: "boolean" },
+    "allow-unverified": { type: "boolean" },
   },
   repair: { only: { type: "string" } },
   uninstall: { "keep-state": { type: "boolean" }, "keep-packs": { type: "boolean" } },
-  add: {},
+  add: { "install-tools": { type: "boolean" }, "allow-unverified": { type: "boolean" } },
   remove: {},
   outdated: { check: { type: "boolean" }, source: { type: "string" } },
   // 관리 페이지 서버 · 화면 없이 쓰기(HK-17, 설계 06 §3.15)
@@ -115,12 +119,15 @@ export const COMMAND_OPTIONS: Record<string, OptSpec> = {
   // 확장 층(HK-14, 설계 04)
   pack: { dir: { type: "string" }, from: { type: "string", multiple: true }, "kit-range": { type: "string" } },
   local: {},
+  // 외부 도구 모듈의 어댑터 · 체크포인트(HK-20, 설계 10 §3.2 · §3.3)
+  sync: { intent: { type: "string" }, check: { type: "boolean" }, key: { type: "string" } },
+  checkpoints: { issue: { type: "string" } },
   // 설계 단계(HK-19, 설계 08)
   intake: { title: { type: "string" }, kind: { type: "string" }, name: { type: "string" }, area: { type: "string" }, text: { type: "string" }, "text-file": { type: "string" }, attach: { type: "string", multiple: true }, link: { type: "string", multiple: true } },
 };
 
 /** 위치 인자(이름 · 하위 명령 · 키)를 받는 명령. 나머지는 위치 인자를 거부한다(대상 폴더는 --cwd). */
-const POSITIONAL = new Set(["add", "remove", "projects", "approve", "answer", "review", "dispatch", "units", "flow", "pack", "local", "mob"]);
+const POSITIONAL = new Set(["add", "remove", "projects", "approve", "answer", "review", "dispatch", "units", "flow", "pack", "local", "mob", "sync", "checkpoints"]);
 
 export type Values = Record<string, string | boolean | string[] | undefined>;
 

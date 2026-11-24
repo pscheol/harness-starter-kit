@@ -168,12 +168,12 @@ harness_normalize_modules() {
 # 같은 설치 경로가 두 레이어에 있으면 뒤 레이어 판 하나만 쓰고 lock 에 한 줄만 남긴다(CLI layout.json overlap: last).
 
 # 한 레이어의 템플릿 파일. skip_arch=1 이면 arch/ 아래를 뺀다(변형 레이어는 고른 하나만 따로 돈다).
-# ABOUT 는 --list-modules 가 읽는 모듈 설명 파일이라 템플릿이 아니다(빼지 않으면 대상 리포 루트에 ABOUT 이 생긴다).
+# ABOUT 는 --list-modules 가 읽는 모듈 설명 파일, module.json 은 CLI 가 읽는 모듈 선언 파일(설계 10 §3.1)이라 템플릿이 아니다(빼지 않으면 대상 리포 루트에 생긴다).
 harness_list_layer() {
   if [ "${2:-0}" = 1 ]; then
-    find "$1" -type f ! -path "*/arch/*" ! -name '.DS_Store' ! -name 'ABOUT' | sort
+    find "$1" -type f ! -path "*/arch/*" ! -name '.DS_Store' ! -name 'ABOUT' ! -name 'module.json' | sort
   else
-    find "$1" -type f ! -name '.DS_Store' ! -name 'ABOUT' | sort
+    find "$1" -type f ! -name '.DS_Store' ! -name 'ABOUT' ! -name 'module.json' | sort
   fi
 }
 

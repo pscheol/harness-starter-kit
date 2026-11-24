@@ -6,6 +6,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { burnData } from "./burn";
+import { checkpointExplain, checkpointsList } from "./checkpoints";
 import { bad, notFound, notImplemented } from "./errors";
 import { findIntent, flowData, intentFolders, intentModel } from "./flow";
 import { doctorOf, load, overview, sessionInfo } from "./model";
@@ -209,8 +210,8 @@ export const ROUTES: Route[] = [
   },
   { method: "GET", path: "/dispatch/queue", cli: "dispatch list", handler: async (p) => ok({ items: await readQueue(p) }) },
   { method: "DELETE", path: "/dispatch/queue/{id}", cli: "dispatch drop <id>", handler: async (p, r) => ok(dropQueued(p, r.params.id as string)) },
-  stub("GET", "/checkpoints", "HK-20", "— (entire 모듈, HK-20)", "체크포인트 목록"),
-  stub("GET", "/checkpoints/{id}", "HK-20", "— (entire 모듈, HK-20)", "체크포인트 설명"),
+  { method: "GET", path: "/checkpoints", cli: "checkpoints [--issue <키>]", handler: async (p, r) => ok(await checkpointsList(p, q(r, "issue"))) },
+  { method: "GET", path: "/checkpoints/{id}", cli: "checkpoints <id>", handler: async (p, r) => ok(await checkpointExplain(p, r.params.id as string)) },
   stub("GET", "/ops", "HK-21", "status --ops(HK-21)", "운영 기록"),
   {
     method: "GET", path: "/flow", cli: "status --flow <INT>",

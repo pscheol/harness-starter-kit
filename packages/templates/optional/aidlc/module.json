@@ -1,0 +1,108 @@
+{
+  "schema": "harness-kit.module/v1",
+  "id": "aidlc",
+  "title": "AI-DLC 설계 단계",
+  "summary": "설계 단계를 AI-DLC 가 맡고, 킷은 그 산출물을 Intent · Unit 목록으로 가져온다",
+  "kind": "external",
+  "requires": {
+    "kit": ">=2.0.0 <3.0.0",
+    "modules": [],
+    "tools": [
+      {
+        "name": "aidlc",
+        "versionCmd": ["aidlc", "--version"],
+        "rangeKey": "versions.aidlc",
+        "range": ">=2.11 <3",
+        "harnessNames": { "claude": "claude", "codex": "codex", "cursor": "cursor", "kiro": "kiro" },
+        "install": {
+          "darwin": ["sh", "-c", "curl -fsSL https://github.com/awslabs/aidlc-workflows/releases/latest/download/install.sh | sh"],
+          "linux": ["sh", "-c", "curl -fsSL https://github.com/awslabs/aidlc-workflows/releases/latest/download/install.sh | sh"],
+          "win32": null,
+          "doc": "https://github.com/awslabs/aidlc-workflows#1-install-ai-dlc",
+          "hint": ["Windows PowerShell: irm https://github.com/awslabs/aidlc-workflows/releases/latest/download/install.ps1 | iex"]
+        },
+        "update": {
+          "darwin": ["aidlc", "update"],
+          "linux": ["aidlc", "update"],
+          "win32": ["aidlc", "update"]
+        },
+        "latest": { "cmd": ["aidlc", "update", "--check", "--json"], "json": "data.latestVersion" }
+      }
+    ]
+  },
+  "conflicts": [],
+  "files": [
+    { "from": "agents-root/hooks.d/aidlc.json", "op": "copy" },
+    { "from": "scripts/hooks/aidlc-freshness.sh", "op": "copy" },
+    { "from": "scripts/hooks/aidlc-freshness.py", "op": "copy" }
+  ],
+  "hooks": [
+    { "id": "harness-aidlc-freshness", "event": "stop", "harnesses": ["claude"], "script": "scripts/hooks/aidlc-freshness.sh" }
+  ],
+  "settings": [],
+  "externalPaths": [
+    "aidlc/**",
+    ".claude/CLAUDE.md",
+    ".claude/settings.local.json.example",
+    ".claude/aidlc-common/**",
+    ".claude/sensors/**",
+    ".claude/tools/**",
+    ".claude/knowledge/**",
+    ".claude/scopes/**",
+    ".claude/hooks/**",
+    ".claude/rules/aidlc.md",
+    ".claude/agents/aidlc-*",
+    ".claude/skills/aidlc*/**",
+    ".codex/aidlc-common/**",
+    ".codex/sensors/**",
+    ".codex/tools/**",
+    ".codex/knowledge/**",
+    ".codex/scopes/**",
+    ".codex/hooks/**",
+    ".codex/agents/aidlc-*",
+    ".codex/trust-seed.toml",
+    ".codex/onboarding.md",
+    ".cursor/aidlc-common/**",
+    ".cursor/sensors/**",
+    ".cursor/tools/**",
+    ".cursor/knowledge/**",
+    ".cursor/scopes/**",
+    ".cursor/hooks/**",
+    ".cursor/agents/aidlc-*",
+    ".cursor/skills/aidlc*/**",
+    ".kiro/aidlc-common/**",
+    ".kiro/sensors/**",
+    ".kiro/tools/**",
+    ".kiro/knowledge/**",
+    ".kiro/scopes/**",
+    ".kiro/hooks/aidlc*",
+    ".kiro/agents/aidlc-*",
+    ".kiro/skills/aidlc*/**"
+  ],
+  "externalHooks": ["aidlc engine hook", "aidlc hook"],
+  "harnessWarnings": {
+    "codex": "AI-DLC 가 AGENTS.md 와 .agents/skills/ 에 쓴다. 킷 소유 파일과 겹치니 add 뒤 doctor 와 diff 로 확인한다",
+    "cursor": "AI-DLC 가 AGENTS.md 에 쓴다. 킷 소유 파일과 겹치니 add 뒤 doctor 와 diff 로 확인한다",
+    "kiro": "AI-DLC 가 AGENTS.md 에 쓴다. 킷 소유 파일과 겹치니 add 뒤 doctor 와 diff 로 확인한다"
+  },
+  "config": {
+    "set": { "flow.design": "aidlc" },
+    "unset": { "flow.design": "kit" }
+  },
+  "steps": {
+    "add": [
+      { "run": ["aidlc", "config", "--harness", "{designHarnessName}", "--yes"], "confirm": true },
+      { "run": ["aidlc", "doctor"], "confirm": false, "allowFail": true },
+      { "registerExternal": true },
+      { "applyKit": true },
+      { "setConfig": true },
+      { "doctor": "aidlc" }
+    ],
+    "remove": [
+      { "removeKit": true },
+      { "unsetConfig": true },
+      { "print": "AI-DLC 가 하네스 설정에 넣은 자기 훅 · 파일은 남는다. 빼려면 사람이 aidlc uninstall 또는 그 도구의 안내를 따른다(킷은 실행하지 않는다). AI-DLC 산출물 · intent.json · units.json · SDD 이슈는 그대로 남는다" }
+    ]
+  },
+  "doctor": ["tool-version", "design-harness", "construction-artifacts", "freshness"]
+}

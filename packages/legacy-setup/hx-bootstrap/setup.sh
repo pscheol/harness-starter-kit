@@ -133,7 +133,7 @@ if [ "$LIST_MODULES" = 1 ]; then
   echo ""
   for m in $HARNESS_ALL_MODULES; do
     d="$TEMPLATES/optional/$m"
-    n="$(find "$d" -type f ! -name '.DS_Store' ! -name 'ABOUT' 2>/dev/null | wc -l | tr -d ' ')"
+    n="$(find "$d" -type f ! -name '.DS_Store' ! -name 'ABOUT' ! -name 'module.json' 2>/dev/null | wc -l | tr -d ' ')"
     printf "  %-16s %3s files   %s\n" "$m" "$n" "$(head -1 "$d/ABOUT" 2>/dev/null || echo '')"
   done
   echo ""
