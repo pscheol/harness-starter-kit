@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 8f417dd760f5d6130740a98af4c58c1830554f975545d10232266c5c0faf4630 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 c2a3cc1e6e88613107432a22e476eea8255a1d5cc5c01888b18a195c64473bb0 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -578,7 +578,7 @@ function buildMeta(args) {
     agents: [...sel.agents],
     modules: [...sel.modules],
     flow: { ...DEFAULT_FLOW, gates: [...DEFAULT_GATES] },
-    issueKey: { source: args.issue.source ?? "kit", prefix: args.issue.prefix ?? slug.toUpperCase() },
+    issueKey: { source: args.issue.source ?? "kit", prefix: args.issue.prefix ?? derivePrefix(slug) },
     git: { ...GIT_DEFAULTS, base: args.base ?? DEFAULT_BASE },
     packs: [],
     verify: { fullOnlyInCI: true },
@@ -625,6 +625,15 @@ function tokensOf(m) {
   const t = isObj(m.tokens) ? m.tokens : {};
   return Object.fromEntries(Object.entries(t).map(([k, v]) => [k, isStr(v) ? v : String(v ?? "")]));
 }
+var ISSUE_PREFIX = /^[A-Z][A-Z0-9]{1,9}$/;
+function derivePrefix(slug) {
+  const letters = slug.toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/^[0-9]+/, "").slice(0, 10);
+  return ISSUE_PREFIX.test(letters) ? letters : "ISSUE";
+}
+function repairedIssueKey(key, slug) {
+  const broken = key.source === "kit" && key.prefix === slug.toUpperCase() && !ISSUE_PREFIX.test(key.prefix);
+  return broken ? { ...key, prefix: derivePrefix(slug) } : key;
+}
 function fromV1(m) {
   const tokens = tokensOf(m);
   const slug = tokens.PROJECT_SLUG ?? "";
@@ -639,7 +648,7 @@ function fromV1(m) {
     domain: isStr(m.domain) ? m.domain : "",
     agents: m.agents,
     modules: isStrList(m.modules) ? m.modules : [],
-    issueKey: isObj(m.issueKey) ? m.issueKey : { source: "kit", prefix: slug.toUpperCase() },
+    issueKey: isObj(m.issueKey) ? m.issueKey : { source: "kit", prefix: derivePrefix(slug) },
     git: { base: DEFAULT_BASE, ...isObj(m.git) ? m.git : {} },
     packs: [],
     verify: { fullOnlyInCI: true, ...isObj(m.verify) ? m.verify : {} },
@@ -661,7 +670,7 @@ function fromV2(m) {
     domain: isStr(m.domain) ? m.domain : "",
     agents: m.agents,
     modules: isStrList(m.modules) ? m.modules : [],
-    issueKey: isObj(m.issueKey) ? m.issueKey : { source: "kit", prefix: slug.toUpperCase() },
+    issueKey: isObj(m.issueKey) ? repairedIssueKey(m.issueKey, slug) : { source: "kit", prefix: derivePrefix(slug) },
     git: { base: DEFAULT_BASE, ...isObj(m.git) ? m.git : {} },
     packs: Array.isArray(m.packs) ? m.packs : [],
     verify: { fullOnlyInCI: true, ...isObj(m.verify) ? m.verify : {} },

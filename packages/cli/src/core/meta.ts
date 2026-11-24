@@ -57,7 +57,7 @@ export function buildMeta(args: {
     agents: [...sel.agents],
     modules: [...sel.modules],
     flow: { ...DEFAULT_FLOW, gates: [...DEFAULT_GATES] },
-    issueKey: { source: args.issue.source ?? "kit", prefix: args.issue.prefix ?? slug.toUpperCase() },
+    issueKey: { source: args.issue.source ?? "kit", prefix: args.issue.prefix ?? derivePrefix(slug) },
     git: { ...GIT_DEFAULTS, base: args.base ?? DEFAULT_BASE },
     packs: [],
     verify: { fullOnlyInCI: true },
@@ -124,6 +124,20 @@ function tokensOf(m: Record<string, unknown>): Record<string, string> {
   return Object.fromEntries(Object.entries(t).map(([k, v]) => [k, isStr(v) ? v : String(v ?? "")]));
 }
 
+const ISSUE_PREFIX = /^[A-Z][A-Z0-9]{1,9}$/;
+
+/** PROJECT_SLUG → 이슈 키 접두. 대문자 · 영숫자만 · 앞 숫자 제거 · 10자, 2자 미만이면 ISSUE(Python sdd_keys.derive_prefix · setup.sh 와 같다). */
+export function derivePrefix(slug: string): string {
+  const letters = slug.toUpperCase().replace(/[^A-Z0-9]/g, "").replace(/^[0-9]+/, "").slice(0, 10);
+  return ISSUE_PREFIX.test(letters) ? letters : "ISSUE";
+}
+
+/** 2.0.0-alpha CLI 가 slug 를 대문자로만 바꿔 쓴 접두(ACME-NOTES)는 형식 검사에 걸린다 — 킷이 정한 값이면 고친다. 사람이 정한 값은 둔다. */
+function repairedIssueKey(key: MetaV2["issueKey"], slug: string): MetaV2["issueKey"] {
+  const broken = key.source === "kit" && key.prefix === slug.toUpperCase() && !ISSUE_PREFIX.test(key.prefix);
+  return broken ? { ...key, prefix: derivePrefix(slug) } : key;
+}
+
 /** v1(평면, kitVersion) → v2. v1.1 기본값 issueKey · git.base · verify.fullOnlyInCI 를 채운다. */
 function fromV1(m: Record<string, unknown>): MetaV2 {
   const tokens = tokensOf(m);
@@ -139,7 +153,7 @@ function fromV1(m: Record<string, unknown>): MetaV2 {
     domain: isStr(m.domain) ? m.domain : "",
     agents: m.agents as string[],
     modules: isStrList(m.modules) ? m.modules : [],
-    issueKey: isObj(m.issueKey) ? (m.issueKey as MetaV2["issueKey"]) : { source: "kit", prefix: slug.toUpperCase() },
+    issueKey: isObj(m.issueKey) ? (m.issueKey as MetaV2["issueKey"]) : { source: "kit", prefix: derivePrefix(slug) },
     git: { base: DEFAULT_BASE, ...(isObj(m.git) ? m.git : {}) } as MetaV2["git"],
     packs: [],
     verify: { fullOnlyInCI: true, ...(isObj(m.verify) ? m.verify : {}) } as MetaV2["verify"],
@@ -162,7 +176,7 @@ function fromV2(m: Record<string, unknown>): MetaV2 {
     domain: isStr(m.domain) ? m.domain : "",
     agents: m.agents as string[],
     modules: isStrList(m.modules) ? m.modules : [],
-    issueKey: isObj(m.issueKey) ? (m.issueKey as MetaV2["issueKey"]) : { source: "kit", prefix: slug.toUpperCase() },
+    issueKey: isObj(m.issueKey) ? repairedIssueKey(m.issueKey as MetaV2["issueKey"], slug) : { source: "kit", prefix: derivePrefix(slug) },
     git: { base: DEFAULT_BASE, ...(isObj(m.git) ? m.git : {}) } as MetaV2["git"],
     packs: Array.isArray(m.packs) ? m.packs : [],
     verify: { fullOnlyInCI: true, ...(isObj(m.verify) ? m.verify : {}) } as MetaV2["verify"],
