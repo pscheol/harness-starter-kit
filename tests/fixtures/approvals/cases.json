@@ -1987,6 +1987,114 @@
         }
       ],
       "reviews": []
+    },
+    {
+      "name": "jira-requirements-sha",
+      "input": "inputs/jira-requirements-sha.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-24T10:00:00Z",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "lee@example.com",
+              "name": "Lee",
+              "group": null
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "(jira)",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": null,
+            "path": "jira",
+            "entryId": "01JDS1A2B3C4D5E6F7G8H9JKMN",
+            "source": null,
+            "evidence": "changelog 10234",
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [],
+            "valid": true
+          }
+        ],
+        "errors": []
+      },
+      "queries": [
+        {
+          "gate": "requirements",
+          "sha256": null,
+          "approvers": null,
+          "groups": null,
+          "expect": "valid"
+        },
+        {
+          "gate": "requirements",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "approvers": null,
+          "groups": null,
+          "expect": "valid"
+        },
+        {
+          "gate": "design",
+          "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "approvers": null,
+          "groups": null,
+          "expect": "none"
+        }
+      ],
+      "reviews": []
+    },
+    {
+      "name": "jira-sha-on-terminal",
+      "input": "inputs/jira-sha-on-terminal.md",
+      "expect": {
+        "key": "DEMO-1",
+        "entries": [
+          {
+            "line": 5,
+            "at": "2026-11-24T10:00:00Z",
+            "gate": "requirements",
+            "decision": "approved",
+            "approver": {
+              "email": "lee@example.com",
+              "name": "Lee",
+              "group": null
+            },
+            "target": {
+              "name": "requirements.md",
+              "sha256": "(jira)",
+              "fingerprint": null,
+              "head": null
+            },
+            "phrase": "확인",
+            "path": "terminal",
+            "entryId": "01JDS1A2B3C4D5E6F7G8H9JKMN",
+            "source": null,
+            "evidence": null,
+            "ruleCandidate": false,
+            "rollbackWaiver": null,
+            "errors": [
+              "bad-target"
+            ],
+            "valid": false
+          }
+        ],
+        "errors": []
+      },
+      "queries": [
+        {
+          "gate": "requirements",
+          "sha256": null,
+          "approvers": null,
+          "groups": null,
+          "expect": "none"
+        }
+      ],
+      "reviews": []
     }
   ],
   "docSha": [

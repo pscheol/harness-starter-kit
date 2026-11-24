@@ -12,11 +12,13 @@ const TIME = /^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2}):([0-9]{2})
 const APPROVER = /^([^\s@()]+@[^\s@()]+)(?: \(([^()]*)\))?(?: · 그룹: (\S+))?$/;
 const ENTRY_ID = /^[0-9A-HJKMNP-TV-Z]{26}$/;
 const TARGET_PARTS: [keyof Omit<Target, "name">, RegExp][] = [
-  ["sha256", /^sha256: ([0-9a-f]{64})$/],
+  ["sha256", /^sha256: ([0-9a-f]{64}|\(jira\))$/],
   ["fingerprint", /^지문: ([0-9a-f]{12,64})$/],
   ["head", /^head: ([0-9a-f]{7,40})$/],
 ];
 
+/** 경로 jira 기록은 그 시점 문서 sha 를 알 수 없어 이 값으로 남긴다(설계 10 §3.4). 그 뒤 문서 변경과 비교하지 않는다. */
+export const JIRA_SHA = "(jira)";
 export const PATHS = ["terminal", "dashboard", "jira", "aidlc"] as const;
 export const DOC_GATES = ["codebase", "intent", "plans", "requirements", "design", "tasks", "deploy"];
 export const GATES = ["codebase", "intent", "plans", "requirements", "design", "tasks", "mr", "done", "deploy"];
@@ -153,6 +155,7 @@ function requiredErrors(entry: Entry, seen: Set<string>): string[] {
   if (!seen.has("target")) errors.push("missing-target");
   else if (entry.target) {
     if (DOC_GATES.includes(entry.gate) && !entry.target.sha256) errors.push("bad-target");
+    if (entry.target.sha256 === JIRA_SHA && p !== "jira") errors.push("bad-target");
     if (REVIEW_GATE.test(entry.gate) && !entry.target.fingerprint) errors.push("bad-target");
   }
   if (!seen.has("path") || !p) errors.push("missing-path");
@@ -269,9 +272,14 @@ export function needOf(meta: Record<string, unknown>, risk: string | null | unde
   return Number.isFinite(n) ? Math.max(2, Math.trunc(n)) : 2;
 }
 
+/** 기록의 대상 sha 가 sha 와 같은가. 경로 jira 의 `(jira)` 기록은 어떤 sha 와도 맞는다(승인 시점 = Jira 기록 시각). */
+function shaMatches(e: Entry, sha: string): boolean {
+  return !!e.target && (e.target.sha256 === sha || (e.target.sha256 === JIRA_SHA && e.path === "jira"));
+}
+
 /** 그 게이트 · 그 내용으로 승인한 사람(email 소문자). */
 export function approversOf(entries: Entry[], gate: string, sha: string | null = null): Set<string> {
-  return new Set(entries.filter((e) => e.valid && e.gate === gate && e.decision === "approved" && (sha === null || e.target?.sha256 === sha)).map((e) => (e.approver?.email ?? "").toLowerCase()));
+  return new Set(entries.filter((e) => e.valid && e.gate === gate && e.decision === "approved" && (sha === null || shaMatches(e, sha))).map((e) => (e.approver?.email ?? "").toLowerCase()));
 }
 
 /** 설계 06 §3.3: none · valid(sha 같음) · stale(승인 뒤 바뀜) · invalid(승인자가 approvers 밖). */
@@ -279,7 +287,7 @@ export function approvalState(entries: Entry[], gate: string, sha: string | null
   let found = entries.filter((e) => e.valid && e.gate === gate && e.decision === "approved");
   if (found.length === 0) return "none";
   if (sha !== null && sha !== undefined) {
-    found = found.filter((e) => e.target && e.target.sha256 === sha);
+    found = found.filter((e) => shaMatches(e, sha));
     if (found.length === 0) return "stale";
   }
   const people = new Set(found.filter((e) => allowed(e.approver?.email, gate, policy)).map((e) => (e.approver?.email ?? "").toLowerCase()));
