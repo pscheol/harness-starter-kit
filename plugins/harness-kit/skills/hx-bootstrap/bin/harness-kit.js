@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 d1446c2ae500dfe759baf7e579f4925c43304a2011d9326ae2e3f686b38a8353 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 2e000e20a9f7703f87ac08d2aab208fb5b09437bd4cc2e0b5b13377114870b37 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -4470,6 +4470,8 @@ var LOCAL_CONFIG = `${LOCAL_DIR}/harness-kit.local.json`;
 var LOCAL_LOCK = `${LOCAL_DIR}/harness-kit.local.lock`;
 var LOCAL_HOOKS = `${LOCAL_DIR}/hooks.json`;
 var SETTINGS_LOCAL = ".claude/settings.local.json";
+var LOCAL_MODEL_POLICY = `${LOCAL_DIR}/model-policy.local.json`;
+var TIERS = ["light", "standard", "deep"];
 var LOCAL_LOCK_SCHEMA = "harness-kit.local-lock/v1";
 var EXCLUDE_BEGIN = "# harness-kit local begin";
 var EXCLUDE_END = "# harness-kit local end";
@@ -4510,6 +4512,46 @@ function readLocalConfig(target) {
       }
     } else if (isObj5(value2)) for (const k of Object.keys(value2)) out.ignored.push(`${key}.${k}`);
     else out.ignored.push(key);
+  }
+  return out;
+}
+function readLocalModelPolicy(target) {
+  const out = { classes: {}, ignored: [], error: null, present: false };
+  let raw;
+  try {
+    raw = JSON.parse(import_node_fs18.default.readFileSync(import_node_path20.default.join(target, ...LOCAL_MODEL_POLICY.split("/")), "utf8"));
+  } catch (err) {
+    if (err.code !== "ENOENT") {
+      out.present = true;
+      out.error = err instanceof Error ? err.message : String(err);
+    }
+    return out;
+  }
+  out.present = true;
+  if (!isObj5(raw)) {
+    out.error = "최상위가 객체가 아니다";
+    return out;
+  }
+  let policy = {};
+  try {
+    const p = JSON.parse(import_node_fs18.default.readFileSync(import_node_path20.default.join(target, ".agents", "model-policy.json"), "utf8"));
+    policy = isObj5(p) ? p : {};
+  } catch {
+    policy = {};
+  }
+  const locked = Array.isArray(policy.locked) ? policy.locked.filter((x) => typeof x === "string") : [];
+  const known = isObj5(policy.classes) ? Object.keys(policy.classes) : [];
+  for (const [key, value2] of Object.entries(raw)) {
+    if (key !== "classes" || !isObj5(value2)) {
+      out.ignored.push({ key, why: "개인 모델 설정은 classes 만 받는다(locked · 등급 정의 · flow 는 프로젝트가 정한다)" });
+      continue;
+    }
+    for (const [cls, tier] of Object.entries(value2)) {
+      if (locked.includes(cls)) out.ignored.push({ key: `classes.${cls}`, why: "locked 분류(구현 · 설계 · 리뷰)는 바꾸지 못한다" });
+      else if (known.length && !known.includes(cls)) out.ignored.push({ key: `classes.${cls}`, why: "model-policy.json 에 없는 분류다" });
+      else if (typeof tier !== "string" || !TIERS.includes(tier)) out.ignored.push({ key: `classes.${cls}`, why: "값은 light · standard · deep 이다" });
+      else out.classes[cls] = tier;
+    }
   }
   return out;
 }
@@ -10956,7 +10998,10 @@ function overridesReport(ctx, target, inst) {
     for (const id of FLOOR_HOOKS) if (!kitHooks.includes(id)) floorViolations.push({ kind: "floor-hook-missing", target: `.agents/hooks.json#${id}` });
   }
   for (const id of ids(readJson2(target, ".agents/hooks.d/project.json"), "hooks")) if (FLOOR_HOOKS.includes(id)) floorViolations.push({ kind: "floor-override", target: `.agents/hooks.d/project.json#${id}` });
-  return { overrides: out.sort((a, b) => a.target < b.target ? -1 : a.target > b.target ? 1 : 0), ignoredPersonal: local.ignored.map((key) => ({ key, file: LOCAL_CONFIG })), floorViolations };
+  const models = readLocalModelPolicy(target);
+  for (const [cls, tier] of Object.entries(models.classes)) out.push({ target: `model-policy.classes.${cls}`, winner: "local", value: tier, losers: [] });
+  const ignoredPersonal = [...local.ignored.map((key) => ({ key, file: LOCAL_CONFIG })), ...models.ignored.map((i) => ({ key: i.key, file: LOCAL_MODEL_POLICY }))];
+  return { overrides: out.sort((a, b) => a.target < b.target ? -1 : a.target > b.target ? 1 : 0), ignoredPersonal, floorViolations };
 }
 function overridesLines(r) {
   const loser = (l) => typeof l === "string" ? l : `${l.layer}(${l.value})`;
@@ -10965,7 +11010,7 @@ function overridesLines(r) {
     `덮어쓴 것 ${r.overrides.length}건 (이긴 층 ← 진 층)`,
     ...r.overrides.map((o) => `  ${o.target.padEnd(width)}  ${o.winner}${o.value ? `(${o.value})` : ""} ← ${o.losers.map(loser).join(", ") || "-"}${o.declared ? "  (overrides 선언)" : ""}${o.note ? `  (${o.note})` : ""}`),
     `무시한 개인 설정 ${r.ignoredPersonal.length}건`,
-    ...r.ignoredPersonal.map((i) => `  ${i.file} ${i.key} — 개인 층은 roles · git.ide 만 바꾼다`),
+    ...r.ignoredPersonal.map((i) => `  ${i.file} ${i.key} — ${i.file === LOCAL_MODEL_POLICY ? "개인 모델 설정은 잠기지 않은 classes 만 바꾼다" : "개인 층은 roles · git.ide 만 바꾼다"}`),
     `하한 ${r.floorViolations.length}건 위반`,
     ...r.floorViolations.map((v) => `  ✖ ${v.kind} ${v.target}`)
   ];
@@ -11232,6 +11277,9 @@ function personalFindings(target) {
   const conf = readLocalConfig(target);
   if (conf.error) out.push({ kind: "local-invalid", severity: "error", path: LOCAL_CONFIG, hint: conf.error });
   for (const key of conf.ignored) out.push({ kind: "personal-ignored", severity: "warn", path: LOCAL_CONFIG, hint: `${key} — 개인 층은 roles.<역할>.harness · git.ide 만 바꾼다(무시했다)` });
+  const models = readLocalModelPolicy(target);
+  if (models.error) out.push({ kind: "local-invalid", severity: "error", path: LOCAL_MODEL_POLICY, hint: models.error });
+  for (const i of models.ignored) out.push({ kind: "personal-ignored", severity: "warn", path: LOCAL_MODEL_POLICY, hint: `${i.key} — ${i.why}(무시했다, MR-R7)` });
   let local = null;
   try {
     local = JSON.parse(import_node_fs47.default.readFileSync(import_node_path51.default.join(target, ...SETTINGS_LOCAL.split("/")), "utf8"));

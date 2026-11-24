@@ -20,6 +20,8 @@ export const LOCAL_CONFIG = `${LOCAL_DIR}/harness-kit.local.json`;
 export const LOCAL_LOCK = `${LOCAL_DIR}/harness-kit.local.lock`;
 export const LOCAL_HOOKS = `${LOCAL_DIR}/hooks.json`;
 export const SETTINGS_LOCAL = ".claude/settings.local.json";
+export const LOCAL_MODEL_POLICY = `${LOCAL_DIR}/model-policy.local.json`;
+const TIERS = ["light", "standard", "deep"];
 const LOCAL_LOCK_SCHEMA = "harness-kit.local-lock/v1";
 const EXCLUDE_BEGIN = "# harness-kit local begin";
 const EXCLUDE_END = "# harness-kit local end";
@@ -93,6 +95,60 @@ export function readLocalConfig(target: string): LocalConfig {
       }
     } else if (isObj(value)) for (const k of Object.keys(value)) out.ignored.push(`${key}.${k}`);
     else out.ignored.push(key);
+  }
+  return out;
+}
+
+export interface LocalModelPolicy {
+  /** 받은 값: 잠기지 않은 분류 → 등급 */
+  classes: Record<string, string>;
+  /** 무시한 키(점 경로)와 이유 */
+  ignored: { key: string; why: string }[];
+  error: string | null;
+  present: boolean;
+}
+
+/**
+ * 개인 모델 등급(설계 12 §3.7 · MR-R7): `classes` 만 받고, 값은 light · standard · deep, 대상은 locked 가 아닌 분류뿐이다.
+ * 역할 파일은 다시 만들지 않는다 — 세션 시작 훅이 한 줄로 알리고 위임하는 세션이 호출별 model 인자로 쓴다.
+ */
+export function readLocalModelPolicy(target: string): LocalModelPolicy {
+  const out: LocalModelPolicy = { classes: {}, ignored: [], error: null, present: false };
+  let raw: unknown;
+  try {
+    raw = JSON.parse(fs.readFileSync(path.join(target, ...LOCAL_MODEL_POLICY.split("/")), "utf8"));
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== "ENOENT") {
+      out.present = true;
+      out.error = err instanceof Error ? err.message : String(err);
+    }
+    return out;
+  }
+  out.present = true;
+  if (!isObj(raw)) {
+    out.error = "최상위가 객체가 아니다";
+    return out;
+  }
+  let policy: Record<string, unknown> = {};
+  try {
+    const p = JSON.parse(fs.readFileSync(path.join(target, ".agents", "model-policy.json"), "utf8")) as unknown;
+    policy = isObj(p) ? p : {};
+  } catch {
+    policy = {};
+  }
+  const locked = Array.isArray(policy.locked) ? policy.locked.filter((x): x is string => typeof x === "string") : [];
+  const known = isObj(policy.classes) ? Object.keys(policy.classes) : [];
+  for (const [key, value] of Object.entries(raw)) {
+    if (key !== "classes" || !isObj(value)) {
+      out.ignored.push({ key, why: "개인 모델 설정은 classes 만 받는다(locked · 등급 정의 · flow 는 프로젝트가 정한다)" });
+      continue;
+    }
+    for (const [cls, tier] of Object.entries(value)) {
+      if (locked.includes(cls)) out.ignored.push({ key: `classes.${cls}`, why: "locked 분류(구현 · 설계 · 리뷰)는 바꾸지 못한다" });
+      else if (known.length && !known.includes(cls)) out.ignored.push({ key: `classes.${cls}`, why: "model-policy.json 에 없는 분류다" });
+      else if (typeof tier !== "string" || !TIERS.includes(tier)) out.ignored.push({ key: `classes.${cls}`, why: "값은 light · standard · deep 이다" });
+      else out.classes[cls] = tier;
+    }
   }
   return out;
 }

@@ -183,6 +183,32 @@ def design_lines(harness_root, session_id):
     return lines
 
 
+TIERS = ("light", "standard", "deep")
+
+
+def personal_model_lines(harness_root, harness):
+    """개인 모델 등급(설계 12 §3.7 · MR-R7): 잠기지 않은 분류만 한 줄로 알린다. 역할 파일은 바꾸지 않는다(호출별 인자로 쓴다)."""
+    local = read_json(harness_root / ".agents/local/model-policy.local.json") or {}
+    policy = read_json(harness_root / ".agents/model-policy.json")
+    if not policy:
+        return []
+    classes = local.get("classes") if isinstance(local.get("classes"), dict) else {}
+    locked = set(policy.get("locked") or [])
+    tiers = policy.get("tiers") if isinstance(policy.get("tiers"), dict) else {}
+    parts = []
+    for cls, tier in sorted(classes.items()):
+        if cls in locked or tier not in TIERS:
+            continue
+        conf = (tiers.get(tier) or {}).get(harness or "claude") or {}
+        if harness == "kiro":
+            continue
+        how = f"model: {conf['model']}" if conf.get("model") else (f"effort {conf['model_reasoning_effort']}" if conf.get("model_reasoning_effort") else "")
+        parts.append(f"{cls} → {tier}" + (f"({how})" if how else ""))
+    if not parts:
+        return []
+    return [(f"개인 설정: {' · '.join(parts)} — 위임 호출 때 이 값을 인자로 준다. locked 역할(worker · reviewer · designer)은 그대로",)]
+
+
 def session_start_lines(checkout_root, state, session_id, inbox, budget, today, design=()):
     """세션 시작 상태(HK-24 design §6): 대기함 → 점유 → 세션 공지 → 공지 제목 → 미등록 안내 → 공지 본문, 합계 budget 바이트."""
     sessions = state.get("sessions", [])
@@ -271,7 +297,8 @@ def main():
             return 2
     if arguments.event == "session-start":
         today = os.environ.get("HARNESS_KIT_TODAY") or datetime.now().astimezone().date().isoformat()
-        lines = session_start_lines(checkout_root, state, session_id, arguments.inbox, max(arguments.budget, 0), today, design_lines(harness_root, session_id))
+        extra = design_lines(harness_root, session_id) + personal_model_lines(harness_root, os.environ.get("HX_HARNESS"))
+        lines = session_start_lines(checkout_root, state, session_id, arguments.inbox, max(arguments.budget, 0), today, extra)
     else:
         lines = context_lines(state, session_id)
     if lines:

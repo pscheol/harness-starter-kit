@@ -146,6 +146,17 @@ class SessionStartBudgetTest(SessionRegisterCase):
         plain = self.start(sid="s-impl")
         self.assertNotIn("설계 세션", plain.stdout)
 
+    def test_personal_model_tier_is_one_line_and_locked_is_ignored(self):
+        local = self.tree / ".agents/local"
+        local.mkdir(parents=True, exist_ok=True)
+        (local / "model-policy.local.json").write_text(json.dumps({"classes": {"explore": "standard", "implement": "light"}}), encoding="utf-8")
+        shutil.copy2(ROOT / ".agents/model-policy.json", self.tree / ".agents/model-policy.json")
+        out = self.start(sid="s-personal").stdout
+        self.assertIn("개인 설정: explore → standard(model: sonnet)", out)
+        self.assertNotIn("implement → light", out)
+        codex = self.start(sid="s-personal-codex", HX_HARNESS="codex").stdout
+        self.assertIn("explore → standard(effort medium)", codex)
+
 
 if __name__ == "__main__":
     unittest.main()

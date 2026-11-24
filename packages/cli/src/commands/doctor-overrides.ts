@@ -10,7 +10,7 @@ import { FLOOR_HOOKS, missingFloorGates } from "../core/floor";
 import { sha256 } from "../core/hash";
 import { selectionFromMeta, tokensFromMeta, type Installed } from "../core/installed";
 import { loadLayout } from "../core/layout";
-import { readLocalConfig, LOCAL_CONFIG } from "../core/local";
+import { readLocalConfig, readLocalModelPolicy, LOCAL_CONFIG, LOCAL_MODEL_POLICY } from "../core/local";
 import { locateTemplates } from "../core/templates";
 import { wanted } from "../core/update-plan";
 import { VERSION } from "../core/version";
@@ -96,7 +96,10 @@ export function overridesReport(ctx: Ctx, target: string, inst: Installed): Over
   const kitHooks = ids(readJson(target, ".agents/hooks.json"), "hooks");
   if (kitHooks.length) for (const id of FLOOR_HOOKS) if (!kitHooks.includes(id)) floorViolations.push({ kind: "floor-hook-missing", target: `.agents/hooks.json#${id}` });
   for (const id of ids(readJson(target, ".agents/hooks.d/project.json"), "hooks")) if (FLOOR_HOOKS.includes(id)) floorViolations.push({ kind: "floor-override", target: `.agents/hooks.d/project.json#${id}` });
-  return { overrides: out.sort((a, b) => (a.target < b.target ? -1 : a.target > b.target ? 1 : 0)), ignoredPersonal: local.ignored.map((key) => ({ key, file: LOCAL_CONFIG })), floorViolations };
+  const models = readLocalModelPolicy(target);
+  for (const [cls, tier] of Object.entries(models.classes)) out.push({ target: `model-policy.classes.${cls}`, winner: "local", value: tier, losers: [] });
+  const ignoredPersonal = [...local.ignored.map((key) => ({ key, file: LOCAL_CONFIG })), ...models.ignored.map((i) => ({ key: i.key, file: LOCAL_MODEL_POLICY }))];
+  return { overrides: out.sort((a, b) => (a.target < b.target ? -1 : a.target > b.target ? 1 : 0)), ignoredPersonal, floorViolations };
 }
 
 export function overridesLines(r: OverridesReport): string[] {
@@ -106,7 +109,7 @@ export function overridesLines(r: OverridesReport): string[] {
     `덮어쓴 것 ${r.overrides.length}건 (이긴 층 ← 진 층)`,
     ...r.overrides.map((o) => `  ${o.target.padEnd(width)}  ${o.winner}${o.value ? `(${o.value})` : ""} ← ${o.losers.map(loser).join(", ") || "-"}${o.declared ? "  (overrides 선언)" : ""}${o.note ? `  (${o.note})` : ""}`),
     `무시한 개인 설정 ${r.ignoredPersonal.length}건`,
-    ...r.ignoredPersonal.map((i) => `  ${i.file} ${i.key} — 개인 층은 roles · git.ide 만 바꾼다`),
+    ...r.ignoredPersonal.map((i) => `  ${i.file} ${i.key} — ${i.file === LOCAL_MODEL_POLICY ? "개인 모델 설정은 잠기지 않은 classes 만 바꾼다" : "개인 층은 roles · git.ide 만 바꾼다"}`),
     `하한 ${r.floorViolations.length}건 위반`,
     ...r.floorViolations.map((v) => `  ✖ ${v.kind} ${v.target}`),
   ];
