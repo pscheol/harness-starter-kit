@@ -63,7 +63,8 @@
 ## 사람에게 물을 것(아침에)
 
 - 서브에이전트는 opus 주간 한도(11-28 03:00 KST 초기화)에 걸렸지만 sonnet 모델로는 돈다. HK-15 · HK-18 을 서브에이전트 2개로 진행한다(2026-11-24).
-- (할 일) 사용자 결정 반영: 에이전트 세션 dispatch 차단 · outdated 기본 원격 · init 등록부 자동 등록(`--no-register`, 시험은 `HARNESS_KIT_CONFIG_DIR` 로 실제 홈을 쓰지 않게 — HK-18 뒤).
+- (반영) 에이전트 세션 dispatch 차단(exit 3, list · drop 은 됨) · outdated 기본 원격(`HARNESS_KIT_SOURCE=none` 이면 보지 않음).
+- (할 일) init 등록부 자동 등록(`--no-register`, 시험은 `HARNESS_KIT_CONFIG_DIR` 로 실제 홈을 쓰지 않게) — HK-18 을 합친 뒤.
 - (정함) CLI 기본 이슈 키 접두 버그(ACME-NOTES)는 고쳤다(`82aa3db`). 킷이 쓴 잘못된 값은 읽을 때 고친다.
 - (HK-24) 살아 있는 세션에서 디스패처 명령 · Codex/Kiro 훅 입력의 `cwd` 확인(수동). update.sh(plugin.json 1.0.8)와 CLI(2.0.0-alpha.0)의 판 값이 달라 공지 내용이 다르다 — 릴리스 스크립트(HK-22)가 맞춘다.
 - (HK-17) 살아 있는 Claude 세션에 소켓 요청 전달 · deep link · Codex 대기함 표시는 수동 확인이 남았다. `harness-kit dispatch` 를 에이전트 세션이 부를 때 막을지는 HK-24 훅 정리에서 정한다.

@@ -1,6 +1,6 @@
 /**
  * outdated — 설치 판 · CLI 판 · 소스의 최신 태그를 비교한다(HK-12 design §5, 설계 02 §3.3). 읽기만 한다.
- * 소스에 닿지 못하면(네트워크 없음 · git 없음) 최신 칸을 "확인 못 함"으로 두고 exit 0.
+ * 소스에 닿지 못하면(네트워크 없음 · git 없음) 최신 칸을 "확인 못 함"으로 두고 exit 0. 소스를 모르면 기본 원격(DEFAULT_SOURCE)을 본다.
  */
 import path from "node:path";
 import { bool, str } from "../cli/args";
@@ -11,7 +11,10 @@ import { LOCK_REL, readLock } from "../core/lock";
 import { META_REL, readMeta } from "../core/meta";
 import { compareSemver, VERSION } from "../core/version";
 
-type Source = { url: string; from: "flag" | "env" | "lock" } | { url: null; reason: string };
+type Source = { url: string; from: "flag" | "env" | "lock" | "default" } | { url: null; reason: string };
+
+/** 소스를 아무 데서도 못 정했을 때 보는 킷 원격(사용자 결정 2026-11-24). HARNESS_KIT_SOURCE=none 이면 쓰지 않는다. */
+export const DEFAULT_SOURCE = "https://github.com/pscheol/harness-starter-kit.git";
 
 /** lock kit.source → git 원격. github:<owner>/<repo>[#…] · git+<url> · file:<폴더>(git 저장소일 때). */
 function fromKitSource(raw: string | null, env: Record<string, string | undefined>): string | null {
@@ -24,17 +27,22 @@ function fromKitSource(raw: string | null, env: Record<string, string | undefine
 }
 
 function sourceOf(ctx: Ctx, target: string): Source {
-  const flag = str(ctx.values, "source");
-  const env = ctx.io.env.HARNESS_KIT_SOURCE || undefined;
+  const lock = readLock(path.join(target, LOCK_REL));
+  return pickSource(str(ctx.values, "source"), ctx.io.env, lock.status === "ok" ? lock.lock.kit.source : null);
+}
+
+/** --source > HARNESS_KIT_SOURCE > lock kit.source > 기본 원격. HARNESS_KIT_SOURCE=none 이면 기본 원격도 쓰지 않는다. */
+export function pickSource(flag: string | undefined, envVars: Record<string, string | undefined>, lockSource: string | null): Source {
+  const env = envVars.HARNESS_KIT_SOURCE || undefined;
+  if (env === "none" && flag === undefined) return { url: null, reason: "HARNESS_KIT_SOURCE=none — 소스를 보지 않는다" };
   const given = flag !== undefined ? { url: flag, from: "flag" as const } : env !== undefined ? { url: env, from: "env" as const } : null;
   if (given) {
     if (given.url.startsWith("-")) throw usageError(`--source 는 '-' 로 시작할 수 없다: '${given.url}'`, "git 원격 주소나 저장소 경로를 준다");
     return given;
   }
-  const lock = readLock(path.join(target, LOCK_REL));
-  const url = fromKitSource(lock.status === "ok" ? lock.lock.kit.source : null, ctx.io.env);
+  const url = fromKitSource(lockSource, envVars);
   if (url && !url.startsWith("-")) return { url, from: "lock" };
-  return { url: null, reason: "소스를 모른다 — --source <git 원격> 또는 HARNESS_KIT_SOURCE 로 준다" };
+  return { url: DEFAULT_SOURCE, from: "default" };
 }
 
 const isPre = (v: string): boolean => /^\d+\.\d+\.\d+-/.test(v);

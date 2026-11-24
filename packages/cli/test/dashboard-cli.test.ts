@@ -169,6 +169,15 @@ describe("쓰기 명령", () => {
     expect((await cli(["dispatch", "list", "--json"], repo)).json.items).toEqual([]);
   });
 
+  it("에이전트 세션은 dispatch 로 다른 세션에 작업 요청을 보내지 못한다(사용자 결정 2026-11-24) — list · drop 은 된다", async () => {
+    const repo = fixture();
+    const send = await cli(["dispatch", "--to", "DEMO-1:implement", "--kind", "custom", "--text", "x", "--via", "queue", "--json"], repo, { agent: "CLAUDECODE=1" });
+    expect(send.code).toBe(3);
+    expect(send.json.error.message).toContain("에이전트 세션에서는 다른 세션에 작업 요청을 보내지 않는다");
+    expect(fs.existsSync(path.join(repo.root, ".agents/state/dispatch-queue"))).toBe(false);
+    expect((await cli(["dispatch", "list", "--json"], repo, { agent: "CLAUDECODE=1" })).code).toBe(0);
+  });
+
   it("projects add · list · remove 는 등록부만 쓴다(0600 · 폴더 0700)", async () => {
     const repo = fixture();
     const add = await cli(["projects", "add", repo.root, "--json"], repo);

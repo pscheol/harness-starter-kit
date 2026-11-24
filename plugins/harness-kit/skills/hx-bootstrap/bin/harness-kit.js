@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 da904ee459a5d87f4ad8e27219065d6b0e03087b4a21945d46d29aeb24a44540 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 aa97cf01b16665eeedb7c6b8cfc9b49ca43b70484e7f63aa2024ce616f87211d · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -9215,6 +9215,7 @@ function maxVersion(versions) {
 }
 
 // src/commands/outdated.ts
+var DEFAULT_SOURCE = "https://github.com/pscheol/harness-starter-kit.git";
 function fromKitSource(raw, env) {
   if (!raw) return null;
   const gh = /^github:([\w.-]+\/[\w.-]+?)(?:\.git)?(?:#.*)?$/.exec(raw);
@@ -9224,17 +9225,20 @@ function fromKitSource(raw, env) {
   return null;
 }
 function sourceOf(ctx, target) {
-  const flag = str(ctx.values, "source");
-  const env = ctx.io.env.HARNESS_KIT_SOURCE || void 0;
+  const lock = readLock(import_node_path47.default.join(target, LOCK_REL));
+  return pickSource(str(ctx.values, "source"), ctx.io.env, lock.status === "ok" ? lock.lock.kit.source : null);
+}
+function pickSource(flag, envVars, lockSource) {
+  const env = envVars.HARNESS_KIT_SOURCE || void 0;
+  if (env === "none" && flag === void 0) return { url: null, reason: "HARNESS_KIT_SOURCE=none — 소스를 보지 않는다" };
   const given = flag !== void 0 ? { url: flag, from: "flag" } : env !== void 0 ? { url: env, from: "env" } : null;
   if (given) {
     if (given.url.startsWith("-")) throw usageError(`--source 는 '-' 로 시작할 수 없다: '${given.url}'`, "git 원격 주소나 저장소 경로를 준다");
     return given;
   }
-  const lock = readLock(import_node_path47.default.join(target, LOCK_REL));
-  const url = fromKitSource(lock.status === "ok" ? lock.lock.kit.source : null, ctx.io.env);
+  const url = fromKitSource(lockSource, envVars);
   if (url && !url.startsWith("-")) return { url, from: "lock" };
-  return { url: null, reason: "소스를 모른다 — --source <git 원격> 또는 HARNESS_KIT_SOURCE 로 준다" };
+  return { url: DEFAULT_SOURCE, from: "default" };
 }
 var isPre = (v) => /^\d+\.\d+\.\d+-/.test(v);
 var newer = (a, b) => (compareSemver(a, b) ?? 0) > 0;
@@ -10592,6 +10596,8 @@ async function runDispatch(ctx) {
   }
   if (sub2 === "drop" && id && !extra) return run3(ctx, "DELETE", `/dispatch/queue/${id}`, {}, () => [`지웠다: ${id}`]);
   if (sub2 !== void 0) throw usageError("harness-kit dispatch --to … --kind … --path … | dispatch list | dispatch drop <id>");
+  const marker = (ctx.io.agentSession ?? (() => agentSession(ctx.io.env)))();
+  if (marker) throw new CliError(EXIT.STATE, `에이전트 세션에서는 다른 세션에 작업 요청을 보내지 않는다(판정: ${marker}) — 받는 세션이 턴을 돌려 토큰을 쓴다`, "사람이 자기 터미널이나 관리 페이지에서 고른다");
   const to = str(ctx.values, "to");
   if (!to) throw usageError("--to <세션 id | 키:역할 | 세션 이름> 이 필요하다");
   const text2 = str(ctx.values, "text");

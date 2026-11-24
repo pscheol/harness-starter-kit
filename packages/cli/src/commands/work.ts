@@ -7,6 +7,7 @@
  */
 import fs from "node:fs";
 import path from "node:path";
+import { agentSession } from "../../../dashboard/src/agent";
 import { ApiError } from "../../../dashboard/src/errors";
 import { findIntent, readUnitsFile } from "../../../dashboard/src/flow";
 import { addProject, Projects, projectsList, readRegistry, removeProject } from "../../../dashboard/src/projects";
@@ -14,7 +15,7 @@ import { resolveIntentCheckout } from "../../../dashboard/src/repo";
 import { sha256 } from "../../../dashboard/src/util";
 import { list, str } from "../cli/args";
 import { type CommandResult, type Ctx, today } from "../cli/context";
-import { EXIT, usageError } from "../core/errors";
+import { CliError, EXIT, usageError } from "../core/errors";
 import { failure, homeOf, jsonLines, openProject, run } from "./api-call";
 import { dashboardDeps } from "./dashboard-deps";
 
@@ -30,6 +31,9 @@ export async function runDispatch(ctx: Ctx): Promise<CommandResult> {
   }
   if (sub === "drop" && id && !extra) return run(ctx, "DELETE", `/dispatch/queue/${id}`, {}, () => [`지웠다: ${id}`]);
   if (sub !== undefined) throw usageError("harness-kit dispatch --to … --kind … --path … | dispatch list | dispatch drop <id>");
+  // 받는 세션이 턴을 돌려 토큰을 쓴다 — 에이전트 세션은 보내지 않는다(사용자 결정 2026-11-24, README 원칙 10)
+  const marker = (ctx.io.agentSession ?? (() => agentSession(ctx.io.env)))();
+  if (marker) throw new CliError(EXIT.STATE, `에이전트 세션에서는 다른 세션에 작업 요청을 보내지 않는다(판정: ${marker}) — 받는 세션이 턴을 돌려 토큰을 쓴다`, "사람이 자기 터미널이나 관리 페이지에서 고른다");
   const to = str(ctx.values, "to");
   if (!to) throw usageError("--to <세션 id | 키:역할 | 세션 이름> 이 필요하다");
   const text = str(ctx.values, "text");
