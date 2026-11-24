@@ -1,0 +1,8 @@
+# astryx theme editor 가 `show` 때 만드는 미리보기(수 MB) · 기록 — 테마 원본은 harness.theme.ts · harness.settings.* · palette.config.json 이다.
+themes/harness/preview.html
+themes/harness/preview.png
+themes/harness/sheet.html
+themes/harness/sheet-overlays/
+themes/harness/*.history.json
+themes/harness/*.pictures.json
+themes/harness/tokens/

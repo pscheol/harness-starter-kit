@@ -1,14 +1,10 @@
-/** 흐름 보기 패키지(HK-18, 설계 06 §3.16): 접근성 글 · 번들이 소스에서 같은 바이트로 다시 만들어지는지 · 크기 · 외부 요청 없음. */
-import { spawnSync } from "node:child_process";
-import crypto from "node:crypto";
+/** 흐름 보기 패키지(HK-18 → HK-26, 설계 06 §3.16): 접근성 글 · 소스에 외부 요청 없음 · 의존성. 번들은 packages/dashboard-ui 가 화면 번들 안의 늦게 받는 조각으로 만든다. */
 import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { ariaLabelOf, flagText, stepOf, type FlowLabels } from "../src/types";
 
 const DIR = path.resolve(__dirname, "..");
-const VENDOR = path.resolve(DIR, "../dashboard/static/vendor");
-const sha = (f: string): string => crypto.createHash("sha256").update(fs.readFileSync(f)).digest("hex");
 
 const labels: FlowLabels = {
   canvas: "Unit 의존 흐름", controls: "조절", minimap: "미니맵", contract: "계약", contractTag: "계약", noSession: "세션 없음", bolt: "Bolt", estimated: "추정",
@@ -35,30 +31,19 @@ describe("노드 글(색만으로 말하지 않는다)", () => {
   });
 });
 
-describe("번들(R2)", () => {
-  it("소스에서 다시 빌드하면 커밋된 번들과 같은 바이트다(같은 소스 · 같은 esbuild 판)", () => {
-    const before = ["flow.bundle.js", "flow.bundle.css", "THIRD-PARTY-LICENSES.txt"].map((f) => sha(path.join(VENDOR, f)));
-    const r = spawnSync("node", ["build.mjs"], { cwd: DIR, encoding: "utf8" });
-    expect(r.status, r.stderr).toBe(0);
-    const after = ["flow.bundle.js", "flow.bundle.css", "THIRD-PARTY-LICENSES.txt"].map((f) => sha(path.join(VENDOR, f)));
-    expect(after).toEqual(before);
+describe("소스(R7)", () => {
+  it("외부 요청 · 인라인 스타일 요소가 없다(화면 CSP)", () => {
+    for (const f of fs.readdirSync(path.join(DIR, "src"))) {
+      const src = fs.readFileSync(path.join(DIR, "src", f), "utf8");
+      expect([f, /fetch\(\s*["'`]https?:|XMLHttpRequest|sendBeacon|WebSocket\(|createElement\(\s*["']style["']/.test(src)]).toEqual([f, false]);
+    }
   });
 
-  it("크기 예산 · 외부 요청 없음 · 라이선스 문구(react · @xyflow/react · d3)", () => {
-    const js = fs.readFileSync(path.join(VENDOR, "flow.bundle.js"), "utf8");
-    expect(Buffer.byteLength(js)).toBeLessThan(450 * 1024);
-    expect(fs.statSync(path.join(VENDOR, "flow.bundle.css")).size).toBeLessThan(30 * 1024);
-    expect(js).not.toMatch(/fetch\(\s*["'`]https?:|XMLHttpRequest|sendBeacon|WebSocket\(/);
-    expect(js).toContain("export{"); // ES 모듈 한 파일
-    const lic = fs.readFileSync(path.join(VENDOR, "THIRD-PARTY-LICENSES.txt"), "utf8");
-    for (const name of ["@xyflow/react@", "react@", "react-dom@", "d3-zoom@"]) expect(lic, name).toContain(name);
-    expect(lic).toMatch(/MIT/);
-  });
-
-  it("package.json: 런타임 의존성 0, react 등은 devDependency 에만(번들에만 들어간다)", () => {
-    const pkg = JSON.parse(fs.readFileSync(path.join(DIR, "package.json"), "utf8")) as { dependencies: Record<string, string>; devDependencies: Record<string, string> };
+  it("package.json: 런타임 의존성 0, react 등은 devDependency 에만(화면 번들에만 들어간다), 자체 빌드 스크립트 없음", () => {
+    const pkg = JSON.parse(fs.readFileSync(path.join(DIR, "package.json"), "utf8")) as { dependencies: Record<string, string>; devDependencies: Record<string, string>; scripts: Record<string, string> };
     expect(pkg.dependencies).toEqual({});
     for (const n of ["react", "react-dom", "@xyflow/react"]) expect(pkg.devDependencies[n]).toBeTruthy();
+    expect(pkg.scripts.build).toBeUndefined();
     const cli = JSON.parse(fs.readFileSync(path.join(DIR, "../cli/package.json"), "utf8")) as { dependencies: Record<string, string> };
     const dash = JSON.parse(fs.readFileSync(path.join(DIR, "../dashboard/package.json"), "utf8")) as { dependencies: Record<string, string> };
     expect([cli.dependencies, dash.dependencies]).toEqual([{}, {}]);

@@ -2,11 +2,10 @@
   "name": "@harness-kit/flow-view",
   "version": "2.0.0-alpha.0",
   "private": true,
-  "description": "관리 페이지 흐름 보기(S12) — React Flow 를 미리 묶어 packages/dashboard/static/vendor/ 에 쓴다. react 등은 번들에만 들어가는 devDependency 다",
+  "description": "관리 페이지 흐름 보기(S12) 소스 — React Flow 컴포넌트. 번들은 packages/dashboard-ui 가 화면 번들 안의 늦게 받는 조각으로 만든다(React 복사본 하나를 같이 쓴다). react 등은 번들에만 들어가는 devDependency 다",
   "license": "MIT",
   "type": "module",
   "scripts": {
-    "build": "node build.mjs",
     "typecheck": "tsc --noEmit",
     "test": "tsc --noEmit && vitest run"
   },
@@ -16,7 +15,6 @@
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "@xyflow/react": "12.9.2",
-    "esbuild": "0.28.2",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "typescript": "5.9.3",

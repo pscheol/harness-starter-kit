@@ -1,0 +1,44 @@
+{
+  "name": "harness",
+  "like": "neutral",
+  "mode": "light-only",
+  "settings": [
+    {
+      "thing": "success",
+      "value": "#0b7a5e",
+      "source": "dial"
+    },
+    {
+      "thing": "warning",
+      "value": "#c98a12",
+      "source": "dial"
+    },
+    {
+      "thing": "danger",
+      "value": "#c8102e",
+      "source": "dial"
+    },
+    {
+      "thing": "corners",
+      "value": "small",
+      "source": "dial"
+    },
+    {
+      "thing": "spacing",
+      "value": "compact",
+      "source": "dial"
+    },
+    {
+      "thing": "neutral",
+      "value": "#78716c",
+      "source": "dial"
+    },
+    {
+      "thing": "accent",
+      "value": "#2f2b27",
+      "source": "dial"
+    }
+  ],
+  "lifted": [],
+  "palette": "344e7eb9376577825c2f2546b07c466d4a5041755fb0289406d9c0e422692e56"
+}
