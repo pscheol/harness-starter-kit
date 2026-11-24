@@ -19,7 +19,7 @@ created: 2026-11-24
 | T6 | AI-DLC Intent 의 intent 게이트 승인 고침(e2e 가 찾음) | MG-R7 | done |
 | T7 | knots · hdr 복사본 실측 | §3.2 · §3.3 | done |
 | T8 | 이전 안내서 `docs/migration-guide.md` | §3.1 · §3.8 | done |
-| T9 | 생성물 · 전체 시험 · 기록 | 완료 기준 | check |
+| T9 | 생성물 · 전체 시험 · 기록 | 완료 기준 | done |
 
 ## MG-R 결과
 
@@ -104,10 +104,10 @@ created: 2026-11-24
 
 | 시험 | 결과 |
 |---|---|
-| `pnpm -C packages/cli test` | (아래 채움) |
-| `pnpm -C packages/dashboard test` | (아래 채움) |
-| 킷 python 전체 `unittest discover -s tests -p "test_*.py"` | (아래 채움) |
-| 설치본 시험(`<설치>/scripts/tests`) | (아래 채움) |
+| `pnpm -C packages/cli test`(tsc + vitest) | 41 파일 · 486 통과 |
+| `pnpm -C packages/dashboard test` | 20 파일 · 158 중 155 통과 + 시간 초과 3(`overview` 1 · `projects` 2, 기계가 바빠 60초 제한 — 두 파일을 단독으로 다시 돌려 8 통과) |
+| 킷 python 전체 `unittest discover -s tests -p "test_*.py"` | 137 중 136 통과 + 오류 1(`test_install.test_harness_scripts_suite_passes_in_install` 의 설치본 시험이 1,200초 제한 초과 — 다른 에이전트의 시험이 동시에 돌았다. 같은 시험을 단독으로 돌려 아래 669 통과). 2,150초 |
+| 설치본 시험(`<설치>/scripts/tests`) | 669 통과(1,327초) |
 | `node scripts/gen-plugins.mjs --check` | 생성물 일치(파일 477개) |
 | `python3 -m unittest tests.test_release tests.test_generated` | 27 통과 |
 | `python3 -m unittest discover -s tests/e2e -p "test_*.py"` | 5 통과(stub, 약 13초) |
