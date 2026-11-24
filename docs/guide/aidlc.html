@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="설계 단계를 AI-DLC 에 맡길 때">
+<title>AI-DLC 모듈 — knots-sync 사용 안내서</title>
+<link rel="stylesheet" href="assets/guide.css">
+</head>
+<body>
+<a class="skip" href="#main">본문으로 건너뛰기</a>
+<header class="site-header">
+<a class="brand" href="index.html">knots-sync<span>사용 안내서</span></a>
+<span class="site-meta">CLI 2.0.0-alpha.0 기준 · 2026-11-24 · 저장소 harness-starter-kit</span>
+</header>
+<div class="layout">
+<nav class="toc" aria-label="안내서 목차">
+<p class="toc-title">안내서 목차</p>
+<ol>
+<li class="toc-group">시작</li>
+<li><a href="index.html"><span class="n">00</span><span>시작하기</span></a></li>
+<li><a href="concepts.html"><span class="n">01</span><span>개념</span></a></li>
+<li><a href="install.html"><span class="n">02</span><span>설치</span></a></li>
+<li class="toc-group">쓰기</li>
+<li><a href="daily-flow.html"><span class="n">03</span><span>하루 흐름</span></a></li>
+<li><a href="dashboard.html"><span class="n">04</span><span>관리 페이지</span></a></li>
+<li><a href="cli.html"><span class="n">05</span><span>CLI 명령 참고</span></a></li>
+<li class="toc-group">모듈</li>
+<li><a href="aidlc.html" aria-current="page"><span class="n">06</span><span>AI-DLC 모듈</span></a></li>
+<li><a href="entire.html"><span class="n">07</span><span>Entire 모듈</span></a></li>
+<li><a href="modules.html"><span class="n">08</span><span>jira · notion · multi-harness</span></a></li>
+<li class="toc-group">운영과 팀</li>
+<li><a href="ops.html"><span class="n">09</span><span>배포 · 운영 · 지표</span></a></li>
+<li><a href="roles.html"><span class="n">10</span><span>역할별 활용 가이드</span></a></li>
+<li class="toc-group">옮기기와 도움</li>
+<li><a href="migration.html"><span class="n">11</span><span>옛 이름에서 옮기기</span></a></li>
+<li><a href="faq.html"><span class="n">12</span><span>문제 해결 · FAQ</span></a></li>
+</ol>
+</nav>
+<main id="main" tabindex="-1">
+<article>
+<p class="kicker">06 · 모듈</p>
+<h1>AI-DLC 모듈</h1>
+<p class="lede">AI-DLC(awslabs 의 <code>aidlc-workflows</code>)는 요구사항을 대화로 정리해 Intent · Unit 으로 나누는 외부 설계 도구다. <code>aidlc</code> 모듈을 켜면 설계 단계를 AI-DLC 가 맡고, knots-sync 는 그 산출물을 자기 Intent · Unit 형식으로 가져와 이슈 단계부터 이어 간다. 기본은 꺼져 있다.</p>
+<nav class="on-page" aria-label="이 장의 절"><h2>이 장에서</h2><ol><li><a href="#what">무엇이 바뀌나</a></li><li><a href="#when">언제 쓰나</a></li><li><a href="#add">켜기 — add aidlc</a></li><li><a href="#sync">가져오기 — sync aidlc</a></li><li><a href="#approvals">AI-DLC Intent 의 승인</a></li><li><a href="#load">세션 적재량 — 약 73KB</a></li><li><a href="#remove">끄기 — remove aidlc</a></li><li><a href="#doctor">doctor 가 보는 것</a></li></ol></nav>
+
+<h2 id="what">무엇이 바뀌나</h2>
+<div class="compare">
+<div>
+<h3>모듈 없음 — 킷 설계 단계(<code>flow.design = "kit"</code>)</h3>
+<ul>
+<li><code>/kns-intent</code> 가 <code>intent.md</code> · <code>questions.md</code> · <code>units.json</code> 을 쓴다.</li>
+<li>질문은 관리 페이지 · <code>knots-sync answer</code> 로 답한다.</li>
+<li>intent 승인은 관리 페이지 · <code>knots-sync approve</code> · Jira.</li>
+<li>세션에 더 실리는 것 없음(킷 몫 약 10KB).</li>
+</ul>
+</div>
+<div>
+<h3>모듈 켬 — AI-DLC 설계 단계(<code>flow.design = "aidlc"</code>)</h3>
+<ul>
+<li>AI-DLC 가 터미널 대화로 질문 · 스토리 · Unit 분해를 받는다. 산출물은 <code>aidlc/spaces/&lt;space&gt;/intents/&lt;YYMMDD&gt;-&lt;label&gt;/</code>.</li>
+<li><code>knots-sync sync aidlc</code> 가 Intent 폴더에 <code>intent.json</code>(AI-DLC 산출물 링크)과 <code>units.json</code> 을 만든다.</li>
+<li><code>/kns-intent</code> 는 "설계 단계는 /aidlc 가 맡는다. 끝나면 sync aidlc"만 알린다.</li>
+<li>AI-DLC 사람 입력 확인 훅이 받은 승인은 <code>경로: aidlc</code> 로 옮겨진다(승인자가 기록에 있을 때).</li>
+<li>세션마다 약 73KB 와 훅 17개가 더 실린다.</li>
+</ul>
+</div>
+</div>
+<p>이후 단계 — 기획물(<code>/kns-plans</code>), <code>/kns-specify --from-unit</code>, 이슈 세 문서, 게이트 검사, 관리 페이지 — 는 두 경우 같다. 명령과 출력 형식도 같고, 입력만 <code>intent.md</code> 대신 <code>intent.json</code> 이 가리키는 AI-DLC 문서다. <strong>구현은 늘 킷 SDD 가 맡는다</strong>. AI-DLC 쪽 구현 산출물이 생기면 <code>doctor</code> 가 "두 곳에서 구현하지 않는다"를 경고한다.</p>
+
+<h2 id="when">언제 쓰나</h2>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">상황</th><th scope="col">권장</th><th scope="col">이유</th></tr></thead>
+<tbody>
+<tr><td>팀이 이미 AI-DLC 로 Intent 를 만들어 왔고 그 방식(단계 · 대화 · 승인 훅)을 계속 쓰고 싶다</td><td>켠다</td><td>산출물을 다시 쓰지 않고 이슈 단계로 이어진다. 사람이 두 번 승인하지 않는다</td></tr>
+<tr><td>AI-DLC 로 만든 Intent 가 0건이다</td><td>켜지 않는다(<code>flow.design = "kit"</code>)</td><td>킷 설계 단계만으로 전 흐름이 돈다. 세션 적재량 약 73KB · 훅 17개를 아낀다(이전 안내서의 선택 B)</td></tr>
+<tr><td>설계는 Kiro 에서 하고 싶은데 AI-DLC 는 Claude Code 에만 깔았다</td><td>맞춘다</td><td>설계 역할 하네스(<code>roles.design.harness</code>)와 AI-DLC 가 깔린 하네스가 다르면 <code>doctor</code> 가 경고한다</td></tr>
+<tr><td>Codex · Cursor · Kiro 리포</td><td>켜기 전에 확인</td><td>AI-DLC 가 <code>AGENTS.md</code>(Codex 는 <code>.agents/skills/</code> 도)에 쓴다. 킷 소유 파일과 겹치니 <code>add</code> 뒤 <code>doctor</code> 와 diff 로 본다</td></tr>
+</tbody></table></div>
+<p>AI-DLC 방법론 자체(Intent · Unit · Bolt, 세 단계, 대화 방향 역전)는 <a href="../ai-dlc/index.html">AI-DLC 핸드북</a>에 있다. 모듈을 켜지 않아도 이 원칙 다섯 가지는 킷 흐름이 지킨다.</p>
+
+<h2 id="add">켜기 — <code>add aidlc</code></h2>
+<div class="human"><span class="box-title">외부 도구 설치는 사람이 한다</span><p>킷은 외부 도구를 몰래 깔지 않는다. 도구가 없으면 <code>add</code> 가 exit 5 와 설치 안내를 낸다. <code>--install-tools</code> 는 <strong>사람 터미널에서만</strong> 공식 설치기(<code>curl -fsSL https://github.com/awslabs/aidlc-workflows/releases/latest/download/install.sh | sh</code>)를 부른다. 처음에는 일회용 HOME 에서 시험해 보길 권한다.</p></div>
+<pre class="cmd"><code><span class="p">$ </span>aidlc --version                       <span class="c"># 검증 범위: &gt;=2.11 &lt;3 (versions.aidlc)</span>
+<span class="p">$ </span>knots-sync add aidlc --dry-run
+<span class="p">$ </span>knots-sync add aidlc                  <span class="c"># 범위 밖 판이면 exit 4 — 그래도 쓰려면 --allow-unverified</span></code></pre>
+<p><code>add aidlc</code> 가 하는 일(<code>module.json</code> 의 <code>steps.add</code> 순서).</p>
+<ol>
+<li><code>aidlc config --harness &lt;설계 하네스&gt; --yes</code> — 확인을 받고 실행한다.</li>
+<li><code>aidlc doctor</code> — 결과를 함께 보인다(실패해도 계속).</li>
+<li>AI-DLC 가 만든 파일 · 훅을 lock 에 <code>owner: external:aidlc</code>(<code>op: none</code>)로 등록한다. 대상은 <code>aidlc/**</code>, <code>.claude/aidlc-common/**</code> · <code>.claude/agents/aidlc-*</code> · <code>.claude/skills/aidlc*/**</code> · <code>.claude/hooks/**</code> 등 하네스별 AI-DLC 경로다.</li>
+<li>킷 몫을 깐다: <code>hooks.d/aidlc.json</code> 과 Stop 훅 <code>harness-aidlc-freshness</code>(Claude Code 에만) — AI-DLC 산출물이 <code>units.json</code> 보다 새로우면 "<code>sync aidlc</code> 하라"를 알린다.</li>
+<li><code>flow.design = "aidlc"</code> 로 바꾼다.</li>
+<li><code>doctor</code> 의 aidlc 점검(도구 판 · 설계 하네스 · 구현 산출물 · 신선도)을 돈다.</li>
+</ol>
+<p>새로 깔 때 함께 켜려면 <code>knots-sync init … --modules aidlc</code>. 외부 도구 모듈은 이름을 직접 줄 때만 켜진다(<code>--modules all</code> 로는 켜지지 않는다). 도구 판을 올릴 때는 <code>knots-sync update --tools</code> — 지금 · 최신 판을 보이고 사람이 고른 것만 올린다.</p>
+
+<h2 id="sync">가져오기 — <code>sync aidlc</code></h2>
+<div class="block"><span class="block-label"><span class="tag">--help</span>knots-sync sync(aidlc 부분)</span>
+<pre><code>knots-sync sync aidlc [--intent &lt;AI-DLC Intent 폴더&gt;] [--key &lt;Intent 키&gt;] [--check] [--json] — AI-DLC 산출물을 intent.json · units.json 으로 옮긴다. 같은 입력이면 쓰지 않는다. --check 는 쓰지 않고 차이가 있으면 exit 1.</code></pre></div>
+<ol>
+<li>입력 = AI-DLC Intent 폴더의 파일 목록과 내용 → <code>inputSha256</code>. 이미 같은 입력으로 가져왔으면 아무것도 쓰지 않는다(exit 0).</li>
+<li>판별 모듈이 <strong>알려진 파일만</strong> 읽는다. 알려진 파일이나 필수 항목(Intent 제목 · Unit 목록)이 없으면 exit 2 와 빠진 항목을 낸다. 추측해서 채우지 않는다.</li>
+<li>AI-DLC Intent → <code>intent.json</code>, Unit → <code>units[]</code>(<code>sourceId</code> 에 AI-DLC 쪽 식별자), 스토리 → <code>stories</code>, 의존 → <code>dependsOn</code>, 계약 성격 Unit → <code>kind: contract</code>.</li>
+<li>다시 가져올 때: <code>sourceId</code> 가 같은 Unit 은 <code>id</code> · <code>issue</code> · <code>planned</code> 를 지킨다. 새 Unit 은 다음 U 번호, 사라진 Unit 은 <code>planned: false</code>.</li>
+<li>AI-DLC 승인 기록에 승인자가 있으면 승인자 · 시각 · 문구를 Intent 의 <code>approvals.md</code> 에 <code>경로: aidlc</code> · <code>source: aidlc</code> · 근거 파일과 함께 옮긴다. 승인자가 없으면 옮기지 않는다 — 그 게이트는 관리 페이지 · <code>knots-sync approve</code> · Jira 로 승인한다.</li>
+</ol>
+<pre><code>{
+  "schema": "knots-sync.intent-link/v1",
+  "key": "INT-7",
+  "title": "결제 개편",
+  "source": "aidlc",
+  "aidlc": { "space": "main", "intent": "261123-payment-revamp",
+             "path": "aidlc/spaces/main/intents/261123-payment-revamp/", "version": "2.11.0" },
+  "adapter": { "name": "knots-sync/aidlc", "inputSha256": "b71e…", "adaptedAt": "…" }
+}</code></pre>
+<p class="src">설계서 08 §3.10 의 <code>intent.json</code> 예시. 실제 값은 <code>sync aidlc</code> 가 쓴다.</p>
+<p>CI 에서는 <code>knots-sync sync aidlc --check</code> 를 두면 "AI-DLC 는 바뀌었는데 가져오지 않음"을 잡는다.</p>
+
+<h2 id="approvals">AI-DLC Intent 의 승인</h2>
+<ul>
+<li>AI-DLC 가 사람 입력을 훅으로 확인한 승인은 채팅과 다르다. 그래서 킷은 그 승인을 intent 게이트 승인으로 인정한다. 사람이 두 번 승인하지 않는다.</li>
+<li>AI-DLC 세션의 그 밖의 대화는 승인이 아니다. 채팅에서 "좋아"라고 한 것은 어디서든 승인이 아니다.</li>
+<li>intent 게이트는 <code>intent.json</code> 을 대상으로 읽는다. 두 구성 e2e 가 "AI-DLC Intent 의 intent 게이트 승인"에서 버그를 찾아 고쳤다(HK-22 T6).</li>
+<li>plans 이후 게이트는 킷 경로(관리 페이지 · <code>approve</code> · Jira)로만 생긴다.</li>
+</ul>
+
+<h2 id="load">세션 적재량 — 약 73KB</h2>
+<div class="token"><span class="box-title">켜기 전에 숫자를 본다</span>
+<p>두 구성 e2e(실제 도구 aidlc 2.11.4 · entire 0.13.4, 하네스 Claude Code, <code>doctor --json</code> 의 <code>load</code>)의 값이다.</p></div>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">구성</th><th scope="col">kit</th><th scope="col">external:aidlc</th><th scope="col">external:entire</th><th scope="col">합계</th></tr></thead>
+<tbody>
+<tr><td>A 킷만</td><td>10,189 B · 훅 13</td><td>—</td><td>—</td><td>10,189 B</td></tr>
+<tr><td>B 킷 + AI-DLC + Entire</td><td>10,189 B · 훅 14</td><td>73,333 B · 훅 17</td><td>0 B · 훅 10</td><td>83,522 B(추정 약 27,800 토큰)</td></tr>
+</tbody></table></div>
+<ul>
+<li>AI-DLC 몫 73,333 B 의 내역: 규칙 1 · 스킬 설명 43 · 에이전트 설명 14 · 진입 파일 9.</li>
+<li>킷 쪽은 <code>harness-aidlc-freshness</code> Stop 훅 하나가 늘고, 새 산출물이 있을 때만 최대 512바이트를 낸다.</li>
+<li>사람 터미널의 마지막 실행(real)에서도 킷만 10,202 B · AI-DLC +73,333 B · Entire +0 B, 합계 83,535 B 로 같은 크기였다. 설치 순서(킷 → aidlc → entire, 그 반대)와 무관하다. Codex 는 두 도구를 Claude Code 에만 켜서 킷만(약 8.4KB)이다.</li>
+<li>이 숫자는 킷이 아니라 외부 도구가 더하는 양이다. 킷의 토큰 원칙에 따라 켜기 전 · 후 값을 MR 설명에 적고 사람이 받아들인다.</li>
+</ul>
+
+<h2 id="remove">끄기 — <code>remove aidlc</code></h2>
+<pre class="cmd"><code><span class="p">$ </span>knots-sync remove aidlc --dry-run
+<span class="p">$ </span>knots-sync remove aidlc</code></pre>
+<p>킷 몫(훅 · 등록)만 빼고 <code>flow.design = "kit"</code> 으로 돌린다. 끝에 이렇게 알린다: "AI-DLC 가 하네스 설정에 넣은 자기 훅 · 파일은 남는다. 빼려면 사람이 <code>aidlc uninstall</code> 또는 그 도구의 안내를 따른다(킷은 실행하지 않는다). AI-DLC 산출물 · <code>intent.json</code> · <code>units.json</code> · SDD 이슈는 그대로 남는다." 남은 Intent 는 <code>intent.json</code> 을 그대로 읽어 관리 페이지에 보인다.</p>
+<p>e2e 의 E5 · E6 판정이 이 약속을 지킨다: <code>update</code> · <code>repair</code> · <code>uninstall</code> 과 <code>remove entire</code> → <code>remove aidlc</code> 뒤에 외부 파일 · 훅 항목의 sha256 이 그대로였다(real: 파일 405 · 훅 27).</p>
+
+<h2 id="doctor">doctor 가 보는 것</h2>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">점검</th><th scope="col">알리는 것</th></tr></thead>
+<tbody>
+<tr><td><code>tool-version</code></td><td><code>aidlc --version</code> 이 <code>versions.aidlc</code> 범위 안인가</td></tr>
+<tr><td><code>design-harness</code></td><td>설계 역할 하네스에 AI-DLC 가 깔렸나("설계 역할은 kiro 인데 AI-DLC 는 claude 에만 있다")</td></tr>
+<tr><td><code>construction-artifacts</code></td><td>AI-DLC 구현 쪽 산출물이 생겼나("구현은 킷 SDD 가 맡는다")</td></tr>
+<tr><td><code>freshness</code></td><td>AI-DLC 산출물이 <code>units.json</code> 보다 새로운가</td></tr>
+<tr><td><code>external-hooks-left</code></td><td>모듈은 꺼졌는데 하네스 설정에 AI-DLC 훅이 남아 있나(이전한 리포에서 흔하다)</td></tr>
+</tbody></table></div>
+<div class="unverified"><span class="box-title">확인 범위</span><p>e2e(stub · real)에서 설치 순서 두 가지, <code>intent.py check</code>, Unit 목록 키 비교(E1), 외부 파일 불변(E5 · E6)을 확인했다. 사람 터미널 실행에서는 승인 단계(S3~S9)까지 통과했다. 팀의 실제 AI-DLC Intent 로 한 바퀴 도는 것은 각 팀이 처음 쓸 때 확인한다.</p></div>
+
+</article>
+<nav class="pager" aria-label="이전 장 · 다음 장"><a class="prev" href="cli.html" rel="prev"><small>← 이전</small>CLI 명령 참고</a><a class="next" href="entire.html" rel="next"><small>다음 →</small>Entire 모듈</a></nav>
+</main>
+</div>
+<footer class="site-footer">knots-sync(약어 kns) 사용 안내서 · 정적 HTML · 외부 글꼴 · 스크립트 없음</footer>
+</body>
+</html>
