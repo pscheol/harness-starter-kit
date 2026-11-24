@@ -4,6 +4,7 @@
  */
 import { tomlString } from "./render";
 import type { HookSpec, ProjectionSpec } from "./spec";
+import { vscodeSettings, type VscodeSettingsWant } from "./vscode";
 
 export type MergeResult = { ok: true; text: string; keys: string[]; created: boolean } | { ok: false; reason: string };
 export type UnmergeResult = { ok: true; text: string; empty: boolean } | { ok: false; reason: string };
@@ -34,7 +35,7 @@ export interface CodexConfigWant {
 export interface GitattributesWant {
   lines: string[];
 }
-export type MergeKind = "claude-md" | "settings" | "codex-hooks" | "codex-config" | "gitattributes";
+export type MergeKind = "claude-md" | "settings" | "codex-hooks" | "codex-config" | "gitattributes" | "vscode-settings";
 
 export interface Merger<W> {
   merge(cur: string | null, want: W, prev?: string[]): MergeResult;
@@ -57,6 +58,7 @@ export const MERGE_KIND: Record<string, MergeKind> = {
   ".codex/hooks.json": "codex-hooks",
   ".codex/config.toml": "codex-config",
   ".gitattributes": "gitattributes",
+  ".vscode/settings.json": "vscode-settings",
 };
 
 const fail = (reason: string): { ok: false; reason: string } => ({ ok: false, reason });
@@ -561,9 +563,10 @@ export const MERGERS = {
   "codex-hooks": codexHooks,
   "codex-config": codexConfig,
   gitattributes,
+  "vscode-settings": vscodeSettings,
 } as const;
 
-export type MergeWant = ClaudeMdWant | SettingsWant | CodexHooksWant | CodexConfigWant | GitattributesWant;
+export type MergeWant = ClaudeMdWant | SettingsWant | CodexHooksWant | CodexConfigWant | GitattributesWant | VscodeSettingsWant;
 
 /** 병합 종류와 조각으로 부르기(engine 용). */
 export function mergeWith(kind: MergeKind, cur: string | null, want: MergeWant, prev?: string[]): MergeResult {

@@ -1,0 +1,6 @@
+# worktree 를 만들 때 메인 폴더에서 복사할 로컬 설정이다(gitignore 문법). gitignore 된 파일만 복사된다 — 추적 파일은 복사하지 않는다.
+# 파일당 50MB, 합계 200개까지. 이미 있는 파일은 덮지 않는다. 메인 폴더의 이 파일이 기준이다.
+.env
+.env.local
+**/local.properties
+**/.env.local

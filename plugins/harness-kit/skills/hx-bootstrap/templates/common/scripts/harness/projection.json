@@ -62,6 +62,12 @@
       },
       "session-end": {
         "claude": "SessionEnd"
+      },
+      "worktree-create": {
+        "claude": "WorktreeCreate"
+      },
+      "worktree-remove": {
+        "claude": "WorktreeRemove"
       }
     },
     "tools": {
