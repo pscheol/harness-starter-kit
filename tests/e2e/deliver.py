@@ -40,23 +40,39 @@ def approve_doc(sb: Sandbox, key: str, gate: str, rel: str, phrase: str) -> tupl
     return sb.approve({"issue": key}, gate, phrase, sha=sb.doc_sha(rel))
 
 
+def scaffold(sb: Sandbox, key: str, stage: str) -> None:
+    """다음 단계 문서를 킷 명령으로 만든다. 앞 단계가 승인돼야 만들어진다(단계형 SDD — from-unit 은 requirements 만 만든다)."""
+    sb.run("bash", "scripts/new-feature.sh", key, f"--stage={stage}")
+
+
 def issue_docs(sb: Sandbox, config: str, report: Report, issue: dict, tag: str) -> None:
-    """S5 requirements · design · tasks 승인. E3: 앞 승인 없이 다음 게이트 승인 API 는 422."""
+    """S5 requirements → design → tasks 를 차례로 쓰고 승인한다.
+    E3: 단계를 건너뛰어 손으로 먼저 쓴 design.md 는 requirements 승인 전이면 승인 API 가 422 로 막는다."""
     key, folder = issue["key"], issue["folder"]
     rel = folder.relative_to(sb.repo).as_posix()
     area = scripted.UNIT_AREAS[issue["unit"]]
-    sb.write(f"{rel}/requirements.md", set_head(sb.read(f"{rel}/requirements.md"), "status", "in-review"))
-    sb.write(f"{rel}/design.md", set_head(replace_body(sb.read(f"{rel}/design.md"), scripted.DESIGN_BODY.format(area=area)), "status", "in-review"))
-    sb.write(f"{rel}/tasks.md", replace_body(sb.read(f"{rel}/tasks.md"), scripted.TASKS_BODY.format(area=area)))
-    sb.commit(f"docs: {key} 문서")
-    status, body = approve_doc(sb, key, "design", f"{rel}/design.md", "설계 확정")
+    req = f"{rel}/requirements.md"
+    sb.write(req, set_head(sb.read(req), "status", "in-review"))
+    early = f"{rel}/design.md"
+    sb.write(early, set_head(replace_body(sb.read(req), scripted.DESIGN_BODY.format(area=area)), "status", "in-review"))
+    sb.commit(f"docs: {key} requirements · 손으로 먼저 쓴 design")
+    status, body = approve_doc(sb, key, "design", early, "설계 확정")
     report.add(config, f"E3.design-before-requirements{tag}", "pass" if status == 422 else "fail", f"status {status} {body.get('error', {}).get('code')}")
-    for gate, name in (("requirements", "requirements.md"), ("design", "design.md"), ("tasks", "tasks.md")):
-        status, body = approve_doc(sb, key, gate, f"{rel}/{name}", f"{gate} 확정")
+    (sb.repo / early).unlink()
+    sb.commit(f"docs: {key} 손으로 쓴 design 을 뺀다")
+    bodies = {"design": scripted.DESIGN_BODY, "tasks": scripted.TASKS_BODY}
+    for gate in ("requirements", "design", "tasks"):
+        doc = f"{rel}/{gate}.md"
+        if gate != "requirements":
+            scaffold(sb, key, gate)
+            text = replace_body(sb.read(doc), bodies[gate].format(area=area))
+            sb.write(doc, set_head(text, "status", "in-review") if gate == "design" else text)
+            sb.commit(f"docs: {key} {gate}")
+        status, body = approve_doc(sb, key, gate, doc, f"{gate} 확정")
         report.add(config, f"S5.{gate}-approval{tag}", "pass" if status == 201 else "fail", "" if status == 201 else f"status {status} {short(body)}")
         if status != 201:
             raise Skip(f"{gate} 승인 실패 — 이후 단계를 건너뛴다")
-    sb.commit(f"docs: {key} 승인")
+        sb.commit(f"docs: {key} {gate} 승인")
 
 
 def implement(sb: Sandbox, config: str, report: Report, issue: dict, checkpoints: bool, tag: str) -> None:
@@ -101,6 +117,14 @@ def verify_changed(sb: Sandbox, config: str, report: Report, tag: str) -> None:
 def merge_and_done(sb: Sandbox, config: str, report: Report, issue: dict, tag: str) -> None:
     """S8 MR 승인 → 병합 → done 승인."""
     key = issue["key"]
+    # mr 앞 조건: 같은 HEAD · 깨끗한 트리의 affected 검증 통과 기록(sdd_gates verify_reasons)
+    r = sb.run("bash", "scripts/verify.sh", "--affected", check=False, timeout=900)
+    if r.returncode != 0:
+        out = (r.stdout + r.stderr).strip()
+        tools = re.search(r"설치되지 않|not found|없다", out)
+        report.add(config, f"S8.verify-affected{tag}", "skip" if tools else "fail", out.splitlines()[-1][:200] if out else f"exit {r.returncode}")
+        raise Skip("affected 검증을 통과하지 못해 mr 앞 조건을 채울 수 없다")
+    report.add(config, f"S8.verify-affected{tag}", "pass")
     status, body = sb.approve({"issue": key}, "mr", "MR 확인")
     report.add(config, f"S8.mr-approval{tag}", "pass" if status == 201 else "fail", "" if status == 201 else f"status {status} {short(body)}")
     if status != 201:
