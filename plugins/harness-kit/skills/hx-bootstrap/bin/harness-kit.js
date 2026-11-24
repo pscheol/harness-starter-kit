@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 0efb2aa84709a949aaae8398ff46d649c380f11f40c97ea4a47c3e10cd85a7c6 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 4577f7bfef9cd81c27535f8bdd06569e28ae9e0a8b13a837adf26d309851a08b · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -8093,13 +8093,22 @@ function layout(units) {
 function proposalOf(abs) {
   return readJson2(import_node_path36.default.join(abs, "units.proposed.json"));
 }
+function jsonHead(text3) {
+  try {
+    const data = JSON.parse(text3);
+    if (!isObj7(data)) return {};
+    return typeof data.title === "string" ? { title: data.title } : {};
+  } catch {
+    return {};
+  }
+}
 function intentModel(p, info, issues) {
-  const intentMd = import_node_path36.default.join(info.abs, "intent.md");
+  const intentMd = import_node_fs32.default.existsSync(import_node_path36.default.join(info.abs, "intent.md")) ? import_node_path36.default.join(info.abs, "intent.md") : import_node_path36.default.join(info.abs, "intent.json");
   let fm = {};
   let iSha = null;
   try {
     const b = import_node_fs32.default.readFileSync(intentMd);
-    fm = parseLoose(b.toString("utf8")) ?? {};
+    fm = intentMd.endsWith(".json") ? jsonHead(b.toString("utf8")) : parseLoose(b.toString("utf8")) ?? {};
     iSha = approvalSha(b);
   } catch {
     fm = {};
@@ -11712,11 +11721,14 @@ async function postApproval(p, body, via) {
 async function approveIntent(p, key, decision, phrase, body, via) {
   const co = await resolveIntentCheckout(p, key);
   const info = findIntent(co.root, key);
-  const intentFile = import_node_path51.default.join(info.abs, "intent.md");
+  const mdFile = import_node_path51.default.join(info.abs, "intent.md");
+  const linkOnly = !import_node_fs46.default.existsSync(mdFile) && import_node_fs46.default.existsSync(import_node_path51.default.join(info.abs, "intent.json"));
+  const intentFile = linkOnly ? import_node_path51.default.join(info.abs, "intent.json") : mdFile;
+  const docName = linkOnly ? "intent.json" : "intent.md";
   if (!import_node_fs46.default.existsSync(intentFile)) throw notFound("intent.md 가 없습니다");
   const bytes = import_node_fs46.default.readFileSync(intentFile);
   const text3 = bytes.toString("utf8");
-  const status = parseLoose(text3)?.status ?? null;
+  const status = linkOnly ? "draft" : parseLoose(text3)?.status ?? null;
   const approvalsFile = import_node_path51.default.join(info.abs, "approvals.md");
   const current4 = import_node_fs46.default.existsSync(approvalsFile) ? import_node_fs46.default.readFileSync(approvalsFile, "utf8") : null;
   const entries = current4 ? parse(current4).entries : [];
@@ -11760,12 +11772,12 @@ async function approveIntent(p, key, decision, phrase, body, via) {
     writes.push({ file: import_node_path51.default.join(info.abs, "units.proposed.json"), data: null });
   }
   let statusChanged = null;
-  if (decision === "approved" && status !== "approved") {
+  if (decision === "approved" && status !== "approved" && !linkOnly) {
     writes.push({ file: intentFile, data: Buffer.from(setField2(text3, "status", "approved"), "utf8") });
     statusChanged = `${status ?? "없음"}→approved`;
   }
   const at = nowText();
-  const made = [{ at, gate: "intent", decision, approver: who, target: { name: "intent.md", sha256: aSha }, phrase, path: via, entryId: ulid(), ruleCandidate: decision === "changes-requested" && body.ruleCandidate === true }];
+  const made = [{ at, gate: "intent", decision, approver: who, target: { name: docName, sha256: aSha }, phrase, path: via, entryId: ulid(), ruleCandidate: decision === "changes-requested" && body.ruleCandidate === true }];
   if (unitsBytes) made.push({ at, gate: "intent", decision, approver: who, target: { name: "units.json", sha256: sha2562(unitsBytes) }, phrase, path: via, entryId: ulid() });
   writes.unshift({ file: approvalsFile, data: Buffer.from(appendedText(current4, key, made), "utf8") });
   writeAll(writes);

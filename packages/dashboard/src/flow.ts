@@ -149,13 +149,25 @@ export function proposalOf(abs: string): Record<string, unknown> | null {
   return readJson(path.join(abs, "units.proposed.json"));
 }
 
+/** intent.json(AI-DLC 링크)에서 머리 값처럼 쓸 문자열 필드만 꺼낸다. */
+function jsonHead(text: string): Record<string, string> {
+  try {
+    const data = JSON.parse(text) as unknown;
+    if (!isObj(data)) return {};
+    return typeof data.title === "string" ? { title: data.title } : {};
+  } catch {
+    return {};
+  }
+}
+
 export function intentModel(p: Project, info: IntentInfo, issues: IssueModel[]): Record<string, unknown> {
-  const intentMd = path.join(info.abs, "intent.md");
+  // AI-DLC 를 켠 Intent 는 intent.md 가 없고 intent.json(링크)뿐이다 — 승인 대상 문서가 intent.json 이다(from_unit.py 와 같은 규칙, HK-22).
+  const intentMd = fs.existsSync(path.join(info.abs, "intent.md")) ? path.join(info.abs, "intent.md") : path.join(info.abs, "intent.json");
   let fm: Record<string, string> = {};
   let iSha: string | null = null;
   try {
     const b = fs.readFileSync(intentMd);
-    fm = parseLoose(b.toString("utf8")) ?? {};
+    fm = intentMd.endsWith(".json") ? jsonHead(b.toString("utf8")) : (parseLoose(b.toString("utf8")) ?? {});
     iSha = approvalSha(b);
   } catch {
     fm = {};
