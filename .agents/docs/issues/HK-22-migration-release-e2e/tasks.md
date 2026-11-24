@@ -163,3 +163,16 @@ real(aidlc 2.11.4 · entire 0.13.4) 마지막 실행: **106 통과 · 실패 0 �
 세션 적재량(real, claude): 킷만 10,202 B · 훅 13 / AI-DLC +73,333 B(규칙 1 · 스킬 설명 43 · 에이전트 14) · 훅 +17 / Entire 0 B · 훅 +10 / 합계 83,535 B. codex 8,376 B(모듈과 무관). 실행 시간: A 7.5초 · B-forward 24.6초 · B-reverse 25.4초(구성마다 다시 쌓는 시간 제외).
 
 e2e 로 찾은 킷 버그 5개(위 굵은 글씨)는 각각 시험을 더하고 고쳤다: `dashboard/src/clarify.ts` · `sdd_gates.has_clarify` · `intent.has_clarify`, `core/generated.ts`(update · uninstall), `repo.ts resolveIssueCheckout`(done), `verify_planner.deleted_from_git` · `widen_untested`.
+
+## 실제 v1.0.8 설치본 → knots-sync 이전(2026-11-24)
+
+`main`(v1.0.8) 의 `setup.sh` 로 임시 리포에 python 스택 · claude,codex 를 깔고(상태 파일 `.agents/harness-kit.json` · `.lock`, 스킬 `hx-*` 11개, `.claude/commands/hx-*.md`), 새 CLI 로 `doctor` → `update --dry-run` → `update`. 일회용 HOME · `KNOTS_SYNC_CONFIG_DIR`.
+
+| 확인 | 결과 |
+|---|---|
+| `doctor`(옮기기 전) | 옛 상태 파일을 읽는다. `legacy-names` 2건(정보), `lock-v1`, 옛 판 `relative-ref` 4건 |
+| `update --dry-run` | 아무것도 옮기지 않는다(옛 이름 그대로) |
+| 충돌(.new) | 28 — **이름 바꾸기 전 CLI 와 같은 집합**(표시 줄 없는 v1 lock 의 보수 처리, HK-25) |
+| 옛 `hx-*` | 처음엔 24개가 '킷에서 빠짐'으로 남았다(애매한 lock 이라 기준 해시를 비웠다) → 고침: 킷 이름공간(hx-) 경로는 기준 해시를 지킨다. 지움 22 · retire 11(옛 `.claude/commands/hx-*.md`) · 남음 0 |
+| `update` 뒤 | `.agents/knots-sync.{json,lock}` 만 있다, `hx-` 파일 0, `kns-*` 스킬 15, `doctor` 오류 0(경고 29 = .new 병합 안내 등) |
+| 세션 적재량 | claude 3,169 → 10,210 B, codex 7,582 → 8,384 B(v2 킷 자체 증가 — 이전 MR 에 적는다) |
