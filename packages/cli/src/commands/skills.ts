@@ -2,6 +2,7 @@
  * skills · usage · history — 스킬 목록(설계 07 §3.9)과 기록 · 사용량(설계 06 §3.18) 콘솔 명령(HK-18).
  * 관리 페이지와 같은 처리 함수(packages/dashboard/src/api.ts)를 부른다. --json 은 API 의 data 와 같다.
  */
+import { STAGE_ALIAS } from "../../../dashboard/src/skills";
 import { bool, str } from "../cli/args";
 import type { CommandResult, Ctx } from "../cli/context";
 import { run } from "./api-call";
@@ -15,6 +16,8 @@ interface SkillRow {
   error: string | null;
 }
 
+const STAGE_KO: Record<string, string> = { design: "설계", implement: "구현", verify: "검증", docs: "반영", ops: "운영" };
+const SOURCE_KO: Record<string, string> = { map: "지도", metadata: "머리", 추정: "추정" };
 const pad = (s: string, n: number): string => (s.length >= n ? `${s} ` : s.padEnd(n));
 
 function skillLines(d: Record<string, unknown>, stage: string | undefined): string[] {
@@ -33,10 +36,11 @@ function skillLines(d: Record<string, unknown>, stage: string | undefined): stri
   if (skills.length) {
     lines.push(`${pad("이름", 34)} ${pad("단계", 12)} ${pad("출처", 8)} ${harnesses.map((h) => pad(h, 8)).join("")}위치`);
     for (const s of skills) {
-      const st = stage ? s.stages.find((x) => x.stage === (stage ?? "")) : s.stages[0];
-      const stText = st ? `${st.stage}${st.slot ? `/${st.slot}` : ""}` : "미분류";
+      const want = stage ? (STAGE_ALIAS[stage] ?? stage) : null;
+      const st = want ? s.stages.find((x) => x.stage === want) : s.stages[0];
+      const stText = st ? `${STAGE_KO[st.stage] ?? st.stage}${st.slot ? `/${st.slot}` : ""}` : "미분류";
       const overlap = conflicts.some((c) => c.name === s.id) ? " (이름 겹침)" : "";
-      lines.push(`${pad(s.id, 34)} ${pad(stText, 12)} ${pad(st?.source ?? "-", 8)} ${harnesses.map((h) => pad(s.harnesses[h] ?? "no", 8)).join("")}${s.locations[0]?.path ?? ""}${overlap}${s.error ? ` [오류: ${s.error}]` : ""}`);
+      lines.push(`${pad(s.id, 34)} ${pad(stText, 12)} ${pad(SOURCE_KO[st?.source ?? ""] ?? "-", 8)} ${harnesses.map((h) => pad(s.harnesses[h] ?? "no", 8)).join("")}${s.locations[0]?.path ?? ""}${overlap}${s.error ? ` [오류: ${s.error}]` : ""}`);
     }
   }
   if (conflicts.length) lines.push("이름 겹침", ...conflicts.map((c) => `  ${c.name}: ${c.candidates.join(" · ")}`));
@@ -53,7 +57,8 @@ export async function runSkills(ctx: Ctx): Promise<CommandResult> {
 }
 
 function fmt(n: number): string {
-  return n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${(n / 1000).toFixed(1)}K` : String(n);
+  const trim = (x: number): string => x.toFixed(1).replace(/\.0$/, "");
+  return n >= 1_000_000 ? `${trim(n / 1_000_000)}M` : n >= 1000 ? `${trim(n / 1000)}K` : String(n);
 }
 
 export async function runUsage(ctx: Ctx): Promise<CommandResult> {

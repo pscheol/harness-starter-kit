@@ -82,10 +82,11 @@ export async function render(ctx) {
           planned.length ? h("ul", { class: "unit-planned" }, ...planned.map(({ u }) => h("li", null, h("span", { class: "key" }, u.id), ` ${u.title}`, " ", tag(u.kind === "contract" ? "계약" : "이슈 아직 없음", "line"), u.dependsOn.length ? h("span", { class: "muted xs" }, ` · 의존 ${u.dependsOn.join(", ")}`) : null))) : null),
       );
     }
-    const loose = issues.filter((i) => !i.intent && pass(i) && !only);
+    const inIntent = new Set(intents.flatMap((it) => it.units.map((u) => u.issue).filter(Boolean)));
+    const loose = issues.filter((i) => !inIntent.has(i.key) && pass(i) && !only);
     if (loose.length) {
       shown += loose.length;
-      body.append(h("section", { class: "panel", "aria-labelledby": "loose-h" }, h("div", { class: "panel-head" }, h("h2", { id: "loose-h" }, "Intent 가 없는 이슈"), h("div", { class: "aside" }, `${loose.length}개`)), table(loose.map((i) => issueRow(i, gates, sessions)))));
+      body.append(h("section", { class: "panel", "aria-labelledby": "loose-h" }, h("div", { class: "panel-head" }, h("h2", { id: "loose-h" }, "Intent 폴더에 연결되지 않은 이슈"), h("div", { class: "aside" }, `${loose.length}개`)), table(loose.map((i) => issueRow(i, gates, sessions)))));
     }
     if (!shown) body.append(emptyState(issues.length || intents.length ? "조건에 맞는 이슈가 없다" : "이슈가 아직 없다", issues.length || intents.length ? "영역 · 상태 거름을 '모두'로 돌린다." : "새 요구사항을 접수하거나 이슈 폴더(.agents/docs/issues/)를 만들면 여기 나온다.", link("/intake", { class: "btn sm" }, "새 요구사항")));
   }

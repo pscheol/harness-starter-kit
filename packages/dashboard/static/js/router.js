@@ -43,16 +43,12 @@ export function link(path, props, ...kids) {
   return a;
 }
 
-/** 전체 프로젝트(최상위, 접두 없음)로 가는 링크 */
+/**
+ * 모드가 바뀌는 링크(전체 프로젝트 ↔ 프로젝트 안, 프로젝트 ↔ 프로젝트): 화면 상태(세션 · 프로젝트)가 달라서
+ * 같은 문서 안에서 바꾸지 않고 새로 읽는다. 토큰은 localStorage 에 있어 다시 묻지 않는다.
+ */
 export function topLink(path, props, ...kids) {
-  const a = h("a", { ...props, href: path }, ...kids);
-  a.addEventListener("click", (e) => {
-    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-    e.preventDefault();
-    history.pushState(null, "", path);
-    if (listener) listener();
-  });
-  return a;
+  return h("a", { ...props, href: path }, ...kids);
 }
 
 export function onRoute(cb) {
