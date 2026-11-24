@@ -34,6 +34,7 @@ from harness.verify_planner import command, covered_by_checks, verification_plan
 
 SCRIPTS = ("lint", "typecheck", "test")
 GATES = "tools/harness/gates.py"
+SUBMODULES = "scripts/harness/check_submodules.py"
 REGISTRY = "tools/harness/units.json"
 
 
@@ -225,6 +226,14 @@ def domain_gate(root, row, units, explicit):
     )
 
 
+def submodule_gate(root, row, units):
+    """바뀐 도메인이 submodule 이고 multi-harness 의 check_submodules.py 가 있으면 그 도메인만 검사하는 명령(설계 10 §3.5). 아니면 None."""
+    if not (root / SUBMODULES).is_file() or not (root / row["path"] / ".git").exists():
+        return None
+    unit = next((unit for unit in units if unit["id"] == row["id"]), {"id": row["id"], "root": root / row["path"]})
+    return command(unit, root, "gate", [sys.executable, str(root / SUBMODULES), "--repo", str(root), "--domain", row["path"]], label=f"submodule {row['path']}")
+
+
 def delegate_domains(root, relative_files, units, base):
     """(도메인 게이트 명령, 건너뛴 도메인, 도메인에 넘긴 파일, 미완료)."""
     rows = domain_rows(root, base, relative_files)
@@ -235,7 +244,11 @@ def delegate_domains(root, relative_files, units, base):
         delegated.update(row["files"])
         if not row["changed"]:
             skipped.append({"id": row["id"], "reason": "no-change"})
-        elif not (root / row["path"] / "scripts/verify.sh").is_file():
+            continue
+        guard = submodule_gate(root, row, units)
+        if guard:
+            gates.append(guard)
+        if not (root / row["path"] / "scripts/verify.sh").is_file():
             missing.append(f"{row['id']}: {row['path']}/scripts/verify.sh missing; the domain gate could not run")
         else:
             gates.append(domain_gate(root, row, units, explicit=base is None))

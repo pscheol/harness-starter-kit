@@ -16,6 +16,7 @@ SDD 워크플로 원본 `.agents/rules/sdd-workflow.md` 의 `/hx-specify` 절을
 1. `python3 scripts/harness/from_unit.py <Intent 키>/<U-n>` — intent 게이트 · 이미 있는 이슈 · 의존 Unit(계약 먼저) · 키를 스크립트가 판정하고, requirements 의 FROM-UNIT 구간 · 머리(`intent` · `unit` · `dependsOn` · `profile` · `risk`)와 units.json 의 `issue` 를 채운다. exit 3 이면 그 이유를 전하고 멈춘다.
 2. 만든 requirements 의 템플릿 절을 FROM-UNIT 구간의 스토리 · AC · NFR · 위험으로 다듬는다. Intent ID(S-n · AC · NFR · RISK · KEEP)는 괄호로 남기고 지우지 않는다.
 3. jira-workflow 모듈이면 Jira 작업 항목을 먼저 만들고 그 키를 `--key` 로 준다.
+4. multi-harness 모듈이고 Unit 에 `repo`(배포 단위 id)가 있으면 스크립트가 그 도메인 폴더에 이슈를 만든다(계약 Unit 은 상위 리포). 출력의 `repo` 를 보고 그 폴더에서 이어 간다.
 
 입력(제품 slug + 기능 설명): 이 명령 뒤에 이어서 적은 내용
 

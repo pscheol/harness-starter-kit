@@ -49,7 +49,7 @@
   },
   "defaultHarnesses": ["claude"],
   "modules": ["jira-workflow", "multi-harness"],
-  "externalModules": ["aidlc", "entire"],
+  "externalModules": ["aidlc", "entire", "notion"],
   "domains": ["backend", "frontend"],
   "defaultStack": "jvm",
   "stacks": {
