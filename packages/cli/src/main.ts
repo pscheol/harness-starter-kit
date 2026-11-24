@@ -12,7 +12,8 @@ import { runOutdated } from "./commands/outdated";
 import { runRemove } from "./commands/remove";
 import { runRepair } from "./commands/repair";
 import { RESERVED } from "./commands/reserved";
-import { runFlow, runHistory, runQuality, runSessions, runStatus } from "./commands/status";
+import { runSkills, runUsage, runHistory } from "./commands/skills";
+import { runFlow, runQuality, runSessions, runStatus } from "./commands/status";
 import { runUninstall } from "./commands/uninstall";
 import { runUpdate } from "./commands/update";
 import { runLocal } from "./commands/local";
@@ -47,6 +48,8 @@ const COMMANDS: Record<string, (ctx: Ctx) => CommandResult | Promise<CommandResu
   flow: runFlow,
   quality: runQuality,
   history: runHistory,
+  skills: runSkills,
+  usage: runUsage,
   pack: runPack,
   local: runLocal,
   intake: runIntake,
@@ -72,6 +75,7 @@ const USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 �
   approve    사람 터미널 승인(approvals.md 에 덧붙인다). answer 질문 답 · review show|decide 리뷰 판단
   sessions   켜 둔 세션. dispatch 세션에 작업 요청(사람이 고를 때만) · dispatch list|drop 대기함
   units      Unit 변경 제안(propose · discard). flow gates 흐름 틀 · quality 품질 결과 · projects 등록부
+  skills     이 컴퓨터 · 리포의 스킬 목록(단계 · 하네스 · 이름 겹침). usage 토큰 사용량 · 킷이 덧붙인 양 · history 프롬프트 기록
   pack       pack new <이름> --dir <경로> --from <파일>… — 프로젝트 파일로 회사 팩 골격을 만든다
   local      local sync | list — 개인 층(.agents/local/)을 하네스 폴더에 배치한다(공유 lock 밖)
   intake     요구사항 접수 — 글 · 첨부를 Intent 폴더(bug 는 이슈 폴더)로 받는다(신뢰하지 않는 입력으로 표시)
@@ -99,7 +103,7 @@ const COMMAND_HELP: Record<string, string> = {
   repair: "harness-kit repair [--dry-run] [--only missing,drifted,stale,merge] [--json] — 되살리지 못한 missing 이 있으면 exit 4\n",
   uninstall: "harness-kit uninstall [--dry-run] [--yes] [--keep-state] [--keep-packs] [--json] — 고친 파일을 남기면 exit 4. TTY 가 아니면 --yes\n",
   dashboard: "harness-kit dashboard [--port <n>] [--open] [--read-only] [--export <폴더>] [--all | --root <dir> | --workspace <file>] — 127.0.0.1 에만 연다. 주소는 stdout, 승인 PIN 은 stderr\n",
-  status: "harness-kit status [--session | --intents | --intent <INT> [--gate codebase|plans] | --issues [--area --stage --intent] | --issue <키> | --doc <경로> | --verify [--issue] | --worktrees | --harness | --flow <INT> | --all] [--json]\n",
+  status: "harness-kit status [--session | --intents | --intent <INT> [--gate codebase|plans] | --issues [--area --stage --intent] | --issue <키> | --doc <경로> | --verify [--issue] | --worktrees | --harness | --flow <INT> [--burn [--days n]] | --all] [--json]\n",
   projects: "harness-kit projects list | add <폴더> | remove <이름|경로> [--json] — 등록부 ~/.config/harness-kit/projects.json\n",
   approve: 'harness-kit approve <키> --gate <게이트> --phrase "<문구>" [--changes-requested [--rule-candidate]] [--json] — 사람 터미널에서만(에이전트 세션 · TTY 아님은 exit 3)\n',
   answer: "harness-kit answer <INT|키> --list | <Q-n> --choice <A-D|other> [--text …] [--json] — 사람 터미널에서만\n",
@@ -109,7 +113,9 @@ const COMMAND_HELP: Record<string, string> = {
   units: "harness-kit units propose <INT> --add-dep U-a:U-b | --remove-dep U-a:U-b | --split U-n=제목1|제목2 | --merge U-a,U-b | --order U-a,U-b [--reason …] | units discard <INT>\n",
   flow: "harness-kit flow gates [--add <게이트> --after <게이트> | --remove <게이트>] [--json]\n",
   quality: "harness-kit quality [--findings [--issue <키>] [--severity S] [--new]] [--json]\n",
-  history: "harness-kit history [--q …] [--json] — ~/.config/harness-kit/config.json 의 history 가 on 일 때만(HK-18)\n",
+  history: "harness-kit history [--q …] [--session <id>] [--role <역할>] [--json] — ~/.config/harness-kit/config.json 의 history 가 on 일 때만. 꺼져 있으면 exit 1(history_off)\n",
+  skills: "harness-kit skills [--stage <단계>] [--harness <h>] [--conflicts] [--errors] [--all] [--no-user] [--refresh] [--json] — 읽기만 한다. 단계는 설계 · 구현 · 검증 · 반영 · 운영(영어도 된다)\n",
+  usage: "harness-kit usage [--days n] [--harness h] [--sources] | usage --now | usage --kit [--json] — 대화 기록 읽기가 꺼져 있으면(기본) 킷이 덧붙인 양(--kit)만 보인다\n",
   pack: "harness-kit pack new <이름> --dir <경로> [--from <파일|폴더>[#훅·검사 id]]… [--kit-range \">=2.0.0 <3.0.0\"] [--json] — --dir 은 빈 폴더나 없는 경로\n",
   intake: "harness-kit intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--area <영역>] [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]… [--json] — 비밀값이 든 글은 접수하지 않는다(exit 1)\n",
   local: "harness-kit local sync [--dry-run] | local list [--json] — 개인 스킬 · Kiro 규칙 · 개인 훅(.claude/settings.local.json · .kiro/hooks/local-*). 공유 원본과 이름이 같으면 배치하지 않는다\n",

@@ -51,7 +51,7 @@ async function cli(argv: string[], repo: Repo, opts: { tty?: boolean; answers?: 
   return { code, stdout, stderr, json };
 }
 
-const VOLATILE = new Set(["readAt", "computedAt", "lastSeenAt", "checkedAt"]);
+const VOLATILE = new Set(["readAt", "computedAt", "lastSeenAt", "checkedAt", "scannedAt", "to"]);
 function stable(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(stable);
   if (v && typeof v === "object") return Object.fromEntries(Object.entries(v as Record<string, unknown>).filter(([k]) => !VOLATILE.has(k)).map(([k, x]) => [k, stable(x)]));
@@ -70,6 +70,7 @@ function fixture(): Repo {
       { id: "U-3", title: "알림", kind: "feature", area: "pay", dependsOn: ["U-2"], order: 3, issue: null, planned: true }] }, null, 2)}\n`);
   writeFile(repo.root, `${INT}/questions.md`, "---\ntarget: INT-7\nstatus: open\nround: 1\n---\n\n# 질문\n\n## Q-1 · 범위 · 답할 직무: po · 막는 게이트: intent\n넣는가?\n\n- A. 넣는다 — 영향: 하나\n- B. 뺀다 — 영향: 둘\n- 권장: B — 근거: 없다\n- 답:\n");
   commitAll(repo.root);
+  writeFile(repo.home, ".config/harness-kit/config.json", JSON.stringify({ history: "on" }));
   const data = { issue: "DEMO-1", mr: "#1", head: "abc1234", findings: [{ id: "F-1", severity: "HIGH", check: "RV-EDGE", path: "README.md", line: 1, fp: "cd".repeat(32), title: "빈 입력" }] };
   writeFile(repo.root, ".agents/reports/review/DEMO-1.md", `---\nissue: DEMO-1\n---\n\n<!-- harness-kit:review-data ${JSON.stringify(data)} -->\n`);
   return repo;
@@ -90,6 +91,17 @@ const PAIRS: [string, string[]][] = [
   ["/api/v1/harness", ["status", "--harness"]],
   ["/api/v1/flow?intent=INT-7", ["status", "--flow", "INT-7"]],
   ["/api/v1/flow/gates", ["flow", "gates"]],
+  ["/api/v1/intents/INT-7/burn", ["status", "--flow", "INT-7", "--burn"]],
+  ["/api/v1/intents/INT-7/burn?days=3", ["status", "--flow", "INT-7", "--burn", "--days", "3"]],
+  ["/api/v1/skills", ["skills"]],
+  ["/api/v1/skills?stage=design&harness=claude", ["skills", "--stage", "design", "--harness", "claude"]],
+  ["/api/v1/skills?conflicts=1&errors=1&all=1&user=0", ["skills", "--conflicts", "--errors", "--all", "--no-user"]],
+  ["/api/v1/usage", ["usage"]],
+  ["/api/v1/usage?days=3&harness=claude", ["usage", "--days", "3", "--harness", "claude"]],
+  ["/api/v1/usage/now", ["usage", "--now"]],
+  ["/api/v1/usage/kit", ["usage", "--kit"]],
+  ["/api/v1/history", ["history"]],
+  ["/api/v1/history?q=zzz", ["history", "--q", "zzz"]],
   ["/api/v1/reports/summary", ["quality"]],
   ["/api/v1/reports/findings", ["quality", "--findings"]],
   ["/api/v1/reviews/DEMO-1", ["review", "show", "DEMO-1"]],
@@ -240,14 +252,15 @@ describe("쓰기 명령", () => {
 
   it("범위 밖 명령은 exit 2 와 제공 이슈", async () => {
     const repo = fixture();
-    for (const [cmd, stage] of [["usage", "HK-18"], ["skills", "HK-18"]] as const) {
+    for (const [cmd, stage] of [["deploy", "P24"]] as const) {
       const r = await cli([cmd], repo);
       expect([cmd, r.code, r.stderr.includes(stage)]).toEqual([cmd, 2, true]);
     }
+    fs.rmSync(path.join(repo.home, ".config/harness-kit/config.json"));
     const off = await cli(["history", "--json"], repo);
     expect([off.code, off.json.error.code]).toEqual([1, "history_off"]);
     writeFile(repo.home, ".config/harness-kit/config.json", JSON.stringify({ history: "on" }));
     const on = await cli(["history", "--json"], repo);
-    expect([on.code, on.json.error.code, on.json.error.details.stage]).toEqual([2, "not_implemented", "HK-18"]);
+    expect([on.code, on.json.enabled, on.json.prompts]).toEqual([0, true, []]);
   });
 });

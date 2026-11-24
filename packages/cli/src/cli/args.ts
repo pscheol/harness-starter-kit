@@ -79,6 +79,8 @@ export const COMMAND_OPTIONS: Record<string, OptSpec> = {
     gate: { type: "string" },
     all: { type: "boolean" },
     ops: { type: "boolean" },
+    burn: { type: "boolean" },
+    days: { type: "string" },
   },
   projects: {},
   approve: { gate: { type: "string" }, phrase: { type: "string" }, "changes-requested": { type: "boolean" }, "rule-candidate": { type: "boolean" } },
@@ -96,7 +98,18 @@ export const COMMAND_OPTIONS: Record<string, OptSpec> = {
   },
   flow: { add: { type: "string" }, after: { type: "string" }, remove: { type: "string" } },
   quality: { findings: { type: "boolean" }, issue: { type: "string" }, severity: { type: "string" }, new: { type: "boolean" } },
-  history: { q: { type: "string" } },
+  history: { q: { type: "string" }, session: { type: "string" }, role: { type: "string" } },
+  // 스킬 목록 · 사용량(HK-18, 설계 07 §3.9 · 06 §3.18)
+  skills: {
+    stage: { type: "string" },
+    harness: { type: "string" },
+    conflicts: { type: "boolean" },
+    errors: { type: "boolean" },
+    all: { type: "boolean" },
+    "no-user": { type: "boolean" },
+    refresh: { type: "boolean" },
+  },
+  usage: { days: { type: "string" }, kit: { type: "boolean" }, now: { type: "boolean" }, sources: { type: "boolean" }, harness: { type: "string" } },
   // 확장 층(HK-14, 설계 04)
   pack: { dir: { type: "string" }, from: { type: "string", multiple: true }, "kit-range": { type: "string" } },
   local: {},

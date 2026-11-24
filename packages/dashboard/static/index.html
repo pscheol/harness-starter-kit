@@ -4,16 +4,15 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light">
+<link rel="icon" href="data:,">
 <title>harness-kit 관리 페이지</title>
 <link rel="stylesheet" href="/app.css">
+<link rel="stylesheet" href="/pages.css">
 </head>
 <body>
-<header><h1>harness-kit 관리 페이지</h1><p id="who">연결 중</p></header>
-<main>
-<section aria-labelledby="todo-h"><h2 id="todo-h">처리할 일</h2><ol id="todo"></ol><p id="more"></p></section>
-<section aria-labelledby="stage-h"><h2 id="stage-h">단계별 이슈</h2><ul id="stages"></ul></section>
-<p class="note">화면(S00~S13)은 HK-18 에서 채운다. 모든 기능은 콘솔 명령으로도 된다: <code>npx harness-kit status</code></p>
-</main>
-<script src="/app.js"></script>
+<div id="app"><p class="boot">관리 페이지를 불러오는 중…</p></div>
+<noscript><p class="boot">이 화면은 JavaScript 가 필요하다. 같은 기능은 콘솔 명령으로도 된다: <code>npx harness-kit status</code></p></noscript>
+<script type="module" src="/js/main.js"></script>
 </body>
 </html>

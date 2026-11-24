@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// harness-kit 2.0.0-alpha.0 · src-sha256 5e5f88cd443428743868ee62fa1609fe28bb3b31de3cc7e06905686e52970200 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// harness-kit 2.0.0-alpha.0 · src-sha256 4ba2c81e2f98656adf0901a9c05f0b6197c197bc44b3ec15b469e8ec5869a030 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -25,7 +25,417 @@ var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__ge
 ));
 
 // <define:__HK_STATIC__>
-var define_HK_STATIC_default = { "app.css": "body { font: 15px/1.5 system-ui, sans-serif; margin: 2rem auto; max-width: 60rem; padding: 0 1rem; color: #1d1d1f; }\nh1 { font-size: 1.4rem; margin: 0; }\nh2 { font-size: 1.1rem; margin-top: 2rem; }\n#who, .note { color: #555; }\ncode { background: #f2f2f2; padding: 0 .25rem; }\n", "app.js": '// 관리 페이지 자리표시 화면(HK-17). 주소의 #t= 토큰을 localStorage 로 옮기고 주소에서 지운 뒤 Authorization 머리로 붙인다(설계 06 §3.1).\n// 화면 데이터는 textContent 로만 넣는다(원문 HTML 을 실행하지 않는다). 화면 전체는 HK-18 이 만든다.\n(function () {\n  "use strict";\n  var key = "hk-token-" + location.port;\n  var m = /(?:^|[#&])t=([A-Za-z0-9_-]+)/.exec(location.hash);\n  if (m) {\n    localStorage.setItem(key, m[1]);\n    history.replaceState(null, "", location.pathname + location.search);\n  }\n  var token = localStorage.getItem(key) || "";\n  var base = location.pathname.replace(/\\/$/, "").replace(/^\\/p\\/([0-9a-f]{12}).*$/, "/api/v1/p/$1") || "";\n  var api = base.indexOf("/api/v1/p/") === 0 ? base : "/api/v1";\n  function get(path) {\n    return fetch(api + path, { headers: { Authorization: "Bearer " + token } }).then(function (r) { return r.json(); });\n  }\n  function text(id, value) { document.getElementById(id).textContent = value; }\n  function item(list, value) {\n    var li = document.createElement("li");\n    li.textContent = value;\n    document.getElementById(list).appendChild(li);\n  }\n  function refresh() {\n    get("/session").then(function (s) {\n      if (!s.ok) { text("who", "토큰이 없거나 틀렸다 — 서버를 연 터미널의 주소로 다시 연다"); return; }\n      text("who", s.data.repo + " · " + (s.data.user.email || "git 사용자 없음") + (s.data.readOnly ? " · 읽기 전용" : ""));\n    });\n    get("/overview").then(function (o) {\n      if (!o.ok) return;\n      document.getElementById("todo").textContent = "";\n      document.getElementById("stages").textContent = "";\n      o.data.todo.forEach(function (t) { item("todo", "[" + t.rank + "] " + t.title + " — " + t.reason); });\n      var more = Object.keys(o.data.more).map(function (k) { return "rank " + k + ": " + o.data.more[k]; });\n      text("more", more.length ? "더: " + more.join(" · ") : "");\n      Object.keys(o.data.stages).forEach(function (k) { item("stages", k + " " + o.data.stages[k]); });\n    });\n  }\n  refresh();\n  setInterval(refresh, 5000);\n})();\n', "index.html": '<!doctype html>\n<html lang="ko">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<meta name="referrer" content="no-referrer">\n<title>harness-kit 관리 페이지</title>\n<link rel="stylesheet" href="/app.css">\n</head>\n<body>\n<header><h1>harness-kit 관리 페이지</h1><p id="who">연결 중</p></header>\n<main>\n<section aria-labelledby="todo-h"><h2 id="todo-h">처리할 일</h2><ol id="todo"></ol><p id="more"></p></section>\n<section aria-labelledby="stage-h"><h2 id="stage-h">단계별 이슈</h2><ul id="stages"></ul></section>\n<p class="note">화면(S00~S13)은 HK-18 에서 채운다. 모든 기능은 콘솔 명령으로도 된다: <code>npx harness-kit status</code></p>\n</main>\n<script src="/app.js"></script>\n</body>\n</html>\n' };
+var define_HK_STATIC_default = { "app.css": '/* harness-kit 관리 페이지 — 공용 스타일(화면기획서 screens/assets/app.css 에서 가져와 화면용으로 다듬었다)\n * 색은 의미로만 쓴다(킷 문서와 같다):\n *   파랑 = 설계, 앰버 = 구현·검증, 청록 = 반영·운영·통과, 빨강 = 처리할 일·실패.\n * 보라(--note)는 화면기획서의 영역 번호 표시에만 쓴다. 제품 화면의 색이 아니다.\n * 외부 글꼴·스크립트를 불러오지 않는다.\n */\n\n:root {\n  --paper: #f5f7fa;\n  --raised: #ffffff;\n  --sunken: #edf1f6;\n  --ink: #14213d;\n  --ink-soft: #46536b;\n  --ink-faint: #5f6b80;\n  --rule: #d5dce5;\n  --rule-soft: #e6ebf1;\n  --rule-strong: #aeb9c7;\n\n  --design: #3046c5;\n  --design-ink: #2a3cab;\n  --design-wash: #e7eafb;\n  --build: #c98a12;\n  --build-ink: #7d5300;\n  --build-wash: #fbf1dc;\n  --ops: #0b7a5e;\n  --ops-ink: #0a6a52;\n  --ops-wash: #ddf2eb;\n  --gate: #c8102e;\n  --gate-ink: #b00e28;\n  --gate-wash: #fbe6e9;\n\n  --rail: #14213d;\n  --rail-raised: #1e2d4f;\n  --rail-active: #2a3c66;\n  --rail-text: #b4bfd3;\n  --rail-faint: #8794ad;\n\n  --note: #7b2cbf;\n\n  --font-text: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;\n  --font-code: "SF Mono", "JetBrains Mono", "D2Coding", Menlo, Consolas, monospace;\n\n  --fs-xs: 0.75rem;     /* 12 */\n  --fs-s: 0.8125rem;    /* 13 */\n  --fs-m: 0.875rem;     /* 14 */\n  --fs-l: 1rem;         /* 16 */\n  --fs-xl: 1.25rem;     /* 20 */\n  --fs-xxl: 1.5rem;     /* 24 */\n\n  --r-chip: 3px;\n  --r-ctl: 5px;\n  --r-panel: 7px;\n  --r-sheet: 10px;\n\n  --shadow-lift: 0 1px 2px rgb(0 0 0 / 0.05), 0 4px 14px -6px rgb(0 0 0 / 0.12);\n  --shadow-sheet: 0 2px 6px rgb(0 0 0 / 0.08), 0 24px 56px -16px rgb(0 0 0 / 0.30);\n  --ease: cubic-bezier(0.16, 1, 0.3, 1);\n  --dur: 160ms;\n}\n\n*,\n*::before,\n*::after { box-sizing: border-box; }\n\nhtml {\n  font-size: 16px;\n  -webkit-text-size-adjust: 100%;\n  accent-color: var(--design);\n  caret-color: var(--design);\n  scrollbar-color: var(--rule-strong) transparent;\n}\n\n::selection { background: var(--design-wash); color: var(--ink); }\n\nbody {\n  margin: 0;\n  background: var(--paper);\n  color: var(--ink);\n  font-family: var(--font-text);\n  font-size: var(--fs-m);\n  line-height: 1.5;\n  word-break: keep-all;\n  overflow-wrap: anywhere;\n  font-variant-numeric: tabular-nums;\n  -webkit-font-smoothing: antialiased;\n}\n\nh1, h2, h3, h4 { margin: 0; line-height: 1.3; text-wrap: balance; }\np { margin: 0; }\nul, ol { margin: 0; padding: 0; }\na { color: var(--design-ink); text-decoration: none; }\na:hover { text-decoration: underline; text-underline-offset: 3px; }\ncode, kbd, .mono { font-family: var(--font-code); font-size: 0.95em; }\n\n:focus-visible {\n  outline: 2px solid var(--design);\n  outline-offset: 2px;\n  border-radius: var(--r-chip);\n}\n\n.sr-only {\n  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;\n  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;\n}\n\n.skip-link {\n  position: absolute; left: 12px; top: -40px; z-index: 50;\n  padding: 6px 12px; background: var(--ink); color: #fff; border-radius: var(--r-ctl);\n}\n.skip-link:focus { top: 10px; }\n\nsvg.i {\n  width: 16px; height: 16px; flex: none;\n  fill: none; stroke: currentColor; stroke-width: 2;\n  stroke-linecap: round; stroke-linejoin: round;\n  vertical-align: -3px;\n}\nsvg.i.s { width: 14px; height: 14px; vertical-align: -2px; }\n\n/* ── 셸: 왼쪽 레일 + 작업 영역 ───────────────────────────── */\n\n.app {\n  display: grid;\n  grid-template-columns: 212px minmax(0, 1fr);\n  height: 100vh;\n  overflow: hidden;\n}\n\n.rail {\n  display: flex;\n  flex-direction: column;\n  background: var(--rail);\n  color: var(--rail-text);\n  min-height: 0;\n}\n\n.rail-brand {\n  display: flex;\n  align-items: center;\n  gap: 9px;\n  padding: 16px 16px 14px;\n  color: #fff;\n  font-weight: 700;\n  font-size: var(--fs-m);\n  letter-spacing: -0.01em;\n}\n.rail-brand .mark { width: 18px; height: 18px; flex: none; }\n.rail-brand small {\n  margin-left: auto;\n  font-weight: 500;\n  font-size: var(--fs-xs);\n  color: var(--rail-text);\n}\n\n/* 프로젝트 고르기: 리포 상자가 단추다. 누르면 전체 프로젝트(S00)와 최근 프로젝트 목록이 펼쳐진다 */\n.rail-proj { position: relative; margin: 0 10px 10px; }\n.rail-repo {\n  display: grid; gap: 2px; width: 100%;\n  padding: 8px 10px 9px;\n  border: 0; border-radius: var(--r-ctl);\n  background: var(--rail-raised); color: var(--rail-text);\n  font: inherit; text-align: left; line-height: 1.35;\n  cursor: pointer;\n  transition: background var(--dur) var(--ease);\n}\n.rail-repo:hover, .rail-repo[aria-expanded="true"] { background: var(--rail-active); }\n.rail-repo:focus-visible { outline-color: #9fb0ff; }\n.rp-name { display: flex; align-items: center; gap: 6px; min-width: 0; color: #fff; font-size: var(--fs-s); }\n.rp-name b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }\n.rp-name .i { margin-left: auto; color: var(--rail-text); transition: transform var(--dur) var(--ease); }\n.rail-repo[aria-expanded="true"] .rp-name .i { transform: rotate(180deg); }\n.rp-sub { display: flex; align-items: flex-start; gap: 5px; font-size: var(--fs-xs); color: var(--rail-text); }\n.rp-sub .i { margin-top: 2px; }\n.rp-sub .mono { font-size: var(--fs-xs); }\n.rp-icon { display: none; }\n\n/* 펼친 목록은 레일 안에서 아래로 열린다(본문을 덮지 않는다) */\n.proj-menu {\n  margin-top: 4px; padding: 5px;\n  background: var(--rail-raised); color: var(--rail-text);\n  border-radius: var(--r-ctl);\n  font-size: var(--fs-s);\n}\n.proj-menu a {\n  display: flex; align-items: center; gap: 8px;\n  padding: 5px 7px; border-radius: var(--r-chip);\n  color: var(--rail-text);\n}\n.proj-menu a:hover { background: var(--rail-active); color: #fff; text-decoration: none; }\n.proj-menu a:focus-visible { outline-color: #9fb0ff; }\n.proj-menu a .i { color: var(--rail-text); }\n.proj-menu a[aria-current] { color: #fff; font-weight: 700; }\n.proj-menu a[aria-current] .i { color: #fff; }\n.proj-menu .pm-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-family: var(--font-code); font-size: var(--fs-xs); }\n.proj-menu .pm-all { color: #fff; font-weight: 600; }\n.proj-menu .pm-n { margin-left: auto; font-size: var(--fs-xs); font-weight: 500; white-space: nowrap; }\n.pm-h { margin-top: 3px; padding: 6px 7px 2px; border-top: 1px solid var(--rail-active); font-size: var(--fs-xs); font-weight: 600; color: var(--rail-text); }\n.pm-foot { margin-top: 3px; padding: 6px 7px 2px; border-top: 1px solid var(--rail-active); font-size: var(--fs-xs); line-height: 1.5; color: var(--rail-text); }\n.pm-foot code { color: #fff; font-size: 11px; }\n\n.nav { display: grid; gap: 1px; padding: 4px 8px; }\n.nav a {\n  display: flex;\n  align-items: center;\n  gap: 10px;\n  padding: 7px 9px;\n  border-radius: var(--r-ctl);\n  color: var(--rail-text);\n  font-size: var(--fs-m);\n  transition: background var(--dur) var(--ease), color var(--dur) var(--ease);\n}\n.nav a:hover { background: var(--rail-raised); color: #fff; text-decoration: none; }\n.nav a[aria-current="page"] { background: var(--rail-active); color: #fff; font-weight: 600; }\n.nav a:focus-visible { outline-color: #9fb0ff; }\n.rail .count {\n  margin-left: auto;\n  min-width: 20px;\n  padding: 0 6px;\n  border-radius: 9px;\n  font-size: var(--fs-xs);\n  font-weight: 700;\n  line-height: 18px;\n  text-align: center;\n  color: var(--rail);\n  background: var(--rail-text);\n}\n.rail .count.decide { background: var(--gate); color: #fff; }\n.rail .count.warn { background: var(--build); color: var(--rail); }\n.nav-sep { height: 1px; margin: 8px 10px; background: var(--rail-raised); }\n.nav-h { padding: 0 9px 4px; font-size: var(--fs-xs); font-weight: 600; color: var(--rail-text); }\n\n/* 새 요구사항(S11) 들어가는 곳: 메뉴 위 한 줄 */\n.rail-new {\n  display: flex; align-items: center; gap: 8px;\n  margin: 0 10px 6px; padding: 6px 9px;\n  border: 1px solid var(--rail-active);\n  border-radius: var(--r-ctl);\n  color: #fff; font-size: var(--fs-s); font-weight: 600;\n  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease);\n}\n.rail-new:hover { background: var(--rail-raised); border-color: #3a4d7a; text-decoration: none; }\n.rail-new[aria-current="page"] { background: var(--rail-active); border-color: var(--rail-active); }\n.rail-new:focus-visible { outline-color: #9fb0ff; }\n.rail-new[aria-disabled="true"] { color: var(--rail-text); border-style: dashed; cursor: not-allowed; }\n.rail-new[aria-disabled="true"]:hover { background: transparent; border-color: var(--rail-active); }\n\n/* 레일 바닥: 지금 세션 사용량 한 줄(S13) + 연결 상태. 사람 카드 · 아바타 없음 */\n.rail-foot {\n  margin-top: auto;\n  padding: 8px 16px 12px;\n  border-top: 1px solid var(--rail-raised);\n  font-size: var(--fs-xs);\n  color: var(--rail-text);\n  line-height: 1.55;\n}\n.rail-usage {\n  display: grid; gap: 5px;\n  margin: 0 -6px 8px; padding: 5px 6px 7px;\n  border-radius: var(--r-ctl);\n  color: var(--rail-text);\n  transition: background var(--dur) var(--ease);\n}\n.rail-usage:hover { background: var(--rail-raised); color: #fff; text-decoration: none; }\n.rail-usage:focus-visible { outline-color: #9fb0ff; }\n.ru-t { display: flex; align-items: baseline; gap: 6px; }\n.ru-t b { margin-left: auto; color: #fff; font-weight: 700; }\n.ru-bar { display: block; height: 3px; border-radius: 2px; background: var(--rail-raised); overflow: hidden; }\n.ru-bar i { display: block; height: 100%; border-radius: 2px; background: var(--rail-text); }\n.rail-usage.warn .ru-bar i { background: var(--build); }\n.rail-usage.warn .ru-t b { color: var(--build); }\n.rail-usage.off .ru-bar { background: transparent; border-top: 1px dashed var(--rail-active); border-radius: 0; height: 0; }\n.rail-foot .srv { display: flex; align-items: center; gap: 6px; color: var(--rail-text); }\n.rail-foot .mono { font-size: var(--fs-xs); }\n.rail-foot .ln { padding-left: 20px; }\n.rail-foot.ro .srv .i, .rail-foot.ro .mode { color: var(--build); }\n.rail-foot.ro .mode { font-weight: 700; }\n\n.work { display: flex; flex-direction: column; min-width: 0; min-height: 0; }\n\n.topbar {\n  display: flex;\n  align-items: center;\n  gap: 16px;\n  min-height: 56px;\n  padding: 10px 24px;\n  background: var(--raised);\n  border-bottom: 1px solid var(--rule);\n}\n.topbar h1 { font-size: var(--fs-xl); font-weight: 700; letter-spacing: -0.015em; }\n.topbar .sub { color: var(--ink-faint); font-size: var(--fs-s); margin-top: 1px; }\n.topbar .crumb { display: flex; align-items: center; gap: 6px; color: var(--ink-faint); font-size: var(--fs-s); }\n.topbar .crumb a { color: var(--ink-soft); }\n.top-meta { display: flex; align-items: center; gap: 8px; margin-left: auto; }\n\n.search {\n  display: flex; align-items: center; gap: 8px;\n  width: 220px; height: 32px; padding: 0 8px 0 10px;\n  border: 1px solid var(--rule); border-radius: var(--r-ctl);\n  background: var(--paper); color: var(--ink-faint);\n  font-size: var(--fs-s);\n}\n.search input[type="text"] {\n  flex: 1; min-width: 0; height: auto; padding: 0; border: 0; background: transparent; outline: none;\n  font: inherit; color: var(--ink);\n}\n.search input[type="text"]:focus { outline: none; box-shadow: none; }\n.search input::placeholder { color: var(--ink-faint); }\n.search:focus-within { border-color: var(--design); outline: 2px solid var(--design); outline-offset: -1px; }\nkbd {\n  display: inline-block; min-width: 18px; padding: 0 5px;\n  border: 1px solid var(--rule-strong); border-radius: 4px;\n  background: var(--raised); color: var(--ink-soft);\n  font-size: 11px; line-height: 16px; text-align: center;\n}\n\n.content {\n  flex: 1;\n  min-height: 0;\n  overflow: auto;\n  padding: 20px 24px 28px;\n}\n\n/* ── 기본 부품 ─────────────────────────────────────────── */\n\n.panel {\n  background: var(--raised);\n  border: 1px solid var(--rule);\n  border-radius: var(--r-panel);\n  min-width: 0;\n}\n.panel.lift { box-shadow: var(--shadow-lift); border-color: #cdd5e0; }\n.panel-head {\n  display: flex;\n  align-items: center;\n  gap: 10px;\n  padding: 12px 16px 10px;\n}\n.panel-head h2 { font-size: var(--fs-l); font-weight: 700; letter-spacing: -0.01em; }\n.panel-head h3 { font-size: var(--fs-m); font-weight: 700; }\n.panel-head .aside { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--ink-faint); font-size: var(--fs-s); }\n.panel-body { padding: 0 16px 14px; }\n.panel-foot { padding: 10px 16px; border-top: 1px solid var(--rule-soft); color: var(--ink-faint); font-size: var(--fs-s); }\n\n.muted { color: var(--ink-faint); }\n.soft { color: var(--ink-soft); }\n.small { font-size: var(--fs-s); }\n.xs { font-size: var(--fs-xs); }\n.num { font-variant-numeric: tabular-nums; }\n.nowrap { white-space: nowrap; }\n\n.key {\n  font-family: var(--font-code);\n  font-size: var(--fs-s);\n  font-weight: 600;\n  color: var(--ink);\n  letter-spacing: -0.01em;\n  white-space: nowrap;\n}\n.path {\n  font-family: var(--font-code);\n  font-size: var(--fs-xs);\n  color: var(--ink-soft);\n  overflow-wrap: anywhere;\n}\n\n/* 단계·상태 표지: 색 + 글자(색만으로 뜻을 전하지 않는다) */\n.tag {\n  display: inline-flex; align-items: center; gap: 4px;\n  padding: 1px 7px;\n  border-radius: var(--r-chip);\n  font-size: var(--fs-xs);\n  font-weight: 600;\n  line-height: 18px;\n  white-space: nowrap;\n  background: var(--sunken);\n  color: var(--ink-soft);\n}\n.tag.design { background: var(--design-wash); color: var(--design-ink); }\n.tag.build { background: var(--build-wash); color: var(--build-ink); }\n.tag.ops { background: var(--ops-wash); color: var(--ops-ink); }\n.tag.gate { background: var(--gate-wash); color: var(--gate-ink); }\n.tag.line { background: transparent; border: 1px solid var(--rule-strong); color: var(--ink-soft); line-height: 16px; }\n.tag.solid-gate { background: var(--gate); color: #fff; }\n.tag.solid-ops { background: var(--ops); color: #fff; }\n.tag .i { width: 12px; height: 12px; vertical-align: -2px; }\n\n.dia {\n  display: inline-block; width: 9px; height: 9px; flex: none;\n  transform: rotate(45deg); border-radius: 1px;\n  background: var(--gate);\n}\n.dia.design { background: var(--design); }\n.dia.build { background: var(--build); }\n.dia.ops { background: var(--ops); }\n.dia.hollow { background: var(--raised); border: 1.5px solid var(--rule-strong); }\n\n.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; background: var(--rule-strong); }\n.dot.busy { background: var(--build); }\n.dot.idle { background: var(--ops); }\n.dot.off { background: var(--raised); border: 1.5px solid var(--rule-strong); }\n.dot.bad { background: var(--gate); }\n\n.harness {\n  display: inline-flex; align-items: center; gap: 5px;\n  font-size: var(--fs-xs); color: var(--ink-soft); white-space: nowrap;\n}\n.harness b {\n  display: inline-grid; place-items: center;\n  width: 16px; height: 16px; border-radius: 4px;\n  font-size: 10px; font-weight: 800; color: #fff; background: var(--ink-soft);\n}\n.harness b.cc { background: #b4532a; }\n.harness b.cx { background: #222b3a; }\n.harness b.kr { background: #6b3fd4; }\n.harness b.cu { background: #3a3f4a; }\n\n/* 버튼 */\n.btn {\n  display: inline-flex; align-items: center; justify-content: center; gap: 6px;\n  height: 32px; padding: 0 12px;\n  border: 1px solid var(--rule-strong);\n  border-radius: var(--r-ctl);\n  background: var(--raised);\n  color: var(--ink);\n  font: inherit; font-size: var(--fs-s); font-weight: 600;\n  white-space: nowrap;\n  cursor: pointer;\n  transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);\n}\n.btn:hover { background: var(--sunken); text-decoration: none; }\n.btn:active { transform: translateY(1px); }\n.btn.sm { height: 28px; padding: 0 10px; font-size: var(--fs-xs); }\n.btn.primary { background: var(--ink); border-color: var(--ink); color: #fff; }\n.btn.primary:hover { background: #22325a; }\n.btn.approve { background: var(--gate); border-color: var(--gate); color: #fff; }\n.btn.approve:hover { background: var(--gate-ink); }\n.btn.go { background: var(--design); border-color: var(--design); color: #fff; }\n.btn.go:hover { background: var(--design-ink); }\n.btn.ghost { border-color: transparent; background: transparent; color: var(--ink-soft); }\n.btn.ghost:hover { background: var(--sunken); color: var(--ink); }\n.btn.danger { color: var(--gate-ink); border-color: #e3a3ad; }\n.btn.danger:hover { background: var(--gate-wash); }\n.btn[disabled], .btn[aria-disabled="true"],\n.btn[disabled]:hover, .btn[aria-disabled="true"]:hover {\n  cursor: not-allowed; background: var(--sunken); border-color: var(--rule); color: #5a6578; transform: none;\n}\n.btn .i { width: 15px; height: 15px; }\n\n/* 탭 · 구분 선택 */\n.tabs {\n  display: flex; gap: 2px;\n  border-bottom: 1px solid var(--rule);\n}\n.tabs [role="tab"] {\n  position: relative;\n  display: inline-flex; align-items: center; gap: 6px;\n  padding: 9px 12px 10px;\n  border: 0; background: transparent;\n  color: var(--ink-soft); font: inherit; font-size: var(--fs-m); font-weight: 600;\n  cursor: pointer;\n}\n.tabs [role="tab"]:hover { color: var(--ink); }\n.tabs [role="tab"][aria-selected="true"] { color: var(--ink); }\n.tabs [role="tab"][aria-selected="true"]::after {\n  content: ""; position: absolute; left: 8px; right: 8px; bottom: -1px; height: 2px;\n  background: var(--ink); border-radius: 2px 2px 0 0;\n}\n\n.seg {\n  display: inline-flex; padding: 4px; gap: 2px;\n  background: var(--sunken); border-radius: var(--r-ctl);\n}\n.seg button {\n  height: 24px; padding: 0 10px;\n  border: 0; border-radius: 3px; background: transparent;\n  color: var(--ink-soft); font: inherit; font-size: var(--fs-s); font-weight: 600;\n  cursor: pointer; white-space: nowrap;\n}\n.seg button:hover { color: var(--ink); }\n.seg button[aria-pressed="true"], .seg button[aria-selected="true"] {\n  background: var(--raised); color: var(--ink);\n  box-shadow: 0 1px 2px rgb(0 0 0 / 0.12);\n}\n.seg button .n { margin-left: 4px; color: var(--ink-faint); font-weight: 500; }\n\n/* 보기 전환(링크로 된 구분 선택): 진행 보드(S02) / 흐름(S12) */\n.view-seg a {\n  display: inline-flex; align-items: center; height: 24px; padding: 0 12px;\n  border-radius: 3px; color: var(--ink-soft);\n  font-size: var(--fs-s); font-weight: 600; white-space: nowrap;\n}\n.view-seg a[href]:hover { color: var(--ink); text-decoration: none; }\n.view-seg a[aria-current="page"] { background: var(--raised); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / 0.12); }\n\n/* 입력 */\n.field { display: grid; gap: 5px; }\n.field label, .field .label { font-size: var(--fs-s); font-weight: 600; color: var(--ink-soft); }\n.field .hint { font-size: var(--fs-xs); color: var(--ink-faint); }\ntextarea, input[type="text"], select {\n  width: 100%;\n  padding: 7px 10px;\n  border: 1px solid var(--rule-strong);\n  border-radius: var(--r-ctl);\n  background: var(--raised);\n  color: var(--ink);\n  font: inherit; font-size: var(--fs-m);\n  line-height: 1.5;\n}\ntextarea { resize: vertical; }\ntextarea:focus, input[type="text"]:focus, select:focus {\n  outline: 2px solid var(--design); outline-offset: -1px; border-color: var(--design);\n}\nselect { height: 32px; padding-top: 0; padding-bottom: 0; }\n\n/* 표 */\n.tbl { width: 100%; border-collapse: collapse; font-size: var(--fs-s); }\n.tbl th {\n  padding: 7px 10px;\n  text-align: left;\n  font-weight: 600;\n  font-size: var(--fs-xs);\n  color: var(--ink-faint);\n  border-bottom: 1px solid var(--rule);\n  white-space: nowrap;\n  background: var(--raised);\n}\n.tbl td { padding: 9px 10px; border-bottom: 1px solid var(--rule-soft); vertical-align: middle; }\n.tbl tr:last-child td { border-bottom: 0; }\n.tbl tbody tr:hover td { background: #fafbfd; }\n.tbl .r { text-align: right; }\n.tbl th.r { text-align: right; }\n.tbl td.r { font-variant-numeric: tabular-nums; }\n\n/* 알림 띠: 옅은 바탕 + 아이콘 + 글자 */\n.banner {\n  display: flex; align-items: flex-start; gap: 10px;\n  padding: 10px 14px;\n  border-radius: var(--r-ctl);\n  font-size: var(--fs-s);\n  line-height: 1.5;\n  background: var(--sunken);\n  color: var(--ink);\n}\n.banner > .i { margin-top: 2px; }\n.banner .act { margin-left: auto; display: flex; gap: 6px; align-items: center; flex: none; }\n.banner.ok { background: var(--ops-wash); }\n.banner.ok > .i { color: var(--ops); }\n.banner.warn { background: var(--build-wash); }\n.banner.warn > .i { color: var(--build-ink); }\n.banner.err { background: var(--gate-wash); }\n.banner.err > .i { color: var(--gate); }\n.banner.info { background: var(--design-wash); }\n.banner.info > .i { color: var(--design); }\n.banner b { font-weight: 700; }\n\n/* 막대 · 미터 (단일 계열: 범례 대신 제목이 이름을 말한다) */\n.bar-track { position: relative; height: 10px; background: var(--sunken); border-radius: 2px; }\n.bar-fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 0 4px 4px 0; background: var(--build); }\n.stack { display: flex; gap: 2px; height: 12px; }\n.stack > span { display: block; height: 100%; }\n.stack > span:first-child { border-radius: 2px 0 0 2px; }\n.stack > span:last-child { border-radius: 0 4px 4px 0; }\n\n/* Bolt 진행: 칸마다 Bolt 하나 */\n.bolts { display: inline-flex; gap: 2px; vertical-align: middle; }\n.bolts i { display: block; width: 14px; height: 6px; background: var(--rule); border-radius: 1px; }\n.bolts i.done { background: var(--build); }\n.bolts i.now { background: var(--build); opacity: 0.45; }\n.bolts i.est { background: transparent; box-shadow: inset 0 0 0 1px var(--rule-strong); }\n\n/* 뼈대(로딩) */\n.sk {\n  display: block; height: 12px; border-radius: 3px;\n  background: linear-gradient(90deg, #e7ecf2 0%, #f1f4f8 40%, #e7ecf2 80%);\n  background-size: 300% 100%;\n  animation: sk 1.4s linear infinite;\n}\n@keyframes sk { from { background-position: 100% 0; } to { background-position: -200% 0; } }\n@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }\n\n/* 비어 있음 */\n.empty {\n  display: grid; justify-items: start; gap: 8px;\n  padding: 28px 24px;\n  color: var(--ink-soft);\n}\n.empty h3 { font-size: var(--fs-l); color: var(--ink); }\n.empty p { max-width: 58ch; font-size: var(--fs-s); }\n\n/* 게이트 레일: 여덟 게이트를 마름모로, 지난 구간은 단계 색, 기다리는 자리는 빨강 */\n.gate-rail { display: inline-block; vertical-align: middle; line-height: 0; }\n.gate-rail svg { display: block; overflow: visible; }\n.gate-rail .lbl { font-family: var(--font-text); font-size: 10px; fill: var(--ink-faint); font-weight: 600; }\n.gate-rail .lbl.now { fill: var(--gate-ink); font-weight: 700; }\n\n/* 렌더한 Markdown */\n.md { max-width: 74ch; font-size: var(--fs-m); line-height: 1.72; color: var(--ink); }\n.md h1, .md .h1 { font-size: var(--fs-xxl); font-weight: 700; letter-spacing: -0.02em; margin: 4px 0 14px; }\n.md h2 { font-size: var(--fs-l); font-weight: 700; margin: 22px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--rule-soft); }\n.md h3 { font-size: var(--fs-m); font-weight: 700; margin: 16px 0 6px; }\n.md p { margin: 0 0 10px; }\n.md ul { margin: 0 0 10px; padding-left: 20px; }\n.md li { margin: 3px 0; }\n.md code { background: var(--sunken); padding: 1px 5px; border-radius: 3px; font-size: 0.86em; }\n.md .req { display: grid; grid-template-columns: 52px 1fr; gap: 2px 10px; margin: 6px 0; }\n.md .req > b { font-family: var(--font-code); font-size: var(--fs-s); color: var(--design-ink); padding-top: 2px; }\n.md mark {\n  background: var(--build-wash); color: inherit;\n  padding: 1px 3px;\n  text-decoration: underline 2px var(--build);\n  text-underline-offset: 4px;\n}\n.md .ears { color: var(--ink-soft); }\n.md .ears em { font-style: normal; font-family: var(--font-code); font-size: 0.82em; font-weight: 700; color: var(--design-ink); }\n.md .clar {\n  display: inline-block; padding: 0 6px; border-radius: 3px;\n  background: var(--gate-wash); color: var(--gate-ink);\n  font-family: var(--font-code); font-size: 0.8em; font-weight: 700;\n}\n\n/* 측면 시트(세션 요청) */\ndialog.sheet {\n  position: fixed; inset: 0 0 0 auto;\n  width: 540px; max-width: 100vw; height: 100vh; max-height: 100vh;\n  margin: 0; padding: 0;\n  border: 0; border-left: 1px solid var(--rule);\n  background: var(--raised); color: var(--ink);\n  box-shadow: var(--shadow-sheet);\n}\ndialog.sheet::backdrop { background: rgb(10 16 30 / 0.5); }\ndialog.center {\n  width: 520px; max-width: calc(100vw - 32px);\n  padding: 0; border: 0; border-radius: var(--r-sheet);\n  background: var(--raised); color: var(--ink);\n  box-shadow: var(--shadow-sheet);\n}\ndialog.center::backdrop { background: rgb(20 33 61 / 0.38); }\n\n/* 토스트 */\n.toast {\n  position: fixed; left: 50%; bottom: 22px; z-index: 40;\n  display: flex; align-items: center; gap: 10px;\n  padding: 10px 14px; border-radius: var(--r-ctl);\n  background: var(--ink); color: #fff; font-size: var(--fs-s);\n  box-shadow: var(--shadow-sheet);\n  transform: translate(-50%, 12px); opacity: 0; pointer-events: none;\n  transition: opacity 200ms var(--ease), transform 200ms var(--ease);\n}\n.toast.show { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }\n.toast .i { color: #7fd8bd; }\n\n\n\n/* git 신원 한 줄: 승인 · 답 · 접수가 누구로 기록되는지(그 체크아웃의 git user.email) */\n.ident { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs); color: var(--ink-soft); }\n.ident .i { color: var(--ink-faint); }\n.ident b { color: var(--ink); font-weight: 600; font-family: var(--font-code); font-size: var(--fs-xs); }\n\n.flex { display: flex; align-items: center; gap: 8px; }\n.grow { flex: 1; min-width: 0; }\n.stack-y { display: grid; gap: 16px; align-content: start; min-width: 0; }\n\n/* ── 차트(assets/viz.js) ──────────────────────────────────\n * 색은 토큰만 쓴다: ink = 한 계열 기본(회색 잉크) · design · build · ops · gate(사람 승인 대기 · 실패).\n * 선 2px · 끝점 지름 8px + 바탕 고리 2px · 격자 1px 실선 · 기준선은 1px 점선과 이름. 글자는 12px 이상, 계열 색을 입지 않는다.\n * 앰버(build)는 흰 바탕 대비가 3:1 아래라 늘 값 글 · 표로 보기를 같이 둔다(dataviz 검사기 WARN).\n */\n.vz { position: relative; min-width: 0; }\n.vz-svg { display: block; overflow: visible; }\n.vz-svg:focus { outline: none; }\n.vz-svg:focus-visible { outline: 2px solid var(--design); outline-offset: 4px; border-radius: var(--r-chip); }\n.vz-svg text { font-family: var(--font-text); font-size: 12px; font-variant-numeric: tabular-nums; }\n.vz-ax { fill: var(--ink-faint); }\n.vz-ax.now { fill: var(--ink); font-weight: 700; }\n.vz-val { fill: var(--ink); font-weight: 700; }\n.vz-lbl { fill: var(--ink-soft); font-weight: 600; }\n.vz-grid { stroke: var(--rule-soft); stroke-width: 1; }\n.vz-base { stroke: var(--rule-strong); stroke-width: 1; }\n.vz-ref { stroke: var(--ink-soft); stroke-width: 1; stroke-dasharray: 4 3; }\n.vz-ref-l { fill: var(--ink-soft); font-weight: 600; }\n.vz-ev { stroke: var(--ink-faint); stroke-width: 1; }\n.vz-zone { fill: var(--gate-wash); }\n.vz-zero { stroke: var(--rule-strong); stroke-width: 2; stroke-linecap: round; }\n.vz-line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }\n.vz-area { stroke: none; opacity: 0.1; }\n.vz-pt { stroke: var(--raised); stroke-width: 2; }\n.vz-ring { fill: var(--raised); stroke: var(--ink-faint); stroke-width: 2; }\n.vz-link { stroke: var(--rule-strong); stroke-width: 2; stroke-linecap: round; }\n.vz-band { fill: var(--ink); opacity: 0; }\n.vz-col.on .vz-band, .vz-row.on .vz-band { opacity: 0.045; }\n.vz-hit { fill: transparent; }\n.vz-hov { opacity: 0; pointer-events: none; }\n.vz-hov.on { opacity: 1; }\n.vz-xh { stroke: var(--ink-faint); stroke-width: 1; }\n\n.vz-line.ink { stroke: var(--ink-soft); }\n.vz-line.design { stroke: var(--design); }\n.vz-line.build { stroke: var(--build); }\n.vz-line.ops { stroke: var(--ops); }\n.vz-line.gate { stroke: var(--gate); }\n.vz-pt.ink, .vz-bar.ink, .vz-area.ink { fill: var(--ink-soft); }\n.vz-pt.design, .vz-bar.design, .vz-area.design { fill: var(--design); }\n.vz-pt.build, .vz-bar.build, .vz-area.build { fill: var(--build); }\n.vz-pt.ops, .vz-bar.ops, .vz-area.ops { fill: var(--ops); }\n.vz-pt.gate, .vz-bar.gate, .vz-area.gate { fill: var(--gate); }\n.vz-bar.faint { fill: var(--rule-strong); }\n\n/* 툴팁: 값이 앞(진하게), 이름이 뒤, 계열은 짧은 선 */\n.vz-tip { position: fixed; z-index: 60; min-width: 140px; max-width: 280px; padding: 8px 10px; border: 1px solid var(--rule); border-radius: var(--r-ctl); background: var(--raised); box-shadow: var(--shadow-lift); font-size: var(--fs-xs); color: var(--ink-soft); pointer-events: none; }\n.vz-tip-h { margin-bottom: 4px; font-weight: 700; color: var(--ink); }\n.vz-tip-r { display: flex; align-items: center; gap: 8px; line-height: 1.6; }\n.vz-tip-r b { min-width: 38px; color: var(--ink); font-variant-numeric: tabular-nums; }\n.vz-tip-r.sub { margin-top: 2px; padding-top: 3px; border-top: 1px solid var(--rule-soft); }\n.vz-key { display: inline-block; flex: none; width: 12px; height: 2px; border-radius: 1px; background: var(--ink-soft); }\n.vz-key.design { background: var(--design); }\n.vz-key.build { background: var(--build); }\n.vz-key.ops { background: var(--ops); }\n.vz-key.gate { background: var(--gate); }\n.vz-key.todo { background: var(--rule-strong); }\n.vz-key.ref { height: 0; background: none; border-top: 1px dashed var(--ink-soft); }\n\n/* 표로 보기 */\ndetails.vz-tv { font-size: var(--fs-xs); }\ndetails.vz-tv > summary { display: inline-flex; align-items: center; gap: 6px; padding: 2px 0; color: var(--ink-soft); font-weight: 600; cursor: pointer; list-style: none; }\ndetails.vz-tv > summary::-webkit-details-marker { display: none; }\ndetails.vz-tv > summary::before { content: ""; width: 0; height: 0; border-left: 5px solid currentColor; border-top: 4px solid transparent; border-bottom: 4px solid transparent; transition: transform var(--dur) var(--ease); }\ndetails.vz-tv[open] > summary::before { transform: rotate(90deg); }\ndetails.vz-tv .tbl { margin-top: 6px; font-size: var(--fs-xs); }\ndetails.vz-tv .tbl td, details.vz-tv .tbl th { padding: 4px 8px; }\n\n/* 범례: 막대는 네모, 선은 짧은 선 */\n.vz-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; font-size: var(--fs-xs); color: var(--ink-soft); }\n.vz-legend span { display: inline-flex; align-items: center; gap: 6px; }\n.vz-legend .vz-sw { display: inline-block; flex: none; width: 10px; height: 10px; border-radius: 2px; background: var(--ink-soft); }\n.vz-legend .vz-sw.design { background: var(--design); }\n.vz-legend .vz-sw.build { background: var(--build); }\n.vz-legend .vz-sw.ops { background: var(--ops); }\n.vz-legend .vz-sw.gate { background: var(--gate); }\n.vz-legend .vz-sw.todo { background: var(--rule); }\n.vz-legend .vz-ln { display: inline-block; flex: none; width: 14px; height: 2px; border-radius: 1px; background: var(--ink-soft); }\n.vz-legend .vz-ln.ref { height: 0; background: none; border-top: 1px dashed var(--ink-soft); }\n\n/* 얇은 나눔 막대(한 덩어리를 단계로 나눔): 8px, 끝은 둥글게, 글 없음. 범례는 목록에 한 번 */\n.vz-seg { display: flex; gap: 2px; height: 8px; min-width: 0; }\n.vz-seg > span { display: block; height: 100%; min-width: 3px; background: var(--rule); }\n.vz-seg > span:first-child { border-radius: 4px 0 0 4px; }\n.vz-seg > span:last-child { border-radius: 0 4px 4px 0; }\n.vz-seg > span:only-child { border-radius: 4px; }\n.vz-seg > span.design { background: var(--design); }\n.vz-seg > span.build { background: var(--build); }\n.vz-seg > span.ops { background: var(--ops); }\n.vz-seg > span.todo { background: var(--rule); }\n.vz-seg > span.vz-on { filter: brightness(1.12); }\n\n@media (max-width: 1180px) {\n  .app { grid-template-columns: 64px minmax(0, 1fr); }\n  .rail-brand { justify-content: center; padding: 16px 0 12px; }\n  .rail-brand span, .rail-brand small, .rp-name, .rp-sub, .nav a span:not(.count), .nav-h, .rail-new span, .rail-foot .ln, .rail-foot .srv span, .ru-t { display: none; }\n  .rail-proj { margin: 0 10px 8px; }\n  .rail-repo { place-items: center; padding: 8px 0; }\n  .rp-icon { display: grid; place-items: center; color: #fff; }\n  .proj-menu { display: none; }\n  .rail-usage { width: 40px; margin: 0 0 8px; padding: 6px 4px; }\n  .rail-new { justify-content: center; margin: 0 10px 6px; padding: 7px 0; }\n  .rail-foot { display: grid; place-items: center; padding: 12px 0 14px; }\n  .nav a { justify-content: center; position: relative; padding: 9px 0; }\n  .nav .count { position: absolute; top: 2px; right: 4px; min-width: 16px; padding: 0 4px; line-height: 15px; font-size: 11px; }\n  .search { width: 160px; }\n}\n', "index.html": '<!doctype html>\n<html lang="ko">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<meta name="referrer" content="no-referrer">\n<meta name="color-scheme" content="light">\n<link rel="icon" href="data:,">\n<title>harness-kit 관리 페이지</title>\n<link rel="stylesheet" href="/app.css">\n<link rel="stylesheet" href="/pages.css">\n</head>\n<body>\n<div id="app"><p class="boot">관리 페이지를 불러오는 중…</p></div>\n<noscript><p class="boot">이 화면은 JavaScript 가 필요하다. 같은 기능은 콘솔 명령으로도 된다: <code>npx harness-kit status</code></p></noscript>\n<script type="module" src="/js/main.js"></script>\n</body>\n</html>\n', "js/api.js": '// 관리 페이지 API 호출(설계 06 §3.1 · §3.5). 토큰은 주소 #t= → localStorage → Authorization 머리. PIN 은 탭마다 한 번(sessionStorage).\nconst PORT = location.port;\nconst TOKEN_KEY = `hk-token-${PORT}`;\nconst PIN_KEY = `hk-pin-${PORT}`;\n\nfunction takeTokenFromHash() {\n  const m = /(?:^|[#&])t=([A-Za-z0-9_-]+)/.exec(location.hash);\n  if (!m) return;\n  try {\n    localStorage.setItem(TOKEN_KEY, m[1]);\n  } catch {\n    // 저장소를 못 쓰면 이 탭에서만 쓴다\n    window.__hkToken = m[1];\n  }\n  history.replaceState(null, "", location.pathname + location.search);\n}\ntakeTokenFromHash();\n\nexport function token() {\n  try {\n    return localStorage.getItem(TOKEN_KEY) || window.__hkToken || "";\n  } catch {\n    return window.__hkToken || "";\n  }\n}\n\n/** `/p/<id>` 접두(여러 프로젝트 모드에서 프로젝트 안). 없으면 ""(단일 리포 또는 전체 프로젝트) */\nexport function projectBase() {\n  const m = /^\\/p\\/([0-9a-f]{12})(?:\\/|$)/.exec(location.pathname);\n  return m ? `/p/${m[1]}` : "";\n}\n\nexport function projectId() {\n  return projectBase().slice(3) || null;\n}\n\nfunction apiRoot(scope) {\n  const id = projectId();\n  return scope === "top" || !id ? "/api/v1" : `/api/v1/p/${id}`;\n}\n\nexport function pin() {\n  try {\n    return sessionStorage.getItem(PIN_KEY);\n  } catch {\n    return null;\n  }\n}\nexport function setPin(value) {\n  try {\n    if (value) sessionStorage.setItem(PIN_KEY, value);\n    else sessionStorage.removeItem(PIN_KEY);\n  } catch {\n    // 저장소를 못 쓰면 매번 묻는다\n  }\n}\n\nconst etags = new Map();\n\n/**\n * 요청. 결과는 항상 {ok, status, data, meta, error}. 네트워크 실패는 error.code "network".\n * opts: {query, body, scope: "top", etag: true(목록 갱신용 If-None-Match), signal}\n */\nexport async function request(method, path, opts = {}) {\n  const q = opts.query ? `?${new URLSearchParams(Object.entries(opts.query).filter(([, v]) => v !== null && v !== undefined && v !== ""))}` : "";\n  const url = `${apiRoot(opts.scope)}${path}${q}`;\n  const headers = { Authorization: `Bearer ${token()}` };\n  if (opts.body !== undefined) headers["Content-Type"] = "application/json";\n  if (opts.etag && etags.has(url)) headers["If-None-Match"] = etags.get(url).tag;\n  let res;\n  try {\n    res = await fetch(url, { method, headers, body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined, cache: "no-store", ...(opts.signal ? { signal: opts.signal } : {}) });\n  } catch (err) {\n    if (err && err.name === "AbortError") return { ok: false, status: 0, error: { code: "aborted", message: "취소됨" } };\n    return { ok: false, status: 0, error: { code: "network", message: "서버에 닿지 못했다. 서버를 연 터미널이 켜져 있는지 본다" } };\n  }\n  if (res.status === 304 && etags.has(url)) return { ...etags.get(url).result, notModified: true };\n  let json = null;\n  try {\n    json = await res.json();\n  } catch {\n    json = null;\n  }\n  if (res.ok && json && json.ok) {\n    const result = { ok: true, status: res.status, data: json.data, meta: json.meta ?? {} };\n    const tag = res.headers.get("ETag");\n    if (opts.etag && tag) etags.set(url, { tag, result });\n    return result;\n  }\n  const error = json && json.error ? json.error : { code: res.status === 401 ? "unauthorized" : "internal", message: `응답 ${res.status}` };\n  return { ok: false, status: res.status, error };\n}\n\nexport const get = (path, opts) => request("GET", path, opts);\nexport const post = (path, body, opts) => request("POST", path, { ...opts, body });\nexport const put = (path, body, opts) => request("PUT", path, { ...opts, body });\nexport const del = (path, opts) => request("DELETE", path, opts);\n\n/** 사람이 읽는 오류 한 줄: 코드별 안내 */\nexport function errorText(err) {\n  if (!err) return "";\n  const hint = {\n    unauthorized: "접속 토큰이 없거나 틀렸다. 서버를 연 터미널에 나온 주소로 다시 연다",\n    read_only: "읽기 전용 모드다(에이전트 세션에서 연 서버이거나 --read-only). 사람이 자기 터미널에서 서버를 연다",\n    pin_required: "승인 PIN 이 틀렸거나 비었다. 서버를 연 터미널에 나온 PIN 을 넣는다",\n    pin_locked: "PIN 을 5번 틀려 잠겼다. 서버를 다시 연다",\n    conflict: "다른 곳에서 먼저 저장했다",\n    history_off: "대화 기록 읽기가 꺼져 있다",\n    not_implemented: "이 기능은 다른 이슈에서 제공한다",\n    network: "서버에 닿지 못했다",\n  }[err.code];\n  return hint && !err.message.includes(hint) ? `${err.message}${err.code === "conflict" ? "" : ` — ${hint}`}` : err.message;\n}\n', "js/dom.js": '// DOM 도우미. 화면 글은 늘 textContent 로만 넣는다(innerHTML · style 속성 문자열 없음, 화면 CSP).\nimport { ICONS } from "./icons.js";\n\nconst SVG_NS = "http://www.w3.org/2000/svg";\nconst iconCache = new Map();\n\n/** h("div", {class: "x", onclick: fn, "aria-label": "…"}, "글", 자식) — 자식은 문자열 · 노드 · 배열 · null */\nexport function h(tag, props, ...kids) {\n  const el = document.createElement(tag);\n  setProps(el, props);\n  append(el, kids);\n  return el;\n}\n\nexport function svgEl(tag, attrs, ...kids) {\n  const el = document.createElementNS(SVG_NS, tag);\n  for (const [k, v] of Object.entries(attrs ?? {})) if (v !== null && v !== undefined && v !== false) el.setAttribute(k, v === true ? "" : String(v));\n  append(el, kids);\n  return el;\n}\n\nfunction setProps(el, props) {\n  for (const [k, v] of Object.entries(props ?? {})) {\n    if (v === null || v === undefined || v === false) continue;\n    if (k === "class") el.className = v;\n    else if (k === "dataset") for (const [dk, dv] of Object.entries(v)) el.dataset[dk] = dv;\n    else if (k.startsWith("on") && typeof v === "function") el.addEventListener(k.slice(2).toLowerCase(), v);\n    else if (k === "hidden" || k === "disabled" || k === "checked" || k === "open" || k === "required" || k === "readOnly" || k === "selected") el[k] = Boolean(v);\n    else if (k === "value") el.value = v;\n    else el.setAttribute(k, v === true ? "" : String(v));\n  }\n}\n\nfunction append(el, kids) {\n  for (const k of kids.flat(Infinity)) {\n    if (k === null || k === undefined || k === false) continue;\n    el.append(k instanceof Node ? k : document.createTextNode(String(k)));\n  }\n}\n\nexport function clear(el) {\n  el.replaceChildren();\n  return el;\n}\n\n/** 선 아이콘. 이름은 icons.js 의 키. 장식이면 aria-hidden, label 을 주면 이름을 단다. */\nexport function icon(name, cls = "", label = null) {\n  let proto = iconCache.get(name);\n  if (!proto) {\n    const body = ICONS[name] ?? ICONS.help;\n    const doc = new DOMParser().parseFromString(`<svg xmlns="${SVG_NS}" viewBox="0 0 24 24">${body}</svg>`, "image/svg+xml");\n    proto = document.importNode(doc.documentElement, true);\n    iconCache.set(name, proto);\n  }\n  const el = proto.cloneNode(true);\n  el.setAttribute("class", `i${cls ? ` ${cls}` : ""}`);\n  if (label) {\n    el.setAttribute("role", "img");\n    el.setAttribute("aria-label", label);\n  } else el.setAttribute("aria-hidden", "true");\n  return el;\n}\n\n/** 안전한 HTML 한 자리: 서버가 Markdown 에서 만든 문서 HTML(원문 HTML 은 서버가 글자로 바꿨다, DB-R21). */\nexport function setServerHtml(el, html) {\n  const doc = new DOMParser().parseFromString(`<!doctype html><body>${html}`, "text/html");\n  for (const bad of doc.querySelectorAll("script, iframe, object, embed, link, meta, style, base")) bad.remove();\n  for (const node of doc.body.querySelectorAll("*")) {\n    for (const a of [...node.attributes]) {\n      if (a.name.startsWith("on") || a.name === "style") node.removeAttribute(a.name);\n      else if ((a.name === "href" || a.name === "src") && /^\\s*(javascript|data:text\\/html|vbscript):/i.test(a.value)) node.removeAttribute(a.name);\n    }\n  }\n  el.replaceChildren(...doc.body.childNodes);\n}\n\n/** 클립보드: 실패해도 사용자에게 글을 보인다. */\nexport async function copy(text) {\n  try {\n    await navigator.clipboard.writeText(text);\n    return true;\n  } catch {\n    const ta = h("textarea", { "aria-hidden": "true", readOnly: true });\n    ta.value = text;\n    ta.className = "sr-only";\n    document.body.append(ta);\n    ta.select();\n    let ok = false;\n    try {\n      ok = document.execCommand("copy");\n    } catch {\n      ok = false;\n    }\n    ta.remove();\n    return ok;\n  }\n}\n', "js/format.js": '// 화면 공용 순수 함수(DOM 없음). vitest 가 직접 불러 시험한다.\n\nexport const GATE_KO = { codebase: "기존 코드", intent: "Intent", plans: "기획물", requirements: "요구사항", design: "설계", tasks: "tasks", mr: "MR", done: "완료", deploy: "배포" };\n/** 게이트 → 단계 색 계열(설계 · 구현 · 반영/운영) */\nexport const GATE_FAMILY = { codebase: "design", intent: "design", plans: "design", requirements: "design", design: "design", tasks: "build", mr: "build", done: "ops", deploy: "ops" };\nexport const STAGE_KO = { design: "설계", implement: "구현", verify: "검증", docs: "반영", ops: "운영" };\nexport const STAGE_CLASS = { design: "design", implement: "build", verify: "build", docs: "ops", ops: "ops" };\nexport const STEP_KO = { requirements: "요구사항", design: "설계", tasks: "tasks", impl: "구현", verify: "검증", mr: "MR", done: "완료", deploy: "배포" };\nexport const ROLE_KO = { design: "설계", implement: "구현", review: "리뷰", docs: "문서", unknown: "역할 모름" };\nexport const HARNESS_KO = { claude: "Claude Code", codex: "Codex", kiro: "Kiro", cursor: "Cursor", gemini: "Gemini" };\nexport const HARNESS_LETTER = { claude: "C", codex: "X", kiro: "K", cursor: "U", gemini: "G" };\n\n/** 1234 → "1.2K", 21_900_000 → "21.9M" */\nexport function fmtTokens(n) {\n  if (n === null || n === undefined || Number.isNaN(n)) return "-";\n  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1)}M`;\n  if (n >= 10_000) return `${Math.round(n / 1000)}K`;\n  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;\n  return String(n);\n}\n\nexport function fmtBytes(n) {\n  if (n === null || n === undefined) return "-";\n  if (n >= 1024 * 1024 * 1024) return `${(n / 1024 ** 3).toFixed(1)}GB`;\n  if (n >= 1024 * 1024) return `${(n / 1024 ** 2).toFixed(1)}MB`;\n  if (n >= 1024) return `${(n / 1024).toFixed(1)}KB`;\n  return `${n}B`;\n}\n\nexport function fmtMs(ms) {\n  if (ms === null || ms === undefined) return "-";\n  if (ms < 1000) return `${ms}ms`;\n  const s = ms / 1000;\n  if (s < 60) return `${s.toFixed(1)}초`;\n  const m = Math.floor(s / 60);\n  return `${m}분 ${Math.round(s - m * 60)}초`;\n}\n\nexport function pct(r, digits = 0) {\n  return r === null || r === undefined ? "-" : `${(r * 100).toFixed(digits)}%`;\n}\n\nconst pad2 = (n) => String(n).padStart(2, "0");\n\n/** "10:52" (오늘) · "11-23 10:52" (오늘이 아니면). now 를 넘기면 시험이 고정한다. */\nexport function clock(iso, now = new Date()) {\n  if (!iso) return "-";\n  const d = new Date(iso);\n  if (Number.isNaN(d.getTime())) return "-";\n  const same = d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth() && d.getDate() === now.getDate();\n  const hm = `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;\n  return same ? hm : `${pad2(d.getMonth() + 1)}-${pad2(d.getDate())} ${hm}`;\n}\n\n/** 방금 · 3분 전 · 2시간 전 · 5일 전 */\nexport function ago(iso, now = new Date()) {\n  if (!iso) return "-";\n  const ms = now.getTime() - new Date(iso).getTime();\n  if (!Number.isFinite(ms)) return "-";\n  if (ms < 60_000) return "방금";\n  if (ms < 3_600_000) return `${Math.floor(ms / 60_000)}분 전`;\n  if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}시간 전`;\n  return `${Math.floor(ms / 86_400_000)}일 전`;\n}\n\nconst WEEK = ["일", "월", "화", "수", "목", "금", "토"];\nexport function dayLabel(dateText) {\n  const [y, m, d] = dateText.split("-").map(Number);\n  const dt = new Date(y, m - 1, d);\n  return { short: `${m}/${d}`, week: WEEK[dt.getDay()], text: `${m}월 ${d}일 ${WEEK[dt.getDay()]}` };\n}\n\n/** 이슈 게이트 판정 → 게이트 레일 모양(ok · wait · now · skip · todo). gates 는 flow.gates 순서다. */\nexport function railSpec(flowGates, issue) {\n  const out = [];\n  const results = new Map((issue?.gates ?? []).map((g) => [g.gate, g]));\n  let active = false;\n  for (const g of flowGates) {\n    const r = results.get(g);\n    if (!r) {\n      // 이슈 게이트가 아닌 것(intent · plans · deploy …)은 이슈에서 해당 없음, 이미 지난 위쪽은 ok\n      out.push({ gate: g, state: issue ? (["codebase", "intent", "plans"].includes(g) ? (issue.intent ? "ok" : "skip") : g === "deploy" ? (issue.stage === "completed" ? "todo" : "todo") : "skip") : "skip" });\n      continue;\n    }\n    if (r.passed) {\n      out.push({ gate: g, state: "ok" });\n    } else if (!active) {\n      active = true;\n      out.push({ gate: g, state: issue?.waitingOn && issue.waitingOn.gate === g ? "wait" : "now" });\n    } else out.push({ gate: g, state: "todo" });\n  }\n  return out;\n}\n\nexport const RAIL_STATE_KO = { ok: "통과", wait: "사람 승인 대기", now: "진행 중", skip: "해당 없음", todo: "아직" };\n\n/** 한 줄 상태 글: 이슈 stage → 사람이 읽는 말 */\nexport function stageText(issue) {\n  if (!issue) return "";\n  if (issue.stage === "completed") return "완료";\n  if (issue.waitingOn) return `${GATE_KO[issue.waitingOn.gate] ?? issue.waitingOn.gate} 승인 대기`;\n  return `${STEP_KO[issue.stage] ?? GATE_KO[issue.stage] ?? issue.stage} 진행`;\n}\n\nexport const KIND_KO = {\n  "review-blocker": "막힘",\n  "quality-blocker": "막힘",\n  "gate-mine": "승인 · 내 차례",\n  "gate-others": "다른 사람 승인",\n  questions: "질문",\n  "verify-failed": "검증 실패",\n  "approval-stale": "다시 승인",\n  "worktree-cleanup": "정리",\n  harness: "하네스",\n  "dispatch-stale": "대기함",\n};\n\n/** 처리할 일 묶음(S01 영역 3~7): rank 와 kind 를 묶음 이름으로 */\nexport const TODO_GROUPS = [\n  { id: "blocked", title: "막힌 것", hint: "열린 CRITICAL · HIGH · 실패한 품질 게이트", match: (t) => t.rank === 1 },\n  { id: "mine", title: "승인 대기", hint: "내 git 사용자가 승인자인 것", match: (t) => t.rank === 2 },\n  { id: "questions", title: "답할 질문", hint: "[NEEDS CLARIFICATION] 이 남은 문서 · 열린 질문", match: (t) => t.rank === 3 },\n  { id: "verify", title: "검증 · 다시 승인", hint: "마지막 검증이 통과가 아닌 것 · 승인 뒤 바뀐 문서", match: (t) => t.rank === 4 || t.rank === 5 },\n  { id: "others", title: "다른 사람 승인 대기", hint: "approvers 에 내 git 사용자가 없다", match: (t) => t.rank === 6 },\n  { id: "cleanup", title: "정리 · 점검", hint: "끝난 worktree · 하네스 점검 · 오래된 대기함", match: (t) => t.rank >= 7 },\n];\n\nexport function groupTodos(todo, onlyMine = false) {\n  const list = onlyMine ? todo.filter((t) => t.mine || t.rank <= 2) : todo;\n  return TODO_GROUPS.map((g) => ({ ...g, items: list.filter(g.match) })).filter((g) => g.items.length);\n}\n\n/** 라우트 → 화면 이름. 주소의 `/p/<id>` 접두는 base 로 따로 뗀다. */\nexport function parseRoute(pathname, search = "") {\n  const q = Object.fromEntries(new URLSearchParams(search));\n  const parts = pathname.split("/").filter(Boolean).map((x) => decodeURIComponent(x));\n  const [a, b, c, d] = parts;\n  if (!a) return { name: "home", params: {}, query: q };\n  if (a === "projects") return { name: "projects", params: {}, query: q };\n  if (a === "progress") return { name: q.view === "flow" ? "flow" : "progress", params: {}, query: q };\n  if (a === "issues" && b) return { name: "issue", params: { key: b, tab: c === "docs" ? (d ?? "requirements") : c === "review" ? "review" : c === "approve" ? "approve" : null }, query: q };\n  if (a === "intents" && b) return { name: c === "questions" ? "questions" : "intent", params: { key: b, target: b }, query: q };\n  if (a === "questions") return { name: "questions", params: { target: q.target ?? null }, query: q };\n  if (["docs", "verify", "workspace", "skills", "harness", "ops", "intake", "usage"].includes(a)) return { name: a, params: {}, query: q };\n  return { name: "notfound", params: { path: pathname }, query: q };\n}\n\n/** 메뉴 항목 → 이 라우트가 속한 메뉴 */\nexport function menuOf(route) {\n  const n = route.name;\n  if (n === "flow" || n === "progress" || n === "intent") return "progress";\n  if (n === "issue" || n === "questions" || n === "docs") return "docs";\n  return n;\n}\n\nexport const PROMPT_KINDS = [\n  ["doc-changed", "문서를 고쳤다"],\n  ["answers-ready", "답이 모였다"],\n  ["approved", "승인했다"],\n  ["changes-requested", "수정을 요청한다"],\n  ["review-findings", "리뷰 지적을 처리한다"],\n  ["custom", "직접 쓴다"],\n];\n\n/** 사용량 차트용: byRole 를 역할 순서대로 쌓는 조각 */\nexport function stackParts(daily, roles) {\n  return daily.map((d) => ({ date: d.date, parts: roles.map((r) => ({ role: r, v: d.byRole[r] ?? 0 })), sum: d.sum }));\n}\n', "js/icons.js": `/* 선 아이콘(lucide, ISC). 화면기획서 assets/app.js 의 아이콘 목록을 그대로 가져왔다. 문자열은 상수뿐이다. */
+export const ICONS = {
+    home: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+    board: '<path d="M5 3v14m7-14v8m7-8v18"/>',
+    doc: '<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M14 2v5a1 1 0 0 0 1 1h5M10 9H8m8 4H8m8 4H8"/>',
+    shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12l2 2l4-4"/>',
+    worktree: '<path d="M18 19a5 5 0 0 1-5-5v8"/><path d="M9 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v5"/><circle cx="13" cy="12" r="2"/><circle cx="20" cy="19" r="2"/>',
+    ops: '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
+    skills: '<path d="M15.39 4.39a1 1 0 0 0 1.68-.474a2.5 2.5 0 1 1 3.014 3.015a1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474a2.5 2.5 0 1 0-3.014 3.015a1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474a2.5 2.5 0 1 1-3.014-3.015a1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474a2.5 2.5 0 1 0 3.014-3.015a1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/>',
+    harness: '<path d="M14 17H5M19 7h-9"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>',
+    branch: '<path d="M15 6a9 9 0 0 0-9 9V3"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/>',
+    mr: '<circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M13 6h3a2 2 0 0 1 2 2v7M6 9v12"/>',
+    merge: '<circle cx="18" cy="18" r="3"/><circle cx="6" cy="6" r="3"/><path d="M6 21V9a9 9 0 0 0 9 9"/>',
+    commit: '<circle cx="12" cy="12" r="3"/><path d="M3 12h6m6 0h6"/>',
+    send: '<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11zm7.318-19.539l-10.94 10.939"/>',
+    check: '<path d="M20 6L9 17l-5-5"/>',
+    x: '<path d="M18 6L6 18M6 6l12 12"/>',
+    alert: '<path d="m21.73 18l-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3M12 9v4m0 4h.01"/>',
+    help: '<circle cx="12" cy="12" r="10"/><path d="M9 9.5a3 2.5 0 0 1 6 0c0 2-2 2-3 3.5m0 4h.01"/>',
+    search: '<path d="m21 21l-4.34-4.34"/><circle cx="11" cy="11" r="8"/>',
+    terminal: '<path d="M12 19h8M4 17l6-6l-6-6"/>',
+    ext: '<path d="M15 3h6v6m-11 5L21 3m-3 10v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+    pencil: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497zM15 5l4 4"/>',
+    save: '<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7M7 3v4a1 1 0 0 0 1 1h7"/>',
+    question: '<path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2zM7 11h10M7 15h6M7 7h8"/>',
+    clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+    refresh: '<path d="M3 12a9 9 0 0 1 9-9a9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5m5 4a9 9 0 0 1-9 9a9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+    trash: '<path d="M10 11v6m4-6v6m5-11v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+    lock: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+    ok: '<circle cx="12" cy="12" r="10"/><path d="m16 9l-5.5 5.5L8 12"/>',
+    fail: '<circle cx="12" cy="12" r="10"/><path d="m15 9l-6 6m0-6l6 6"/>',
+    disk: '<path d="M10 16h.01m-7.798-4.423a2 2 0 0 0-.212.896V18a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5.527a2 2 0 0 0-.212-.896L18.55 5.11A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11zm19.734.436H2.054M6 16h.01"/>',
+    users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M16 3.128a4 4 0 0 1 0 7.744M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/>',
+    layers: '<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>',
+    link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
+    eye: '<path d="M2.062 12.348a1 1 0 0 1 0-.696a10.75 10.75 0 0 1 19.876 0a1 1 0 0 1 0 .696a10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
+    inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11"/>',
+    chev: '<path d="m9 18l6-6l-6-6"/>',
+    folder: '<path d="m6 14l1.5-2.9A2 2 0 0 1 9.24 10H20a2 2 0 0 1 1.94 2.5l-1.54 6a2 2 0 0 1-1.95 1.5H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H18a2 2 0 0 1 2 2v2"/>',
+    copy: '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+    filter: '<path d="M2 5h20M6 12h12m-9 7h6"/>',
+    plug: '<path d="M12 22v-5m3-9V2m2 6a1 1 0 0 1 1 1v4a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1zM9 8V2"/>',
+    plus: '<path d="M5 12h14m-7-7v14"/>',
+    paperclip: '<path d="m16 6l-8.414 8.586a2 2 0 0 0 2.829 2.829l8.414-8.586a4 4 0 1 0-5.657-5.657l-8.379 8.551a6 6 0 1 0 8.485 8.485l8.379-8.551"/>',
+    upload: '<path d="M12 3v12m5-7l-5-5l-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>',
+    chart: '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9m-5 8V5m-5 12v-3"/>',
+    gauge: '<path d="m12 14l4-4"/><path d="M3.34 19a10 10 0 1 1 17.32 0"/>',
+    history: '<path d="M3 12a9 9 0 1 0 9-9a9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5m4-1v5l4 2"/>',
+    chevdown: '<path d="m6 9l6 6l6-6"/>',
+    grid: '<rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/>',
+    split: '<path d="M16 3h5v5M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3m12 6l6-6"/>',
+    unlink: '<path d="m18.84 12.25l1.72-1.71h-.02a5.004 5.004 0 0 0-.12-7.07a5.006 5.006 0 0 0-6.95 0l-1.72 1.71m-6.58 6.57l-1.71 1.71a5.004 5.004 0 0 0 .12 7.07a5.006 5.006 0 0 0 6.95 0l1.71-1.71M8 2v3M2 8h3m11 14v-3m6-3h-3"/>',
+    reorder: '<path d="m21 16l-4 4l-4-4m4 4V4M3 8l4-4l4 4M7 4v16"/>',
+    coins: '<circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18M7 6h1v4m8.71 3.88l.7.71l-2.82 2.82"/>'
+  };
+`, "js/main.js": '// 관리 페이지 진입. 모드를 정하고(단일 리포 · 전체 프로젝트 · 프로젝트 안) 틀을 그린 뒤 화면 모듈을 늦게 불러온다.\nimport { get } from "./api.js";\nimport { clear } from "./dom.js";\nimport { currentRoute, onRoute } from "./router.js";\nimport { buildShell, renderRail, searchBox, setHeader } from "./shell.js";\nimport { detectMode, loadSession, refreshOverview, refreshUsageNow, startPolling, store, subscribe } from "./store.js";\nimport { errorState, skeleton } from "./ui.js";\n\nconst VIEWS = {\n  home: () => import("./views/home.js"),\n  projects: () => import("./views/projects.js"),\n  progress: () => import("./views/progress.js"),\n  flow: () => import("./views/flow.js"),\n  intent: () => import("./views/progress.js"),\n  issue: () => import("./views/issue.js"),\n  docs: () => import("./views/docs.js"),\n  questions: () => import("./views/questions.js"),\n  verify: () => import("./views/verify.js"),\n  workspace: () => import("./views/workspace.js"),\n  skills: () => import("./views/skills.js"),\n  harness: () => import("./views/harness.js"),\n  ops: () => import("./views/ops.js"),\n  intake: () => import("./views/intake.js"),\n  usage: () => import("./views/usage.js"),\n};\n\nlet shell = null;\nlet projects = null;\nlet cleanup = null;\nlet seq = 0;\n\nfunction railNow() {\n  if (shell) renderRail(shell.rail, currentRoute(), projects);\n}\n\nasync function loadProjects() {\n  const r = await get("/projects", { scope: "top" });\n  projects = r.ok ? r.data.projects : [];\n}\n\nasync function renderRoute() {\n  if (cleanup) {\n    try {\n      cleanup();\n    } catch {\n      // 이전 화면 정리 실패는 새 화면을 막지 않는다\n    }\n    cleanup = null;\n  }\n  const my = ++seq;\n  const route = currentRoute();\n  const { main, topbar } = shell;\n  clear(main).append(skeleton(6));\n  renderRail(shell.rail, route, projects);\n  const key = store.mode === "multi-root" ? "projects" : route.name;\n  const loader = VIEWS[key] ?? (() => import("./views/notfound.js"));\n  let mod;\n  try {\n    mod = await loader();\n  } catch (err) {\n    clear(main).append(errorState({ code: "internal", message: `화면 모듈을 불러오지 못했다: ${err instanceof Error ? err.message : String(err)}` }, () => void renderRoute()));\n    return;\n  }\n  if (my !== seq) return;\n  clear(main);\n  const ctx = {\n    host: main,\n    route,\n    store,\n    setHeader: (o) => setHeader(topbar, { ...o, tools: o.tools ?? [] }),\n    searchBox,\n    rerender: () => void renderRoute(),\n    rail: railNow,\n    isCurrent: () => my === seq,\n  };\n  try {\n    const out = await mod.render(ctx);\n    if (my !== seq) {\n      if (typeof out === "function") out();\n      return;\n    }\n    cleanup = typeof out === "function" ? out : null;\n  } catch (err) {\n    clear(main).append(errorState({ code: "internal", message: err instanceof Error ? err.message : String(err) }, () => void renderRoute()));\n  }\n  if (my === seq && !route.query.keepfocus) document.getElementById("page-title")?.focus({ preventScroll: true });\n}\n\nasync function boot() {\n  shell = buildShell();\n  clear(shell.main).append(skeleton(6));\n  await detectMode();\n  if (store.mode === "multi-root") await loadProjects();\n  else if (!(await loadSession())) {\n    setHeader(shell.topbar, { title: "관리 페이지", sub: "연결하지 못했다" });\n    renderRail(shell.rail, currentRoute(), projects);\n    clear(shell.main).append(errorState(store.loadError ?? { code: "network", message: "연결하지 못했다" }, () => location.reload()));\n    return;\n  }\n  if (store.mode !== "multi-root") {\n    if (store.mode === "project") await loadProjects();\n    void refreshOverview();\n    void refreshUsageNow();\n    startPolling();\n  }\n  subscribe(railNow);\n  onRoute(() => void renderRoute());\n  document.addEventListener("keydown", (e) => {\n    if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;\n    const t = e.target;\n    if (t instanceof HTMLElement && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable)) return;\n    const input = document.querySelector(".search input");\n    if (input) {\n      e.preventDefault();\n      input.focus();\n    }\n  });\n  await renderRoute();\n}\n\nvoid boot();\n', "js/router.js": '// 히스토리 API 라우터. 서버가 점(.) 없는 경로에 index.html 을 주므로 서버를 바꾸지 않는다.\nimport { projectBase } from "./api.js";\nimport { h } from "./dom.js";\nimport { parseRoute } from "./format.js";\n\nlet listener = null;\n\n/** 접두(/p/<id>)를 뗀 앱 경로 + 쿼리 */\nexport function appPath() {\n  const base = projectBase();\n  const p = base && location.pathname.startsWith(base) ? location.pathname.slice(base.length) || "/" : location.pathname;\n  return { path: p, search: location.search };\n}\n\nexport function currentRoute() {\n  const { path, search } = appPath();\n  return parseRoute(path, search);\n}\n\nexport function fullPath(path) {\n  return `${projectBase()}${path.startsWith("/") ? path : `/${path}`}`;\n}\n\nexport function navigate(path, opts = {}) {\n  const target = fullPath(path);\n  if (target === location.pathname + location.search && !opts.force) {\n    if (listener) listener();\n    return;\n  }\n  if (opts.replace) history.replaceState(null, "", target);\n  else history.pushState(null, "", target);\n  if (listener) listener();\n}\n\n/** 앱 안 링크: 수정 키 · 가운데 단추는 브라우저에 맡기고 나머지는 같은 문서 안에서 이동한다. */\nexport function link(path, props, ...kids) {\n  const a = h("a", { ...props, href: fullPath(path) }, ...kids);\n  a.addEventListener("click", (e) => {\n    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;\n    e.preventDefault();\n    navigate(path);\n  });\n  return a;\n}\n\n/**\n * 모드가 바뀌는 링크(전체 프로젝트 ↔ 프로젝트 안, 프로젝트 ↔ 프로젝트): 화면 상태(세션 · 프로젝트)가 달라서\n * 같은 문서 안에서 바꾸지 않고 새로 읽는다. 토큰은 localStorage 에 있어 다시 묻지 않는다.\n */\nexport function topLink(path, props, ...kids) {\n  return h("a", { ...props, href: path }, ...kids);\n}\n\nexport function onRoute(cb) {\n  listener = cb;\n  window.addEventListener("popstate", cb);\n}\n', "js/shell.js": '// 화면 틀: 레일(표지 · 프로젝트 고르기 · 새 요구사항 · 메뉴 · 바닥의 지금 세션 줄과 연결 상태) + 머리줄 + 작업 영역.\nimport { projectId } from "./api.js";\nimport { clear, h, icon } from "./dom.js";\nimport { menuOf, pct } from "./format.js";\nimport { fullPath, link, navigate, topLink } from "./router.js";\nimport { badges, store } from "./store.js";\nimport { liveRegion } from "./ui.js";\n\nconst NAV = [\n  { id: "home", path: "/", label: "홈", icon: "home" },\n  { id: "progress", path: "/progress", label: "진행", icon: "board" },\n  { id: "docs", path: "/docs", label: "문서", icon: "doc" },\n  { id: "verify", path: "/verify", label: "검증", icon: "shield" },\n  { id: "workspace", path: "/workspace", label: "작업 공간", icon: "worktree" },\n  { id: "ops", path: "/ops", label: "운영", icon: "ops" },\n  { sep: true },\n  { id: "skills", path: "/skills", label: "스킬", icon: "skills" },\n  { id: "harness", path: "/harness", label: "하네스", icon: "harness" },\n  { id: "usage", path: "/usage", label: "기록 · 사용량", icon: "chart" },\n];\n\nexport function buildShell() {\n  const root = document.getElementById("app");\n  clear(root);\n  const rail = h("nav", { class: "rail", "aria-label": "주 메뉴" });\n  const topbar = h("header", { class: "topbar" });\n  const main = h("main", { class: "content", id: "main", tabindex: "-1" });\n  root.append(h("a", { class: "skip-link", href: "#main" }, "본문으로 건너뛰기"), h("div", { class: "app" }, rail, h("div", { class: "work" }, topbar, main)), liveRegion());\n  return { rail, topbar, main };\n}\n\nlet projectMenuOpen = false;\n\nexport function renderRail(rail, route, projects) {\n  clear(rail);\n  const s = store.session;\n  const mode = store.mode;\n  const multi = mode === "multi-root";\n  const current = menuOf(route);\n  rail.append(\n    h("div", { class: "rail-brand" }, icon("harness", "mark"), h("span", null, "harness-kit"), h("small", null, s?.version ? `v${s.version}` : "")),\n    projectBox(rail, projects, route),\n  );\n  if (!multi) {\n    const ro = s?.readOnly;\n    rail.append(\n      ro\n        ? h("span", { class: "rail-new", "aria-disabled": "true", title: "읽기 전용에서는 접수할 수 없다" }, icon("plus"), "새 요구사항")\n        : link("/intake", { class: "rail-new", "aria-current": route.name === "intake" ? "page" : null }, icon("plus"), h("span", null, "새 요구사항")),\n    );\n    const b = badges(store.overview);\n    const nav = h("div", { class: "nav" });\n    for (const item of NAV) {\n      if (item.sep) {\n        nav.append(h("div", { class: "nav-sep" }));\n        continue;\n      }\n      const badge = b[item.id];\n      nav.append(\n        link(item.path, { "aria-current": current === item.id ? "page" : null }, icon(item.icon), h("span", null, item.label), badge && badge.n > 0 ? h("span", { class: `count ${badge.kind}`, "aria-label": `${badge.n}건` }, String(badge.n)) : null),\n      );\n    }\n    rail.append(nav);\n  } else {\n    const nav = h("div", { class: "nav" }, topLink("/", { "aria-current": route.name === "home" || route.name === "projects" ? "page" : null }, icon("grid"), h("span", null, "전체 프로젝트")));\n    rail.append(nav);\n    rail.append(h("div", { class: "nav-h", style: null }, "프로젝트"));\n    const list = h("div", { class: "nav" });\n    for (const p of projects ?? []) {\n      list.append(\n        p.state === "ok"\n          ? topLink(`/p/${p.id}/`, {}, icon("folder"), h("span", null, p.name))\n          : h("span", { class: "nav-off", title: p.state === "missing" ? "폴더 없음" : "킷 리포가 아니다" }, icon("folder"), h("span", null, p.name)),\n      );\n    }\n    rail.append(list);\n  }\n  rail.append(railFoot());\n}\n\nfunction projectBox(rail, projects, route) {\n  const s = store.session;\n  const multi = store.mode === "multi-root";\n  const canSwitch = multi || store.mode === "project" || true;\n  const box = h("div", { class: "rail-proj" });\n  const label = multi ? "전체 프로젝트" : (s?.repo ?? "…");\n  const sub = multi ? `등록 ${projects?.length ?? 0}` : "이 폴더";\n  const btn = h(\n    "button",\n    { class: "rail-repo", type: "button", "aria-expanded": projectMenuOpen ? "true" : "false", "aria-haspopup": "true", onclick: () => {\n      projectMenuOpen = !projectMenuOpen;\n      renderRail(rail, route, projects);\n      if (projectMenuOpen) rail.querySelector(".proj-menu a")?.focus();\n    } },\n    h("span", { class: "rp-icon" }, icon(multi ? "grid" : "folder")),\n    h("span", { class: "rp-name" }, icon(multi ? "grid" : "folder"), h("b", null, label), icon("chevdown")),\n    h("span", { class: "rp-sub" }, icon("branch"), h("span", { class: "mono" }, `${sub}${s?.main ? "" : ""}`)),\n  );\n  box.append(btn);\n  if (projectMenuOpen && canSwitch) {\n    const menu = h("div", { class: "proj-menu", role: "menu" });\n    menu.append(topLink("/", { class: "pm-all", role: "menuitem" }, icon("grid"), "전체 프로젝트", h("span", { class: "pm-n" }, store.mode === "single" ? "dashboard --all" : "")));\n    if (projects?.length) {\n      menu.append(h("div", { class: "pm-h" }, "프로젝트"));\n      for (const p of projects) if (p.state === "ok") menu.append(topLink(`/p/${p.id}/`, { role: "menuitem", "aria-current": p.id === projectId() ? "true" : null }, icon("folder"), h("span", { class: "pm-nm" }, p.name)));\n    }\n    if (store.mode === "single") menu.append(h("div", { class: "pm-foot" }, "여러 리포를 한 화면에서 보려면 ", h("code", null, "npx harness-kit dashboard --all"), " 로 연다."));\n    box.append(menu);\n    menu.addEventListener("keydown", (e) => {\n      if (e.key === "Escape") {\n        projectMenuOpen = false;\n        renderRail(rail, route, projects);\n        rail.querySelector(".rail-repo")?.focus();\n      }\n    });\n  }\n  return box;\n}\n\nfunction railFoot() {\n  const s = store.session;\n  const u = store.usageNow;\n  const foot = h("div", { class: `rail-foot${s?.readOnly ? " ro" : ""}` });\n  if (store.mode !== "multi-root") {\n    const sess = u?.session;\n    if (u && u.enabled && sess && sess.ratio !== null) {\n      foot.append(\n        link("/usage", { class: `rail-usage${sess.warn ? " warn" : ""}`, "aria-label": `지금 세션 컨텍스트 ${pct(sess.ratio)}${sess.warn ? " — 자동 압축이 가깝다" : ""}` }, h("span", { class: "ru-t" }, "지금 세션 · 컨텍스트", h("b", null, pct(sess.ratio))), h("span", { class: "ru-bar" }, barFill(sess.ratio))),\n      );\n    } else {\n      foot.append(link("/usage", { class: "rail-usage off" }, h("span", { class: "ru-t" }, u && !u.enabled ? "대화 기록 읽기 꺼짐" : "지금 세션 기록 없음"), h("span", { class: "ru-bar" })));\n    }\n  }\n  foot.append(h("div", { class: "srv" }, icon(s?.readOnly ? "eye" : "lock", "s"), h("span", { class: "mono" }, `127.0.0.1:${location.port}`)));\n  if (s?.readOnly) foot.append(h("div", { class: "ln mode" }, "읽기 전용"), h("div", { class: "ln" }, "에이전트 세션이거나 --read-only"));\n  else {\n    if (s) foot.append(h("div", { class: "ln" }, `이 폴더: ${s.repo}`));\n    foot.append(h("div", { class: "ln" }, store.loadError?.code === "unauthorized" ? "접속 토큰 확인 필요" : "접속 토큰 확인됨"));\n  }\n  return foot;\n}\n\nfunction barFill(ratio) {\n  const i = h("i", null);\n  i.style.width = `${Math.min(100, Math.round(ratio * 100))}%`;\n  return i;\n}\n\n/** 머리줄: crumbs([{label, path}]) · title · sub · tools(노드들). 이동 뒤 h1 로 초점을 옮긴다. */\nexport function setHeader(topbar, o) {\n  clear(topbar);\n  const left = h("div", { class: "grow" });\n  if (o.crumbs?.length) {\n    left.append(h("div", { class: "crumb" }, ...o.crumbs.flatMap((c, i) => [i ? icon("chev", "s") : null, c.path ? link(c.path, {}, c.label) : h("span", null, c.label)])));\n  }\n  left.append(h("h1", { tabindex: "-1", id: "page-title" }, o.title));\n  if (o.sub) left.append(h("p", { class: "sub" }, o.sub));\n  const meta = h("div", { class: "top-meta" }, ...(o.tools ?? []));\n  topbar.append(left, meta);\n  document.title = `${o.title} · harness-kit 관리 페이지`;\n}\n\nexport function searchBox() {\n  const input = h("input", { type: "text", placeholder: "이슈 키 · 문서 찾기", "aria-label": "이슈 키나 문서 찾기", autocomplete: "off" });\n  const form = h("form", { class: "search", role: "search", onsubmit: (e) => {\n    e.preventDefault();\n    const v = input.value.trim();\n    if (!v) return;\n    const key = /^([A-Za-z][A-Za-z0-9]+-\\d+)$/.exec(v)?.[1]?.toUpperCase();\n    if (key && /^INT-/.test(key)) navigate(`/intents/${key}/questions`);\n    else if (key) navigate(`/issues/${key}`);\n    else {\n      const m = /issues\\/([A-Z][A-Z0-9]+-\\d+)-[^/]+\\/(requirements|design|tasks)\\.md/.exec(v);\n      if (m) navigate(`/issues/${m[1]}/docs/${m[2]}`);\n      else navigate(`/docs?q=${encodeURIComponent(v)}`);\n    }\n    input.value = "";\n  } }, icon("search"), input, h("kbd", { "aria-hidden": "true" }, "/"));\n  return { form, input };\n}\n\nexport function fullHref(path) {\n  return fullPath(path);\n}\n', "js/store.js": '// 화면 공용 상태: 세션 정보 · overview(5초) · 지금 세션(15초, 켜져 있을 때만). 탭이 숨겨지면 멈춘다.\nimport { get, projectId } from "./api.js";\n\nexport const store = {\n  mode: "single", // single | multi-root | project\n  session: null,\n  overview: null,\n  usageNow: null,\n  loadError: null,\n  readAt: null,\n};\n\nconst subs = new Set();\nexport function subscribe(fn) {\n  subs.add(fn);\n  return () => subs.delete(fn);\n}\nconst emit = () => subs.forEach((f) => f());\n\nexport async function detectMode() {\n  if (projectId()) {\n    store.mode = "project";\n    return;\n  }\n  // 단일 리포 서버가 흔하므로 /session 을 먼저 묻는다(여러 프로젝트 서버의 최상위에는 /session 이 없다)\n  const s = await get("/session");\n  if (s.ok) {\n    store.mode = "single";\n    return;\n  }\n  const r = await get("/projects", { scope: "top" });\n  store.mode = r.ok ? "multi-root" : "single";\n  if (!r.ok && (r.error.code === "unauthorized" || s.error.code === "unauthorized")) store.loadError = r.error.code === "unauthorized" ? r.error : s.error;\n}\n\nexport async function loadSession() {\n  const r = await get("/session");\n  if (!r.ok) {\n    store.loadError = r.error;\n    emit();\n    return false;\n  }\n  store.session = r.data;\n  store.loadError = null;\n  emit();\n  return true;\n}\n\nexport async function refreshOverview() {\n  const r = await get("/overview", { etag: true });\n  if (r.ok) {\n    if (!r.notModified || !store.overview) store.overview = r.data;\n    store.readAt = new Date();\n    store.loadError = null;\n  } else if (r.error.code === "network" || r.error.code === "unauthorized") store.loadError = r.error;\n  emit();\n}\n\nexport async function refreshUsageNow() {\n  const r = await get("/usage/now");\n  if (r.ok) store.usageNow = r.data;\n  emit();\n}\n\nlet timers = [];\nexport function startPolling() {\n  stopPolling();\n  const tick = () => {\n    if (document.visibilityState === "visible" && store.mode !== "multi-root") void refreshOverview();\n  };\n  timers.push(setInterval(tick, 5000));\n  timers.push(\n    setInterval(() => {\n      if (document.visibilityState === "visible" && store.mode !== "multi-root" && (!store.usageNow || store.usageNow.enabled)) void refreshUsageNow();\n    }, 15_000),\n  );\n  document.addEventListener("visibilitychange", onVisible);\n}\nfunction onVisible() {\n  if (document.visibilityState === "visible" && store.mode !== "multi-root") void refreshOverview();\n}\nexport function stopPolling() {\n  timers.forEach(clearInterval);\n  timers = [];\n  document.removeEventListener("visibilitychange", onVisible);\n}\n\n/** 레일 개수 배지: overview.todo 의 rank 로 센다(빨강 = 처리할 일, 앰버 = 경고, 회색 = 정보) */\nexport function badges(overview) {\n  const todo = overview?.todo ?? [];\n  const count = (f) => todo.filter(f).length;\n  const more = overview?.more ?? {};\n  const moreOf = (ranks) => ranks.reduce((s, r) => s + (more[String(r)] ?? 0), 0);\n  return {\n    home: { n: overview?.total ?? 0, kind: "decide" },\n    docs: { n: count((t) => [2, 3, 5].includes(t.rank)) + moreOf([2, 3, 5]), kind: "decide" },\n    verify: { n: count((t) => t.rank === 1 || t.rank === 4) + moreOf([1, 4]), kind: "decide" },\n    workspace: { n: count((t) => t.rank === 7 || t.rank === 9) + moreOf([7, 9]), kind: "info" },\n    harness: { n: count((t) => t.rank === 8) + moreOf([8]), kind: "warn" },\n  };\n}\n', "js/ui.js": '// 공용 부품: 표지 · 알림 띠 · 상태 4종(로딩 · 빈 · 오류 · 읽기 전용) · 탭 · 구분 선택 · 시트 · PIN · 토스트 · 게이트 레일.\nimport { errorText, pin as storedPin, setPin } from "./api.js";\nimport { clear, copy, h, icon, svgEl } from "./dom.js";\nimport { GATE_FAMILY, GATE_KO, HARNESS_KO, HARNESS_LETTER, RAIL_STATE_KO } from "./format.js";\n\nexport const tag = (text, kind = "", ...extra) => h("span", { class: `tag${kind ? ` ${kind}` : ""}` }, ...extra, text);\n\nexport function harnessBadge(name) {\n  const cls = { claude: "cc", codex: "cx", kiro: "kr", cursor: "cu" }[name] ?? "";\n  return h("span", { class: "harness" }, h("b", { class: cls, "aria-hidden": "true" }, HARNESS_LETTER[name] ?? "?"), HARNESS_KO[name] ?? name ?? "-");\n}\n\nexport function banner(kind, iconName, ...kids) {\n  return h("div", { class: `banner ${kind}`, role: kind === "err" ? "alert" : "status" }, icon(iconName), h("div", { class: "grow" }, ...kids));\n}\n\nexport function skeleton(rows = 4) {\n  return h("div", { class: "skeleton", role: "status", "aria-busy": "true", "aria-label": "불러오는 중" }, ...Array.from({ length: rows }, (_, i) => h("span", { class: "sk", dataset: { w: String(i % 3) } })));\n}\n\nexport function emptyState(title, text, ...actions) {\n  return h("div", { class: "empty" }, h("h3", null, title), text ? h("p", null, text) : null, actions.length ? h("div", { class: "flex" }, ...actions) : null);\n}\n\nexport function errorState(err, retry) {\n  return h(\n    "div",\n    { class: "empty err", role: "alert" },\n    icon("alert"),\n    h("h3", null, err?.code === "unauthorized" ? "접속 토큰을 확인하지 못했다" : "불러오지 못했다"),\n    h("p", null, errorText(err)),\n    err?.code ? h("p", { class: "muted xs" }, h("code", null, err.code)) : null,\n    retry ? button("다시 시도", { icon: "refresh", onClick: retry }) : null,\n  );\n}\n\nexport function readOnlyNote(text = "읽기 전용 — 저장 · 승인 · 답 · 작업 요청을 끈다") {\n  return h("span", { class: "tag line" }, icon("lock", "s"), text);\n}\n\nexport function button(label, o = {}) {\n  return h(\n    "button",\n    { type: o.type ?? "button", class: `btn${o.kind ? ` ${o.kind}` : ""}${o.sm ? " sm" : ""}`, disabled: o.disabled, onclick: o.onClick, title: o.title, "aria-label": o.aria, "aria-describedby": o.describedby },\n    o.icon ? icon(o.icon) : null,\n    label,\n  );\n}\n\nexport function copyButton(text, label = "복사", o = {}) {\n  const b = button(label, { icon: "copy", sm: o.sm ?? true, kind: o.kind });\n  b.addEventListener("click", async () => {\n    const ok = await copy(text);\n    toast(ok ? "복사했다" : "복사하지 못했다 — 글을 직접 고른다");\n  });\n  return b;\n}\n\n/** 명령 한 줄 + 복사 단추. 화면은 셸 명령을 실행하지 않고 보여 주기만 한다. */\nexport function commandBox(cmd, label = "명령 복사") {\n  return h("div", { class: "cmd" }, icon("terminal"), h("code", null, cmd), copyButton(cmd, label));\n}\n\nlet toastEl = null;\nlet toastTimer = 0;\nexport function toast(text) {\n  if (!toastEl) {\n    toastEl = h("div", { class: "toast", role: "status", "aria-live": "polite" });\n    document.body.append(toastEl);\n  }\n  clear(toastEl).append(icon("ok"), text);\n  toastEl.classList.add("show");\n  clearTimeout(toastTimer);\n  toastTimer = setTimeout(() => toastEl.classList.remove("show"), 3200);\n}\n\n/** 키보드로 모두 조작되는 탭 목록: 화살표 · Home · End. 패널은 호출한 쪽이 바꾼다. */\nexport function tabList(label, items, value, onSelect) {\n  const root = h("div", { class: "tabs", role: "tablist", "aria-label": label });\n  const buttons = [];\n  const select = (id, focus) => {\n    buttons.forEach((b) => {\n      const on = b.dataset.id === id;\n      b.setAttribute("aria-selected", on ? "true" : "false");\n      b.tabIndex = on ? 0 : -1;\n      if (on && focus) b.focus();\n    });\n    onSelect(id);\n  };\n  items.forEach((it, i) => {\n    const b = h(\n      "button",\n      { type: "button", role: "tab", id: `tab-${it.id}`, "aria-controls": it.panel ?? "tabpanel", "aria-selected": it.id === value ? "true" : "false", tabindex: it.id === value ? "0" : "-1", dataset: { id: it.id }, onclick: () => select(it.id) },\n      it.label,\n      it.badge ? h("span", { class: "tag" }, it.badge) : null,\n    );\n    b.addEventListener("keydown", (e) => {\n      let n = null;\n      if (e.key === "ArrowRight") n = items[(i + 1) % items.length];\n      if (e.key === "ArrowLeft") n = items[(i - 1 + items.length) % items.length];\n      if (e.key === "Home") n = items[0];\n      if (e.key === "End") n = items[items.length - 1];\n      if (n) {\n        e.preventDefault();\n        select(n.id, true);\n      }\n    });\n    buttons.push(b);\n    root.append(b);\n  });\n  return root;\n}\n\n/** 구분 선택(한 번에 하나, aria-pressed). items: [{id, label, n}] */\nexport function seg(label, items, value, onChange) {\n  const root = h("div", { class: "seg", role: "group", "aria-label": label });\n  const bs = items.map((it) => h("button", { type: "button", "aria-pressed": it.id === value ? "true" : "false", dataset: { id: String(it.id) } }, it.label, it.n !== undefined ? h("span", { class: "n" }, String(it.n)) : null));\n  bs.forEach((x, i) => {\n    x.addEventListener("click", () => {\n      bs.forEach((y) => y.setAttribute("aria-pressed", y === x ? "true" : "false"));\n      onChange(items[i].id);\n    });\n    root.append(x);\n  });\n  return root;\n}\n\n/** 게이트 레일: 지난 구간은 단계 색, 사람 승인을 기다리는 자리는 빨강(고리), 진행 중은 속 빈 테두리. 글자 설명은 title · aria-label. */\nexport function gateRail(spec, o = {}) {\n  const labels = Boolean(o.labels);\n  const step = o.step ?? (labels ? 62 : 17);\n  const size = labels ? 11 : 8;\n  const pad = labels ? 26 : 6;\n  const n = spec.length;\n  const w = pad * 2 + step * Math.max(0, n - 1);\n  const hgt = labels ? 40 : 14;\n  const cy = labels ? 12 : 7;\n  const COLOR = { design: "#3046c5", build: "#c98a12", ops: "#0b7a5e", gate: "#c8102e", todo: "#aeb9c7", line: "#d5dce5" };\n  const svg = svgEl("svg", { width: w, height: hgt, viewBox: `0 0 ${w} ${hgt}`, role: "img" });\n  const desc = [];\n  for (let i = 0; i < n - 1; i += 1) {\n    const a = spec[i].state;\n    const col = a === "ok" || a === "skip" ? COLOR[GATE_FAMILY[spec[i + 1].gate] ?? "design"] : COLOR.line;\n    svg.append(svgEl("line", { x1: pad + i * step, y1: cy, x2: pad + (i + 1) * step, y2: cy, stroke: col, "stroke-width": labels ? 2 : 1.5 }));\n  }\n  spec.forEach((s, idx) => {\n    const x = pad + idx * step;\n    const fam = COLOR[GATE_FAMILY[s.gate] ?? "design"];\n    let r = size / 2;\n    let fill = "#fff";\n    let stroke = COLOR.todo;\n    if (s.state === "ok") fill = stroke = fam;\n    else if (s.state === "wait") {\n      fill = stroke = COLOR.gate;\n      r += labels ? 2 : 1.5;\n    } else if (s.state === "now") stroke = fam;\n    else if (s.state === "skip") {\n      stroke = COLOR.line;\n      r -= 1.5;\n    }\n    const diamond = (rr) => `M${x} ${cy - rr} L${x + rr} ${cy} L${x} ${cy + rr} L${x - rr} ${cy} Z`;\n    if (s.state === "wait") svg.append(svgEl("path", { d: diamond(r + 3), fill: "none", stroke: COLOR.gate, "stroke-opacity": ".28", "stroke-width": 1.5 }));\n    svg.append(svgEl("path", { d: diamond(r), fill, stroke, "stroke-width": s.state === "now" ? 2 : 1.5, "stroke-linejoin": "round" }));\n    if (s.state === "now") svg.append(svgEl("path", { d: diamond(Math.max(1, r - 2.6)), fill: fam }));\n    if (labels) {\n      const t = svgEl("text", { class: `lbl${s.state === "wait" ? " now" : ""}`, x, y: hgt - 2, "text-anchor": "middle" });\n      t.textContent = GATE_KO[s.gate] ?? s.gate;\n      svg.append(t);\n    }\n    desc.push(`${GATE_KO[s.gate] ?? s.gate} ${RAIL_STATE_KO[s.state]}`);\n  });\n  const title = svgEl("title", {});\n  title.textContent = `게이트: ${desc.join(", ")}`;\n  svg.append(title);\n  svg.setAttribute("aria-label", `게이트 ${desc.join(", ")}`);\n  return h("span", { class: "gate-rail" }, svg);\n}\n\n/** 가운데 대화 상자(<dialog>). 닫으면 호출한 요소로 초점이 돌아간다. */\nexport function modal(title, body, o = {}) {\n  const dlg = h("dialog", { class: o.side ? "sheet" : "center", "aria-labelledby": "dlg-title" });\n  const close = () => dlg.close();\n  dlg.append(\n    h("div", { class: "dlg-head" }, h("h2", { id: "dlg-title" }, title), button("닫기", { kind: "ghost", sm: true, icon: "x", onClick: close, aria: "닫기" })),\n    h("div", { class: "dlg-body" }, body),\n  );\n  const opener = document.activeElement;\n  dlg.addEventListener("close", () => {\n    dlg.remove();\n    if (opener instanceof HTMLElement) opener.focus();\n    if (o.onClose) o.onClose();\n  });\n  document.body.append(dlg);\n  dlg.showModal();\n  return { dlg, close };\n}\n\n/** 승인 PIN 입력(탭마다 한 번). 이미 있으면 그대로 돌려준다. 취소하면 null. */\nexport function askPin(force = false) {\n  const cur = storedPin();\n  if (cur && !force) return Promise.resolve(cur);\n  return new Promise((resolve) => {\n    let done = false;\n    const input = h("input", { type: "text", id: "pin-in", autocomplete: "off", spellcheck: "false", "aria-describedby": "pin-hint", maxlength: "20" });\n    const finish = (v) => {\n      if (done) return;\n      done = true;\n      if (v) setPin(v);\n      resolve(v);\n    };\n    const body = h(\n      "form",\n      { class: "stack-y", onsubmit: (e) => {\n        e.preventDefault();\n        const v = input.value.trim().toUpperCase().replace(/[^0-9A-Z]/g, "");\n        if (v) {\n          finish(v);\n          m.close();\n        }\n      } },\n      h("div", { class: "field" }, h("label", { for: "pin-in" }, "승인 PIN"), input, h("p", { class: "hint", id: "pin-hint" }, "서버를 연 터미널(표준 오류)에만 나온 값이다. 이 탭에서 한 번만 묻는다. 파일 · 화면에 저장하지 않는다.")),\n      h("div", { class: "flex" }, button("확인", { type: "submit", kind: "primary" }), button("취소", { onClick: () => m.close() })),\n    );\n    const m = modal("승인 PIN 이 필요하다", body, { onClose: () => finish(null) });\n    input.focus();\n  });\n}\n\n/** PIN 이 필요한 쓰기를 부른다. PIN 이 틀리면 한 번 더 묻는다. fn(pin) → request 결과. */\nexport async function withPin(fn) {\n  let p = await askPin();\n  if (!p) return { ok: false, error: { code: "cancelled", message: "PIN 입력을 취소했다" }, status: 0 };\n  let res = await fn(p);\n  if (!res.ok && res.error.code === "pin_required") {\n    setPin(null);\n    p = await askPin(true);\n    if (!p) return { ok: false, error: { code: "cancelled", message: "PIN 입력을 취소했다" }, status: 0 };\n    res = await fn(p);\n  }\n  if (!res.ok && res.error.code === "pin_locked") setPin(null);\n  return res;\n}\n\nexport function liveRegion() {\n  return h("div", { class: "sr-only", "aria-live": "polite", id: "live" });\n}\nexport function announce(text) {\n  const el = document.getElementById("live");\n  if (el) el.textContent = text;\n}\n\n/** 한 단계 요약 줄: 라벨 + 값 */\nexport function kv(label, value) {\n  return h("div", { class: "kv" }, h("span", { class: "muted xs" }, label), h("span", null, value));\n}\n', "js/views/approve-panel.js": '// S03 승인 패널 · 리뷰 판단. 승인 · 수정 요청 · 리뷰 판단은 PIN 이 필요하고(탭마다 한 번) 세션에는 아무것도 보내지 않는다(DB-R12 · R25).\nimport { errorText, post } from "../api.js";\nimport { h, icon } from "../dom.js";\nimport { GATE_KO } from "../format.js";\nimport { store } from "../store.js";\nimport { banner, button, tag, toast, withPin } from "../ui.js";\nimport { openDispatch } from "./dispatch.js";\n\nfunction checklist(items) {\n  return h("ul", { class: "checks" }, ...items.map((i) => h("li", { class: i.ok ? "ok" : "bad" }, icon(i.ok ? "ok" : "fail"), h("span", null, i.text), h("span", { class: "sr-only" }, i.ok ? " 충족" : " 미충족"))));\n}\n\n/**\n * 게이트 하나의 승인 패널. issue: 이슈 모델, gate: 게이트 이름, doc: {sha256, path}|null, onDone: 갱신 콜백\n */\nexport function approvePanel({ issue, gate, doc, onDone }) {\n  const s = store.session;\n  const result = issue.gates.find((g) => g.gate === gate);\n  const readOnly = Boolean(s?.readOnly);\n  const approvers = s?.approvers?.[gate] ?? [];\n  const waiting = issue.waitingOn?.gate === gate ? issue.waitingOn : null;\n  const docInfo = issue.docs[gate] ?? null;\n  const passed = Boolean(result?.passed);\n  const unmet = result?.preconditions ?? [];\n  const clarify = docInfo?.clarify ?? 0;\n\n  const phrase = h("textarea", { id: "ap-phrase", rows: "3", placeholder: "예: R2.3 보관 기간 3일로 반영해. 승인한다.", "aria-describedby": "ap-note", disabled: readOnly });\n  const rule = h("input", { type: "checkbox", id: "ap-rule", disabled: readOnly });\n  const out = h("div", { "aria-live": "polite" });\n  const mine = waiting ? waiting.mine : true;\n\n  async function act(decision) {\n    const text = phrase.value.trim();\n    if (!text) {\n      out.replaceChildren(banner("warn", "alert", "승인 문구가 필요하다. 무엇을 보고 승인(또는 수정 요청)하는지 한 줄 적는다."));\n      phrase.focus();\n      return;\n    }\n    out.replaceChildren(banner("info", "clock", "기록하는 중…"));\n    const target = gate === "intent" ? { intent: issue.intent } : { issue: issue.key };\n    const r = await withPin((pin) => post("/approvals", { target, gate, decision, phrase: text, ...(doc && !["mr", "done"].includes(gate) ? { docSha256: doc.sha256 } : {}), ...(decision === "changes-requested" && rule.checked ? { ruleCandidate: true } : {}), pin }));\n    if (!r.ok) {\n      const reasons = r.error.details?.reasons ?? [];\n      out.replaceChildren(banner("err", "alert", h("b", null, `${r.error.code}: `), errorText(r.error), reasons.length ? h("ul", null, ...reasons.map((x) => h("li", null, x))) : null));\n      return;\n    }\n    const d = r.data;\n    toast(decision === "approved" ? "승인을 기록했다" : "수정 요청을 기록했다");\n    const live = (d.sessions ?? []).length;\n    out.replaceChildren(\n      banner("ok", "ok", h("b", null, decision === "approved" ? "승인을 기록했다. " : "수정 요청을 기록했다. "), `approvals.md 에 ${d.approver}${d.group ? `(${d.group})` : ""} 로 덧붙였다${d.statusChanged ? ` · status ${d.statusChanged}` : ""}. 세션에는 아무것도 보내지 않았다.`),\n      live && !readOnly ? button(`세션에 요청(살아 있는 세션 ${live}개)`, { icon: "send", kind: "go", onClick: () => openDispatch({ issue: issue.key, kind: decision === "approved" ? "approved" : "changes-requested", paths: [`${issue.dir}/approvals.md`] }) }) : null,\n    );\n    setTimeout(() => onDone?.(), 600);\n  }\n\n  return h(\n    "section",\n    { class: "panel lift approve", "aria-labelledby": "ap-h" },\n    h("div", { class: "panel-head" }, waiting ? h("span", { class: "dia", "aria-hidden": "true" }) : icon(passed ? "ok" : "clock"), h("h2", { id: "ap-h" }, `${GATE_KO[gate] ?? gate} 승인`), h("div", { class: "aside" }, passed ? tag("승인됨", "ops") : docInfo?.approval === "stale" ? tag("다시 승인 필요", "build") : tag("대기", "line"))),\n    h(\n      "div",\n      { class: "panel-body stack-y" },\n      h("p", { class: "small" }, passed ? "이 게이트는 지금 문서 그대로 승인돼 있다." : docInfo?.approval === "stale" ? "승인 뒤 문서가 바뀌었다. 바뀐 곳을 보고 다시 승인하면 status 가 approved 가 되고 다음 단계가 열린다." : "승인하면 approvals.md 에 기록되고 문서 status 가 approved 가 되어 다음 단계가 열린다."),\n      h("p", { class: "small muted" }, icon("users", "s"), ` approvers · `, h("code", null, approvers.length ? approvers.join(", ") : "비어 있음 → git 사용자 누구나"), ` · ${s?.user?.email ?? "git user.email 없음"}${s?.user?.groups?.length ? ` (${s.user.groups.join(", ")})` : ""}`),\n      !mine ? banner("warn", "alert", "내 git 사용자는 이 게이트의 approvers 에 없다. 승인 요청은 서버가 403 으로 거부한다.") : null,\n      checklist([\n        { ok: clarify === 0, text: `[NEEDS CLARIFICATION] ${clarify}건` },\n        { ok: unmet.length === 0, text: unmet.length ? `앞 조건 미충족 ${unmet.length}건` : "앞 게이트 · 조건 충족" },\n        ...(["mr", "done"].includes(gate) ? [{ ok: !((issue.review?.open.CRITICAL ?? 0) + (issue.review?.open.HIGH ?? 0)), text: `열린 CRITICAL·HIGH ${(issue.review?.open.CRITICAL ?? 0) + (issue.review?.open.HIGH ?? 0)}` }] : []),\n      ]),\n      unmet.length ? h("ul", { class: "small muted" }, ...unmet.slice(0, 5).map((x) => h("li", null, x))) : null,\n      readOnly\n        ? banner("warn", "lock", h("b", null, "읽기 전용. "), "에이전트 세션에서 연 서버는 승인을 받지 않는다. 사람이 자기 터미널에서 연 관리 페이지(또는 ", h("code", null, `npx harness-kit approve ${issue.key} --gate ${gate}`), ")에서 한다.")\n        : null,\n      h("div", { class: "field" }, h("label", { for: "ap-phrase" }, "승인 문구"), phrase, h("p", { class: "hint", id: "ap-note" }, "승인 PIN 은 처음 승인할 때 한 번 묻는다(서버를 연 터미널에만 나온 값). 승인 기록은 이 화면에서 남긴 approvals.md 로만 인정한다.")),\n      h("div", { class: "ident" }, icon("commit"), `git user.email `, h("b", null, s?.user?.email ?? "-"), "로 approvals.md 에 기록"),\n      h("div", { class: "flex wrap" }, button("승인하고 기록", { kind: "approve", icon: "check", disabled: readOnly || passed, onClick: () => void act("approved") }), button("수정 요청", { icon: "pencil", disabled: readOnly, onClick: () => void act("changes-requested") })),\n      h("label", { class: "pick plain xs", for: "ap-rule" }, rule, "수정 요청을 규칙 후보로 남긴다"),\n      out,\n    ),\n  );\n}\n\n/** 리뷰 판단: 지적마다 위험 수용 · 수정 필요(이유 필수). mr 게이트 approvers 가 한다. */\nexport function reviewTable(issue, review, onDone) {\n  const readOnly = Boolean(store.session?.readOnly);\n  const out = h("div", { "aria-live": "polite" });\n  const rows = review.findings ?? [];\n  if (!rows.length) return h("p", { class: "muted" }, "이 이슈의 리뷰 지적이 없다. 리뷰 보고서가 없거나 모두 처리됐다.");\n  const decide = async (f, decision, reasonEl) => {\n    const phrase = reasonEl.value.trim();\n    if (!phrase) {\n      out.replaceChildren(banner("warn", "alert", `${f.id}: 이유 문구가 필요하다.`));\n      reasonEl.focus();\n      return;\n    }\n    const r = await withPin((pin) => post(`/reviews/${encodeURIComponent(issue.key)}/${encodeURIComponent(f.id)}/decision`, { decision, phrase, pin }));\n    if (!r.ok) {\n      out.replaceChildren(banner("err", "alert", h("b", null, `${r.error.code}: `), errorText(r.error)));\n      return;\n    }\n    toast(`${f.id} 판단을 기록했다`);\n    onDone?.();\n  };\n  return h(\n    "div",\n    { class: "stack-y" },\n    h("table", { class: "tbl" }, h("caption", { class: "sr-only" }, "리뷰 지적과 판단"), h("thead", null, h("tr", null, ...["ID", "심각도", "상태", "판단"].map((t) => h("th", { scope: "col" }, t)))),\n      h("tbody", null, ...rows.map((f) => {\n        const reason = h("input", { type: "text", "aria-label": `${f.id} 판단 이유`, placeholder: "이유 한 줄", disabled: readOnly });\n        return h("tr", null, h("td", null, h("code", null, f.id)), h("td", null, tag(f.severity, f.severity === "CRITICAL" || f.severity === "HIGH" ? "gate" : f.severity === "MEDIUM" ? "build" : "line")), h("td", null, f.state === "open" ? "열림" : String(f.state)),\n          h("td", null, f.state === "open" ? h("div", { class: "decide" }, reason, button("수정 필요", { sm: true, disabled: readOnly, onClick: () => void decide(f, "fix-required", reason) }), button("위험 수용", { sm: true, kind: "danger", disabled: readOnly, onClick: () => void decide(f, "risk-accepted", reason) })) : h("span", { class: "muted small" }, "판단 기록됨")));\n      }))),\n    readOnly ? banner("warn", "lock", "읽기 전용 — 리뷰 판단은 사람 터미널에서 한 서버에서만 된다.") : null,\n    out,\n  );\n}\n', "js/views/common.js": '// 화면 모듈 공용: 데이터를 한꺼번에 받고 실패하면 오류 상태를 그린다.\nimport { clear } from "../dom.js";\nimport { errorState } from "../ui.js";\n\n/** requests 는 get() 의 promise 목록. 모두 성공하면 data 목록, 하나라도 실패하면 오류 상태를 그리고 null. */\nexport async function loadAll(ctx, requests, o = {}) {\n  const results = await Promise.all(requests);\n  if (!ctx.isCurrent()) return null;\n  const bad = results.find((r) => !r.ok && !(o.tolerate ?? []).includes(r.error.code));\n  if (bad) {\n    clear(ctx.host).append(errorState(bad.error, ctx.rerender));\n    return null;\n  }\n  return results;\n}\n\n/** 일정 시간마다 fn 을 부르고 화면이 바뀌면 멈춘다. 탭이 숨겨졌을 때는 부르지 않는다. */\nexport function every(ms, fn) {\n  const id = setInterval(() => {\n    if (document.visibilityState === "visible") fn();\n  }, ms);\n  return () => clearInterval(id);\n}\n\nexport const ACTION = {\n  "review-blocker": "리뷰 판단",\n  "quality-blocker": "검증 보기",\n  "gate-mine": "열어서 승인",\n  "gate-others": "열기",\n  questions: "답하기",\n  "verify-failed": "검증 보기",\n  "approval-stale": "다시 승인",\n  "worktree-cleanup": "명령 보기",\n  harness: "하네스 보기",\n  "dispatch-stale": "대기함 보기",\n};\n\nexport function sortBy(list, key, dir = 1) {\n  return [...list].sort((a, b) => (a[key] < b[key] ? -dir : a[key] > b[key] ? dir : 0));\n}\n', "js/views/dispatch.js": '// S05 세션에 작업 요청(측면 시트). 사람이 "세션에 요청"을 고를 때만 나간다. 글은 한 줄 + 경로, 문서 내용은 없다(DB-R17 · R25).\nimport { errorText, get, post } from "../api.js";\nimport { clear, h, icon } from "../dom.js";\nimport { ago, PROMPT_KINDS, ROLE_KO } from "../format.js";\nimport { store } from "../store.js";\nimport { banner, button, commandBox, emptyState, harnessBadge, modal, skeleton, toast } from "../ui.js";\n\n/**\n * 시트를 연다. o: {issue, role, paths[], kind, changeSummary, text, title}\n * 요청이 나간 뒤(소켓 · deep link · 대기함) 시트를 닫는다.\n */\nexport function openDispatch(o = {}) {\n  const body = h("div", { class: "stack-y" }, skeleton(3));\n  const m = modal(o.title ?? "세션에 작업 요청", body, { side: true });\n  void fill(body, m, o);\n  return m;\n}\n\nasync function fill(body, m, o) {\n  const [sessR, queueR] = await Promise.all([get("/sessions"), get("/dispatch/queue")]);\n  clear(body);\n  if (store.session?.readOnly) {\n    body.append(banner("warn", "lock", h("b", null, "읽기 전용이다. "), "에이전트 세션에서 연 서버(또는 --read-only)는 작업 요청을 보내지 않는다. 사람이 자기 터미널에서 연 서버에서 한다."));\n    body.append(commandBox(`npx harness-kit dispatch --to ${o.issue ?? "<세션>"}${o.role ? `:${o.role}` : ""} --kind ${o.kind ?? "doc-changed"} ${(o.paths ?? []).map((p) => `--path ${p}`).join(" ")}`, "명령 복사"));\n    return;\n  }\n  if (!sessR.ok) {\n    body.append(banner("err", "alert", errorText(sessR.error)));\n    return;\n  }\n  const sessions = sessR.data.sessions;\n  const live = sessions.filter((s) => s.state !== "gone");\n  const matching = live.filter((s) => (!o.issue || s.issue === o.issue) && (!o.role || s.role === o.role));\n  // 이슈를 알 때 맞는 세션이 하나뿐이면 그것을 미리 고르고, 아니면 사람이 고른다(자동으로 고르지 않는다)\n  let choice = o.issue && matching.length === 1 ? (matching[0]?.id ?? "") : "";\n  const kindSel = h("select", { id: "dp-kind", "aria-label": "요청 종류" }, ...PROMPT_KINDS.map(([v, l]) => h("option", { value: v, selected: v === (o.kind ?? "doc-changed") }, l)));\n  const textArea = h("textarea", { id: "dp-text", rows: "2", maxlength: "300", placeholder: "한 줄 메모(300자 이하, 선택)" });\n  textArea.value = o.text ?? "";\n  const paths = (o.paths ?? []).map((p) => ({ p, on: true }));\n  const result = h("div", { "aria-live": "polite" });\n\n  const list = h("div", { class: "sess-pick", role: "radiogroup", "aria-label": "요청을 받을 세션" });\n  if (!live.length) list.append(emptyState("켜 둔 세션이 없다", "대기함에 두면 다음 세션 시작 때 훅이 건수와 첫 요청 한 줄을 보여 준다."));\n  for (const s of live) {\n    const id = `dp-s-${s.id}`;\n    const r = h("input", { type: "radio", name: "dp-sess", id, value: s.id, checked: s.id === choice, onchange: () => {\n      choice = s.id;\n    } });\n    list.append(h("label", { class: "pick", for: id }, r, h("span", { class: "grow" }, h("b", null, s.name ?? s.id.slice(0, 12)), h("span", { class: "muted xs" }, ` ${ROLE_KO[s.role] ?? s.role ?? "역할 모름"}${s.issue ? ` · ${s.issue}` : ""} · ${ago(s.lastSeenAt)}`)), harnessBadge(s.harness), h("span", { class: `tag ${s.state === "alive" ? "ops" : "line"}` }, s.state === "alive" ? "수신함 있음" : "수신함 없음")));\n    if (s.permissionMode === "bypassPermissions") list.append(h("p", { class: "muted xs pick-note" }, "bypassPermissions: 요청이 사람 승인 없이 바로 돈다."));\n  }\n  const pathBox = h("fieldset", { class: "field" }, h("legend", { class: "label" }, "경로(문서 내용은 보내지 않는다)"), ...(paths.length ? paths.map((x, i) => {\n    const id = `dp-p-${i}`;\n    return h("label", { class: "pick plain", for: id }, h("input", { type: "checkbox", id, checked: true, onchange: (e) => {\n      x.on = e.target.checked;\n    } }), h("code", { class: "path" }, x.p));\n  }) : [h("p", { class: "muted xs" }, "경로가 없다 — 메모만 보낸다")]));\n\n  async function send(via) {\n    if (!choice && !o.issue) {\n      clear(result).append(banner("warn", "alert", "요청을 받을 세션을 고른다(자동으로 고르지 않는다)."));\n      return;\n    }\n    const target = choice ? { sessionId: choice } : { issue: o.issue, role: o.role };\n    const payload = { target, kind: kindSel.value, paths: paths.filter((x) => x.on).map((x) => x.p), ...(textArea.value.trim() ? { text: textArea.value.trim() } : {}), ...(o.changeSummary ? { changeSummary: o.changeSummary } : {}), ...(via ? { via } : {}) };\n    clear(result).append(skeleton(1));\n    const r = await post("/dispatch", payload);\n    clear(result);\n    if (r.ok) {\n      const d = r.data;\n      if (d.method === "deeplink") {\n        const a = h("a", { class: "btn go", href: d.url }, icon("ext"), "새 터미널에서 열기");\n        result.append(banner("ok", "ok", h("b", null, "deep link 를 만들었다. "), "누르면 새 터미널에 프롬프트가 채워진다. 보내지 않은 상태다."), a);\n      } else {\n        toast(d.method === "queue" ? "대기함에 저장했다" : "세션에 요청을 보냈다");\n        result.append(banner("ok", "ok", d.method === "queue" ? `대기함에 저장했다(${d.id}). 다음 세션 시작 때 훅이 건수와 첫 요청 한 줄을 보여 준다.` : "세션 수신함에 한 줄을 보냈다. 받았는지는 세션 쪽에서 본다(수신 확인 신호가 없다)."));\n        if (d.method === "socket" || d.method === "queue") setTimeout(() => m.close(), 1200);\n      }\n      return;\n    }\n    if (r.error.code === "socket_unavailable") {\n      const d = r.error.details ?? {};\n      result.append(banner("warn", "alert", h("b", null, "수신함에 닿지 못했다. "), "자동으로 바꾸지 않는다. 아래 두 가지 중 사람이 고른다."), h("div", { class: "flex" }, d.deeplink ? button("deep link 로 열기", { icon: "ext", onClick: () => void send("deeplink") }) : null, d.queueAvailable ? button("대기함에 저장", { icon: "inbox", onClick: () => void send("queue") }) : null));\n      return;\n    }\n    result.append(banner("err", "alert", errorText(r.error)));\n  }\n\n  body.append(\n    h("p", { class: "muted small" }, "보내는 글은 경로 · 변경 요약 · 요청 문장뿐이고 끝에 \\"이 글은 승인이 아니다.\\" 가 붙는다. 저장 · 승인 · 답만으로는 세션에 아무것도 가지 않는다."),\n    h("div", { class: "field" }, h("span", { class: "label" }, "세션"), list),\n    h("div", { class: "field" }, h("label", { for: "dp-kind" }, "종류"), kindSel),\n    pathBox,\n    h("div", { class: "field" }, h("label", { for: "dp-text" }, "메모"), textArea, h("p", { class: "hint" }, "제어 문자 · 줄바꿈은 지우고 한 줄로 보낸다. 글 전체 1,000자에서 자른다.")),\n    h("div", { class: "flex" }, button("세션에 요청", { kind: "go", icon: "send", disabled: !live.length && !o.issue, onClick: () => void send(null) }), button("대기함에 저장", { icon: "inbox", onClick: () => void send("queue") })),\n    result,\n  );\n  const queue = queueR.ok ? queueR.data.items : [];\n  if (queue.length) body.append(h("p", { class: "muted xs" }, `대기함에 ${queue.length}건이 있다 — 작업 공간에서 본다.`));\n}\n', "js/views/docs.js": '// 문서 메뉴: 이슈 문서(requirements · design · tasks)와 승인 상태, Intent 와 질문. 기획물 · 기능 문서 · ADR 목록은 다음 판에서 정의한다(화면기획서 3장).\nimport { get } from "../api.js";\nimport { h } from "../dom.js";\nimport { GATE_KO } from "../format.js";\nimport { link } from "../router.js";\nimport { emptyState, tag } from "../ui.js";\nimport { loadAll } from "./common.js";\n\nconst APPROVAL = { valid: ["ops", "승인됨"], stale: ["build", "승인 뒤 바뀜"], invalid: ["gate", "승인자 아님"], none: ["line", "승인 전"] };\n\nexport async function render(ctx) {\n  const { host, route } = ctx;\n  ctx.setHeader({ title: "문서", sub: "이슈 문서 · 승인 상태 · 질문. 찾기는 이슈 키나 문서 경로를 받는다", tools: [ctx.searchBox().form] });\n  const res = await loadAll(ctx, [get("/issues"), get("/intents")]);\n  if (!res) return undefined;\n  const [issuesR, intentsR] = res;\n  const q = (route.query.q ?? "").toLowerCase();\n  const issues = issuesR.data.issues.filter((i) => !q || `${i.key} ${i.name} ${i.title ?? ""} ${i.dir}`.toLowerCase().includes(q));\n  const intents = intentsR.data.intents.filter((i) => !q || `${i.key} ${i.name} ${i.title ?? ""}`.toLowerCase().includes(q));\n  if (q) host.append(h("p", { class: "muted small" }, `"${route.query.q}" 로 거른 결과 — 이슈 ${issues.length} · Intent ${intents.length}`));\n  const rows = issues.map((i) => h("tr", null, h("td", null, link(`/issues/${i.key}`, { class: "key" }, i.key)), h("td", null, i.title ?? i.name), ...["requirements", "design", "tasks"].map((d) => {\n    const doc = i.docs[d];\n    if (!doc) return h("td", null, h("span", { class: "muted xs" }, "없음"));\n    const [tone, text] = APPROVAL[doc.approval] ?? ["line", doc.approval];\n    return h("td", null, link(`/issues/${i.key}/docs/${d}`, {}, doc.status ?? doc.state ?? "-"), " ", d === "tasks" ? null : tag(text, tone), doc.clarify ? h("span", null, " ", tag(`CLARIFY ${doc.clarify}`, "gate")) : null);\n  }), h("td", null, i.waitingOn ? tag(`${GATE_KO[i.waitingOn.gate] ?? i.waitingOn.gate} 승인 대기`, "gate") : h("span", { class: "muted xs" }, "-"))));\n  host.append(\n    h("div", { class: "stack-y" },\n      h("section", { class: "panel", "aria-labelledby": "docs-h" }, h("div", { class: "panel-head" }, h("h2", { id: "docs-h" }, "이슈 문서"), h("div", { class: "aside" }, `${issues.length}개`)),\n        issues.length ? h("div", { class: "table-wrap" }, h("table", { class: "tbl" }, h("caption", { class: "sr-only" }, "이슈별 문서와 승인 상태"), h("thead", null, h("tr", null, ...["이슈", "제목", "requirements", "design", "tasks", "승인 대기"].map((t) => h("th", { scope: "col" }, t)))), h("tbody", null, ...rows))) : emptyState("이슈 문서가 없다", q ? "찾는 말을 바꿔 본다." : "이슈를 만들면 requirements · design · tasks 가 여기 나온다.")),\n      h("section", { class: "panel", "aria-labelledby": "int-docs-h" }, h("div", { class: "panel-head" }, h("h2", { id: "int-docs-h" }, "Intent · 질문"), h("div", { class: "aside" }, `${intents.length}개`)),\n        intents.length ? h("ul", { class: "int-list pad" }, ...intents.map((i) => h("li", null, h("span", { class: "key" }, i.key), " ", h("b", null, i.title ?? i.name), h("div", { class: "muted xs" }, `status ${i.status ?? "-"} · 기획물 ${i.plans.length}개 · 열린 질문 ${i.questions.open}/${i.questions.total}`), h("div", { class: "flex" }, link(`/intents/${i.key}/questions`, { class: "btn sm" }, "질문"), link(`/progress?view=flow&intent=${i.key}`, { class: "btn sm" }, "흐름"))))) : emptyState("Intent 가 없다", "새 요구사항을 접수하면 만들어진다.")),\n    ),\n  );\n  return undefined;\n}\n', "js/views/flow-burn.js": '// 남은 Bolt 계단선(S12 영역 13). 값은 GET /intents/{key}/burn 의 series. 글은 요약 한 줄 + 표로 보기를 같이 둔다.\nimport { h } from "../dom.js";\nimport { dayLabel } from "../format.js";\nimport { HXViz } from "../viz.js";\n\nexport function burnChart(burn) {\n  const host = h("div", { class: "vz" });\n  const series = burn.series;\n  const values = series.map((s) => s.remaining);\n  const max = Math.max(4, ...values);\n  const ticks = [0, Math.ceil(max / 2), max];\n  const labels = series.map((s) => dayLabel(s.date).text);\n  const last = series[series.length - 1];\n  const summary = `남은 Bolt ${last.remaining}개(전체 ${last.total}, 끝 ${last.done}). ${series.length}일 추이: ${series.map((s) => `${dayLabel(s.date).short} ${s.remaining}`).join(", ")}`;\n  const draw = () => {\n    if (!host.isConnected || !host.clientWidth) return;\n    HXViz.line(host, {\n      values, labels, h: 120, w: host.clientWidth, step: true, area: true, line: "build", label: summary,\n      m: { l: 28, r: 20, t: 10, b: 20 },\n      y: { min: 0, max, ticks, fmt: (t) => String(t) },\n      xTicks: [[0, dayLabel(series[0].date).short, "start"], [series.length - 1, "오늘", "end", true]],\n      endLabel: (v) => String(v),\n      fmt: (v) => `${v}개`,\n      tip: (i) => [{ v: `${series[i].remaining}개`, n: "남은 Bolt", key: "build" }, { v: `${series[i].done}/${series[i].total}`, n: "끝 / 전체" }],\n    });\n  };\n  const table = h("details", { class: "vz-tv" }, h("summary", null, "표로 보기"), h("table", { class: "tbl" }, h("caption", { class: "sr-only" }, "날짜별 남은 Bolt"), h("thead", null, h("tr", null, h("th", { scope: "col" }, "날짜"), h("th", { scope: "col", class: "r" }, "남음"), h("th", { scope: "col", class: "r" }, "끝/전체"))), h("tbody", null, ...series.map((s) => h("tr", null, h("td", null, dayLabel(s.date).text), h("td", { class: "r" }, String(s.remaining)), h("td", { class: "r" }, `${s.done}/${s.total}`))))));\n  const wrap = h("div", null, host, table);\n  requestAnimationFrame(draw);\n  if (typeof ResizeObserver !== "undefined") {\n    let t = 0;\n    new ResizeObserver(() => {\n      clearTimeout(t);\n      t = setTimeout(draw, 120);\n    }).observe(host);\n  }\n  return wrap;\n}\n', "js/views/flow.js": '// S12 진행 · 흐름. Unit 의존을 캔버스(React Flow 번들, 열 때만 받는다)로 보고 변경 제안을 남긴다. 제안은 승인이 아니고 units.json 을 바꾸지 않는다(DB-R29).\nimport { del, errorText, get, post } from "../api.js";\nimport { clear, h, icon } from "../dom.js";\nimport { clock, GATE_KO, STEP_KO } from "../format.js";\nimport { link, navigate } from "../router.js";\nimport { store } from "../store.js";\nimport { banner, button, commandBox, emptyState, errorState, modal, skeleton, tag, toast } from "../ui.js";\nimport { openDispatch } from "./dispatch.js";\nimport { loadAll } from "./common.js";\nimport { viewSwitch } from "./progress.js";\nimport { burnChart } from "./flow-burn.js";\n\nconst LABELS = {\n  canvas: "Unit 의존 흐름",\n  controls: "확대 · 축소 · 맞춤",\n  minimap: "전체 미니맵",\n  contract: "계약",\n  contractTag: "계약",\n  noSession: "세션 없음",\n  bolt: "Bolt",\n  estimated: "추정",\n  steps: STEP_KO,\n  state: { done: "지남", active: "진행 중", todo: "아직" },\n  flags: { critical: "CRITICAL", high: "HIGH", verify: "검증" },\n  area: "영역",\n};\n\nlet bundle = null;\nasync function loadBundle() {\n  if (!bundle) {\n    if (!document.getElementById("flow-bundle-css")) document.head.append(h("link", { rel: "stylesheet", href: "/vendor/flow.bundle.css", id: "flow-bundle-css" }));\n    bundle = import("/vendor/flow.bundle.js");\n  }\n  return bundle;\n}\n\nexport async function render(ctx) {\n  const { host, route } = ctx;\n  const intentsR = await get("/intents");\n  if (!intentsR.ok) {\n    host.append(errorState(intentsR.error, ctx.rerender));\n    return undefined;\n  }\n  const intents = intentsR.data.intents;\n  const key = route.query.intent && intents.some((i) => i.key === route.query.intent) ? route.query.intent : intents[0]?.key;\n  ctx.setHeader({ title: "진행", sub: "Intent → Unit 의존 흐름 · 자리는 units.json 의 dependsOn 에서 계산", tools: [viewSwitch("flow", key), ctx.searchBox().form] });\n  if (!key) {\n    host.append(emptyState("Intent 가 없다", "새 요구사항을 접수하면 Intent 와 Unit 이 생기고 흐름이 그려진다.", link("/intake", { class: "btn sm" }, "새 요구사항")));\n    return undefined;\n  }\n  const res = await loadAll(ctx, [get("/flow", { query: { intent: key } }), get(`/intents/${encodeURIComponent(key)}/burn`, { query: { days: "14" } }), get(`/intents/${encodeURIComponent(key)}`), get("/overview")]);\n  if (!res) return undefined;\n  const [flowR, burnR, intentR, overR] = res;\n  const flow = flowR.data;\n  const intent = intentR.data;\n  const readOnly = Boolean(store.session?.readOnly);\n  let selected = route.query.sel && flow.nodes.some((n) => n.id === route.query.sel) ? route.query.sel : null;\n  let mounted = null;\n\n  const sideHost = h("aside", { class: "flow-side stack-y", "aria-label": "고른 Unit 과 변경 제안" });\n  const canvas = h("div", { class: "flow-canvas", id: "flow-canvas" }, skeleton(4));\n  const picker = h("select", { id: "int-pick", "aria-label": "Intent 고르기", onchange: (e) => navigate(`/progress?view=flow&intent=${e.target.value}`) }, ...intents.map((i) => h("option", { value: i.key, selected: i.key === key }, `${i.key} ${i.title ?? i.name}`)));\n  const legend = h("div", { class: "flow-legend", "aria-label": "범례" }, h("span", null, h("b", null, "단계 "), ...Object.entries(STEP_KO).map(([k, v]) => h("span", { class: "lg" }, h("i", { class: `lg-dia ${["requirements", "design", "tasks"].includes(k) ? "design" : ["impl", "verify"].includes(k) ? "build" : "ops"}` }), v))), h("span", null, h("b", null, "모양 "), "속 찬 마름모 = 지난 단계 · 속 빈 굵은 테두리 = 진행 중 · 옅은 테두리 = 아직"), h("span", null, h("b", null, "선 "), "실선 = 의존(앞 → 뒤) · 점선 = 계약"));\n  const tableHost = h("details", { class: "flow-table" }, h("summary", null, "표로 보기(같은 데이터)"), unitTable());\n\n  function unitTable() {\n    return h("div", { class: "table-wrap" }, h("table", { class: "tbl" }, h("caption", { class: "sr-only" }, "Unit 목록과 의존"), h("thead", null, h("tr", null, ...["Unit", "제목", "종류", "이슈", "단계", "의존"].map((t) => h("th", { scope: "col" }, t)))),\n      h("tbody", null, ...intent.units.filter((u) => u.planned).map((u) => {\n        const n = flow.nodes.find((x) => x.id === u.id);\n        const active = (n?.data.steps ?? []).find((s) => s.endsWith(":active"));\n        const doneSteps = (n?.data.steps ?? []).filter((s) => s.endsWith(":done"));\n        const sid = (active ?? doneSteps[doneSteps.length - 1] ?? "").split(":")[0];\n        return h("tr", { class: selected === u.id ? "sel" : null }, h("td", null, h("button", { type: "button", class: "linklike", onclick: () => select(u.id) }, u.id)), h("td", null, u.title), h("td", null, u.kind === "contract" ? "계약" : "기능"), h("td", null, u.issue ? link(`/issues/${u.issue}`, { class: "key" }, u.issue) : "—"), h("td", null, sid ? `${STEP_KO[sid] ?? sid}${active ? " 진행 중" : " 지남"}` : "-"), h("td", null, u.dependsOn.join(", ") || "-"));\n      }))));\n  }\n\n  function select(id) {\n    selected = id;\n    mounted?.update(props());\n    drawSide();\n    const url = new URL(location.href);\n    if (id) url.searchParams.set("sel", id);\n    else url.searchParams.delete("sel");\n    history.replaceState(null, "", url.pathname + url.search);\n    clear(tableHost).append(h("summary", null, "표로 보기(같은 데이터)"), unitTable());\n  }\n\n  const props = () => ({ data: flow, selectedId: selected, labels: LABELS, onSelect: (id) => select(id) });\n\n  async function drawCanvas() {\n    try {\n      const mod = await loadBundle();\n      if (!ctx.isCurrent()) return;\n      clear(canvas);\n      mounted = mod.mount(canvas, props());\n    } catch (err) {\n      clear(canvas).append(banner("warn", "alert", h("b", null, "캔버스를 불러오지 못해 표로 보여 준다. "), err instanceof Error ? err.message : String(err)));\n      tableHost.open = true;\n    }\n  }\n\n  function drawSide() {\n    clear(sideHost);\n    const todo = (overR.data.todo ?? []).filter((t) => (selected ? flow.nodes.find((n) => n.id === selected)?.data.issue === t.target : flow.nodes.some((n) => n.data.issue === t.target)));\n    const node = selected ? flow.nodes.find((n) => n.id === selected) : null;\n    const head = h("section", { class: "panel", "aria-labelledby": "fs-h" },\n      h("div", { class: "panel-body stack-y" },\n        h("div", { class: "flex wrap" }, h("span", { class: "key" }, intent.key), tag(`intent ${intent.approvals.intent === "valid" ? "승인됨" : "승인 전"}`, intent.approvals.intent === "valid" ? "ops" : "gate"), tag(`기획물 ${intent.approvals.plans === "valid" ? "승인됨" : "승인 전"}`, intent.approvals.plans === "valid" ? "ops" : "line")),\n        h("h2", { id: "fs-h" }, intent.title ?? intent.name),\n        h("p", { class: "muted small" }, `Unit ${intent.units.length}${flow.intent.approved ? ` · ${flow.intent.approved.at.slice(0, 10)} ${flow.intent.approved.by} 승인` : ""}`),\n        intent.questions.open ? link(`/intents/${intent.key}/questions`, { class: "btn sm" }, icon("question"), `열린 질문 ${intent.questions.open}`) : null,\n        node ? h("div", { class: "sel-box" }, h("b", null, `${node.id} ${node.data.title ?? ""}`), node.data.issue ? link(`/issues/${node.data.issue}`, { class: "btn sm" }, "이슈 열기") : h("span", { class: "muted small" }, " 이슈 아직 없음"), h("button", { type: "button", class: "btn ghost sm", onclick: () => select(null) }, "고름 풀기(Esc)")) : h("p", { class: "muted small" }, "Unit 을 고르면(Tab · Enter) 그 Unit 의 할 일과 변경 제안을 쓴다.")));\n    sideHost.append(head);\n    sideHost.append(h("section", { class: "panel", "aria-labelledby": "fs-todo" }, h("div", { class: "panel-head" }, h("h3", { id: "fs-todo" }, "처리할 일"), h("div", { class: "aside" }, String(todo.length))), h("div", { class: "panel-body" }, todo.length ? h("ul", { class: "mini-todo" }, ...todo.map((t) => h("li", null, link(t.link, {}, t.title), h("div", { class: "muted xs" }, t.reason)))) : h("p", { class: "muted small" }, "이 Intent 에 처리할 일이 없다."))));\n    const bs = burnChart(burnR.data);\n    sideHost.append(h("section", { class: "panel", "aria-labelledby": "fs-burn" }, h("div", { class: "panel-head" }, h("h3", { id: "fs-burn" }, "남은 일"), h("div", { class: "aside" }, `Bolt ${burnR.data.now.remaining} 남음 · 끝난 Unit ${burnR.data.now.units.done}/${burnR.data.now.units.total}`)), h("div", { class: "panel-body" }, bs, burnR.data.estimated ? h("p", { class: "muted xs" }, "tasks 가 없는 Unit 은 units.json 의 스토리 수로 센 추정 Bolt 다.") : null)));\n    sideHost.append(depList(), proposalPanel());\n  }\n\n  function depList() {\n    const units = intent.units.filter((u) => u.planned);\n    return h("section", { class: "panel", "aria-labelledby": "fs-dep" }, h("div", { class: "panel-head" }, h("h3", { id: "fs-dep" }, "의존 순서")), h("div", { class: "panel-body" }, h("ol", { class: "dep-list" }, ...units.map((u) => h("li", null, h("span", { class: "key" }, u.id), ` ${u.title}`, h("div", { class: "muted xs" }, u.dependsOn.length ? `${u.dependsOn.join(", ")} 뒤` : "먼저 시작할 수 있다"))))));\n  }\n\n  // ── 변경 제안 ──\n  let draft = (flow.proposal?.changes ?? []).map((c) => ({ ...c }));\n  const out = h("div", { "aria-live": "polite" });\n\n  function proposalPanel() {\n    const live = intent.units.filter((u) => u.planned);\n    const unitSel = h("select", { id: "pr-unit", "aria-label": "Unit" }, ...live.map((u) => h("option", { value: u.id, selected: u.id === selected }, `${u.id} ${u.title}`)));\n    const opSel = h("select", { id: "pr-op", "aria-label": "종류" }, ...[["add-dep", "의존 더하기"], ["remove-dep", "의존 빼기"], ["split", "나누기"], ["merge", "합치기"], ["order", "순서"]].map(([v, l]) => h("option", { value: v }, l)));\n    const otherSel = h("select", { id: "pr-other", "aria-label": "상대 Unit" }, ...live.map((u) => h("option", { value: u.id }, `${u.id} ${u.title}`)));\n    const text = h("textarea", { id: "pr-text", rows: "2", placeholder: "나누기: 새 Unit 제목을 한 줄에 하나(2개 이상) · 순서: Unit id 를 쉼표로", disabled: readOnly });\n    const reason = h("input", { type: "text", id: "pr-reason", placeholder: "이유 한 줄", disabled: readOnly });\n    const list = h("ol", { class: "draft-list", "aria-label": "제안 목록" });\n    const drawDraft = () => {\n      clear(list).append(...draft.map((c, i) => h("li", null, h("code", null, describe(c)), c.reason ? h("span", { class: "muted xs" }, ` — ${c.reason}`) : null, button("빼기", { sm: true, kind: "ghost", disabled: readOnly, onClick: () => {\n        draft.splice(i, 1);\n        drawDraft();\n      } }))));\n      if (!draft.length) list.append(h("li", { class: "muted small" }, "아직 없다"));\n    };\n    drawDraft();\n    const add = () => {\n      const op = opSel.value;\n      const c = { op, reason: reason.value.trim() || undefined };\n      if (op === "add-dep" || op === "remove-dep") Object.assign(c, { unit: unitSel.value, dependsOn: otherSel.value });\n      else if (op === "split") Object.assign(c, { unit: unitSel.value, into: text.value.split("\\n").map((x) => x.trim()).filter(Boolean) });\n      else if (op === "merge") Object.assign(c, { units: [unitSel.value, otherSel.value] });\n      else Object.assign(c, { units: text.value.split(",").map((x) => x.trim()).filter(Boolean) });\n      draft.push(c);\n      drawDraft();\n      reason.value = "";\n    };\n    async function save() {\n      clear(out).append(banner("info", "clock", "저장하는 중…"));\n      const r = await post("/units/proposals", { intent: key, baseSha256: flow.unitsSha256, changes: draft });\n      if (!r.ok) {\n        const e = r.error;\n        const hint = e.code === "cycle" ? "의존이 고리를 만든다" : e.code === "conflict" ? "units.json 이 바뀌었다. 다시 읽고 제안한다" : e.code === "contract_merge" ? "계약 Unit 은 합치지 않는다" : e.code === "unknown_unit" ? "없는 Unit 이다" : "";\n        clear(out).append(banner("err", "alert", h("b", null, `${e.code}: `), errorText(e), hint ? ` (${hint})` : "", e.code === "conflict" ? button("다시 읽기", { sm: true, onClick: () => ctx.rerender() }) : null));\n        return;\n      }\n      toast("변경 제안을 저장했다(승인이 아니다)");\n      clear(out).append(banner("ok", "ok", h("b", null, "제안을 저장했다. "), "units.json 은 그대로이고 세션에는 아무것도 보내지 않았다. 반영은 intent 게이트 승인 때 한다. 설계 세션에 알리려면 \'세션에 요청\'을 누른다."), button("세션에 요청", { icon: "send", kind: "go", disabled: readOnly, onClick: () => openDispatch({ paths: [r.data.path], kind: "custom", text: `${key} Unit 변경 제안을 저장했다`, title: "설계 세션에 요청" }) }));\n    }\n    async function discard() {\n      const r = await del(`/units/proposals/${encodeURIComponent(key)}`);\n      if (!r.ok) {\n        clear(out).append(banner("err", "alert", errorText(r.error)));\n        return;\n      }\n      toast("제안을 버렸다");\n      ctx.rerender();\n    }\n    return h("section", { class: "panel", "aria-labelledby": "fs-prop" },\n      h("div", { class: "panel-head" }, h("h3", { id: "fs-prop" }, "변경 제안"), h("div", { class: "aside" }, flow.proposal ? tag("저장된 제안 있음", "build") : tag("없음", "line"))),\n      h("div", { class: "panel-body stack-y" },\n        h("p", { class: "muted small" }, "제안은 승인이 아니다. units.json 은 바뀌지 않고, intent 게이트 승인 때만 반영된다. 팀 흐름 틀(flow.gates)은 여기서 바꾸지 않는다."),\n        flow.proposal ? banner("warn", "alert", `저장된 제안 ${flow.proposal.changes?.length ?? 0}건 · ${flow.proposal.createdBy ?? ""} · ${clock(flow.proposal.createdAt)}`, " — 다시 저장하면 바뀐다.") : null,\n        readOnly\n          ? banner("warn", "lock", h("b", null, "읽기 전용. "), "제안을 저장하지 않는다. 사람이 자기 터미널에서 연 서버나 ", h("code", null, `npx harness-kit units propose ${key} …`), " 로 한다.")\n          : h("div", { class: "stack-y" },\n            h("div", { class: "field" }, h("label", { for: "pr-op" }, "종류"), opSel), h("div", { class: "field" }, h("label", { for: "pr-unit" }, "Unit"), unitSel), h("div", { class: "field" }, h("label", { for: "pr-other" }, "상대 Unit(의존 · 합치기)"), otherSel),\n            h("div", { class: "field" }, h("label", { for: "pr-text" }, "나누기 · 순서 입력"), text), h("div", { class: "field" }, h("label", { for: "pr-reason" }, "이유"), reason),\n            h("div", { class: "flex wrap" }, button("목록에 더하기", { icon: "plus", onClick: add }), button("제안 저장", { kind: "primary", icon: "save", onClick: () => void save() }), flow.proposal ? button("제안 버리기", { kind: "danger", icon: "trash", onClick: () => void discard() }) : null)),\n        list, out,\n        h("p", { class: "small" }, h("button", { type: "button", class: "linklike", onclick: () => void gatesDialog() }, "흐름 틀 보기"), h("span", { class: "muted xs" }, " — 지금 게이트와 바꾸는 명령"))),\n    );\n  }\n\n  function describe(c) {\n    if (c.op === "add-dep") return `${c.unit} 가 ${c.dependsOn} 에 의존`;\n    if (c.op === "remove-dep") return `${c.unit} 의 ${c.dependsOn} 의존 빼기`;\n    if (c.op === "split") return `${c.unit} 나누기: ${(c.into ?? []).join(" | ")}`;\n    if (c.op === "merge") return `합치기: ${(c.units ?? []).join(" + ")}`;\n    return `순서: ${(c.units ?? []).join(" → ")}`;\n  }\n\n  async function gatesDialog() {\n    const g = await get("/flow/gates");\n    const body = h("div", { class: "stack-y" }, h("p", null, "지금 게이트: ", ...(g.ok ? g.data.gates.map((x) => tag(GATE_KO[x] ?? x, g.data.floor.includes(x) ? "design" : "line")) : [errorText(g.error)])), h("p", { class: "muted small" }, "바닥(requirements · design · mr · done)은 줄일 수 없다. 팀 설정이라 터미널에서 바꾸고 MR 로 올린다."), g.ok ? commandBox(g.data.command) : null);\n    modal("흐름 틀", body);\n  }\n\n  host.append(h("div", { class: "flow-page" }, h("div", { class: "flow-tools" }, h("label", { for: "int-pick", class: "muted small" }, "Intent"), picker, h("span", { class: "muted xs" }, `${clock(flow.readAt)}에 읽음`)), h("div", { class: "flow-main" }, h("div", { class: "stack-y flow-left" }, canvas, legend, tableHost), sideHost)));\n  drawSide();\n  await drawCanvas();\n  return () => {\n    mounted?.unmount();\n    mounted = null;\n  };\n}\n', "js/views/harness.js": '// S09 하네스: doctor · 켠 하네스와 모듈 · 역할 배정 · 흐름 틀 · 승인 권한 · 버전. 설정은 읽기만 한다(고치는 명령을 복사하게 한다).\nimport { errorText, get, post } from "../api.js";\nimport { clear, h, icon } from "../dom.js";\nimport { fmtBytes, GATE_KO, HARNESS_KO } from "../format.js";\nimport { link } from "../router.js";\nimport { store } from "../store.js";\nimport { banner, button, commandBox, emptyState, harnessBadge, tag } from "../ui.js";\nimport { loadAll } from "./common.js";\n\nconst problemText = (p) => (typeof p === "string" ? p : [p.kind ?? p.id, p.path, p.message].filter(Boolean).join(" · "));\n\nexport async function render(ctx) {\n  const { host } = ctx;\n  ctx.setHeader({ title: "하네스", sub: "doctor · 층 · 역할 · 승인 권한 · 버전. 설정은 읽기만 한다", tools: [ctx.searchBox().form] });\n  const res = await loadAll(ctx, [get("/harness"), get("/usage/kit")]);\n  if (!res) return undefined;\n  const hr = res[0].data;\n  const kit = res[1].data;\n  const s = store.session;\n  const d = hr.doctor;\n  const problems = d?.problems ?? [];\n  const outHost = h("div", { "aria-live": "polite" });\n\n  async function outdated() {\n    clear(outHost).append(banner("info", "clock", "최신 판을 조회하는 중…(네트워크를 쓴다)"));\n    const r = await post("/harness/outdated", {});\n    if (!r.ok) {\n      clear(outHost).append(banner("warn", "alert", errorText(r.error)));\n      return;\n    }\n    const o = r.data;\n    clear(outHost).append(banner(o.outdated || o.newer ? "warn" : "ok", o.outdated || o.newer ? "alert" : "ok", h("b", null, "조회했다. "), typeof o.message === "string" ? o.message : h("code", null, JSON.stringify(o).slice(0, 300))));\n  }\n\n  const approvers = s?.approvers ?? {};\n  const gateRows = hr.gates.map((g) => h("tr", null, h("td", null, tag(GATE_KO[g] ?? g, hr.floor.includes(g) ? "design" : "line")), h("td", null, hr.floor.includes(g) ? "바닥(줄일 수 없다)" : "팀 설정"), h("td", null, approvers[g]?.length ? approvers[g].map((a) => h("code", { class: "key" }, `${a} `)) : h("span", { class: "muted" }, "비어 있음 → git 사용자 누구나"))));\n\n  host.append(h("div", { class: "harness-grid" },\n    h("div", { class: "stack-y" },\n      h("section", { class: "panel lift", "aria-labelledby": "dr-h" }, h("div", { class: "panel-head" }, icon(problems.length ? "alert" : "ok"), h("h2", { id: "dr-h" }, "doctor"), d ? tag(problems.length ? `문제 ${problems.length}건` : d.status === "unavailable" ? "점검 도구 없음" : "통과", problems.length ? "build" : d.status === "unavailable" ? "line" : "ops") : tag("없음", "line")),\n        h("div", { class: "panel-body stack-y" }, d ? (problems.length ? h("ul", { class: "problems" }, ...problems.map((p) => h("li", null, icon("alert", "s"), problemText(p)))) : h("p", { class: "small" }, d.status === "unavailable" ? "이 서버에서는 doctor 를 부를 수 없다. 터미널에서 돌린다." : "설치 상태에 문제가 없다.")) : h("p", { class: "small muted" }, "doctor 결과가 없다."),\n          d?.counts && Object.keys(d.counts).length ? h("p", { class: "muted small" }, Object.entries(d.counts).map(([k, n]) => `${k} ${n}`).join(" · ")) : null, commandBox("npx harness-kit doctor", "명령 복사"))),\n      h("section", { class: "panel", "aria-labelledby": "ap-h2" }, h("div", { class: "panel-head" }, h("h2", { id: "ap-h2" }, "흐름 · 승인 권한"), h("div", { class: "aside" }, "flow.gates · approvers")),\n        h("div", { class: "table-wrap" }, h("table", { class: "tbl" }, h("caption", { class: "sr-only" }, "게이트와 승인자"), h("thead", null, h("tr", null, ...["게이트", "구분", "승인자"].map((t) => h("th", { scope: "col" }, t)))), h("tbody", null, ...gateRows))),\n        h("div", { class: "panel-body stack-y" }, h("p", { class: "muted small" }, "approvers 는 선택이다. 게이트가 비어 있으면 이 리포의 git 사용자 누구나 승인한다. 신원은 이 체크아웃의 git user.email 이다."), h("div", { class: "ident" }, icon("commit"), "지금 ", h("b", null, s?.user?.email ?? "git user.email 없음"), s?.user?.groups?.length ? ` · 그룹 ${s.user.groups.join(", ")}` : ""), commandBox("npx harness-kit flow gates --add <게이트> --after <게이트>", "흐름 틀 명령 복사")))),\n    h("div", { class: "stack-y" },\n      h("section", { class: "panel", "aria-labelledby": "ver-h" }, h("div", { class: "panel-head" }, h("h2", { id: "ver-h" }, "버전 · 켠 것"), h("div", { class: "aside" }, hr.kit.version ? `킷 ${hr.kit.version}` : "")),\n        h("div", { class: "panel-body stack-y" },\n          h("dl", { class: "kv-grid" }, h("dt", null, "킷 판"), h("dd", null, hr.kit.version ?? "?"), h("dt", null, "화면 · CLI"), h("dd", null, s?.version ?? "?"), h("dt", null, "하네스"), h("dd", null, hr.agents.length ? hr.agents.map((a) => harnessBadge(a)) : "-"), h("dt", null, "선택 모듈"), h("dd", null, hr.modules.length ? hr.modules.join(" · ") : "없음")),\n          h("div", { class: "flex wrap" }, button("최신 판 조회", { icon: "refresh", onClick: () => void outdated() }), h("span", { class: "muted xs" }, "버튼을 눌렀을 때만 네트워크를 쓴다")), outHost, commandBox("npx harness-kit outdated", "명령 복사"))),\n      h("section", { class: "panel", "aria-labelledby": "role-h" }, h("div", { class: "panel-head" }, h("h2", { id: "role-h" }, "역할 배정")),\n        h("div", { class: "panel-body" }, Object.keys(hr.roles).length ? h("ul", { class: "role-list" }, ...Object.entries(hr.roles).map(([role, v]) => h("li", null, h("b", null, role), " → ", harnessBadge(v?.harness ?? v), v?.model ? h("span", { class: "muted xs" }, ` ${v.model}`) : null))) : emptyState("역할 배정이 없다", "harness-kit.json 의 roles 가 비었다."))),\n      h("section", { class: "panel", "aria-labelledby": "tok-h" }, h("div", { class: "panel-head" }, h("h2", { id: "tok-h" }, "킷이 덧붙인 토큰"), h("div", { class: "aside" }, link("/usage", {}, "자세히"))),\n        h("div", { class: "panel-body stack-y" }, h("p", { class: "small" }, `세션 시작 평균 ${kit.sessionStart.avgBytes} / ${kit.sessionStart.limit}바이트(약 ${kit.sessionStart.estTokens} 토큰) `, tag(kit.sessionStart.within ? "상한 안" : "상한 넘음", kit.sessionStart.within ? "ops" : "gate")), h("p", { class: "muted xs" }, `소유자별 세션마다 실리는 파일: ${kit.modules.map((m) => `${m.owner} ${m.files}개 ${fmtBytes(m.bytes)}`).join(" · ") || "-"}`))),\n      h("p", { class: "muted xs" }, "지원 하네스: ", Object.values(HARNESS_KO).join(" · ")))));\n  return undefined;\n}\n', "js/views/home.js": '// S01 홈 · 처리할 일. 하루의 시작 화면 맨 위에 승인 · 리뷰 판단 · 질문 답 · 정리를 모은다(첫 화면 안에 끝난다).\nimport { get } from "../api.js";\nimport { clear, h, icon } from "../dom.js";\nimport { ago, clock, groupTodos, HARNESS_KO, railSpec, ROLE_KO, STEP_KO } from "../format.js";\nimport { link } from "../router.js";\nimport { refreshOverview, store, subscribe } from "../store.js";\nimport { banner, emptyState, gateRail, harnessBadge, readOnlyNote, seg, tag } from "../ui.js";\nimport { ACTION, loadAll } from "./common.js";\n\nconst KIND_TAG = {\n  "review-blocker": ["gate", "리뷰 막힘"],\n  "quality-blocker": ["gate", "품질 게이트"],\n  "gate-mine": ["gate", "내 차례"],\n  questions: ["design", "질문"],\n  "verify-failed": ["gate", "검증 실패"],\n  "approval-stale": ["build", "다시 승인"],\n  "gate-others": ["line", "다른 사람"],\n  "worktree-cleanup": ["line", "정리"],\n  harness: ["build", "하네스"],\n  "dispatch-stale": ["line", "대기함"],\n};\n\nfunction todoRow(t, issues, gates) {\n  const issue = issues.get(t.target);\n  const [tone, tagText] = KIND_TAG[t.kind] ?? ["line", t.kind];\n  const primary = t.kind === "gate-mine" || t.kind === "approval-stale";\n  return h(\n    "li",\n    { class: "todo-row" },\n    h("span", { class: "dia", "aria-hidden": "true" }),\n    h("span", { class: "key" }, /^[A-Z][A-Z0-9]+-\\d+$/.test(t.target) ? t.target : "—"),\n    h("div", { class: "todo-main" }, h("div", { class: "todo-title" }, link(t.link, {}, t.title), " ", tag(tagText, tone)), h("div", { class: "muted small" }, t.reason, " · ", h("time", { datetime: t.since }, ago(t.since)))),\n    issue ? h("span", { class: "rail-slot" }, gateRail(railSpec(gates, issue))) : null,\n    link(t.link, { class: `btn sm${primary ? " approve" : ""}`, "aria-label": `${ACTION[t.kind] ?? "열기"}: ${t.title}` }, ACTION[t.kind] ?? "열기"),\n  );\n}\n\nfunction stageBars(stages, gates) {\n  const order = [...gates.filter((g) => ["requirements", "design", "tasks", "mr"].includes(g)), "completed"];\n  const label = (s) => (s === "completed" ? "완료" : (STEP_KO[s] ?? s));\n  const entries = order.map((s) => [s, stages[s] ?? 0]);\n  const extra = Object.keys(stages).filter((s) => !order.includes(s));\n  extra.forEach((s) => entries.push([s, stages[s]]));\n  const max = Math.max(1, ...entries.map(([, n]) => n));\n  return h(\n    "ul",\n    { class: "stage-bars", "aria-label": "단계별 이슈 수" },\n    ...entries.map(([s, n]) => {\n      const bar = h("span", { class: "sb-bar" });\n      bar.style.width = `${Math.round((n / max) * 100)}%`;\n      return h("li", null, h("span", { class: "sb-l" }, label(s)), h("span", { class: "sb-t" }, bar), h("b", null, String(n)));\n    }),\n  );\n}\n\nexport async function render(ctx) {\n  const { host } = ctx;\n  const s = store.session;\n  await refreshOverview();\n  ctx.setHeader({\n    title: "홈",\n    sub: `${s?.repo ?? ""} · ${store.readAt ? `${clock(store.readAt.toISOString())}에 다시 읽었다` : ""}`,\n    tools: [ctx.searchBox().form, doctorChip(), h("span", { class: "tag line" }, `kit ${s?.version ?? "?"}`)],\n  });\n  const res = await loadAll(ctx, [get("/issues"), get("/sessions"), get("/intents")]);\n  if (!res) return undefined;\n  const [issuesR, sessR, intentsR] = res;\n  const issues = new Map(issuesR.data.issues.map((i) => [i.key, i]));\n  const gates = s?.flow.gates ?? [];\n  let onlyMine = false;\n\n  const todoHost = h("div", { class: "todo-host", "aria-live": "polite" });\n  const countTag = h("span", { class: "tag solid-gate" }, "0");\n  const head = h("div", { class: "panel-head" }, h("h2", { id: "todo-h" }, "처리할 일"), countTag, h("div", { class: "aside" }, seg("보기", [{ id: "all", label: "모두" }, { id: "mine", label: "내가 할 것" }], "all", (v) => {\n    onlyMine = v === "mine";\n    draw();\n  })));\n  const panel = h("section", { class: "panel lift", "aria-labelledby": "todo-h" }, head, todoHost);\n\n  function draw() {\n    const o = store.overview;\n    if (!o) return;\n    countTag.textContent = String(o.total);\n    clear(todoHost);\n    const groups = groupTodos(o.todo, onlyMine);\n    if (!groups.length) {\n      todoHost.append(emptyState(onlyMine ? "내가 할 것이 없다" : "처리할 일이 없다", onlyMine ? "\'모두\'에서 다른 사람이 할 것을 볼 수 있다." : "승인 · 질문 · 정리할 것이 없다. 새 요구사항을 접수하거나 진행 화면에서 이슈를 본다.", link("/progress", { class: "btn sm" }, "진행 보기")));\n    }\n    for (const g of groups) {\n      todoHost.append(h("div", { class: "todo-group" }, h("h3", null, g.title, h("span", { class: "muted" }, ` ${g.items.length}`)), h("span", { class: "muted xs" }, g.hint)), h("ol", { class: "todo-list" }, ...g.items.map((t) => todoRow(t, issues, gates))));\n    }\n    const more = Object.entries(o.more ?? {});\n    if (more.length) todoHost.append(h("p", { class: "panel-foot" }, `50건을 넘어 건수만 보인다: ${more.map(([r, n]) => `rank ${r} ${n}건`).join(" · ")}`));\n    if (o.errors?.length) todoHost.append(banner("warn", "alert", "일부를 읽지 못했다: ", o.errors.slice(0, 3).join(" · ")));\n  }\n  draw();\n\n  const left = h("div", { class: "stack-y" }, panel);\n  if (store.overview?.stages && Object.keys(store.overview.stages).length) {\n    left.append(h("section", { class: "panel", "aria-labelledby": "stage-h" }, h("div", { class: "panel-head" }, h("h2", { id: "stage-h" }, "단계별 이슈"), h("div", { class: "aside" }, `이슈 ${store.overview.issues}개`)), h("div", { class: "panel-body" }, stageBars(store.overview.stages, gates))));\n  }\n\n  const sessions = sessR.data.sessions;\n  const intents = intentsR.data.intents.filter((i) => i.status !== "completed");\n  const right = h(\n    "div",\n    { class: "stack-y" },\n    h("section", { class: "panel", "aria-labelledby": "sess-h" }, h("div", { class: "panel-head" }, h("h2", { id: "sess-h" }, "켜 둔 세션"), h("div", { class: "aside" }, `${store.overview?.sessions?.alive ?? 0}개 · 같은 컴퓨터`)),\n      h("div", { class: "panel-body" }, sessions.length ? h("ul", { class: "sess-list" }, ...sessions.map((x) => h("li", null, h("span", { class: `dot ${x.state === "gone" ? "off" : x.turn === "working" ? "busy" : "idle"}`, "aria-hidden": "true" }), h("div", { class: "grow" }, h("b", null, x.name ?? x.id.slice(0, 12)), h("div", { class: "muted xs" }, harnessBadge(x.harness), x.issue ? ` · ${x.issue}` : "", x.role ? ` · ${ROLE_KO[x.role] ?? x.role}` : "")), h("span", { class: "muted xs" }, x.state === "gone" ? "끊김" : x.turn === "working" ? "일하는 중" : x.state === "alive" ? "쉬는 중" : "수신함 없음")))) : emptyState("켜 둔 세션이 없다", "세션이 시작되면 훅이 이 목록에 등록한다."), h("p", { class: "muted xs" }, `Codex · Kiro 는 수신함이 없어 요청을 대기함에 둔다. ${HARNESS_KO.codex} 는 다음 세션 시작 때 건수와 첫 요청 한 줄을 본다.`))),\n    h("section", { class: "panel", "aria-labelledby": "int-h" }, h("div", { class: "panel-head" }, h("h2", { id: "int-h" }, "진행 중 Intent"), h("div", { class: "aside" }, link("/progress", {}, "보드"), " · ", link("/progress?view=flow", {}, "흐름"))),\n      h("div", { class: "panel-body" }, intents.length ? h("ul", { class: "int-list" }, ...intents.map((i) => h("li", null, h("b", null, i.title ?? i.name), " ", h("span", { class: "key" }, i.key), h("div", { class: "muted xs" }, `Unit ${i.units.length} · 열린 질문 ${i.questions.open}${i.proposal ? " · 변경 제안 있음" : ""}`), h("div", { class: "flex" }, link(`/progress?view=flow&intent=${i.key}`, { class: "btn sm" }, "흐름"), i.questions.open ? link(`/intents/${i.key}/questions`, { class: "btn sm" }, "질문") : null)))) : emptyState("Intent 가 없다", "새 요구사항을 접수하면 Intent 가 생긴다."))),\n  );\n\n  host.append(h("div", { class: "home-grid" }, left, right));\n  if (s?.readOnly) host.prepend(h("div", { class: "ro-strip" }, readOnlyNote("읽기 전용(에이전트 세션에서 연 서버)"), h("span", { class: "muted small" }, " 보기만 된다. 승인 · 답 · 저장은 사람이 자기 터미널에서 연 서버에서 한다.")));\n  if (store.loadError) host.prepend(banner("err", "alert", "서버와 연결이 끊겼다. 서버를 연 터미널이 켜져 있는지 본다."));\n\n  const unsub = subscribe(draw);\n  return unsub;\n}\n\nfunction doctorChip() {\n  const d = store.overview?.doctor;\n  if (!d || d.status === "ok" || d.status === "unavailable") return h("span", { class: "tag ops" }, icon("ok", "s"), "doctor 통과");\n  return link("/harness", { class: "tag build" }, icon("alert", "s"), `doctor 경고 ${d.problems?.length ?? ""}`);\n}\n\n', "js/views/intake.js": '// S11 새 요구사항. 접수 API(POST /intake)는 HK-19(설계 08)가 만든다. 지금 서버는 501 이라 접수하면 "제공 예정" 상태를 보인다.\n// 접수는 승인이 아니다(PIN 없음). 화면은 모델을 부르지 않고 첨부 이미지를 설명하지 않는다.\nimport { errorText, post } from "../api.js";\nimport { clear, h, icon } from "../dom.js";\nimport { store } from "../store.js";\nimport { banner, button, commandBox, tabList, tag } from "../ui.js";\n\nexport async function render(ctx) {\n  const { host, route } = ctx;\n  const readOnly = Boolean(store.session?.readOnly);\n  ctx.setHeader({ title: "새 요구사항", sub: "글로 적거나 Jira · Notion 에서 가져와 Intent 로 접수한다. 접수는 승인이 아니다", tools: [] });\n  let tab = route.query.tab === "import" ? "import" : "write";\n  const panel = h("div", { id: "intake-panel", role: "tabpanel", tabindex: "0" });\n  const out = h("div", { "aria-live": "polite" });\n\n  const title = h("input", { type: "text", id: "in-title", maxlength: "120", disabled: readOnly });\n  const kind = h("select", { id: "in-kind", disabled: readOnly }, h("option", { value: "feature" }, "기능"), h("option", { value: "fix" }, "결함"), h("option", { value: "change" }, "변경"));\n  const body = h("textarea", { id: "in-body", rows: "10", placeholder: "무엇을 왜 바꾸는가. 사용자 · 규칙 · 범위 밖을 적는다", disabled: readOnly });\n  const files = h("input", { type: "file", id: "in-files", multiple: true, "aria-describedby": "in-files-h", disabled: readOnly });\n\n  async function submit(e) {\n    e.preventDefault();\n    if (!title.value.trim() || !body.value.trim()) {\n      clear(out).append(banner("warn", "alert", "제목과 본문이 필요하다."));\n      return;\n    }\n    clear(out).append(banner("info", "clock", "접수하는 중…"));\n    const r = await post("/intake", { kind: kind.value, title: title.value.trim(), body: body.value, attachments: [...(files.files ?? [])].map((f) => ({ name: f.name, size: f.size })) });\n    if (r.ok) {\n      clear(out).append(banner("ok", "ok", h("b", null, "접수했다. "), "설계 세션에 넘기려면 사람이 세션에 요청한다(접수만으로는 세션에 아무것도 가지 않는다)."));\n      return;\n    }\n    if (r.error.code === "not_implemented") {\n      clear(out).append(banner("info", "inbox", h("b", null, "접수 기능은 아직 제공하지 않는다. "), `이 서버의 POST /intake 는 ${r.error.details?.stage ?? "HK-19"}(설계 08 §3.8.1)에서 만든다. 쓴 글은 어디에도 저장되지 않았다 — 아래 상자에서 복사해 둔다.`), commandBox(`npx harness-kit intake --kind ${kind.value} --title "${title.value.trim().replace(/"/g, "\'")}" --body-file req.md`, "접수 명령 복사(HK-19 뒤)"), button("본문 복사", { icon: "copy", sm: true, onClick: async () => {\n        try {\n          await navigator.clipboard.writeText(body.value);\n        } catch {\n          body.select();\n        }\n      } }));\n      return;\n    }\n    clear(out).append(banner("err", "alert", h("b", null, `${r.error.code}: `), errorText(r.error)));\n  }\n\n  function draw() {\n    clear(panel);\n    panel.setAttribute("aria-labelledby", `tab-${tab}`);\n    if (tab === "import") {\n      panel.append(h("div", { class: "stack-y" }, banner("info", "link", h("b", null, "가져오기는 선택 모듈이다. "), "Jira · Notion 에서 가져오는 기능은 jira-workflow 모듈과 HK-19 · 설계 10 §3.6 이 만든다. 모듈을 켜지 않았거나 아직 제공하지 않아 이 탭은 비어 있다."), h("p", { class: "muted small" }, "지금은 글로 적어 접수하는 탭을 쓴다.")));\n      return;\n    }\n    panel.append(h("form", { class: "stack-y intake-form", onsubmit: (e) => void submit(e) },\n      readOnly ? banner("warn", "lock", h("b", null, "읽기 전용. "), "에이전트 세션에서 연 서버는 접수하지 않는다.") : null,\n      h("div", { class: "field" }, h("label", { for: "in-title" }, "제목"), title),\n      h("div", { class: "field" }, h("label", { for: "in-kind" }, "종류"), kind),\n      h("div", { class: "field" }, h("label", { for: "in-body" }, "본문"), body),\n      h("div", { class: "field" }, h("label", { for: "in-files" }, icon("paperclip", "s"), " 첨부"), files, h("p", { class: "hint", id: "in-files-h" }, "파일 20MB · 합계 100MB 까지, 비밀값이 나오면 거부한다. 이미지 설명은 만들지 않는다(모델을 부르지 않는다).")),\n      h("div", { class: "ident" }, icon("commit"), "접수자 git user.email ", h("b", null, store.session?.user?.email ?? "-")),\n      h("div", { class: "flex" }, button("접수", { type: "submit", kind: "primary", icon: "send", disabled: readOnly }), tag("PIN 없음 · 접수는 승인이 아니다", "line")),\n      out));\n  }\n  host.append(h("div", { class: "stack-y intake-wrap" }, tabList("접수 방법", [{ id: "write", label: "직접 작성", panel: "intake-panel" }, { id: "import", label: "가져오기", panel: "intake-panel" }], tab, (id) => {\n    tab = id;\n    draw();\n  }), panel));\n  draw();\n  return undefined;\n}\n', "js/views/issue.js": '// S03 이슈 상세 · 문서. 문서 보기 · 고치기 · 저장(충돌 · 점유 처리) · 승인 · 리뷰 판단. 저장만으로 세션에 아무것도 보내지 않는다(DB-R25).\nimport { errorText, get, put } from "../api.js";\nimport { clear, h, icon, setServerHtml } from "../dom.js";\nimport { GATE_KO, railSpec, ROLE_KO, stageText } from "../format.js";\nimport { fullPath, link } from "../router.js";\nimport { store } from "../store.js";\nimport { banner, button, errorState, gateRail, harnessBadge, readOnlyNote, skeleton, tabList, tag, toast } from "../ui.js";\nimport { loadAll } from "./common.js";\nimport { approvePanel, reviewTable } from "./approve-panel.js";\nimport { openDispatch } from "./dispatch.js";\n\nconst DOC_TABS = ["requirements", "design", "tasks"];\n\nconst approvalTag = (a) => ({ valid: ["ops", "승인됨"], stale: ["build", "승인 뒤 바뀜"], invalid: ["gate", "승인자 아님"], none: ["line", "승인 전"] })[a] ?? ["line", a ?? "-"];\n\nexport async function render(ctx) {\n  const { host, route } = ctx;\n  const key = route.params.key;\n  const res = await loadAll(ctx, [get(`/issues/${encodeURIComponent(key)}`)]);\n  if (!res) return undefined;\n  const issue = res[0].data;\n  const gates = store.session?.flow.gates ?? [];\n  const tab = route.params.tab === "approve" ? (issue.waitingOn?.gate && DOC_TABS.includes(issue.waitingOn.gate) ? issue.waitingOn.gate : "requirements") : (route.params.tab ?? (issue.waitingOn && DOC_TABS.includes(issue.waitingOn.gate) ? issue.waitingOn.gate : "requirements"));\n  const intent = issue.intent;\n\n  ctx.setHeader({\n    crumbs: [{ label: "진행", path: "/progress" }, ...(intent ? [{ label: `${intent} ${issue.title ?? ""}`.trim(), path: `/progress?view=flow&intent=${intent}` }] : []), ...(issue.unit ? [{ label: issue.unit }] : [])],\n    title: `${issue.key} ${issue.title ?? issue.name}`,\n    tools: [ctx.searchBox().form],\n  });\n\n  const sessions = (await get("/sessions")).data?.sessions?.filter((x) => issue.sessions.includes(x.id)) ?? [];\n  const spec = railSpec(gates, issue);\n  const statusLine = h(\n    "div",\n    { class: "issue-status" },\n    h("div", { class: "flex wrap" }, issue.waitingOn ? tag(`${GATE_KO[issue.waitingOn.gate] ?? issue.waitingOn.gate} 승인 대기`, "gate", h("span", { class: "dia", "aria-hidden": "true" })) : tag(stageText(issue), issue.stage === "completed" ? "ops" : "design"), issue.area ? tag(`area: ${issue.area}`, "line") : null, intent ? link(`/progress?view=flow&intent=${intent}`, { class: "tag design" }, `${intent}${issue.unit ? ` · ${issue.unit}` : ""}`) : null, sessions.length ? h("span", { class: "muted small" }, "맡은 세션 ", ...sessions.map((x) => h("span", { class: "sess-chip" }, harnessBadge(x.harness), ` ${x.name ?? x.id.slice(0, 8)} · ${ROLE_KO[x.role] ?? x.role ?? ""}`))) : h("span", { class: "muted small" }, "맡은 세션 없음")),\n    gateRail(spec, { labels: true, step: 58 }),\n  );\n  const meta = h(\n    "div",\n    { class: "issue-meta muted small" },\n    icon("branch", "s"), h("code", null, issue.branch ?? "브랜치 없음"), " ", issue.checkout ? `· ${issue.checkout.kind === "main" ? "메인 폴더" : "worktree"}${issue.checkout.dirty ? " · 커밋 안 된 변경" : ""}` : "· 체크아웃 안 됨(git 객체로 읽는다)",\n    ` · 출처 ${issue.source}`,\n    issue.verify ? ` · 검증 ${issue.verify.level ?? ""} ${issue.verify.status ?? ""}` : "",\n    issue.review ? ` · 열린 리뷰 CRITICAL ${issue.review.open.CRITICAL} · HIGH ${issue.review.open.HIGH}` : "",\n  );\n\n  const items = [\n    ...DOC_TABS.map((d) => ({ id: d, label: d, panel: "doc-panel", badge: issue.docs[d] ? (issue.docs[d].status ?? issue.docs[d].state ?? "") : "없음" })),\n    { id: "review", label: "review", panel: "doc-panel" },\n    { id: "approvals", label: "approvals", panel: "doc-panel" },\n  ];\n  const panelHost = h("div", { id: "doc-panel", role: "tabpanel", "aria-labelledby": `tab-${tab}`, tabindex: "0", class: "doc-panel" });\n  const side = h("aside", { class: "issue-side stack-y", "aria-label": "승인과 기록" });\n  const tabs = tabList("이슈 문서", items, tab, (id) => {\n    history.replaceState(null, "", fullPath(`/issues/${encodeURIComponent(key)}${id === "review" ? "/review" : `/docs/${id}`}`));\n    void show(id);\n  });\n  host.append(h("div", { class: "stack-y" }, statusLine, meta, h("div", { class: "issue-grid" }, h("div", { class: "stack-y doc-col" }, tabs, panelHost), side)));\n\n  let current = tab;\n  async function show(id) {\n    current = id;\n    panelHost.setAttribute("aria-labelledby", `tab-${id}`);\n    clear(panelHost).append(skeleton(5));\n    clear(side).append(skeleton(3));\n    if (id === "review") await showReview();\n    else if (id === "approvals") await showApprovals();\n    else await showDoc(id);\n  }\n\n  const docPath = (name) => `${issue.dir}/${name}.md`;\n\n  async function showApprovals() {\n    const r = await get("/docs", { query: { path: docPath("approvals") } });\n    clear(panelHost);\n    if (!r.ok) {\n      panelHost.append(r.error.code === "not_found" ? h("p", { class: "muted" }, "아직 승인 기록이 없다. 게이트를 승인하면 approvals.md 가 생긴다.") : errorState(r.error, () => void show("approvals")));\n    } else {\n      const d = h("div", { class: "md" });\n      setServerHtml(d, r.data.html);\n      panelHost.append(h("p", { class: "path" }, r.data.path), d);\n    }\n    clear(side).append(sidePanel(null));\n  }\n\n  async function showReview() {\n    const r = await get(`/reviews/${encodeURIComponent(issue.key)}`);\n    clear(panelHost);\n    if (!r.ok) {\n      panelHost.append(errorState(r.error, () => void show("review")));\n      clear(side).append(sidePanel(null));\n      return;\n    }\n    const open = r.data.open ?? {};\n    panelHost.append(\n      h("p", { class: "small" }, `리뷰 보고서 ${r.data.report ?? "없음"}${r.data.head ? ` · head ${String(r.data.head).slice(0, 7)}` : ""}${r.data.stale ? " · 보고서가 오래됐다(head 가 바뀜)" : ""}`),\n      h("p", { class: "flex wrap" }, ...["CRITICAL", "HIGH", "MEDIUM", "LOW"].map((s) => tag(`${s} ${open[s] ?? 0}`, s === "CRITICAL" || s === "HIGH" ? ((open[s] ?? 0) > 0 ? "gate" : "line") : s === "MEDIUM" ? "build" : "line"))),\n      reviewTable(issue, r.data, () => ctx.rerender()),\n    );\n    clear(side).append(sidePanel(null));\n  }\n\n  function sidePanel(doc) {\n    const gate = DOC_TABS.includes(current) ? current : (issue.waitingOn?.gate ?? "mr");\n    const parts = [approvePanel({ issue, gate, doc, onDone: () => ctx.rerender() })];\n    return h("div", { class: "stack-y" }, ...parts);\n  }\n\n  async function showDoc(name) {\n    const r = await get("/docs", { query: { path: docPath(name) } });\n    clear(panelHost);\n    if (!r.ok) {\n      panelHost.append(r.error.code === "not_found" ? emptyDoc(name) : errorState(r.error, () => void show(name)));\n      clear(side).append(sidePanel(null));\n      return;\n    }\n    drawDoc(name, r.data);\n    clear(side).append(sidePanel(r.data));\n  }\n\n  function emptyDoc(name) {\n    return h("div", { class: "empty" }, h("h3", null, `${name}.md 가 아직 없다`), h("p", null, "이 문서는 설계 · 구현 세션이 만든다. 화면은 새 문서를 만들지 않는다(plans · decisions · ops 기록만 새 파일이 된다)."));\n  }\n\n  function drawDoc(name, d) {\n    const fm = h("div", { class: "fm" }, ...Object.entries(d.frontmatter ?? {}).filter(([k]) => ["status", "state", "area", "intent", "unit", "jira"].includes(k)).map(([k, v]) => h("span", { class: "chip" }, `${k}: ${v}`)));\n    const [at, atText] = approvalTag(issue.docs[name]?.approval);\n    const view = h("div", { class: "md" });\n    setServerHtml(view, d.html);\n    const writable = d.writable && !store.session?.readOnly;\n    const editBtn = button("편집", { icon: "pencil", sm: true, disabled: !writable, title: writable ? "" : "읽기 전용이거나 이 문서를 고칠 수 없다", onClick: () => edit(name, d) });\n    const bar = h("div", { class: "doc-bar" }, icon("doc", "s"), h("code", { class: "path grow" }, d.path), h("span", { class: "muted xs" }, `sha ${d.sha256.slice(0, 7)}`), tag(atText, at), writable ? editBtn : readOnlyNote(store.session?.readOnly ? "읽기 전용" : "고칠 수 없음"));\n    const where = d.checkout?.branch ? h("p", { class: "muted xs" }, icon("branch", "s"), ` 저장하면 ${d.checkout.kind === "branch" ? "(체크아웃 없음 — 저장할 수 없다)" : `${d.checkout.path ?? ""} 의`} `, h("code", null, d.checkout.branch), " 에 쓴다. 커밋은 그 이슈의 세션이 한다.") : null;\n    panelHost.append(bar, fm, where, view);\n  }\n\n  function edit(name, d) {\n    const area = h("textarea", { id: "doc-edit", class: "doc-edit", rows: "22", spellcheck: "false", "aria-label": `${name}.md 원문` });\n    area.value = d.markdown;\n    const out = h("div", { "aria-live": "polite" });\n    let base = d.sha256;\n    let force = false;\n    async function save(thenDispatch) {\n      clear(out).append(banner("info", "clock", "저장하는 중…"));\n      const r = await put("/docs", { path: d.path, baseSha256: base, markdown: area.value, force });\n      force = false;\n      if (!r.ok) {\n        conflicts(r);\n        return;\n      }\n      const s = r.data;\n      toast("저장했다");\n      base = s.sha256;\n      const cs = s.changeSummary;\n      clear(out).append(\n        banner("ok", "ok", h("b", null, "저장했다. "), `${s.savedTo ?? "메인 폴더"}의 `, h("code", null, s.branch ?? ""), `에 썼다${s.statusChanged ? ` · status ${s.statusChanged}(승인된 문서를 고쳐 검토 중으로 돌아갔다)` : ""}. 커밋은 그 이슈의 세션이 한다. 세션에는 아무것도 보내지 않았다.`, cs ? h("div", { class: "muted xs" }, `바뀐 곳: ${[...(cs.headings ?? []), ...(cs.ids ?? [])].slice(0, 8).join(" · ") || "-"} · +${cs.added} −${cs.removed}줄`) : null),\n        s.leaseHeldBy ? banner("warn", "alert", "다른 세션이 이 파일을 점유 중이었다. 강제 저장했다 — 그 세션은 요청을 받지 않았다.") : null,\n        h("div", { class: "flex" }, button("세션에 요청", { kind: "go", icon: "send", disabled: Boolean(store.session?.readOnly), onClick: () => openDispatch({ issue: issue.key, paths: [d.path], kind: "doc-changed", changeSummary: s.changeSummary ? { ...s.changeSummary, sha256: s.sha256 } : null }) }), button("보기로 돌아가기", { onClick: () => ctx.rerender() })),\n      );\n      if (thenDispatch) openDispatch({ issue: issue.key, paths: [d.path], kind: "doc-changed", changeSummary: s.changeSummary ? { ...s.changeSummary, sha256: s.sha256 } : null });\n    }\n    function conflicts(r) {\n      const e = r.error;\n      if (e.code === "conflict") {\n        const cur = e.details?.currentMarkdown ?? "";\n        const diff = h("textarea", { readOnly: true, rows: "10", class: "doc-edit", "aria-label": "지금 저장된 내용" });\n        diff.value = cur;\n        clear(out).append(\n          banner("err", "alert", h("b", null, "충돌: 다른 곳에서 먼저 저장했다. "), "아래가 지금 저장된 내용이다. 내 내용과 비교해 고른다."),\n          diff,\n          h("div", { class: "flex wrap" }, button("지금 내용으로 바꾸기", { onClick: () => {\n            area.value = cur;\n            base = e.details.currentSha256;\n            clear(out);\n          } }), button("내 내용으로 덮어쓰기", { kind: "danger", onClick: () => {\n            base = e.details.currentSha256;\n            void save(false);\n          } })),\n        );\n        return;\n      }\n      if (e.code === "lease_held") {\n        clear(out).append(banner("warn", "alert", h("b", null, "다른 세션이 이 파일을 점유 중이다. "), errorText(e)), button("그래도 저장(요청은 보내지 않는다)", { kind: "danger", onClick: () => {\n          force = true;\n          void save(false);\n        } }));\n        return;\n      }\n      clear(out).append(banner("err", "alert", h("b", null, `${e.code}: `), errorText(e), e.code === "branch_not_checked_out" ? h("div", null, "worktree 가 없다. 터미널에서 ", h("code", null, `python3 scripts/harness/worktree.py new ${issue.key}`), " 뒤 다시 저장한다.") : null));\n    }\n    clear(panelHost).append(\n      h("div", { class: "doc-bar" }, icon("pencil", "s"), h("code", { class: "path grow" }, d.path), h("span", { class: "muted xs" }, "status 를 approved 로 바꾸는 저장은 서버가 거부한다")),\n      area,\n      h("div", { class: "flex wrap" }, button("저장", { kind: "primary", icon: "save", onClick: () => void save(false) }), button("저장하고 세션에 요청", { kind: "go", icon: "send", onClick: () => void save(true) }), button("취소", { onClick: () => ctx.rerender() })),\n      out,\n    );\n    area.focus();\n  }\n\n  await show(tab);\n  return undefined;\n}\n', "js/views/notfound.js": '// 모르는 주소. 홈으로 돌아가는 길만 보인다.\nimport { link } from "../router.js";\nimport { emptyState } from "../ui.js";\n\nexport function render(ctx) {\n  ctx.setHeader({ title: "찾을 수 없다", tools: [ctx.searchBox().form] });\n  ctx.host.append(emptyState("이 주소의 화면이 없다", `${ctx.route.params.path ?? ""} 는 관리 페이지의 화면이 아니다.`, link("/", { class: "btn sm" }, "홈으로")));\n}\n', "js/views/ops.js": '// S10 운영 기록(선택 화면). 서버의 /ops 는 HK-21(배포 · 운영, 설계 14)이 채운다. 지금은 501 이면 "제공 예정" 상태를 보인다.\nimport { get } from "../api.js";\nimport { h, icon } from "../dom.js";\nimport { banner, commandBox, emptyState, errorState } from "../ui.js";\n\nexport async function render(ctx) {\n  const { host } = ctx;\n  ctx.setHeader({ title: "운영", sub: "배포 · 운영 기록 · 전달 지표 · 규칙 후보(선택 화면)", tools: [ctx.searchBox().form] });\n  const r = await get("/ops");\n  if (!r.ok && r.error.code === "not_implemented") {\n    host.append(h("div", { class: "stack-y" },\n      banner("info", "ops", h("b", null, "운영 기록은 아직 제공하지 않는다. "), `이 화면의 데이터(배포 기록 · 운영 기록 · 장애 · 다음 요구사항 후보 · 전달 지표 · 자동 검증 배포 · 규칙 후보)는 ${r.error.details?.stage ?? "HK-21"}(설계 14)이 만든다.`),\n      emptyState("제공 예정", "운영 기록이 생기면 이 화면에서 읽는다. 읽기만 하고, 접수는 새 요구사항(S11)에서 한다.", h("span", { class: "muted small" }, icon("terminal", "s"), " 콘솔: ", h("code", null, "npx harness-kit status --ops"), " (같은 이슈에서 제공)")),\n      commandBox("npx harness-kit status --ops", "명령 복사")));\n    return undefined;\n  }\n  if (!r.ok) {\n    host.append(errorState(r.error, ctx.rerender));\n    return undefined;\n  }\n  // 서버가 채워지면 최상위 목록을 그대로 표로 보인다(형식은 설계 14 §3.12).\n  host.append(h("div", { class: "stack-y" }, ...Object.entries(r.data).map(([k, v]) => h("section", { class: "panel", "aria-labelledby": `ops-${k}` }, h("div", { class: "panel-head" }, h("h2", { id: `ops-${k}` }, k)), h("div", { class: "panel-body" }, Array.isArray(v) && v.length ? h("ul", null, ...v.map((x) => h("li", null, typeof x === "string" ? x : JSON.stringify(x)))) : h("p", { class: "muted" }, Array.isArray(v) ? "없음" : String(JSON.stringify(v))))))));\n  return undefined;\n}\n', "js/views/progress.js": '// S02 진행 보드: Intent → Unit → 이슈, 단계 · 맡은 하네스 · 세션. area · 단계로 거른다. 같은 데이터를 흐름(S12)으로도 본다.\nimport { get } from "../api.js";\nimport { clear, h, icon } from "../dom.js";\nimport { GATE_KO, railSpec, stageText } from "../format.js";\nimport { link } from "../router.js";\nimport { store } from "../store.js";\nimport { emptyState, gateRail, harnessBadge, seg, tag } from "../ui.js";\nimport { loadAll } from "./common.js";\n\nexport function viewSwitch(active, intent) {\n  const q = intent ? `&intent=${encodeURIComponent(intent)}` : "";\n  return h("nav", { class: "seg view-seg", "aria-label": "보기 전환" }, link("/progress", { "aria-current": active === "board" ? "page" : null }, "보드"), link(`/progress?view=flow${q}`, { "aria-current": active === "flow" ? "page" : null }, "흐름"));\n}\n\nconst STAGE_FILTERS = [\n  { id: "all", label: "모두", test: () => true },\n  { id: "wait", label: "승인 대기", test: (i) => Boolean(i.waitingOn) },\n  { id: "blocked", label: "막힘", test: (i) => (i.review?.open.CRITICAL ?? 0) + (i.review?.open.HIGH ?? 0) > 0 || ["failed", "incomplete"].includes(i.verify?.status ?? "") },\n  { id: "doing", label: "진행 중", test: (i) => i.stage !== "completed" && !i.waitingOn },\n  { id: "done", label: "완료", test: (i) => i.stage === "completed" },\n];\n\nfunction issueRow(i, gates, sessions) {\n  const sess = sessions.filter((s) => i.sessions.includes(s.id));\n  const b = i.docs.tasks?.bolts;\n  const flags = [];\n  if (i.review?.open.CRITICAL) flags.push(`CRITICAL ${i.review.open.CRITICAL}`);\n  if (i.review?.open.HIGH) flags.push(`HIGH ${i.review.open.HIGH}`);\n  if (i.verify && ["failed", "incomplete"].includes(i.verify.status ?? "")) flags.push(`검증 ${i.verify.status}`);\n  return h(\n    "tr",\n    null,\n    h("td", null, link(`/issues/${i.key}`, { class: "key" }, i.key)),\n    h("td", null, h("div", null, i.title ?? i.name), h("div", { class: "muted xs" }, i.area ?? "area 없음")),\n    h("td", null, i.waitingOn ? tag(`${GATE_KO[i.waitingOn.gate] ?? i.waitingOn.gate} 승인 대기`, "gate") : tag(stageText(i), i.stage === "completed" ? "ops" : i.stage === "design" || i.stage === "requirements" ? "design" : "build"), ...flags.map((f) => h("span", null, " ", tag(f, "gate")))),\n    h("td", { class: "rail-cell" }, gateRail(railSpec(gates, i))),\n    h("td", null, b && b.total ? h("span", { class: "bolts", role: "img", "aria-label": `Bolt ${b.done}/${b.total}` }, ...Array.from({ length: b.total }, (_, k) => h("i", { class: k < b.done ? "done" : k === b.done ? "now" : "" }))) : h("span", { class: "muted xs" }, "-"), b ? h("span", { class: "muted xs" }, ` ${b.done}/${b.total}`) : null),\n    h("td", null, sess.length ? sess.map((s) => h("div", { class: "xs" }, harnessBadge(s.harness), ` ${s.name ?? s.id.slice(0, 8)}`)) : h("span", { class: "muted xs" }, "세션 없음")),\n  );\n}\n\nfunction table(rows) {\n  return h("div", { class: "table-wrap" }, h("table", { class: "tbl" }, h("caption", { class: "sr-only" }, "이슈 목록"), h("thead", null, h("tr", null, ...["이슈", "제목 · area", "상태", "게이트", "Bolt", "세션"].map((t) => h("th", { scope: "col" }, t)))), h("tbody", null, ...rows)));\n}\n\nexport async function render(ctx) {\n  const { host, route } = ctx;\n  const only = route.name === "intent" ? route.params.key : null;\n  ctx.setHeader({ title: only ? `${only} 진행` : "진행", sub: "Intent → Unit → 이슈 · 단계는 board.sh 와 같은 원본이다", tools: [viewSwitch("board", only), ctx.searchBox().form] });\n  const res = await loadAll(ctx, [get("/intents"), get("/issues"), get("/sessions")]);\n  if (!res) return undefined;\n  const [intentsR, issuesR, sessR] = res;\n  const gates = store.session?.flow.gates ?? [];\n  const issues = issuesR.data.issues;\n  const sessions = sessR.data.sessions;\n  const intents = intentsR.data.intents.filter((i) => !only || i.key === only);\n  const areas = [...new Set(issues.map((i) => i.area).filter(Boolean))].sort();\n  let area = "all";\n  let stage = "all";\n  const body = h("div", { class: "stack-y", "aria-live": "polite" });\n  const filters = h("div", { class: "filters" }, h("span", { class: "muted small" }, "영역"), seg("영역", [{ id: "all", label: "모두", n: issues.length }, ...areas.map((a) => ({ id: a, label: a, n: issues.filter((i) => i.area === a).length }))], area, (v) => {\n    area = v;\n    draw();\n  }), h("span", { class: "muted small" }, "상태"), seg("상태", STAGE_FILTERS.map((f) => ({ id: f.id, label: f.label, n: issues.filter(f.test).length })), stage, (v) => {\n    stage = v;\n    draw();\n  }));\n  const pass = (i) => (area === "all" || i.area === area) && STAGE_FILTERS.find((f) => f.id === stage).test(i);\n\n  function draw() {\n    clear(body);\n    let shown = 0;\n    for (const it of intents) {\n      const rows = it.units.filter((u) => u.planned).map((u) => ({ u, i: issues.find((x) => x.key === u.issue) })).filter(({ i }) => (i ? pass(i) : area === "all" && stage === "all"));\n      shown += rows.length;\n      if (!rows.length) continue;\n      const planned = rows.filter(({ i }) => !i);\n      body.append(\n        h("section", { class: "panel", "aria-labelledby": `int-${it.key}` },\n          h("div", { class: "panel-head" }, h("span", { class: "key" }, it.key), h("h2", { id: `int-${it.key}` }, it.title ?? it.name), tag(`Intent ${it.approvals.intent === "valid" ? "승인됨" : "승인 전"}`, it.approvals.intent === "valid" ? "ops" : "gate"), it.questions.open ? link(`/intents/${it.key}/questions`, { class: "tag gate" }, `질문 ${it.questions.open}`) : null, h("div", { class: "aside" }, `Unit ${it.units.length}`, link(`/progress?view=flow&intent=${it.key}`, { class: "btn sm" }, icon("board"), "흐름"))),\n          rows.some(({ i }) => i) ? table(rows.filter(({ i }) => i).map(({ i }) => issueRow(i, gates, sessions))) : null,\n          planned.length ? h("ul", { class: "unit-planned" }, ...planned.map(({ u }) => h("li", null, h("span", { class: "key" }, u.id), ` ${u.title}`, " ", tag(u.kind === "contract" ? "계약" : "이슈 아직 없음", "line"), u.dependsOn.length ? h("span", { class: "muted xs" }, ` · 의존 ${u.dependsOn.join(", ")}`) : null))) : null),\n      );\n    }\n    const inIntent = new Set(intents.flatMap((it) => it.units.map((u) => u.issue).filter(Boolean)));\n    const loose = issues.filter((i) => !inIntent.has(i.key) && pass(i) && !only);\n    if (loose.length) {\n      shown += loose.length;\n      body.append(h("section", { class: "panel", "aria-labelledby": "loose-h" }, h("div", { class: "panel-head" }, h("h2", { id: "loose-h" }, "Intent 폴더에 연결되지 않은 이슈"), h("div", { class: "aside" }, `${loose.length}개`)), table(loose.map((i) => issueRow(i, gates, sessions)))));\n    }\n    if (!shown) body.append(emptyState(issues.length || intents.length ? "조건에 맞는 이슈가 없다" : "이슈가 아직 없다", issues.length || intents.length ? "영역 · 상태 거름을 \'모두\'로 돌린다." : "새 요구사항을 접수하거나 이슈 폴더(.agents/docs/issues/)를 만들면 여기 나온다.", link("/intake", { class: "btn sm" }, "새 요구사항")));\n  }\n  draw();\n  host.append(h("div", { class: "stack-y" }, filters, body));\n  return undefined;\n}\n', "js/views/projects.js": '// S00 전체 프로젝트. 이 컴퓨터에 등록한 킷 리포의 처리할 일 · 진행 · 킷 버전을 한 화면에 모은다. 이 화면은 아무것도 쓰지 않는다(DB-R27).\nimport { get } from "../api.js";\nimport { clear, h, icon } from "../dom.js";\nimport { ago, KIND_KO, STEP_KO } from "../format.js";\nimport { topLink } from "../router.js";\nimport { store } from "../store.js";\nimport { banner, commandBox, emptyState, errorState, harnessBadge, seg, skeleton, tag } from "../ui.js";\n\nconst TONE = { design: "design", requirements: "design", tasks: "build", impl: "build", verify: "build", mr: "build", done: "ops", completed: "ops", deploy: "ops" };\n\nfunction stageSeg(stages) {\n  const entries = Object.entries(stages ?? {}).sort(([a], [b]) => (a < b ? -1 : 1));\n  const total = entries.reduce((s, [, n]) => s + n, 0);\n  const desc = entries.map(([k, n]) => `${k === "completed" ? "완료" : (STEP_KO[k] ?? k)} ${n}`).join(", ");\n  const bar = h("span", { class: "vz-seg", role: "img", "aria-label": `단계별 이슈: ${desc || "없음"}` });\n  for (const [k, n] of entries) {\n    const s = h("span", { class: TONE[k] ?? "todo", title: `${k === "completed" ? "완료" : (STEP_KO[k] ?? k)} ${n}` });\n    s.style.flexGrow = String(n);\n    bar.append(s);\n  }\n  if (!total) bar.append(h("span", { class: "todo" }));\n  return h("div", null, bar, h("div", { class: "muted xs" }, desc || "이슈 없음"));\n}\n\nexport async function render(ctx) {\n  const { host } = ctx;\n  ctx.setHeader({ title: "전체 프로젝트", sub: "이 컴퓨터에 등록한 킷 리포 · 쓰기는 들어간 리포 안에서만 된다", tools: [h("span", { class: "tag line" }, icon("eye", "s"), "쓰기 없음 · 쓰기는 프로젝트 안에서")] });\n  if (store.mode === "single") {\n    host.append(h("div", { class: "stack-y" }, banner("info", "grid", h("b", null, "지금은 한 리포만 연 서버다. "), "여러 리포를 한 화면에서 보려면 등록부(", h("code", null, "~/.config/harness-kit/projects.json"), ")나 폴더를 가리켜 서버를 다시 연다."), commandBox("npx harness-kit dashboard --all", "--all 복사"), commandBox("npx harness-kit dashboard --root ~/work", "--root 복사"), commandBox("npx harness-kit projects add <폴더>", "등록 명령 복사")));\n    return undefined;\n  }\n  host.append(skeleton(5));\n  const [listR, overR, sessR] = await Promise.all([get("/projects", { scope: "top" }), get("/projects/overview", { scope: "top" }), get("/sessions", { scope: "top", query: { scope: "machine" } })]);\n  if (!ctx.isCurrent()) return undefined;\n  clear(host);\n  if (!listR.ok) {\n    host.append(errorState(listR.error, ctx.rerender));\n    return undefined;\n  }\n  const projects = listR.data.projects;\n  const over = overR.ok ? overR.data.projects : [];\n  const byId = new Map(over.map((o) => [o.id, o]));\n  const sessions = sessR.ok ? sessR.data.sessions : [];\n  let group = "project";\n  let only = "all";\n\n  if (!projects.length) {\n    host.append(emptyState("등록된 프로젝트가 없다", "킷을 설치한 리포를 등록하면 여기서 한꺼번에 본다.", commandBox("npx harness-kit projects add <폴더>", "명령 복사")));\n    return undefined;\n  }\n\n  const total = over.reduce((s, o) => s + (o.total ?? 0), 0);\n  const todoHost = h("div", { "aria-live": "polite" });\n  const readOverviewFailed = !overR.ok;\n\n  function drawTodo() {\n    clear(todoHost);\n    if (readOverviewFailed) todoHost.append(banner("err", "alert", "처리할 일을 모으지 못했다: ", overR.error.message));\n    const rows = over.filter((o) => o.state === "ok" && (only === "all" || o.id === only));\n    if (group === "project") {\n      for (const o of rows) {\n        if (!o.todo.length) continue;\n        todoHost.append(h("div", { class: "todo-group" }, h("h3", null, o.name, h("span", { class: "muted" }, ` ${o.total}`)), topLink(`/p/${o.id}/`, {}, "홈 열기")), h("ol", { class: "todo-list" }, ...o.todo.map((t) => row(o, t))));\n      }\n    } else {\n      const flat = rows.flatMap((o) => o.todo.map((t) => ({ o, t })));\n      const kinds = [...new Set(flat.map(({ t }) => t.kind))];\n      for (const k of kinds) {\n        const items = flat.filter(({ t }) => t.kind === k);\n        todoHost.append(h("div", { class: "todo-group" }, h("h3", null, KIND_KO[k] ?? k, h("span", { class: "muted" }, ` ${items.length}`))), h("ol", { class: "todo-list" }, ...items.map(({ o, t }) => row(o, t))));\n      }\n    }\n    if (!todoHost.querySelector(".todo-list") && !readOverviewFailed) todoHost.append(emptyState("처리할 일이 없다", "등록한 프로젝트 모두 조용하다."));\n  }\n\n  function row(o, t) {\n    return h("li", { class: "todo-row" }, h("span", { class: "dia", "aria-hidden": "true" }), h("span", { class: "key" }, /^[A-Z][A-Z0-9]+-\\d+$/.test(t.target) ? t.target : "—"), h("div", { class: "todo-main" }, h("div", { class: "todo-title" }, topLink(`/p/${o.id}${t.link}`, {}, t.title), " ", tag(o.name, "line")), h("div", { class: "muted small" }, t.reason, " · ", ago(t.since))), topLink(`/p/${o.id}${t.link}`, { class: "btn sm" }, "열기"));\n  }\n\n  const left = h("section", { class: "panel lift", "aria-labelledby": "ptodo-h" }, h("div", { class: "panel-head" }, h("h2", { id: "ptodo-h" }, "처리할 일"), h("span", { class: "tag solid-gate" }, String(total)), h("div", { class: "aside" }, `프로젝트 ${over.filter((o) => o.state === "ok").length}곳 · 각 체크아웃의 git 사용자 기준`)),\n    h("div", { class: "panel-body stack-y" }, h("div", { class: "flex wrap" }, seg("묶기", [{ id: "project", label: "프로젝트별" }, { id: "kind", label: "종류별" }], group, (v) => {\n      group = v;\n      drawTodo();\n    }), h("label", { class: "muted small", for: "p-only" }, "프로젝트"), h("select", { id: "p-only", onchange: (e) => {\n      only = e.target.value;\n      drawTodo();\n    } }, h("option", { value: "all" }, `모두 ${total}`), ...over.filter((o) => o.state === "ok").map((o) => h("option", { value: o.id }, `${o.name} ${o.total}`)))), todoHost));\n  drawTodo();\n\n  const cards = projects.map((p) => {\n    const o = byId.get(p.id);\n    const mySess = sessions.filter((s) => s.projectId === p.id);\n    if (p.state !== "ok") {\n      return h("article", { class: "panel proj off", "aria-label": p.name }, h("div", { class: "panel-body stack-y" }, h("div", { class: "flex" }, icon("folder"), h("b", null, p.name), tag(p.state === "missing" ? "없음" : "킷 리포 아님", "line")), h("p", { class: "path" }, p.path), h("p", { class: "small muted" }, "폴더가 없다. 옮겼거나 지웠다. 등록부에서 저절로 지우지 않는다."), commandBox(p.remove ?? `npx harness-kit projects remove ${p.name}`, "복사")));\n    }\n    return h("article", { class: "panel proj", "aria-label": p.name }, h("div", { class: "panel-body stack-y" },\n      h("div", { class: "flex" }, icon("folder"), h("b", { class: "grow" }, p.name), o && o.state === "ok" ? tag(`처리할 일 ${o.total}`, o.total ? "gate" : "ops") : tag("읽기 실패", "gate"), topLink(`/p/${p.id}/`, { class: "btn sm" }, "열기", icon("chev", "s"))),\n      h("p", { class: "path" }, p.path, p.addedAt ? ` · ${p.addedAt} 더함` : ""),\n      o && o.state === "ok" ? h("div", { class: "proj-facts" }, h("div", null, h("span", { class: "muted xs" }, "진행"), stageSeg(o.stages), h("span", { class: "muted xs" }, `이슈 ${o.issues}`)), h("div", null, h("span", { class: "muted xs" }, "킷"), h("div", null, p.version ?? "?")), h("div", null, h("span", { class: "muted xs" }, "세션"), h("div", null, `${o.sessions?.alive ?? 0}개`))) : h("p", { class: "small err-text" }, o?.error ?? "읽지 못했다"),\n      (o?.children ?? []).length ? h("details", null, h("summary", null, `하위 리포 ${o.children.length}개`), h("ul", null, ...o.children.map((c) => h("li", null, c.name, " ", tag(c.state, "line"))))) : null,\n      mySess.length ? h("p", { class: "muted xs" }, `켜 둔 세션 ${mySess.length}개`) : null));\n  });\n  const right = h("div", { class: "stack-y" }, h("section", { "aria-labelledby": "plist-h" }, h("h2", { id: "plist-h", class: "sr-only" }, "프로젝트"), h("div", { class: "stack-y" }, ...cards)),\n    h("section", { class: "panel", "aria-labelledby": "msess-h" }, h("div", { class: "panel-head" }, h("h2", { id: "msess-h" }, "켜 둔 세션"), h("div", { class: "aside" }, `${sessions.filter((s) => s.state !== "gone").length}개 · 이 컴퓨터 전체`)),\n      h("div", { class: "panel-body" }, sessions.length ? h("ul", { class: "sess-list" }, ...sessions.map((s) => h("li", null, h("span", { class: `dot ${s.state === "gone" ? "off" : s.turn === "working" ? "busy" : "idle"}`, "aria-hidden": "true" }), h("div", { class: "grow" }, h("b", null, s.name ?? s.id.slice(0, 10)), h("div", { class: "muted xs" }, s.project, " · ", harnessBadge(s.harness), s.issue ? ` · ${s.issue}` : "")), h("span", { class: "muted xs" }, s.state === "gone" ? "끊김" : s.turn === "working" ? "일하는 중" : "쉬는 중")))) : h("p", { class: "muted small" }, "켜 둔 세션이 없다"))));\n  host.append(h("p", { class: "muted small" }, icon("folder", "s"), ` 등록된 프로젝트 ${projects.length} · `, h("code", null, "~/.config/harness-kit/projects.json"), " · 경로 · 이름 · 더한 날만 둔다. 리포 안 파일은 그 리포에서 읽는다."), h("div", { class: "projects-grid" }, left, right));\n  return undefined;\n}\n', "js/views/questions.js": '// S04 질문 답하기. 선택지를 고르고 메모를 남긴다. 답은 PIN 이 필요하고(탭마다 한 번) 마지막 질문에 답해도 세션에 아무것도 보내지 않는다(DB-R25).\nimport { errorText, get, post } from "../api.js";\nimport { clear, h, icon } from "../dom.js";\nimport { link } from "../router.js";\nimport { store } from "../store.js";\nimport { banner, button, emptyState, errorState, tag, toast, withPin } from "../ui.js";\nimport { openDispatch } from "./dispatch.js";\n\nexport async function render(ctx) {\n  const { host, route } = ctx;\n  const target = route.params.target ?? route.params.key;\n  ctx.setHeader({ crumbs: [{ label: "문서", path: "/docs" }], title: target ? `질문 · ${target}` : "질문 답하기", sub: "권장안을 보고 선택지를 고른다. 답이 모이면 설계 세션에 사람이 요청한다", tools: [ctx.searchBox().form] });\n  if (!target) {\n    const r = await get("/intents");\n    if (!r.ok) {\n      host.append(errorState(r.error, ctx.rerender));\n      return undefined;\n    }\n    const open = r.data.intents.filter((i) => i.questions.total > 0);\n    host.append(open.length ? h("ul", { class: "int-list pad" }, ...open.map((i) => h("li", null, link(`/intents/${i.key}/questions`, { class: "key" }, i.key), ` ${i.title ?? i.name}`, h("div", { class: "muted xs" }, `열린 질문 ${i.questions.open}/${i.questions.total}`)))) : emptyState("질문이 없다", "설계 세션이 질문을 만들면 여기 나온다."));\n    return undefined;\n  }\n  const r = await get("/questions", { query: { target } });\n  if (!r.ok) {\n    host.append(errorState(r.error, ctx.rerender));\n    return undefined;\n  }\n  let doc = r.data;\n  const readOnly = Boolean(store.session?.readOnly);\n  const listHost = h("div", { class: "stack-y", "aria-live": "polite" });\n  const email = store.session?.user?.email;\n\n  function head() {\n    const open = doc.questions.filter((q) => q.open).length;\n    return h("div", { class: "flex wrap" }, tag(`열린 질문 ${open}`, open ? "gate" : "ops"), h("span", { class: "muted small" }, `${doc.path} · status ${doc.status ?? "-"}${doc.round ? ` · ${doc.round}차` : ""}`), h("span", { class: "grow" }), readOnly ? h("span", { class: "tag line" }, icon("lock", "s"), "읽기 전용") : button("세션에 요청", { icon: "send", onClick: () => openDispatch({ issue: /^[A-Z]+-\\d+$/.test(target) && !target.startsWith("INT-") ? target : undefined, paths: [doc.path], kind: "answers-ready", title: "설계 세션에 요청" }) }));\n  }\n\n  async function reload() {\n    const x = await get("/questions", { query: { target } });\n    if (x.ok) doc = x.data;\n    draw();\n  }\n\n  function card(q) {\n    const choiceId = `q-${q.id}`;\n    let picked = null;\n    const memo = h("textarea", { rows: "2", id: `${choiceId}-memo`, placeholder: "메모(선택, 500자 이하). \'other\' 는 필수", disabled: readOnly });\n    const out = h("div", { "aria-live": "polite" });\n    const radios = h("div", { role: "radiogroup", "aria-labelledby": `${choiceId}-t`, class: "choices" }, ...[...q.choices, { id: "other", text: "다른 답", impact: "메모에 쓴다" }].map((c) => h("label", { class: `choice${c.id === q.recommended ? " rec" : ""}`, for: `${choiceId}-${c.id}` }, h("input", { type: "radio", name: choiceId, id: `${choiceId}-${c.id}`, value: c.id, disabled: readOnly || !q.open, onchange: () => {\n      picked = c.id;\n    } }), h("span", { class: "cl" }, c.id), h("span", { class: "grow" }, h("b", null, c.text), c.impact ? h("span", { class: "muted xs" }, ` — 영향: ${c.impact}`) : null), c.id === q.recommended ? tag("권장", "design") : null)));\n    async function answer() {\n      if (!picked) {\n        clear(out).append(banner("warn", "alert", "선택지를 고른다."));\n        return;\n      }\n      if (picked === "other" && !memo.value.trim()) {\n        clear(out).append(banner("warn", "alert", "\'다른 답\' 은 메모가 필요하다."));\n        memo.focus();\n        return;\n      }\n      const res = await withPin((pin) => post(`/questions/${encodeURIComponent(target)}/${encodeURIComponent(q.id)}/answer`, { choice: picked, ...(memo.value.trim() ? { text: memo.value.trim() } : {}), baseSha256: doc.sha256, pin }));\n      if (!res.ok) {\n        clear(out).append(banner("err", "alert", h("b", null, `${res.error.code}: `), errorText(res.error)));\n        if (res.error.code === "conflict") await reload();\n        return;\n      }\n      toast(res.data.kind === "opinion" ? "의견으로 남겼다(질문은 열려 있다)" : "답을 저장했다");\n      await reload();\n      if (res.data.open === 0) listHost.prepend(banner("ok", "ok", h("b", null, "모든 질문에 답이 찼다. "), "세션에는 아무것도 보내지 않았다. 설계 세션에 알리려면 위의 \'세션에 요청\'을 누른다."));\n    }\n    return h(\n      "article",\n      { class: `panel q-card${q.open ? "" : " answered"}`, "aria-labelledby": `${choiceId}-t` },\n      h("div", { class: "panel-head" }, h("span", { class: "key" }, q.id), h("h2", { id: `${choiceId}-t` }, q.text || q.category), tag(q.category, "line"), q.blocks ? tag(`막는 게이트 ${q.blocks}`, "gate") : null, h("div", { class: "aside" }, `답할 직무 ${q.role}`)),\n      h("div", { class: "panel-body stack-y" },\n        radios,\n        q.open ? h("div", { class: "field" }, h("label", { for: `${choiceId}-memo` }, "메모"), memo) : null,\n        q.answer ? h("p", { class: "ans" }, icon("ok", "s"), ` 답: ${q.answer}`) : null,\n        ...q.notes.map((n) => h("p", { class: "muted small" }, `메모: ${n}`)),\n        ...q.opinions.map((n) => h("p", { class: "muted small" }, `의견: ${n}`)),\n        q.open && !readOnly ? h("div", null, h("div", { class: "ident" }, icon("commit"), "git user.email ", h("b", null, email ?? "-"), "로 questions.md 에 기록"), h("div", { class: "flex" }, button("답 저장", { kind: "primary", icon: "check", onClick: () => void answer() }))) : null,\n        out),\n    );\n  }\n\n  function draw() {\n    clear(listHost).append(head());\n    if (readOnly) listHost.append(banner("warn", "lock", h("b", null, "읽기 전용. "), "에이전트 세션에서 연 서버는 답을 받지 않는다. 사람이 자기 터미널에서 연 서버에서 한다."));\n    if (!doc.questions.length) listHost.append(emptyState("질문이 없다", doc.sha256 ? "questions.md 에 질문이 없다." : "아직 questions.md 가 없다."));\n    for (const q of doc.questions) listHost.append(card(q));\n  }\n  draw();\n  host.append(listHost);\n  return undefined;\n}\n', "js/views/skills.js": '// S08 스킬: 이 컴퓨터와 리포의 스킬을 읽기만 한다(설계 07). 장비 정보라 커밋하지 않고 내보내기에서 뺀다.\nimport { get } from "../api.js";\nimport { clear, h, icon } from "../dom.js";\nimport { clock, HARNESS_KO, HARNESS_LETTER, STAGE_CLASS, STAGE_KO } from "../format.js";\nimport { banner, button, commandBox, emptyState, errorState, seg, skeleton, tag } from "../ui.js";\n\nconst PAGE = 120;\nconst MARK = { loaded: ["ops", "쓸 수 있음"], both: ["ops", "둘 다 뜸"], shadowed: ["build", "가려짐"], no: ["line", "안 보임"] };\n\nfunction harnessMarks(s, harnesses) {\n  return h("span", { class: "hmarks" }, ...harnesses.map((hn) => {\n    const st = s.harnesses[hn] ?? "no";\n    const [tone, text] = MARK[st] ?? ["line", st];\n    return h("span", { class: `hm ${tone}`, title: `${HARNESS_KO[hn]}: ${text}` }, h("b", { "aria-hidden": "true" }, HARNESS_LETTER[hn]), h("span", { class: "sr-only" }, `${HARNESS_KO[hn]} ${text}`), st === "shadowed" ? h("i", { "aria-hidden": "true" }, "×") : null);\n  }));\n}\n\nexport async function render(ctx) {\n  const { host } = ctx;\n  const refresh = ctx.route.query.refresh === "1";\n  ctx.setHeader({ title: "스킬", sub: "이 컴퓨터의 스킬 · 읽기만 한다 · 장비 정보라 커밋하지 않고 내보내기에서 뺀다", tools: [ctx.searchBox().form] });\n  host.append(skeleton(6));\n  const r = await get("/skills", { query: { all: "1", ...(refresh ? { refresh: "1" } : {}) } });\n  if (!ctx.isCurrent()) return undefined;\n  clear(host);\n  if (!r.ok) {\n    host.append(errorState(r.error, ctx.rerender));\n    return undefined;\n  }\n  const inv = r.data;\n  const harnesses = inv.harnesses.length === 5 ? ["claude", "codex", "kiro", "cursor", "gemini"] : inv.harnesses;\n  const active = ["claude", "codex", "kiro", "cursor", "gemini"].filter((x) => inv.skills.some((s) => (s.harnesses[x] ?? "no") !== "no"));\n  const shown = (active.length ? active : harnesses).slice(0, 5);\n  let stage = "all";\n  let harness = "all";\n  let onlyGuess = false;\n  let page = PAGE;\n  const names = new Set(inv.conflicts.map((c) => c.name));\n\n  const listHost = h("div", { "aria-live": "polite" });\n  const count = h("span", { class: "aside" });\n  const stageCount = (st) => inv.skills.filter((s) => s.stages.some((x) => x.stage === st)).length;\n  const stageSeg = seg("단계", [{ id: "all", label: "전체", n: inv.skills.length }, ...Object.entries(STAGE_KO).map(([k, v]) => ({ id: k, label: v, n: stageCount(k) })), { id: "none", label: "미분류", n: inv.skills.filter((s) => !s.stages.length).length }], stage, (v) => {\n    stage = v;\n    page = PAGE;\n    draw();\n  });\n  const hSel = h("select", { id: "sk-h", "aria-label": "하네스 거르기", onchange: (e) => {\n    harness = e.target.value;\n    page = PAGE;\n    draw();\n  } }, h("option", { value: "all" }, "하네스 모두"), ...shown.map((x) => h("option", { value: x }, HARNESS_KO[x])));\n\n  function filtered() {\n    return inv.skills.filter((s) => (stage === "all" || (stage === "none" ? !s.stages.length : s.stages.some((x) => x.stage === stage))) && (harness === "all" || ["loaded", "both"].includes(s.harnesses[harness])) && (!onlyGuess || s.stages.some((x) => x.source === "추정")));\n  }\n\n  function draw() {\n    const list = filtered();\n    clear(listHost);\n    count.textContent = `${Math.min(list.length, page)}개 표시 · 전체 ${inv.skills.length}`;\n    if (!list.length) {\n      listHost.append(emptyState("조건에 맞는 스킬이 없다", "단계 · 하네스 거름을 바꾼다."));\n      return;\n    }\n    const rows = list.slice(0, page).map((s) => h("tr", null,\n      h("td", null, h("code", { class: "key" }, s.id), names.has(s.name) ? h("div", null, tag("이름 겹침", "build")) : null, s.error ? h("div", null, tag(`오류 ${s.error}`, "gate")) : null),\n      h("td", { class: "desc" }, s.description ?? h("span", { class: "muted" }, "설명 없음")),\n      h("td", null, harnessMarks(s, shown)),\n      h("td", null, s.locations[0] ? h("span", { class: "path" }, s.locations[0].path, s.locations.length > 1 ? ` 외 ${s.locations.length - 1}` : "") : "-"),\n      h("td", null, s.stages.length ? s.stages.map((x) => h("div", null, tag(STAGE_KO[x.stage] ?? x.stage, STAGE_CLASS[x.stage] ?? "line"), " ", h("span", { class: x.source === "추정" ? "guess" : "muted xs" }, x.source === "map" ? "지도" : x.source === "metadata" ? "머리" : "추정"))) : h("span", { class: "muted xs" }, "미분류")),\n    ));\n    listHost.append(h("div", { class: "table-wrap" }, h("table", { class: "tbl skills-tbl" }, h("caption", { class: "sr-only" }, "스킬 목록"), h("thead", null, h("tr", null, ...["이름", "설명", "하네스", "위치", "단계 · 출처"].map((t) => h("th", { scope: "col" }, t)))), h("tbody", null, ...rows))));\n    if (list.length > page) listHost.append(h("div", { class: "pager" }, button(`더 보기(${list.length - page}개 남음)`, { onClick: () => {\n      page += PAGE;\n      draw();\n    } })));\n  }\n\n  const rootsTable = h("table", { class: "tbl" }, h("caption", { class: "sr-only" }, "위치별 스킬 개수"), h("thead", null, h("tr", null, ...["위치", "범위", "개수"].map((t, i) => h("th", { scope: "col", class: i === 2 ? "r" : "" }, t)))),\n    h("tbody", null, ...inv.roots.map((x) => h("tr", null, h("td", null, h("code", { class: "path" }, x.path), x.version ? h("span", { class: "muted xs" }, ` ${x.version}`) : null), h("td", null, x.scope.startsWith("plugin") ? "플러그인" : x.scope === "user" ? "사용자" : x.scope.startsWith("nested") ? "하위 폴더" : "프로젝트"), h("td", { class: "r" }, x.error ? h("span", { class: "err-text" }, x.error) : String(x.count)))), inv.roots.length ? null : h("tr", null, h("td", { colspan: "3", class: "muted" }, "스킬 위치가 비어 있다"))));\n\n  // 이 단계에서 쓸 내 스킬(지도 칸 해석)\n  const resolved = inv.map.resolved.filter((x) => x.harness === (store_harness(inv) ?? x.harness));\n  const byCommand = new Map();\n  for (const x of resolved) byCommand.set(x.command, [...(byCommand.get(x.command) ?? []), x]);\n  const mapPanel = h("section", { class: "panel", "aria-labelledby": "map-h" }, h("div", { class: "panel-head" }, h("h2", { id: "map-h" }, "이 단계에서 쓸 내 스킬")),\n    h("div", { class: "panel-body stack-y" }, inv.map.present ? [...byCommand].map(([cmd, xs]) => h("div", { class: "map-cmd" }, h("code", { class: "key" }, cmd), ...xs.map((x) => h("div", { class: "small" }, x.skill ? h("span", null, icon("ok", "s"), ` ${x.skill}`) : h("span", { class: "muted" }, icon("help", "s"), ` 없음 · ${x.fallback}`), h("span", { class: "muted xs" }, ` (${x.slot}, ${HARNESS_KO[x.harness]})`))))) : emptyState("스킬 지도가 없다", "킷 명령은 .agents/skill-map.json 에서 깔린 스킬을 찾아 쓰고, 없으면 킷 기본 템플릿을 쓴다. 지도가 없으면 단계는 설명 낱말로 추정한다."),\n      h("p", { class: "muted small" }, "지도는 팀이 MR 로 고친다. 터미널: ", h("code", null, "npx harness-kit skills --stage 설계"))));\n\n  // 단계 × 하네스\n  const matrix = h("table", { class: "tbl" }, h("caption", { class: "sr-only" }, "단계와 하네스별 스킬 수"), h("thead", null, h("tr", null, h("th", { scope: "col" }, "단계"), ...shown.map((x) => h("th", { scope: "col", class: "r" }, HARNESS_KO[x])))),\n    h("tbody", null, ...Object.entries(STAGE_KO).map(([k, v]) => h("tr", null, h("td", null, tag(v, STAGE_CLASS[k])), ...shown.map((x) => h("td", { class: "r" }, String(inv.skills.filter((s) => s.stages.some((y) => y.stage === k) && ["loaded", "both"].includes(s.harnesses[x])).length)))))));\n\n  const guessCount = inv.skills.filter((s) => s.stages.some((x) => x.source === "추정")).length;\n  host.append(h("div", { class: "skills-grid" },\n    h("div", { class: "stack-y" },\n      inv.warnings.length ? banner("warn", "alert", inv.warnings.join(" · ")) : null,\n      h("section", { class: "panel", "aria-labelledby": "roots-h" }, h("div", { class: "panel-head" }, h("h2", { id: "roots-h" }, "어디에 몇 개"), h("div", { class: "aside" }, `이름 겹침 ${inv.conflicts.length}`)), h("div", { class: "table-wrap" }, rootsTable)),\n      h("section", { class: "panel", "aria-labelledby": "sk-h2" }, h("div", { class: "panel-head" }, h("h2", { id: "sk-h2" }, "스킬 목록"), count),\n        h("div", { class: "panel-body stack-y" }, h("div", { class: "flex wrap" }, stageSeg, hSel, h("label", { class: "pick plain small", for: "sk-guess" }, h("input", { type: "checkbox", id: "sk-guess", onchange: (e) => {\n          onlyGuess = e.target.checked;\n          draw();\n        } }), `추정만(${guessCount})`)), listHost))),\n    h("div", { class: "stack-y" }, mapPanel,\n      h("section", { class: "panel", "aria-labelledby": "mx-h" }, h("div", { class: "panel-head" }, h("h2", { id: "mx-h" }, "단계 × 하네스"), h("div", { class: "aside" }, `단계가 붙은 스킬 ${inv.skills.filter((s) => s.stages.length).length}`)), h("div", { class: "panel-body" }, matrix)),\n      h("div", { class: "flex" }, h("a", { class: "btn", href: `${location.pathname}?refresh=1` }, icon("refresh"), "다시 수집"), h("span", { class: "muted xs" }, `${clock(inv.scannedAt)} 수집`)),\n      commandBox("npx harness-kit skills --stage 설계", "명령 복사"))));\n  draw();\n  return undefined;\n}\n\nfunction store_harness(inv) {\n  return inv.harnesses[0] ?? null;\n}\n', "js/views/usage-charts.js": '// S13 차트: 하루 토큰(역할별 쌓기) · 이슈별 막대 · 캐시 읽기 비율. 글은 textContent 로만 넣고, 모든 차트에 요약 글 + 표로 보기를 같이 둔다.\nimport { h } from "../dom.js";\nimport { dayLabel, fmtTokens, pct } from "../format.js";\nimport { HXViz } from "../viz.js";\n\nexport const ROLE_CLASS = { design: "design", implement: "build", review: "ink", docs: "ops", "역할 없음": "faint" };\nconst ROLE_NAME = { design: "설계", implement: "구현", review: "리뷰", docs: "문서", "역할 없음": "역할 없음" };\nexport const roleName = (r) => ROLE_NAME[r] ?? r;\n\nfunction legend(roles) {\n  return h("div", { class: "vz-legend", "aria-label": "역할 범례" }, ...roles.map((r) => h("span", null, h("i", { class: `vz-sw ${ROLE_CLASS[r] ?? "ink"}` }), roleName(r))));\n}\n\n/** 하루 토큰: 날마다 역할별로 쌓은 세로 막대. daily: [{date, sum, byRole}] */\nexport function dailyStack(daily, roles) {\n  const host = h("div", { class: "vz" });\n  const max = Math.max(1, ...daily.map((d) => d.sum));\n  const peak = daily.reduce((a, d) => (d.sum > a.sum ? d : a), daily[0] ?? { sum: 0, date: "" });\n  const total = daily.reduce((s, d) => s + d.sum, 0);\n  const summary = `하루 토큰 ${daily.length}일 합 ${fmtTokens(total)}. ${peak.sum ? `가장 많은 날 ${dayLabel(peak.date).text} ${fmtTokens(peak.sum)}.` : "기록이 없다."}`;\n  const draw = () => {\n    if (!host.isConnected || !host.clientWidth) return;\n    host.textContent = "";\n    const W = host.clientWidth;\n    const H = 220;\n    const m = { l: 38, r: 8, t: 20, b: 24 };\n    const pw = W - m.l - m.r;\n    const ph = H - m.t - m.b;\n    const band = pw / Math.max(1, daily.length);\n    const bw = Math.min(28, band - 6);\n    const Y = (v) => m.t + ph - (v / max) * ph;\n    const svg = HXViz.svgRoot(host, W, H, summary, true);\n    for (const t of [0, 0.25, 0.5, 0.75, 1]) {\n      const v = max * t;\n      HXViz.el("line", { x1: m.l, x2: m.l + pw, y1: Y(v), y2: Y(v), class: t === 0 ? "vz-base" : "vz-grid" }, svg);\n      HXViz.text(svg, m.l - 6, Y(v) + 4, fmtTokens(Math.round(v)), "vz-ax", "end");\n    }\n    daily.forEach((d, i) => {\n      const cx = m.l + band * i + band / 2;\n      let y0 = Y(0);\n      for (const r of roles) {\n        const v = d.byRole[r] ?? 0;\n        if (v <= 0) continue;\n        const hh = Math.max(1, (v / max) * ph);\n        y0 -= hh;\n        const rect = HXViz.el("rect", { x: cx - bw / 2, y: y0, width: bw, height: Math.max(0.5, hh - 1), class: `vz-bar ${ROLE_CLASS[r] ?? "ink"}` }, svg);\n        const t = HXViz.el("title", null, rect);\n        t.textContent = `${dayLabel(d.date).text} · ${roleName(r)} ${fmtTokens(v)}`;\n      }\n      if (d.sum) HXViz.text(svg, cx, Y(d.sum) - 5, fmtTokens(d.sum), i === daily.length - 1 || d === peak ? "vz-val" : "vz-ax");\n      if (daily.length <= 14 || i % Math.ceil(daily.length / 14) === 0 || i === daily.length - 1) HXViz.text(svg, cx, H - 6, i === daily.length - 1 ? "오늘" : dayLabel(d.date).short, `vz-ax${i === daily.length - 1 ? " now" : ""}`);\n    });\n  };\n  const table = h("details", { class: "vz-tv" }, h("summary", null, "표로 보기"), h("div", { class: "table-wrap" }, h("table", { class: "tbl" }, h("caption", { class: "sr-only" }, "날짜 · 역할별 토큰"), h("thead", null, h("tr", null, h("th", { scope: "col" }, "날짜"), ...roles.map((r) => h("th", { scope: "col", class: "r" }, roleName(r))), h("th", { scope: "col", class: "r" }, "합"))), h("tbody", null, ...daily.map((d) => h("tr", null, h("td", null, dayLabel(d.date).text), ...roles.map((r) => h("td", { class: "r" }, fmtTokens(d.byRole[r] ?? 0))), h("td", { class: "r" }, fmtTokens(d.sum))))))));\n  observe(host, draw);\n  return h("div", { class: "stack-y" }, legend(roles), host, h("p", { class: "muted small" }, summary), table);\n}\n\n/** 이슈별 토큰: 가로 막대(값이 큰 순) */\nexport function issueBars(byIssue) {\n  const max = Math.max(1, ...byIssue.map((x) => x.sum));\n  return h("ul", { class: "issue-bars", "aria-label": "이슈별 토큰" }, ...byIssue.slice(0, 10).map((x) => {\n    const bar = h("span", { class: "bar-fill" });\n    bar.style.width = `${Math.max(2, Math.round((x.sum / max) * 100))}%`;\n    return h("li", null, h("code", { class: "key" }, x.issue), h("span", { class: "bar-track", "aria-hidden": "true" }, bar), h("b", null, fmtTokens(x.sum)));\n  }));\n}\n\n/** 캐시 읽기 비율: 날마다 */\nexport function cacheLine(cache) {\n  const host = h("div", { class: "vz" });\n  const vals = cache.daily.map((d) => (d.ratio === null ? null : Math.round(d.ratio * 1000) / 10));\n  const real = vals.filter((v) => v !== null);\n  const lo = real.length ? Math.max(0, Math.floor((Math.min(...real) - 5) / 10) * 10) : 0;\n  const labels = cache.daily.map((d) => dayLabel(d.date).text);\n  const last = [...vals].reverse().find((v) => v !== null);\n  const summary = real.length ? `캐시 읽기 비율 평균 ${pct(cache.average)}, 최근 ${last}%. ${cache.daily.map((d) => `${dayLabel(d.date).short} ${d.ratio === null ? "-" : pct(d.ratio)}`).join(", ")}` : "캐시 읽기 기록이 없다";\n  const draw = () => {\n    if (!host.isConnected || !host.clientWidth || !real.length) return;\n    HXViz.line(host, {\n      values: vals, labels, h: 150, w: host.clientWidth, line: "design", label: summary, m: { l: 38, r: 28, t: 10, b: 22 },\n      y: { min: lo, max: 100, ticks: [lo, Math.round((lo + 100) / 2), 100], fmt: (t) => `${t}%` },\n      xTicks: [[0, dayLabel(cache.daily[0].date).short, "start"], [vals.length - 1, "오늘", "end", true]],\n      endLabel: (v) => `${v}%`, fmt: (v) => `${v}%`,\n      tip: (i) => [{ v: vals[i] === null ? "-" : `${vals[i]}%`, n: "캐시 읽기", key: "design" }],\n    });\n  };\n  observe(host, draw);\n  return h("div", { class: "stack-y" }, real.length ? host : h("p", { class: "muted" }, "기록이 없다"), h("p", { class: "muted small" }, summary));\n}\n\nfunction observe(host, draw) {\n  requestAnimationFrame(draw);\n  if (typeof ResizeObserver === "undefined") return;\n  let t = 0;\n  new ResizeObserver(() => {\n    clearTimeout(t);\n    t = setTimeout(draw, 120);\n  }).observe(host);\n}\n', "js/views/usage.js": '// S13 기록 · 사용량. 이 컴퓨터의 대화 기록을 읽기만 한다. 대화 기록은 기본 꺼짐이고 모델을 부르지 않는다(DB-R26 · R28).\nimport { get } from "../api.js";\nimport { clear, h } from "../dom.js";\nimport { ago, clock, fmtBytes, fmtTokens, HARNESS_KO, pct } from "../format.js";\nimport { banner, button, commandBox, emptyState, errorState, harnessBadge, seg, skeleton, tabList, tag } from "../ui.js";\nimport { cacheLine, dailyStack, issueBars } from "./usage-charts.js";\n\nfunction sourcesBanner(u) {\n  const items = u.sources.map((s) => h("li", null, h("code", { class: "path" }, s.label), " ", s.state === "off" ? tag("꺼짐", "line") : s.state === "none" ? tag("자료 없음", "line") : h("span", { class: "muted small" }, `파일 ${s.files} · 세션 ${s.sessions}${s.unreadable ? ` · 읽지 못함 ${s.unreadable}` : ""}`), s.note ? h("span", { class: "muted xs" }, ` ${s.note}`) : null));\n  return banner(u.enabled ? "info" : "warn", u.enabled ? "eye" : "lock", h("b", null, u.enabled ? "읽기만 한다. 이 컴퓨터에서만 보인다. " : "대화 기록 읽기는 꺼져 있다(기본). "),\n    h("ul", { class: "src-list" }, ...items),\n    h("p", { class: "small" }, "복사본을 남기지 않고 내보내기(--export) · 커밋 · 세션 요청에 넣지 않는다. 켜는 곳: ", h("code", null, "~/.config/harness-kit/config.json"), "의 ", h("code", null, \'"history": "on"\'), u.enabled ? " — 지금 켜짐" : " — 지금 꺼짐"));\n}\n\nfunction nowPanel(n) {\n  const s = n.session;\n  if (!n.enabled) return h("section", { class: "panel", "aria-labelledby": "now-h" }, h("div", { class: "panel-head" }, h("h2", { id: "now-h" }, "지금 세션")), h("div", { class: "panel-body" }, emptyState("대화 기록 읽기가 꺼져 있다", "켜면 이 리포의 가장 최근 세션 컨텍스트 사용률을 본다.")));\n  if (!s) return h("section", { class: "panel", "aria-labelledby": "now-h" }, h("div", { class: "panel-head" }, h("h2", { id: "now-h" }, "지금 세션")), h("div", { class: "panel-body" }, emptyState("최근 세션 기록이 없다", "이 리포에서 연 세션의 대화 기록이 아직 없다.")));\n  const bar = h("i", null);\n  bar.style.width = `${Math.min(100, Math.round((s.ratio ?? 0) * 100))}%`;\n  const mark = h("i", { class: "warn-mark", "aria-hidden": "true" });\n  mark.style.left = `${Math.round(s.warnAt * 100)}%`;\n  return h("section", { class: "panel lift", "aria-labelledby": "now-h" }, h("div", { class: "panel-head" }, h("h2", { id: "now-h" }, "지금 세션"), h("div", { class: "aside" }, harnessBadge(s.harness), s.role ? ` ${s.role}` : "")),\n    h("div", { class: "panel-body stack-y" },\n      h("div", { class: "big" }, s.ratio === null ? "—" : pct(s.ratio), h("span", { class: "muted small" }, s.window ? ` 컨텍스트 ${fmtTokens(s.used)} / ${fmtTokens(s.window)}` : ` 컨텍스트 ${fmtTokens(s.used)} · 창 크기: 기록에 없다`)),\n      s.ratio !== null ? h("div", { class: `meter${s.warn ? " warn" : ""}`, role: "img", "aria-label": `컨텍스트 ${pct(s.ratio)}, 알림 기준 ${pct(s.warnAt)}${s.warn ? " — 넘었다" : ""}` }, bar, mark) : null,\n      s.warn ? banner("warn", "alert", "자동 압축이 가깝다. 알림 기준은 설정(usage.warnAt)이다.") : null,\n      h("dl", { class: "kv-grid" }, h("dt", null, "마지막 요청"), h("dd", null, `${clock(s.at)} · 입력 ${fmtTokens(s.last.input)} + 캐시 읽기 ${fmtTokens(s.last.cacheRead)} + 캐시 쓰기 ${fmtTokens(s.last.cacheWrite)}`), h("dt", null, "모델"), h("dd", null, h("code", null, s.model ?? "모름")), h("dt", null, "이슈"), h("dd", null, s.issue ?? "이슈 없음"), h("dt", null, "요청"), h("dd", null, `${s.requests}회 · ${ago(s.since)} 시작`))));\n}\n\nfunction kitPanel(k) {\n  const s = k.sessionStart;\n  const fill = h("i", null);\n  fill.style.width = `${Math.min(100, Math.round(s.ratio * 100))}%`;\n  return h("section", { class: "panel", "aria-labelledby": "kit-h" }, h("div", { class: "panel-head" }, h("h2", { id: "kit-h" }, "킷이 덧붙인 토큰"), h("div", { class: "aside" }, "세션 시작 · 훅 출력")),\n    h("div", { class: "panel-body stack-y" },\n      h("div", null, h("div", { class: "flex" }, h("b", null, "세션 시작 평균"), h("span", { class: "grow" }), h("b", null, `${s.avgBytes.toLocaleString()} / ${s.limit.toLocaleString()}바이트`), tag(s.within ? "상한 안" : "상한 넘음", s.within ? "ops" : "gate")), h("div", { class: `meter small${s.within ? "" : " warn"}`, role: "img", "aria-label": `세션 시작 ${s.avgBytes}바이트, 상한 ${s.limit}` }, fill), h("p", { class: "muted xs" }, `약 ${s.estTokens} 토큰(바이트 ÷ 3, 한글 위주 추정). 가장 컸던 실행 합 ${s.maxBytes}바이트`)),\n      k.hooks.length ? h("div", { class: "table-wrap" }, h("table", { class: "tbl" }, h("caption", { class: "sr-only" }, "훅별 출력 바이트"), h("thead", null, h("tr", null, h("th", { scope: "col" }, "훅"), h("th", { scope: "col", class: "r" }, "횟수"), h("th", { scope: "col", class: "r" }, "평균"), h("th", { scope: "col", class: "r" }, "최대"))), h("tbody", null, ...k.hooks.map((x) => h("tr", null, h("td", null, h("code", { class: "path" }, x.hook), h("div", { class: "muted xs" }, x.event)), h("td", { class: "r" }, String(x.count)), h("td", { class: "r" }, String(x.avgBytes)), h("td", { class: "r" }, String(x.maxBytes))))))) : h("p", { class: "muted small" }, "아직 훅 실행 기록이 없다(.agents/state/hook-output.jsonl)."),\n      k.modules.length ? h("p", { class: "muted small" }, "소유자별 세션마다 실리는 파일: ", k.modules.map((m) => `${m.owner} ${m.files}개 ${fmtBytes(m.bytes)}${Object.keys(m.hooks).length ? ` · 훅 ${Object.values(m.hooks).reduce((a, b) => a + b, 0)}` : ""}`).join(" · ")) : null,\n      h("p", { class: "muted xs" }, "관리 페이지 · 저장 · 승인 · 답은 세션에 아무것도 덧붙이지 않는다(모델 호출 0).")));\n}\n\nasync function historyTab(host, ctx) {\n  clear(host).append(skeleton(4));\n  let q = "";\n  let role = "";\n  const out = h("div", { "aria-live": "polite" });\n  const input = h("input", { type: "text", id: "hist-q", placeholder: "프롬프트 글 찾기", "aria-label": "프롬프트 글 찾기", onkeydown: (e) => {\n    if (e.key === "Enter") {\n      q = input.value.trim();\n      void load();\n    }\n  } });\n  const roleSel = h("select", { id: "hist-role", "aria-label": "역할 거르기", onchange: (e) => {\n    role = e.target.value;\n    void load();\n  } }, h("option", { value: "" }, "역할 모두"), ...["design", "implement", "review", "docs"].map((r) => h("option", { value: r }, r)));\n  async function load() {\n    clear(out).append(skeleton(3));\n    const r = await get("/history", { query: { q, role } });\n    if (!ctx.isCurrent()) return;\n    clear(out);\n    if (!r.ok) {\n      out.append(r.error.code === "history_off" ? banner("warn", "lock", h("b", null, "대화 기록 읽기가 꺼져 있다. "), "프롬프트 기록은 이 컴퓨터 설정(", h("code", null, \'"history": "on"\'), ")을 켠 사람만 본다.") : errorState(r.error, () => void load()));\n      return;\n    }\n    const d = r.data;\n    out.append(h("p", { class: "muted small" }, `${d.total}건 중 ${d.shown}건 · ${d.note}${d.unreadable ? ` · 읽지 못한 줄 ${d.unreadable}` : ""}`), d.prompts.length ? h("ul", { class: "prompt-list" }, ...d.prompts.map((p) => h("li", null, h("div", { class: "muted xs" }, clock(p.at), " · ", harnessBadge(p.harness), p.issue ? ` · ${p.issue}` : "", p.role ? ` · ${p.role}` : ""), h("div", { class: "prompt-text" }, p.text)))) : emptyState("프롬프트 기록이 없다", q ? "찾는 말을 바꾼다." : "이 리포에서 보낸 프롬프트가 없다."));\n  }\n  clear(host).append(h("div", { class: "stack-y" }, h("div", { class: "flex wrap" }, h("label", { for: "hist-q", class: "sr-only" }, "찾기"), input, roleSel, button("찾기", { icon: "search", onClick: () => {\n    q = input.value.trim();\n    void load();\n  } })), out));\n  await load();\n}\n\nexport async function render(ctx) {\n  const { host, route } = ctx;\n  ctx.setHeader({ title: "기록 · 사용량", sub: "이 컴퓨터의 대화 기록을 읽어 보여 준다 · 관리 페이지는 모델을 부르지 않는다", tools: [ctx.searchBox().form] });\n  let tab = route.query.tab === "history" ? "history" : "usage";\n  let days = "7";\n  let harness = "";\n  const panel = h("div", { id: "usage-panel", role: "tabpanel", tabindex: "0", class: "stack-y" });\n  const kitR = await get("/usage/kit");\n  const nowR = await get("/usage/now");\n  if (!ctx.isCurrent()) return undefined;\n\n  async function drawUsage() {\n    clear(panel).append(skeleton(5));\n    const r = await get("/usage", { query: { days, harness } });\n    if (!ctx.isCurrent()) return;\n    clear(panel);\n    if (!r.ok) {\n      panel.append(errorState(r.error, () => void drawUsage()));\n      return;\n    }\n    const u = r.data;\n    const filters = h("div", { class: "flex wrap" }, h("span", { class: "muted small" }, "기간"), seg("기간", [{ id: "1", label: "오늘" }, { id: "7", label: "7일" }, { id: "30", label: "30일" }], days, (v) => {\n      days = v;\n      void drawUsage();\n    }), h("label", { for: "u-h", class: "muted small" }, "하네스"), h("select", { id: "u-h", onchange: (e) => {\n      harness = e.target.value;\n      void drawUsage();\n    } }, h("option", { value: "" }, "모두"), ...["claude", "codex", "kiro"].map((x) => h("option", { value: x, selected: x === harness }, HARNESS_KO[x]))), h("span", { class: "grow" }), u.enabled ? h("span", { class: "muted xs" }, `${u.range.from.slice(0, 10)} ~ ${u.range.to.slice(0, 10)} · 이 리포(와 worktree)만`) : null);\n    panel.append(filters, sourcesBanner(u));\n    const kit = kitR.ok ? kitPanel(kitR.data) : null;\n    if (!u.enabled) {\n      panel.append(h("div", { class: "usage-grid" }, h("div", { class: "stack-y" }, emptyState("토큰 사용량은 대화 기록 읽기를 켜면 보인다", "꺼진 동안 이 컴퓨터의 ~/.claude · ~/.codex 를 열지 않는다. 킷이 덧붙인 양은 늘 보인다."), commandBox(\'echo \\\'{ "history": "on" }\\\' > ~/.config/harness-kit/config.json\', "켜는 명령 복사(사람이 직접)")), h("div", { class: "stack-y" }, nowPanel(nowR.ok ? nowR.data : { enabled: false }), kit)));\n      return;\n    }\n    const t = u.totals;\n    panel.append(h("div", { class: "usage-grid" },\n      h("div", { class: "stack-y" },\n        h("section", { class: "panel", "aria-labelledby": "day-h" }, h("div", { class: "panel-head" }, h("h2", { id: "day-h" }, "하루 토큰 · 역할별"), h("div", { class: "aside" }, `${days === "1" ? "오늘" : `${days}일`} ${fmtTokens(t.sum)}`, u.cost ? ` · 추정 비용 ${u.cost.estimate}` : "")), h("div", { class: "panel-body" }, t.requests ? dailyStack(u.daily, u.roles) : emptyState("이 기간 기록이 없다", "이 리포의 세션이 이 기간에 없었다."))),\n        u.cost ? h("p", { class: "muted xs" }, u.cost.note) : null,\n        h("div", { class: "two-col" },\n          h("section", { class: "panel", "aria-labelledby": "iss-h" }, h("div", { class: "panel-head" }, h("h2", { id: "iss-h" }, "이슈별 토큰"), h("div", { class: "aside" }, days === "1" ? "오늘" : `${days}일`)), h("div", { class: "panel-body stack-y" }, u.byIssue.length ? issueBars(u.byIssue) : h("p", { class: "muted" }, "기록이 없다"), h("p", { class: "muted xs" }, "이슈는 세션 등록과 기록의 gitBranch 에서 찾는다."))),\n          h("section", { class: "panel", "aria-labelledby": "cache-h" }, h("div", { class: "panel-head" }, h("h2", { id: "cache-h" }, "캐시 읽기 비율"), h("div", { class: "aside" }, `평균 ${pct(u.cache.average)}`)), h("div", { class: "panel-body" }, cacheLine(u.cache), h("p", { class: "muted xs" }, "캐시 읽기 ÷ (입력 + 캐시 읽기 + 캐시 쓰기). 높을수록 같은 앞부분을 다시 쓴다."))))),\n      h("div", { class: "stack-y" }, nowPanel(nowR.ok ? nowR.data : { enabled: false }), kit)));\n  }\n\n  const tabs = tabList("기록 · 사용량", [{ id: "usage", label: "사용량", panel: "usage-panel" }, { id: "history", label: "프롬프트 기록", panel: "usage-panel" }], tab, (id) => {\n    tab = id;\n    history.replaceState(null, "", `${location.pathname}${id === "history" ? "?tab=history" : ""}`);\n    panel.setAttribute("aria-labelledby", `tab-${id}`);\n    void (id === "history" ? historyTab(panel, ctx) : drawUsage());\n  });\n  panel.setAttribute("aria-labelledby", `tab-${tab}`);\n  host.append(h("div", { class: "stack-y" }, tabs, panel));\n  if (tab === "history") await historyTab(panel, ctx);\n  else await drawUsage();\n  return undefined;\n}\n', "js/views/verify.js": '// S06 검증: 마지막 검증과 단계별 시간, 품질 게이트, 정적 분석, 리뷰 지적. 읽기만 한다(리뷰 판단은 이슈 화면의 review 탭).\nimport { get } from "../api.js";\nimport { clear, h, icon } from "../dom.js";\nimport { clock, fmtMs, pct } from "../format.js";\nimport { link } from "../router.js";\nimport { banner, commandBox, emptyState, tag } from "../ui.js";\nimport { loadAll } from "./common.js";\n\nconst STATUS = {\n  passed: ["ops", "ok", "통과"],\n  failed: ["gate", "fail", "실패"],\n  warned: ["build", "alert", "경고"],\n  reported: ["line", "help", "보고만"],\n  skipped: ["line", "help", "건너뜀"],\n  incomplete: ["gate", "alert", "끝내지 못함"],\n};\n\nconst statusTag = (s) => {\n  const [tone, ic, text] = STATUS[s] ?? ["line", "help", s ?? "-"];\n  return tag(text, tone, icon(ic, "s"));\n};\n\nconst SEV_TONE = { CRITICAL: "gate", HIGH: "gate", MEDIUM: "build", LOW: "line" };\n\nexport async function render(ctx) {\n  const { host } = ctx;\n  ctx.setHeader({ title: "검증", sub: "마지막 검증 · 품질 게이트 · 정적 분석. 결과는 .agents/reports · .agents/state 에서 읽는다", tools: [ctx.searchBox().form] });\n  const res = await loadAll(ctx, [get("/verify"), get("/reports/summary"), get("/reports/findings"), get("/issues")]);\n  if (!res) return undefined;\n  const [verifyR, sumR, findR, issuesR] = res;\n  const checkouts = verifyR.data.checkouts;\n  const summary = sumR.data;\n  const findings = findR.data.findings;\n  const issues = issuesR.data.issues;\n  let sel = 0;\n  let onlyNew = false;\n  const body = h("div", { class: "verify-grid" });\n  const picker = h("select", { id: "branch-pick", "aria-label": "브랜치 고르기", onchange: (e) => {\n    sel = Number(e.target.value);\n    draw();\n  } }, ...checkouts.map((c, i) => h("option", { value: String(i) }, `${c.checkout.branch ?? c.checkout.path}${c.checkout.kind === "main" ? " (메인 폴더)" : ""}`)));\n\n  function gatePanel() {\n    const g = summary.gate;\n    if (!g) return h("section", { class: "panel" }, h("div", { class: "panel-body" }, banner("info", "shield", h("b", null, "품질 게이트 결과가 아직 없다. "), "게이트가 돌면 .agents/reports/quality-gate-last.json 이 생긴다."), commandBox("npx harness-kit quality", "명령 복사")));\n    const [tone, , text] = STATUS[g.status] ?? ["line", "help", g.status ?? "-"];\n    return h("section", { class: "panel lift", "aria-labelledby": "qg-h" },\n      h("div", { class: "panel-head" }, icon(g.status === "passed" ? "ok" : g.status === "failed" ? "fail" : "alert"), h("h2", { id: "qg-h" }, g.status === "passed" ? "품질 게이트 통과" : g.status === "failed" ? "품질 게이트 통과 못 함" : `품질 게이트 ${text}`), tag(text, tone), h("div", { class: "aside" }, `${g.mode ?? ""} · level ${g.level ?? "-"}${g.head ? ` · head ${String(g.head).slice(0, 7)}` : ""}`)),\n      h("div", { class: "panel-body" }, h("div", { class: "tiles" }, ...(g.checks ?? []).map((c) => h("div", { class: `tile ${c.status}` }, h("div", { class: "tile-h" }, statusTag(c.status)), h("div", { class: "tile-id" }, c.id), h("div", { class: "tile-v" }, c.value === undefined ? (c.reason ?? "-") : String(c.value), c.limit !== undefined && c.limit !== null ? h("span", { class: "muted xs" }, ` 기준 ${c.limit}`) : null)))),\n        (g.incomplete ?? []).length ? banner("warn", "alert", h("b", null, "끝내지 못한 분석기: "), (g.incomplete ?? []).map((x) => `${x.analyzer}(${x.reason})`).join(" · ")) : null));\n  }\n\n  function verifyPanel() {\n    const c = checkouts[sel];\n    if (!c) return h("section", { class: "panel" }, emptyState("체크아웃이 없다", ""));\n    const r = c.record;\n    if (!r) return h("section", { class: "panel", "aria-labelledby": "lv-h" }, h("div", { class: "panel-head" }, h("h2", { id: "lv-h" }, "마지막 검증")), h("div", { class: "panel-body" }, emptyState("검증 기록이 없다", "bash scripts/verify.sh 를 돌리면 이 브랜치의 .agents/state/verify-last.json 이 생긴다."), commandBox("bash scripts/verify.sh --summary")));\n    const max = Math.max(1, ...r.steps.map((s) => s.durationMs ?? 0));\n    return h("section", { class: "panel", "aria-labelledby": "lv-h" },\n      h("div", { class: "panel-head" }, h("h2", { id: "lv-h" }, "마지막 검증 · 단계별 시간"), h("div", { class: "aside" }, h("span", { class: "seg", role: "group", "aria-label": "검증 수준" }, ...["fast", "changed", "affected", "full"].map((l) => h("button", { type: "button", "aria-pressed": r.level === l ? "true" : "false", tabindex: "-1", "aria-disabled": "true" }, l))))),\n      h("div", { class: "panel-body stack-y" },\n        h("p", { class: "small" }, clock(r.finishedAt), " · ", c.issue ?? "이슈 없음", " · 전체 ", fmtMs(r.durationMs), " ", statusTag(r.status), c.slowest ? h("span", { class: "muted xs" }, ` · 가장 느린 단계 ${c.slowest.label} ${fmtMs(c.slowest.durationMs)}`) : null),\n        r.steps.length ? h("table", { class: "tbl" }, h("caption", { class: "sr-only" }, "검증 단계별 시간"), h("thead", null, h("tr", null, ...["단계", "걸린 시간", "", "결과"].map((t) => h("th", { scope: "col" }, t)))),\n          h("tbody", null, ...r.steps.map((s) => {\n            const fill = h("span", { class: "bar-fill" });\n            fill.style.width = `${Math.max(2, Math.round(((s.durationMs ?? 0) / max) * 100))}%`;\n            return h("tr", null, h("td", null, s.label), h("td", { class: "r" }, fmtMs(s.durationMs)), h("td", { class: "bar-cell" }, h("span", { class: "bar-track", "aria-hidden": "true" }, fill)), h("td", null, statusTag(s.status)));\n          }))) : h("p", { class: "muted" }, "단계 기록이 없다"),\n        h("p", { class: "muted small" }, icon("lock", "s"), " full 은 CI 에서만 돈다. 에이전트의 --full 은 훅이 막는다.")));\n  }\n\n  function findingsPanel() {\n    const f = summary.findings;\n    const list = (onlyNew ? findings.filter((x) => x.new) : findings).slice(0, 12);\n    return h("section", { class: "panel", "aria-labelledby": "sa-h" },\n      h("div", { class: "panel-head" }, h("h2", { id: "sa-h" }, "정적 분석"), h("div", { class: "aside" }, f ? `SARIF ${Object.keys(f.analyzers ?? {}).length}종 · ${clock(f.at)}` : "결과 없음")),\n      f ? h("div", { class: "panel-body stack-y" },\n        h("table", { class: "tbl" }, h("caption", { class: "sr-only" }, "심각도별 건수"), h("thead", null, h("tr", null, ...["심각도", "새로 생김", "전체"].map((t, i) => h("th", { scope: "col", class: i ? "r" : "" }, t)))), h("tbody", null, ...["CRITICAL", "HIGH", "MEDIUM", "LOW"].map((s) => h("tr", null, h("td", null, tag(s, SEV_TONE[s])), h("td", { class: "r" }, String(f.new[s] ?? 0)), h("td", { class: "r" }, String(f.bySeverity[s] ?? 0)))))),\n        h("label", { class: "pick plain xs", for: "only-new" }, h("input", { type: "checkbox", id: "only-new", onchange: (e) => {\n          onlyNew = e.target.checked;\n          draw();\n        } }), "새로 생긴 것만"),\n        list.length ? h("ul", { class: "find-list" }, ...list.map((x) => h("li", null, tag(x.severity, SEV_TONE[x.severity] ?? "line"), h("div", null, h("div", null, x.title ?? x.check), h("code", { class: "path" }, `${x.path ?? ""}${x.line ? `:${x.line}` : ""}`))))) : h("p", { class: "muted small" }, "보여 줄 발견이 없다"),\n        f.truncated ? h("p", { class: "muted xs" }, "발견이 많아 앞부분만 저장됐다.") : null) : h("div", { class: "panel-body" }, emptyState("정적 분석 결과가 없다", "분석기가 돌면 .agents/reports/findings-latest.json 이 생긴다."), commandBox("npx harness-kit quality --findings")));\n  }\n\n  function reviewPanel() {\n    const rows = issues.filter((i) => i.review && (i.review.open.CRITICAL || i.review.open.HIGH || i.review.open.MEDIUM || i.review.open.LOW));\n    return h("section", { class: "panel", "aria-labelledby": "rv-h" }, h("div", { class: "panel-head" }, h("h2", { id: "rv-h" }, "리뷰 지적"), h("div", { class: "aside" }, `${rows.length}개 이슈`)),\n      h("div", { class: "panel-body" }, rows.length ? h("ul", { class: "find-list" }, ...rows.map((i) => h("li", null, link(`/issues/${i.key}/review`, { class: "key" }, i.key), h("div", { class: "flex wrap" }, ...["CRITICAL", "HIGH", "MEDIUM", "LOW"].filter((s) => i.review.open[s]).map((s) => tag(`${s} ${i.review.open[s]}`, SEV_TONE[s]))), link(`/issues/${i.key}/review`, { class: "btn sm" }, "리뷰 판단")))) : emptyState("열린 리뷰 지적이 없다", "리뷰 보고서가 생기면 지적과 판단이 여기 모인다.")));\n  }\n\n  function metricsPanel() {\n    const m = summary.metrics;\n    if (!m) return null;\n    const entries = Object.entries(m).filter(([, v]) => typeof v === "number").slice(0, 6);\n    if (!entries.length) return null;\n    return h("section", { class: "panel", "aria-labelledby": "mt-h" }, h("div", { class: "panel-head" }, h("h2", { id: "mt-h" }, "지표")), h("div", { class: "panel-body" }, h("dl", { class: "kv-grid" }, ...entries.flatMap(([k, v]) => [h("dt", null, k), h("dd", null, k.toLowerCase().includes("percent") ? `${v}%` : k.toLowerCase().includes("ratio") ? pct(v, 1) : String(v))]))));\n  }\n\n  function draw() {\n    clear(body).append(h("div", { class: "stack-y" }, verifyPanel(), reviewPanel()), h("div", { class: "stack-y" }, findingsPanel(), metricsPanel()));\n  }\n  host.append(h("div", { class: "stack-y" }, gatePanel(), h("div", { class: "flex" }, h("label", { for: "branch-pick", class: "muted small" }, "브랜치"), picker), body, h("p", { class: "muted xs" }, "체크포인트(entire 모듈)는 HK-20 에서 제공한다. 검증 시간 추이는 날마다의 기록을 따로 저장하지 않아 보이지 않는다.")));\n  draw();\n  return undefined;\n}\n', "js/views/workspace.js": '// S07 작업 공간: worktree 목록 · 끝의 정의 판정 · 세션과 점유 파일 · 대기함. 화면은 정리 명령을 보여 주기만 하고 실행하지 않는다(DB-R10).\nimport { del, errorText, get } from "../api.js";\nimport { clear, h, icon } from "../dom.js";\nimport { ago, ROLE_KO } from "../format.js";\nimport { link } from "../router.js";\nimport { store } from "../store.js";\nimport { banner, button, commandBox, emptyState, harnessBadge, tag, toast } from "../ui.js";\nimport { loadAll } from "./common.js";\n\nconst cond = (ok, yes, no) => h("span", { class: ok ? "cond ok" : "cond bad" }, icon(ok ? "ok" : "fail", "s"), ok ? yes : no);\n\nexport async function render(ctx) {\n  const { host } = ctx;\n  ctx.setHeader({ title: "작업 공간", sub: "worktree · 끝의 정의 · 세션 · 대기함. 정리는 터미널에서", tools: [ctx.searchBox().form] });\n  const res = await loadAll(ctx, [get("/worktrees"), get("/sessions"), get("/dispatch/queue")]);\n  if (!res) return undefined;\n  const wt = res[0].data;\n  const sessions = res[1].data.sessions;\n  let queue = res[2].data.items;\n  const readOnly = Boolean(store.session?.readOnly);\n\n  const rows = wt.worktrees.map((w) => h("tr", null,\n    h("td", null, h("b", null, w.name), h("div", { class: "path" }, w.path)),\n    h("td", null, w.kind === "main" ? tag("메인", "line") : tag("worktree", "design"), h("div", { class: "muted xs" }, w.branch ?? "분리된 HEAD")),\n    h("td", null, w.issue ? link(`/issues/${w.issue}`, { class: "key" }, w.issue) : "—"),\n    h("td", null, cond(!w.dirty, "변경 없음", "커밋 안 된 변경")),\n    h("td", null, cond(w.unpushed === 0, "push 안 된 커밋 0", `push 안 된 커밋 ${w.unpushed}`)),\n    h("td", null, w.kind === "main" ? h("span", { class: "muted xs" }, "-") : cond(w.merged === true, "병합됨", "병합 전")),\n    h("td", null, w.done ? tag("정리 가능", "ops") : h("span", { class: "muted xs" }, w.kind === "main" ? "-" : "아직"), h("div", { class: "muted xs" }, ago(w.lastUsed))),\n    h("td", null, w.done ? commandBox(`python3 scripts/harness/worktree.py done ${w.name}`, "복사") : null),\n  ));\n\n  const queueHost = h("div", { "aria-live": "polite" });\n  function drawQueue() {\n    clear(queueHost);\n    if (!queue.length) {\n      queueHost.append(emptyState("대기함이 비었다", "Codex · Kiro 세션이나 사람이 대기함을 고른 요청이 여기 쌓인다. 훅이 다음 세션 시작 때 건수와 첫 요청 한 줄만 보여 준다."));\n      return;\n    }\n    queueHost.append(h("ul", { class: "queue-list" }, ...queue.map((q) => h("li", null, h("div", { class: "grow" }, h("div", { class: "small" }, q.message.slice(0, 160)), h("div", { class: "muted xs" }, `${q.kind ?? ""} · ${q.createdBy ?? ""} · ${ago(q.createdAt)}${q.stale ? " · 24시간 넘게 가져가지 않았다" : ""} · ${q.id}`), q.paths.length ? h("code", { class: "path" }, q.paths.join(", ")) : null), q.stale ? tag("오래됨", "build") : null, button("버리기", { sm: true, kind: "danger", icon: "trash", disabled: readOnly, title: readOnly ? "읽기 전용" : "", onClick: async () => {\n      const r = await del(`/dispatch/queue/${encodeURIComponent(q.id)}`);\n      if (!r.ok) {\n        toast(errorText(r.error));\n        return;\n      }\n      queue = queue.filter((x) => x.id !== q.id);\n      toast("대기함 항목을 버렸다");\n      drawQueue();\n    } })))));\n  }\n  drawQueue();\n\n  host.append(h("div", { class: "stack-y" },\n    wt.over ? banner("warn", "alert", h("b", null, `worktree ${wt.count}개 — 리포당 상한 ${wt.maxPerRepo}개를 넘었다. `), "끝난 것부터 정리한다.") : null,\n    h("section", { class: "panel", "aria-labelledby": "wt-h" }, h("div", { class: "panel-head" }, h("h2", { id: "wt-h" }, "worktree"), h("div", { class: "aside" }, `${wt.count}개 / 상한 ${wt.maxPerRepo}`)),\n      h("div", { class: "table-wrap" }, h("table", { class: "tbl" }, h("caption", { class: "sr-only" }, "worktree 와 끝의 정의 판정"), h("thead", null, h("tr", null, ...["폴더", "종류 · 브랜치", "이슈", "변경", "push", "병합", "끝", "정리 명령"].map((t) => h("th", { scope: "col" }, t)))), h("tbody", null, ...rows))),\n      h("div", { class: "panel-foot" }, "끝의 정의 = 변경 없음 + push 안 된 커밋 0 + 브랜치 병합됨. 화면은 아무것도 지우지 않는다. 사람이 터미널에서: ", h("code", null, wt.gc))),\n    h("div", { class: "two-col" },\n      h("section", { class: "panel", "aria-labelledby": "ss-h" }, h("div", { class: "panel-head" }, h("h2", { id: "ss-h" }, "세션 · 점유 파일"), h("div", { class: "aside" }, `${sessions.filter((s) => s.state !== "gone").length}개 살아 있음`)),\n        h("div", { class: "panel-body" }, sessions.length ? h("ul", { class: "sess-list" }, ...sessions.map((s) => h("li", null, h("span", { class: `dot ${s.state === "gone" ? "off" : s.turn === "working" ? "busy" : "idle"}`, "aria-hidden": "true" }), h("div", { class: "grow" }, h("b", null, s.name ?? s.id.slice(0, 12)), h("div", { class: "muted xs" }, harnessBadge(s.harness), ` · ${ROLE_KO[s.role] ?? s.role ?? "역할 모름"}${s.issue ? ` · ${s.issue}` : ""} · ${s.state === "gone" ? "끊김" : s.state === "alive" ? "수신함 있음" : "수신함 없음"}`), s.files.length ? h("div", { class: "path" }, `점유: ${s.files.join(", ")}`) : null)))) : emptyState("등록된 세션이 없다", "세션 시작 훅이 등록한다."))),\n      h("section", { class: "panel", "aria-labelledby": "q-h" }, h("div", { class: "panel-head" }, h("h2", { id: "q-h" }, "대기함"), h("div", { class: "aside" }, `${queue.length}건`)), h("div", { class: "panel-body" }, queueHost))),\n  ));\n  return undefined;\n}\n', "js/viz.js": '/* harness-kit 관리 페이지 시안 — 차트 도우미(바닐라 JS · 외부 파일 · 라이브러리 없음)\n * 인라인 SVG로 선 · 세로 막대 · 덤벨을 그린다. 화면마다 자기 예시 데이터를 넘긴다.\n *\n * dataviz 규칙을 여기서 지킨다.\n *  - 색은 app.css 토큰을 클래스로만 쓴다: ink(한 계열 기본 · 회색 잉크) · design · build · ops · gate(사람 승인 대기 · 실패).\n *  - 선 2px · 끝점 지름 8px + 바탕색 고리 2px · 막대 두께 24px 이하, 바닥은 각지고 끝은 4px 둥글게 · 격자 1px 실선.\n *  - 기준선(문턱 · 목표 · 도입 전 값)은 1px 점선과 이름을 같이 쓴다. 기준 밖 자리는 옅은 빨강으로 칠한다.\n *  - 글자는 12px 이상이고 계열 색을 입지 않는다. 값은 끝점 · 극값처럼 고른 자리에만 쓴다.\n *  - 차트 하나 = 탭 한 번. SVG에 role="img" + aria-label(요약)을 달고, 포커스하면 ← → · Home · End로 점을 옮기며\n *    툴팁을 본다. 마우스는 칸 전체가 잡는 자리다. 툴팁은 보탬이다. 표로 보기(table)를 같이 두거나,\n *    작은 그림은 aria-label에 값을 모두 쓴다(화면에서 안 보이는 표는 겹쳐 그려져 두지 않는다).\n *  - 글은 textContent로만 넣는다.\n */\n  var HXViz;\n  var NS = "http://www.w3.org/2000/svg";\n  var WEEK = ["일", "월", "화", "수", "목", "금", "토"];\n\n  function el(tag, attrs, parent) {\n    var e = document.createElementNS(NS, tag);\n    if (attrs) {\n      Object.keys(attrs).forEach(function (k) {\n        if (attrs[k] !== null && attrs[k] !== undefined) e.setAttribute(k, attrs[k]);\n      });\n    }\n    if (parent) parent.appendChild(e);\n    return e;\n  }\n\n  function text(parent, x, y, s, cls, anchor) {\n    var t = el("text", { x: x, y: y, "class": cls || "vz-ax", "text-anchor": anchor || "middle" }, parent);\n    t.textContent = s;\n    return t;\n  }\n\n  function merge(base, over) {\n    var out = {};\n    Object.keys(base).forEach(function (k) { out[k] = base[k]; });\n    if (over) Object.keys(over).forEach(function (k) { out[k] = over[k]; });\n    return out;\n  }\n\n  /* ── 툴팁: 값이 앞(진하게), 이름이 뒤. 계열은 짧은 선으로 표시 ── */\n  var tipEl = null;\n  function tipBox() {\n    if (tipEl) return tipEl;\n    tipEl = document.createElement("div");\n    tipEl.className = "vz-tip";\n    tipEl.hidden = true;\n    tipEl.setAttribute("role", "tooltip");\n    document.body.appendChild(tipEl);\n    return tipEl;\n  }\n\n  function showTip(head, rows, x, y) {\n    var t = tipBox();\n    t.textContent = "";\n    var h = document.createElement("div");\n    h.className = "vz-tip-h";\n    h.textContent = head;\n    t.appendChild(h);\n    rows.forEach(function (r) {\n      var d = document.createElement("div");\n      d.className = "vz-tip-r" + (r.sub ? " sub" : "");\n      var b = document.createElement("b");\n      b.textContent = r.v;\n      d.appendChild(b);\n      if (r.key) {\n        var i = document.createElement("i");\n        i.className = "vz-key " + r.key;\n        d.appendChild(i);\n      }\n      if (r.n) {\n        var s = document.createElement("span");\n        s.textContent = r.n;\n        d.appendChild(s);\n      }\n      t.appendChild(d);\n    });\n    t.hidden = false;\n    var w = t.offsetWidth, hh = t.offsetHeight;\n    var left = Math.max(8, Math.min(window.innerWidth - w - 8, x + 12));\n    var top = y - hh - 12;\n    if (top < 8) top = y + 16;\n    t.style.left = left + "px";\n    t.style.top = top + "px";\n  }\n\n  function hideTip() {\n    if (tipEl) tipEl.hidden = true;\n  }\n\n  /* HTML 요소(막대 조각 · 표 칸)에 툴팁을 단다. make() → [머리, 줄들] */\n  function bind(target, make, group) {\n    var g = group || target;\n    function at(x, y) {\n      var r = make();\n      showTip(r[0], r[1], x, y);\n    }\n    target.addEventListener("pointerenter", function (e) { g.classList.add("vz-on"); at(e.clientX, e.clientY); });\n    target.addEventListener("pointermove", function (e) { at(e.clientX, e.clientY); });\n    target.addEventListener("pointerleave", function () { g.classList.remove("vz-on"); hideTip(); });\n    target.addEventListener("focus", function () {\n      var b = target.getBoundingClientRect();\n      g.classList.add("vz-on");\n      at(b.left + b.width / 2, b.top + 4);\n    });\n    target.addEventListener("blur", function () { g.classList.remove("vz-on"); hideTip(); });\n  }\n\n  /* SVG 차트 공통: 칸마다 마우스 자리, 차트 자체는 탭 한 번 + 화살표 */\n  function interact(svg, o) {\n    var cur = -1;\n    function go(i) {\n      cur = i;\n      var r = o.show(i);\n      showTip(r.head, r.rows, r.x, r.y);\n    }\n    function clear() {\n      cur = -1;\n      if (o.clear) o.clear();\n      hideTip();\n    }\n    var layer = el("g", { "class": "vz-hits" }, svg);\n    for (var i = 0; i < o.n; i++) {\n      (function (k) {\n        var b = o.hit(k);\n        if (!b) return;\n        var h = el("rect", { x: b.x, y: b.y, width: Math.max(1, b.w), height: Math.max(1, b.h), "class": "vz-hit" }, layer);\n        h.addEventListener("pointerenter", function () { go(k); });\n        h.addEventListener("pointermove", function () { if (cur !== k) go(k); });\n      })(i);\n    }\n    svg.addEventListener("pointerleave", clear);\n    svg.addEventListener("focus", function () { go(o.start !== undefined ? o.start : o.n - 1); });\n    svg.addEventListener("blur", clear);\n    svg.addEventListener("keydown", function (e) {\n      var k = cur < 0 ? (o.start !== undefined ? o.start : o.n - 1) : cur;\n      if (e.key === "ArrowRight") k = Math.min(o.n - 1, k + 1);\n      else if (e.key === "ArrowLeft") k = Math.max(0, k - 1);\n      else if (e.key === "Home") k = 0;\n      else if (e.key === "End") k = o.n - 1;\n      else if (e.key === "Escape") { clear(); return; }\n      else return;\n      e.preventDefault();\n      go(k);\n    });\n  }\n\n  function svgRoot(host, W, H, label, focusable) {\n    var svg = el("svg", {\n      width: W, height: H, viewBox: "0 0 " + W + " " + H,\n      "class": "vz-svg", role: "img", "aria-label": label,\n      tabindex: focusable === false ? null : "0"\n    }, host);\n    var t = el("title", null, svg);\n    t.textContent = label;\n    return svg;\n  }\n\n  function lastIndex(vals) {\n    for (var i = vals.length - 1; i >= 0; i--) if (vals[i] !== null && vals[i] !== undefined) return i;\n    return -1;\n  }\n\n  /* ── 선 차트 · 스파크라인 ──\n   * values: 숫자(null = 그 칸 값 없음), labels: 칸 이름(툴팁 머리), y: {min, max, ticks?, fmt?}\n   * ticks가 없으면 축 없이 그린다(스파크라인). xTicks: [[칸, 글, 정렬?]], refs: [{v, label, at:"start"|"end", below}]\n   * zone: {from, to} 기준 밖 자리, events: [{i, label}], step: 계단선, area: 옅은 바탕\n   * endLabel(v) 끝값 글, extra: [{i, label, pos:"below", anchor}], ptClass(v, i) 점 색, fmt(v) 툴팁 값, tip(i) 툴팁 줄\n   */\n  function line(host, o) {\n    var W = o.w || host.clientWidth;\n    if (!W) return null;\n    host.textContent = "";\n    var vals = o.values, n = vals.length;\n    var H = o.h || 120;\n    var m = merge({ l: 8, r: 8, t: 8, b: 8 }, o.m);\n    var pw = W - m.l - m.r, ph = H - m.t - m.b;\n    var lo = o.y.min, hi = o.y.max;\n    var tone = o.line || "ink";\n    function X(i) { return m.l + (n === 1 ? pw / 2 : (pw * i) / (n - 1)); }\n    function Y(v) { return m.t + ph - ((Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo)) * ph; }\n    var svg = svgRoot(host, W, H, o.label, o.focusable);\n\n    if (o.zone) {\n      var za = Y(o.zone.from), zb = Y(o.zone.to);\n      el("rect", { x: m.l, y: Math.min(za, zb), width: pw, height: Math.abs(zb - za), "class": "vz-zone" }, svg);\n    }\n    if (o.y.ticks) {\n      o.y.ticks.forEach(function (t) {\n        el("line", { x1: m.l, x2: m.l + pw, y1: Y(t), y2: Y(t), "class": t === lo ? "vz-base" : "vz-grid" }, svg);\n        if (o.y.fmt !== false) text(svg, m.l - 6, Y(t) + 4, o.y.fmt ? o.y.fmt(t) : String(t), "vz-ax", "end");\n      });\n    } else if (o.floor) {\n      el("line", { x1: m.l, x2: m.l + pw, y1: Y(lo), y2: Y(lo), "class": "vz-base" }, svg);\n    }\n    (o.xTicks || []).forEach(function (t) {\n      text(svg, X(t[0]), H - 4, t[1], "vz-ax" + (t[3] ? " now" : ""), t[2] || "middle");\n    });\n    (o.events || []).forEach(function (e) {\n      /* 사건 이름은 그림 위 여백에 둔다(선과 겹치지 않게). m.t를 14 이상 둔다 */\n      el("line", { x1: X(e.i), x2: X(e.i), y1: m.t - 12, y2: m.t + ph, "class": "vz-ev" }, svg);\n      text(svg, X(e.i) + 5, m.t - 3, e.label, "vz-lbl", "start");\n    });\n    (o.refs || []).forEach(function (r) {\n      var yy = Y(r.v);\n      el("line", { x1: m.l, x2: m.l + pw, y1: yy, y2: yy, "class": "vz-ref" }, svg);\n      if (r.label) {\n        var end = r.at === "end";\n        text(svg, end ? m.l + pw : m.l + 2, r.below ? yy + 15 : yy - 5, r.label, "vz-ref-l", end ? "end" : "start");\n      }\n    });\n\n    var segs = [], cur = [];\n    vals.forEach(function (v, i) {\n      if (v === null || v === undefined) { if (cur.length) segs.push(cur); cur = []; }\n      else cur.push(i);\n    });\n    if (cur.length) segs.push(cur);\n    segs.forEach(function (s) {\n      var d = "";\n      s.forEach(function (i, k) {\n        if (k === 0) d += "M" + X(i) + " " + Y(vals[i]);\n        else if (o.step) d += " H" + X(i) + " V" + Y(vals[i]);\n        else d += " L" + X(i) + " " + Y(vals[i]);\n      });\n      if (o.area && s.length > 1) {\n        el("path", { d: d + " V" + Y(lo) + " H" + X(s[0]) + " Z", "class": "vz-area " + tone }, svg);\n      }\n      if (s.length > 1) el("path", { d: d, "class": "vz-line " + tone }, svg);\n    });\n    /* 이어지지 않은 점(앞뒤가 비었다)은 점으로만 */\n    vals.forEach(function (v, i) {\n      if (v === null || v === undefined) return;\n      var prev = i > 0 ? vals[i - 1] : null, next = i < n - 1 ? vals[i + 1] : null;\n      var alone = (prev === null || prev === undefined) && (next === null || next === undefined);\n      if (alone || (o.dots && o.dots(v, i))) {\n        el("circle", { cx: X(i), cy: Y(v), r: 4, "class": "vz-pt " + (o.ptClass ? o.ptClass(v, i) : tone) }, svg);\n      }\n    });\n    (o.extra || []).forEach(function (x) {\n      var v = vals[x.i];\n      if (v === null || v === undefined) return;\n      text(svg, X(x.i) + (x.dx || 0), x.pos === "below" ? Y(v) + 17 : Y(v) - 9, x.label, "vz-val", x.anchor || "middle");\n    });\n    var last = lastIndex(vals);\n    if (last >= 0 && o.end !== false) {\n      el("circle", { cx: X(last), cy: Y(vals[last]), r: 4, "class": "vz-pt " + (o.ptClass ? o.ptClass(vals[last], last) : tone) }, svg);\n      if (o.endLabel) text(svg, X(last) + 9, Y(vals[last]) + 4, o.endLabel(vals[last]), "vz-val", "start");\n    }\n\n    var hov = el("g", { "class": "vz-hov" }, svg);\n    var xh = el("line", { y1: m.t, y2: m.t + ph, "class": "vz-xh" }, hov);\n    var hp = el("circle", { r: 4, "class": "vz-pt " + tone }, hov);\n    var step = n > 1 ? pw / (n - 1) : pw;\n    interact(svg, {\n      n: n,\n      start: last >= 0 ? last : n - 1,\n      hit: function (i) {\n        var x0 = Math.max(m.l - 4, X(i) - step / 2), x1 = Math.min(m.l + pw + 4, X(i) + step / 2);\n        return { x: x0, y: m.t - 4, w: x1 - x0, h: ph + 8 };\n      },\n      show: function (i) {\n        var v = vals[i];\n        xh.setAttribute("x1", X(i));\n        xh.setAttribute("x2", X(i));\n        if (v === null || v === undefined) hp.style.display = "none";\n        else {\n          hp.style.display = "";\n          hp.setAttribute("cx", X(i));\n          hp.setAttribute("cy", Y(v));\n          hp.setAttribute("class", "vz-pt " + (o.ptClass ? o.ptClass(v, i) : tone));\n        }\n        hov.classList.add("on");\n        var rows = o.tip ? o.tip(i) : [{ v: v === null || v === undefined ? "—" : (o.fmt ? o.fmt(v) : String(v)), n: o.name || "", key: tone }];\n        var b = svg.getBoundingClientRect();\n        return { head: o.labels[i], rows: rows, x: b.left + X(i), y: b.top + (v === null || v === undefined ? m.t : Y(v)) };\n      },\n      clear: function () { hov.classList.remove("on"); }\n    });\n    return svg;\n  }\n\n  /* 막대 하나의 길: 바닥은 각지고 위 끝만 r만큼 둥글다 */\n  function barPath(x, y, w, h, r) {\n    var rr = Math.min(r, h, w / 2);\n    if (h <= 0) return "";\n    return "M" + x + " " + (y + h) + " V" + (y + rr) + " Q" + x + " " + y + " " + (x + rr) + " " + y +\n      " H" + (x + w - rr) + " Q" + (x + w) + " " + y + " " + (x + w) + " " + (y + rr) + " V" + (y + h) + " Z";\n  }\n\n  /* ── 세로 막대(한 계열) ──\n   * values, labels(툴팁 머리), max, cls(색), bw(두께, 24 이하), xLabels: [글](칸마다, 없으면 생략)\n   * valueLabel(v, i): 막대 위 글(없으면 안 씀), zeroMark: 0인 칸에 바닥 표시, clsOf(v, i): 칸마다 색\n   * marks: 칸 아래 그릴 도형 함수(svg, cx, y, i) — 게이트 레일 마름모 등\n   */\n  function cols(host, o) {\n    var W = o.w || host.clientWidth;\n    if (!W) return null;\n    host.textContent = "";\n    var vals = o.values, n = vals.length;\n    var H = o.h || 100;\n    var m = merge({ l: 4, r: 4, t: 18, b: 22 }, o.m);\n    var pw = W - m.l - m.r, ph = H - m.t - m.b;\n    var max = o.max || Math.max.apply(null, vals) || 1;\n    var band = pw / n, bw = Math.min(o.bw || 16, 24, band - 4);\n    function cx(i) { return m.l + band * i + band / 2; }\n    function Y(v) { return m.t + ph - (v / max) * ph; }\n    var svg = svgRoot(host, W, H, o.label, o.focusable);\n    el("line", { x1: m.l, x2: m.l + pw, y1: Y(0), y2: Y(0), "class": "vz-base" }, svg);\n    var groups = [];\n    vals.forEach(function (v, i) {\n      var g = el("g", { "class": "vz-col" }, svg);\n      groups.push(g);\n      el("rect", { x: m.l + band * i + 1, y: m.t - 14, width: band - 2, height: ph + 14, rx: 3, "class": "vz-band" }, g);\n      var cls = o.clsOf ? o.clsOf(v, i) : (o.cls || "ink");\n      if (v > 0) el("path", { d: barPath(cx(i) - bw / 2, Y(v), bw, Y(0) - Y(v), 4), "class": "vz-bar " + cls }, g);\n      else if (o.zeroMark) el("line", { x1: cx(i) - bw / 2, x2: cx(i) + bw / 2, y1: Y(0) - 1, y2: Y(0) - 1, "class": "vz-zero" }, g);\n      if (o.valueLabel) {\n        var s = o.valueLabel(v, i);\n        if (s) text(g, cx(i), Y(v) - 5, s, v > 0 ? "vz-val" : "vz-ax");\n      }\n      if (o.marks) o.marks(g, cx(i), Y(0), i);\n      if (o.xLabels && o.xLabels[i]) text(g, cx(i), H - 4, o.xLabels[i], "vz-ax" + (o.xNow === i ? " now" : ""));\n    });\n    interact(svg, {\n      n: n,\n      start: o.start,\n      hit: function (i) { return { x: m.l + band * i, y: m.t - 14, w: band, h: H - m.t + 14 }; },\n      show: function (i) {\n        groups.forEach(function (g, k) { g.classList.toggle("on", k === i); });\n        var b = svg.getBoundingClientRect();\n        var rows = o.tip ? o.tip(i) : [{ v: o.fmt ? o.fmt(vals[i]) : String(vals[i]), n: o.name || "", key: o.cls || "ink" }];\n        return { head: o.labels[i], rows: rows, x: b.left + cx(i), y: b.top + Y(vals[i]) };\n      },\n      clear: function () { groups.forEach(function (g) { g.classList.remove("on"); }); }\n    });\n    return svg;\n  }\n\n  /* ── 덤벨: 줄마다 전(빈 고리) → 지금(찬 점) ──\n   * rows: [{name, sub, from, to, fromL, toL, tip:[...]}], max, ticks, fmt(축 글), lw(이름 폭), cls(지금 색)\n   */\n  function dumbbell(host, o) {\n    var W = o.w || host.clientWidth;\n    if (!W) return null;\n    host.textContent = "";\n    var rows = o.rows, n = rows.length;\n    var lw = o.lw || 150, rowH = o.rowH || 40;\n    var m = merge({ l: lw, r: 64, t: 6, b: 22 }, o.m);\n    var H = m.t + rowH * n + m.b;\n    var pw = W - m.l - m.r;\n    function X(v) { return m.l + (Math.min(v, o.max) / o.max) * pw; }\n    function RY(i) { return m.t + rowH * i + rowH / 2 + 6; }\n    var svg = svgRoot(host, W, H, o.label, o.focusable);\n    o.ticks.forEach(function (t) {\n      el("line", { x1: X(t), x2: X(t), y1: m.t, y2: H - m.b, "class": t === 0 ? "vz-base" : "vz-grid" }, svg);\n      text(svg, X(t), H - 5, o.fmt ? o.fmt(t) : String(t), "vz-ax");\n    });\n    var groups = [];\n    rows.forEach(function (r, i) {\n      var g = el("g", { "class": "vz-row" }, svg);\n      groups.push(g);\n      el("rect", { x: 0, y: m.t + rowH * i + 1, width: W, height: rowH - 2, rx: 4, "class": "vz-band" }, g);\n      var y = RY(i);\n      text(g, 0, y - 3, r.name, "vz-lbl", "start");\n      if (r.sub) text(g, 0, y + 12, r.sub, "vz-ax", "start");\n      el("line", { x1: X(r.to), x2: X(r.from), y1: y, y2: y, "class": "vz-link" }, g);\n      el("circle", { cx: X(r.from), cy: y, r: 5, "class": "vz-ring" }, g);\n      el("circle", { cx: X(r.to), cy: y, r: 5, "class": "vz-pt " + (o.cls || "ink") }, g);\n      text(g, X(r.from) + 10, y + 4, r.fromL, "vz-ax", "start");\n      text(g, X(r.to), y - 10, r.toL, "vz-val", "start");\n    });\n    interact(svg, {\n      n: n,\n      start: 0,\n      hit: function (i) { return { x: 0, y: m.t + rowH * i, w: W, h: rowH }; },\n      show: function (i) {\n        groups.forEach(function (g, k) { g.classList.toggle("on", k === i); });\n        var b = svg.getBoundingClientRect();\n        return { head: rows[i].name, rows: rows[i].tip, x: b.left + X(rows[i].to), y: b.top + RY(i) };\n      },\n      clear: function () { groups.forEach(function (g) { g.classList.remove("on"); }); }\n    });\n    return svg;\n  }\n\n  /* ── 표 ── */\n  function tableEl(caption, head, rows, right) {\n    var t = document.createElement("table");\n    t.className = "tbl";\n    var c = document.createElement("caption");\n    c.className = "sr-only";\n    c.textContent = caption;\n    t.appendChild(c);\n    var th = document.createElement("thead"), tr = document.createElement("tr");\n    head.forEach(function (h, i) {\n      var x = document.createElement("th");\n      x.scope = "col";\n      if (right && right.indexOf(i) !== -1) x.className = "r";\n      x.textContent = h;\n      tr.appendChild(x);\n    });\n    th.appendChild(tr);\n    t.appendChild(th);\n    var tb = document.createElement("tbody");\n    rows.forEach(function (r) {\n      var row = document.createElement("tr");\n      r.forEach(function (v, i) {\n        var d = document.createElement("td");\n        if (right && right.indexOf(i) !== -1) d.className = "r";\n        d.textContent = v;\n        row.appendChild(d);\n      });\n      tb.appendChild(row);\n    });\n    t.appendChild(tb);\n    return t;\n  }\n\n  /* 눈에 보이는 "표로 보기"(details) */\n  function table(host, caption, head, rows, right) {\n    host.textContent = "";\n    var d = document.createElement("details");\n    d.className = "vz-tv";\n    var s = document.createElement("summary");\n    s.textContent = "표로 보기";\n    d.appendChild(s);\n    d.appendChild(tableEl(caption, head, rows, right));\n    host.appendChild(d);\n    return d;\n  }\n\n  /* 날짜 칸: 끝 날(월, 일)에서 거꾸로 n일. 2026년 기준 */\n  function days(endM, endD, n, year) {\n    var out = [];\n    for (var i = n - 1; i >= 0; i--) {\n      var d = new Date(year, endM - 1, endD - i);\n      out.push({ m: d.getMonth() + 1, d: d.getDate(), w: WEEK[d.getDay()] });\n    }\n    return out;\n  }\n\n  /* 창 크기가 바뀌면 다시 그린다(150ms 모아서) */\n  function onResize(fn) {\n    var t;\n    window.addEventListener("resize", function () {\n      clearTimeout(t);\n      t = setTimeout(fn, 150);\n    });\n  }\n\n  HXViz = {\n    el: el,\n    text: text,\n    svgRoot: svgRoot,\n    interact: interact,\n    line: line,\n    cols: cols,\n    dumbbell: dumbbell,\n    table: table,\n    bind: bind,\n    showTip: showTip,\n    hideTip: hideTip,\n    days: days,\n    onResize: onResize\n  };\n\nexport { HXViz };\n', "pages.css": "/* 화면별 스타일. 공용 토큰 · 부품은 app.css(화면기획서 시안과 같다). 외부 글꼴 · 이미지 · CDN 없음. */\n\n.boot { padding: 48px 24px; color: var(--ink-soft); }\nbody { overflow: hidden; }\n.rail { overflow-y: auto; }\n.rail-brand .mark { color: #fff; }\n.nav-off { display: flex; align-items: center; gap: 10px; padding: 7px 9px; color: var(--rail-faint); font-size: var(--fs-m); cursor: not-allowed; }\n.nav-h { padding: 8px 17px 4px; }\n.small { font-size: var(--fs-s); }\n.xs { font-size: var(--fs-xs); }\n.wrap { flex-wrap: wrap; }\n.err-text { color: var(--gate-ink); }\n.sub { margin: 1px 0 0; }\n.flex select, .filters select, .flow-tools select { width: auto; }\n.topbar h1:focus, .topbar h1:focus-visible { outline: none; }\n.topbar { flex-wrap: wrap; }\n.topbar .crumb { margin-bottom: 2px; }\n.rp-icon { display: none; }\n.linklike { border: 0; padding: 0; background: none; color: var(--design-ink); font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }\n.linklike:hover { color: var(--design); }\n.table-wrap { overflow-x: auto; max-width: 100%; }\n.pager { display: flex; justify-content: center; padding: 12px; }\n.path { font-family: var(--font-code); font-size: var(--fs-xs); color: var(--ink-soft); overflow-wrap: anywhere; }\n.ident { padding: 2px 0; }\n\n/* 상태 4종 */\n.skeleton { display: grid; gap: 12px; padding: 20px 4px; max-width: 720px; }\n.skeleton .sk:nth-child(3n+1) { width: 92%; }\n.skeleton .sk:nth-child(3n+2) { width: 70%; }\n.skeleton .sk:nth-child(3n) { width: 82%; }\n.empty.err { color: var(--ink); }\n.empty.err > .i { color: var(--gate); width: 22px; height: 22px; }\n.ro-strip { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }\n.cmd { display: flex; align-items: center; gap: 8px; padding: 6px 6px 6px 10px; border: 1px solid var(--rule); border-radius: var(--r-ctl); background: var(--sunken); min-width: 0; }\n.cmd code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: var(--fs-xs); }\n.cmd > .i { color: var(--ink-faint); }\n.kv { display: grid; gap: 1px; }\n.kv-grid { display: grid; grid-template-columns: max-content 1fr; gap: 6px 14px; margin: 0; font-size: var(--fs-s); }\n.kv-grid dt { color: var(--ink-faint); font-weight: 600; }\n.kv-grid dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }\n.pick { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--rule); border-radius: var(--r-ctl); background: var(--raised); cursor: pointer; }\n.pick:hover { background: var(--sunken); }\n.pick.plain { border: 0; padding: 2px 0; background: none; }\n.pick-note { margin: -4px 0 4px 12px; }\n.pick:focus-within { outline: 2px solid var(--design); outline-offset: 1px; }\nfieldset.field { border: 0; margin: 0; padding: 0; min-width: 0; }\nfieldset.field legend { padding: 0; }\n\ndialog.sheet, dialog.center { overflow: auto; }\n.dlg-head { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--rule); position: sticky; top: 0; background: var(--raised); z-index: 1; }\n.dlg-head h2 { flex: 1; font-size: var(--fs-l); }\n.dlg-body { padding: 16px 18px 24px; }\n\n/* S01 홈 */\n.home-grid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; align-items: start; }\n.todo-group { display: flex; align-items: baseline; gap: 10px; padding: 14px 16px 6px; border-top: 1px dashed var(--rule); }\n.todo-group:first-child { border-top: 0; }\n.todo-group h3 { font-size: var(--fs-m); }\n.todo-group .muted { font-weight: 500; }\n.todo-list { list-style: none; }\n.todo-row { display: grid; grid-template-columns: 14px 92px minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--rule-soft); }\n.todo-row .key { font-size: var(--fs-xs); }\n.todo-title { font-weight: 600; }\n.todo-title a { color: var(--ink); }\n.rail-slot { min-width: 0; }\n.stage-bars { list-style: none; display: grid; gap: 8px; }\n.stage-bars li { display: grid; grid-template-columns: 76px 1fr 28px; align-items: center; gap: 10px; font-size: var(--fs-s); }\n.sb-t { display: block; height: 10px; background: var(--sunken); border-radius: 2px; }\n.sb-bar { display: block; height: 100%; background: var(--design); border-radius: 0 4px 4px 0; }\n.stage-bars b { text-align: right; }\n.sess-list, .int-list, .queue-list, .find-list, .prompt-list, .problems, .role-list, .mini-todo, .dep-list, .draft-list, .unit-planned, .src-list, .checks { list-style: none; }\n.sess-list li { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid var(--rule-soft); }\n.sess-list li:first-child { border-top: 0; }\n.int-list li { padding: 10px 0; border-top: 1px solid var(--rule-soft); display: grid; gap: 4px; }\n.int-list li:first-child { border-top: 0; }\n.int-list.pad { padding: 4px 16px 12px; }\n.panel > .empty { padding: 20px 16px; }\n\n/* S03 이슈 */\n.issue-status { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }\n.issue-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }\n.sess-chip { margin-right: 8px; white-space: nowrap; }\n.issue-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }\n.doc-col { min-width: 0; }\n.doc-panel { padding: 14px 4px; }\n.doc-bar { display: flex; align-items: center; gap: 10px; padding: 6px 0 10px; flex-wrap: wrap; }\n.fm { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }\n.chip { padding: 1px 8px; border-radius: var(--r-chip); background: var(--sunken); border: 1px solid var(--rule); font-family: var(--font-code); font-size: var(--fs-xs); color: var(--ink-soft); }\n.doc-edit { font-family: var(--font-code); font-size: var(--fs-s); line-height: 1.6; min-height: 320px; }\n.md table { border-collapse: collapse; margin: 0 0 12px; font-size: var(--fs-s); }\n.md th, .md td { border: 1px solid var(--rule); padding: 5px 8px; text-align: left; }\n.md pre { overflow: auto; padding: 10px 12px; background: var(--sunken); border-radius: var(--r-ctl); font-family: var(--font-code); font-size: var(--fs-xs); }\n.md blockquote { margin: 0 0 10px; padding: 2px 12px; border-left: 3px solid var(--rule-strong); color: var(--ink-soft); }\n.md img { max-width: 100%; height: auto; }\n.md ol { margin: 0 0 10px; padding-left: 22px; }\n.checks { display: grid; gap: 6px; font-size: var(--fs-s); }\n.checks li { display: flex; align-items: center; gap: 8px; }\n.checks li.ok .i { color: var(--ops); }\n.checks li.bad .i { color: var(--gate); }\n.panel.approve .panel-head .dia { margin-right: 2px; }\n.decide { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }\n.decide input { width: 220px; }\n.cond { display: inline-flex; align-items: center; gap: 4px; font-size: var(--fs-xs); white-space: nowrap; }\n.cond.ok .i { color: var(--ops); }\n.cond.bad .i { color: var(--gate); }\n.filters { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }\n.rail-cell { min-width: 120px; }\n.unit-planned { padding: 4px 16px 12px; display: grid; gap: 6px; font-size: var(--fs-s); }\n\n/* S04 질문 */\n.q-card.answered { opacity: 0.92; }\n.q-card { max-width: 920px; }\n.q-card .panel-head h2 { font-size: var(--fs-m); }\n.choices { display: grid; gap: 6px; }\n.choice { display: flex; align-items: flex-start; gap: 10px; padding: 8px 10px; border: 1px solid var(--rule); border-radius: var(--r-ctl); cursor: pointer; }\n.choice:hover { background: var(--sunken); }\n.choice.rec { border-color: var(--design); background: var(--design-wash); }\n.choice:focus-within { outline: 2px solid var(--design); outline-offset: 1px; }\n.choice .cl { font-family: var(--font-code); font-weight: 700; min-width: 18px; }\n.ans { color: var(--ops-ink); font-weight: 600; }\n\n/* S12 흐름 */\n.flow-page { display: grid; gap: 12px; }\n.flow-tools { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }\n.flow-tools select { width: auto; min-width: 220px; }\n.flow-main { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; align-items: start; }\n.flow-left { min-width: 0; }\n.flow-canvas { height: 560px; border: 1px solid var(--rule); border-radius: var(--r-panel); background: var(--raised); overflow: hidden; position: relative; }\n.flow-legend { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: var(--fs-xs); color: var(--ink-soft); }\n.flow-legend .lg { display: inline-flex; align-items: center; gap: 4px; margin-right: 8px; }\n.lg-dia { display: inline-block; width: 8px; height: 8px; transform: rotate(45deg); background: var(--design); }\n.lg-dia.build { background: var(--build); }\n.lg-dia.ops { background: var(--ops); }\n.flow-table > summary { cursor: pointer; font-weight: 600; font-size: var(--fs-s); padding: 6px 0; }\n.flow-table tr.sel td { background: var(--design-wash); }\n.sel-box { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 8px 10px; border-radius: var(--r-ctl); background: var(--design-wash); }\n.mini-todo { display: grid; gap: 8px; font-size: var(--fs-s); }\n.dep-list { display: grid; gap: 8px; font-size: var(--fs-s); padding-left: 0; }\n.draft-list { display: grid; gap: 4px; font-size: var(--fs-s); }\n.draft-list li { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }\n\n/* S06 검증 */\n.verify-grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; align-items: start; }\n.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }\n.tile { padding: 10px 12px; border: 1px solid var(--rule); border-radius: var(--r-ctl); background: var(--raised); display: grid; gap: 4px; }\n.tile.failed { border-color: #e3a3ad; background: var(--gate-wash); }\n.tile.warned { background: var(--build-wash); }\n.tile-id { font-family: var(--font-code); font-size: var(--fs-xs); color: var(--ink-soft); overflow-wrap: anywhere; }\n.tile-v { font-size: var(--fs-l); font-weight: 700; }\n.bar-cell { width: 34%; min-width: 80px; }\n.bar-cell .bar-track { display: block; }\n.find-list li { display: flex; align-items: flex-start; gap: 10px; padding: 8px 0; border-top: 1px solid var(--rule-soft); flex-wrap: wrap; }\n.find-list li:first-child { border-top: 0; }\n\n/* S00 전체 프로젝트 */\n.projects-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; align-items: start; }\n.proj.off { border-style: dashed; }\n.proj-facts { display: grid; grid-template-columns: 1.6fr 1fr 1fr; gap: 12px; font-size: var(--fs-s); }\n\n/* S08 스킬 */\n.skills-grid { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; align-items: start; }\n.skills-tbl td.desc { max-width: 380px; color: var(--ink-soft); }\n.hmarks { display: inline-flex; gap: 4px; }\n.hm { position: relative; display: inline-grid; place-items: center; }\n.hm b { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 4px; font-size: 10px; font-weight: 800; color: #fff; background: var(--ops); }\n.hm.line b { background: transparent; color: var(--ink-faint); border: 1px dashed var(--rule-strong); }\n.hm.build b { background: var(--build); }\n.hm i { position: absolute; right: -3px; top: -5px; font-style: normal; font-size: 11px; font-weight: 800; color: var(--gate); }\n.guess { font-size: var(--fs-xs); font-weight: 700; color: var(--build-ink); background: var(--build-wash); padding: 0 5px; border-radius: 3px; }\n.map-cmd { display: grid; gap: 4px; padding: 8px 0; border-top: 1px solid var(--rule-soft); }\n.map-cmd:first-child { border-top: 0; }\n\n/* S09 하네스 */\n.harness-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; align-items: start; }\n.problems { display: grid; gap: 6px; font-size: var(--fs-s); }\n.problems li { display: flex; gap: 8px; align-items: flex-start; }\n.problems .i { color: var(--build-ink); margin-top: 2px; }\n.role-list { display: grid; gap: 8px; }\n\n/* S11 접수 */\n.intake-wrap { max-width: 760px; }\n\n/* S13 기록 · 사용량 */\n.usage-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 20px; align-items: start; }\n.two-col { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }\n.src-list { display: grid; gap: 4px; margin: 4px 0; }\n.big { font-size: 40px; line-height: 1.1; font-weight: 700; letter-spacing: -0.02em; }\n.big .muted { font-size: var(--fs-s); font-weight: 500; letter-spacing: 0; }\n.meter { position: relative; height: 10px; border-radius: 3px; background: var(--sunken); overflow: visible; }\n.meter > i:not(.warn-mark) { display: block; height: 100%; background: var(--ink-soft); border-radius: 3px; }\n.meter.warn > i:not(.warn-mark) { background: var(--build); }\n.meter.small { height: 8px; }\n.meter .warn-mark { position: absolute; top: -3px; width: 2px; height: 16px; background: var(--build-ink); }\n.issue-bars { display: grid; gap: 8px; }\n.issue-bars li { display: grid; grid-template-columns: 96px 1fr 52px; align-items: center; gap: 10px; font-size: var(--fs-s); }\n.issue-bars .bar-track { height: 10px; }\n.issue-bars .bar-fill { background: var(--design); }\n.issue-bars b { text-align: right; font-variant-numeric: tabular-nums; }\n.prompt-list { display: grid; gap: 10px; }\n.prompt-list li { padding: 10px 12px; border: 1px solid var(--rule); border-radius: var(--r-ctl); background: var(--raised); }\n.prompt-text { white-space: pre-wrap; overflow-wrap: anywhere; font-size: var(--fs-s); margin-top: 4px; }\n.vz-bar.faint { fill: var(--rule-strong); }\n\n/* 1024~1179: 오른쪽 단을 300px 로, 보조 표시를 숨겨 글자 칸을 지킨다 */\n@media (max-width: 1180px) {\n  .home-grid, .flow-main { grid-template-columns: minmax(0, 1fr) 300px; }\n  .issue-grid { grid-template-columns: minmax(0, 1fr) 320px; }\n  .rail-slot { display: none; }\n  .todo-row { grid-template-columns: 14px 84px minmax(0, 1fr) auto; }\n  .rp-icon { display: grid; }\n  .usage-grid, .skills-grid, .projects-grid { grid-template-columns: minmax(0, 1fr) 320px; }\n  .rail-foot .rail-usage .ru-bar { display: none; }\n}\n@media (max-width: 880px) {\n  .home-grid, .flow-main, .issue-grid, .verify-grid, .projects-grid, .skills-grid, .harness-grid, .usage-grid, .two-col { grid-template-columns: minmax(0, 1fr); }\n  .flow-canvas { height: 420px; }\n}\n@media (max-width: 560px) {\n  .app { grid-template-columns: 48px minmax(0, 1fr); }\n  .content { padding: 14px 12px 24px; }\n  .topbar { padding: 10px 12px; }\n  .topbar h1 { font-size: var(--fs-l); }\n  .search { width: 100%; }\n  .todo-row { grid-template-columns: 14px minmax(0, 1fr); }\n  .todo-row .btn { grid-column: 2; justify-self: start; }\n  .todo-row .key { display: none; }\n  .proj-facts { grid-template-columns: 1fr 1fr; }\n  .kv-grid { grid-template-columns: 1fr; }\n  dialog.sheet { width: 100vw; }\n}\n@media (prefers-reduced-motion: reduce) {\n  .toast, .btn, .proj-menu { transition: none; }\n}\n\n/* 좁은 폭: 구분 선택 · 머리 · 상태 줄이 줄을 바꿔 가로로 넘치지 않게 한다 */\n.seg { flex-wrap: wrap; max-width: 100%; }\n.panel-head { flex-wrap: wrap; }\n.issue-status, .doc-bar, .filters { max-width: 100%; }\n.topbar .grow { min-width: 0; }\n.top-meta { flex-wrap: wrap; }\n", "vendor/THIRD-PARTY-LICENSES.txt": `이 파일은 packages/flow-view/build.mjs 가 만든다. 흐름 보기 번들(flow.bundle.js · flow.bundle.css)에 들어간 패키지의 라이선스다.
+
+================================================================
+@xyflow/react@12.9.2 — MIT
+================================================================
+MIT License
+
+Copyright (c) 2019-2025 webkid GmbH
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================
+@xyflow/system@0.0.72 — MIT
+================================================================
+MIT License
+
+Copyright (c) 2019-2025 webkid GmbH
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================
+classcat@5.0.5 — MIT
+================================================================
+Copyright © Jorge Bucaran <<https://jorgebucaran.com>>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the 'Software'), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+================================================================
+d3-color@3.1.1 — ISC
+================================================================
+Copyright 2010-2026 Mike Bostock
+
+Permission to use, copy, modify, and/or distribute this software for any purpose
+with or without fee is hereby granted, provided that the above copyright notice
+and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
+OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+THIS SOFTWARE.
+
+================================================================
+d3-dispatch@3.0.2 — ISC
+================================================================
+Copyright 2010-2026 Mike Bostock
+
+Permission to use, copy, modify, and/or distribute this software for any purpose
+with or without fee is hereby granted, provided that the above copyright notice
+and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
+OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+THIS SOFTWARE.
+
+================================================================
+d3-drag@3.0.1 — ISC
+================================================================
+Copyright 2010-2026 Mike Bostock
+
+Permission to use, copy, modify, and/or distribute this software for any purpose
+with or without fee is hereby granted, provided that the above copyright notice
+and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
+OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+THIS SOFTWARE.
+
+================================================================
+d3-ease@3.0.2 — BSD-3-Clause
+================================================================
+Copyright 2010-2026 Mike Bostock
+Copyright 2001 Robert Penner
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without modification,
+are permitted provided that the following conditions are met:
+
+* Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
+
+* Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
+
+* Neither the name of the author nor the names of contributors may be used to
+  endorse or promote products derived from this software without specific prior
+  written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON
+ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+================================================================
+d3-interpolate@3.0.2 — ISC
+================================================================
+Copyright 2010-2026 Mike Bostock
+
+Permission to use, copy, modify, and/or distribute this software for any purpose
+with or without fee is hereby granted, provided that the above copyright notice
+and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
+OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+THIS SOFTWARE.
+
+================================================================
+d3-selection@3.0.1 — ISC
+================================================================
+Copyright 2010-2026 Mike Bostock
+
+Permission to use, copy, modify, and/or distribute this software for any purpose
+with or without fee is hereby granted, provided that the above copyright notice
+and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
+OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+THIS SOFTWARE.
+
+================================================================
+d3-timer@3.0.2 — ISC
+================================================================
+Copyright 2010-2026 Mike Bostock
+
+Permission to use, copy, modify, and/or distribute this software for any purpose
+with or without fee is hereby granted, provided that the above copyright notice
+and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
+OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+THIS SOFTWARE.
+
+================================================================
+d3-transition@3.0.2 — ISC
+================================================================
+Copyright 2010-2026 Mike Bostock
+
+Permission to use, copy, modify, and/or distribute this software for any purpose
+with or without fee is hereby granted, provided that the above copyright notice
+and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
+OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+THIS SOFTWARE.
+
+================================================================
+d3-zoom@3.0.1 — ISC
+================================================================
+Copyright 2010-2026 Mike Bostock
+
+Permission to use, copy, modify, and/or distribute this software for any purpose
+with or without fee is hereby granted, provided that the above copyright notice
+and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS
+OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER
+TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF
+THIS SOFTWARE.
+
+================================================================
+react@19.2.0 — MIT
+================================================================
+MIT License
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================
+react-dom@19.2.0 — MIT
+================================================================
+MIT License
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================
+scheduler@0.27.0 — MIT
+================================================================
+MIT License
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================
+use-sync-external-store@1.7.0 — MIT
+================================================================
+MIT License
+
+Copyright (c) Meta Platforms, Inc. and affiliates.
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================
+zustand@4.5.7 — MIT
+================================================================
+MIT License
+
+Copyright (c) 2019 Paul Henschel
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+`, "vendor/flow.bundle.css": ".react-flow{direction:ltr;--xy-edge-stroke-default: #b1b1b7;--xy-edge-stroke-width-default: 1;--xy-edge-stroke-selected-default: #555;--xy-connectionline-stroke-default: #b1b1b7;--xy-connectionline-stroke-width-default: 1;--xy-attribution-background-color-default: rgba(255, 255, 255, .5);--xy-minimap-background-color-default: #fff;--xy-minimap-mask-background-color-default: rgba(240, 240, 240, .6);--xy-minimap-mask-stroke-color-default: transparent;--xy-minimap-mask-stroke-width-default: 1;--xy-minimap-node-background-color-default: #e2e2e2;--xy-minimap-node-stroke-color-default: transparent;--xy-minimap-node-stroke-width-default: 2;--xy-background-color-default: transparent;--xy-background-pattern-dots-color-default: #91919a;--xy-background-pattern-lines-color-default: #eee;--xy-background-pattern-cross-color-default: #e2e2e2;background-color:var(--xy-background-color, var(--xy-background-color-default));--xy-node-color-default: inherit;--xy-node-border-default: 1px solid #1a192b;--xy-node-background-color-default: #fff;--xy-node-group-background-color-default: rgba(240, 240, 240, .25);--xy-node-boxshadow-hover-default: 0 1px 4px 1px rgba(0, 0, 0, .08);--xy-node-boxshadow-selected-default: 0 0 0 .5px #1a192b;--xy-node-border-radius-default: 3px;--xy-handle-background-color-default: #1a192b;--xy-handle-border-color-default: #fff;--xy-selection-background-color-default: rgba(0, 89, 220, .08);--xy-selection-border-default: 1px dotted rgba(0, 89, 220, .8);--xy-controls-button-background-color-default: #fefefe;--xy-controls-button-background-color-hover-default: #f4f4f4;--xy-controls-button-color-default: inherit;--xy-controls-button-color-hover-default: inherit;--xy-controls-button-border-color-default: #eee;--xy-controls-box-shadow-default: 0 0 2px 1px rgba(0, 0, 0, .08);--xy-edge-label-background-color-default: #ffffff;--xy-edge-label-color-default: inherit;--xy-resize-background-color-default: #3367d9}.react-flow.dark{--xy-edge-stroke-default: #3e3e3e;--xy-edge-stroke-width-default: 1;--xy-edge-stroke-selected-default: #727272;--xy-connectionline-stroke-default: #b1b1b7;--xy-connectionline-stroke-width-default: 1;--xy-attribution-background-color-default: rgba(150, 150, 150, .25);--xy-minimap-background-color-default: #141414;--xy-minimap-mask-background-color-default: rgba(60, 60, 60, .6);--xy-minimap-mask-stroke-color-default: transparent;--xy-minimap-mask-stroke-width-default: 1;--xy-minimap-node-background-color-default: #2b2b2b;--xy-minimap-node-stroke-color-default: transparent;--xy-minimap-node-stroke-width-default: 2;--xy-background-color-default: #141414;--xy-background-pattern-dots-color-default: #777;--xy-background-pattern-lines-color-default: #777;--xy-background-pattern-cross-color-default: #777;--xy-node-color-default: #f8f8f8;--xy-node-border-default: 1px solid #3c3c3c;--xy-node-background-color-default: #1e1e1e;--xy-node-group-background-color-default: rgba(240, 240, 240, .25);--xy-node-boxshadow-hover-default: 0 1px 4px 1px rgba(255, 255, 255, .08);--xy-node-boxshadow-selected-default: 0 0 0 .5px #999;--xy-handle-background-color-default: #bebebe;--xy-handle-border-color-default: #1e1e1e;--xy-selection-background-color-default: rgba(200, 200, 220, .08);--xy-selection-border-default: 1px dotted rgba(200, 200, 220, .8);--xy-controls-button-background-color-default: #2b2b2b;--xy-controls-button-background-color-hover-default: #3e3e3e;--xy-controls-button-color-default: #f8f8f8;--xy-controls-button-color-hover-default: #fff;--xy-controls-button-border-color-default: #5b5b5b;--xy-controls-box-shadow-default: 0 0 2px 1px rgba(0, 0, 0, .08);--xy-edge-label-background-color-default: #141414;--xy-edge-label-color-default: #f8f8f8}.react-flow__background{background-color:var(--xy-background-color-props, var(--xy-background-color, var(--xy-background-color-default)));pointer-events:none;z-index:-1}.react-flow__container{position:absolute;width:100%;height:100%;top:0;left:0}.react-flow__pane{z-index:1}.react-flow__pane.draggable{cursor:grab}.react-flow__pane.dragging{cursor:grabbing}.react-flow__pane.selection{cursor:pointer}.react-flow__viewport{transform-origin:0 0;z-index:2;pointer-events:none}.react-flow__renderer{z-index:4}.react-flow__selection{z-index:6}.react-flow__nodesselection-rect:focus,.react-flow__nodesselection-rect:focus-visible{outline:none}.react-flow__edge-path{stroke:var(--xy-edge-stroke, var(--xy-edge-stroke-default));stroke-width:var(--xy-edge-stroke-width, var(--xy-edge-stroke-width-default));fill:none}.react-flow__connection-path{stroke:var(--xy-connectionline-stroke, var(--xy-connectionline-stroke-default));stroke-width:var(--xy-connectionline-stroke-width, var(--xy-connectionline-stroke-width-default));fill:none}.react-flow .react-flow__edges{position:absolute}.react-flow .react-flow__edges svg{overflow:visible;position:absolute;pointer-events:none}.react-flow__edge{pointer-events:visibleStroke}.react-flow__edge.selectable{cursor:pointer}.react-flow__edge.animated path{stroke-dasharray:5;animation:dashdraw .5s linear infinite}.react-flow__edge.animated path.react-flow__edge-interaction{stroke-dasharray:none;animation:none}.react-flow__edge.inactive{pointer-events:none}.react-flow__edge.selected,.react-flow__edge:focus,.react-flow__edge:focus-visible{outline:none}.react-flow__edge.selected .react-flow__edge-path,.react-flow__edge.selectable:focus .react-flow__edge-path,.react-flow__edge.selectable:focus-visible .react-flow__edge-path{stroke:var(--xy-edge-stroke-selected, var(--xy-edge-stroke-selected-default))}.react-flow__edge-textwrapper{pointer-events:all}.react-flow__edge .react-flow__edge-text{pointer-events:none;-webkit-user-select:none;-moz-user-select:none;user-select:none}.react-flow__arrowhead polyline{stroke:var(--xy-edge-stroke, var(--xy-edge-stroke-default))}.react-flow__arrowhead polyline.arrowclosed{fill:var(--xy-edge-stroke, var(--xy-edge-stroke-default))}.react-flow__connection{pointer-events:none}.react-flow__connection .animated{stroke-dasharray:5;animation:dashdraw .5s linear infinite}svg.react-flow__connectionline{z-index:1001;overflow:visible;position:absolute}.react-flow__nodes{pointer-events:none;transform-origin:0 0}.react-flow__node{position:absolute;-webkit-user-select:none;-moz-user-select:none;user-select:none;pointer-events:all;transform-origin:0 0;box-sizing:border-box;cursor:default}.react-flow__node.selectable{cursor:pointer}.react-flow__node.draggable{cursor:grab;pointer-events:all}.react-flow__node.draggable.dragging{cursor:grabbing}.react-flow__nodesselection{z-index:3;transform-origin:left top;pointer-events:none}.react-flow__nodesselection-rect{position:absolute;pointer-events:all;cursor:grab}.react-flow__handle{position:absolute;pointer-events:none;min-width:5px;min-height:5px;width:6px;height:6px;background-color:var(--xy-handle-background-color, var(--xy-handle-background-color-default));border:1px solid var(--xy-handle-border-color, var(--xy-handle-border-color-default));border-radius:100%}.react-flow__handle.connectingfrom{pointer-events:all}.react-flow__handle.connectionindicator{pointer-events:all;cursor:crosshair}.react-flow__handle-bottom{top:auto;left:50%;bottom:0;transform:translate(-50%,50%)}.react-flow__handle-top{top:0;left:50%;transform:translate(-50%,-50%)}.react-flow__handle-left{top:50%;left:0;transform:translate(-50%,-50%)}.react-flow__handle-right{top:50%;right:0;transform:translate(50%,-50%)}.react-flow__edgeupdater{cursor:move;pointer-events:all}.react-flow__pane.selection .react-flow__panel{pointer-events:none}.react-flow__panel{position:absolute;z-index:5;margin:15px}.react-flow__panel.top{top:0}.react-flow__panel.bottom{bottom:0}.react-flow__panel.top.center,.react-flow__panel.bottom.center{left:50%;transform:translate(-15px) translate(-50%)}.react-flow__panel.left{left:0}.react-flow__panel.right{right:0}.react-flow__panel.left.center,.react-flow__panel.right.center{top:50%;transform:translateY(-15px) translateY(-50%)}.react-flow__attribution{font-size:10px;background:var(--xy-attribution-background-color, var(--xy-attribution-background-color-default));padding:2px 3px;margin:0}.react-flow__attribution a{text-decoration:none;color:#999}@keyframes dashdraw{0%{stroke-dashoffset:10}}.react-flow__edgelabel-renderer{position:absolute;width:100%;height:100%;pointer-events:none;-webkit-user-select:none;-moz-user-select:none;user-select:none;left:0;top:0}.react-flow__viewport-portal{position:absolute;width:100%;height:100%;left:0;top:0;-webkit-user-select:none;-moz-user-select:none;user-select:none}.react-flow__minimap{background:var( --xy-minimap-background-color-props, var(--xy-minimap-background-color, var(--xy-minimap-background-color-default)) )}.react-flow__minimap-svg{display:block}.react-flow__minimap-mask{fill:var( --xy-minimap-mask-background-color-props, var(--xy-minimap-mask-background-color, var(--xy-minimap-mask-background-color-default)) );stroke:var( --xy-minimap-mask-stroke-color-props, var(--xy-minimap-mask-stroke-color, var(--xy-minimap-mask-stroke-color-default)) );stroke-width:var( --xy-minimap-mask-stroke-width-props, var(--xy-minimap-mask-stroke-width, var(--xy-minimap-mask-stroke-width-default)) )}.react-flow__minimap-node{fill:var( --xy-minimap-node-background-color-props, var(--xy-minimap-node-background-color, var(--xy-minimap-node-background-color-default)) );stroke:var( --xy-minimap-node-stroke-color-props, var(--xy-minimap-node-stroke-color, var(--xy-minimap-node-stroke-color-default)) );stroke-width:var( --xy-minimap-node-stroke-width-props, var(--xy-minimap-node-stroke-width, var(--xy-minimap-node-stroke-width-default)) )}.react-flow__background-pattern.dots{fill:var( --xy-background-pattern-color-props, var(--xy-background-pattern-color, var(--xy-background-pattern-dots-color-default)) )}.react-flow__background-pattern.lines{stroke:var( --xy-background-pattern-color-props, var(--xy-background-pattern-color, var(--xy-background-pattern-lines-color-default)) )}.react-flow__background-pattern.cross{stroke:var( --xy-background-pattern-color-props, var(--xy-background-pattern-color, var(--xy-background-pattern-cross-color-default)) )}.react-flow__controls{display:flex;flex-direction:column;box-shadow:var(--xy-controls-box-shadow, var(--xy-controls-box-shadow-default))}.react-flow__controls.horizontal{flex-direction:row}.react-flow__controls-button{display:flex;justify-content:center;align-items:center;height:26px;width:26px;padding:4px;border:none;background:var(--xy-controls-button-background-color, var(--xy-controls-button-background-color-default));border-bottom:1px solid var( --xy-controls-button-border-color-props, var(--xy-controls-button-border-color, var(--xy-controls-button-border-color-default)) );color:var( --xy-controls-button-color-props, var(--xy-controls-button-color, var(--xy-controls-button-color-default)) );cursor:pointer;-webkit-user-select:none;-moz-user-select:none;user-select:none}.react-flow__controls-button svg{width:100%;max-width:12px;max-height:12px;fill:currentColor}.react-flow__edge.updating .react-flow__edge-path{stroke:#777}.react-flow__edge-text{font-size:10px}.react-flow__node.selectable:focus,.react-flow__node.selectable:focus-visible{outline:none}.react-flow__node-input,.react-flow__node-default,.react-flow__node-output,.react-flow__node-group{padding:10px;border-radius:var(--xy-node-border-radius, var(--xy-node-border-radius-default));width:150px;font-size:12px;color:var(--xy-node-color, var(--xy-node-color-default));text-align:center;border:var(--xy-node-border, var(--xy-node-border-default));background-color:var(--xy-node-background-color, var(--xy-node-background-color-default))}.react-flow__node-input.selectable:hover,.react-flow__node-default.selectable:hover,.react-flow__node-output.selectable:hover,.react-flow__node-group.selectable:hover{box-shadow:var(--xy-node-boxshadow-hover, var(--xy-node-boxshadow-hover-default))}.react-flow__node-input.selectable.selected,.react-flow__node-input.selectable:focus,.react-flow__node-input.selectable:focus-visible,.react-flow__node-default.selectable.selected,.react-flow__node-default.selectable:focus,.react-flow__node-default.selectable:focus-visible,.react-flow__node-output.selectable.selected,.react-flow__node-output.selectable:focus,.react-flow__node-output.selectable:focus-visible,.react-flow__node-group.selectable.selected,.react-flow__node-group.selectable:focus,.react-flow__node-group.selectable:focus-visible{box-shadow:var(--xy-node-boxshadow-selected, var(--xy-node-boxshadow-selected-default))}.react-flow__node-group{background-color:var(--xy-node-group-background-color, var(--xy-node-group-background-color-default))}.react-flow__nodesselection-rect,.react-flow__selection{background:var(--xy-selection-background-color, var(--xy-selection-background-color-default));border:var(--xy-selection-border, var(--xy-selection-border-default))}.react-flow__nodesselection-rect:focus,.react-flow__nodesselection-rect:focus-visible,.react-flow__selection:focus,.react-flow__selection:focus-visible{outline:none}.react-flow__controls-button:hover{background:var( --xy-controls-button-background-color-hover-props, var(--xy-controls-button-background-color-hover, var(--xy-controls-button-background-color-hover-default)) );color:var( --xy-controls-button-color-hover-props, var(--xy-controls-button-color-hover, var(--xy-controls-button-color-hover-default)) )}.react-flow__controls-button:disabled{pointer-events:none}.react-flow__controls-button:disabled svg{fill-opacity:.4}.react-flow__controls-button:last-child{border-bottom:none}.react-flow__controls.horizontal .react-flow__controls-button{border-bottom:none;border-right:1px solid var( --xy-controls-button-border-color-props, var(--xy-controls-button-border-color, var(--xy-controls-button-border-color-default)) )}.react-flow__controls.horizontal .react-flow__controls-button:last-child{border-right:none}.react-flow__resize-control{position:absolute}.react-flow__resize-control.left,.react-flow__resize-control.right{cursor:ew-resize}.react-flow__resize-control.top,.react-flow__resize-control.bottom{cursor:ns-resize}.react-flow__resize-control.top.left,.react-flow__resize-control.bottom.right{cursor:nwse-resize}.react-flow__resize-control.bottom.left,.react-flow__resize-control.top.right{cursor:nesw-resize}.react-flow__resize-control.handle{width:5px;height:5px;border:1px solid #fff;border-radius:1px;background-color:var(--xy-resize-background-color, var(--xy-resize-background-color-default));translate:-50% -50%}.react-flow__resize-control.handle.left{left:0;top:50%}.react-flow__resize-control.handle.right{left:100%;top:50%}.react-flow__resize-control.handle.top{left:50%;top:0}.react-flow__resize-control.handle.bottom{left:50%;top:100%}.react-flow__resize-control.handle.top.left,.react-flow__resize-control.handle.bottom.left{left:0}.react-flow__resize-control.handle.top.right,.react-flow__resize-control.handle.bottom.right{left:100%}.react-flow__resize-control.line{border-color:var(--xy-resize-background-color, var(--xy-resize-background-color-default));border-width:0;border-style:solid}.react-flow__resize-control.line.left,.react-flow__resize-control.line.right{width:1px;transform:translate(-50%);top:0;height:100%}.react-flow__resize-control.line.left{left:0;border-left-width:1px}.react-flow__resize-control.line.right{left:100%;border-right-width:1px}.react-flow__resize-control.line.top,.react-flow__resize-control.line.bottom{height:1px;transform:translateY(-50%);left:0;width:100%}.react-flow__resize-control.line.top{top:0;border-top-width:1px}.react-flow__resize-control.line.bottom{border-bottom-width:1px;top:100%}.react-flow__edge-textbg{fill:var(--xy-edge-label-background-color, var(--xy-edge-label-background-color-default))}.react-flow__edge-text{fill:var(--xy-edge-label-color, var(--xy-edge-label-color-default))}.react-flow{--xy-node-border-radius: 7px;font-family:var(--font-text, system-ui, sans-serif)}.hk-node{width:240px;padding:10px 12px 11px;border:1px solid var(--rule-strong, #aeb9c7);border-radius:7px;background:var(--raised, #fff);color:var(--ink, #14213d);font-size:13px;line-height:1.4;box-shadow:0 1px 2px #0000000d,0 4px 14px -6px #0000001f}.hk-node.contract{border-style:dashed;background:var(--sunken, #edf1f6)}.hk-node.selected,.react-flow__node:focus-visible .hk-node{outline:2px solid var(--design, #3046c5);outline-offset:2px}.react-flow__node:focus-visible{outline:none}.hk-node-head{display:flex;align-items:center;gap:6px;flex-wrap:wrap}.hk-key{font-family:var(--font-code, monospace);font-weight:700;font-size:12px}.hk-uid{color:var(--ink-faint, #5f6b80);font-size:12px}.hk-title{margin-top:4px;font-size:14px;font-weight:700;word-break:keep-all}.hk-sub{margin-top:2px;color:var(--ink-faint, #5f6b80);font-size:12px;overflow-wrap:anywhere}.hk-rail{display:flex;gap:3px;margin-top:8px;line-height:0}.hk-gate path{fill:var(--raised, #fff);stroke:var(--rule-strong, #aeb9c7);stroke-width:1.5}.hk-gate.done.design path,.hk-gate.active.design path{fill:var(--design, #3046c5);stroke:var(--design, #3046c5)}.hk-gate.done.build path,.hk-gate.active.build path{fill:var(--build, #c98a12);stroke:var(--build, #c98a12)}.hk-gate.done.ops path,.hk-gate.active.ops path{fill:var(--ops, #0b7a5e);stroke:var(--ops, #0b7a5e)}.hk-gate.active path{fill:var(--raised, #fff);stroke-width:2.5}.hk-state{display:flex;align-items:center;gap:8px;margin-top:6px;flex-wrap:wrap}.hk-bolts{font-size:12px;color:var(--ink-soft, #46536b)}.hk-flags{display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}.hk-pill{display:inline-block;padding:0 6px;border-radius:3px;font-size:11px;font-weight:600;line-height:18px;background:var(--sunken, #edf1f6);color:var(--ink-soft, #46536b);white-space:nowrap}.hk-pill.design{background:var(--design-wash, #e7eafb);color:var(--design-ink, #2a3cab)}.hk-pill.build{background:var(--build-wash, #fbf1dc);color:var(--build-ink, #7d5300)}.hk-pill.ops{background:var(--ops-wash, #ddf2eb);color:var(--ops-ink, #0a6a52)}.hk-pill.gate{background:var(--gate-wash, #fbe6e9);color:var(--gate-ink, #b00e28)}.hk-pill.contract{border:1px solid var(--rule-strong, #aeb9c7);background:transparent;line-height:16px}.hk-edge .react-flow__edge-path{stroke:var(--ink-soft, #46536b);stroke-width:1.6}.hk-edge-contract .react-flow__edge-path{stroke-dasharray:6 4}.react-flow__edge-textbg{fill:var(--raised, #fff)}.react-flow__edge-text{fill:var(--ink-soft, #46536b);font-size:11px}.react-flow__handle{opacity:0;pointer-events:none}.react-flow__controls-button{color:var(--ink, #14213d)}.react-flow__controls-button:focus-visible{outline:2px solid var(--design, #3046c5);outline-offset:-2px}@media(prefers-reduced-motion:reduce){.react-flow__viewport,.react-flow__node{transition:none!important}}\n", "vendor/flow.bundle.js": 'var Ux=Object.create;var Mh=Object.defineProperty;var Lx=Object.getOwnPropertyDescriptor;var Yx=Object.getOwnPropertyNames;var Vx=Object.getPrototypeOf,qx=Object.prototype.hasOwnProperty;var te=(t,e)=>()=>{try{return e||t((e={exports:{}}).exports,e),e.exports}catch(n){throw e=0,n}};var Xx=(t,e,n,l)=>{if(e&&typeof e=="object"||typeof e=="function")for(let a of Yx(e))!qx.call(t,a)&&a!==n&&Mh(t,a,{get:()=>e[a],enumerable:!(l=Lx(e,a))||l.enumerable});return t};var se=(t,e,n)=>(n=t!=null?Ux(Vx(t)):{},Xx(e||!t||!t.__esModule?Mh(n,"default",{value:t,enumerable:!0}):n,t));var kh=te(wt=>{"use strict";function hc(t,e){var n=t.length;t.push(e);t:for(;0<n;){var l=n-1>>>1,a=t[l];if(0<ki(a,e))t[l]=e,t[n]=a,n=l;else break t}}function Xe(t){return t.length===0?null:t[0]}function Li(t){if(t.length===0)return null;var e=t[0],n=t.pop();if(n!==e){t[0]=n;t:for(var l=0,a=t.length,o=a>>>1;l<o;){var i=2*(l+1)-1,u=t[i],r=i+1,c=t[r];if(0>ki(u,n))r<a&&0>ki(c,u)?(t[l]=c,t[r]=n,l=r):(t[l]=u,t[i]=n,l=i);else if(r<a&&0>ki(c,n))t[l]=c,t[r]=n,l=r;else break t}}return e}function ki(t,e){var n=t.sortIndex-e.sortIndex;return n!==0?n:t.id-e.id}wt.unstable_now=void 0;typeof performance=="object"&&typeof performance.now=="function"?(zh=performance,wt.unstable_now=function(){return zh.now()}):(sc=Date,Ch=sc.now(),wt.unstable_now=function(){return sc.now()-Ch});var zh,sc,Ch,en=[],Cn=[],Zx=1,we=null,Jt=3,gc=!1,co=!1,so=!1,pc=!1,Dh=typeof setTimeout=="function"?setTimeout:null,Oh=typeof clearTimeout=="function"?clearTimeout:null,Ah=typeof setImmediate<"u"?setImmediate:null;function Ui(t){for(var e=Xe(Cn);e!==null;){if(e.callback===null)Li(Cn);else if(e.startTime<=t)Li(Cn),e.sortIndex=e.expirationTime,hc(en,e);else break;e=Xe(Cn)}}function mc(t){if(so=!1,Ui(t),!co)if(Xe(en)!==null)co=!0,Kl||(Kl=!0,Ql());else{var e=Xe(Cn);e!==null&&yc(mc,e.startTime-t)}}var Kl=!1,fo=-1,Hh=5,Rh=-1;function Bh(){return pc?!0:!(wt.unstable_now()-Rh<Hh)}function fc(){if(pc=!1,Kl){var t=wt.unstable_now();Rh=t;var e=!0;try{t:{co=!1,so&&(so=!1,Oh(fo),fo=-1),gc=!0;var n=Jt;try{e:{for(Ui(t),we=Xe(en);we!==null&&!(we.expirationTime>t&&Bh());){var l=we.callback;if(typeof l=="function"){we.callback=null,Jt=we.priorityLevel;var a=l(we.expirationTime<=t);if(t=wt.unstable_now(),typeof a=="function"){we.callback=a,Ui(t),e=!0;break e}we===Xe(en)&&Li(en),Ui(t)}else Li(en);we=Xe(en)}if(we!==null)e=!0;else{var o=Xe(Cn);o!==null&&yc(mc,o.startTime-t),e=!1}}break t}finally{we=null,Jt=n,gc=!1}e=void 0}}finally{e?Ql():Kl=!1}}}var Ql;typeof Ah=="function"?Ql=function(){Ah(fc)}:typeof MessageChannel<"u"?(dc=new MessageChannel,Th=dc.port2,dc.port1.onmessage=fc,Ql=function(){Th.postMessage(null)}):Ql=function(){Dh(fc,0)};var dc,Th;function yc(t,e){fo=Dh(function(){t(wt.unstable_now())},e)}wt.unstable_IdlePriority=5;wt.unstable_ImmediatePriority=1;wt.unstable_LowPriority=4;wt.unstable_NormalPriority=3;wt.unstable_Profiling=null;wt.unstable_UserBlockingPriority=2;wt.unstable_cancelCallback=function(t){t.callback=null};wt.unstable_forceFrameRate=function(t){0>t||125<t?console.error("forceFrameRate takes a positive int between 0 and 125, forcing frame rates higher than 125 fps is not supported"):Hh=0<t?Math.floor(1e3/t):5};wt.unstable_getCurrentPriorityLevel=function(){return Jt};wt.unstable_next=function(t){switch(Jt){case 1:case 2:case 3:var e=3;break;default:e=Jt}var n=Jt;Jt=e;try{return t()}finally{Jt=n}};wt.unstable_requestPaint=function(){pc=!0};wt.unstable_runWithPriority=function(t,e){switch(t){case 1:case 2:case 3:case 4:case 5:break;default:t=3}var n=Jt;Jt=t;try{return e()}finally{Jt=n}};wt.unstable_scheduleCallback=function(t,e,n){var l=wt.unstable_now();switch(typeof n=="object"&&n!==null?(n=n.delay,n=typeof n=="number"&&0<n?l+n:l):n=l,t){case 1:var a=-1;break;case 2:a=250;break;case 5:a=1073741823;break;case 4:a=1e4;break;default:a=5e3}return a=n+a,t={id:Zx++,callback:e,priorityLevel:t,startTime:n,expirationTime:a,sortIndex:-1},n>l?(t.sortIndex=n,hc(Cn,t),Xe(en)===null&&t===Xe(Cn)&&(so?(Oh(fo),fo=-1):so=!0,yc(mc,n-l))):(t.sortIndex=a,hc(en,t),co||gc||(co=!0,Kl||(Kl=!0,Ql()))),t};wt.unstable_shouldYield=Bh;wt.unstable_wrapCallback=function(t){var e=Jt;return function(){var n=Jt;Jt=e;try{return t.apply(this,arguments)}finally{Jt=n}}}});var Lh=te((VC,Uh)=>{"use strict";Uh.exports=kh()});var Jh=te(W=>{"use strict";var xc=Symbol.for("react.transitional.element"),Gx=Symbol.for("react.portal"),Qx=Symbol.for("react.fragment"),Kx=Symbol.for("react.strict_mode"),jx=Symbol.for("react.profiler"),$x=Symbol.for("react.consumer"),Jx=Symbol.for("react.context"),Ix=Symbol.for("react.forward_ref"),Fx=Symbol.for("react.suspense"),Wx=Symbol.for("react.memo"),Zh=Symbol.for("react.lazy"),Px=Symbol.for("react.activity"),Yh=Symbol.iterator;function tS(t){return t===null||typeof t!="object"?null:(t=Yh&&t[Yh]||t["@@iterator"],typeof t=="function"?t:null)}var Gh={isMounted:function(){return!1},enqueueForceUpdate:function(){},enqueueReplaceState:function(){},enqueueSetState:function(){}},Qh=Object.assign,Kh={};function $l(t,e,n){this.props=t,this.context=e,this.refs=Kh,this.updater=n||Gh}$l.prototype.isReactComponent={};$l.prototype.setState=function(t,e){if(typeof t!="object"&&typeof t!="function"&&t!=null)throw Error("takes an object of state variables to update or a function which returns an object of state variables.");this.updater.enqueueSetState(this,t,e,"setState")};$l.prototype.forceUpdate=function(t){this.updater.enqueueForceUpdate(this,t,"forceUpdate")};function jh(){}jh.prototype=$l.prototype;function Sc(t,e,n){this.props=t,this.context=e,this.refs=Kh,this.updater=n||Gh}var _c=Sc.prototype=new jh;_c.constructor=Sc;Qh(_c,$l.prototype);_c.isPureReactComponent=!0;var Vh=Array.isArray;function bc(){}var yt={H:null,A:null,T:null,S:null},$h=Object.prototype.hasOwnProperty;function wc(t,e,n){var l=n.ref;return{$$typeof:xc,type:t,key:e,ref:l!==void 0?l:null,props:n}}function eS(t,e){return wc(t.type,e,t.props)}function Ec(t){return typeof t=="object"&&t!==null&&t.$$typeof===xc}function nS(t){var e={"=":"=0",":":"=2"};return"$"+t.replace(/[=:]/g,function(n){return e[n]})}var qh=/\\/+/g;function vc(t,e){return typeof t=="object"&&t!==null&&t.key!=null?nS(""+t.key):e.toString(36)}function lS(t){switch(t.status){case"fulfilled":return t.value;case"rejected":throw t.reason;default:switch(typeof t.status=="string"?t.then(bc,bc):(t.status="pending",t.then(function(e){t.status==="pending"&&(t.status="fulfilled",t.value=e)},function(e){t.status==="pending"&&(t.status="rejected",t.reason=e)})),t.status){case"fulfilled":return t.value;case"rejected":throw t.reason}}throw t}function jl(t,e,n,l,a){var o=typeof t;(o==="undefined"||o==="boolean")&&(t=null);var i=!1;if(t===null)i=!0;else switch(o){case"bigint":case"string":case"number":i=!0;break;case"object":switch(t.$$typeof){case xc:case Gx:i=!0;break;case Zh:return i=t._init,jl(i(t._payload),e,n,l,a)}}if(i)return a=a(t),i=l===""?"."+vc(t,0):l,Vh(a)?(n="",i!=null&&(n=i.replace(qh,"$&/")+"/"),jl(a,e,n,"",function(c){return c})):a!=null&&(Ec(a)&&(a=eS(a,n+(a.key==null||t&&t.key===a.key?"":(""+a.key).replace(qh,"$&/")+"/")+i)),e.push(a)),1;i=0;var u=l===""?".":l+":";if(Vh(t))for(var r=0;r<t.length;r++)l=t[r],o=u+vc(l,r),i+=jl(l,e,n,o,a);else if(r=tS(t),typeof r=="function")for(t=r.call(t),r=0;!(l=t.next()).done;)l=l.value,o=u+vc(l,r++),i+=jl(l,e,n,o,a);else if(o==="object"){if(typeof t.then=="function")return jl(lS(t),e,n,l,a);throw e=String(t),Error("Objects are not valid as a React child (found: "+(e==="[object Object]"?"object with keys {"+Object.keys(t).join(", ")+"}":e)+"). If you meant to render a collection of children, use an array instead.")}return i}function Yi(t,e,n){if(t==null)return t;var l=[],a=0;return jl(t,l,"","",function(o){return e.call(n,o,a++)}),l}function aS(t){if(t._status===-1){var e=t._result;e=e(),e.then(function(n){(t._status===0||t._status===-1)&&(t._status=1,t._result=n)},function(n){(t._status===0||t._status===-1)&&(t._status=2,t._result=n)}),t._status===-1&&(t._status=0,t._result=e)}if(t._status===1)return t._result.default;throw t._result}var Xh=typeof reportError=="function"?reportError:function(t){if(typeof window=="object"&&typeof window.ErrorEvent=="function"){var e=new window.ErrorEvent("error",{bubbles:!0,cancelable:!0,message:typeof t=="object"&&t!==null&&typeof t.message=="string"?String(t.message):String(t),error:t});if(!window.dispatchEvent(e))return}else if(typeof process=="object"&&typeof process.emit=="function"){process.emit("uncaughtException",t);return}console.error(t)},oS={map:Yi,forEach:function(t,e,n){Yi(t,function(){e.apply(this,arguments)},n)},count:function(t){var e=0;return Yi(t,function(){e++}),e},toArray:function(t){return Yi(t,function(e){return e})||[]},only:function(t){if(!Ec(t))throw Error("React.Children.only expected to receive a single React element child.");return t}};W.Activity=Px;W.Children=oS;W.Component=$l;W.Fragment=Qx;W.Profiler=jx;W.PureComponent=Sc;W.StrictMode=Kx;W.Suspense=Fx;W.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE=yt;W.__COMPILER_RUNTIME={__proto__:null,c:function(t){return yt.H.useMemoCache(t)}};W.cache=function(t){return function(){return t.apply(null,arguments)}};W.cacheSignal=function(){return null};W.cloneElement=function(t,e,n){if(t==null)throw Error("The argument must be a React element, but you passed "+t+".");var l=Qh({},t.props),a=t.key;if(e!=null)for(o in e.key!==void 0&&(a=""+e.key),e)!$h.call(e,o)||o==="key"||o==="__self"||o==="__source"||o==="ref"&&e.ref===void 0||(l[o]=e[o]);var o=arguments.length-2;if(o===1)l.children=n;else if(1<o){for(var i=Array(o),u=0;u<o;u++)i[u]=arguments[u+2];l.children=i}return wc(t.type,a,l)};W.createContext=function(t){return t={$$typeof:Jx,_currentValue:t,_currentValue2:t,_threadCount:0,Provider:null,Consumer:null},t.Provider=t,t.Consumer={$$typeof:$x,_context:t},t};W.createElement=function(t,e,n){var l,a={},o=null;if(e!=null)for(l in e.key!==void 0&&(o=""+e.key),e)$h.call(e,l)&&l!=="key"&&l!=="__self"&&l!=="__source"&&(a[l]=e[l]);var i=arguments.length-2;if(i===1)a.children=n;else if(1<i){for(var u=Array(i),r=0;r<i;r++)u[r]=arguments[r+2];a.children=u}if(t&&t.defaultProps)for(l in i=t.defaultProps,i)a[l]===void 0&&(a[l]=i[l]);return wc(t,o,a)};W.createRef=function(){return{current:null}};W.forwardRef=function(t){return{$$typeof:Ix,render:t}};W.isValidElement=Ec;W.lazy=function(t){return{$$typeof:Zh,_payload:{_status:-1,_result:t},_init:aS}};W.memo=function(t,e){return{$$typeof:Wx,type:t,compare:e===void 0?null:e}};W.startTransition=function(t){var e=yt.T,n={};yt.T=n;try{var l=t(),a=yt.S;a!==null&&a(n,l),typeof l=="object"&&l!==null&&typeof l.then=="function"&&l.then(bc,Xh)}catch(o){Xh(o)}finally{e!==null&&n.types!==null&&(e.types=n.types),yt.T=e}};W.unstable_useCacheRefresh=function(){return yt.H.useCacheRefresh()};W.use=function(t){return yt.H.use(t)};W.useActionState=function(t,e,n){return yt.H.useActionState(t,e,n)};W.useCallback=function(t,e){return yt.H.useCallback(t,e)};W.useContext=function(t){return yt.H.useContext(t)};W.useDebugValue=function(){};W.useDeferredValue=function(t,e){return yt.H.useDeferredValue(t,e)};W.useEffect=function(t,e){return yt.H.useEffect(t,e)};W.useEffectEvent=function(t){return yt.H.useEffectEvent(t)};W.useId=function(){return yt.H.useId()};W.useImperativeHandle=function(t,e,n){return yt.H.useImperativeHandle(t,e,n)};W.useInsertionEffect=function(t,e){return yt.H.useInsertionEffect(t,e)};W.useLayoutEffect=function(t,e){return yt.H.useLayoutEffect(t,e)};W.useMemo=function(t,e){return yt.H.useMemo(t,e)};W.useOptimistic=function(t,e){return yt.H.useOptimistic(t,e)};W.useReducer=function(t,e,n){return yt.H.useReducer(t,e,n)};W.useRef=function(t){return yt.H.useRef(t)};W.useState=function(t){return yt.H.useState(t)};W.useSyncExternalStore=function(t,e,n){return yt.H.useSyncExternalStore(t,e,n)};W.useTransition=function(){return yt.H.useTransition()};W.version="19.2.0"});var An=te((XC,Ih)=>{"use strict";Ih.exports=Jh()});var Wh=te(Wt=>{"use strict";var iS=An();function Fh(t){var e="https://react.dev/errors/"+t;if(1<arguments.length){e+="?args[]="+encodeURIComponent(arguments[1]);for(var n=2;n<arguments.length;n++)e+="&args[]="+encodeURIComponent(arguments[n])}return"Minified React error #"+t+"; visit "+e+" for the full message or use the non-minified dev environment for full errors and additional helpful warnings."}function Tn(){}var Ft={d:{f:Tn,r:function(){throw Error(Fh(522))},D:Tn,C:Tn,L:Tn,m:Tn,X:Tn,S:Tn,M:Tn},p:0,findDOMNode:null},uS=Symbol.for("react.portal");function rS(t,e,n){var l=3<arguments.length&&arguments[3]!==void 0?arguments[3]:null;return{$$typeof:uS,key:l==null?null:""+l,children:t,containerInfo:e,implementation:n}}var ho=iS.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;function Vi(t,e){if(t==="font")return"";if(typeof e=="string")return e==="use-credentials"?e:""}Wt.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE=Ft;Wt.createPortal=function(t,e){var n=2<arguments.length&&arguments[2]!==void 0?arguments[2]:null;if(!e||e.nodeType!==1&&e.nodeType!==9&&e.nodeType!==11)throw Error(Fh(299));return rS(t,e,null,n)};Wt.flushSync=function(t){var e=ho.T,n=Ft.p;try{if(ho.T=null,Ft.p=2,t)return t()}finally{ho.T=e,Ft.p=n,Ft.d.f()}};Wt.preconnect=function(t,e){typeof t=="string"&&(e?(e=e.crossOrigin,e=typeof e=="string"?e==="use-credentials"?e:"":void 0):e=null,Ft.d.C(t,e))};Wt.prefetchDNS=function(t){typeof t=="string"&&Ft.d.D(t)};Wt.preinit=function(t,e){if(typeof t=="string"&&e&&typeof e.as=="string"){var n=e.as,l=Vi(n,e.crossOrigin),a=typeof e.integrity=="string"?e.integrity:void 0,o=typeof e.fetchPriority=="string"?e.fetchPriority:void 0;n==="style"?Ft.d.S(t,typeof e.precedence=="string"?e.precedence:void 0,{crossOrigin:l,integrity:a,fetchPriority:o}):n==="script"&&Ft.d.X(t,{crossOrigin:l,integrity:a,fetchPriority:o,nonce:typeof e.nonce=="string"?e.nonce:void 0})}};Wt.preinitModule=function(t,e){if(typeof t=="string")if(typeof e=="object"&&e!==null){if(e.as==null||e.as==="script"){var n=Vi(e.as,e.crossOrigin);Ft.d.M(t,{crossOrigin:n,integrity:typeof e.integrity=="string"?e.integrity:void 0,nonce:typeof e.nonce=="string"?e.nonce:void 0})}}else e==null&&Ft.d.M(t)};Wt.preload=function(t,e){if(typeof t=="string"&&typeof e=="object"&&e!==null&&typeof e.as=="string"){var n=e.as,l=Vi(n,e.crossOrigin);Ft.d.L(t,n,{crossOrigin:l,integrity:typeof e.integrity=="string"?e.integrity:void 0,nonce:typeof e.nonce=="string"?e.nonce:void 0,type:typeof e.type=="string"?e.type:void 0,fetchPriority:typeof e.fetchPriority=="string"?e.fetchPriority:void 0,referrerPolicy:typeof e.referrerPolicy=="string"?e.referrerPolicy:void 0,imageSrcSet:typeof e.imageSrcSet=="string"?e.imageSrcSet:void 0,imageSizes:typeof e.imageSizes=="string"?e.imageSizes:void 0,media:typeof e.media=="string"?e.media:void 0})}};Wt.preloadModule=function(t,e){if(typeof t=="string")if(e){var n=Vi(e.as,e.crossOrigin);Ft.d.m(t,{as:typeof e.as=="string"&&e.as!=="script"?e.as:void 0,crossOrigin:n,integrity:typeof e.integrity=="string"?e.integrity:void 0})}else Ft.d.m(t)};Wt.requestFormReset=function(t){Ft.d.r(t)};Wt.unstable_batchedUpdates=function(t,e){return t(e)};Wt.useFormState=function(t,e,n){return ho.H.useFormState(t,e,n)};Wt.useFormStatus=function(){return ho.H.useHostTransitionStatus()};Wt.version="19.2.0"});var Nc=te((GC,t0)=>{"use strict";function Ph(){if(!(typeof __REACT_DEVTOOLS_GLOBAL_HOOK__>"u"||typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.checkDCE!="function"))try{__REACT_DEVTOOLS_GLOBAL_HOOK__.checkDCE(Ph)}catch(t){console.error(t)}}Ph(),t0.exports=Wh()});var dy=te(fr=>{"use strict";var Lt=Lh(),Mg=An(),cS=Nc();function k(t){var e="https://react.dev/errors/"+t;if(1<arguments.length){e+="?args[]="+encodeURIComponent(arguments[1]);for(var n=2;n<arguments.length;n++)e+="&args[]="+encodeURIComponent(arguments[n])}return"Minified React error #"+t+"; visit "+e+" for the full message or use the non-minified dev environment for full errors and additional helpful warnings."}function zg(t){return!(!t||t.nodeType!==1&&t.nodeType!==9&&t.nodeType!==11)}function Po(t){var e=t,n=t;if(t.alternate)for(;e.return;)e=e.return;else{t=e;do e=t,(e.flags&4098)!==0&&(n=e.return),t=e.return;while(t)}return e.tag===3?n:null}function Cg(t){if(t.tag===13){var e=t.memoizedState;if(e===null&&(t=t.alternate,t!==null&&(e=t.memoizedState)),e!==null)return e.dehydrated}return null}function Ag(t){if(t.tag===31){var e=t.memoizedState;if(e===null&&(t=t.alternate,t!==null&&(e=t.memoizedState)),e!==null)return e.dehydrated}return null}function e0(t){if(Po(t)!==t)throw Error(k(188))}function sS(t){var e=t.alternate;if(!e){if(e=Po(t),e===null)throw Error(k(188));return e!==t?null:t}for(var n=t,l=e;;){var a=n.return;if(a===null)break;var o=a.alternate;if(o===null){if(l=a.return,l!==null){n=l;continue}break}if(a.child===o.child){for(o=a.child;o;){if(o===n)return e0(a),t;if(o===l)return e0(a),e;o=o.sibling}throw Error(k(188))}if(n.return!==l.return)n=a,l=o;else{for(var i=!1,u=a.child;u;){if(u===n){i=!0,n=a,l=o;break}if(u===l){i=!0,l=a,n=o;break}u=u.sibling}if(!i){for(u=o.child;u;){if(u===n){i=!0,n=o,l=a;break}if(u===l){i=!0,l=o,n=a;break}u=u.sibling}if(!i)throw Error(k(189))}}if(n.alternate!==l)throw Error(k(190))}if(n.tag!==3)throw Error(k(188));return n.stateNode.current===n?t:e}function Tg(t){var e=t.tag;if(e===5||e===26||e===27||e===6)return t;for(t=t.child;t!==null;){if(e=Tg(t),e!==null)return e;t=t.sibling}return null}var xt=Object.assign,fS=Symbol.for("react.element"),qi=Symbol.for("react.transitional.element"),So=Symbol.for("react.portal"),ta=Symbol.for("react.fragment"),Dg=Symbol.for("react.strict_mode"),os=Symbol.for("react.profiler"),Og=Symbol.for("react.consumer"),sn=Symbol.for("react.context"),tf=Symbol.for("react.forward_ref"),is=Symbol.for("react.suspense"),us=Symbol.for("react.suspense_list"),ef=Symbol.for("react.memo"),Dn=Symbol.for("react.lazy"),rs=Symbol.for("react.activity"),dS=Symbol.for("react.memo_cache_sentinel"),n0=Symbol.iterator;function go(t){return t===null||typeof t!="object"?null:(t=n0&&t[n0]||t["@@iterator"],typeof t=="function"?t:null)}var hS=Symbol.for("react.client.reference");function cs(t){if(t==null)return null;if(typeof t=="function")return t.$$typeof===hS?null:t.displayName||t.name||null;if(typeof t=="string")return t;switch(t){case ta:return"Fragment";case os:return"Profiler";case Dg:return"StrictMode";case is:return"Suspense";case us:return"SuspenseList";case rs:return"Activity"}if(typeof t=="object")switch(t.$$typeof){case So:return"Portal";case sn:return t.displayName||"Context";case Og:return(t._context.displayName||"Context")+".Consumer";case tf:var e=t.render;return t=t.displayName,t||(t=e.displayName||e.name||"",t=t!==""?"ForwardRef("+t+")":"ForwardRef"),t;case ef:return e=t.displayName||null,e!==null?e:cs(t.type)||"Memo";case Dn:e=t._payload,t=t._init;try{return cs(t(e))}catch{}}return null}var _o=Array.isArray,J=Mg.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE,st=cS.__DOM_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE,ml={pending:!1,data:null,method:null,action:null},ss=[],ea=-1;function je(t){return{current:t}}function qt(t){0>ea||(t.current=ss[ea],ss[ea]=null,ea--)}function mt(t,e){ea++,ss[ea]=t.current,t.current=e}var Ke=je(null),Yo=je(null),Xn=je(null),xu=je(null);function Su(t,e){switch(mt(Xn,e),mt(Yo,t),mt(Ke,null),e.nodeType){case 9:case 11:t=(t=e.documentElement)&&(t=t.namespaceURI)?cg(t):0;break;default:if(t=e.tagName,e=e.namespaceURI)e=cg(e),t=Wm(e,t);else switch(t){case"svg":t=1;break;case"math":t=2;break;default:t=0}}qt(Ke),mt(Ke,t)}function ba(){qt(Ke),qt(Yo),qt(Xn)}function fs(t){t.memoizedState!==null&&mt(xu,t);var e=Ke.current,n=Wm(e,t.type);e!==n&&(mt(Yo,t),mt(Ke,n))}function _u(t){Yo.current===t&&(qt(Ke),qt(Yo)),xu.current===t&&(qt(xu),Io._currentValue=ml)}var Mc,l0;function dl(t){if(Mc===void 0)try{throw Error()}catch(n){var e=n.stack.trim().match(/\\n( *(at )?)/);Mc=e&&e[1]||"",l0=-1<n.stack.indexOf(`\n    at`)?" (<anonymous>)":-1<n.stack.indexOf("@")?"@unknown:0:0":""}return`\n`+Mc+t+l0}var zc=!1;function Cc(t,e){if(!t||zc)return"";zc=!0;var n=Error.prepareStackTrace;Error.prepareStackTrace=void 0;try{var l={DetermineComponentFrameRoot:function(){try{if(e){var d=function(){throw Error()};if(Object.defineProperty(d.prototype,"props",{set:function(){throw Error()}}),typeof Reflect=="object"&&Reflect.construct){try{Reflect.construct(d,[])}catch(g){var s=g}Reflect.construct(t,[],d)}else{try{d.call()}catch(g){s=g}t.call(d.prototype)}}else{try{throw Error()}catch(g){s=g}(d=t())&&typeof d.catch=="function"&&d.catch(function(){})}}catch(g){if(g&&s&&typeof g.stack=="string")return[g.stack,s.stack]}return[null,null]}};l.DetermineComponentFrameRoot.displayName="DetermineComponentFrameRoot";var a=Object.getOwnPropertyDescriptor(l.DetermineComponentFrameRoot,"name");a&&a.configurable&&Object.defineProperty(l.DetermineComponentFrameRoot,"name",{value:"DetermineComponentFrameRoot"});var o=l.DetermineComponentFrameRoot(),i=o[0],u=o[1];if(i&&u){var r=i.split(`\n`),c=u.split(`\n`);for(a=l=0;l<r.length&&!r[l].includes("DetermineComponentFrameRoot");)l++;for(;a<c.length&&!c[a].includes("DetermineComponentFrameRoot");)a++;if(l===r.length||a===c.length)for(l=r.length-1,a=c.length-1;1<=l&&0<=a&&r[l]!==c[a];)a--;for(;1<=l&&0<=a;l--,a--)if(r[l]!==c[a]){if(l!==1||a!==1)do if(l--,a--,0>a||r[l]!==c[a]){var f=`\n`+r[l].replace(" at new "," at ");return t.displayName&&f.includes("<anonymous>")&&(f=f.replace("<anonymous>",t.displayName)),f}while(1<=l&&0<=a);break}}}finally{zc=!1,Error.prepareStackTrace=n}return(n=t?t.displayName||t.name:"")?dl(n):""}function gS(t,e){switch(t.tag){case 26:case 27:case 5:return dl(t.type);case 16:return dl("Lazy");case 13:return t.child!==e&&e!==null?dl("Suspense Fallback"):dl("Suspense");case 19:return dl("SuspenseList");case 0:case 15:return Cc(t.type,!1);case 11:return Cc(t.type.render,!1);case 1:return Cc(t.type,!0);case 31:return dl("Activity");default:return""}}function a0(t){try{var e="",n=null;do e+=gS(t,n),n=t,t=t.return;while(t);return e}catch(l){return`\nError generating stack: `+l.message+`\n`+l.stack}}var ds=Object.prototype.hasOwnProperty,nf=Lt.unstable_scheduleCallback,Ac=Lt.unstable_cancelCallback,pS=Lt.unstable_shouldYield,mS=Lt.unstable_requestPaint,pe=Lt.unstable_now,yS=Lt.unstable_getCurrentPriorityLevel,Hg=Lt.unstable_ImmediatePriority,Rg=Lt.unstable_UserBlockingPriority,wu=Lt.unstable_NormalPriority,vS=Lt.unstable_LowPriority,Bg=Lt.unstable_IdlePriority,bS=Lt.log,xS=Lt.unstable_setDisableYieldValue,ti=null,me=null;function Un(t){if(typeof bS=="function"&&xS(t),me&&typeof me.setStrictMode=="function")try{me.setStrictMode(ti,t)}catch{}}var ye=Math.clz32?Math.clz32:wS,SS=Math.log,_S=Math.LN2;function wS(t){return t>>>=0,t===0?32:31-(SS(t)/_S|0)|0}var Xi=256,Zi=262144,Gi=4194304;function hl(t){var e=t&42;if(e!==0)return e;switch(t&-t){case 1:return 1;case 2:return 2;case 4:return 4;case 8:return 8;case 16:return 16;case 32:return 32;case 64:return 64;case 128:return 128;case 256:case 512:case 1024:case 2048:case 4096:case 8192:case 16384:case 32768:case 65536:case 131072:return t&261888;case 262144:case 524288:case 1048576:case 2097152:return t&3932160;case 4194304:case 8388608:case 16777216:case 33554432:return t&62914560;case 67108864:return 67108864;case 134217728:return 134217728;case 268435456:return 268435456;case 536870912:return 536870912;case 1073741824:return 0;default:return t}}function Ju(t,e,n){var l=t.pendingLanes;if(l===0)return 0;var a=0,o=t.suspendedLanes,i=t.pingedLanes;t=t.warmLanes;var u=l&134217727;return u!==0?(l=u&~o,l!==0?a=hl(l):(i&=u,i!==0?a=hl(i):n||(n=u&~t,n!==0&&(a=hl(n))))):(u=l&~o,u!==0?a=hl(u):i!==0?a=hl(i):n||(n=l&~t,n!==0&&(a=hl(n)))),a===0?0:e!==0&&e!==a&&(e&o)===0&&(o=a&-a,n=e&-e,o>=n||o===32&&(n&4194048)!==0)?e:a}function ei(t,e){return(t.pendingLanes&~(t.suspendedLanes&~t.pingedLanes)&e)===0}function ES(t,e){switch(t){case 1:case 2:case 4:case 8:case 64:return e+250;case 16:case 32:case 128:case 256:case 512:case 1024:case 2048:case 4096:case 8192:case 16384:case 32768:case 65536:case 131072:case 262144:case 524288:case 1048576:case 2097152:return e+5e3;case 4194304:case 8388608:case 16777216:case 33554432:return-1;case 67108864:case 134217728:case 268435456:case 536870912:case 1073741824:return-1;default:return-1}}function kg(){var t=Gi;return Gi<<=1,(Gi&62914560)===0&&(Gi=4194304),t}function Tc(t){for(var e=[],n=0;31>n;n++)e.push(t);return e}function ni(t,e){t.pendingLanes|=e,e!==268435456&&(t.suspendedLanes=0,t.pingedLanes=0,t.warmLanes=0)}function NS(t,e,n,l,a,o){var i=t.pendingLanes;t.pendingLanes=n,t.suspendedLanes=0,t.pingedLanes=0,t.warmLanes=0,t.expiredLanes&=n,t.entangledLanes&=n,t.errorRecoveryDisabledLanes&=n,t.shellSuspendCounter=0;var u=t.entanglements,r=t.expirationTimes,c=t.hiddenUpdates;for(n=i&~n;0<n;){var f=31-ye(n),d=1<<f;u[f]=0,r[f]=-1;var s=c[f];if(s!==null)for(c[f]=null,f=0;f<s.length;f++){var g=s[f];g!==null&&(g.lane&=-536870913)}n&=~d}l!==0&&Ug(t,l,0),o!==0&&a===0&&t.tag!==0&&(t.suspendedLanes|=o&~(i&~e))}function Ug(t,e,n){t.pendingLanes|=e,t.suspendedLanes&=~e;var l=31-ye(e);t.entangledLanes|=e,t.entanglements[l]=t.entanglements[l]|1073741824|n&261930}function Lg(t,e){var n=t.entangledLanes|=e;for(t=t.entanglements;n;){var l=31-ye(n),a=1<<l;a&e|t[l]&e&&(t[l]|=e),n&=~a}}function Yg(t,e){var n=e&-e;return n=(n&42)!==0?1:lf(n),(n&(t.suspendedLanes|e))!==0?0:n}function lf(t){switch(t){case 2:t=1;break;case 8:t=4;break;case 32:t=16;break;case 256:case 512:case 1024:case 2048:case 4096:case 8192:case 16384:case 32768:case 65536:case 131072:case 262144:case 524288:case 1048576:case 2097152:case 4194304:case 8388608:case 16777216:case 33554432:t=128;break;case 268435456:t=134217728;break;default:t=0}return t}function af(t){return t&=-t,2<t?8<t?(t&134217727)!==0?32:268435456:8:2}function Vg(){var t=st.p;return t!==0?t:(t=window.event,t===void 0?32:cy(t.type))}function o0(t,e){var n=st.p;try{return st.p=t,e()}finally{st.p=n}}var el=Math.random().toString(36).slice(2),Qt="__reactFiber$"+el,ie="__reactProps$"+el,Ta="__reactContainer$"+el,hs="__reactEvents$"+el,MS="__reactListeners$"+el,zS="__reactHandles$"+el,i0="__reactResources$"+el,li="__reactMarker$"+el;function of(t){delete t[Qt],delete t[ie],delete t[hs],delete t[MS],delete t[zS]}function na(t){var e=t[Qt];if(e)return e;for(var n=t.parentNode;n;){if(e=n[Ta]||n[Qt]){if(n=e.alternate,e.child!==null||n!==null&&n.child!==null)for(t=gg(t);t!==null;){if(n=t[Qt])return n;t=gg(t)}return e}t=n,n=t.parentNode}return null}function Da(t){if(t=t[Qt]||t[Ta]){var e=t.tag;if(e===5||e===6||e===13||e===31||e===26||e===27||e===3)return t}return null}function wo(t){var e=t.tag;if(e===5||e===26||e===27||e===6)return t.stateNode;throw Error(k(33))}function da(t){var e=t[i0];return e||(e=t[i0]={hoistableStyles:new Map,hoistableScripts:new Map}),e}function Vt(t){t[li]=!0}var qg=new Set,Xg={};function Ml(t,e){xa(t,e),xa(t+"Capture",e)}function xa(t,e){for(Xg[t]=e,t=0;t<e.length;t++)qg.add(e[t])}var CS=RegExp("^[:A-Z_a-z\\\\u00C0-\\\\u00D6\\\\u00D8-\\\\u00F6\\\\u00F8-\\\\u02FF\\\\u0370-\\\\u037D\\\\u037F-\\\\u1FFF\\\\u200C-\\\\u200D\\\\u2070-\\\\u218F\\\\u2C00-\\\\u2FEF\\\\u3001-\\\\uD7FF\\\\uF900-\\\\uFDCF\\\\uFDF0-\\\\uFFFD][:A-Z_a-z\\\\u00C0-\\\\u00D6\\\\u00D8-\\\\u00F6\\\\u00F8-\\\\u02FF\\\\u0370-\\\\u037D\\\\u037F-\\\\u1FFF\\\\u200C-\\\\u200D\\\\u2070-\\\\u218F\\\\u2C00-\\\\u2FEF\\\\u3001-\\\\uD7FF\\\\uF900-\\\\uFDCF\\\\uFDF0-\\\\uFFFD\\\\-.0-9\\\\u00B7\\\\u0300-\\\\u036F\\\\u203F-\\\\u2040]*$"),u0={},r0={};function AS(t){return ds.call(r0,t)?!0:ds.call(u0,t)?!1:CS.test(t)?r0[t]=!0:(u0[t]=!0,!1)}function ou(t,e,n){if(AS(e))if(n===null)t.removeAttribute(e);else{switch(typeof n){case"undefined":case"function":case"symbol":t.removeAttribute(e);return;case"boolean":var l=e.toLowerCase().slice(0,5);if(l!=="data-"&&l!=="aria-"){t.removeAttribute(e);return}}t.setAttribute(e,""+n)}}function Qi(t,e,n){if(n===null)t.removeAttribute(e);else{switch(typeof n){case"undefined":case"function":case"symbol":case"boolean":t.removeAttribute(e);return}t.setAttribute(e,""+n)}}function nn(t,e,n,l){if(l===null)t.removeAttribute(n);else{switch(typeof l){case"undefined":case"function":case"symbol":case"boolean":t.removeAttribute(n);return}t.setAttributeNS(e,n,""+l)}}function Ne(t){switch(typeof t){case"bigint":case"boolean":case"number":case"string":case"undefined":return t;case"object":return t;default:return""}}function Zg(t){var e=t.type;return(t=t.nodeName)&&t.toLowerCase()==="input"&&(e==="checkbox"||e==="radio")}function TS(t,e,n){var l=Object.getOwnPropertyDescriptor(t.constructor.prototype,e);if(!t.hasOwnProperty(e)&&typeof l<"u"&&typeof l.get=="function"&&typeof l.set=="function"){var a=l.get,o=l.set;return Object.defineProperty(t,e,{configurable:!0,get:function(){return a.call(this)},set:function(i){n=""+i,o.call(this,i)}}),Object.defineProperty(t,e,{enumerable:l.enumerable}),{getValue:function(){return n},setValue:function(i){n=""+i},stopTracking:function(){t._valueTracker=null,delete t[e]}}}}function gs(t){if(!t._valueTracker){var e=Zg(t)?"checked":"value";t._valueTracker=TS(t,e,""+t[e])}}function Gg(t){if(!t)return!1;var e=t._valueTracker;if(!e)return!0;var n=e.getValue(),l="";return t&&(l=Zg(t)?t.checked?"true":"false":t.value),t=l,t!==n?(e.setValue(t),!0):!1}function Eu(t){if(t=t||(typeof document<"u"?document:void 0),typeof t>"u")return null;try{return t.activeElement||t.body}catch{return t.body}}var DS=/[\\n"\\\\]/g;function Ce(t){return t.replace(DS,function(e){return"\\\\"+e.charCodeAt(0).toString(16)+" "})}function ps(t,e,n,l,a,o,i,u){t.name="",i!=null&&typeof i!="function"&&typeof i!="symbol"&&typeof i!="boolean"?t.type=i:t.removeAttribute("type"),e!=null?i==="number"?(e===0&&t.value===""||t.value!=e)&&(t.value=""+Ne(e)):t.value!==""+Ne(e)&&(t.value=""+Ne(e)):i!=="submit"&&i!=="reset"||t.removeAttribute("value"),e!=null?ms(t,i,Ne(e)):n!=null?ms(t,i,Ne(n)):l!=null&&t.removeAttribute("value"),a==null&&o!=null&&(t.defaultChecked=!!o),a!=null&&(t.checked=a&&typeof a!="function"&&typeof a!="symbol"),u!=null&&typeof u!="function"&&typeof u!="symbol"&&typeof u!="boolean"?t.name=""+Ne(u):t.removeAttribute("name")}function Qg(t,e,n,l,a,o,i,u){if(o!=null&&typeof o!="function"&&typeof o!="symbol"&&typeof o!="boolean"&&(t.type=o),e!=null||n!=null){if(!(o!=="submit"&&o!=="reset"||e!=null)){gs(t);return}n=n!=null?""+Ne(n):"",e=e!=null?""+Ne(e):n,u||e===t.value||(t.value=e),t.defaultValue=e}l=l??a,l=typeof l!="function"&&typeof l!="symbol"&&!!l,t.checked=u?t.checked:!!l,t.defaultChecked=!!l,i!=null&&typeof i!="function"&&typeof i!="symbol"&&typeof i!="boolean"&&(t.name=i),gs(t)}function ms(t,e,n){e==="number"&&Eu(t.ownerDocument)===t||t.defaultValue===""+n||(t.defaultValue=""+n)}function ha(t,e,n,l){if(t=t.options,e){e={};for(var a=0;a<n.length;a++)e["$"+n[a]]=!0;for(n=0;n<t.length;n++)a=e.hasOwnProperty("$"+t[n].value),t[n].selected!==a&&(t[n].selected=a),a&&l&&(t[n].defaultSelected=!0)}else{for(n=""+Ne(n),e=null,a=0;a<t.length;a++){if(t[a].value===n){t[a].selected=!0,l&&(t[a].defaultSelected=!0);return}e!==null||t[a].disabled||(e=t[a])}e!==null&&(e.selected=!0)}}function Kg(t,e,n){if(e!=null&&(e=""+Ne(e),e!==t.value&&(t.value=e),n==null)){t.defaultValue!==e&&(t.defaultValue=e);return}t.defaultValue=n!=null?""+Ne(n):""}function jg(t,e,n,l){if(e==null){if(l!=null){if(n!=null)throw Error(k(92));if(_o(l)){if(1<l.length)throw Error(k(93));l=l[0]}n=l}n==null&&(n=""),e=n}n=Ne(e),t.defaultValue=n,l=t.textContent,l===n&&l!==""&&l!==null&&(t.value=l),gs(t)}function Sa(t,e){if(e){var n=t.firstChild;if(n&&n===t.lastChild&&n.nodeType===3){n.nodeValue=e;return}}t.textContent=e}var OS=new Set("animationIterationCount aspectRatio borderImageOutset borderImageSlice borderImageWidth boxFlex boxFlexGroup boxOrdinalGroup columnCount columns flex flexGrow flexPositive flexShrink flexNegative flexOrder gridArea gridRow gridRowEnd gridRowSpan gridRowStart gridColumn gridColumnEnd gridColumnSpan gridColumnStart fontWeight lineClamp lineHeight opacity order orphans scale tabSize widows zIndex zoom fillOpacity floodOpacity stopOpacity strokeDasharray strokeDashoffset strokeMiterlimit strokeOpacity strokeWidth MozAnimationIterationCount MozBoxFlex MozBoxFlexGroup MozLineClamp msAnimationIterationCount msFlex msZoom msFlexGrow msFlexNegative msFlexOrder msFlexPositive msFlexShrink msGridColumn msGridColumnSpan msGridRow msGridRowSpan WebkitAnimationIterationCount WebkitBoxFlex WebKitBoxFlexGroup WebkitBoxOrdinalGroup WebkitColumnCount WebkitColumns WebkitFlex WebkitFlexGrow WebkitFlexPositive WebkitFlexShrink WebkitLineClamp".split(" "));function c0(t,e,n){var l=e.indexOf("--")===0;n==null||typeof n=="boolean"||n===""?l?t.setProperty(e,""):e==="float"?t.cssFloat="":t[e]="":l?t.setProperty(e,n):typeof n!="number"||n===0||OS.has(e)?e==="float"?t.cssFloat=n:t[e]=(""+n).trim():t[e]=n+"px"}function $g(t,e,n){if(e!=null&&typeof e!="object")throw Error(k(62));if(t=t.style,n!=null){for(var l in n)!n.hasOwnProperty(l)||e!=null&&e.hasOwnProperty(l)||(l.indexOf("--")===0?t.setProperty(l,""):l==="float"?t.cssFloat="":t[l]="");for(var a in e)l=e[a],e.hasOwnProperty(a)&&n[a]!==l&&c0(t,a,l)}else for(var o in e)e.hasOwnProperty(o)&&c0(t,o,e[o])}function uf(t){if(t.indexOf("-")===-1)return!1;switch(t){case"annotation-xml":case"color-profile":case"font-face":case"font-face-src":case"font-face-uri":case"font-face-format":case"font-face-name":case"missing-glyph":return!1;default:return!0}}var HS=new Map([["acceptCharset","accept-charset"],["htmlFor","for"],["httpEquiv","http-equiv"],["crossOrigin","crossorigin"],["accentHeight","accent-height"],["alignmentBaseline","alignment-baseline"],["arabicForm","arabic-form"],["baselineShift","baseline-shift"],["capHeight","cap-height"],["clipPath","clip-path"],["clipRule","clip-rule"],["colorInterpolation","color-interpolation"],["colorInterpolationFilters","color-interpolation-filters"],["colorProfile","color-profile"],["colorRendering","color-rendering"],["dominantBaseline","dominant-baseline"],["enableBackground","enable-background"],["fillOpacity","fill-opacity"],["fillRule","fill-rule"],["floodColor","flood-color"],["floodOpacity","flood-opacity"],["fontFamily","font-family"],["fontSize","font-size"],["fontSizeAdjust","font-size-adjust"],["fontStretch","font-stretch"],["fontStyle","font-style"],["fontVariant","font-variant"],["fontWeight","font-weight"],["glyphName","glyph-name"],["glyphOrientationHorizontal","glyph-orientation-horizontal"],["glyphOrientationVertical","glyph-orientation-vertical"],["horizAdvX","horiz-adv-x"],["horizOriginX","horiz-origin-x"],["imageRendering","image-rendering"],["letterSpacing","letter-spacing"],["lightingColor","lighting-color"],["markerEnd","marker-end"],["markerMid","marker-mid"],["markerStart","marker-start"],["overlinePosition","overline-position"],["overlineThickness","overline-thickness"],["paintOrder","paint-order"],["panose-1","panose-1"],["pointerEvents","pointer-events"],["renderingIntent","rendering-intent"],["shapeRendering","shape-rendering"],["stopColor","stop-color"],["stopOpacity","stop-opacity"],["strikethroughPosition","strikethrough-position"],["strikethroughThickness","strikethrough-thickness"],["strokeDasharray","stroke-dasharray"],["strokeDashoffset","stroke-dashoffset"],["strokeLinecap","stroke-linecap"],["strokeLinejoin","stroke-linejoin"],["strokeMiterlimit","stroke-miterlimit"],["strokeOpacity","stroke-opacity"],["strokeWidth","stroke-width"],["textAnchor","text-anchor"],["textDecoration","text-decoration"],["textRendering","text-rendering"],["transformOrigin","transform-origin"],["underlinePosition","underline-position"],["underlineThickness","underline-thickness"],["unicodeBidi","unicode-bidi"],["unicodeRange","unicode-range"],["unitsPerEm","units-per-em"],["vAlphabetic","v-alphabetic"],["vHanging","v-hanging"],["vIdeographic","v-ideographic"],["vMathematical","v-mathematical"],["vectorEffect","vector-effect"],["vertAdvY","vert-adv-y"],["vertOriginX","vert-origin-x"],["vertOriginY","vert-origin-y"],["wordSpacing","word-spacing"],["writingMode","writing-mode"],["xmlnsXlink","xmlns:xlink"],["xHeight","x-height"]]),RS=/^[\\u0000-\\u001F ]*j[\\r\\n\\t]*a[\\r\\n\\t]*v[\\r\\n\\t]*a[\\r\\n\\t]*s[\\r\\n\\t]*c[\\r\\n\\t]*r[\\r\\n\\t]*i[\\r\\n\\t]*p[\\r\\n\\t]*t[\\r\\n\\t]*:/i;function iu(t){return RS.test(""+t)?"javascript:throw new Error(\'React has blocked a javascript: URL as a security precaution.\')":t}function fn(){}var ys=null;function rf(t){return t=t.target||t.srcElement||window,t.correspondingUseElement&&(t=t.correspondingUseElement),t.nodeType===3?t.parentNode:t}var la=null,ga=null;function s0(t){var e=Da(t);if(e&&(t=e.stateNode)){var n=t[ie]||null;t:switch(t=e.stateNode,e.type){case"input":if(ps(t,n.value,n.defaultValue,n.defaultValue,n.checked,n.defaultChecked,n.type,n.name),e=n.name,n.type==="radio"&&e!=null){for(n=t;n.parentNode;)n=n.parentNode;for(n=n.querySelectorAll(\'input[name="\'+Ce(""+e)+\'"][type="radio"]\'),e=0;e<n.length;e++){var l=n[e];if(l!==t&&l.form===t.form){var a=l[ie]||null;if(!a)throw Error(k(90));ps(l,a.value,a.defaultValue,a.defaultValue,a.checked,a.defaultChecked,a.type,a.name)}}for(e=0;e<n.length;e++)l=n[e],l.form===t.form&&Gg(l)}break t;case"textarea":Kg(t,n.value,n.defaultValue);break t;case"select":e=n.value,e!=null&&ha(t,!!n.multiple,e,!1)}}}var Dc=!1;function Jg(t,e,n){if(Dc)return t(e,n);Dc=!0;try{var l=t(e);return l}finally{if(Dc=!1,(la!==null||ga!==null)&&(ur(),la&&(e=la,t=ga,ga=la=null,s0(e),t)))for(e=0;e<t.length;e++)s0(t[e])}}function Vo(t,e){var n=t.stateNode;if(n===null)return null;var l=n[ie]||null;if(l===null)return null;n=l[e];t:switch(e){case"onClick":case"onClickCapture":case"onDoubleClick":case"onDoubleClickCapture":case"onMouseDown":case"onMouseDownCapture":case"onMouseMove":case"onMouseMoveCapture":case"onMouseUp":case"onMouseUpCapture":case"onMouseEnter":(l=!l.disabled)||(t=t.type,l=!(t==="button"||t==="input"||t==="select"||t==="textarea")),t=!l;break t;default:t=!1}if(t)return null;if(n&&typeof n!="function")throw Error(k(231,e,typeof n));return n}var mn=!(typeof window>"u"||typeof window.document>"u"||typeof window.document.createElement>"u"),vs=!1;if(mn)try{Jl={},Object.defineProperty(Jl,"passive",{get:function(){vs=!0}}),window.addEventListener("test",Jl,Jl),window.removeEventListener("test",Jl,Jl)}catch{vs=!1}var Jl,Ln=null,cf=null,uu=null;function Ig(){if(uu)return uu;var t,e=cf,n=e.length,l,a="value"in Ln?Ln.value:Ln.textContent,o=a.length;for(t=0;t<n&&e[t]===a[t];t++);var i=n-t;for(l=1;l<=i&&e[n-l]===a[o-l];l++);return uu=a.slice(t,1<l?1-l:void 0)}function ru(t){var e=t.keyCode;return"charCode"in t?(t=t.charCode,t===0&&e===13&&(t=13)):t=e,t===10&&(t=13),32<=t||t===13?t:0}function Ki(){return!0}function f0(){return!1}function ue(t){function e(n,l,a,o,i){this._reactName=n,this._targetInst=a,this.type=l,this.nativeEvent=o,this.target=i,this.currentTarget=null;for(var u in t)t.hasOwnProperty(u)&&(n=t[u],this[u]=n?n(o):o[u]);return this.isDefaultPrevented=(o.defaultPrevented!=null?o.defaultPrevented:o.returnValue===!1)?Ki:f0,this.isPropagationStopped=f0,this}return xt(e.prototype,{preventDefault:function(){this.defaultPrevented=!0;var n=this.nativeEvent;n&&(n.preventDefault?n.preventDefault():typeof n.returnValue!="unknown"&&(n.returnValue=!1),this.isDefaultPrevented=Ki)},stopPropagation:function(){var n=this.nativeEvent;n&&(n.stopPropagation?n.stopPropagation():typeof n.cancelBubble!="unknown"&&(n.cancelBubble=!0),this.isPropagationStopped=Ki)},persist:function(){},isPersistent:Ki}),e}var zl={eventPhase:0,bubbles:0,cancelable:0,timeStamp:function(t){return t.timeStamp||Date.now()},defaultPrevented:0,isTrusted:0},Iu=ue(zl),ai=xt({},zl,{view:0,detail:0}),BS=ue(ai),Oc,Hc,po,Fu=xt({},ai,{screenX:0,screenY:0,clientX:0,clientY:0,pageX:0,pageY:0,ctrlKey:0,shiftKey:0,altKey:0,metaKey:0,getModifierState:sf,button:0,buttons:0,relatedTarget:function(t){return t.relatedTarget===void 0?t.fromElement===t.srcElement?t.toElement:t.fromElement:t.relatedTarget},movementX:function(t){return"movementX"in t?t.movementX:(t!==po&&(po&&t.type==="mousemove"?(Oc=t.screenX-po.screenX,Hc=t.screenY-po.screenY):Hc=Oc=0,po=t),Oc)},movementY:function(t){return"movementY"in t?t.movementY:Hc}}),d0=ue(Fu),kS=xt({},Fu,{dataTransfer:0}),US=ue(kS),LS=xt({},ai,{relatedTarget:0}),Rc=ue(LS),YS=xt({},zl,{animationName:0,elapsedTime:0,pseudoElement:0}),VS=ue(YS),qS=xt({},zl,{clipboardData:function(t){return"clipboardData"in t?t.clipboardData:window.clipboardData}}),XS=ue(qS),ZS=xt({},zl,{data:0}),h0=ue(ZS),GS={Esc:"Escape",Spacebar:" ",Left:"ArrowLeft",Up:"ArrowUp",Right:"ArrowRight",Down:"ArrowDown",Del:"Delete",Win:"OS",Menu:"ContextMenu",Apps:"ContextMenu",Scroll:"ScrollLock",MozPrintableKey:"Unidentified"},QS={8:"Backspace",9:"Tab",12:"Clear",13:"Enter",16:"Shift",17:"Control",18:"Alt",19:"Pause",20:"CapsLock",27:"Escape",32:" ",33:"PageUp",34:"PageDown",35:"End",36:"Home",37:"ArrowLeft",38:"ArrowUp",39:"ArrowRight",40:"ArrowDown",45:"Insert",46:"Delete",112:"F1",113:"F2",114:"F3",115:"F4",116:"F5",117:"F6",118:"F7",119:"F8",120:"F9",121:"F10",122:"F11",123:"F12",144:"NumLock",145:"ScrollLock",224:"Meta"},KS={Alt:"altKey",Control:"ctrlKey",Meta:"metaKey",Shift:"shiftKey"};function jS(t){var e=this.nativeEvent;return e.getModifierState?e.getModifierState(t):(t=KS[t])?!!e[t]:!1}function sf(){return jS}var $S=xt({},ai,{key:function(t){if(t.key){var e=GS[t.key]||t.key;if(e!=="Unidentified")return e}return t.type==="keypress"?(t=ru(t),t===13?"Enter":String.fromCharCode(t)):t.type==="keydown"||t.type==="keyup"?QS[t.keyCode]||"Unidentified":""},code:0,location:0,ctrlKey:0,shiftKey:0,altKey:0,metaKey:0,repeat:0,locale:0,getModifierState:sf,charCode:function(t){return t.type==="keypress"?ru(t):0},keyCode:function(t){return t.type==="keydown"||t.type==="keyup"?t.keyCode:0},which:function(t){return t.type==="keypress"?ru(t):t.type==="keydown"||t.type==="keyup"?t.keyCode:0}}),JS=ue($S),IS=xt({},Fu,{pointerId:0,width:0,height:0,pressure:0,tangentialPressure:0,tiltX:0,tiltY:0,twist:0,pointerType:0,isPrimary:0}),g0=ue(IS),FS=xt({},ai,{touches:0,targetTouches:0,changedTouches:0,altKey:0,metaKey:0,ctrlKey:0,shiftKey:0,getModifierState:sf}),WS=ue(FS),PS=xt({},zl,{propertyName:0,elapsedTime:0,pseudoElement:0}),t_=ue(PS),e_=xt({},Fu,{deltaX:function(t){return"deltaX"in t?t.deltaX:"wheelDeltaX"in t?-t.wheelDeltaX:0},deltaY:function(t){return"deltaY"in t?t.deltaY:"wheelDeltaY"in t?-t.wheelDeltaY:"wheelDelta"in t?-t.wheelDelta:0},deltaZ:0,deltaMode:0}),n_=ue(e_),l_=xt({},zl,{newState:0,oldState:0}),a_=ue(l_),o_=[9,13,27,32],ff=mn&&"CompositionEvent"in window,Mo=null;mn&&"documentMode"in document&&(Mo=document.documentMode);var i_=mn&&"TextEvent"in window&&!Mo,Fg=mn&&(!ff||Mo&&8<Mo&&11>=Mo),p0=" ",m0=!1;function Wg(t,e){switch(t){case"keyup":return o_.indexOf(e.keyCode)!==-1;case"keydown":return e.keyCode!==229;case"keypress":case"mousedown":case"focusout":return!0;default:return!1}}function Pg(t){return t=t.detail,typeof t=="object"&&"data"in t?t.data:null}var aa=!1;function u_(t,e){switch(t){case"compositionend":return Pg(e);case"keypress":return e.which!==32?null:(m0=!0,p0);case"textInput":return t=e.data,t===p0&&m0?null:t;default:return null}}function r_(t,e){if(aa)return t==="compositionend"||!ff&&Wg(t,e)?(t=Ig(),uu=cf=Ln=null,aa=!1,t):null;switch(t){case"paste":return null;case"keypress":if(!(e.ctrlKey||e.altKey||e.metaKey)||e.ctrlKey&&e.altKey){if(e.char&&1<e.char.length)return e.char;if(e.which)return String.fromCharCode(e.which)}return null;case"compositionend":return Fg&&e.locale!=="ko"?null:e.data;default:return null}}var c_={color:!0,date:!0,datetime:!0,"datetime-local":!0,email:!0,month:!0,number:!0,password:!0,range:!0,search:!0,tel:!0,text:!0,time:!0,url:!0,week:!0};function y0(t){var e=t&&t.nodeName&&t.nodeName.toLowerCase();return e==="input"?!!c_[t.type]:e==="textarea"}function tp(t,e,n,l){la?ga?ga.push(l):ga=[l]:la=l,e=Xu(e,"onChange"),0<e.length&&(n=new Iu("onChange","change",null,n,l),t.push({event:n,listeners:e}))}var zo=null,qo=null;function s_(t){Jm(t,0)}function Wu(t){var e=wo(t);if(Gg(e))return t}function v0(t,e){if(t==="change")return e}var ep=!1;mn&&(mn?($i="oninput"in document,$i||(Bc=document.createElement("div"),Bc.setAttribute("oninput","return;"),$i=typeof Bc.oninput=="function"),ji=$i):ji=!1,ep=ji&&(!document.documentMode||9<document.documentMode));var ji,$i,Bc;function b0(){zo&&(zo.detachEvent("onpropertychange",np),qo=zo=null)}function np(t){if(t.propertyName==="value"&&Wu(qo)){var e=[];tp(e,qo,t,rf(t)),Jg(s_,e)}}function f_(t,e,n){t==="focusin"?(b0(),zo=e,qo=n,zo.attachEvent("onpropertychange",np)):t==="focusout"&&b0()}function d_(t){if(t==="selectionchange"||t==="keyup"||t==="keydown")return Wu(qo)}function h_(t,e){if(t==="click")return Wu(e)}function g_(t,e){if(t==="input"||t==="change")return Wu(e)}function p_(t,e){return t===e&&(t!==0||1/t===1/e)||t!==t&&e!==e}var be=typeof Object.is=="function"?Object.is:p_;function Xo(t,e){if(be(t,e))return!0;if(typeof t!="object"||t===null||typeof e!="object"||e===null)return!1;var n=Object.keys(t),l=Object.keys(e);if(n.length!==l.length)return!1;for(l=0;l<n.length;l++){var a=n[l];if(!ds.call(e,a)||!be(t[a],e[a]))return!1}return!0}function x0(t){for(;t&&t.firstChild;)t=t.firstChild;return t}function S0(t,e){var n=x0(t);t=0;for(var l;n;){if(n.nodeType===3){if(l=t+n.textContent.length,t<=e&&l>=e)return{node:n,offset:e-t};t=l}t:{for(;n;){if(n.nextSibling){n=n.nextSibling;break t}n=n.parentNode}n=void 0}n=x0(n)}}function lp(t,e){return t&&e?t===e?!0:t&&t.nodeType===3?!1:e&&e.nodeType===3?lp(t,e.parentNode):"contains"in t?t.contains(e):t.compareDocumentPosition?!!(t.compareDocumentPosition(e)&16):!1:!1}function ap(t){t=t!=null&&t.ownerDocument!=null&&t.ownerDocument.defaultView!=null?t.ownerDocument.defaultView:window;for(var e=Eu(t.document);e instanceof t.HTMLIFrameElement;){try{var n=typeof e.contentWindow.location.href=="string"}catch{n=!1}if(n)t=e.contentWindow;else break;e=Eu(t.document)}return e}function df(t){var e=t&&t.nodeName&&t.nodeName.toLowerCase();return e&&(e==="input"&&(t.type==="text"||t.type==="search"||t.type==="tel"||t.type==="url"||t.type==="password")||e==="textarea"||t.contentEditable==="true")}var m_=mn&&"documentMode"in document&&11>=document.documentMode,oa=null,bs=null,Co=null,xs=!1;function _0(t,e,n){var l=n.window===n?n.document:n.nodeType===9?n:n.ownerDocument;xs||oa==null||oa!==Eu(l)||(l=oa,"selectionStart"in l&&df(l)?l={start:l.selectionStart,end:l.selectionEnd}:(l=(l.ownerDocument&&l.ownerDocument.defaultView||window).getSelection(),l={anchorNode:l.anchorNode,anchorOffset:l.anchorOffset,focusNode:l.focusNode,focusOffset:l.focusOffset}),Co&&Xo(Co,l)||(Co=l,l=Xu(bs,"onSelect"),0<l.length&&(e=new Iu("onSelect","select",null,e,n),t.push({event:e,listeners:l}),e.target=oa)))}function fl(t,e){var n={};return n[t.toLowerCase()]=e.toLowerCase(),n["Webkit"+t]="webkit"+e,n["Moz"+t]="moz"+e,n}var ia={animationend:fl("Animation","AnimationEnd"),animationiteration:fl("Animation","AnimationIteration"),animationstart:fl("Animation","AnimationStart"),transitionrun:fl("Transition","TransitionRun"),transitionstart:fl("Transition","TransitionStart"),transitioncancel:fl("Transition","TransitionCancel"),transitionend:fl("Transition","TransitionEnd")},kc={},op={};mn&&(op=document.createElement("div").style,"AnimationEvent"in window||(delete ia.animationend.animation,delete ia.animationiteration.animation,delete ia.animationstart.animation),"TransitionEvent"in window||delete ia.transitionend.transition);function Cl(t){if(kc[t])return kc[t];if(!ia[t])return t;var e=ia[t],n;for(n in e)if(e.hasOwnProperty(n)&&n in op)return kc[t]=e[n];return t}var ip=Cl("animationend"),up=Cl("animationiteration"),rp=Cl("animationstart"),y_=Cl("transitionrun"),v_=Cl("transitionstart"),b_=Cl("transitioncancel"),cp=Cl("transitionend"),sp=new Map,Ss="abort auxClick beforeToggle cancel canPlay canPlayThrough click close contextMenu copy cut drag dragEnd dragEnter dragExit dragLeave dragOver dragStart drop durationChange emptied encrypted ended error gotPointerCapture input invalid keyDown keyPress keyUp load loadedData loadedMetadata loadStart lostPointerCapture mouseDown mouseMove mouseOut mouseOver mouseUp paste pause play playing pointerCancel pointerDown pointerMove pointerOut pointerOver pointerUp progress rateChange reset resize seeked seeking stalled submit suspend timeUpdate touchCancel touchEnd touchStart volumeChange scroll toggle touchMove waiting wheel".split(" ");Ss.push("scrollEnd");function Le(t,e){sp.set(t,e),Ml(e,[t])}var Nu=typeof reportError=="function"?reportError:function(t){if(typeof window=="object"&&typeof window.ErrorEvent=="function"){var e=new window.ErrorEvent("error",{bubbles:!0,cancelable:!0,message:typeof t=="object"&&t!==null&&typeof t.message=="string"?String(t.message):String(t),error:t});if(!window.dispatchEvent(e))return}else if(typeof process=="object"&&typeof process.emit=="function"){process.emit("uncaughtException",t);return}console.error(t)},Ee=[],ua=0,hf=0;function Pu(){for(var t=ua,e=hf=ua=0;e<t;){var n=Ee[e];Ee[e++]=null;var l=Ee[e];Ee[e++]=null;var a=Ee[e];Ee[e++]=null;var o=Ee[e];if(Ee[e++]=null,l!==null&&a!==null){var i=l.pending;i===null?a.next=a:(a.next=i.next,i.next=a),l.pending=a}o!==0&&fp(n,a,o)}}function tr(t,e,n,l){Ee[ua++]=t,Ee[ua++]=e,Ee[ua++]=n,Ee[ua++]=l,hf|=l,t.lanes|=l,t=t.alternate,t!==null&&(t.lanes|=l)}function gf(t,e,n,l){return tr(t,e,n,l),Mu(t)}function Al(t,e){return tr(t,null,null,e),Mu(t)}function fp(t,e,n){t.lanes|=n;var l=t.alternate;l!==null&&(l.lanes|=n);for(var a=!1,o=t.return;o!==null;)o.childLanes|=n,l=o.alternate,l!==null&&(l.childLanes|=n),o.tag===22&&(t=o.stateNode,t===null||t._visibility&1||(a=!0)),t=o,o=o.return;return t.tag===3?(o=t.stateNode,a&&e!==null&&(a=31-ye(n),t=o.hiddenUpdates,l=t[a],l===null?t[a]=[e]:l.push(e),e.lane=n|536870912),o):null}function Mu(t){if(50<Uo)throw Uo=0,Xs=null,Error(k(185));for(var e=t.return;e!==null;)t=e,e=t.return;return t.tag===3?t.stateNode:null}var ra={};function x_(t,e,n,l){this.tag=t,this.key=n,this.sibling=this.child=this.return=this.stateNode=this.type=this.elementType=null,this.index=0,this.refCleanup=this.ref=null,this.pendingProps=e,this.dependencies=this.memoizedState=this.updateQueue=this.memoizedProps=null,this.mode=l,this.subtreeFlags=this.flags=0,this.deletions=null,this.childLanes=this.lanes=0,this.alternate=null}function he(t,e,n,l){return new x_(t,e,n,l)}function pf(t){return t=t.prototype,!(!t||!t.isReactComponent)}function hn(t,e){var n=t.alternate;return n===null?(n=he(t.tag,e,t.key,t.mode),n.elementType=t.elementType,n.type=t.type,n.stateNode=t.stateNode,n.alternate=t,t.alternate=n):(n.pendingProps=e,n.type=t.type,n.flags=0,n.subtreeFlags=0,n.deletions=null),n.flags=t.flags&65011712,n.childLanes=t.childLanes,n.lanes=t.lanes,n.child=t.child,n.memoizedProps=t.memoizedProps,n.memoizedState=t.memoizedState,n.updateQueue=t.updateQueue,e=t.dependencies,n.dependencies=e===null?null:{lanes:e.lanes,firstContext:e.firstContext},n.sibling=t.sibling,n.index=t.index,n.ref=t.ref,n.refCleanup=t.refCleanup,n}function dp(t,e){t.flags&=65011714;var n=t.alternate;return n===null?(t.childLanes=0,t.lanes=e,t.child=null,t.subtreeFlags=0,t.memoizedProps=null,t.memoizedState=null,t.updateQueue=null,t.dependencies=null,t.stateNode=null):(t.childLanes=n.childLanes,t.lanes=n.lanes,t.child=n.child,t.subtreeFlags=0,t.deletions=null,t.memoizedProps=n.memoizedProps,t.memoizedState=n.memoizedState,t.updateQueue=n.updateQueue,t.type=n.type,e=n.dependencies,t.dependencies=e===null?null:{lanes:e.lanes,firstContext:e.firstContext}),t}function cu(t,e,n,l,a,o){var i=0;if(l=t,typeof t=="function")pf(t)&&(i=1);else if(typeof t=="string")i=w2(t,n,Ke.current)?26:t==="html"||t==="head"||t==="body"?27:5;else t:switch(t){case rs:return t=he(31,n,e,a),t.elementType=rs,t.lanes=o,t;case ta:return yl(n.children,a,o,e);case Dg:i=8,a|=24;break;case os:return t=he(12,n,e,a|2),t.elementType=os,t.lanes=o,t;case is:return t=he(13,n,e,a),t.elementType=is,t.lanes=o,t;case us:return t=he(19,n,e,a),t.elementType=us,t.lanes=o,t;default:if(typeof t=="object"&&t!==null)switch(t.$$typeof){case sn:i=10;break t;case Og:i=9;break t;case tf:i=11;break t;case ef:i=14;break t;case Dn:i=16,l=null;break t}i=29,n=Error(k(130,t===null?"null":typeof t,"")),l=null}return e=he(i,n,e,a),e.elementType=t,e.type=l,e.lanes=o,e}function yl(t,e,n,l){return t=he(7,t,l,e),t.lanes=n,t}function Uc(t,e,n){return t=he(6,t,null,e),t.lanes=n,t}function hp(t){var e=he(18,null,null,0);return e.stateNode=t,e}function Lc(t,e,n){return e=he(4,t.children!==null?t.children:[],t.key,e),e.lanes=n,e.stateNode={containerInfo:t.containerInfo,pendingChildren:null,implementation:t.implementation},e}var w0=new WeakMap;function Ae(t,e){if(typeof t=="object"&&t!==null){var n=w0.get(t);return n!==void 0?n:(e={value:t,source:e,stack:a0(e)},w0.set(t,e),e)}return{value:t,source:e,stack:a0(e)}}var ca=[],sa=0,zu=null,Zo=0,Me=[],ze=0,Fn=null,Ze=1,Ge="";function rn(t,e){ca[sa++]=Zo,ca[sa++]=zu,zu=t,Zo=e}function gp(t,e,n){Me[ze++]=Ze,Me[ze++]=Ge,Me[ze++]=Fn,Fn=t;var l=Ze;t=Ge;var a=32-ye(l)-1;l&=~(1<<a),n+=1;var o=32-ye(e)+a;if(30<o){var i=a-a%5;o=(l&(1<<i)-1).toString(32),l>>=i,a-=i,Ze=1<<32-ye(e)+a|n<<a|l,Ge=o+t}else Ze=1<<o|n<<a|l,Ge=t}function mf(t){t.return!==null&&(rn(t,1),gp(t,1,0))}function yf(t){for(;t===zu;)zu=ca[--sa],ca[sa]=null,Zo=ca[--sa],ca[sa]=null;for(;t===Fn;)Fn=Me[--ze],Me[ze]=null,Ge=Me[--ze],Me[ze]=null,Ze=Me[--ze],Me[ze]=null}function pp(t,e){Me[ze++]=Ze,Me[ze++]=Ge,Me[ze++]=Fn,Ze=e.id,Ge=e.overflow,Fn=t}var Kt=null,bt=null,it=!1,Zn=null,Te=!1,_s=Error(k(519));function Wn(t){var e=Error(k(418,1<arguments.length&&arguments[1]!==void 0&&arguments[1]?"text":"HTML",""));throw Go(Ae(e,t)),_s}function E0(t){var e=t.stateNode,n=t.type,l=t.memoizedProps;switch(e[Qt]=t,e[ie]=l,n){case"dialog":nt("cancel",e),nt("close",e);break;case"iframe":case"object":case"embed":nt("load",e);break;case"video":case"audio":for(n=0;n<$o.length;n++)nt($o[n],e);break;case"source":nt("error",e);break;case"img":case"image":case"link":nt("error",e),nt("load",e);break;case"details":nt("toggle",e);break;case"input":nt("invalid",e),Qg(e,l.value,l.defaultValue,l.checked,l.defaultChecked,l.type,l.name,!0);break;case"select":nt("invalid",e);break;case"textarea":nt("invalid",e),jg(e,l.value,l.defaultValue,l.children)}n=l.children,typeof n!="string"&&typeof n!="number"&&typeof n!="bigint"||e.textContent===""+n||l.suppressHydrationWarning===!0||Fm(e.textContent,n)?(l.popover!=null&&(nt("beforetoggle",e),nt("toggle",e)),l.onScroll!=null&&nt("scroll",e),l.onScrollEnd!=null&&nt("scrollend",e),l.onClick!=null&&(e.onclick=fn),e=!0):e=!1,e||Wn(t,!0)}function N0(t){for(Kt=t.return;Kt;)switch(Kt.tag){case 5:case 31:case 13:Te=!1;return;case 27:case 3:Te=!0;return;default:Kt=Kt.return}}function Il(t){if(t!==Kt)return!1;if(!it)return N0(t),it=!0,!1;var e=t.tag,n;if((n=e!==3&&e!==27)&&((n=e===5)&&(n=t.type,n=!(n!=="form"&&n!=="button")||js(t.type,t.memoizedProps)),n=!n),n&&bt&&Wn(t),N0(t),e===13){if(t=t.memoizedState,t=t!==null?t.dehydrated:null,!t)throw Error(k(317));bt=hg(t)}else if(e===31){if(t=t.memoizedState,t=t!==null?t.dehydrated:null,!t)throw Error(k(317));bt=hg(t)}else e===27?(e=bt,nl(t.type)?(t=Fs,Fs=null,bt=t):bt=e):bt=Kt?Oe(t.stateNode.nextSibling):null;return!0}function Sl(){bt=Kt=null,it=!1}function Yc(){var t=Zn;return t!==null&&(ae===null?ae=t:ae.push.apply(ae,t),Zn=null),t}function Go(t){Zn===null?Zn=[t]:Zn.push(t)}var ws=je(null),Tl=null,dn=null;function Hn(t,e,n){mt(ws,e._currentValue),e._currentValue=n}function gn(t){t._currentValue=ws.current,qt(ws)}function Es(t,e,n){for(;t!==null;){var l=t.alternate;if((t.childLanes&e)!==e?(t.childLanes|=e,l!==null&&(l.childLanes|=e)):l!==null&&(l.childLanes&e)!==e&&(l.childLanes|=e),t===n)break;t=t.return}}function Ns(t,e,n,l){var a=t.child;for(a!==null&&(a.return=t);a!==null;){var o=a.dependencies;if(o!==null){var i=a.child;o=o.firstContext;t:for(;o!==null;){var u=o;o=a;for(var r=0;r<e.length;r++)if(u.context===e[r]){o.lanes|=n,u=o.alternate,u!==null&&(u.lanes|=n),Es(o.return,n,t),l||(i=null);break t}o=u.next}}else if(a.tag===18){if(i=a.return,i===null)throw Error(k(341));i.lanes|=n,o=i.alternate,o!==null&&(o.lanes|=n),Es(i,n,t),i=null}else i=a.child;if(i!==null)i.return=a;else for(i=a;i!==null;){if(i===t){i=null;break}if(a=i.sibling,a!==null){a.return=i.return,i=a;break}i=i.return}a=i}}function Oa(t,e,n,l){t=null;for(var a=e,o=!1;a!==null;){if(!o){if((a.flags&524288)!==0)o=!0;else if((a.flags&262144)!==0)break}if(a.tag===10){var i=a.alternate;if(i===null)throw Error(k(387));if(i=i.memoizedProps,i!==null){var u=a.type;be(a.pendingProps.value,i.value)||(t!==null?t.push(u):t=[u])}}else if(a===xu.current){if(i=a.alternate,i===null)throw Error(k(387));i.memoizedState.memoizedState!==a.memoizedState.memoizedState&&(t!==null?t.push(Io):t=[Io])}a=a.return}t!==null&&Ns(e,t,n,l),e.flags|=262144}function Cu(t){for(t=t.firstContext;t!==null;){if(!be(t.context._currentValue,t.memoizedValue))return!0;t=t.next}return!1}function _l(t){Tl=t,dn=null,t=t.dependencies,t!==null&&(t.firstContext=null)}function jt(t){return mp(Tl,t)}function Ji(t,e){return Tl===null&&_l(t),mp(t,e)}function mp(t,e){var n=e._currentValue;if(e={context:e,memoizedValue:n,next:null},dn===null){if(t===null)throw Error(k(308));dn=e,t.dependencies={lanes:0,firstContext:e},t.flags|=524288}else dn=dn.next=e;return n}var S_=typeof AbortController<"u"?AbortController:function(){var t=[],e=this.signal={aborted:!1,addEventListener:function(n,l){t.push(l)}};this.abort=function(){e.aborted=!0,t.forEach(function(n){return n()})}},__=Lt.unstable_scheduleCallback,w_=Lt.unstable_NormalPriority,Bt={$$typeof:sn,Consumer:null,Provider:null,_currentValue:null,_currentValue2:null,_threadCount:0};function vf(){return{controller:new S_,data:new Map,refCount:0}}function oi(t){t.refCount--,t.refCount===0&&__(w_,function(){t.controller.abort()})}var Ao=null,Ms=0,_a=0,pa=null;function E_(t,e){if(Ao===null){var n=Ao=[];Ms=0,_a=Zf(),pa={status:"pending",value:void 0,then:function(l){n.push(l)}}}return Ms++,e.then(M0,M0),e}function M0(){if(--Ms===0&&Ao!==null){pa!==null&&(pa.status="fulfilled");var t=Ao;Ao=null,_a=0,pa=null;for(var e=0;e<t.length;e++)(0,t[e])()}}function N_(t,e){var n=[],l={status:"pending",value:null,reason:null,then:function(a){n.push(a)}};return t.then(function(){l.status="fulfilled",l.value=e;for(var a=0;a<n.length;a++)(0,n[a])(e)},function(a){for(l.status="rejected",l.reason=a,a=0;a<n.length;a++)(0,n[a])(void 0)}),l}var z0=J.S;J.S=function(t,e){Tm=pe(),typeof e=="object"&&e!==null&&typeof e.then=="function"&&E_(t,e),z0!==null&&z0(t,e)};var vl=je(null);function bf(){var t=vl.current;return t!==null?t:pt.pooledCache}function su(t,e){e===null?mt(vl,vl.current):mt(vl,e.pool)}function yp(){var t=bf();return t===null?null:{parent:Bt._currentValue,pool:t}}var Ha=Error(k(460)),xf=Error(k(474)),er=Error(k(542)),Au={then:function(){}};function C0(t){return t=t.status,t==="fulfilled"||t==="rejected"}function vp(t,e,n){switch(n=t[n],n===void 0?t.push(e):n!==e&&(e.then(fn,fn),e=n),e.status){case"fulfilled":return e.value;case"rejected":throw t=e.reason,T0(t),t;default:if(typeof e.status=="string")e.then(fn,fn);else{if(t=pt,t!==null&&100<t.shellSuspendCounter)throw Error(k(482));t=e,t.status="pending",t.then(function(l){if(e.status==="pending"){var a=e;a.status="fulfilled",a.value=l}},function(l){if(e.status==="pending"){var a=e;a.status="rejected",a.reason=l}})}switch(e.status){case"fulfilled":return e.value;case"rejected":throw t=e.reason,T0(t),t}throw bl=e,Ha}}function gl(t){try{var e=t._init;return e(t._payload)}catch(n){throw n!==null&&typeof n=="object"&&typeof n.then=="function"?(bl=n,Ha):n}}var bl=null;function A0(){if(bl===null)throw Error(k(459));var t=bl;return bl=null,t}function T0(t){if(t===Ha||t===er)throw Error(k(483))}var ma=null,Qo=0;function Ii(t){var e=Qo;return Qo+=1,ma===null&&(ma=[]),vp(ma,t,e)}function mo(t,e){e=e.props.ref,t.ref=e!==void 0?e:null}function Fi(t,e){throw e.$$typeof===fS?Error(k(525)):(t=Object.prototype.toString.call(e),Error(k(31,t==="[object Object]"?"object with keys {"+Object.keys(e).join(", ")+"}":t)))}function bp(t){function e(p,m){if(t){var h=p.deletions;h===null?(p.deletions=[m],p.flags|=16):h.push(m)}}function n(p,m){if(!t)return null;for(;m!==null;)e(p,m),m=m.sibling;return null}function l(p){for(var m=new Map;p!==null;)p.key!==null?m.set(p.key,p):m.set(p.index,p),p=p.sibling;return m}function a(p,m){return p=hn(p,m),p.index=0,p.sibling=null,p}function o(p,m,h){return p.index=h,t?(h=p.alternate,h!==null?(h=h.index,h<m?(p.flags|=67108866,m):h):(p.flags|=67108866,m)):(p.flags|=1048576,m)}function i(p){return t&&p.alternate===null&&(p.flags|=67108866),p}function u(p,m,h,y){return m===null||m.tag!==6?(m=Uc(h,p.mode,y),m.return=p,m):(m=a(m,h),m.return=p,m)}function r(p,m,h,y){var x=h.type;return x===ta?f(p,m,h.props.children,y,h.key):m!==null&&(m.elementType===x||typeof x=="object"&&x!==null&&x.$$typeof===Dn&&gl(x)===m.type)?(m=a(m,h.props),mo(m,h),m.return=p,m):(m=cu(h.type,h.key,h.props,null,p.mode,y),mo(m,h),m.return=p,m)}function c(p,m,h,y){return m===null||m.tag!==4||m.stateNode.containerInfo!==h.containerInfo||m.stateNode.implementation!==h.implementation?(m=Lc(h,p.mode,y),m.return=p,m):(m=a(m,h.children||[]),m.return=p,m)}function f(p,m,h,y,x){return m===null||m.tag!==7?(m=yl(h,p.mode,y,x),m.return=p,m):(m=a(m,h),m.return=p,m)}function d(p,m,h){if(typeof m=="string"&&m!==""||typeof m=="number"||typeof m=="bigint")return m=Uc(""+m,p.mode,h),m.return=p,m;if(typeof m=="object"&&m!==null){switch(m.$$typeof){case qi:return h=cu(m.type,m.key,m.props,null,p.mode,h),mo(h,m),h.return=p,h;case So:return m=Lc(m,p.mode,h),m.return=p,m;case Dn:return m=gl(m),d(p,m,h)}if(_o(m)||go(m))return m=yl(m,p.mode,h,null),m.return=p,m;if(typeof m.then=="function")return d(p,Ii(m),h);if(m.$$typeof===sn)return d(p,Ji(p,m),h);Fi(p,m)}return null}function s(p,m,h,y){var x=m!==null?m.key:null;if(typeof h=="string"&&h!==""||typeof h=="number"||typeof h=="bigint")return x!==null?null:u(p,m,""+h,y);if(typeof h=="object"&&h!==null){switch(h.$$typeof){case qi:return h.key===x?r(p,m,h,y):null;case So:return h.key===x?c(p,m,h,y):null;case Dn:return h=gl(h),s(p,m,h,y)}if(_o(h)||go(h))return x!==null?null:f(p,m,h,y,null);if(typeof h.then=="function")return s(p,m,Ii(h),y);if(h.$$typeof===sn)return s(p,m,Ji(p,h),y);Fi(p,h)}return null}function g(p,m,h,y,x){if(typeof y=="string"&&y!==""||typeof y=="number"||typeof y=="bigint")return p=p.get(h)||null,u(m,p,""+y,x);if(typeof y=="object"&&y!==null){switch(y.$$typeof){case qi:return p=p.get(y.key===null?h:y.key)||null,r(m,p,y,x);case So:return p=p.get(y.key===null?h:y.key)||null,c(m,p,y,x);case Dn:return y=gl(y),g(p,m,h,y,x)}if(_o(y)||go(y))return p=p.get(h)||null,f(m,p,y,x,null);if(typeof y.then=="function")return g(p,m,h,Ii(y),x);if(y.$$typeof===sn)return g(p,m,h,Ji(m,y),x);Fi(m,y)}return null}function b(p,m,h,y){for(var x=null,E=null,w=m,N=m=0,z=null;w!==null&&N<h.length;N++){w.index>N?(z=w,w=null):z=w.sibling;var U=s(p,w,h[N],y);if(U===null){w===null&&(w=z);break}t&&w&&U.alternate===null&&e(p,w),m=o(U,m,N),E===null?x=U:E.sibling=U,E=U,w=z}if(N===h.length)return n(p,w),it&&rn(p,N),x;if(w===null){for(;N<h.length;N++)w=d(p,h[N],y),w!==null&&(m=o(w,m,N),E===null?x=w:E.sibling=w,E=w);return it&&rn(p,N),x}for(w=l(w);N<h.length;N++)z=g(w,p,N,h[N],y),z!==null&&(t&&z.alternate!==null&&w.delete(z.key===null?N:z.key),m=o(z,m,N),E===null?x=z:E.sibling=z,E=z);return t&&w.forEach(function(H){return e(p,H)}),it&&rn(p,N),x}function v(p,m,h,y){if(h==null)throw Error(k(151));for(var x=null,E=null,w=m,N=m=0,z=null,U=h.next();w!==null&&!U.done;N++,U=h.next()){w.index>N?(z=w,w=null):z=w.sibling;var H=s(p,w,U.value,y);if(H===null){w===null&&(w=z);break}t&&w&&H.alternate===null&&e(p,w),m=o(H,m,N),E===null?x=H:E.sibling=H,E=H,w=z}if(U.done)return n(p,w),it&&rn(p,N),x;if(w===null){for(;!U.done;N++,U=h.next())U=d(p,U.value,y),U!==null&&(m=o(U,m,N),E===null?x=U:E.sibling=U,E=U);return it&&rn(p,N),x}for(w=l(w);!U.done;N++,U=h.next())U=g(w,p,N,U.value,y),U!==null&&(t&&U.alternate!==null&&w.delete(U.key===null?N:U.key),m=o(U,m,N),E===null?x=U:E.sibling=U,E=U);return t&&w.forEach(function(B){return e(p,B)}),it&&rn(p,N),x}function S(p,m,h,y){if(typeof h=="object"&&h!==null&&h.type===ta&&h.key===null&&(h=h.props.children),typeof h=="object"&&h!==null){switch(h.$$typeof){case qi:t:{for(var x=h.key;m!==null;){if(m.key===x){if(x=h.type,x===ta){if(m.tag===7){n(p,m.sibling),y=a(m,h.props.children),y.return=p,p=y;break t}}else if(m.elementType===x||typeof x=="object"&&x!==null&&x.$$typeof===Dn&&gl(x)===m.type){n(p,m.sibling),y=a(m,h.props),mo(y,h),y.return=p,p=y;break t}n(p,m);break}else e(p,m);m=m.sibling}h.type===ta?(y=yl(h.props.children,p.mode,y,h.key),y.return=p,p=y):(y=cu(h.type,h.key,h.props,null,p.mode,y),mo(y,h),y.return=p,p=y)}return i(p);case So:t:{for(x=h.key;m!==null;){if(m.key===x)if(m.tag===4&&m.stateNode.containerInfo===h.containerInfo&&m.stateNode.implementation===h.implementation){n(p,m.sibling),y=a(m,h.children||[]),y.return=p,p=y;break t}else{n(p,m);break}else e(p,m);m=m.sibling}y=Lc(h,p.mode,y),y.return=p,p=y}return i(p);case Dn:return h=gl(h),S(p,m,h,y)}if(_o(h))return b(p,m,h,y);if(go(h)){if(x=go(h),typeof x!="function")throw Error(k(150));return h=x.call(h),v(p,m,h,y)}if(typeof h.then=="function")return S(p,m,Ii(h),y);if(h.$$typeof===sn)return S(p,m,Ji(p,h),y);Fi(p,h)}return typeof h=="string"&&h!==""||typeof h=="number"||typeof h=="bigint"?(h=""+h,m!==null&&m.tag===6?(n(p,m.sibling),y=a(m,h),y.return=p,p=y):(n(p,m),y=Uc(h,p.mode,y),y.return=p,p=y),i(p)):n(p,m)}return function(p,m,h,y){try{Qo=0;var x=S(p,m,h,y);return ma=null,x}catch(w){if(w===Ha||w===er)throw w;var E=he(29,w,null,p.mode);return E.lanes=y,E.return=p,E}}}var wl=bp(!0),xp=bp(!1),On=!1;function Sf(t){t.updateQueue={baseState:t.memoizedState,firstBaseUpdate:null,lastBaseUpdate:null,shared:{pending:null,lanes:0,hiddenCallbacks:null},callbacks:null}}function zs(t,e){t=t.updateQueue,e.updateQueue===t&&(e.updateQueue={baseState:t.baseState,firstBaseUpdate:t.firstBaseUpdate,lastBaseUpdate:t.lastBaseUpdate,shared:t.shared,callbacks:null})}function Gn(t){return{lane:t,tag:0,payload:null,callback:null,next:null}}function Qn(t,e,n){var l=t.updateQueue;if(l===null)return null;if(l=l.shared,(ct&2)!==0){var a=l.pending;return a===null?e.next=e:(e.next=a.next,a.next=e),l.pending=e,e=Mu(t),fp(t,null,n),e}return tr(t,l,e,n),Mu(t)}function To(t,e,n){if(e=e.updateQueue,e!==null&&(e=e.shared,(n&4194048)!==0)){var l=e.lanes;l&=t.pendingLanes,n|=l,e.lanes=n,Lg(t,n)}}function Vc(t,e){var n=t.updateQueue,l=t.alternate;if(l!==null&&(l=l.updateQueue,n===l)){var a=null,o=null;if(n=n.firstBaseUpdate,n!==null){do{var i={lane:n.lane,tag:n.tag,payload:n.payload,callback:null,next:null};o===null?a=o=i:o=o.next=i,n=n.next}while(n!==null);o===null?a=o=e:o=o.next=e}else a=o=e;n={baseState:l.baseState,firstBaseUpdate:a,lastBaseUpdate:o,shared:l.shared,callbacks:l.callbacks},t.updateQueue=n;return}t=n.lastBaseUpdate,t===null?n.firstBaseUpdate=e:t.next=e,n.lastBaseUpdate=e}var Cs=!1;function Do(){if(Cs){var t=pa;if(t!==null)throw t}}function Oo(t,e,n,l){Cs=!1;var a=t.updateQueue;On=!1;var o=a.firstBaseUpdate,i=a.lastBaseUpdate,u=a.shared.pending;if(u!==null){a.shared.pending=null;var r=u,c=r.next;r.next=null,i===null?o=c:i.next=c,i=r;var f=t.alternate;f!==null&&(f=f.updateQueue,u=f.lastBaseUpdate,u!==i&&(u===null?f.firstBaseUpdate=c:u.next=c,f.lastBaseUpdate=r))}if(o!==null){var d=a.baseState;i=0,f=c=r=null,u=o;do{var s=u.lane&-536870913,g=s!==u.lane;if(g?(at&s)===s:(l&s)===s){s!==0&&s===_a&&(Cs=!0),f!==null&&(f=f.next={lane:0,tag:u.tag,payload:u.payload,callback:null,next:null});t:{var b=t,v=u;s=e;var S=n;switch(v.tag){case 1:if(b=v.payload,typeof b=="function"){d=b.call(S,d,s);break t}d=b;break t;case 3:b.flags=b.flags&-65537|128;case 0:if(b=v.payload,s=typeof b=="function"?b.call(S,d,s):b,s==null)break t;d=xt({},d,s);break t;case 2:On=!0}}s=u.callback,s!==null&&(t.flags|=64,g&&(t.flags|=8192),g=a.callbacks,g===null?a.callbacks=[s]:g.push(s))}else g={lane:s,tag:u.tag,payload:u.payload,callback:u.callback,next:null},f===null?(c=f=g,r=d):f=f.next=g,i|=s;if(u=u.next,u===null){if(u=a.shared.pending,u===null)break;g=u,u=g.next,g.next=null,a.lastBaseUpdate=g,a.shared.pending=null}}while(!0);f===null&&(r=d),a.baseState=r,a.firstBaseUpdate=c,a.lastBaseUpdate=f,o===null&&(a.shared.lanes=0),tl|=i,t.lanes=i,t.memoizedState=d}}function Sp(t,e){if(typeof t!="function")throw Error(k(191,t));t.call(e)}function _p(t,e){var n=t.callbacks;if(n!==null)for(t.callbacks=null,t=0;t<n.length;t++)Sp(n[t],e)}var wa=je(null),Tu=je(0);function D0(t,e){t=xn,mt(Tu,t),mt(wa,e),xn=t|e.baseLanes}function As(){mt(Tu,xn),mt(wa,wa.current)}function _f(){xn=Tu.current,qt(wa),qt(Tu)}var xe=je(null),De=null;function Rn(t){var e=t.alternate;mt(Dt,Dt.current&1),mt(xe,t),De===null&&(e===null||wa.current!==null||e.memoizedState!==null)&&(De=t)}function Ts(t){mt(Dt,Dt.current),mt(xe,t),De===null&&(De=t)}function wp(t){t.tag===22?(mt(Dt,Dt.current),mt(xe,t),De===null&&(De=t)):Bn(t)}function Bn(){mt(Dt,Dt.current),mt(xe,xe.current)}function de(t){qt(xe),De===t&&(De=null),qt(Dt)}var Dt=je(0);function Du(t){for(var e=t;e!==null;){if(e.tag===13){var n=e.memoizedState;if(n!==null&&(n=n.dehydrated,n===null||Js(n)||Is(n)))return e}else if(e.tag===19&&(e.memoizedProps.revealOrder==="forwards"||e.memoizedProps.revealOrder==="backwards"||e.memoizedProps.revealOrder==="unstable_legacy-backwards"||e.memoizedProps.revealOrder==="together")){if((e.flags&128)!==0)return e}else if(e.child!==null){e.child.return=e,e=e.child;continue}if(e===t)break;for(;e.sibling===null;){if(e.return===null||e.return===t)return null;e=e.return}e.sibling.return=e.return,e=e.sibling}return null}var yn=0,P=null,gt=null,Ht=null,Ou=!1,ya=!1,El=!1,Hu=0,Ko=0,va=null,M_=0;function Ct(){throw Error(k(321))}function wf(t,e){if(e===null)return!1;for(var n=0;n<e.length&&n<t.length;n++)if(!be(t[n],e[n]))return!1;return!0}function Ef(t,e,n,l,a,o){return yn=o,P=e,e.memoizedState=null,e.updateQueue=null,e.lanes=0,J.H=t===null||t.memoizedState===null?tm:Bf,El=!1,o=n(l,a),El=!1,ya&&(o=Np(e,n,l,a)),Ep(t),o}function Ep(t){J.H=jo;var e=gt!==null&&gt.next!==null;if(yn=0,Ht=gt=P=null,Ou=!1,Ko=0,va=null,e)throw Error(k(300));t===null||kt||(t=t.dependencies,t!==null&&Cu(t)&&(kt=!0))}function Np(t,e,n,l){P=t;var a=0;do{if(ya&&(va=null),Ko=0,ya=!1,25<=a)throw Error(k(301));if(a+=1,Ht=gt=null,t.updateQueue!=null){var o=t.updateQueue;o.lastEffect=null,o.events=null,o.stores=null,o.memoCache!=null&&(o.memoCache.index=0)}J.H=em,o=e(n,l)}while(ya);return o}function z_(){var t=J.H,e=t.useState()[0];return e=typeof e.then=="function"?ii(e):e,t=t.useState()[0],(gt!==null?gt.memoizedState:null)!==t&&(P.flags|=1024),e}function Nf(){var t=Hu!==0;return Hu=0,t}function Mf(t,e,n){e.updateQueue=t.updateQueue,e.flags&=-2053,t.lanes&=~n}function zf(t){if(Ou){for(t=t.memoizedState;t!==null;){var e=t.queue;e!==null&&(e.pending=null),t=t.next}Ou=!1}yn=0,Ht=gt=P=null,ya=!1,Ko=Hu=0,va=null}function Pt(){var t={memoizedState:null,baseState:null,baseQueue:null,queue:null,next:null};return Ht===null?P.memoizedState=Ht=t:Ht=Ht.next=t,Ht}function Ot(){if(gt===null){var t=P.alternate;t=t!==null?t.memoizedState:null}else t=gt.next;var e=Ht===null?P.memoizedState:Ht.next;if(e!==null)Ht=e,gt=t;else{if(t===null)throw P.alternate===null?Error(k(467)):Error(k(310));gt=t,t={memoizedState:gt.memoizedState,baseState:gt.baseState,baseQueue:gt.baseQueue,queue:gt.queue,next:null},Ht===null?P.memoizedState=Ht=t:Ht=Ht.next=t}return Ht}function nr(){return{lastEffect:null,events:null,stores:null,memoCache:null}}function ii(t){var e=Ko;return Ko+=1,va===null&&(va=[]),t=vp(va,t,e),e=P,(Ht===null?e.memoizedState:Ht.next)===null&&(e=e.alternate,J.H=e===null||e.memoizedState===null?tm:Bf),t}function lr(t){if(t!==null&&typeof t=="object"){if(typeof t.then=="function")return ii(t);if(t.$$typeof===sn)return jt(t)}throw Error(k(438,String(t)))}function Cf(t){var e=null,n=P.updateQueue;if(n!==null&&(e=n.memoCache),e==null){var l=P.alternate;l!==null&&(l=l.updateQueue,l!==null&&(l=l.memoCache,l!=null&&(e={data:l.data.map(function(a){return a.slice()}),index:0})))}if(e==null&&(e={data:[],index:0}),n===null&&(n=nr(),P.updateQueue=n),n.memoCache=e,n=e.data[e.index],n===void 0)for(n=e.data[e.index]=Array(t),l=0;l<t;l++)n[l]=dS;return e.index++,n}function vn(t,e){return typeof e=="function"?e(t):e}function fu(t){var e=Ot();return Af(e,gt,t)}function Af(t,e,n){var l=t.queue;if(l===null)throw Error(k(311));l.lastRenderedReducer=n;var a=t.baseQueue,o=l.pending;if(o!==null){if(a!==null){var i=a.next;a.next=o.next,o.next=i}e.baseQueue=a=o,l.pending=null}if(o=t.baseState,a===null)t.memoizedState=o;else{e=a.next;var u=i=null,r=null,c=e,f=!1;do{var d=c.lane&-536870913;if(d!==c.lane?(at&d)===d:(yn&d)===d){var s=c.revertLane;if(s===0)r!==null&&(r=r.next={lane:0,revertLane:0,gesture:null,action:c.action,hasEagerState:c.hasEagerState,eagerState:c.eagerState,next:null}),d===_a&&(f=!0);else if((yn&s)===s){c=c.next,s===_a&&(f=!0);continue}else d={lane:0,revertLane:c.revertLane,gesture:null,action:c.action,hasEagerState:c.hasEagerState,eagerState:c.eagerState,next:null},r===null?(u=r=d,i=o):r=r.next=d,P.lanes|=s,tl|=s;d=c.action,El&&n(o,d),o=c.hasEagerState?c.eagerState:n(o,d)}else s={lane:d,revertLane:c.revertLane,gesture:c.gesture,action:c.action,hasEagerState:c.hasEagerState,eagerState:c.eagerState,next:null},r===null?(u=r=s,i=o):r=r.next=s,P.lanes|=d,tl|=d;c=c.next}while(c!==null&&c!==e);if(r===null?i=o:r.next=u,!be(o,t.memoizedState)&&(kt=!0,f&&(n=pa,n!==null)))throw n;t.memoizedState=o,t.baseState=i,t.baseQueue=r,l.lastRenderedState=o}return a===null&&(l.lanes=0),[t.memoizedState,l.dispatch]}function qc(t){var e=Ot(),n=e.queue;if(n===null)throw Error(k(311));n.lastRenderedReducer=t;var l=n.dispatch,a=n.pending,o=e.memoizedState;if(a!==null){n.pending=null;var i=a=a.next;do o=t(o,i.action),i=i.next;while(i!==a);be(o,e.memoizedState)||(kt=!0),e.memoizedState=o,e.baseQueue===null&&(e.baseState=o),n.lastRenderedState=o}return[o,l]}function Mp(t,e,n){var l=P,a=Ot(),o=it;if(o){if(n===void 0)throw Error(k(407));n=n()}else n=e();var i=!be((gt||a).memoizedState,n);if(i&&(a.memoizedState=n,kt=!0),a=a.queue,Tf(Ap.bind(null,l,a,t),[t]),a.getSnapshot!==e||i||Ht!==null&&Ht.memoizedState.tag&1){if(l.flags|=2048,Ea(9,{destroy:void 0},Cp.bind(null,l,a,n,e),null),pt===null)throw Error(k(349));o||(yn&127)!==0||zp(l,e,n)}return n}function zp(t,e,n){t.flags|=16384,t={getSnapshot:e,value:n},e=P.updateQueue,e===null?(e=nr(),P.updateQueue=e,e.stores=[t]):(n=e.stores,n===null?e.stores=[t]:n.push(t))}function Cp(t,e,n,l){e.value=n,e.getSnapshot=l,Tp(e)&&Dp(t)}function Ap(t,e,n){return n(function(){Tp(e)&&Dp(t)})}function Tp(t){var e=t.getSnapshot;t=t.value;try{var n=e();return!be(t,n)}catch{return!0}}function Dp(t){var e=Al(t,2);e!==null&&oe(e,t,2)}function Ds(t){var e=Pt();if(typeof t=="function"){var n=t;if(t=n(),El){Un(!0);try{n()}finally{Un(!1)}}}return e.memoizedState=e.baseState=t,e.queue={pending:null,lanes:0,dispatch:null,lastRenderedReducer:vn,lastRenderedState:t},e}function Op(t,e,n,l){return t.baseState=n,Af(t,gt,typeof l=="function"?l:vn)}function C_(t,e,n,l,a){if(or(t))throw Error(k(485));if(t=e.action,t!==null){var o={payload:a,action:t,next:null,isTransition:!0,status:"pending",value:null,reason:null,listeners:[],then:function(i){o.listeners.push(i)}};J.T!==null?n(!0):o.isTransition=!1,l(o),n=e.pending,n===null?(o.next=e.pending=o,Hp(e,o)):(o.next=n.next,e.pending=n.next=o)}}function Hp(t,e){var n=e.action,l=e.payload,a=t.state;if(e.isTransition){var o=J.T,i={};J.T=i;try{var u=n(a,l),r=J.S;r!==null&&r(i,u),O0(t,e,u)}catch(c){Os(t,e,c)}finally{o!==null&&i.types!==null&&(o.types=i.types),J.T=o}}else try{o=n(a,l),O0(t,e,o)}catch(c){Os(t,e,c)}}function O0(t,e,n){n!==null&&typeof n=="object"&&typeof n.then=="function"?n.then(function(l){H0(t,e,l)},function(l){return Os(t,e,l)}):H0(t,e,n)}function H0(t,e,n){e.status="fulfilled",e.value=n,Rp(e),t.state=n,e=t.pending,e!==null&&(n=e.next,n===e?t.pending=null:(n=n.next,e.next=n,Hp(t,n)))}function Os(t,e,n){var l=t.pending;if(t.pending=null,l!==null){l=l.next;do e.status="rejected",e.reason=n,Rp(e),e=e.next;while(e!==l)}t.action=null}function Rp(t){t=t.listeners;for(var e=0;e<t.length;e++)(0,t[e])()}function Bp(t,e){return e}function R0(t,e){if(it){var n=pt.formState;if(n!==null){t:{var l=P;if(it){if(bt){e:{for(var a=bt,o=Te;a.nodeType!==8;){if(!o){a=null;break e}if(a=Oe(a.nextSibling),a===null){a=null;break e}}o=a.data,a=o==="F!"||o==="F"?a:null}if(a){bt=Oe(a.nextSibling),l=a.data==="F!";break t}}Wn(l)}l=!1}l&&(e=n[0])}}return n=Pt(),n.memoizedState=n.baseState=e,l={pending:null,lanes:0,dispatch:null,lastRenderedReducer:Bp,lastRenderedState:e},n.queue=l,n=Fp.bind(null,P,l),l.dispatch=n,l=Ds(!1),o=Rf.bind(null,P,!1,l.queue),l=Pt(),a={state:e,dispatch:null,action:t,pending:null},l.queue=a,n=C_.bind(null,P,a,o,n),a.dispatch=n,l.memoizedState=t,[e,n,!1]}function B0(t){var e=Ot();return kp(e,gt,t)}function kp(t,e,n){if(e=Af(t,e,Bp)[0],t=fu(vn)[0],typeof e=="object"&&e!==null&&typeof e.then=="function")try{var l=ii(e)}catch(i){throw i===Ha?er:i}else l=e;e=Ot();var a=e.queue,o=a.dispatch;return n!==e.memoizedState&&(P.flags|=2048,Ea(9,{destroy:void 0},A_.bind(null,a,n),null)),[l,o,t]}function A_(t,e){t.action=e}function k0(t){var e=Ot(),n=gt;if(n!==null)return kp(e,n,t);Ot(),e=e.memoizedState,n=Ot();var l=n.queue.dispatch;return n.memoizedState=t,[e,l,!1]}function Ea(t,e,n,l){return t={tag:t,create:n,deps:l,inst:e,next:null},e=P.updateQueue,e===null&&(e=nr(),P.updateQueue=e),n=e.lastEffect,n===null?e.lastEffect=t.next=t:(l=n.next,n.next=t,t.next=l,e.lastEffect=t),t}function Up(){return Ot().memoizedState}function du(t,e,n,l){var a=Pt();P.flags|=t,a.memoizedState=Ea(1|e,{destroy:void 0},n,l===void 0?null:l)}function ar(t,e,n,l){var a=Ot();l=l===void 0?null:l;var o=a.memoizedState.inst;gt!==null&&l!==null&&wf(l,gt.memoizedState.deps)?a.memoizedState=Ea(e,o,n,l):(P.flags|=t,a.memoizedState=Ea(1|e,o,n,l))}function U0(t,e){du(8390656,8,t,e)}function Tf(t,e){ar(2048,8,t,e)}function T_(t){P.flags|=4;var e=P.updateQueue;if(e===null)e=nr(),P.updateQueue=e,e.events=[t];else{var n=e.events;n===null?e.events=[t]:n.push(t)}}function Lp(t){var e=Ot().memoizedState;return T_({ref:e,nextImpl:t}),function(){if((ct&2)!==0)throw Error(k(440));return e.impl.apply(void 0,arguments)}}function Yp(t,e){return ar(4,2,t,e)}function Vp(t,e){return ar(4,4,t,e)}function qp(t,e){if(typeof e=="function"){t=t();var n=e(t);return function(){typeof n=="function"?n():e(null)}}if(e!=null)return t=t(),e.current=t,function(){e.current=null}}function Xp(t,e,n){n=n!=null?n.concat([t]):null,ar(4,4,qp.bind(null,e,t),n)}function Df(){}function Zp(t,e){var n=Ot();e=e===void 0?null:e;var l=n.memoizedState;return e!==null&&wf(e,l[1])?l[0]:(n.memoizedState=[t,e],t)}function Gp(t,e){var n=Ot();e=e===void 0?null:e;var l=n.memoizedState;if(e!==null&&wf(e,l[1]))return l[0];if(l=t(),El){Un(!0);try{t()}finally{Un(!1)}}return n.memoizedState=[l,e],l}function Of(t,e,n){return n===void 0||(yn&1073741824)!==0&&(at&261930)===0?t.memoizedState=e:(t.memoizedState=n,t=Om(),P.lanes|=t,tl|=t,n)}function Qp(t,e,n,l){return be(n,e)?n:wa.current!==null?(t=Of(t,n,l),be(t,e)||(kt=!0),t):(yn&42)===0||(yn&1073741824)!==0&&(at&261930)===0?(kt=!0,t.memoizedState=n):(t=Om(),P.lanes|=t,tl|=t,e)}function Kp(t,e,n,l,a){var o=st.p;st.p=o!==0&&8>o?o:8;var i=J.T,u={};J.T=u,Rf(t,!1,e,n);try{var r=a(),c=J.S;if(c!==null&&c(u,r),r!==null&&typeof r=="object"&&typeof r.then=="function"){var f=N_(r,l);Ho(t,e,f,ve(t))}else Ho(t,e,l,ve(t))}catch(d){Ho(t,e,{then:function(){},status:"rejected",reason:d},ve())}finally{st.p=o,i!==null&&u.types!==null&&(i.types=u.types),J.T=i}}function D_(){}function Hs(t,e,n,l){if(t.tag!==5)throw Error(k(476));var a=jp(t).queue;Kp(t,a,e,ml,n===null?D_:function(){return $p(t),n(l)})}function jp(t){var e=t.memoizedState;if(e!==null)return e;e={memoizedState:ml,baseState:ml,baseQueue:null,queue:{pending:null,lanes:0,dispatch:null,lastRenderedReducer:vn,lastRenderedState:ml},next:null};var n={};return e.next={memoizedState:n,baseState:n,baseQueue:null,queue:{pending:null,lanes:0,dispatch:null,lastRenderedReducer:vn,lastRenderedState:n},next:null},t.memoizedState=e,t=t.alternate,t!==null&&(t.memoizedState=e),e}function $p(t){var e=jp(t);e.next===null&&(e=t.alternate.memoizedState),Ho(t,e.next.queue,{},ve())}function Hf(){return jt(Io)}function Jp(){return Ot().memoizedState}function Ip(){return Ot().memoizedState}function O_(t){for(var e=t.return;e!==null;){switch(e.tag){case 24:case 3:var n=ve();t=Gn(n);var l=Qn(e,t,n);l!==null&&(oe(l,e,n),To(l,e,n)),e={cache:vf()},t.payload=e;return}e=e.return}}function H_(t,e,n){var l=ve();n={lane:l,revertLane:0,gesture:null,action:n,hasEagerState:!1,eagerState:null,next:null},or(t)?Wp(e,n):(n=gf(t,e,n,l),n!==null&&(oe(n,t,l),Pp(n,e,l)))}function Fp(t,e,n){var l=ve();Ho(t,e,n,l)}function Ho(t,e,n,l){var a={lane:l,revertLane:0,gesture:null,action:n,hasEagerState:!1,eagerState:null,next:null};if(or(t))Wp(e,a);else{var o=t.alternate;if(t.lanes===0&&(o===null||o.lanes===0)&&(o=e.lastRenderedReducer,o!==null))try{var i=e.lastRenderedState,u=o(i,n);if(a.hasEagerState=!0,a.eagerState=u,be(u,i))return tr(t,e,a,0),pt===null&&Pu(),!1}catch{}if(n=gf(t,e,a,l),n!==null)return oe(n,t,l),Pp(n,e,l),!0}return!1}function Rf(t,e,n,l){if(l={lane:2,revertLane:Zf(),gesture:null,action:l,hasEagerState:!1,eagerState:null,next:null},or(t)){if(e)throw Error(k(479))}else e=gf(t,n,l,2),e!==null&&oe(e,t,2)}function or(t){var e=t.alternate;return t===P||e!==null&&e===P}function Wp(t,e){ya=Ou=!0;var n=t.pending;n===null?e.next=e:(e.next=n.next,n.next=e),t.pending=e}function Pp(t,e,n){if((n&4194048)!==0){var l=e.lanes;l&=t.pendingLanes,n|=l,e.lanes=n,Lg(t,n)}}var jo={readContext:jt,use:lr,useCallback:Ct,useContext:Ct,useEffect:Ct,useImperativeHandle:Ct,useLayoutEffect:Ct,useInsertionEffect:Ct,useMemo:Ct,useReducer:Ct,useRef:Ct,useState:Ct,useDebugValue:Ct,useDeferredValue:Ct,useTransition:Ct,useSyncExternalStore:Ct,useId:Ct,useHostTransitionStatus:Ct,useFormState:Ct,useActionState:Ct,useOptimistic:Ct,useMemoCache:Ct,useCacheRefresh:Ct};jo.useEffectEvent=Ct;var tm={readContext:jt,use:lr,useCallback:function(t,e){return Pt().memoizedState=[t,e===void 0?null:e],t},useContext:jt,useEffect:U0,useImperativeHandle:function(t,e,n){n=n!=null?n.concat([t]):null,du(4194308,4,qp.bind(null,e,t),n)},useLayoutEffect:function(t,e){return du(4194308,4,t,e)},useInsertionEffect:function(t,e){du(4,2,t,e)},useMemo:function(t,e){var n=Pt();e=e===void 0?null:e;var l=t();if(El){Un(!0);try{t()}finally{Un(!1)}}return n.memoizedState=[l,e],l},useReducer:function(t,e,n){var l=Pt();if(n!==void 0){var a=n(e);if(El){Un(!0);try{n(e)}finally{Un(!1)}}}else a=e;return l.memoizedState=l.baseState=a,t={pending:null,lanes:0,dispatch:null,lastRenderedReducer:t,lastRenderedState:a},l.queue=t,t=t.dispatch=H_.bind(null,P,t),[l.memoizedState,t]},useRef:function(t){var e=Pt();return t={current:t},e.memoizedState=t},useState:function(t){t=Ds(t);var e=t.queue,n=Fp.bind(null,P,e);return e.dispatch=n,[t.memoizedState,n]},useDebugValue:Df,useDeferredValue:function(t,e){var n=Pt();return Of(n,t,e)},useTransition:function(){var t=Ds(!1);return t=Kp.bind(null,P,t.queue,!0,!1),Pt().memoizedState=t,[!1,t]},useSyncExternalStore:function(t,e,n){var l=P,a=Pt();if(it){if(n===void 0)throw Error(k(407));n=n()}else{if(n=e(),pt===null)throw Error(k(349));(at&127)!==0||zp(l,e,n)}a.memoizedState=n;var o={value:n,getSnapshot:e};return a.queue=o,U0(Ap.bind(null,l,o,t),[t]),l.flags|=2048,Ea(9,{destroy:void 0},Cp.bind(null,l,o,n,e),null),n},useId:function(){var t=Pt(),e=pt.identifierPrefix;if(it){var n=Ge,l=Ze;n=(l&~(1<<32-ye(l)-1)).toString(32)+n,e="_"+e+"R_"+n,n=Hu++,0<n&&(e+="H"+n.toString(32)),e+="_"}else n=M_++,e="_"+e+"r_"+n.toString(32)+"_";return t.memoizedState=e},useHostTransitionStatus:Hf,useFormState:R0,useActionState:R0,useOptimistic:function(t){var e=Pt();e.memoizedState=e.baseState=t;var n={pending:null,lanes:0,dispatch:null,lastRenderedReducer:null,lastRenderedState:null};return e.queue=n,e=Rf.bind(null,P,!0,n),n.dispatch=e,[t,e]},useMemoCache:Cf,useCacheRefresh:function(){return Pt().memoizedState=O_.bind(null,P)},useEffectEvent:function(t){var e=Pt(),n={impl:t};return e.memoizedState=n,function(){if((ct&2)!==0)throw Error(k(440));return n.impl.apply(void 0,arguments)}}},Bf={readContext:jt,use:lr,useCallback:Zp,useContext:jt,useEffect:Tf,useImperativeHandle:Xp,useInsertionEffect:Yp,useLayoutEffect:Vp,useMemo:Gp,useReducer:fu,useRef:Up,useState:function(){return fu(vn)},useDebugValue:Df,useDeferredValue:function(t,e){var n=Ot();return Qp(n,gt.memoizedState,t,e)},useTransition:function(){var t=fu(vn)[0],e=Ot().memoizedState;return[typeof t=="boolean"?t:ii(t),e]},useSyncExternalStore:Mp,useId:Jp,useHostTransitionStatus:Hf,useFormState:B0,useActionState:B0,useOptimistic:function(t,e){var n=Ot();return Op(n,gt,t,e)},useMemoCache:Cf,useCacheRefresh:Ip};Bf.useEffectEvent=Lp;var em={readContext:jt,use:lr,useCallback:Zp,useContext:jt,useEffect:Tf,useImperativeHandle:Xp,useInsertionEffect:Yp,useLayoutEffect:Vp,useMemo:Gp,useReducer:qc,useRef:Up,useState:function(){return qc(vn)},useDebugValue:Df,useDeferredValue:function(t,e){var n=Ot();return gt===null?Of(n,t,e):Qp(n,gt.memoizedState,t,e)},useTransition:function(){var t=qc(vn)[0],e=Ot().memoizedState;return[typeof t=="boolean"?t:ii(t),e]},useSyncExternalStore:Mp,useId:Jp,useHostTransitionStatus:Hf,useFormState:k0,useActionState:k0,useOptimistic:function(t,e){var n=Ot();return gt!==null?Op(n,gt,t,e):(n.baseState=t,[t,n.queue.dispatch])},useMemoCache:Cf,useCacheRefresh:Ip};em.useEffectEvent=Lp;function Xc(t,e,n,l){e=t.memoizedState,n=n(l,e),n=n==null?e:xt({},e,n),t.memoizedState=n,t.lanes===0&&(t.updateQueue.baseState=n)}var Rs={enqueueSetState:function(t,e,n){t=t._reactInternals;var l=ve(),a=Gn(l);a.payload=e,n!=null&&(a.callback=n),e=Qn(t,a,l),e!==null&&(oe(e,t,l),To(e,t,l))},enqueueReplaceState:function(t,e,n){t=t._reactInternals;var l=ve(),a=Gn(l);a.tag=1,a.payload=e,n!=null&&(a.callback=n),e=Qn(t,a,l),e!==null&&(oe(e,t,l),To(e,t,l))},enqueueForceUpdate:function(t,e){t=t._reactInternals;var n=ve(),l=Gn(n);l.tag=2,e!=null&&(l.callback=e),e=Qn(t,l,n),e!==null&&(oe(e,t,n),To(e,t,n))}};function L0(t,e,n,l,a,o,i){return t=t.stateNode,typeof t.shouldComponentUpdate=="function"?t.shouldComponentUpdate(l,o,i):e.prototype&&e.prototype.isPureReactComponent?!Xo(n,l)||!Xo(a,o):!0}function Y0(t,e,n,l){t=e.state,typeof e.componentWillReceiveProps=="function"&&e.componentWillReceiveProps(n,l),typeof e.UNSAFE_componentWillReceiveProps=="function"&&e.UNSAFE_componentWillReceiveProps(n,l),e.state!==t&&Rs.enqueueReplaceState(e,e.state,null)}function Nl(t,e){var n=e;if("ref"in e){n={};for(var l in e)l!=="ref"&&(n[l]=e[l])}if(t=t.defaultProps){n===e&&(n=xt({},n));for(var a in t)n[a]===void 0&&(n[a]=t[a])}return n}function nm(t){Nu(t)}function lm(t){console.error(t)}function am(t){Nu(t)}function Ru(t,e){try{var n=t.onUncaughtError;n(e.value,{componentStack:e.stack})}catch(l){setTimeout(function(){throw l})}}function V0(t,e,n){try{var l=t.onCaughtError;l(n.value,{componentStack:n.stack,errorBoundary:e.tag===1?e.stateNode:null})}catch(a){setTimeout(function(){throw a})}}function Bs(t,e,n){return n=Gn(n),n.tag=3,n.payload={element:null},n.callback=function(){Ru(t,e)},n}function om(t){return t=Gn(t),t.tag=3,t}function im(t,e,n,l){var a=n.type.getDerivedStateFromError;if(typeof a=="function"){var o=l.value;t.payload=function(){return a(o)},t.callback=function(){V0(e,n,l)}}var i=n.stateNode;i!==null&&typeof i.componentDidCatch=="function"&&(t.callback=function(){V0(e,n,l),typeof a!="function"&&(Kn===null?Kn=new Set([this]):Kn.add(this));var u=l.stack;this.componentDidCatch(l.value,{componentStack:u!==null?u:""})})}function R_(t,e,n,l,a){if(n.flags|=32768,l!==null&&typeof l=="object"&&typeof l.then=="function"){if(e=n.alternate,e!==null&&Oa(e,n,a,!0),n=xe.current,n!==null){switch(n.tag){case 31:case 13:return De===null?Yu():n.alternate===null&&At===0&&(At=3),n.flags&=-257,n.flags|=65536,n.lanes=a,l===Au?n.flags|=16384:(e=n.updateQueue,e===null?n.updateQueue=new Set([l]):e.add(l),Pc(t,l,a)),!1;case 22:return n.flags|=65536,l===Au?n.flags|=16384:(e=n.updateQueue,e===null?(e={transitions:null,markerInstances:null,retryQueue:new Set([l])},n.updateQueue=e):(n=e.retryQueue,n===null?e.retryQueue=new Set([l]):n.add(l)),Pc(t,l,a)),!1}throw Error(k(435,n.tag))}return Pc(t,l,a),Yu(),!1}if(it)return e=xe.current,e!==null?((e.flags&65536)===0&&(e.flags|=256),e.flags|=65536,e.lanes=a,l!==_s&&(t=Error(k(422),{cause:l}),Go(Ae(t,n)))):(l!==_s&&(e=Error(k(423),{cause:l}),Go(Ae(e,n))),t=t.current.alternate,t.flags|=65536,a&=-a,t.lanes|=a,l=Ae(l,n),a=Bs(t.stateNode,l,a),Vc(t,a),At!==4&&(At=2)),!1;var o=Error(k(520),{cause:l});if(o=Ae(o,n),ko===null?ko=[o]:ko.push(o),At!==4&&(At=2),e===null)return!0;l=Ae(l,n),n=e;do{switch(n.tag){case 3:return n.flags|=65536,t=a&-a,n.lanes|=t,t=Bs(n.stateNode,l,t),Vc(n,t),!1;case 1:if(e=n.type,o=n.stateNode,(n.flags&128)===0&&(typeof e.getDerivedStateFromError=="function"||o!==null&&typeof o.componentDidCatch=="function"&&(Kn===null||!Kn.has(o))))return n.flags|=65536,a&=-a,n.lanes|=a,a=om(a),im(a,t,n,l),Vc(n,a),!1}n=n.return}while(n!==null);return!1}var kf=Error(k(461)),kt=!1;function Gt(t,e,n,l){e.child=t===null?xp(e,null,n,l):wl(e,t.child,n,l)}function q0(t,e,n,l,a){n=n.render;var o=e.ref;if("ref"in l){var i={};for(var u in l)u!=="ref"&&(i[u]=l[u])}else i=l;return _l(e),l=Ef(t,e,n,i,o,a),u=Nf(),t!==null&&!kt?(Mf(t,e,a),bn(t,e,a)):(it&&u&&mf(e),e.flags|=1,Gt(t,e,l,a),e.child)}function X0(t,e,n,l,a){if(t===null){var o=n.type;return typeof o=="function"&&!pf(o)&&o.defaultProps===void 0&&n.compare===null?(e.tag=15,e.type=o,um(t,e,o,l,a)):(t=cu(n.type,null,l,e,e.mode,a),t.ref=e.ref,t.return=e,e.child=t)}if(o=t.child,!Uf(t,a)){var i=o.memoizedProps;if(n=n.compare,n=n!==null?n:Xo,n(i,l)&&t.ref===e.ref)return bn(t,e,a)}return e.flags|=1,t=hn(o,l),t.ref=e.ref,t.return=e,e.child=t}function um(t,e,n,l,a){if(t!==null){var o=t.memoizedProps;if(Xo(o,l)&&t.ref===e.ref)if(kt=!1,e.pendingProps=l=o,Uf(t,a))(t.flags&131072)!==0&&(kt=!0);else return e.lanes=t.lanes,bn(t,e,a)}return ks(t,e,n,l,a)}function rm(t,e,n,l){var a=l.children,o=t!==null?t.memoizedState:null;if(t===null&&e.stateNode===null&&(e.stateNode={_visibility:1,_pendingMarkers:null,_retryCache:null,_transitions:null}),l.mode==="hidden"){if((e.flags&128)!==0){if(o=o!==null?o.baseLanes|n:n,t!==null){for(l=e.child=t.child,a=0;l!==null;)a=a|l.lanes|l.childLanes,l=l.sibling;l=a&~o}else l=0,e.child=null;return Z0(t,e,o,n,l)}if((n&536870912)!==0)e.memoizedState={baseLanes:0,cachePool:null},t!==null&&su(e,o!==null?o.cachePool:null),o!==null?D0(e,o):As(),wp(e);else return l=e.lanes=536870912,Z0(t,e,o!==null?o.baseLanes|n:n,n,l)}else o!==null?(su(e,o.cachePool),D0(e,o),Bn(e),e.memoizedState=null):(t!==null&&su(e,null),As(),Bn(e));return Gt(t,e,a,n),e.child}function Eo(t,e){return t!==null&&t.tag===22||e.stateNode!==null||(e.stateNode={_visibility:1,_pendingMarkers:null,_retryCache:null,_transitions:null}),e.sibling}function Z0(t,e,n,l,a){var o=bf();return o=o===null?null:{parent:Bt._currentValue,pool:o},e.memoizedState={baseLanes:n,cachePool:o},t!==null&&su(e,null),As(),wp(e),t!==null&&Oa(t,e,l,!0),e.childLanes=a,null}function hu(t,e){return e=Bu({mode:e.mode,children:e.children},t.mode),e.ref=t.ref,t.child=e,e.return=t,e}function G0(t,e,n){return wl(e,t.child,null,n),t=hu(e,e.pendingProps),t.flags|=2,de(e),e.memoizedState=null,t}function B_(t,e,n){var l=e.pendingProps,a=(e.flags&128)!==0;if(e.flags&=-129,t===null){if(it){if(l.mode==="hidden")return t=hu(e,l),e.lanes=536870912,Eo(null,t);if(Ts(e),(t=bt)?(t=ty(t,Te),t=t!==null&&t.data==="&"?t:null,t!==null&&(e.memoizedState={dehydrated:t,treeContext:Fn!==null?{id:Ze,overflow:Ge}:null,retryLane:536870912,hydrationErrors:null},n=hp(t),n.return=e,e.child=n,Kt=e,bt=null)):t=null,t===null)throw Wn(e);return e.lanes=536870912,null}return hu(e,l)}var o=t.memoizedState;if(o!==null){var i=o.dehydrated;if(Ts(e),a)if(e.flags&256)e.flags&=-257,e=G0(t,e,n);else if(e.memoizedState!==null)e.child=t.child,e.flags|=128,e=null;else throw Error(k(558));else if(kt||Oa(t,e,n,!1),a=(n&t.childLanes)!==0,kt||a){if(l=pt,l!==null&&(i=Yg(l,n),i!==0&&i!==o.retryLane))throw o.retryLane=i,Al(t,i),oe(l,t,i),kf;Yu(),e=G0(t,e,n)}else t=o.treeContext,bt=Oe(i.nextSibling),Kt=e,it=!0,Zn=null,Te=!1,t!==null&&pp(e,t),e=hu(e,l),e.flags|=4096;return e}return t=hn(t.child,{mode:l.mode,children:l.children}),t.ref=e.ref,e.child=t,t.return=e,t}function gu(t,e){var n=e.ref;if(n===null)t!==null&&t.ref!==null&&(e.flags|=4194816);else{if(typeof n!="function"&&typeof n!="object")throw Error(k(284));(t===null||t.ref!==n)&&(e.flags|=4194816)}}function ks(t,e,n,l,a){return _l(e),n=Ef(t,e,n,l,void 0,a),l=Nf(),t!==null&&!kt?(Mf(t,e,a),bn(t,e,a)):(it&&l&&mf(e),e.flags|=1,Gt(t,e,n,a),e.child)}function Q0(t,e,n,l,a,o){return _l(e),e.updateQueue=null,n=Np(e,l,n,a),Ep(t),l=Nf(),t!==null&&!kt?(Mf(t,e,o),bn(t,e,o)):(it&&l&&mf(e),e.flags|=1,Gt(t,e,n,o),e.child)}function K0(t,e,n,l,a){if(_l(e),e.stateNode===null){var o=ra,i=n.contextType;typeof i=="object"&&i!==null&&(o=jt(i)),o=new n(l,o),e.memoizedState=o.state!==null&&o.state!==void 0?o.state:null,o.updater=Rs,e.stateNode=o,o._reactInternals=e,o=e.stateNode,o.props=l,o.state=e.memoizedState,o.refs={},Sf(e),i=n.contextType,o.context=typeof i=="object"&&i!==null?jt(i):ra,o.state=e.memoizedState,i=n.getDerivedStateFromProps,typeof i=="function"&&(Xc(e,n,i,l),o.state=e.memoizedState),typeof n.getDerivedStateFromProps=="function"||typeof o.getSnapshotBeforeUpdate=="function"||typeof o.UNSAFE_componentWillMount!="function"&&typeof o.componentWillMount!="function"||(i=o.state,typeof o.componentWillMount=="function"&&o.componentWillMount(),typeof o.UNSAFE_componentWillMount=="function"&&o.UNSAFE_componentWillMount(),i!==o.state&&Rs.enqueueReplaceState(o,o.state,null),Oo(e,l,o,a),Do(),o.state=e.memoizedState),typeof o.componentDidMount=="function"&&(e.flags|=4194308),l=!0}else if(t===null){o=e.stateNode;var u=e.memoizedProps,r=Nl(n,u);o.props=r;var c=o.context,f=n.contextType;i=ra,typeof f=="object"&&f!==null&&(i=jt(f));var d=n.getDerivedStateFromProps;f=typeof d=="function"||typeof o.getSnapshotBeforeUpdate=="function",u=e.pendingProps!==u,f||typeof o.UNSAFE_componentWillReceiveProps!="function"&&typeof o.componentWillReceiveProps!="function"||(u||c!==i)&&Y0(e,o,l,i),On=!1;var s=e.memoizedState;o.state=s,Oo(e,l,o,a),Do(),c=e.memoizedState,u||s!==c||On?(typeof d=="function"&&(Xc(e,n,d,l),c=e.memoizedState),(r=On||L0(e,n,r,l,s,c,i))?(f||typeof o.UNSAFE_componentWillMount!="function"&&typeof o.componentWillMount!="function"||(typeof o.componentWillMount=="function"&&o.componentWillMount(),typeof o.UNSAFE_componentWillMount=="function"&&o.UNSAFE_componentWillMount()),typeof o.componentDidMount=="function"&&(e.flags|=4194308)):(typeof o.componentDidMount=="function"&&(e.flags|=4194308),e.memoizedProps=l,e.memoizedState=c),o.props=l,o.state=c,o.context=i,l=r):(typeof o.componentDidMount=="function"&&(e.flags|=4194308),l=!1)}else{o=e.stateNode,zs(t,e),i=e.memoizedProps,f=Nl(n,i),o.props=f,d=e.pendingProps,s=o.context,c=n.contextType,r=ra,typeof c=="object"&&c!==null&&(r=jt(c)),u=n.getDerivedStateFromProps,(c=typeof u=="function"||typeof o.getSnapshotBeforeUpdate=="function")||typeof o.UNSAFE_componentWillReceiveProps!="function"&&typeof o.componentWillReceiveProps!="function"||(i!==d||s!==r)&&Y0(e,o,l,r),On=!1,s=e.memoizedState,o.state=s,Oo(e,l,o,a),Do();var g=e.memoizedState;i!==d||s!==g||On||t!==null&&t.dependencies!==null&&Cu(t.dependencies)?(typeof u=="function"&&(Xc(e,n,u,l),g=e.memoizedState),(f=On||L0(e,n,f,l,s,g,r)||t!==null&&t.dependencies!==null&&Cu(t.dependencies))?(c||typeof o.UNSAFE_componentWillUpdate!="function"&&typeof o.componentWillUpdate!="function"||(typeof o.componentWillUpdate=="function"&&o.componentWillUpdate(l,g,r),typeof o.UNSAFE_componentWillUpdate=="function"&&o.UNSAFE_componentWillUpdate(l,g,r)),typeof o.componentDidUpdate=="function"&&(e.flags|=4),typeof o.getSnapshotBeforeUpdate=="function"&&(e.flags|=1024)):(typeof o.componentDidUpdate!="function"||i===t.memoizedProps&&s===t.memoizedState||(e.flags|=4),typeof o.getSnapshotBeforeUpdate!="function"||i===t.memoizedProps&&s===t.memoizedState||(e.flags|=1024),e.memoizedProps=l,e.memoizedState=g),o.props=l,o.state=g,o.context=r,l=f):(typeof o.componentDidUpdate!="function"||i===t.memoizedProps&&s===t.memoizedState||(e.flags|=4),typeof o.getSnapshotBeforeUpdate!="function"||i===t.memoizedProps&&s===t.memoizedState||(e.flags|=1024),l=!1)}return o=l,gu(t,e),l=(e.flags&128)!==0,o||l?(o=e.stateNode,n=l&&typeof n.getDerivedStateFromError!="function"?null:o.render(),e.flags|=1,t!==null&&l?(e.child=wl(e,t.child,null,a),e.child=wl(e,null,n,a)):Gt(t,e,n,a),e.memoizedState=o.state,t=e.child):t=bn(t,e,a),t}function j0(t,e,n,l){return Sl(),e.flags|=256,Gt(t,e,n,l),e.child}var Zc={dehydrated:null,treeContext:null,retryLane:0,hydrationErrors:null};function Gc(t){return{baseLanes:t,cachePool:yp()}}function Qc(t,e,n){return t=t!==null?t.childLanes&~n:0,e&&(t|=ge),t}function cm(t,e,n){var l=e.pendingProps,a=!1,o=(e.flags&128)!==0,i;if((i=o)||(i=t!==null&&t.memoizedState===null?!1:(Dt.current&2)!==0),i&&(a=!0,e.flags&=-129),i=(e.flags&32)!==0,e.flags&=-33,t===null){if(it){if(a?Rn(e):Bn(e),(t=bt)?(t=ty(t,Te),t=t!==null&&t.data!=="&"?t:null,t!==null&&(e.memoizedState={dehydrated:t,treeContext:Fn!==null?{id:Ze,overflow:Ge}:null,retryLane:536870912,hydrationErrors:null},n=hp(t),n.return=e,e.child=n,Kt=e,bt=null)):t=null,t===null)throw Wn(e);return Is(t)?e.lanes=32:e.lanes=536870912,null}var u=l.children;return l=l.fallback,a?(Bn(e),a=e.mode,u=Bu({mode:"hidden",children:u},a),l=yl(l,a,n,null),u.return=e,l.return=e,u.sibling=l,e.child=u,l=e.child,l.memoizedState=Gc(n),l.childLanes=Qc(t,i,n),e.memoizedState=Zc,Eo(null,l)):(Rn(e),Us(e,u))}var r=t.memoizedState;if(r!==null&&(u=r.dehydrated,u!==null)){if(o)e.flags&256?(Rn(e),e.flags&=-257,e=Kc(t,e,n)):e.memoizedState!==null?(Bn(e),e.child=t.child,e.flags|=128,e=null):(Bn(e),u=l.fallback,a=e.mode,l=Bu({mode:"visible",children:l.children},a),u=yl(u,a,n,null),u.flags|=2,l.return=e,u.return=e,l.sibling=u,e.child=l,wl(e,t.child,null,n),l=e.child,l.memoizedState=Gc(n),l.childLanes=Qc(t,i,n),e.memoizedState=Zc,e=Eo(null,l));else if(Rn(e),Is(u)){if(i=u.nextSibling&&u.nextSibling.dataset,i)var c=i.dgst;i=c,l=Error(k(419)),l.stack="",l.digest=i,Go({value:l,source:null,stack:null}),e=Kc(t,e,n)}else if(kt||Oa(t,e,n,!1),i=(n&t.childLanes)!==0,kt||i){if(i=pt,i!==null&&(l=Yg(i,n),l!==0&&l!==r.retryLane))throw r.retryLane=l,Al(t,l),oe(i,t,l),kf;Js(u)||Yu(),e=Kc(t,e,n)}else Js(u)?(e.flags|=192,e.child=t.child,e=null):(t=r.treeContext,bt=Oe(u.nextSibling),Kt=e,it=!0,Zn=null,Te=!1,t!==null&&pp(e,t),e=Us(e,l.children),e.flags|=4096);return e}return a?(Bn(e),u=l.fallback,a=e.mode,r=t.child,c=r.sibling,l=hn(r,{mode:"hidden",children:l.children}),l.subtreeFlags=r.subtreeFlags&65011712,c!==null?u=hn(c,u):(u=yl(u,a,n,null),u.flags|=2),u.return=e,l.return=e,l.sibling=u,e.child=l,Eo(null,l),l=e.child,u=t.child.memoizedState,u===null?u=Gc(n):(a=u.cachePool,a!==null?(r=Bt._currentValue,a=a.parent!==r?{parent:r,pool:r}:a):a=yp(),u={baseLanes:u.baseLanes|n,cachePool:a}),l.memoizedState=u,l.childLanes=Qc(t,i,n),e.memoizedState=Zc,Eo(t.child,l)):(Rn(e),n=t.child,t=n.sibling,n=hn(n,{mode:"visible",children:l.children}),n.return=e,n.sibling=null,t!==null&&(i=e.deletions,i===null?(e.deletions=[t],e.flags|=16):i.push(t)),e.child=n,e.memoizedState=null,n)}function Us(t,e){return e=Bu({mode:"visible",children:e},t.mode),e.return=t,t.child=e}function Bu(t,e){return t=he(22,t,null,e),t.lanes=0,t}function Kc(t,e,n){return wl(e,t.child,null,n),t=Us(e,e.pendingProps.children),t.flags|=2,e.memoizedState=null,t}function $0(t,e,n){t.lanes|=e;var l=t.alternate;l!==null&&(l.lanes|=e),Es(t.return,e,n)}function jc(t,e,n,l,a,o){var i=t.memoizedState;i===null?t.memoizedState={isBackwards:e,rendering:null,renderingStartTime:0,last:l,tail:n,tailMode:a,treeForkCount:o}:(i.isBackwards=e,i.rendering=null,i.renderingStartTime=0,i.last=l,i.tail=n,i.tailMode=a,i.treeForkCount=o)}function sm(t,e,n){var l=e.pendingProps,a=l.revealOrder,o=l.tail;l=l.children;var i=Dt.current,u=(i&2)!==0;if(u?(i=i&1|2,e.flags|=128):i&=1,mt(Dt,i),Gt(t,e,l,n),l=it?Zo:0,!u&&t!==null&&(t.flags&128)!==0)t:for(t=e.child;t!==null;){if(t.tag===13)t.memoizedState!==null&&$0(t,n,e);else if(t.tag===19)$0(t,n,e);else if(t.child!==null){t.child.return=t,t=t.child;continue}if(t===e)break t;for(;t.sibling===null;){if(t.return===null||t.return===e)break t;t=t.return}t.sibling.return=t.return,t=t.sibling}switch(a){case"forwards":for(n=e.child,a=null;n!==null;)t=n.alternate,t!==null&&Du(t)===null&&(a=n),n=n.sibling;n=a,n===null?(a=e.child,e.child=null):(a=n.sibling,n.sibling=null),jc(e,!1,a,n,o,l);break;case"backwards":case"unstable_legacy-backwards":for(n=null,a=e.child,e.child=null;a!==null;){if(t=a.alternate,t!==null&&Du(t)===null){e.child=a;break}t=a.sibling,a.sibling=n,n=a,a=t}jc(e,!0,n,null,o,l);break;case"together":jc(e,!1,null,null,void 0,l);break;default:e.memoizedState=null}return e.child}function bn(t,e,n){if(t!==null&&(e.dependencies=t.dependencies),tl|=e.lanes,(n&e.childLanes)===0)if(t!==null){if(Oa(t,e,n,!1),(n&e.childLanes)===0)return null}else return null;if(t!==null&&e.child!==t.child)throw Error(k(153));if(e.child!==null){for(t=e.child,n=hn(t,t.pendingProps),e.child=n,n.return=e;t.sibling!==null;)t=t.sibling,n=n.sibling=hn(t,t.pendingProps),n.return=e;n.sibling=null}return e.child}function Uf(t,e){return(t.lanes&e)!==0?!0:(t=t.dependencies,!!(t!==null&&Cu(t)))}function k_(t,e,n){switch(e.tag){case 3:Su(e,e.stateNode.containerInfo),Hn(e,Bt,t.memoizedState.cache),Sl();break;case 27:case 5:fs(e);break;case 4:Su(e,e.stateNode.containerInfo);break;case 10:Hn(e,e.type,e.memoizedProps.value);break;case 31:if(e.memoizedState!==null)return e.flags|=128,Ts(e),null;break;case 13:var l=e.memoizedState;if(l!==null)return l.dehydrated!==null?(Rn(e),e.flags|=128,null):(n&e.child.childLanes)!==0?cm(t,e,n):(Rn(e),t=bn(t,e,n),t!==null?t.sibling:null);Rn(e);break;case 19:var a=(t.flags&128)!==0;if(l=(n&e.childLanes)!==0,l||(Oa(t,e,n,!1),l=(n&e.childLanes)!==0),a){if(l)return sm(t,e,n);e.flags|=128}if(a=e.memoizedState,a!==null&&(a.rendering=null,a.tail=null,a.lastEffect=null),mt(Dt,Dt.current),l)break;return null;case 22:return e.lanes=0,rm(t,e,n,e.pendingProps);case 24:Hn(e,Bt,t.memoizedState.cache)}return bn(t,e,n)}function fm(t,e,n){if(t!==null)if(t.memoizedProps!==e.pendingProps)kt=!0;else{if(!Uf(t,n)&&(e.flags&128)===0)return kt=!1,k_(t,e,n);kt=(t.flags&131072)!==0}else kt=!1,it&&(e.flags&1048576)!==0&&gp(e,Zo,e.index);switch(e.lanes=0,e.tag){case 16:t:{var l=e.pendingProps;if(t=gl(e.elementType),e.type=t,typeof t=="function")pf(t)?(l=Nl(t,l),e.tag=1,e=K0(null,e,t,l,n)):(e.tag=0,e=ks(null,e,t,l,n));else{if(t!=null){var a=t.$$typeof;if(a===tf){e.tag=11,e=q0(null,e,t,l,n);break t}else if(a===ef){e.tag=14,e=X0(null,e,t,l,n);break t}}throw e=cs(t)||t,Error(k(306,e,""))}}return e;case 0:return ks(t,e,e.type,e.pendingProps,n);case 1:return l=e.type,a=Nl(l,e.pendingProps),K0(t,e,l,a,n);case 3:t:{if(Su(e,e.stateNode.containerInfo),t===null)throw Error(k(387));l=e.pendingProps;var o=e.memoizedState;a=o.element,zs(t,e),Oo(e,l,null,n);var i=e.memoizedState;if(l=i.cache,Hn(e,Bt,l),l!==o.cache&&Ns(e,[Bt],n,!0),Do(),l=i.element,o.isDehydrated)if(o={element:l,isDehydrated:!1,cache:i.cache},e.updateQueue.baseState=o,e.memoizedState=o,e.flags&256){e=j0(t,e,l,n);break t}else if(l!==a){a=Ae(Error(k(424)),e),Go(a),e=j0(t,e,l,n);break t}else for(t=e.stateNode.containerInfo,t.nodeType===9?t=t.body:t=t.nodeName==="HTML"?t.ownerDocument.body:t,bt=Oe(t.firstChild),Kt=e,it=!0,Zn=null,Te=!0,n=xp(e,null,l,n),e.child=n;n;)n.flags=n.flags&-3|4096,n=n.sibling;else{if(Sl(),l===a){e=bn(t,e,n);break t}Gt(t,e,l,n)}e=e.child}return e;case 26:return gu(t,e),t===null?(n=mg(e.type,null,e.pendingProps,null))?e.memoizedState=n:it||(n=e.type,t=e.pendingProps,l=Zu(Xn.current).createElement(n),l[Qt]=e,l[ie]=t,$t(l,n,t),Vt(l),e.stateNode=l):e.memoizedState=mg(e.type,t.memoizedProps,e.pendingProps,t.memoizedState),null;case 27:return fs(e),t===null&&it&&(l=e.stateNode=ey(e.type,e.pendingProps,Xn.current),Kt=e,Te=!0,a=bt,nl(e.type)?(Fs=a,bt=Oe(l.firstChild)):bt=a),Gt(t,e,e.pendingProps.children,n),gu(t,e),t===null&&(e.flags|=4194304),e.child;case 5:return t===null&&it&&((a=l=bt)&&(l=s2(l,e.type,e.pendingProps,Te),l!==null?(e.stateNode=l,Kt=e,bt=Oe(l.firstChild),Te=!1,a=!0):a=!1),a||Wn(e)),fs(e),a=e.type,o=e.pendingProps,i=t!==null?t.memoizedProps:null,l=o.children,js(a,o)?l=null:i!==null&&js(a,i)&&(e.flags|=32),e.memoizedState!==null&&(a=Ef(t,e,z_,null,null,n),Io._currentValue=a),gu(t,e),Gt(t,e,l,n),e.child;case 6:return t===null&&it&&((t=n=bt)&&(n=f2(n,e.pendingProps,Te),n!==null?(e.stateNode=n,Kt=e,bt=null,t=!0):t=!1),t||Wn(e)),null;case 13:return cm(t,e,n);case 4:return Su(e,e.stateNode.containerInfo),l=e.pendingProps,t===null?e.child=wl(e,null,l,n):Gt(t,e,l,n),e.child;case 11:return q0(t,e,e.type,e.pendingProps,n);case 7:return Gt(t,e,e.pendingProps,n),e.child;case 8:return Gt(t,e,e.pendingProps.children,n),e.child;case 12:return Gt(t,e,e.pendingProps.children,n),e.child;case 10:return l=e.pendingProps,Hn(e,e.type,l.value),Gt(t,e,l.children,n),e.child;case 9:return a=e.type._context,l=e.pendingProps.children,_l(e),a=jt(a),l=l(a),e.flags|=1,Gt(t,e,l,n),e.child;case 14:return X0(t,e,e.type,e.pendingProps,n);case 15:return um(t,e,e.type,e.pendingProps,n);case 19:return sm(t,e,n);case 31:return B_(t,e,n);case 22:return rm(t,e,n,e.pendingProps);case 24:return _l(e),l=jt(Bt),t===null?(a=bf(),a===null&&(a=pt,o=vf(),a.pooledCache=o,o.refCount++,o!==null&&(a.pooledCacheLanes|=n),a=o),e.memoizedState={parent:l,cache:a},Sf(e),Hn(e,Bt,a)):((t.lanes&n)!==0&&(zs(t,e),Oo(e,null,null,n),Do()),a=t.memoizedState,o=e.memoizedState,a.parent!==l?(a={parent:l,cache:l},e.memoizedState=a,e.lanes===0&&(e.memoizedState=e.updateQueue.baseState=a),Hn(e,Bt,l)):(l=o.cache,Hn(e,Bt,l),l!==a.cache&&Ns(e,[Bt],n,!0))),Gt(t,e,e.pendingProps.children,n),e.child;case 29:throw e.pendingProps}throw Error(k(156,e.tag))}function ln(t){t.flags|=4}function $c(t,e,n,l,a){if((e=(t.mode&32)!==0)&&(e=!1),e){if(t.flags|=16777216,(a&335544128)===a)if(t.stateNode.complete)t.flags|=8192;else if(Bm())t.flags|=8192;else throw bl=Au,xf}else t.flags&=-16777217}function J0(t,e){if(e.type!=="stylesheet"||(e.state.loading&4)!==0)t.flags&=-16777217;else if(t.flags|=16777216,!ay(e))if(Bm())t.flags|=8192;else throw bl=Au,xf}function Wi(t,e){e!==null&&(t.flags|=4),t.flags&16384&&(e=t.tag!==22?kg():536870912,t.lanes|=e,Na|=e)}function yo(t,e){if(!it)switch(t.tailMode){case"hidden":e=t.tail;for(var n=null;e!==null;)e.alternate!==null&&(n=e),e=e.sibling;n===null?t.tail=null:n.sibling=null;break;case"collapsed":n=t.tail;for(var l=null;n!==null;)n.alternate!==null&&(l=n),n=n.sibling;l===null?e||t.tail===null?t.tail=null:t.tail.sibling=null:l.sibling=null}}function vt(t){var e=t.alternate!==null&&t.alternate.child===t.child,n=0,l=0;if(e)for(var a=t.child;a!==null;)n|=a.lanes|a.childLanes,l|=a.subtreeFlags&65011712,l|=a.flags&65011712,a.return=t,a=a.sibling;else for(a=t.child;a!==null;)n|=a.lanes|a.childLanes,l|=a.subtreeFlags,l|=a.flags,a.return=t,a=a.sibling;return t.subtreeFlags|=l,t.childLanes=n,e}function U_(t,e,n){var l=e.pendingProps;switch(yf(e),e.tag){case 16:case 15:case 0:case 11:case 7:case 8:case 12:case 9:case 14:return vt(e),null;case 1:return vt(e),null;case 3:return n=e.stateNode,l=null,t!==null&&(l=t.memoizedState.cache),e.memoizedState.cache!==l&&(e.flags|=2048),gn(Bt),ba(),n.pendingContext&&(n.context=n.pendingContext,n.pendingContext=null),(t===null||t.child===null)&&(Il(e)?ln(e):t===null||t.memoizedState.isDehydrated&&(e.flags&256)===0||(e.flags|=1024,Yc())),vt(e),null;case 26:var a=e.type,o=e.memoizedState;return t===null?(ln(e),o!==null?(vt(e),J0(e,o)):(vt(e),$c(e,a,null,l,n))):o?o!==t.memoizedState?(ln(e),vt(e),J0(e,o)):(vt(e),e.flags&=-16777217):(t=t.memoizedProps,t!==l&&ln(e),vt(e),$c(e,a,t,l,n)),null;case 27:if(_u(e),n=Xn.current,a=e.type,t!==null&&e.stateNode!=null)t.memoizedProps!==l&&ln(e);else{if(!l){if(e.stateNode===null)throw Error(k(166));return vt(e),null}t=Ke.current,Il(e)?E0(e,t):(t=ey(a,l,n),e.stateNode=t,ln(e))}return vt(e),null;case 5:if(_u(e),a=e.type,t!==null&&e.stateNode!=null)t.memoizedProps!==l&&ln(e);else{if(!l){if(e.stateNode===null)throw Error(k(166));return vt(e),null}if(o=Ke.current,Il(e))E0(e,o);else{var i=Zu(Xn.current);switch(o){case 1:o=i.createElementNS("http://www.w3.org/2000/svg",a);break;case 2:o=i.createElementNS("http://www.w3.org/1998/Math/MathML",a);break;default:switch(a){case"svg":o=i.createElementNS("http://www.w3.org/2000/svg",a);break;case"math":o=i.createElementNS("http://www.w3.org/1998/Math/MathML",a);break;case"script":o=i.createElement("div"),o.innerHTML="<script><\\/script>",o=o.removeChild(o.firstChild);break;case"select":o=typeof l.is=="string"?i.createElement("select",{is:l.is}):i.createElement("select"),l.multiple?o.multiple=!0:l.size&&(o.size=l.size);break;default:o=typeof l.is=="string"?i.createElement(a,{is:l.is}):i.createElement(a)}}o[Qt]=e,o[ie]=l;t:for(i=e.child;i!==null;){if(i.tag===5||i.tag===6)o.appendChild(i.stateNode);else if(i.tag!==4&&i.tag!==27&&i.child!==null){i.child.return=i,i=i.child;continue}if(i===e)break t;for(;i.sibling===null;){if(i.return===null||i.return===e)break t;i=i.return}i.sibling.return=i.return,i=i.sibling}e.stateNode=o;t:switch($t(o,a,l),a){case"button":case"input":case"select":case"textarea":l=!!l.autoFocus;break t;case"img":l=!0;break t;default:l=!1}l&&ln(e)}}return vt(e),$c(e,e.type,t===null?null:t.memoizedProps,e.pendingProps,n),null;case 6:if(t&&e.stateNode!=null)t.memoizedProps!==l&&ln(e);else{if(typeof l!="string"&&e.stateNode===null)throw Error(k(166));if(t=Xn.current,Il(e)){if(t=e.stateNode,n=e.memoizedProps,l=null,a=Kt,a!==null)switch(a.tag){case 27:case 5:l=a.memoizedProps}t[Qt]=e,t=!!(t.nodeValue===n||l!==null&&l.suppressHydrationWarning===!0||Fm(t.nodeValue,n)),t||Wn(e,!0)}else t=Zu(t).createTextNode(l),t[Qt]=e,e.stateNode=t}return vt(e),null;case 31:if(n=e.memoizedState,t===null||t.memoizedState!==null){if(l=Il(e),n!==null){if(t===null){if(!l)throw Error(k(318));if(t=e.memoizedState,t=t!==null?t.dehydrated:null,!t)throw Error(k(557));t[Qt]=e}else Sl(),(e.flags&128)===0&&(e.memoizedState=null),e.flags|=4;vt(e),t=!1}else n=Yc(),t!==null&&t.memoizedState!==null&&(t.memoizedState.hydrationErrors=n),t=!0;if(!t)return e.flags&256?(de(e),e):(de(e),null);if((e.flags&128)!==0)throw Error(k(558))}return vt(e),null;case 13:if(l=e.memoizedState,t===null||t.memoizedState!==null&&t.memoizedState.dehydrated!==null){if(a=Il(e),l!==null&&l.dehydrated!==null){if(t===null){if(!a)throw Error(k(318));if(a=e.memoizedState,a=a!==null?a.dehydrated:null,!a)throw Error(k(317));a[Qt]=e}else Sl(),(e.flags&128)===0&&(e.memoizedState=null),e.flags|=4;vt(e),a=!1}else a=Yc(),t!==null&&t.memoizedState!==null&&(t.memoizedState.hydrationErrors=a),a=!0;if(!a)return e.flags&256?(de(e),e):(de(e),null)}return de(e),(e.flags&128)!==0?(e.lanes=n,e):(n=l!==null,t=t!==null&&t.memoizedState!==null,n&&(l=e.child,a=null,l.alternate!==null&&l.alternate.memoizedState!==null&&l.alternate.memoizedState.cachePool!==null&&(a=l.alternate.memoizedState.cachePool.pool),o=null,l.memoizedState!==null&&l.memoizedState.cachePool!==null&&(o=l.memoizedState.cachePool.pool),o!==a&&(l.flags|=2048)),n!==t&&n&&(e.child.flags|=8192),Wi(e,e.updateQueue),vt(e),null);case 4:return ba(),t===null&&Gf(e.stateNode.containerInfo),vt(e),null;case 10:return gn(e.type),vt(e),null;case 19:if(qt(Dt),l=e.memoizedState,l===null)return vt(e),null;if(a=(e.flags&128)!==0,o=l.rendering,o===null)if(a)yo(l,!1);else{if(At!==0||t!==null&&(t.flags&128)!==0)for(t=e.child;t!==null;){if(o=Du(t),o!==null){for(e.flags|=128,yo(l,!1),t=o.updateQueue,e.updateQueue=t,Wi(e,t),e.subtreeFlags=0,t=n,n=e.child;n!==null;)dp(n,t),n=n.sibling;return mt(Dt,Dt.current&1|2),it&&rn(e,l.treeForkCount),e.child}t=t.sibling}l.tail!==null&&pe()>Uu&&(e.flags|=128,a=!0,yo(l,!1),e.lanes=4194304)}else{if(!a)if(t=Du(o),t!==null){if(e.flags|=128,a=!0,t=t.updateQueue,e.updateQueue=t,Wi(e,t),yo(l,!0),l.tail===null&&l.tailMode==="hidden"&&!o.alternate&&!it)return vt(e),null}else 2*pe()-l.renderingStartTime>Uu&&n!==536870912&&(e.flags|=128,a=!0,yo(l,!1),e.lanes=4194304);l.isBackwards?(o.sibling=e.child,e.child=o):(t=l.last,t!==null?t.sibling=o:e.child=o,l.last=o)}return l.tail!==null?(t=l.tail,l.rendering=t,l.tail=t.sibling,l.renderingStartTime=pe(),t.sibling=null,n=Dt.current,mt(Dt,a?n&1|2:n&1),it&&rn(e,l.treeForkCount),t):(vt(e),null);case 22:case 23:return de(e),_f(),l=e.memoizedState!==null,t!==null?t.memoizedState!==null!==l&&(e.flags|=8192):l&&(e.flags|=8192),l?(n&536870912)!==0&&(e.flags&128)===0&&(vt(e),e.subtreeFlags&6&&(e.flags|=8192)):vt(e),n=e.updateQueue,n!==null&&Wi(e,n.retryQueue),n=null,t!==null&&t.memoizedState!==null&&t.memoizedState.cachePool!==null&&(n=t.memoizedState.cachePool.pool),l=null,e.memoizedState!==null&&e.memoizedState.cachePool!==null&&(l=e.memoizedState.cachePool.pool),l!==n&&(e.flags|=2048),t!==null&&qt(vl),null;case 24:return n=null,t!==null&&(n=t.memoizedState.cache),e.memoizedState.cache!==n&&(e.flags|=2048),gn(Bt),vt(e),null;case 25:return null;case 30:return null}throw Error(k(156,e.tag))}function L_(t,e){switch(yf(e),e.tag){case 1:return t=e.flags,t&65536?(e.flags=t&-65537|128,e):null;case 3:return gn(Bt),ba(),t=e.flags,(t&65536)!==0&&(t&128)===0?(e.flags=t&-65537|128,e):null;case 26:case 27:case 5:return _u(e),null;case 31:if(e.memoizedState!==null){if(de(e),e.alternate===null)throw Error(k(340));Sl()}return t=e.flags,t&65536?(e.flags=t&-65537|128,e):null;case 13:if(de(e),t=e.memoizedState,t!==null&&t.dehydrated!==null){if(e.alternate===null)throw Error(k(340));Sl()}return t=e.flags,t&65536?(e.flags=t&-65537|128,e):null;case 19:return qt(Dt),null;case 4:return ba(),null;case 10:return gn(e.type),null;case 22:case 23:return de(e),_f(),t!==null&&qt(vl),t=e.flags,t&65536?(e.flags=t&-65537|128,e):null;case 24:return gn(Bt),null;case 25:return null;default:return null}}function dm(t,e){switch(yf(e),e.tag){case 3:gn(Bt),ba();break;case 26:case 27:case 5:_u(e);break;case 4:ba();break;case 31:e.memoizedState!==null&&de(e);break;case 13:de(e);break;case 19:qt(Dt);break;case 10:gn(e.type);break;case 22:case 23:de(e),_f(),t!==null&&qt(vl);break;case 24:gn(Bt)}}function ui(t,e){try{var n=e.updateQueue,l=n!==null?n.lastEffect:null;if(l!==null){var a=l.next;n=a;do{if((n.tag&t)===t){l=void 0;var o=n.create,i=n.inst;l=o(),i.destroy=l}n=n.next}while(n!==a)}}catch(u){dt(e,e.return,u)}}function Pn(t,e,n){try{var l=e.updateQueue,a=l!==null?l.lastEffect:null;if(a!==null){var o=a.next;l=o;do{if((l.tag&t)===t){var i=l.inst,u=i.destroy;if(u!==void 0){i.destroy=void 0,a=e;var r=n,c=u;try{c()}catch(f){dt(a,r,f)}}}l=l.next}while(l!==o)}}catch(f){dt(e,e.return,f)}}function hm(t){var e=t.updateQueue;if(e!==null){var n=t.stateNode;try{_p(e,n)}catch(l){dt(t,t.return,l)}}}function gm(t,e,n){n.props=Nl(t.type,t.memoizedProps),n.state=t.memoizedState;try{n.componentWillUnmount()}catch(l){dt(t,e,l)}}function Ro(t,e){try{var n=t.ref;if(n!==null){switch(t.tag){case 26:case 27:case 5:var l=t.stateNode;break;case 30:l=t.stateNode;break;default:l=t.stateNode}typeof n=="function"?t.refCleanup=n(l):n.current=l}}catch(a){dt(t,e,a)}}function Qe(t,e){var n=t.ref,l=t.refCleanup;if(n!==null)if(typeof l=="function")try{l()}catch(a){dt(t,e,a)}finally{t.refCleanup=null,t=t.alternate,t!=null&&(t.refCleanup=null)}else if(typeof n=="function")try{n(null)}catch(a){dt(t,e,a)}else n.current=null}function pm(t){var e=t.type,n=t.memoizedProps,l=t.stateNode;try{t:switch(e){case"button":case"input":case"select":case"textarea":n.autoFocus&&l.focus();break t;case"img":n.src?l.src=n.src:n.srcSet&&(l.srcset=n.srcSet)}}catch(a){dt(t,t.return,a)}}function Jc(t,e,n){try{var l=t.stateNode;a2(l,t.type,n,e),l[ie]=e}catch(a){dt(t,t.return,a)}}function mm(t){return t.tag===5||t.tag===3||t.tag===26||t.tag===27&&nl(t.type)||t.tag===4}function Ic(t){t:for(;;){for(;t.sibling===null;){if(t.return===null||mm(t.return))return null;t=t.return}for(t.sibling.return=t.return,t=t.sibling;t.tag!==5&&t.tag!==6&&t.tag!==18;){if(t.tag===27&&nl(t.type)||t.flags&2||t.child===null||t.tag===4)continue t;t.child.return=t,t=t.child}if(!(t.flags&2))return t.stateNode}}function Ls(t,e,n){var l=t.tag;if(l===5||l===6)t=t.stateNode,e?(n.nodeType===9?n.body:n.nodeName==="HTML"?n.ownerDocument.body:n).insertBefore(t,e):(e=n.nodeType===9?n.body:n.nodeName==="HTML"?n.ownerDocument.body:n,e.appendChild(t),n=n._reactRootContainer,n!=null||e.onclick!==null||(e.onclick=fn));else if(l!==4&&(l===27&&nl(t.type)&&(n=t.stateNode,e=null),t=t.child,t!==null))for(Ls(t,e,n),t=t.sibling;t!==null;)Ls(t,e,n),t=t.sibling}function ku(t,e,n){var l=t.tag;if(l===5||l===6)t=t.stateNode,e?n.insertBefore(t,e):n.appendChild(t);else if(l!==4&&(l===27&&nl(t.type)&&(n=t.stateNode),t=t.child,t!==null))for(ku(t,e,n),t=t.sibling;t!==null;)ku(t,e,n),t=t.sibling}function ym(t){var e=t.stateNode,n=t.memoizedProps;try{for(var l=t.type,a=e.attributes;a.length;)e.removeAttributeNode(a[0]);$t(e,l,n),e[Qt]=t,e[ie]=n}catch(o){dt(t,t.return,o)}}var cn=!1,Rt=!1,Fc=!1,I0=typeof WeakSet=="function"?WeakSet:Set,Yt=null;function Y_(t,e){if(t=t.containerInfo,Qs=ju,t=ap(t),df(t)){if("selectionStart"in t)var n={start:t.selectionStart,end:t.selectionEnd};else t:{n=(n=t.ownerDocument)&&n.defaultView||window;var l=n.getSelection&&n.getSelection();if(l&&l.rangeCount!==0){n=l.anchorNode;var a=l.anchorOffset,o=l.focusNode;l=l.focusOffset;try{n.nodeType,o.nodeType}catch{n=null;break t}var i=0,u=-1,r=-1,c=0,f=0,d=t,s=null;e:for(;;){for(var g;d!==n||a!==0&&d.nodeType!==3||(u=i+a),d!==o||l!==0&&d.nodeType!==3||(r=i+l),d.nodeType===3&&(i+=d.nodeValue.length),(g=d.firstChild)!==null;)s=d,d=g;for(;;){if(d===t)break e;if(s===n&&++c===a&&(u=i),s===o&&++f===l&&(r=i),(g=d.nextSibling)!==null)break;d=s,s=d.parentNode}d=g}n=u===-1||r===-1?null:{start:u,end:r}}else n=null}n=n||{start:0,end:0}}else n=null;for(Ks={focusedElem:t,selectionRange:n},ju=!1,Yt=e;Yt!==null;)if(e=Yt,t=e.child,(e.subtreeFlags&1028)!==0&&t!==null)t.return=e,Yt=t;else for(;Yt!==null;){switch(e=Yt,o=e.alternate,t=e.flags,e.tag){case 0:if((t&4)!==0&&(t=e.updateQueue,t=t!==null?t.events:null,t!==null))for(n=0;n<t.length;n++)a=t[n],a.ref.impl=a.nextImpl;break;case 11:case 15:break;case 1:if((t&1024)!==0&&o!==null){t=void 0,n=e,a=o.memoizedProps,o=o.memoizedState,l=n.stateNode;try{var b=Nl(n.type,a);t=l.getSnapshotBeforeUpdate(b,o),l.__reactInternalSnapshotBeforeUpdate=t}catch(v){dt(n,n.return,v)}}break;case 3:if((t&1024)!==0){if(t=e.stateNode.containerInfo,n=t.nodeType,n===9)$s(t);else if(n===1)switch(t.nodeName){case"HEAD":case"HTML":case"BODY":$s(t);break;default:t.textContent=""}}break;case 5:case 26:case 27:case 6:case 4:case 17:break;default:if((t&1024)!==0)throw Error(k(163))}if(t=e.sibling,t!==null){t.return=e.return,Yt=t;break}Yt=e.return}}function vm(t,e,n){var l=n.flags;switch(n.tag){case 0:case 11:case 15:on(t,n),l&4&&ui(5,n);break;case 1:if(on(t,n),l&4)if(t=n.stateNode,e===null)try{t.componentDidMount()}catch(i){dt(n,n.return,i)}else{var a=Nl(n.type,e.memoizedProps);e=e.memoizedState;try{t.componentDidUpdate(a,e,t.__reactInternalSnapshotBeforeUpdate)}catch(i){dt(n,n.return,i)}}l&64&&hm(n),l&512&&Ro(n,n.return);break;case 3:if(on(t,n),l&64&&(t=n.updateQueue,t!==null)){if(e=null,n.child!==null)switch(n.child.tag){case 27:case 5:e=n.child.stateNode;break;case 1:e=n.child.stateNode}try{_p(t,e)}catch(i){dt(n,n.return,i)}}break;case 27:e===null&&l&4&&ym(n);case 26:case 5:on(t,n),e===null&&l&4&&pm(n),l&512&&Ro(n,n.return);break;case 12:on(t,n);break;case 31:on(t,n),l&4&&Sm(t,n);break;case 13:on(t,n),l&4&&_m(t,n),l&64&&(t=n.memoizedState,t!==null&&(t=t.dehydrated,t!==null&&(n=$_.bind(null,n),d2(t,n))));break;case 22:if(l=n.memoizedState!==null||cn,!l){e=e!==null&&e.memoizedState!==null||Rt,a=cn;var o=Rt;cn=l,(Rt=e)&&!o?un(t,n,(n.subtreeFlags&8772)!==0):on(t,n),cn=a,Rt=o}break;case 30:break;default:on(t,n)}}function bm(t){var e=t.alternate;e!==null&&(t.alternate=null,bm(e)),t.child=null,t.deletions=null,t.sibling=null,t.tag===5&&(e=t.stateNode,e!==null&&of(e)),t.stateNode=null,t.return=null,t.dependencies=null,t.memoizedProps=null,t.memoizedState=null,t.pendingProps=null,t.stateNode=null,t.updateQueue=null}var Et=null,le=!1;function an(t,e,n){for(n=n.child;n!==null;)xm(t,e,n),n=n.sibling}function xm(t,e,n){if(me&&typeof me.onCommitFiberUnmount=="function")try{me.onCommitFiberUnmount(ti,n)}catch{}switch(n.tag){case 26:Rt||Qe(n,e),an(t,e,n),n.memoizedState?n.memoizedState.count--:n.stateNode&&(n=n.stateNode,n.parentNode.removeChild(n));break;case 27:Rt||Qe(n,e);var l=Et,a=le;nl(n.type)&&(Et=n.stateNode,le=!1),an(t,e,n),Lo(n.stateNode),Et=l,le=a;break;case 5:Rt||Qe(n,e);case 6:if(l=Et,a=le,Et=null,an(t,e,n),Et=l,le=a,Et!==null)if(le)try{(Et.nodeType===9?Et.body:Et.nodeName==="HTML"?Et.ownerDocument.body:Et).removeChild(n.stateNode)}catch(o){dt(n,e,o)}else try{Et.removeChild(n.stateNode)}catch(o){dt(n,e,o)}break;case 18:Et!==null&&(le?(t=Et,fg(t.nodeType===9?t.body:t.nodeName==="HTML"?t.ownerDocument.body:t,n.stateNode),Aa(t)):fg(Et,n.stateNode));break;case 4:l=Et,a=le,Et=n.stateNode.containerInfo,le=!0,an(t,e,n),Et=l,le=a;break;case 0:case 11:case 14:case 15:Pn(2,n,e),Rt||Pn(4,n,e),an(t,e,n);break;case 1:Rt||(Qe(n,e),l=n.stateNode,typeof l.componentWillUnmount=="function"&&gm(n,e,l)),an(t,e,n);break;case 21:an(t,e,n);break;case 22:Rt=(l=Rt)||n.memoizedState!==null,an(t,e,n),Rt=l;break;default:an(t,e,n)}}function Sm(t,e){if(e.memoizedState===null&&(t=e.alternate,t!==null&&(t=t.memoizedState,t!==null))){t=t.dehydrated;try{Aa(t)}catch(n){dt(e,e.return,n)}}}function _m(t,e){if(e.memoizedState===null&&(t=e.alternate,t!==null&&(t=t.memoizedState,t!==null&&(t=t.dehydrated,t!==null))))try{Aa(t)}catch(n){dt(e,e.return,n)}}function V_(t){switch(t.tag){case 31:case 13:case 19:var e=t.stateNode;return e===null&&(e=t.stateNode=new I0),e;case 22:return t=t.stateNode,e=t._retryCache,e===null&&(e=t._retryCache=new I0),e;default:throw Error(k(435,t.tag))}}function Pi(t,e){var n=V_(t);e.forEach(function(l){if(!n.has(l)){n.add(l);var a=J_.bind(null,t,l);l.then(a,a)}})}function ee(t,e){var n=e.deletions;if(n!==null)for(var l=0;l<n.length;l++){var a=n[l],o=t,i=e,u=i;t:for(;u!==null;){switch(u.tag){case 27:if(nl(u.type)){Et=u.stateNode,le=!1;break t}break;case 5:Et=u.stateNode,le=!1;break t;case 3:case 4:Et=u.stateNode.containerInfo,le=!0;break t}u=u.return}if(Et===null)throw Error(k(160));xm(o,i,a),Et=null,le=!1,o=a.alternate,o!==null&&(o.return=null),a.return=null}if(e.subtreeFlags&13886)for(e=e.child;e!==null;)wm(e,t),e=e.sibling}var Ue=null;function wm(t,e){var n=t.alternate,l=t.flags;switch(t.tag){case 0:case 11:case 14:case 15:ee(e,t),ne(t),l&4&&(Pn(3,t,t.return),ui(3,t),Pn(5,t,t.return));break;case 1:ee(e,t),ne(t),l&512&&(Rt||n===null||Qe(n,n.return)),l&64&&cn&&(t=t.updateQueue,t!==null&&(l=t.callbacks,l!==null&&(n=t.shared.hiddenCallbacks,t.shared.hiddenCallbacks=n===null?l:n.concat(l))));break;case 26:var a=Ue;if(ee(e,t),ne(t),l&512&&(Rt||n===null||Qe(n,n.return)),l&4){var o=n!==null?n.memoizedState:null;if(l=t.memoizedState,n===null)if(l===null)if(t.stateNode===null){t:{l=t.type,n=t.memoizedProps,a=a.ownerDocument||a;e:switch(l){case"title":o=a.getElementsByTagName("title")[0],(!o||o[li]||o[Qt]||o.namespaceURI==="http://www.w3.org/2000/svg"||o.hasAttribute("itemprop"))&&(o=a.createElement(l),a.head.insertBefore(o,a.querySelector("head > title"))),$t(o,l,n),o[Qt]=t,Vt(o),l=o;break t;case"link":var i=vg("link","href",a).get(l+(n.href||""));if(i){for(var u=0;u<i.length;u++)if(o=i[u],o.getAttribute("href")===(n.href==null||n.href===""?null:n.href)&&o.getAttribute("rel")===(n.rel==null?null:n.rel)&&o.getAttribute("title")===(n.title==null?null:n.title)&&o.getAttribute("crossorigin")===(n.crossOrigin==null?null:n.crossOrigin)){i.splice(u,1);break e}}o=a.createElement(l),$t(o,l,n),a.head.appendChild(o);break;case"meta":if(i=vg("meta","content",a).get(l+(n.content||""))){for(u=0;u<i.length;u++)if(o=i[u],o.getAttribute("content")===(n.content==null?null:""+n.content)&&o.getAttribute("name")===(n.name==null?null:n.name)&&o.getAttribute("property")===(n.property==null?null:n.property)&&o.getAttribute("http-equiv")===(n.httpEquiv==null?null:n.httpEquiv)&&o.getAttribute("charset")===(n.charSet==null?null:n.charSet)){i.splice(u,1);break e}}o=a.createElement(l),$t(o,l,n),a.head.appendChild(o);break;default:throw Error(k(468,l))}o[Qt]=t,Vt(o),l=o}t.stateNode=l}else bg(a,t.type,t.stateNode);else t.stateNode=yg(a,l,t.memoizedProps);else o!==l?(o===null?n.stateNode!==null&&(n=n.stateNode,n.parentNode.removeChild(n)):o.count--,l===null?bg(a,t.type,t.stateNode):yg(a,l,t.memoizedProps)):l===null&&t.stateNode!==null&&Jc(t,t.memoizedProps,n.memoizedProps)}break;case 27:ee(e,t),ne(t),l&512&&(Rt||n===null||Qe(n,n.return)),n!==null&&l&4&&Jc(t,t.memoizedProps,n.memoizedProps);break;case 5:if(ee(e,t),ne(t),l&512&&(Rt||n===null||Qe(n,n.return)),t.flags&32){a=t.stateNode;try{Sa(a,"")}catch(b){dt(t,t.return,b)}}l&4&&t.stateNode!=null&&(a=t.memoizedProps,Jc(t,a,n!==null?n.memoizedProps:a)),l&1024&&(Fc=!0);break;case 6:if(ee(e,t),ne(t),l&4){if(t.stateNode===null)throw Error(k(162));l=t.memoizedProps,n=t.stateNode;try{n.nodeValue=l}catch(b){dt(t,t.return,b)}}break;case 3:if(yu=null,a=Ue,Ue=Gu(e.containerInfo),ee(e,t),Ue=a,ne(t),l&4&&n!==null&&n.memoizedState.isDehydrated)try{Aa(e.containerInfo)}catch(b){dt(t,t.return,b)}Fc&&(Fc=!1,Em(t));break;case 4:l=Ue,Ue=Gu(t.stateNode.containerInfo),ee(e,t),ne(t),Ue=l;break;case 12:ee(e,t),ne(t);break;case 31:ee(e,t),ne(t),l&4&&(l=t.updateQueue,l!==null&&(t.updateQueue=null,Pi(t,l)));break;case 13:ee(e,t),ne(t),t.child.flags&8192&&t.memoizedState!==null!=(n!==null&&n.memoizedState!==null)&&(ir=pe()),l&4&&(l=t.updateQueue,l!==null&&(t.updateQueue=null,Pi(t,l)));break;case 22:a=t.memoizedState!==null;var r=n!==null&&n.memoizedState!==null,c=cn,f=Rt;if(cn=c||a,Rt=f||r,ee(e,t),Rt=f,cn=c,ne(t),l&8192)t:for(e=t.stateNode,e._visibility=a?e._visibility&-2:e._visibility|1,a&&(n===null||r||cn||Rt||pl(t)),n=null,e=t;;){if(e.tag===5||e.tag===26){if(n===null){r=n=e;try{if(o=r.stateNode,a)i=o.style,typeof i.setProperty=="function"?i.setProperty("display","none","important"):i.display="none";else{u=r.stateNode;var d=r.memoizedProps.style,s=d!=null&&d.hasOwnProperty("display")?d.display:null;u.style.display=s==null||typeof s=="boolean"?"":(""+s).trim()}}catch(b){dt(r,r.return,b)}}}else if(e.tag===6){if(n===null){r=e;try{r.stateNode.nodeValue=a?"":r.memoizedProps}catch(b){dt(r,r.return,b)}}}else if(e.tag===18){if(n===null){r=e;try{var g=r.stateNode;a?dg(g,!0):dg(r.stateNode,!1)}catch(b){dt(r,r.return,b)}}}else if((e.tag!==22&&e.tag!==23||e.memoizedState===null||e===t)&&e.child!==null){e.child.return=e,e=e.child;continue}if(e===t)break t;for(;e.sibling===null;){if(e.return===null||e.return===t)break t;n===e&&(n=null),e=e.return}n===e&&(n=null),e.sibling.return=e.return,e=e.sibling}l&4&&(l=t.updateQueue,l!==null&&(n=l.retryQueue,n!==null&&(l.retryQueue=null,Pi(t,n))));break;case 19:ee(e,t),ne(t),l&4&&(l=t.updateQueue,l!==null&&(t.updateQueue=null,Pi(t,l)));break;case 30:break;case 21:break;default:ee(e,t),ne(t)}}function ne(t){var e=t.flags;if(e&2){try{for(var n,l=t.return;l!==null;){if(mm(l)){n=l;break}l=l.return}if(n==null)throw Error(k(160));switch(n.tag){case 27:var a=n.stateNode,o=Ic(t);ku(t,o,a);break;case 5:var i=n.stateNode;n.flags&32&&(Sa(i,""),n.flags&=-33);var u=Ic(t);ku(t,u,i);break;case 3:case 4:var r=n.stateNode.containerInfo,c=Ic(t);Ls(t,c,r);break;default:throw Error(k(161))}}catch(f){dt(t,t.return,f)}t.flags&=-3}e&4096&&(t.flags&=-4097)}function Em(t){if(t.subtreeFlags&1024)for(t=t.child;t!==null;){var e=t;Em(e),e.tag===5&&e.flags&1024&&e.stateNode.reset(),t=t.sibling}}function on(t,e){if(e.subtreeFlags&8772)for(e=e.child;e!==null;)vm(t,e.alternate,e),e=e.sibling}function pl(t){for(t=t.child;t!==null;){var e=t;switch(e.tag){case 0:case 11:case 14:case 15:Pn(4,e,e.return),pl(e);break;case 1:Qe(e,e.return);var n=e.stateNode;typeof n.componentWillUnmount=="function"&&gm(e,e.return,n),pl(e);break;case 27:Lo(e.stateNode);case 26:case 5:Qe(e,e.return),pl(e);break;case 22:e.memoizedState===null&&pl(e);break;case 30:pl(e);break;default:pl(e)}t=t.sibling}}function un(t,e,n){for(n=n&&(e.subtreeFlags&8772)!==0,e=e.child;e!==null;){var l=e.alternate,a=t,o=e,i=o.flags;switch(o.tag){case 0:case 11:case 15:un(a,o,n),ui(4,o);break;case 1:if(un(a,o,n),l=o,a=l.stateNode,typeof a.componentDidMount=="function")try{a.componentDidMount()}catch(c){dt(l,l.return,c)}if(l=o,a=l.updateQueue,a!==null){var u=l.stateNode;try{var r=a.shared.hiddenCallbacks;if(r!==null)for(a.shared.hiddenCallbacks=null,a=0;a<r.length;a++)Sp(r[a],u)}catch(c){dt(l,l.return,c)}}n&&i&64&&hm(o),Ro(o,o.return);break;case 27:ym(o);case 26:case 5:un(a,o,n),n&&l===null&&i&4&&pm(o),Ro(o,o.return);break;case 12:un(a,o,n);break;case 31:un(a,o,n),n&&i&4&&Sm(a,o);break;case 13:un(a,o,n),n&&i&4&&_m(a,o);break;case 22:o.memoizedState===null&&un(a,o,n),Ro(o,o.return);break;case 30:break;default:un(a,o,n)}e=e.sibling}}function Lf(t,e){var n=null;t!==null&&t.memoizedState!==null&&t.memoizedState.cachePool!==null&&(n=t.memoizedState.cachePool.pool),t=null,e.memoizedState!==null&&e.memoizedState.cachePool!==null&&(t=e.memoizedState.cachePool.pool),t!==n&&(t!=null&&t.refCount++,n!=null&&oi(n))}function Yf(t,e){t=null,e.alternate!==null&&(t=e.alternate.memoizedState.cache),e=e.memoizedState.cache,e!==t&&(e.refCount++,t!=null&&oi(t))}function ke(t,e,n,l){if(e.subtreeFlags&10256)for(e=e.child;e!==null;)Nm(t,e,n,l),e=e.sibling}function Nm(t,e,n,l){var a=e.flags;switch(e.tag){case 0:case 11:case 15:ke(t,e,n,l),a&2048&&ui(9,e);break;case 1:ke(t,e,n,l);break;case 3:ke(t,e,n,l),a&2048&&(t=null,e.alternate!==null&&(t=e.alternate.memoizedState.cache),e=e.memoizedState.cache,e!==t&&(e.refCount++,t!=null&&oi(t)));break;case 12:if(a&2048){ke(t,e,n,l),t=e.stateNode;try{var o=e.memoizedProps,i=o.id,u=o.onPostCommit;typeof u=="function"&&u(i,e.alternate===null?"mount":"update",t.passiveEffectDuration,-0)}catch(r){dt(e,e.return,r)}}else ke(t,e,n,l);break;case 31:ke(t,e,n,l);break;case 13:ke(t,e,n,l);break;case 23:break;case 22:o=e.stateNode,i=e.alternate,e.memoizedState!==null?o._visibility&2?ke(t,e,n,l):Bo(t,e):o._visibility&2?ke(t,e,n,l):(o._visibility|=2,Wl(t,e,n,l,(e.subtreeFlags&10256)!==0||!1)),a&2048&&Lf(i,e);break;case 24:ke(t,e,n,l),a&2048&&Yf(e.alternate,e);break;default:ke(t,e,n,l)}}function Wl(t,e,n,l,a){for(a=a&&((e.subtreeFlags&10256)!==0||!1),e=e.child;e!==null;){var o=t,i=e,u=n,r=l,c=i.flags;switch(i.tag){case 0:case 11:case 15:Wl(o,i,u,r,a),ui(8,i);break;case 23:break;case 22:var f=i.stateNode;i.memoizedState!==null?f._visibility&2?Wl(o,i,u,r,a):Bo(o,i):(f._visibility|=2,Wl(o,i,u,r,a)),a&&c&2048&&Lf(i.alternate,i);break;case 24:Wl(o,i,u,r,a),a&&c&2048&&Yf(i.alternate,i);break;default:Wl(o,i,u,r,a)}e=e.sibling}}function Bo(t,e){if(e.subtreeFlags&10256)for(e=e.child;e!==null;){var n=t,l=e,a=l.flags;switch(l.tag){case 22:Bo(n,l),a&2048&&Lf(l.alternate,l);break;case 24:Bo(n,l),a&2048&&Yf(l.alternate,l);break;default:Bo(n,l)}e=e.sibling}}var No=8192;function Fl(t,e,n){if(t.subtreeFlags&No)for(t=t.child;t!==null;)Mm(t,e,n),t=t.sibling}function Mm(t,e,n){switch(t.tag){case 26:Fl(t,e,n),t.flags&No&&t.memoizedState!==null&&E2(n,Ue,t.memoizedState,t.memoizedProps);break;case 5:Fl(t,e,n);break;case 3:case 4:var l=Ue;Ue=Gu(t.stateNode.containerInfo),Fl(t,e,n),Ue=l;break;case 22:t.memoizedState===null&&(l=t.alternate,l!==null&&l.memoizedState!==null?(l=No,No=16777216,Fl(t,e,n),No=l):Fl(t,e,n));break;default:Fl(t,e,n)}}function zm(t){var e=t.alternate;if(e!==null&&(t=e.child,t!==null)){e.child=null;do e=t.sibling,t.sibling=null,t=e;while(t!==null)}}function vo(t){var e=t.deletions;if((t.flags&16)!==0){if(e!==null)for(var n=0;n<e.length;n++){var l=e[n];Yt=l,Am(l,t)}zm(t)}if(t.subtreeFlags&10256)for(t=t.child;t!==null;)Cm(t),t=t.sibling}function Cm(t){switch(t.tag){case 0:case 11:case 15:vo(t),t.flags&2048&&Pn(9,t,t.return);break;case 3:vo(t);break;case 12:vo(t);break;case 22:var e=t.stateNode;t.memoizedState!==null&&e._visibility&2&&(t.return===null||t.return.tag!==13)?(e._visibility&=-3,pu(t)):vo(t);break;default:vo(t)}}function pu(t){var e=t.deletions;if((t.flags&16)!==0){if(e!==null)for(var n=0;n<e.length;n++){var l=e[n];Yt=l,Am(l,t)}zm(t)}for(t=t.child;t!==null;){switch(e=t,e.tag){case 0:case 11:case 15:Pn(8,e,e.return),pu(e);break;case 22:n=e.stateNode,n._visibility&2&&(n._visibility&=-3,pu(e));break;default:pu(e)}t=t.sibling}}function Am(t,e){for(;Yt!==null;){var n=Yt;switch(n.tag){case 0:case 11:case 15:Pn(8,n,e);break;case 23:case 22:if(n.memoizedState!==null&&n.memoizedState.cachePool!==null){var l=n.memoizedState.cachePool.pool;l!=null&&l.refCount++}break;case 24:oi(n.memoizedState.cache)}if(l=n.child,l!==null)l.return=n,Yt=l;else t:for(n=t;Yt!==null;){l=Yt;var a=l.sibling,o=l.return;if(bm(l),l===n){Yt=null;break t}if(a!==null){a.return=o,Yt=a;break t}Yt=o}}}var q_={getCacheForType:function(t){var e=jt(Bt),n=e.data.get(t);return n===void 0&&(n=t(),e.data.set(t,n)),n},cacheSignal:function(){return jt(Bt).controller.signal}},X_=typeof WeakMap=="function"?WeakMap:Map,ct=0,pt=null,lt=null,at=0,ft=0,fe=null,Yn=!1,Ra=!1,Vf=!1,xn=0,At=0,tl=0,xl=0,qf=0,ge=0,Na=0,ko=null,ae=null,Ys=!1,ir=0,Tm=0,Uu=1/0,Lu=null,Kn=null,Ut=0,jn=null,Ma=null,pn=0,Vs=0,qs=null,Dm=null,Uo=0,Xs=null;function ve(){return(ct&2)!==0&&at!==0?at&-at:J.T!==null?Zf():Vg()}function Om(){if(ge===0)if((at&536870912)===0||it){var t=Zi;Zi<<=1,(Zi&3932160)===0&&(Zi=262144),ge=t}else ge=536870912;return t=xe.current,t!==null&&(t.flags|=32),ge}function oe(t,e,n){(t===pt&&(ft===2||ft===9)||t.cancelPendingCommit!==null)&&(za(t,0),Vn(t,at,ge,!1)),ni(t,n),((ct&2)===0||t!==pt)&&(t===pt&&((ct&2)===0&&(xl|=n),At===4&&Vn(t,at,ge,!1)),$e(t))}function Hm(t,e,n){if((ct&6)!==0)throw Error(k(327));var l=!n&&(e&127)===0&&(e&t.expiredLanes)===0||ei(t,e),a=l?Q_(t,e):Wc(t,e,!0),o=l;do{if(a===0){Ra&&!l&&Vn(t,e,0,!1);break}else{if(n=t.current.alternate,o&&!Z_(n)){a=Wc(t,e,!1),o=!1;continue}if(a===2){if(o=e,t.errorRecoveryDisabledLanes&o)var i=0;else i=t.pendingLanes&-536870913,i=i!==0?i:i&536870912?536870912:0;if(i!==0){e=i;t:{var u=t;a=ko;var r=u.current.memoizedState.isDehydrated;if(r&&(za(u,i).flags|=256),i=Wc(u,i,!1),i!==2){if(Vf&&!r){u.errorRecoveryDisabledLanes|=o,xl|=o,a=4;break t}o=ae,ae=a,o!==null&&(ae===null?ae=o:ae.push.apply(ae,o))}a=i}if(o=!1,a!==2)continue}}if(a===1){za(t,0),Vn(t,e,0,!0);break}t:{switch(l=t,o=a,o){case 0:case 1:throw Error(k(345));case 4:if((e&4194048)!==e)break;case 6:Vn(l,e,ge,!Yn);break t;case 2:ae=null;break;case 3:case 5:break;default:throw Error(k(329))}if((e&62914560)===e&&(a=ir+300-pe(),10<a)){if(Vn(l,e,ge,!Yn),Ju(l,0,!0)!==0)break t;pn=e,l.timeoutHandle=Pm(F0.bind(null,l,n,ae,Lu,Ys,e,ge,xl,Na,Yn,o,"Throttled",-0,0),a);break t}F0(l,n,ae,Lu,Ys,e,ge,xl,Na,Yn,o,null,-0,0)}}break}while(!0);$e(t)}function F0(t,e,n,l,a,o,i,u,r,c,f,d,s,g){if(t.timeoutHandle=-1,d=e.subtreeFlags,d&8192||(d&16785408)===16785408){d={stylesheets:null,count:0,imgCount:0,imgBytes:0,suspenseyImages:[],waitingForImages:!0,waitingForViewTransition:!1,unsuspend:fn},Mm(e,o,d);var b=(o&62914560)===o?ir-pe():(o&4194048)===o?Tm-pe():0;if(b=N2(d,b),b!==null){pn=o,t.cancelPendingCommit=b(P0.bind(null,t,e,o,n,l,a,i,u,r,f,d,null,s,g)),Vn(t,o,i,!c);return}}P0(t,e,o,n,l,a,i,u,r)}function Z_(t){for(var e=t;;){var n=e.tag;if((n===0||n===11||n===15)&&e.flags&16384&&(n=e.updateQueue,n!==null&&(n=n.stores,n!==null)))for(var l=0;l<n.length;l++){var a=n[l],o=a.getSnapshot;a=a.value;try{if(!be(o(),a))return!1}catch{return!1}}if(n=e.child,e.subtreeFlags&16384&&n!==null)n.return=e,e=n;else{if(e===t)break;for(;e.sibling===null;){if(e.return===null||e.return===t)return!0;e=e.return}e.sibling.return=e.return,e=e.sibling}}return!0}function Vn(t,e,n,l){e&=~qf,e&=~xl,t.suspendedLanes|=e,t.pingedLanes&=~e,l&&(t.warmLanes|=e),l=t.expirationTimes;for(var a=e;0<a;){var o=31-ye(a),i=1<<o;l[o]=-1,a&=~i}n!==0&&Ug(t,n,e)}function ur(){return(ct&6)===0?(ri(0,!1),!1):!0}function Xf(){if(lt!==null){if(ft===0)var t=lt.return;else t=lt,dn=Tl=null,zf(t),ma=null,Qo=0,t=lt;for(;t!==null;)dm(t.alternate,t),t=t.return;lt=null}}function za(t,e){var n=t.timeoutHandle;n!==-1&&(t.timeoutHandle=-1,u2(n)),n=t.cancelPendingCommit,n!==null&&(t.cancelPendingCommit=null,n()),pn=0,Xf(),pt=t,lt=n=hn(t.current,null),at=e,ft=0,fe=null,Yn=!1,Ra=ei(t,e),Vf=!1,Na=ge=qf=xl=tl=At=0,ae=ko=null,Ys=!1,(e&8)!==0&&(e|=e&32);var l=t.entangledLanes;if(l!==0)for(t=t.entanglements,l&=e;0<l;){var a=31-ye(l),o=1<<a;e|=t[a],l&=~o}return xn=e,Pu(),n}function Rm(t,e){P=null,J.H=jo,e===Ha||e===er?(e=A0(),ft=3):e===xf?(e=A0(),ft=4):ft=e===kf?8:e!==null&&typeof e=="object"&&typeof e.then=="function"?6:1,fe=e,lt===null&&(At=1,Ru(t,Ae(e,t.current)))}function Bm(){var t=xe.current;return t===null?!0:(at&4194048)===at?De===null:(at&62914560)===at||(at&536870912)!==0?t===De:!1}function km(){var t=J.H;return J.H=jo,t===null?jo:t}function Um(){var t=J.A;return J.A=q_,t}function Yu(){At=4,Yn||(at&4194048)!==at&&xe.current!==null||(Ra=!0),(tl&134217727)===0&&(xl&134217727)===0||pt===null||Vn(pt,at,ge,!1)}function Wc(t,e,n){var l=ct;ct|=2;var a=km(),o=Um();(pt!==t||at!==e)&&(Lu=null,za(t,e)),e=!1;var i=At;t:do try{if(ft!==0&&lt!==null){var u=lt,r=fe;switch(ft){case 8:Xf(),i=6;break t;case 3:case 2:case 9:case 6:xe.current===null&&(e=!0);var c=ft;if(ft=0,fe=null,fa(t,u,r,c),n&&Ra){i=0;break t}break;default:c=ft,ft=0,fe=null,fa(t,u,r,c)}}G_(),i=At;break}catch(f){Rm(t,f)}while(!0);return e&&t.shellSuspendCounter++,dn=Tl=null,ct=l,J.H=a,J.A=o,lt===null&&(pt=null,at=0,Pu()),i}function G_(){for(;lt!==null;)Lm(lt)}function Q_(t,e){var n=ct;ct|=2;var l=km(),a=Um();pt!==t||at!==e?(Lu=null,Uu=pe()+500,za(t,e)):Ra=ei(t,e);t:do try{if(ft!==0&&lt!==null){e=lt;var o=fe;e:switch(ft){case 1:ft=0,fe=null,fa(t,e,o,1);break;case 2:case 9:if(C0(o)){ft=0,fe=null,W0(e);break}e=function(){ft!==2&&ft!==9||pt!==t||(ft=7),$e(t)},o.then(e,e);break t;case 3:ft=7;break t;case 4:ft=5;break t;case 7:C0(o)?(ft=0,fe=null,W0(e)):(ft=0,fe=null,fa(t,e,o,7));break;case 5:var i=null;switch(lt.tag){case 26:i=lt.memoizedState;case 5:case 27:var u=lt;if(i?ay(i):u.stateNode.complete){ft=0,fe=null;var r=u.sibling;if(r!==null)lt=r;else{var c=u.return;c!==null?(lt=c,rr(c)):lt=null}break e}}ft=0,fe=null,fa(t,e,o,5);break;case 6:ft=0,fe=null,fa(t,e,o,6);break;case 8:Xf(),At=6;break t;default:throw Error(k(462))}}K_();break}catch(f){Rm(t,f)}while(!0);return dn=Tl=null,J.H=l,J.A=a,ct=n,lt!==null?0:(pt=null,at=0,Pu(),At)}function K_(){for(;lt!==null&&!pS();)Lm(lt)}function Lm(t){var e=fm(t.alternate,t,xn);t.memoizedProps=t.pendingProps,e===null?rr(t):lt=e}function W0(t){var e=t,n=e.alternate;switch(e.tag){case 15:case 0:e=Q0(n,e,e.pendingProps,e.type,void 0,at);break;case 11:e=Q0(n,e,e.pendingProps,e.type.render,e.ref,at);break;case 5:zf(e);default:dm(n,e),e=lt=dp(e,xn),e=fm(n,e,xn)}t.memoizedProps=t.pendingProps,e===null?rr(t):lt=e}function fa(t,e,n,l){dn=Tl=null,zf(e),ma=null,Qo=0;var a=e.return;try{if(R_(t,a,e,n,at)){At=1,Ru(t,Ae(n,t.current)),lt=null;return}}catch(o){if(a!==null)throw lt=a,o;At=1,Ru(t,Ae(n,t.current)),lt=null;return}e.flags&32768?(it||l===1?t=!0:Ra||(at&536870912)!==0?t=!1:(Yn=t=!0,(l===2||l===9||l===3||l===6)&&(l=xe.current,l!==null&&l.tag===13&&(l.flags|=16384))),Ym(e,t)):rr(e)}function rr(t){var e=t;do{if((e.flags&32768)!==0){Ym(e,Yn);return}t=e.return;var n=U_(e.alternate,e,xn);if(n!==null){lt=n;return}if(e=e.sibling,e!==null){lt=e;return}lt=e=t}while(e!==null);At===0&&(At=5)}function Ym(t,e){do{var n=L_(t.alternate,t);if(n!==null){n.flags&=32767,lt=n;return}if(n=t.return,n!==null&&(n.flags|=32768,n.subtreeFlags=0,n.deletions=null),!e&&(t=t.sibling,t!==null)){lt=t;return}lt=t=n}while(t!==null);At=6,lt=null}function P0(t,e,n,l,a,o,i,u,r){t.cancelPendingCommit=null;do cr();while(Ut!==0);if((ct&6)!==0)throw Error(k(327));if(e!==null){if(e===t.current)throw Error(k(177));if(o=e.lanes|e.childLanes,o|=hf,NS(t,n,o,i,u,r),t===pt&&(lt=pt=null,at=0),Ma=e,jn=t,pn=n,Vs=o,qs=a,Dm=l,(e.subtreeFlags&10256)!==0||(e.flags&10256)!==0?(t.callbackNode=null,t.callbackPriority=0,I_(wu,function(){return Gm(),null})):(t.callbackNode=null,t.callbackPriority=0),l=(e.flags&13878)!==0,(e.subtreeFlags&13878)!==0||l){l=J.T,J.T=null,a=st.p,st.p=2,i=ct,ct|=4;try{Y_(t,e,n)}finally{ct=i,st.p=a,J.T=l}}Ut=1,Vm(),qm(),Xm()}}function Vm(){if(Ut===1){Ut=0;var t=jn,e=Ma,n=(e.flags&13878)!==0;if((e.subtreeFlags&13878)!==0||n){n=J.T,J.T=null;var l=st.p;st.p=2;var a=ct;ct|=4;try{wm(e,t);var o=Ks,i=ap(t.containerInfo),u=o.focusedElem,r=o.selectionRange;if(i!==u&&u&&u.ownerDocument&&lp(u.ownerDocument.documentElement,u)){if(r!==null&&df(u)){var c=r.start,f=r.end;if(f===void 0&&(f=c),"selectionStart"in u)u.selectionStart=c,u.selectionEnd=Math.min(f,u.value.length);else{var d=u.ownerDocument||document,s=d&&d.defaultView||window;if(s.getSelection){var g=s.getSelection(),b=u.textContent.length,v=Math.min(r.start,b),S=r.end===void 0?v:Math.min(r.end,b);!g.extend&&v>S&&(i=S,S=v,v=i);var p=S0(u,v),m=S0(u,S);if(p&&m&&(g.rangeCount!==1||g.anchorNode!==p.node||g.anchorOffset!==p.offset||g.focusNode!==m.node||g.focusOffset!==m.offset)){var h=d.createRange();h.setStart(p.node,p.offset),g.removeAllRanges(),v>S?(g.addRange(h),g.extend(m.node,m.offset)):(h.setEnd(m.node,m.offset),g.addRange(h))}}}}for(d=[],g=u;g=g.parentNode;)g.nodeType===1&&d.push({element:g,left:g.scrollLeft,top:g.scrollTop});for(typeof u.focus=="function"&&u.focus(),u=0;u<d.length;u++){var y=d[u];y.element.scrollLeft=y.left,y.element.scrollTop=y.top}}ju=!!Qs,Ks=Qs=null}finally{ct=a,st.p=l,J.T=n}}t.current=e,Ut=2}}function qm(){if(Ut===2){Ut=0;var t=jn,e=Ma,n=(e.flags&8772)!==0;if((e.subtreeFlags&8772)!==0||n){n=J.T,J.T=null;var l=st.p;st.p=2;var a=ct;ct|=4;try{vm(t,e.alternate,e)}finally{ct=a,st.p=l,J.T=n}}Ut=3}}function Xm(){if(Ut===4||Ut===3){Ut=0,mS();var t=jn,e=Ma,n=pn,l=Dm;(e.subtreeFlags&10256)!==0||(e.flags&10256)!==0?Ut=5:(Ut=0,Ma=jn=null,Zm(t,t.pendingLanes));var a=t.pendingLanes;if(a===0&&(Kn=null),af(n),e=e.stateNode,me&&typeof me.onCommitFiberRoot=="function")try{me.onCommitFiberRoot(ti,e,void 0,(e.current.flags&128)===128)}catch{}if(l!==null){e=J.T,a=st.p,st.p=2,J.T=null;try{for(var o=t.onRecoverableError,i=0;i<l.length;i++){var u=l[i];o(u.value,{componentStack:u.stack})}}finally{J.T=e,st.p=a}}(pn&3)!==0&&cr(),$e(t),a=t.pendingLanes,(n&261930)!==0&&(a&42)!==0?t===Xs?Uo++:(Uo=0,Xs=t):Uo=0,ri(0,!1)}}function Zm(t,e){(t.pooledCacheLanes&=e)===0&&(e=t.pooledCache,e!=null&&(t.pooledCache=null,oi(e)))}function cr(){return Vm(),qm(),Xm(),Gm()}function Gm(){if(Ut!==5)return!1;var t=jn,e=Vs;Vs=0;var n=af(pn),l=J.T,a=st.p;try{st.p=32>n?32:n,J.T=null,n=qs,qs=null;var o=jn,i=pn;if(Ut=0,Ma=jn=null,pn=0,(ct&6)!==0)throw Error(k(331));var u=ct;if(ct|=4,Cm(o.current),Nm(o,o.current,i,n),ct=u,ri(0,!1),me&&typeof me.onPostCommitFiberRoot=="function")try{me.onPostCommitFiberRoot(ti,o)}catch{}return!0}finally{st.p=a,J.T=l,Zm(t,e)}}function tg(t,e,n){e=Ae(n,e),e=Bs(t.stateNode,e,2),t=Qn(t,e,2),t!==null&&(ni(t,2),$e(t))}function dt(t,e,n){if(t.tag===3)tg(t,t,n);else for(;e!==null;){if(e.tag===3){tg(e,t,n);break}else if(e.tag===1){var l=e.stateNode;if(typeof e.type.getDerivedStateFromError=="function"||typeof l.componentDidCatch=="function"&&(Kn===null||!Kn.has(l))){t=Ae(n,t),n=om(2),l=Qn(e,n,2),l!==null&&(im(n,l,e,t),ni(l,2),$e(l));break}}e=e.return}}function Pc(t,e,n){var l=t.pingCache;if(l===null){l=t.pingCache=new X_;var a=new Set;l.set(e,a)}else a=l.get(e),a===void 0&&(a=new Set,l.set(e,a));a.has(n)||(Vf=!0,a.add(n),t=j_.bind(null,t,e,n),e.then(t,t))}function j_(t,e,n){var l=t.pingCache;l!==null&&l.delete(e),t.pingedLanes|=t.suspendedLanes&n,t.warmLanes&=~n,pt===t&&(at&n)===n&&(At===4||At===3&&(at&62914560)===at&&300>pe()-ir?(ct&2)===0&&za(t,0):qf|=n,Na===at&&(Na=0)),$e(t)}function Qm(t,e){e===0&&(e=kg()),t=Al(t,e),t!==null&&(ni(t,e),$e(t))}function $_(t){var e=t.memoizedState,n=0;e!==null&&(n=e.retryLane),Qm(t,n)}function J_(t,e){var n=0;switch(t.tag){case 31:case 13:var l=t.stateNode,a=t.memoizedState;a!==null&&(n=a.retryLane);break;case 19:l=t.stateNode;break;case 22:l=t.stateNode._retryCache;break;default:throw Error(k(314))}l!==null&&l.delete(e),Qm(t,n)}function I_(t,e){return nf(t,e)}var Vu=null,Pl=null,Zs=!1,qu=!1,ts=!1,qn=0;function $e(t){t!==Pl&&t.next===null&&(Pl===null?Vu=Pl=t:Pl=Pl.next=t),qu=!0,Zs||(Zs=!0,W_())}function ri(t,e){if(!ts&&qu){ts=!0;do for(var n=!1,l=Vu;l!==null;){if(!e)if(t!==0){var a=l.pendingLanes;if(a===0)var o=0;else{var i=l.suspendedLanes,u=l.pingedLanes;o=(1<<31-ye(42|t)+1)-1,o&=a&~(i&~u),o=o&201326741?o&201326741|1:o?o|2:0}o!==0&&(n=!0,eg(l,o))}else o=at,o=Ju(l,l===pt?o:0,l.cancelPendingCommit!==null||l.timeoutHandle!==-1),(o&3)===0||ei(l,o)||(n=!0,eg(l,o));l=l.next}while(n);ts=!1}}function F_(){Km()}function Km(){qu=Zs=!1;var t=0;qn!==0&&i2()&&(t=qn);for(var e=pe(),n=null,l=Vu;l!==null;){var a=l.next,o=jm(l,e);o===0?(l.next=null,n===null?Vu=a:n.next=a,a===null&&(Pl=n)):(n=l,(t!==0||(o&3)!==0)&&(qu=!0)),l=a}Ut!==0&&Ut!==5||ri(t,!1),qn!==0&&(qn=0)}function jm(t,e){for(var n=t.suspendedLanes,l=t.pingedLanes,a=t.expirationTimes,o=t.pendingLanes&-62914561;0<o;){var i=31-ye(o),u=1<<i,r=a[i];r===-1?((u&n)===0||(u&l)!==0)&&(a[i]=ES(u,e)):r<=e&&(t.expiredLanes|=u),o&=~u}if(e=pt,n=at,n=Ju(t,t===e?n:0,t.cancelPendingCommit!==null||t.timeoutHandle!==-1),l=t.callbackNode,n===0||t===e&&(ft===2||ft===9)||t.cancelPendingCommit!==null)return l!==null&&l!==null&&Ac(l),t.callbackNode=null,t.callbackPriority=0;if((n&3)===0||ei(t,n)){if(e=n&-n,e===t.callbackPriority)return e;switch(l!==null&&Ac(l),af(n)){case 2:case 8:n=Rg;break;case 32:n=wu;break;case 268435456:n=Bg;break;default:n=wu}return l=$m.bind(null,t),n=nf(n,l),t.callbackPriority=e,t.callbackNode=n,e}return l!==null&&l!==null&&Ac(l),t.callbackPriority=2,t.callbackNode=null,2}function $m(t,e){if(Ut!==0&&Ut!==5)return t.callbackNode=null,t.callbackPriority=0,null;var n=t.callbackNode;if(cr()&&t.callbackNode!==n)return null;var l=at;return l=Ju(t,t===pt?l:0,t.cancelPendingCommit!==null||t.timeoutHandle!==-1),l===0?null:(Hm(t,l,e),jm(t,pe()),t.callbackNode!=null&&t.callbackNode===n?$m.bind(null,t):null)}function eg(t,e){if(cr())return null;Hm(t,e,!0)}function W_(){r2(function(){(ct&6)!==0?nf(Hg,F_):Km()})}function Zf(){if(qn===0){var t=_a;t===0&&(t=Xi,Xi<<=1,(Xi&261888)===0&&(Xi=256)),qn=t}return qn}function ng(t){return t==null||typeof t=="symbol"||typeof t=="boolean"?null:typeof t=="function"?t:iu(""+t)}function lg(t,e){var n=e.ownerDocument.createElement("input");return n.name=e.name,n.value=e.value,t.id&&n.setAttribute("form",t.id),e.parentNode.insertBefore(n,e),t=new FormData(t),n.parentNode.removeChild(n),t}function P_(t,e,n,l,a){if(e==="submit"&&n&&n.stateNode===a){var o=ng((a[ie]||null).action),i=l.submitter;i&&(e=(e=i[ie]||null)?ng(e.formAction):i.getAttribute("formAction"),e!==null&&(o=e,i=null));var u=new Iu("action","action",null,l,a);t.push({event:u,listeners:[{instance:null,listener:function(){if(l.defaultPrevented){if(qn!==0){var r=i?lg(a,i):new FormData(a);Hs(n,{pending:!0,data:r,method:a.method,action:o},null,r)}}else typeof o=="function"&&(u.preventDefault(),r=i?lg(a,i):new FormData(a),Hs(n,{pending:!0,data:r,method:a.method,action:o},o,r))},currentTarget:a}]})}}for(tu=0;tu<Ss.length;tu++)eu=Ss[tu],ag=eu.toLowerCase(),og=eu[0].toUpperCase()+eu.slice(1),Le(ag,"on"+og);var eu,ag,og,tu;Le(ip,"onAnimationEnd");Le(up,"onAnimationIteration");Le(rp,"onAnimationStart");Le("dblclick","onDoubleClick");Le("focusin","onFocus");Le("focusout","onBlur");Le(y_,"onTransitionRun");Le(v_,"onTransitionStart");Le(b_,"onTransitionCancel");Le(cp,"onTransitionEnd");xa("onMouseEnter",["mouseout","mouseover"]);xa("onMouseLeave",["mouseout","mouseover"]);xa("onPointerEnter",["pointerout","pointerover"]);xa("onPointerLeave",["pointerout","pointerover"]);Ml("onChange","change click focusin focusout input keydown keyup selectionchange".split(" "));Ml("onSelect","focusout contextmenu dragend focusin keydown keyup mousedown mouseup selectionchange".split(" "));Ml("onBeforeInput",["compositionend","keypress","textInput","paste"]);Ml("onCompositionEnd","compositionend focusout keydown keypress keyup mousedown".split(" "));Ml("onCompositionStart","compositionstart focusout keydown keypress keyup mousedown".split(" "));Ml("onCompositionUpdate","compositionupdate focusout keydown keypress keyup mousedown".split(" "));var $o="abort canplay canplaythrough durationchange emptied encrypted ended error loadeddata loadedmetadata loadstart pause play playing progress ratechange resize seeked seeking stalled suspend timeupdate volumechange waiting".split(" "),t2=new Set("beforetoggle cancel close invalid load scroll scrollend toggle".split(" ").concat($o));function Jm(t,e){e=(e&4)!==0;for(var n=0;n<t.length;n++){var l=t[n],a=l.event;l=l.listeners;t:{var o=void 0;if(e)for(var i=l.length-1;0<=i;i--){var u=l[i],r=u.instance,c=u.currentTarget;if(u=u.listener,r!==o&&a.isPropagationStopped())break t;o=u,a.currentTarget=c;try{o(a)}catch(f){Nu(f)}a.currentTarget=null,o=r}else for(i=0;i<l.length;i++){if(u=l[i],r=u.instance,c=u.currentTarget,u=u.listener,r!==o&&a.isPropagationStopped())break t;o=u,a.currentTarget=c;try{o(a)}catch(f){Nu(f)}a.currentTarget=null,o=r}}}}function nt(t,e){var n=e[hs];n===void 0&&(n=e[hs]=new Set);var l=t+"__bubble";n.has(l)||(Im(e,t,2,!1),n.add(l))}function es(t,e,n){var l=0;e&&(l|=4),Im(n,t,l,e)}var nu="_reactListening"+Math.random().toString(36).slice(2);function Gf(t){if(!t[nu]){t[nu]=!0,qg.forEach(function(n){n!=="selectionchange"&&(t2.has(n)||es(n,!1,t),es(n,!0,t))});var e=t.nodeType===9?t:t.ownerDocument;e===null||e[nu]||(e[nu]=!0,es("selectionchange",!1,e))}}function Im(t,e,n,l){switch(cy(e)){case 2:var a=C2;break;case 8:a=A2;break;default:a=$f}n=a.bind(null,e,n,t),a=void 0,!vs||e!=="touchstart"&&e!=="touchmove"&&e!=="wheel"||(a=!0),l?a!==void 0?t.addEventListener(e,n,{capture:!0,passive:a}):t.addEventListener(e,n,!0):a!==void 0?t.addEventListener(e,n,{passive:a}):t.addEventListener(e,n,!1)}function ns(t,e,n,l,a){var o=l;if((e&1)===0&&(e&2)===0&&l!==null)t:for(;;){if(l===null)return;var i=l.tag;if(i===3||i===4){var u=l.stateNode.containerInfo;if(u===a)break;if(i===4)for(i=l.return;i!==null;){var r=i.tag;if((r===3||r===4)&&i.stateNode.containerInfo===a)return;i=i.return}for(;u!==null;){if(i=na(u),i===null)return;if(r=i.tag,r===5||r===6||r===26||r===27){l=o=i;continue t}u=u.parentNode}}l=l.return}Jg(function(){var c=o,f=rf(n),d=[];t:{var s=sp.get(t);if(s!==void 0){var g=Iu,b=t;switch(t){case"keypress":if(ru(n)===0)break t;case"keydown":case"keyup":g=JS;break;case"focusin":b="focus",g=Rc;break;case"focusout":b="blur",g=Rc;break;case"beforeblur":case"afterblur":g=Rc;break;case"click":if(n.button===2)break t;case"auxclick":case"dblclick":case"mousedown":case"mousemove":case"mouseup":case"mouseout":case"mouseover":case"contextmenu":g=d0;break;case"drag":case"dragend":case"dragenter":case"dragexit":case"dragleave":case"dragover":case"dragstart":case"drop":g=US;break;case"touchcancel":case"touchend":case"touchmove":case"touchstart":g=WS;break;case ip:case up:case rp:g=VS;break;case cp:g=t_;break;case"scroll":case"scrollend":g=BS;break;case"wheel":g=n_;break;case"copy":case"cut":case"paste":g=XS;break;case"gotpointercapture":case"lostpointercapture":case"pointercancel":case"pointerdown":case"pointermove":case"pointerout":case"pointerover":case"pointerup":g=g0;break;case"toggle":case"beforetoggle":g=a_}var v=(e&4)!==0,S=!v&&(t==="scroll"||t==="scrollend"),p=v?s!==null?s+"Capture":null:s;v=[];for(var m=c,h;m!==null;){var y=m;if(h=y.stateNode,y=y.tag,y!==5&&y!==26&&y!==27||h===null||p===null||(y=Vo(m,p),y!=null&&v.push(Jo(m,y,h))),S)break;m=m.return}0<v.length&&(s=new g(s,b,null,n,f),d.push({event:s,listeners:v}))}}if((e&7)===0){t:{if(s=t==="mouseover"||t==="pointerover",g=t==="mouseout"||t==="pointerout",s&&n!==ys&&(b=n.relatedTarget||n.fromElement)&&(na(b)||b[Ta]))break t;if((g||s)&&(s=f.window===f?f:(s=f.ownerDocument)?s.defaultView||s.parentWindow:window,g?(b=n.relatedTarget||n.toElement,g=c,b=b?na(b):null,b!==null&&(S=Po(b),v=b.tag,b!==S||v!==5&&v!==27&&v!==6)&&(b=null)):(g=null,b=c),g!==b)){if(v=d0,y="onMouseLeave",p="onMouseEnter",m="mouse",(t==="pointerout"||t==="pointerover")&&(v=g0,y="onPointerLeave",p="onPointerEnter",m="pointer"),S=g==null?s:wo(g),h=b==null?s:wo(b),s=new v(y,m+"leave",g,n,f),s.target=S,s.relatedTarget=h,y=null,na(f)===c&&(v=new v(p,m+"enter",b,n,f),v.target=h,v.relatedTarget=S,y=v),S=y,g&&b)e:{for(v=e2,p=g,m=b,h=0,y=p;y;y=v(y))h++;y=0;for(var x=m;x;x=v(x))y++;for(;0<h-y;)p=v(p),h--;for(;0<y-h;)m=v(m),y--;for(;h--;){if(p===m||m!==null&&p===m.alternate){v=p;break e}p=v(p),m=v(m)}v=null}else v=null;g!==null&&ig(d,s,g,v,!1),b!==null&&S!==null&&ig(d,S,b,v,!0)}}t:{if(s=c?wo(c):window,g=s.nodeName&&s.nodeName.toLowerCase(),g==="select"||g==="input"&&s.type==="file")var E=v0;else if(y0(s))if(ep)E=g_;else{E=d_;var w=f_}else g=s.nodeName,!g||g.toLowerCase()!=="input"||s.type!=="checkbox"&&s.type!=="radio"?c&&uf(c.elementType)&&(E=v0):E=h_;if(E&&(E=E(t,c))){tp(d,E,n,f);break t}w&&w(t,s,c),t==="focusout"&&c&&s.type==="number"&&c.memoizedProps.value!=null&&ms(s,"number",s.value)}switch(w=c?wo(c):window,t){case"focusin":(y0(w)||w.contentEditable==="true")&&(oa=w,bs=c,Co=null);break;case"focusout":Co=bs=oa=null;break;case"mousedown":xs=!0;break;case"contextmenu":case"mouseup":case"dragend":xs=!1,_0(d,n,f);break;case"selectionchange":if(m_)break;case"keydown":case"keyup":_0(d,n,f)}var N;if(ff)t:{switch(t){case"compositionstart":var z="onCompositionStart";break t;case"compositionend":z="onCompositionEnd";break t;case"compositionupdate":z="onCompositionUpdate";break t}z=void 0}else aa?Wg(t,n)&&(z="onCompositionEnd"):t==="keydown"&&n.keyCode===229&&(z="onCompositionStart");z&&(Fg&&n.locale!=="ko"&&(aa||z!=="onCompositionStart"?z==="onCompositionEnd"&&aa&&(N=Ig()):(Ln=f,cf="value"in Ln?Ln.value:Ln.textContent,aa=!0)),w=Xu(c,z),0<w.length&&(z=new h0(z,t,null,n,f),d.push({event:z,listeners:w}),N?z.data=N:(N=Pg(n),N!==null&&(z.data=N)))),(N=i_?u_(t,n):r_(t,n))&&(z=Xu(c,"onBeforeInput"),0<z.length&&(w=new h0("onBeforeInput","beforeinput",null,n,f),d.push({event:w,listeners:z}),w.data=N)),P_(d,t,c,n,f)}Jm(d,e)})}function Jo(t,e,n){return{instance:t,listener:e,currentTarget:n}}function Xu(t,e){for(var n=e+"Capture",l=[];t!==null;){var a=t,o=a.stateNode;if(a=a.tag,a!==5&&a!==26&&a!==27||o===null||(a=Vo(t,n),a!=null&&l.unshift(Jo(t,a,o)),a=Vo(t,e),a!=null&&l.push(Jo(t,a,o))),t.tag===3)return l;t=t.return}return[]}function e2(t){if(t===null)return null;do t=t.return;while(t&&t.tag!==5&&t.tag!==27);return t||null}function ig(t,e,n,l,a){for(var o=e._reactName,i=[];n!==null&&n!==l;){var u=n,r=u.alternate,c=u.stateNode;if(u=u.tag,r!==null&&r===l)break;u!==5&&u!==26&&u!==27||c===null||(r=c,a?(c=Vo(n,o),c!=null&&i.unshift(Jo(n,c,r))):a||(c=Vo(n,o),c!=null&&i.push(Jo(n,c,r)))),n=n.return}i.length!==0&&t.push({event:e,listeners:i})}var n2=/\\r\\n?/g,l2=/\\u0000|\\uFFFD/g;function ug(t){return(typeof t=="string"?t:""+t).replace(n2,`\n`).replace(l2,"")}function Fm(t,e){return e=ug(e),ug(t)===e}function ht(t,e,n,l,a,o){switch(n){case"children":typeof l=="string"?e==="body"||e==="textarea"&&l===""||Sa(t,l):(typeof l=="number"||typeof l=="bigint")&&e!=="body"&&Sa(t,""+l);break;case"className":Qi(t,"class",l);break;case"tabIndex":Qi(t,"tabindex",l);break;case"dir":case"role":case"viewBox":case"width":case"height":Qi(t,n,l);break;case"style":$g(t,l,o);break;case"data":if(e!=="object"){Qi(t,"data",l);break}case"src":case"href":if(l===""&&(e!=="a"||n!=="href")){t.removeAttribute(n);break}if(l==null||typeof l=="function"||typeof l=="symbol"||typeof l=="boolean"){t.removeAttribute(n);break}l=iu(""+l),t.setAttribute(n,l);break;case"action":case"formAction":if(typeof l=="function"){t.setAttribute(n,"javascript:throw new Error(\'A React form was unexpectedly submitted. If you called form.submit() manually, consider using form.requestSubmit() instead. If you\\\\\'re trying to use event.stopPropagation() in a submit event handler, consider also calling event.preventDefault().\')");break}else typeof o=="function"&&(n==="formAction"?(e!=="input"&&ht(t,e,"name",a.name,a,null),ht(t,e,"formEncType",a.formEncType,a,null),ht(t,e,"formMethod",a.formMethod,a,null),ht(t,e,"formTarget",a.formTarget,a,null)):(ht(t,e,"encType",a.encType,a,null),ht(t,e,"method",a.method,a,null),ht(t,e,"target",a.target,a,null)));if(l==null||typeof l=="symbol"||typeof l=="boolean"){t.removeAttribute(n);break}l=iu(""+l),t.setAttribute(n,l);break;case"onClick":l!=null&&(t.onclick=fn);break;case"onScroll":l!=null&&nt("scroll",t);break;case"onScrollEnd":l!=null&&nt("scrollend",t);break;case"dangerouslySetInnerHTML":if(l!=null){if(typeof l!="object"||!("__html"in l))throw Error(k(61));if(n=l.__html,n!=null){if(a.children!=null)throw Error(k(60));t.innerHTML=n}}break;case"multiple":t.multiple=l&&typeof l!="function"&&typeof l!="symbol";break;case"muted":t.muted=l&&typeof l!="function"&&typeof l!="symbol";break;case"suppressContentEditableWarning":case"suppressHydrationWarning":case"defaultValue":case"defaultChecked":case"innerHTML":case"ref":break;case"autoFocus":break;case"xlinkHref":if(l==null||typeof l=="function"||typeof l=="boolean"||typeof l=="symbol"){t.removeAttribute("xlink:href");break}n=iu(""+l),t.setAttributeNS("http://www.w3.org/1999/xlink","xlink:href",n);break;case"contentEditable":case"spellCheck":case"draggable":case"value":case"autoReverse":case"externalResourcesRequired":case"focusable":case"preserveAlpha":l!=null&&typeof l!="function"&&typeof l!="symbol"?t.setAttribute(n,""+l):t.removeAttribute(n);break;case"inert":case"allowFullScreen":case"async":case"autoPlay":case"controls":case"default":case"defer":case"disabled":case"disablePictureInPicture":case"disableRemotePlayback":case"formNoValidate":case"hidden":case"loop":case"noModule":case"noValidate":case"open":case"playsInline":case"readOnly":case"required":case"reversed":case"scoped":case"seamless":case"itemScope":l&&typeof l!="function"&&typeof l!="symbol"?t.setAttribute(n,""):t.removeAttribute(n);break;case"capture":case"download":l===!0?t.setAttribute(n,""):l!==!1&&l!=null&&typeof l!="function"&&typeof l!="symbol"?t.setAttribute(n,l):t.removeAttribute(n);break;case"cols":case"rows":case"size":case"span":l!=null&&typeof l!="function"&&typeof l!="symbol"&&!isNaN(l)&&1<=l?t.setAttribute(n,l):t.removeAttribute(n);break;case"rowSpan":case"start":l==null||typeof l=="function"||typeof l=="symbol"||isNaN(l)?t.removeAttribute(n):t.setAttribute(n,l);break;case"popover":nt("beforetoggle",t),nt("toggle",t),ou(t,"popover",l);break;case"xlinkActuate":nn(t,"http://www.w3.org/1999/xlink","xlink:actuate",l);break;case"xlinkArcrole":nn(t,"http://www.w3.org/1999/xlink","xlink:arcrole",l);break;case"xlinkRole":nn(t,"http://www.w3.org/1999/xlink","xlink:role",l);break;case"xlinkShow":nn(t,"http://www.w3.org/1999/xlink","xlink:show",l);break;case"xlinkTitle":nn(t,"http://www.w3.org/1999/xlink","xlink:title",l);break;case"xlinkType":nn(t,"http://www.w3.org/1999/xlink","xlink:type",l);break;case"xmlBase":nn(t,"http://www.w3.org/XML/1998/namespace","xml:base",l);break;case"xmlLang":nn(t,"http://www.w3.org/XML/1998/namespace","xml:lang",l);break;case"xmlSpace":nn(t,"http://www.w3.org/XML/1998/namespace","xml:space",l);break;case"is":ou(t,"is",l);break;case"innerText":case"textContent":break;default:(!(2<n.length)||n[0]!=="o"&&n[0]!=="O"||n[1]!=="n"&&n[1]!=="N")&&(n=HS.get(n)||n,ou(t,n,l))}}function Gs(t,e,n,l,a,o){switch(n){case"style":$g(t,l,o);break;case"dangerouslySetInnerHTML":if(l!=null){if(typeof l!="object"||!("__html"in l))throw Error(k(61));if(n=l.__html,n!=null){if(a.children!=null)throw Error(k(60));t.innerHTML=n}}break;case"children":typeof l=="string"?Sa(t,l):(typeof l=="number"||typeof l=="bigint")&&Sa(t,""+l);break;case"onScroll":l!=null&&nt("scroll",t);break;case"onScrollEnd":l!=null&&nt("scrollend",t);break;case"onClick":l!=null&&(t.onclick=fn);break;case"suppressContentEditableWarning":case"suppressHydrationWarning":case"innerHTML":case"ref":break;case"innerText":case"textContent":break;default:if(!Xg.hasOwnProperty(n))t:{if(n[0]==="o"&&n[1]==="n"&&(a=n.endsWith("Capture"),e=n.slice(2,a?n.length-7:void 0),o=t[ie]||null,o=o!=null?o[n]:null,typeof o=="function"&&t.removeEventListener(e,o,a),typeof l=="function")){typeof o!="function"&&o!==null&&(n in t?t[n]=null:t.hasAttribute(n)&&t.removeAttribute(n)),t.addEventListener(e,l,a);break t}n in t?t[n]=l:l===!0?t.setAttribute(n,""):ou(t,n,l)}}}function $t(t,e,n){switch(e){case"div":case"span":case"svg":case"path":case"a":case"g":case"p":case"li":break;case"img":nt("error",t),nt("load",t);var l=!1,a=!1,o;for(o in n)if(n.hasOwnProperty(o)){var i=n[o];if(i!=null)switch(o){case"src":l=!0;break;case"srcSet":a=!0;break;case"children":case"dangerouslySetInnerHTML":throw Error(k(137,e));default:ht(t,e,o,i,n,null)}}a&&ht(t,e,"srcSet",n.srcSet,n,null),l&&ht(t,e,"src",n.src,n,null);return;case"input":nt("invalid",t);var u=o=i=a=null,r=null,c=null;for(l in n)if(n.hasOwnProperty(l)){var f=n[l];if(f!=null)switch(l){case"name":a=f;break;case"type":i=f;break;case"checked":r=f;break;case"defaultChecked":c=f;break;case"value":o=f;break;case"defaultValue":u=f;break;case"children":case"dangerouslySetInnerHTML":if(f!=null)throw Error(k(137,e));break;default:ht(t,e,l,f,n,null)}}Qg(t,o,u,r,c,i,a,!1);return;case"select":nt("invalid",t),l=i=o=null;for(a in n)if(n.hasOwnProperty(a)&&(u=n[a],u!=null))switch(a){case"value":o=u;break;case"defaultValue":i=u;break;case"multiple":l=u;default:ht(t,e,a,u,n,null)}e=o,n=i,t.multiple=!!l,e!=null?ha(t,!!l,e,!1):n!=null&&ha(t,!!l,n,!0);return;case"textarea":nt("invalid",t),o=a=l=null;for(i in n)if(n.hasOwnProperty(i)&&(u=n[i],u!=null))switch(i){case"value":l=u;break;case"defaultValue":a=u;break;case"children":o=u;break;case"dangerouslySetInnerHTML":if(u!=null)throw Error(k(91));break;default:ht(t,e,i,u,n,null)}jg(t,l,a,o);return;case"option":for(r in n)n.hasOwnProperty(r)&&(l=n[r],l!=null)&&(r==="selected"?t.selected=l&&typeof l!="function"&&typeof l!="symbol":ht(t,e,r,l,n,null));return;case"dialog":nt("beforetoggle",t),nt("toggle",t),nt("cancel",t),nt("close",t);break;case"iframe":case"object":nt("load",t);break;case"video":case"audio":for(l=0;l<$o.length;l++)nt($o[l],t);break;case"image":nt("error",t),nt("load",t);break;case"details":nt("toggle",t);break;case"embed":case"source":case"link":nt("error",t),nt("load",t);case"area":case"base":case"br":case"col":case"hr":case"keygen":case"meta":case"param":case"track":case"wbr":case"menuitem":for(c in n)if(n.hasOwnProperty(c)&&(l=n[c],l!=null))switch(c){case"children":case"dangerouslySetInnerHTML":throw Error(k(137,e));default:ht(t,e,c,l,n,null)}return;default:if(uf(e)){for(f in n)n.hasOwnProperty(f)&&(l=n[f],l!==void 0&&Gs(t,e,f,l,n,void 0));return}}for(u in n)n.hasOwnProperty(u)&&(l=n[u],l!=null&&ht(t,e,u,l,n,null))}function a2(t,e,n,l){switch(e){case"div":case"span":case"svg":case"path":case"a":case"g":case"p":case"li":break;case"input":var a=null,o=null,i=null,u=null,r=null,c=null,f=null;for(g in n){var d=n[g];if(n.hasOwnProperty(g)&&d!=null)switch(g){case"checked":break;case"value":break;case"defaultValue":r=d;default:l.hasOwnProperty(g)||ht(t,e,g,null,l,d)}}for(var s in l){var g=l[s];if(d=n[s],l.hasOwnProperty(s)&&(g!=null||d!=null))switch(s){case"type":o=g;break;case"name":a=g;break;case"checked":c=g;break;case"defaultChecked":f=g;break;case"value":i=g;break;case"defaultValue":u=g;break;case"children":case"dangerouslySetInnerHTML":if(g!=null)throw Error(k(137,e));break;default:g!==d&&ht(t,e,s,g,l,d)}}ps(t,i,u,r,c,f,o,a);return;case"select":g=i=u=s=null;for(o in n)if(r=n[o],n.hasOwnProperty(o)&&r!=null)switch(o){case"value":break;case"multiple":g=r;default:l.hasOwnProperty(o)||ht(t,e,o,null,l,r)}for(a in l)if(o=l[a],r=n[a],l.hasOwnProperty(a)&&(o!=null||r!=null))switch(a){case"value":s=o;break;case"defaultValue":u=o;break;case"multiple":i=o;default:o!==r&&ht(t,e,a,o,l,r)}e=u,n=i,l=g,s!=null?ha(t,!!n,s,!1):!!l!=!!n&&(e!=null?ha(t,!!n,e,!0):ha(t,!!n,n?[]:"",!1));return;case"textarea":g=s=null;for(u in n)if(a=n[u],n.hasOwnProperty(u)&&a!=null&&!l.hasOwnProperty(u))switch(u){case"value":break;case"children":break;default:ht(t,e,u,null,l,a)}for(i in l)if(a=l[i],o=n[i],l.hasOwnProperty(i)&&(a!=null||o!=null))switch(i){case"value":s=a;break;case"defaultValue":g=a;break;case"children":break;case"dangerouslySetInnerHTML":if(a!=null)throw Error(k(91));break;default:a!==o&&ht(t,e,i,a,l,o)}Kg(t,s,g);return;case"option":for(var b in n)s=n[b],n.hasOwnProperty(b)&&s!=null&&!l.hasOwnProperty(b)&&(b==="selected"?t.selected=!1:ht(t,e,b,null,l,s));for(r in l)s=l[r],g=n[r],l.hasOwnProperty(r)&&s!==g&&(s!=null||g!=null)&&(r==="selected"?t.selected=s&&typeof s!="function"&&typeof s!="symbol":ht(t,e,r,s,l,g));return;case"img":case"link":case"area":case"base":case"br":case"col":case"embed":case"hr":case"keygen":case"meta":case"param":case"source":case"track":case"wbr":case"menuitem":for(var v in n)s=n[v],n.hasOwnProperty(v)&&s!=null&&!l.hasOwnProperty(v)&&ht(t,e,v,null,l,s);for(c in l)if(s=l[c],g=n[c],l.hasOwnProperty(c)&&s!==g&&(s!=null||g!=null))switch(c){case"children":case"dangerouslySetInnerHTML":if(s!=null)throw Error(k(137,e));break;default:ht(t,e,c,s,l,g)}return;default:if(uf(e)){for(var S in n)s=n[S],n.hasOwnProperty(S)&&s!==void 0&&!l.hasOwnProperty(S)&&Gs(t,e,S,void 0,l,s);for(f in l)s=l[f],g=n[f],!l.hasOwnProperty(f)||s===g||s===void 0&&g===void 0||Gs(t,e,f,s,l,g);return}}for(var p in n)s=n[p],n.hasOwnProperty(p)&&s!=null&&!l.hasOwnProperty(p)&&ht(t,e,p,null,l,s);for(d in l)s=l[d],g=n[d],!l.hasOwnProperty(d)||s===g||s==null&&g==null||ht(t,e,d,s,l,g)}function rg(t){switch(t){case"css":case"script":case"font":case"img":case"image":case"input":case"link":return!0;default:return!1}}function o2(){if(typeof performance.getEntriesByType=="function"){for(var t=0,e=0,n=performance.getEntriesByType("resource"),l=0;l<n.length;l++){var a=n[l],o=a.transferSize,i=a.initiatorType,u=a.duration;if(o&&u&&rg(i)){for(i=0,u=a.responseEnd,l+=1;l<n.length;l++){var r=n[l],c=r.startTime;if(c>u)break;var f=r.transferSize,d=r.initiatorType;f&&rg(d)&&(r=r.responseEnd,i+=f*(r<u?1:(u-c)/(r-c)))}if(--l,e+=8*(o+i)/(a.duration/1e3),t++,10<t)break}}if(0<t)return e/t/1e6}return navigator.connection&&(t=navigator.connection.downlink,typeof t=="number")?t:5}var Qs=null,Ks=null;function Zu(t){return t.nodeType===9?t:t.ownerDocument}function cg(t){switch(t){case"http://www.w3.org/2000/svg":return 1;case"http://www.w3.org/1998/Math/MathML":return 2;default:return 0}}function Wm(t,e){if(t===0)switch(e){case"svg":return 1;case"math":return 2;default:return 0}return t===1&&e==="foreignObject"?0:t}function js(t,e){return t==="textarea"||t==="noscript"||typeof e.children=="string"||typeof e.children=="number"||typeof e.children=="bigint"||typeof e.dangerouslySetInnerHTML=="object"&&e.dangerouslySetInnerHTML!==null&&e.dangerouslySetInnerHTML.__html!=null}var ls=null;function i2(){var t=window.event;return t&&t.type==="popstate"?t===ls?!1:(ls=t,!0):(ls=null,!1)}var Pm=typeof setTimeout=="function"?setTimeout:void 0,u2=typeof clearTimeout=="function"?clearTimeout:void 0,sg=typeof Promise=="function"?Promise:void 0,r2=typeof queueMicrotask=="function"?queueMicrotask:typeof sg<"u"?function(t){return sg.resolve(null).then(t).catch(c2)}:Pm;function c2(t){setTimeout(function(){throw t})}function nl(t){return t==="head"}function fg(t,e){var n=e,l=0;do{var a=n.nextSibling;if(t.removeChild(n),a&&a.nodeType===8)if(n=a.data,n==="/$"||n==="/&"){if(l===0){t.removeChild(a),Aa(e);return}l--}else if(n==="$"||n==="$?"||n==="$~"||n==="$!"||n==="&")l++;else if(n==="html")Lo(t.ownerDocument.documentElement);else if(n==="head"){n=t.ownerDocument.head,Lo(n);for(var o=n.firstChild;o;){var i=o.nextSibling,u=o.nodeName;o[li]||u==="SCRIPT"||u==="STYLE"||u==="LINK"&&o.rel.toLowerCase()==="stylesheet"||n.removeChild(o),o=i}}else n==="body"&&Lo(t.ownerDocument.body);n=a}while(n);Aa(e)}function dg(t,e){var n=t;t=0;do{var l=n.nextSibling;if(n.nodeType===1?e?(n._stashedDisplay=n.style.display,n.style.display="none"):(n.style.display=n._stashedDisplay||"",n.getAttribute("style")===""&&n.removeAttribute("style")):n.nodeType===3&&(e?(n._stashedText=n.nodeValue,n.nodeValue=""):n.nodeValue=n._stashedText||""),l&&l.nodeType===8)if(n=l.data,n==="/$"){if(t===0)break;t--}else n!=="$"&&n!=="$?"&&n!=="$~"&&n!=="$!"||t++;n=l}while(n)}function $s(t){var e=t.firstChild;for(e&&e.nodeType===10&&(e=e.nextSibling);e;){var n=e;switch(e=e.nextSibling,n.nodeName){case"HTML":case"HEAD":case"BODY":$s(n),of(n);continue;case"SCRIPT":case"STYLE":continue;case"LINK":if(n.rel.toLowerCase()==="stylesheet")continue}t.removeChild(n)}}function s2(t,e,n,l){for(;t.nodeType===1;){var a=n;if(t.nodeName.toLowerCase()!==e.toLowerCase()){if(!l&&(t.nodeName!=="INPUT"||t.type!=="hidden"))break}else if(l){if(!t[li])switch(e){case"meta":if(!t.hasAttribute("itemprop"))break;return t;case"link":if(o=t.getAttribute("rel"),o==="stylesheet"&&t.hasAttribute("data-precedence"))break;if(o!==a.rel||t.getAttribute("href")!==(a.href==null||a.href===""?null:a.href)||t.getAttribute("crossorigin")!==(a.crossOrigin==null?null:a.crossOrigin)||t.getAttribute("title")!==(a.title==null?null:a.title))break;return t;case"style":if(t.hasAttribute("data-precedence"))break;return t;case"script":if(o=t.getAttribute("src"),(o!==(a.src==null?null:a.src)||t.getAttribute("type")!==(a.type==null?null:a.type)||t.getAttribute("crossorigin")!==(a.crossOrigin==null?null:a.crossOrigin))&&o&&t.hasAttribute("async")&&!t.hasAttribute("itemprop"))break;return t;default:return t}}else if(e==="input"&&t.type==="hidden"){var o=a.name==null?null:""+a.name;if(a.type==="hidden"&&t.getAttribute("name")===o)return t}else return t;if(t=Oe(t.nextSibling),t===null)break}return null}function f2(t,e,n){if(e==="")return null;for(;t.nodeType!==3;)if((t.nodeType!==1||t.nodeName!=="INPUT"||t.type!=="hidden")&&!n||(t=Oe(t.nextSibling),t===null))return null;return t}function ty(t,e){for(;t.nodeType!==8;)if((t.nodeType!==1||t.nodeName!=="INPUT"||t.type!=="hidden")&&!e||(t=Oe(t.nextSibling),t===null))return null;return t}function Js(t){return t.data==="$?"||t.data==="$~"}function Is(t){return t.data==="$!"||t.data==="$?"&&t.ownerDocument.readyState!=="loading"}function d2(t,e){var n=t.ownerDocument;if(t.data==="$~")t._reactRetry=e;else if(t.data!=="$?"||n.readyState!=="loading")e();else{var l=function(){e(),n.removeEventListener("DOMContentLoaded",l)};n.addEventListener("DOMContentLoaded",l),t._reactRetry=l}}function Oe(t){for(;t!=null;t=t.nextSibling){var e=t.nodeType;if(e===1||e===3)break;if(e===8){if(e=t.data,e==="$"||e==="$!"||e==="$?"||e==="$~"||e==="&"||e==="F!"||e==="F")break;if(e==="/$"||e==="/&")return null}}return t}var Fs=null;function hg(t){t=t.nextSibling;for(var e=0;t;){if(t.nodeType===8){var n=t.data;if(n==="/$"||n==="/&"){if(e===0)return Oe(t.nextSibling);e--}else n!=="$"&&n!=="$!"&&n!=="$?"&&n!=="$~"&&n!=="&"||e++}t=t.nextSibling}return null}function gg(t){t=t.previousSibling;for(var e=0;t;){if(t.nodeType===8){var n=t.data;if(n==="$"||n==="$!"||n==="$?"||n==="$~"||n==="&"){if(e===0)return t;e--}else n!=="/$"&&n!=="/&"||e++}t=t.previousSibling}return null}function ey(t,e,n){switch(e=Zu(n),t){case"html":if(t=e.documentElement,!t)throw Error(k(452));return t;case"head":if(t=e.head,!t)throw Error(k(453));return t;case"body":if(t=e.body,!t)throw Error(k(454));return t;default:throw Error(k(451))}}function Lo(t){for(var e=t.attributes;e.length;)t.removeAttributeNode(e[0]);of(t)}var He=new Map,pg=new Set;function Gu(t){return typeof t.getRootNode=="function"?t.getRootNode():t.nodeType===9?t:t.ownerDocument}var Sn=st.d;st.d={f:h2,r:g2,D:p2,C:m2,L:y2,m:v2,X:x2,S:b2,M:S2};function h2(){var t=Sn.f(),e=ur();return t||e}function g2(t){var e=Da(t);e!==null&&e.tag===5&&e.type==="form"?$p(e):Sn.r(t)}var Ba=typeof document>"u"?null:document;function ny(t,e,n){var l=Ba;if(l&&typeof e=="string"&&e){var a=Ce(e);a=\'link[rel="\'+t+\'"][href="\'+a+\'"]\',typeof n=="string"&&(a+=\'[crossorigin="\'+n+\'"]\'),pg.has(a)||(pg.add(a),t={rel:t,crossOrigin:n,href:e},l.querySelector(a)===null&&(e=l.createElement("link"),$t(e,"link",t),Vt(e),l.head.appendChild(e)))}}function p2(t){Sn.D(t),ny("dns-prefetch",t,null)}function m2(t,e){Sn.C(t,e),ny("preconnect",t,e)}function y2(t,e,n){Sn.L(t,e,n);var l=Ba;if(l&&t&&e){var a=\'link[rel="preload"][as="\'+Ce(e)+\'"]\';e==="image"&&n&&n.imageSrcSet?(a+=\'[imagesrcset="\'+Ce(n.imageSrcSet)+\'"]\',typeof n.imageSizes=="string"&&(a+=\'[imagesizes="\'+Ce(n.imageSizes)+\'"]\')):a+=\'[href="\'+Ce(t)+\'"]\';var o=a;switch(e){case"style":o=Ca(t);break;case"script":o=ka(t)}He.has(o)||(t=xt({rel:"preload",href:e==="image"&&n&&n.imageSrcSet?void 0:t,as:e},n),He.set(o,t),l.querySelector(a)!==null||e==="style"&&l.querySelector(ci(o))||e==="script"&&l.querySelector(si(o))||(e=l.createElement("link"),$t(e,"link",t),Vt(e),l.head.appendChild(e)))}}function v2(t,e){Sn.m(t,e);var n=Ba;if(n&&t){var l=e&&typeof e.as=="string"?e.as:"script",a=\'link[rel="modulepreload"][as="\'+Ce(l)+\'"][href="\'+Ce(t)+\'"]\',o=a;switch(l){case"audioworklet":case"paintworklet":case"serviceworker":case"sharedworker":case"worker":case"script":o=ka(t)}if(!He.has(o)&&(t=xt({rel:"modulepreload",href:t},e),He.set(o,t),n.querySelector(a)===null)){switch(l){case"audioworklet":case"paintworklet":case"serviceworker":case"sharedworker":case"worker":case"script":if(n.querySelector(si(o)))return}l=n.createElement("link"),$t(l,"link",t),Vt(l),n.head.appendChild(l)}}}function b2(t,e,n){Sn.S(t,e,n);var l=Ba;if(l&&t){var a=da(l).hoistableStyles,o=Ca(t);e=e||"default";var i=a.get(o);if(!i){var u={loading:0,preload:null};if(i=l.querySelector(ci(o)))u.loading=5;else{t=xt({rel:"stylesheet",href:t,"data-precedence":e},n),(n=He.get(o))&&Qf(t,n);var r=i=l.createElement("link");Vt(r),$t(r,"link",t),r._p=new Promise(function(c,f){r.onload=c,r.onerror=f}),r.addEventListener("load",function(){u.loading|=1}),r.addEventListener("error",function(){u.loading|=2}),u.loading|=4,mu(i,e,l)}i={type:"stylesheet",instance:i,count:1,state:u},a.set(o,i)}}}function x2(t,e){Sn.X(t,e);var n=Ba;if(n&&t){var l=da(n).hoistableScripts,a=ka(t),o=l.get(a);o||(o=n.querySelector(si(a)),o||(t=xt({src:t,async:!0},e),(e=He.get(a))&&Kf(t,e),o=n.createElement("script"),Vt(o),$t(o,"link",t),n.head.appendChild(o)),o={type:"script",instance:o,count:1,state:null},l.set(a,o))}}function S2(t,e){Sn.M(t,e);var n=Ba;if(n&&t){var l=da(n).hoistableScripts,a=ka(t),o=l.get(a);o||(o=n.querySelector(si(a)),o||(t=xt({src:t,async:!0,type:"module"},e),(e=He.get(a))&&Kf(t,e),o=n.createElement("script"),Vt(o),$t(o,"link",t),n.head.appendChild(o)),o={type:"script",instance:o,count:1,state:null},l.set(a,o))}}function mg(t,e,n,l){var a=(a=Xn.current)?Gu(a):null;if(!a)throw Error(k(446));switch(t){case"meta":case"title":return null;case"style":return typeof n.precedence=="string"&&typeof n.href=="string"?(e=Ca(n.href),n=da(a).hoistableStyles,l=n.get(e),l||(l={type:"style",instance:null,count:0,state:null},n.set(e,l)),l):{type:"void",instance:null,count:0,state:null};case"link":if(n.rel==="stylesheet"&&typeof n.href=="string"&&typeof n.precedence=="string"){t=Ca(n.href);var o=da(a).hoistableStyles,i=o.get(t);if(i||(a=a.ownerDocument||a,i={type:"stylesheet",instance:null,count:0,state:{loading:0,preload:null}},o.set(t,i),(o=a.querySelector(ci(t)))&&!o._p&&(i.instance=o,i.state.loading=5),He.has(t)||(n={rel:"preload",as:"style",href:n.href,crossOrigin:n.crossOrigin,integrity:n.integrity,media:n.media,hrefLang:n.hrefLang,referrerPolicy:n.referrerPolicy},He.set(t,n),o||_2(a,t,n,i.state))),e&&l===null)throw Error(k(528,""));return i}if(e&&l!==null)throw Error(k(529,""));return null;case"script":return e=n.async,n=n.src,typeof n=="string"&&e&&typeof e!="function"&&typeof e!="symbol"?(e=ka(n),n=da(a).hoistableScripts,l=n.get(e),l||(l={type:"script",instance:null,count:0,state:null},n.set(e,l)),l):{type:"void",instance:null,count:0,state:null};default:throw Error(k(444,t))}}function Ca(t){return\'href="\'+Ce(t)+\'"\'}function ci(t){return\'link[rel="stylesheet"][\'+t+"]"}function ly(t){return xt({},t,{"data-precedence":t.precedence,precedence:null})}function _2(t,e,n,l){t.querySelector(\'link[rel="preload"][as="style"][\'+e+"]")?l.loading=1:(e=t.createElement("link"),l.preload=e,e.addEventListener("load",function(){return l.loading|=1}),e.addEventListener("error",function(){return l.loading|=2}),$t(e,"link",n),Vt(e),t.head.appendChild(e))}function ka(t){return\'[src="\'+Ce(t)+\'"]\'}function si(t){return"script[async]"+t}function yg(t,e,n){if(e.count++,e.instance===null)switch(e.type){case"style":var l=t.querySelector(\'style[data-href~="\'+Ce(n.href)+\'"]\');if(l)return e.instance=l,Vt(l),l;var a=xt({},n,{"data-href":n.href,"data-precedence":n.precedence,href:null,precedence:null});return l=(t.ownerDocument||t).createElement("style"),Vt(l),$t(l,"style",a),mu(l,n.precedence,t),e.instance=l;case"stylesheet":a=Ca(n.href);var o=t.querySelector(ci(a));if(o)return e.state.loading|=4,e.instance=o,Vt(o),o;l=ly(n),(a=He.get(a))&&Qf(l,a),o=(t.ownerDocument||t).createElement("link"),Vt(o);var i=o;return i._p=new Promise(function(u,r){i.onload=u,i.onerror=r}),$t(o,"link",l),e.state.loading|=4,mu(o,n.precedence,t),e.instance=o;case"script":return o=ka(n.src),(a=t.querySelector(si(o)))?(e.instance=a,Vt(a),a):(l=n,(a=He.get(o))&&(l=xt({},n),Kf(l,a)),t=t.ownerDocument||t,a=t.createElement("script"),Vt(a),$t(a,"link",l),t.head.appendChild(a),e.instance=a);case"void":return null;default:throw Error(k(443,e.type))}else e.type==="stylesheet"&&(e.state.loading&4)===0&&(l=e.instance,e.state.loading|=4,mu(l,n.precedence,t));return e.instance}function mu(t,e,n){for(var l=n.querySelectorAll(\'link[rel="stylesheet"][data-precedence],style[data-precedence]\'),a=l.length?l[l.length-1]:null,o=a,i=0;i<l.length;i++){var u=l[i];if(u.dataset.precedence===e)o=u;else if(o!==a)break}o?o.parentNode.insertBefore(t,o.nextSibling):(e=n.nodeType===9?n.head:n,e.insertBefore(t,e.firstChild))}function Qf(t,e){t.crossOrigin==null&&(t.crossOrigin=e.crossOrigin),t.referrerPolicy==null&&(t.referrerPolicy=e.referrerPolicy),t.title==null&&(t.title=e.title)}function Kf(t,e){t.crossOrigin==null&&(t.crossOrigin=e.crossOrigin),t.referrerPolicy==null&&(t.referrerPolicy=e.referrerPolicy),t.integrity==null&&(t.integrity=e.integrity)}var yu=null;function vg(t,e,n){if(yu===null){var l=new Map,a=yu=new Map;a.set(n,l)}else a=yu,l=a.get(n),l||(l=new Map,a.set(n,l));if(l.has(t))return l;for(l.set(t,null),n=n.getElementsByTagName(t),a=0;a<n.length;a++){var o=n[a];if(!(o[li]||o[Qt]||t==="link"&&o.getAttribute("rel")==="stylesheet")&&o.namespaceURI!=="http://www.w3.org/2000/svg"){var i=o.getAttribute(e)||"";i=t+i;var u=l.get(i);u?u.push(o):l.set(i,[o])}}return l}function bg(t,e,n){t=t.ownerDocument||t,t.head.insertBefore(n,e==="title"?t.querySelector("head > title"):null)}function w2(t,e,n){if(n===1||e.itemProp!=null)return!1;switch(t){case"meta":case"title":return!0;case"style":if(typeof e.precedence!="string"||typeof e.href!="string"||e.href==="")break;return!0;case"link":if(typeof e.rel!="string"||typeof e.href!="string"||e.href===""||e.onLoad||e.onError)break;return e.rel==="stylesheet"?(t=e.disabled,typeof e.precedence=="string"&&t==null):!0;case"script":if(e.async&&typeof e.async!="function"&&typeof e.async!="symbol"&&!e.onLoad&&!e.onError&&e.src&&typeof e.src=="string")return!0}return!1}function ay(t){return!(t.type==="stylesheet"&&(t.state.loading&3)===0)}function E2(t,e,n,l){if(n.type==="stylesheet"&&(typeof l.media!="string"||matchMedia(l.media).matches!==!1)&&(n.state.loading&4)===0){if(n.instance===null){var a=Ca(l.href),o=e.querySelector(ci(a));if(o){e=o._p,e!==null&&typeof e=="object"&&typeof e.then=="function"&&(t.count++,t=Qu.bind(t),e.then(t,t)),n.state.loading|=4,n.instance=o,Vt(o);return}o=e.ownerDocument||e,l=ly(l),(a=He.get(a))&&Qf(l,a),o=o.createElement("link"),Vt(o);var i=o;i._p=new Promise(function(u,r){i.onload=u,i.onerror=r}),$t(o,"link",l),n.instance=o}t.stylesheets===null&&(t.stylesheets=new Map),t.stylesheets.set(n,e),(e=n.state.preload)&&(n.state.loading&3)===0&&(t.count++,n=Qu.bind(t),e.addEventListener("load",n),e.addEventListener("error",n))}}var as=0;function N2(t,e){return t.stylesheets&&t.count===0&&vu(t,t.stylesheets),0<t.count||0<t.imgCount?function(n){var l=setTimeout(function(){if(t.stylesheets&&vu(t,t.stylesheets),t.unsuspend){var o=t.unsuspend;t.unsuspend=null,o()}},6e4+e);0<t.imgBytes&&as===0&&(as=62500*o2());var a=setTimeout(function(){if(t.waitingForImages=!1,t.count===0&&(t.stylesheets&&vu(t,t.stylesheets),t.unsuspend)){var o=t.unsuspend;t.unsuspend=null,o()}},(t.imgBytes>as?50:800)+e);return t.unsuspend=n,function(){t.unsuspend=null,clearTimeout(l),clearTimeout(a)}}:null}function Qu(){if(this.count--,this.count===0&&(this.imgCount===0||!this.waitingForImages)){if(this.stylesheets)vu(this,this.stylesheets);else if(this.unsuspend){var t=this.unsuspend;this.unsuspend=null,t()}}}var Ku=null;function vu(t,e){t.stylesheets=null,t.unsuspend!==null&&(t.count++,Ku=new Map,e.forEach(M2,t),Ku=null,Qu.call(t))}function M2(t,e){if(!(e.state.loading&4)){var n=Ku.get(t);if(n)var l=n.get(null);else{n=new Map,Ku.set(t,n);for(var a=t.querySelectorAll("link[data-precedence],style[data-precedence]"),o=0;o<a.length;o++){var i=a[o];(i.nodeName==="LINK"||i.getAttribute("media")!=="not all")&&(n.set(i.dataset.precedence,i),l=i)}l&&n.set(null,l)}a=e.instance,i=a.getAttribute("data-precedence"),o=n.get(i)||l,o===l&&n.set(null,a),n.set(i,a),this.count++,l=Qu.bind(this),a.addEventListener("load",l),a.addEventListener("error",l),o?o.parentNode.insertBefore(a,o.nextSibling):(t=t.nodeType===9?t.head:t,t.insertBefore(a,t.firstChild)),e.state.loading|=4}}var Io={$$typeof:sn,Provider:null,Consumer:null,_currentValue:ml,_currentValue2:ml,_threadCount:0};function z2(t,e,n,l,a,o,i,u,r){this.tag=1,this.containerInfo=t,this.pingCache=this.current=this.pendingChildren=null,this.timeoutHandle=-1,this.callbackNode=this.next=this.pendingContext=this.context=this.cancelPendingCommit=null,this.callbackPriority=0,this.expirationTimes=Tc(-1),this.entangledLanes=this.shellSuspendCounter=this.errorRecoveryDisabledLanes=this.expiredLanes=this.warmLanes=this.pingedLanes=this.suspendedLanes=this.pendingLanes=0,this.entanglements=Tc(0),this.hiddenUpdates=Tc(null),this.identifierPrefix=l,this.onUncaughtError=a,this.onCaughtError=o,this.onRecoverableError=i,this.pooledCache=null,this.pooledCacheLanes=0,this.formState=r,this.incompleteTransitions=new Map}function oy(t,e,n,l,a,o,i,u,r,c,f,d){return t=new z2(t,e,n,i,r,c,f,d,u),e=1,o===!0&&(e|=24),o=he(3,null,null,e),t.current=o,o.stateNode=t,e=vf(),e.refCount++,t.pooledCache=e,e.refCount++,o.memoizedState={element:l,isDehydrated:n,cache:e},Sf(o),t}function iy(t){return t?(t=ra,t):ra}function uy(t,e,n,l,a,o){a=iy(a),l.context===null?l.context=a:l.pendingContext=a,l=Gn(e),l.payload={element:n},o=o===void 0?null:o,o!==null&&(l.callback=o),n=Qn(t,l,e),n!==null&&(oe(n,t,e),To(n,t,e))}function xg(t,e){if(t=t.memoizedState,t!==null&&t.dehydrated!==null){var n=t.retryLane;t.retryLane=n!==0&&n<e?n:e}}function jf(t,e){xg(t,e),(t=t.alternate)&&xg(t,e)}function ry(t){if(t.tag===13||t.tag===31){var e=Al(t,67108864);e!==null&&oe(e,t,67108864),jf(t,67108864)}}function Sg(t){if(t.tag===13||t.tag===31){var e=ve();e=lf(e);var n=Al(t,e);n!==null&&oe(n,t,e),jf(t,e)}}var ju=!0;function C2(t,e,n,l){var a=J.T;J.T=null;var o=st.p;try{st.p=2,$f(t,e,n,l)}finally{st.p=o,J.T=a}}function A2(t,e,n,l){var a=J.T;J.T=null;var o=st.p;try{st.p=8,$f(t,e,n,l)}finally{st.p=o,J.T=a}}function $f(t,e,n,l){if(ju){var a=Ws(l);if(a===null)ns(t,e,l,$u,n),_g(t,l);else if(D2(a,t,e,n,l))l.stopPropagation();else if(_g(t,l),e&4&&-1<T2.indexOf(t)){for(;a!==null;){var o=Da(a);if(o!==null)switch(o.tag){case 3:if(o=o.stateNode,o.current.memoizedState.isDehydrated){var i=hl(o.pendingLanes);if(i!==0){var u=o;for(u.pendingLanes|=2,u.entangledLanes|=2;i;){var r=1<<31-ye(i);u.entanglements[1]|=r,i&=~r}$e(o),(ct&6)===0&&(Uu=pe()+500,ri(0,!1))}}break;case 31:case 13:u=Al(o,2),u!==null&&oe(u,o,2),ur(),jf(o,2)}if(o=Ws(l),o===null&&ns(t,e,l,$u,n),o===a)break;a=o}a!==null&&l.stopPropagation()}else ns(t,e,l,null,n)}}function Ws(t){return t=rf(t),Jf(t)}var $u=null;function Jf(t){if($u=null,t=na(t),t!==null){var e=Po(t);if(e===null)t=null;else{var n=e.tag;if(n===13){if(t=Cg(e),t!==null)return t;t=null}else if(n===31){if(t=Ag(e),t!==null)return t;t=null}else if(n===3){if(e.stateNode.current.memoizedState.isDehydrated)return e.tag===3?e.stateNode.containerInfo:null;t=null}else e!==t&&(t=null)}}return $u=t,null}function cy(t){switch(t){case"beforetoggle":case"cancel":case"click":case"close":case"contextmenu":case"copy":case"cut":case"auxclick":case"dblclick":case"dragend":case"dragstart":case"drop":case"focusin":case"focusout":case"input":case"invalid":case"keydown":case"keypress":case"keyup":case"mousedown":case"mouseup":case"paste":case"pause":case"play":case"pointercancel":case"pointerdown":case"pointerup":case"ratechange":case"reset":case"resize":case"seeked":case"submit":case"toggle":case"touchcancel":case"touchend":case"touchstart":case"volumechange":case"change":case"selectionchange":case"textInput":case"compositionstart":case"compositionend":case"compositionupdate":case"beforeblur":case"afterblur":case"beforeinput":case"blur":case"fullscreenchange":case"focus":case"hashchange":case"popstate":case"select":case"selectstart":return 2;case"drag":case"dragenter":case"dragexit":case"dragleave":case"dragover":case"mousemove":case"mouseout":case"mouseover":case"pointermove":case"pointerout":case"pointerover":case"scroll":case"touchmove":case"wheel":case"mouseenter":case"mouseleave":case"pointerenter":case"pointerleave":return 8;case"message":switch(yS()){case Hg:return 2;case Rg:return 8;case wu:case vS:return 32;case Bg:return 268435456;default:return 32}default:return 32}}var Ps=!1,$n=null,Jn=null,In=null,Fo=new Map,Wo=new Map,kn=[],T2="mousedown mouseup touchcancel touchend touchstart auxclick dblclick pointercancel pointerdown pointerup dragend dragstart drop compositionend compositionstart keydown keypress keyup input textInput copy cut paste click change contextmenu reset".split(" ");function _g(t,e){switch(t){case"focusin":case"focusout":$n=null;break;case"dragenter":case"dragleave":Jn=null;break;case"mouseover":case"mouseout":In=null;break;case"pointerover":case"pointerout":Fo.delete(e.pointerId);break;case"gotpointercapture":case"lostpointercapture":Wo.delete(e.pointerId)}}function bo(t,e,n,l,a,o){return t===null||t.nativeEvent!==o?(t={blockedOn:e,domEventName:n,eventSystemFlags:l,nativeEvent:o,targetContainers:[a]},e!==null&&(e=Da(e),e!==null&&ry(e)),t):(t.eventSystemFlags|=l,e=t.targetContainers,a!==null&&e.indexOf(a)===-1&&e.push(a),t)}function D2(t,e,n,l,a){switch(e){case"focusin":return $n=bo($n,t,e,n,l,a),!0;case"dragenter":return Jn=bo(Jn,t,e,n,l,a),!0;case"mouseover":return In=bo(In,t,e,n,l,a),!0;case"pointerover":var o=a.pointerId;return Fo.set(o,bo(Fo.get(o)||null,t,e,n,l,a)),!0;case"gotpointercapture":return o=a.pointerId,Wo.set(o,bo(Wo.get(o)||null,t,e,n,l,a)),!0}return!1}function sy(t){var e=na(t.target);if(e!==null){var n=Po(e);if(n!==null){if(e=n.tag,e===13){if(e=Cg(n),e!==null){t.blockedOn=e,o0(t.priority,function(){Sg(n)});return}}else if(e===31){if(e=Ag(n),e!==null){t.blockedOn=e,o0(t.priority,function(){Sg(n)});return}}else if(e===3&&n.stateNode.current.memoizedState.isDehydrated){t.blockedOn=n.tag===3?n.stateNode.containerInfo:null;return}}}t.blockedOn=null}function bu(t){if(t.blockedOn!==null)return!1;for(var e=t.targetContainers;0<e.length;){var n=Ws(t.nativeEvent);if(n===null){n=t.nativeEvent;var l=new n.constructor(n.type,n);ys=l,n.target.dispatchEvent(l),ys=null}else return e=Da(n),e!==null&&ry(e),t.blockedOn=n,!1;e.shift()}return!0}function wg(t,e,n){bu(t)&&n.delete(e)}function O2(){Ps=!1,$n!==null&&bu($n)&&($n=null),Jn!==null&&bu(Jn)&&(Jn=null),In!==null&&bu(In)&&(In=null),Fo.forEach(wg),Wo.forEach(wg)}function lu(t,e){t.blockedOn===e&&(t.blockedOn=null,Ps||(Ps=!0,Lt.unstable_scheduleCallback(Lt.unstable_NormalPriority,O2)))}var au=null;function Eg(t){au!==t&&(au=t,Lt.unstable_scheduleCallback(Lt.unstable_NormalPriority,function(){au===t&&(au=null);for(var e=0;e<t.length;e+=3){var n=t[e],l=t[e+1],a=t[e+2];if(typeof l!="function"){if(Jf(l||n)===null)continue;break}var o=Da(n);o!==null&&(t.splice(e,3),e-=3,Hs(o,{pending:!0,data:a,method:n.method,action:l},l,a))}}))}function Aa(t){function e(r){return lu(r,t)}$n!==null&&lu($n,t),Jn!==null&&lu(Jn,t),In!==null&&lu(In,t),Fo.forEach(e),Wo.forEach(e);for(var n=0;n<kn.length;n++){var l=kn[n];l.blockedOn===t&&(l.blockedOn=null)}for(;0<kn.length&&(n=kn[0],n.blockedOn===null);)sy(n),n.blockedOn===null&&kn.shift();if(n=(t.ownerDocument||t).$$reactFormReplay,n!=null)for(l=0;l<n.length;l+=3){var a=n[l],o=n[l+1],i=a[ie]||null;if(typeof o=="function")i||Eg(n);else if(i){var u=null;if(o&&o.hasAttribute("formAction")){if(a=o,i=o[ie]||null)u=i.formAction;else if(Jf(a)!==null)continue}else u=i.action;typeof u=="function"?n[l+1]=u:(n.splice(l,3),l-=3),Eg(n)}}}function fy(){function t(o){o.canIntercept&&o.info==="react-transition"&&o.intercept({handler:function(){return new Promise(function(i){return a=i})},focusReset:"manual",scroll:"manual"})}function e(){a!==null&&(a(),a=null),l||setTimeout(n,20)}function n(){if(!l&&!navigation.transition){var o=navigation.currentEntry;o&&o.url!=null&&navigation.navigate(o.url,{state:o.getState(),info:"react-transition",history:"replace"})}}if(typeof navigation=="object"){var l=!1,a=null;return navigation.addEventListener("navigate",t),navigation.addEventListener("navigatesuccess",e),navigation.addEventListener("navigateerror",e),setTimeout(n,100),function(){l=!0,navigation.removeEventListener("navigate",t),navigation.removeEventListener("navigatesuccess",e),navigation.removeEventListener("navigateerror",e),a!==null&&(a(),a=null)}}}function If(t){this._internalRoot=t}sr.prototype.render=If.prototype.render=function(t){var e=this._internalRoot;if(e===null)throw Error(k(409));var n=e.current,l=ve();uy(n,l,t,e,null,null)};sr.prototype.unmount=If.prototype.unmount=function(){var t=this._internalRoot;if(t!==null){this._internalRoot=null;var e=t.containerInfo;uy(t.current,2,null,t,null,null),ur(),e[Ta]=null}};function sr(t){this._internalRoot=t}sr.prototype.unstable_scheduleHydration=function(t){if(t){var e=Vg();t={blockedOn:null,target:t,priority:e};for(var n=0;n<kn.length&&e!==0&&e<kn[n].priority;n++);kn.splice(n,0,t),n===0&&sy(t)}};var Ng=Mg.version;if(Ng!=="19.2.0")throw Error(k(527,Ng,"19.2.0"));st.findDOMNode=function(t){var e=t._reactInternals;if(e===void 0)throw typeof t.render=="function"?Error(k(188)):(t=Object.keys(t).join(","),Error(k(268,t)));return t=sS(e),t=t!==null?Tg(t):null,t=t===null?null:t.stateNode,t};var H2={bundleType:0,version:"19.2.0",rendererPackageName:"react-dom",currentDispatcherRef:J,reconcilerVersion:"19.2.0"};if(typeof __REACT_DEVTOOLS_GLOBAL_HOOK__<"u"&&(xo=__REACT_DEVTOOLS_GLOBAL_HOOK__,!xo.isDisabled&&xo.supportsFiber))try{ti=xo.inject(H2),me=xo}catch{}var xo;fr.createRoot=function(t,e){if(!zg(t))throw Error(k(299));var n=!1,l="",a=nm,o=lm,i=am;return e!=null&&(e.unstable_strictMode===!0&&(n=!0),e.identifierPrefix!==void 0&&(l=e.identifierPrefix),e.onUncaughtError!==void 0&&(a=e.onUncaughtError),e.onCaughtError!==void 0&&(o=e.onCaughtError),e.onRecoverableError!==void 0&&(i=e.onRecoverableError)),e=oy(t,1,!1,null,null,n,l,null,a,o,i,fy),t[Ta]=e.current,Gf(t),new If(e)};fr.hydrateRoot=function(t,e,n){if(!zg(t))throw Error(k(299));var l=!1,a="",o=nm,i=lm,u=am,r=null;return n!=null&&(n.unstable_strictMode===!0&&(l=!0),n.identifierPrefix!==void 0&&(a=n.identifierPrefix),n.onUncaughtError!==void 0&&(o=n.onUncaughtError),n.onCaughtError!==void 0&&(i=n.onCaughtError),n.onRecoverableError!==void 0&&(u=n.onRecoverableError),n.formState!==void 0&&(r=n.formState)),e=oy(t,1,!0,e,n??null,l,a,r,o,i,u,fy),e.context=iy(null),n=e.current,l=ve(),l=lf(l),a=Gn(l),a.callback=null,Qn(n,a,l),n=l,e.current.lanes=n,ni(e,n),$e(e),t[Ta]=e.current,Gf(t),new sr(e)};fr.version="19.2.0"});var py=te((KC,gy)=>{"use strict";function hy(){if(!(typeof __REACT_DEVTOOLS_GLOBAL_HOOK__>"u"||typeof __REACT_DEVTOOLS_GLOBAL_HOOK__.checkDCE!="function"))try{__REACT_DEVTOOLS_GLOBAL_HOOK__.checkDCE(hy)}catch(t){console.error(t)}}hy(),gy.exports=dy()});var yy=te(dr=>{"use strict";var R2=Symbol.for("react.transitional.element"),B2=Symbol.for("react.fragment");function my(t,e,n){var l=null;if(n!==void 0&&(l=""+n),e.key!==void 0&&(l=""+e.key),"key"in e){n={};for(var a in e)a!=="key"&&(n[a]=e[a])}else n=e;return e=n.ref,{$$typeof:R2,type:t,key:l,ref:e!==void 0?e:null,props:n}}dr.Fragment=B2;dr.jsx=my;dr.jsxs=my});var ll=te(($C,vy)=>{"use strict";vy.exports=yy()});var hv=te(dv=>{"use strict";var lo=An();function F3(t,e){return t===e&&(t!==0||1/t===1/e)||t!==t&&e!==e}var W3=typeof Object.is=="function"?Object.is:F3,P3=lo.useState,tM=lo.useEffect,eM=lo.useLayoutEffect,nM=lo.useDebugValue;function lM(t,e){var n=e(),l=P3({inst:{value:n,getSnapshot:e}}),a=l[0].inst,o=l[1];return eM(function(){a.value=n,a.getSnapshot=e,uh(a)&&o({inst:a})},[t,n,e]),tM(function(){return uh(a)&&o({inst:a}),t(function(){uh(a)&&o({inst:a})})},[t]),nM(n),n}function uh(t){var e=t.getSnapshot;t=t.value;try{var n=e();return!W3(t,n)}catch{return!0}}function aM(t,e){return e()}var oM=typeof window>"u"||typeof window.document>"u"||typeof window.document.createElement>"u"?aM:lM;dv.useSyncExternalStore=lo.useSyncExternalStore!==void 0?lo.useSyncExternalStore:oM});var pv=te((WA,gv)=>{"use strict";gv.exports=hv()});var yv=te(mv=>{"use strict";var Wr=An(),iM=pv();function uM(t,e){return t===e&&(t!==0||1/t===1/e)||t!==t&&e!==e}var rM=typeof Object.is=="function"?Object.is:uM,cM=iM.useSyncExternalStore,sM=Wr.useRef,fM=Wr.useEffect,dM=Wr.useMemo,hM=Wr.useDebugValue;mv.useSyncExternalStoreWithSelector=function(t,e,n,l,a){var o=sM(null);if(o.current===null){var i={hasValue:!1,value:null};o.current=i}else i=o.current;o=dM(function(){function r(g){if(!c){if(c=!0,f=g,g=l(g),a!==void 0&&i.hasValue){var b=i.value;if(a(b,g))return d=b}return d=g}if(b=d,rM(f,g))return b;var v=l(g);return a!==void 0&&a(b,v)?(f=g,b):(f=g,d=v)}var c=!1,f,d,s=n===void 0?null:n;return[function(){return r(e())},s===null?void 0:function(){return r(s())}]},[e,n,l,a]);var u=cM(t,o[0],o[1]);return fM(function(){i.hasValue=!0,i.value=u},[u]),hM(u),u}});var bv=te((t5,vv)=>{"use strict";vv.exports=yv()});var Hb=se(py(),1);var D=se(ll()),R=se(An());function Tt(t){if(typeof t=="string"||typeof t=="number")return""+t;let e="";if(Array.isArray(t))for(let n=0,l;n<t.length;n++)(l=Tt(t[n]))!==""&&(e+=(e&&" ")+l);else for(let n in t)t[n]&&(e+=(e&&" ")+n);return e}var k2={value:()=>{}};function Dl(){for(var t=0,e=arguments.length,n={},l;t<e;++t){if(!(l=arguments[t]+"")||l in n||/[\\s.]/.test(l))throw new Error("illegal type: "+l);n[l]=[]}return new hr(n)}function hr(t){this._=t}function U2(t,e){return t.trim().split(/^|\\s+/).map(function(n){var l="",a=n.indexOf(".");if(a>=0&&(l=n.slice(a+1),n=n.slice(0,a)),n&&!e.hasOwnProperty(n))throw new Error("unknown type: "+n);return{type:n,name:l}})}hr.prototype=Dl.prototype={constructor:hr,on:function(t,e){var n=this._,l=U2(t+"",n),a,o=-1,i=l.length;if(arguments.length<2){for(;++o<i;)if((a=(t=l[o]).type)&&(a=L2(n[a],t.name)))return a;return}if(e!=null&&typeof e!="function")throw new Error("invalid callback: "+e);for(;++o<i;)if(a=(t=l[o]).type)n[a]=by(n[a],t.name,e);else if(e==null)for(a in n)n[a]=by(n[a],t.name,null);return this},copy:function(){var t={},e=this._;for(var n in e)t[n]=e[n].slice();return new hr(t)},call:function(t,e){if((a=arguments.length-2)>0)for(var n=new Array(a),l=0,a,o;l<a;++l)n[l]=arguments[l+2];if(!this._.hasOwnProperty(t))throw new Error("unknown type: "+t);for(o=this._[t],l=0,a=o.length;l<a;++l)o[l].value.apply(e,n)},apply:function(t,e,n){if(!this._.hasOwnProperty(t))throw new Error("unknown type: "+t);for(var l=this._[t],a=0,o=l.length;a<o;++a)l[a].value.apply(e,n)}};function L2(t,e){for(var n=0,l=t.length,a;n<l;++n)if((a=t[n]).name===e)return a.value}function by(t,e,n){for(var l=0,a=t.length;l<a;++l)if(t[l].name===e){t[l]=k2,t=t.slice(0,l).concat(t.slice(l+1));break}return n!=null&&t.push({name:e,value:n}),t}var Ff="http://www.w3.org/1999/xhtml",xy={svg:"http://www.w3.org/2000/svg",xhtml:Ff,xlink:"http://www.w3.org/1999/xlink",xml:"http://www.w3.org/XML/1998/namespace",xmlns:"http://www.w3.org/2000/xmlns/"};function fi(t){var e=t+="",n=e.indexOf(":");return n>=0&&(e=t.slice(0,n))!=="xmlns"&&(t=t.slice(n+1)),xy.hasOwnProperty(e)?{space:xy[e],local:t}:t}function Y2(t){return function(){var e=this.ownerDocument,n=this.namespaceURI;return n===Ff&&e.documentElement.namespaceURI===Ff?e.createElement(t):e.createElementNS(n,t)}}function V2(t){return function(){return this.ownerDocument.createElementNS(t.space,t.local)}}function Sy(t){var e=fi(t);return(e.local?V2:Y2)(e)}function q2(){}function pr(t){return t==null?q2:function(){return this.querySelector(t)}}function X2(t){typeof t!="function"&&(t=pr(t));for(var e=this._groups,n=e.length,l=new Array(n),a=0;a<n;++a)for(var o=e[a],i=o.length,u=l[a]=new Array(i),r,c,f=0;f<i;++f)(r=o[f])&&(c=t.call(r,r.__data__,f,o))&&("__data__"in r&&(c.__data__=r.__data__),u[f]=c);return new Se(l,this._parents)}function Z2(t){return t==null?[]:Array.isArray(t)?t:Array.from(t)}function G2(){return[]}function Pf(t){return t==null?G2:function(){return this.querySelectorAll(t)}}function Q2(t){return function(){return Z2(t.apply(this,arguments))}}function K2(t){typeof t=="function"?t=Q2(t):t=Pf(t);for(var e=this._groups,n=e.length,l=[],a=[],o=0;o<n;++o)for(var i=e[o],u=i.length,r,c=0;c<u;++c)(r=i[c])&&(l.push(t.call(r,r.__data__,c,i)),a.push(r));return new Se(l,a)}function td(t){return function(){return this.matches(t)}}function _y(t){return function(e){return e.matches(t)}}var j2=Array.prototype.find;function $2(t){return function(){return j2.call(this.children,t)}}function J2(){return this.firstElementChild}function I2(t){return this.select(t==null?J2:$2(typeof t=="function"?t:_y(t)))}var F2=Array.prototype.filter;function W2(){return Array.from(this.children)}function P2(t){return function(){return F2.call(this.children,t)}}function tw(t){return this.selectAll(t==null?W2:P2(typeof t=="function"?t:_y(t)))}function ew(t){typeof t!="function"&&(t=td(t));for(var e=this._groups,n=e.length,l=new Array(n),a=0;a<n;++a)for(var o=e[a],i=o.length,u=l[a]=[],r,c=0;c<i;++c)(r=o[c])&&t.call(r,r.__data__,c,o)&&u.push(r);return new Se(l,this._parents)}function wy(t){return new Array(t.length)}function nw(){return new Se(this._enter||this._groups.map(wy),this._parents)}function gr(t,e){this.ownerDocument=t.ownerDocument,this.namespaceURI=t.namespaceURI,this._next=null,this._parent=t,this.__data__=e}gr.prototype={constructor:gr,appendChild:function(t){return this._parent.insertBefore(t,this._next)},insertBefore:function(t,e){return this._parent.insertBefore(t,e)},querySelector:function(t){return this._parent.querySelector(t)},querySelectorAll:function(t){return this._parent.querySelectorAll(t)}};function lw(t){return function(){return t}}function aw(t,e,n,l,a,o){for(var i=0,u,r=e.length,c=o.length;i<c;++i)(u=e[i])?(u.__data__=o[i],l[i]=u):n[i]=new gr(t,o[i]);for(;i<r;++i)(u=e[i])&&(a[i]=u)}function ow(t,e,n,l,a,o,i){var u,r,c=new Map,f=e.length,d=o.length,s=new Array(f),g;for(u=0;u<f;++u)(r=e[u])&&(s[u]=g=i.call(r,r.__data__,u,e)+"",c.has(g)?a[u]=r:c.set(g,r));for(u=0;u<d;++u)g=i.call(t,o[u],u,o)+"",(r=c.get(g))?(l[u]=r,r.__data__=o[u],c.delete(g)):n[u]=new gr(t,o[u]);for(u=0;u<f;++u)(r=e[u])&&c.get(s[u])===r&&(a[u]=r)}function iw(t){return t.__data__}function uw(t,e){if(!arguments.length)return Array.from(this,iw);var n=e?ow:aw,l=this._parents,a=this._groups;typeof t!="function"&&(t=lw(t));for(var o=a.length,i=new Array(o),u=new Array(o),r=new Array(o),c=0;c<o;++c){var f=l[c],d=a[c],s=d.length,g=rw(t.call(f,f&&f.__data__,c,l)),b=g.length,v=u[c]=new Array(b),S=i[c]=new Array(b),p=r[c]=new Array(s);n(f,d,v,S,p,g,e);for(var m=0,h=0,y,x;m<b;++m)if(y=v[m]){for(m>=h&&(h=m+1);!(x=S[h])&&++h<b;);y._next=x||null}}return i=new Se(i,l),i._enter=u,i._exit=r,i}function rw(t){return typeof t=="object"&&"length"in t?t:Array.from(t)}function cw(){return new Se(this._exit||this._groups.map(wy),this._parents)}function sw(t,e,n){var l=this.enter(),a=this,o=this.exit();return typeof t=="function"?(l=t(l),l&&(l=l.selection())):l=l.append(t+""),e!=null&&(a=e(a),a&&(a=a.selection())),n==null?o.remove():n(o),l&&a?l.merge(a).order():a}function fw(t){for(var e=t.selection?t.selection():t,n=this._groups,l=e._groups,a=n.length,o=l.length,i=Math.min(a,o),u=new Array(a),r=0;r<i;++r)for(var c=n[r],f=l[r],d=c.length,s=u[r]=new Array(d),g,b=0;b<d;++b)(g=c[b]||f[b])&&(s[b]=g);for(;r<a;++r)u[r]=n[r];return new Se(u,this._parents)}function dw(){for(var t=this._groups,e=-1,n=t.length;++e<n;)for(var l=t[e],a=l.length-1,o=l[a],i;--a>=0;)(i=l[a])&&(o&&i.compareDocumentPosition(o)^4&&o.parentNode.insertBefore(i,o),o=i);return this}function hw(t){t||(t=gw);function e(d,s){return d&&s?t(d.__data__,s.__data__):!d-!s}for(var n=this._groups,l=n.length,a=new Array(l),o=0;o<l;++o){for(var i=n[o],u=i.length,r=a[o]=new Array(u),c,f=0;f<u;++f)(c=i[f])&&(r[f]=c);r.sort(e)}return new Se(a,this._parents).order()}function gw(t,e){return t<e?-1:t>e?1:t>=e?0:NaN}function pw(){var t=arguments[0];return arguments[0]=this,t.apply(null,arguments),this}function mw(){return Array.from(this)}function yw(){for(var t=this._groups,e=0,n=t.length;e<n;++e)for(var l=t[e],a=0,o=l.length;a<o;++a){var i=l[a];if(i)return i}return null}function vw(){let t=0;for(let e of this)++t;return t}function bw(){return!this.node()}function xw(t){for(var e=this._groups,n=0,l=e.length;n<l;++n)for(var a=e[n],o=0,i=a.length,u;o<i;++o)(u=a[o])&&t.call(u,u.__data__,o,a);return this}function Sw(t){return function(){this.removeAttribute(t)}}function _w(t){return function(){this.removeAttributeNS(t.space,t.local)}}function ww(t,e){return function(){this.setAttribute(t,e)}}function Ew(t,e){return function(){this.setAttributeNS(t.space,t.local,e)}}function Nw(t,e){return function(){var n=e.apply(this,arguments);n==null?this.removeAttribute(t):this.setAttribute(t,n)}}function Mw(t,e){return function(){var n=e.apply(this,arguments);n==null?this.removeAttributeNS(t.space,t.local):this.setAttributeNS(t.space,t.local,n)}}function zw(t,e){var n=fi(t);if(arguments.length<2){var l=this.node();return n.local?l.getAttributeNS(n.space,n.local):l.getAttribute(n)}return this.each((e==null?n.local?_w:Sw:typeof e=="function"?n.local?Mw:Nw:n.local?Ew:ww)(n,e))}function Ey(t){return t.ownerDocument&&t.ownerDocument.defaultView||t.document&&t||t.defaultView}function Cw(t){return function(){this.style.removeProperty(t)}}function Aw(t,e,n){return function(){this.style.setProperty(t,e,n)}}function Tw(t,e,n){return function(){var l=e.apply(this,arguments);l==null?this.style.removeProperty(t):this.style.setProperty(t,l,n)}}function Dw(t,e,n){return arguments.length>1?this.each((e==null?Cw:typeof e=="function"?Tw:Aw)(t,e,n??"")):Ol(this.node(),t)}function Ol(t,e){return t.style.getPropertyValue(e)||Ey(t).getComputedStyle(t,null).getPropertyValue(e)}function Ow(t){return function(){delete this[t]}}function Hw(t,e){return function(){this[t]=e}}function Rw(t,e){return function(){var n=e.apply(this,arguments);n==null?delete this[t]:this[t]=n}}function Bw(t,e){return arguments.length>1?this.each((e==null?Ow:typeof e=="function"?Rw:Hw)(t,e)):this.node()[t]}function Ny(t){return t.trim().split(/^|\\s+/)}function ed(t){return t.classList||new My(t)}function My(t){this._node=t,this._names=Ny(t.getAttribute("class")||"")}My.prototype={add:function(t){var e=this._names.indexOf(t);e<0&&(this._names.push(t),this._node.setAttribute("class",this._names.join(" ")))},remove:function(t){var e=this._names.indexOf(t);e>=0&&(this._names.splice(e,1),this._node.setAttribute("class",this._names.join(" ")))},contains:function(t){return this._names.indexOf(t)>=0}};function zy(t,e){for(var n=ed(t),l=-1,a=e.length;++l<a;)n.add(e[l])}function Cy(t,e){for(var n=ed(t),l=-1,a=e.length;++l<a;)n.remove(e[l])}function kw(t){return function(){zy(this,t)}}function Uw(t){return function(){Cy(this,t)}}function Lw(t,e){return function(){(e.apply(this,arguments)?zy:Cy)(this,t)}}function Yw(t,e){var n=Ny(t+"");if(arguments.length<2){for(var l=ed(this.node()),a=-1,o=n.length;++a<o;)if(!l.contains(n[a]))return!1;return!0}return this.each((typeof e=="function"?Lw:e?kw:Uw)(n,e))}function Vw(){this.textContent=""}function qw(t){return function(){this.textContent=t}}function Xw(t){return function(){var e=t.apply(this,arguments);this.textContent=e??""}}function Zw(t){return arguments.length?this.each(t==null?Vw:(typeof t=="function"?Xw:qw)(t)):this.node().textContent}function Gw(){this.innerHTML=""}function Qw(t){return function(){this.innerHTML=t}}function Kw(t){return function(){var e=t.apply(this,arguments);this.innerHTML=e??""}}function jw(t){return arguments.length?this.each(t==null?Gw:(typeof t=="function"?Kw:Qw)(t)):this.node().innerHTML}function $w(){this.nextSibling&&this.parentNode.appendChild(this)}function Jw(){return this.each($w)}function Iw(){this.previousSibling&&this.parentNode.insertBefore(this,this.parentNode.firstChild)}function Fw(){return this.each(Iw)}function Ww(t){var e=typeof t=="function"?t:Sy(t);return this.select(function(){return this.appendChild(e.apply(this,arguments))})}function Pw(){return null}function tE(t,e){var n=typeof t=="function"?t:Sy(t),l=e==null?Pw:typeof e=="function"?e:pr(e);return this.select(function(){return this.insertBefore(n.apply(this,arguments),l.apply(this,arguments)||null)})}function eE(){var t=this.parentNode;t&&t.removeChild(this)}function nE(){return this.each(eE)}function lE(){var t=this.cloneNode(!1),e=this.parentNode;return e?e.insertBefore(t,this.nextSibling):t}function aE(){var t=this.cloneNode(!0),e=this.parentNode;return e?e.insertBefore(t,this.nextSibling):t}function oE(t){return this.select(t?aE:lE)}function iE(t){return arguments.length?this.property("__data__",t):this.node().__data__}function uE(t){return function(e){t.call(this,e,this.__data__)}}function rE(t){return t.trim().split(/^|\\s+/).map(function(e){var n="",l=e.indexOf(".");return l>=0&&(n=e.slice(l+1),e=e.slice(0,l)),{type:e,name:n}})}function cE(t){return function(){var e=this.__on;if(e){for(var n=0,l=-1,a=e.length,o;n<a;++n)o=e[n],(!t.type||o.type===t.type)&&o.name===t.name?this.removeEventListener(o.type,o.listener,o.options):e[++l]=o;++l?e.length=l:delete this.__on}}}function sE(t,e,n){return function(){var l=this.__on,a,o=uE(e);if(l){for(var i=0,u=l.length;i<u;++i)if((a=l[i]).type===t.type&&a.name===t.name){this.removeEventListener(a.type,a.listener,a.options),this.addEventListener(a.type,a.listener=o,a.options=n),a.value=e;return}}this.addEventListener(t.type,o,n),a={type:t.type,name:t.name,value:e,listener:o,options:n},l?l.push(a):this.__on=[a]}}function fE(t,e,n){var l=rE(t+""),a,o=l.length,i;if(arguments.length<2){var u=this.node().__on;if(u){for(var r=0,c=u.length,f;r<c;++r)for(a=0,f=u[r];a<o;++a)if((i=l[a]).type===f.type&&i.name===f.name)return f.value}return}for(u=e?sE:cE,a=0;a<o;++a)this.each(u(l[a],e,n));return this}function Ay(t,e,n){var l=Ey(t),a=l.CustomEvent;typeof a=="function"?a=new a(e,n):(a=l.document.createEvent("Event"),n?(a.initEvent(e,n.bubbles,n.cancelable),a.detail=n.detail):a.initEvent(e,!1,!1)),t.dispatchEvent(a)}function dE(t,e){return function(){return Ay(this,t,e)}}function hE(t,e){return function(){return Ay(this,t,e.apply(this,arguments))}}function gE(t,e){return this.each((typeof e=="function"?hE:dE)(t,e))}function*pE(){for(var t=this._groups,e=0,n=t.length;e<n;++e)for(var l=t[e],a=0,o=l.length,i;a<o;++a)(i=l[a])&&(yield i)}var Ty=[null];function Se(t,e){this._groups=t,this._parents=e}function Hl(){return new Se([[document.documentElement]],Ty)}function mE(){return this}Se.prototype=Hl.prototype={constructor:Se,select:X2,selectAll:K2,selectChild:I2,selectChildren:tw,filter:ew,data:uw,enter:nw,exit:cw,join:sw,merge:fw,selection:mE,order:dw,sort:hw,call:pw,nodes:mw,node:yw,size:vw,empty:bw,each:xw,attr:zw,style:Dw,property:Bw,classed:Yw,text:Zw,html:jw,raise:Jw,lower:Fw,append:Ww,insert:tE,remove:nE,clone:oE,datum:iE,on:fE,dispatch:gE,[Symbol.iterator]:pE};function It(t){return typeof t=="string"?new Se([[document.querySelector(t)]],[document.documentElement]):new Se([[t]],Ty)}var yE=0;function vE(){return new Wf}function Wf(){this._="@"+(++yE).toString(36)}Wf.prototype=vE.prototype={constructor:Wf,get:function(t){for(var e=this._;!(e in t);)if(!(t=t.parentNode))return;return t[e]},set:function(t,e){return t[this._]=e},remove:function(t){return this._ in t&&delete t[this._]},toString:function(){return this._}};function bE(t){let e;for(;e=t.sourceEvent;)t=e;return t}function re(t,e){if(t=bE(t),e===void 0&&(e=t.currentTarget),e){var n=e.ownerSVGElement||e;if(n.createSVGPoint){var l=n.createSVGPoint();return l.x=t.clientX,l.y=t.clientY,l=l.matrixTransform(e.getScreenCTM().inverse()),[l.x,l.y]}if(e.getBoundingClientRect){var a=e.getBoundingClientRect();return[t.clientX-a.left-e.clientLeft,t.clientY-a.top-e.clientTop]}}return[t.pageX,t.pageY]}var xE={passive:!1},di={capture:!0,passive:!1};function nd(t){t.stopImmediatePropagation()}function Ua(t){t.preventDefault(),t.stopImmediatePropagation()}function ad(t){var e=t.document.documentElement,n=It(t).on("dragstart.drag",Ua,di);"onselectstart"in e?n.on("selectstart.drag",Ua,di):(e.__noselect=e.style.MozUserSelect,e.style.MozUserSelect="none")}function od(t,e){var n=t.document.documentElement,l=It(t).on("dragstart.drag",null);e&&(l.on("click.drag",Ua,di),setTimeout(function(){l.on("click.drag",null)},0)),"onselectstart"in n?l.on("selectstart.drag",null):(n.style.MozUserSelect=n.__noselect,delete n.__noselect)}var mr=t=>()=>t;function ld(t,{sourceEvent:e,subject:n,target:l,identifier:a,active:o,x:i,y:u,dx:r,dy:c,dispatch:f}){Object.defineProperties(this,{type:{value:t,enumerable:!0,configurable:!0},sourceEvent:{value:e,enumerable:!0,configurable:!0},subject:{value:n,enumerable:!0,configurable:!0},target:{value:l,enumerable:!0,configurable:!0},identifier:{value:a,enumerable:!0,configurable:!0},active:{value:o,enumerable:!0,configurable:!0},x:{value:i,enumerable:!0,configurable:!0},y:{value:u,enumerable:!0,configurable:!0},dx:{value:r,enumerable:!0,configurable:!0},dy:{value:c,enumerable:!0,configurable:!0},_:{value:f}})}ld.prototype.on=function(){var t=this._.on.apply(this._,arguments);return t===this._?this:t};function SE(t){return!t.ctrlKey&&!t.button}function _E(){return this.parentNode}function wE(t,e){return e??{x:t.x,y:t.y}}function EE(){return navigator.maxTouchPoints||"ontouchstart"in this}function id(){var t=SE,e=_E,n=wE,l=EE,a={},o=Dl("start","drag","end"),i=0,u,r,c,f,d=0;function s(y){y.on("mousedown.drag",g).filter(l).on("touchstart.drag",S).on("touchmove.drag",p,xE).on("touchend.drag touchcancel.drag",m).style("touch-action","none").style("-webkit-tap-highlight-color","rgba(0,0,0,0)")}function g(y,x){if(!(f||!t.call(this,y,x))){var E=h(this,e.call(this,y,x),y,x,"mouse");E&&(It(y.view).on("mousemove.drag",b,di).on("mouseup.drag",v,di),ad(y.view),nd(y),c=!1,u=y.clientX,r=y.clientY,E("start",y))}}function b(y){if(Ua(y),!c){var x=y.clientX-u,E=y.clientY-r;c=x*x+E*E>d}a.mouse("drag",y)}function v(y){It(y.view).on("mousemove.drag mouseup.drag",null),od(y.view,c),Ua(y),a.mouse("end",y)}function S(y,x){if(t.call(this,y,x)){var E=y.changedTouches,w=e.call(this,y,x),N=E.length,z,U;for(z=0;z<N;++z)(U=h(this,w,y,x,E[z].identifier,E[z]))&&(nd(y),U("start",y,E[z]))}}function p(y){var x=y.changedTouches,E=x.length,w,N;for(w=0;w<E;++w)(N=a[x[w].identifier])&&(Ua(y),N("drag",y,x[w]))}function m(y){var x=y.changedTouches,E=x.length,w,N;for(f&&clearTimeout(f),f=setTimeout(function(){f=null},500),w=0;w<E;++w)(N=a[x[w].identifier])&&(nd(y),N("end",y,x[w]))}function h(y,x,E,w,N,z){var U=o.copy(),H=re(z||E,x),B,Y,_;if((_=n.call(y,new ld("beforestart",{sourceEvent:E,target:s,identifier:N,active:i,x:H[0],y:H[1],dx:0,dy:0,dispatch:U}),w))!=null)return B=_.x-H[0]||0,Y=_.y-H[1]||0,function C(M,T,A){var O=H,L;switch(M){case"start":a[N]=C,L=i++;break;case"end":delete a[N],--i;case"drag":H=re(A||T,x),L=i;break}U.call(M,y,new ld(M,{sourceEvent:T,subject:_,target:s,identifier:N,active:L,x:H[0]+B,y:H[1]+Y,dx:H[0]-O[0],dy:H[1]-O[1],dispatch:U}),w)}}return s.filter=function(y){return arguments.length?(t=typeof y=="function"?y:mr(!!y),s):t},s.container=function(y){return arguments.length?(e=typeof y=="function"?y:mr(y),s):e},s.subject=function(y){return arguments.length?(n=typeof y=="function"?y:mr(y),s):n},s.touchable=function(y){return arguments.length?(l=typeof y=="function"?y:mr(!!y),s):l},s.on=function(){var y=o.on.apply(o,arguments);return y===o?s:y},s.clickDistance=function(y){return arguments.length?(d=(y=+y)*y,s):Math.sqrt(d)},s}function qa(t,e,n){t.prototype=e.prototype=n,n.constructor=t}function pi(t,e){var n=Object.create(t.prototype);for(var l in e)n[l]=e[l];return n}function al(){}var Ul=.7,Va=1/Ul,La="\\\\s*([+-]?\\\\d+)\\\\s*",hi="\\\\s*([+-]?(?:\\\\d*\\\\.)?\\\\d+(?:[eE][+-]?\\\\d+)?)\\\\s*",Je="\\\\s*([+-]?(?:\\\\d*\\\\.)?\\\\d+(?:[eE][+-]?\\\\d+)?)%\\\\s*",NE=/^#([0-9a-f]{3,8})$/,ME=new RegExp(`^rgb\\\\(${La},${La},${La}\\\\)$`),zE=new RegExp(`^rgb\\\\(${Je},${Je},${Je}\\\\)$`),CE=new RegExp(`^rgba\\\\(${La},${La},${La},${hi}\\\\)$`),AE=new RegExp(`^rgba\\\\(${Je},${Je},${Je},${hi}\\\\)$`),TE=new RegExp(`^hsl\\\\(${hi},${Je},${Je}\\\\)$`),DE=new RegExp(`^hsla\\\\(${hi},${Je},${Je},${hi}\\\\)$`),Dy={aliceblue:15792383,antiquewhite:16444375,aqua:65535,aquamarine:8388564,azure:15794175,beige:16119260,bisque:16770244,black:0,blanchedalmond:16772045,blue:255,blueviolet:9055202,brown:10824234,burlywood:14596231,cadetblue:6266528,chartreuse:8388352,chocolate:13789470,coral:16744272,cornflowerblue:6591981,cornsilk:16775388,crimson:14423100,cyan:65535,darkblue:139,darkcyan:35723,darkgoldenrod:12092939,darkgray:11119017,darkgreen:25600,darkgrey:11119017,darkkhaki:12433259,darkmagenta:9109643,darkolivegreen:5597999,darkorange:16747520,darkorchid:10040012,darkred:9109504,darksalmon:15308410,darkseagreen:9419919,darkslateblue:4734347,darkslategray:3100495,darkslategrey:3100495,darkturquoise:52945,darkviolet:9699539,deeppink:16716947,deepskyblue:49151,dimgray:6908265,dimgrey:6908265,dodgerblue:2003199,firebrick:11674146,floralwhite:16775920,forestgreen:2263842,fuchsia:16711935,gainsboro:14474460,ghostwhite:16316671,gold:16766720,goldenrod:14329120,gray:8421504,green:32768,greenyellow:11403055,grey:8421504,honeydew:15794160,hotpink:16738740,indianred:13458524,indigo:4915330,ivory:16777200,khaki:15787660,lavender:15132410,lavenderblush:16773365,lawngreen:8190976,lemonchiffon:16775885,lightblue:11393254,lightcoral:15761536,lightcyan:14745599,lightgoldenrodyellow:16448210,lightgray:13882323,lightgreen:9498256,lightgrey:13882323,lightpink:16758465,lightsalmon:16752762,lightseagreen:2142890,lightskyblue:8900346,lightslategray:7833753,lightslategrey:7833753,lightsteelblue:11584734,lightyellow:16777184,lime:65280,limegreen:3329330,linen:16445670,magenta:16711935,maroon:8388608,mediumaquamarine:6737322,mediumblue:205,mediumorchid:12211667,mediumpurple:9662683,mediumseagreen:3978097,mediumslateblue:8087790,mediumspringgreen:64154,mediumturquoise:4772300,mediumvioletred:13047173,midnightblue:1644912,mintcream:16121850,mistyrose:16770273,moccasin:16770229,navajowhite:16768685,navy:128,oldlace:16643558,olive:8421376,olivedrab:7048739,orange:16753920,orangered:16729344,orchid:14315734,palegoldenrod:15657130,palegreen:10025880,paleturquoise:11529966,palevioletred:14381203,papayawhip:16773077,peachpuff:16767673,peru:13468991,pink:16761035,plum:14524637,powderblue:11591910,purple:8388736,rebeccapurple:6697881,red:16711680,rosybrown:12357519,royalblue:4286945,saddlebrown:9127187,salmon:16416882,sandybrown:16032864,seagreen:3050327,seashell:16774638,sienna:10506797,silver:12632256,skyblue:8900331,slateblue:6970061,slategray:7372944,slategrey:7372944,snow:16775930,springgreen:65407,steelblue:4620980,tan:13808780,teal:32896,thistle:14204888,tomato:16737095,turquoise:4251856,violet:15631086,wheat:16113331,white:16777215,whitesmoke:16119285,yellow:16776960,yellowgreen:10145074};qa(al,wn,{copy(t){return Object.assign(new this.constructor,this,t)},displayable(){return this.rgb().displayable()},hex:Oy,formatHex:Oy,formatHex8:OE,formatHsl:HE,formatRgb:Hy,toString:Hy});function Oy(){return this.rgb().formatHex()}function OE(){return this.rgb().formatHex8()}function HE(){return Xy(this).formatHsl()}function Hy(){return this.rgb().formatRgb()}function wn(t){var e,n;return t=(t+"").trim().toLowerCase(),(e=NE.exec(t))?(n=e[1].length,e=parseInt(e[1],16),n===6?Ry(e):n===3?new Xt(e>>8&15|e>>4&240,e>>4&15|e&240,(e&15)<<4|e&15,1):n===8?yr(e>>24&255,e>>16&255,e>>8&255,(e&255)/255):n===4?yr(e>>12&15|e>>8&240,e>>8&15|e>>4&240,e>>4&15|e&240,((e&15)<<4|e&15)/255):null):(e=ME.exec(t))?new Xt(e[1],e[2],e[3],1):(e=zE.exec(t))?new Xt(e[1]*255/100,e[2]*255/100,e[3]*255/100,1):(e=CE.exec(t))?yr(e[1],e[2],e[3],e[4]):(e=AE.exec(t))?yr(e[1]*255/100,e[2]*255/100,e[3]*255/100,e[4]):(e=TE.exec(t))?Uy(e[1],e[2]/100,e[3]/100,1):(e=DE.exec(t))?Uy(e[1],e[2]/100,e[3]/100,e[4]):Dy.hasOwnProperty(t)?Ry(Dy[t]):t==="transparent"?new Xt(NaN,NaN,NaN,0):null}function Ry(t){return new Xt(t>>16&255,t>>8&255,t&255,1)}function yr(t,e,n,l){return l<=0&&(t=e=n=NaN),new Xt(t,e,n,l)}function dd(t){return t instanceof al||(t=wn(t)),t?(t=t.rgb(),new Xt(t.r,t.g,t.b,t.opacity)):new Xt}function mi(t,e,n,l){return arguments.length===1?dd(t):new Xt(t,e,n,l??1)}function Xt(t,e,n,l){this.r=+t,this.g=+e,this.b=+n,this.opacity=+l}qa(Xt,mi,pi(al,{brighter(t){return t=t==null?Va:Math.pow(Va,t),new Xt(this.r*t,this.g*t,this.b*t,this.opacity)},darker(t){return t=t==null?Ul:Math.pow(Ul,t),new Xt(this.r*t,this.g*t,this.b*t,this.opacity)},rgb(){return this},clamp(){return new Xt(Bl(this.r),Bl(this.g),Bl(this.b),br(this.opacity))},displayable(){return-.5<=this.r&&this.r<255.5&&-.5<=this.g&&this.g<255.5&&-.5<=this.b&&this.b<255.5&&0<=this.opacity&&this.opacity<=1},hex:By,formatHex:By,formatHex8:RE,formatRgb:ky,toString:ky}));function By(){return`#${Rl(this.r)}${Rl(this.g)}${Rl(this.b)}`}function RE(){return`#${Rl(this.r)}${Rl(this.g)}${Rl(this.b)}${Rl((isNaN(this.opacity)?1:this.opacity)*255)}`}function ky(){let t=br(this.opacity);return`${t===1?"rgb(":"rgba("}${Bl(this.r)}, ${Bl(this.g)}, ${Bl(this.b)}${t===1?")":`, ${t})`}`}function br(t){return isNaN(t)?1:Math.max(0,Math.min(1,t))}function Bl(t){return Math.max(0,Math.min(255,Math.round(t)||0))}function Rl(t){return t=Bl(t),(t<16?"0":"")+t.toString(16)}function Uy(t,e,n,l){return l<=0?t=e=n=NaN:n<=0||n>=1?t=e=NaN:e<=0&&(t=NaN),new Ye(t,e,n,l)}function Xy(t){if(t instanceof Ye)return new Ye(t.h,t.s,t.l,t.opacity);if(t instanceof al||(t=wn(t)),!t)return new Ye;if(t instanceof Ye)return t;t=t.rgb();var e=t.r/255,n=t.g/255,l=t.b/255,a=Math.min(e,n,l),o=Math.max(e,n,l),i=NaN,u=o-a,r=(o+a)/2;return u?(e===o?i=(n-l)/u+(n<l)*6:n===o?i=(l-e)/u+2:i=(e-n)/u+4,u/=r<.5?o+a:2-o-a,i*=60):u=r>0&&r<1?0:i,new Ye(i,u,r,t.opacity)}function Sr(t,e,n,l){return arguments.length===1?Xy(t):new Ye(t,e,n,l??1)}function Ye(t,e,n,l){this.h=+t,this.s=+e,this.l=+n,this.opacity=+l}qa(Ye,Sr,pi(al,{brighter(t){return t=t==null?Va:Math.pow(Va,t),new Ye(this.h,this.s,this.l*t,this.opacity)},darker(t){return t=t==null?Ul:Math.pow(Ul,t),new Ye(this.h,this.s,this.l*t,this.opacity)},rgb(){var t=this.h%360+(this.h<0)*360,e=isNaN(t)||isNaN(this.s)?0:this.s,n=this.l,l=n+(n<.5?n:1-n)*e,a=2*n-l;return new Xt(ud(t>=240?t-240:t+120,a,l),ud(t,a,l),ud(t<120?t+240:t-120,a,l),this.opacity)},clamp(){return new Ye(Ly(this.h),vr(this.s),vr(this.l),br(this.opacity))},displayable(){return(0<=this.s&&this.s<=1||isNaN(this.s))&&0<=this.l&&this.l<=1&&0<=this.opacity&&this.opacity<=1},formatHsl(){let t=br(this.opacity);return`${t===1?"hsl(":"hsla("}${Ly(this.h)}, ${vr(this.s)*100}%, ${vr(this.l)*100}%${t===1?")":`, ${t})`}`}}));function Ly(t){return t=(t||0)%360,t<0?t+360:t}function vr(t){return Math.max(0,Math.min(1,t||0))}function ud(t,e,n){return(t<60?e+(n-e)*t/60:t<180?n:t<240?e+(n-e)*(240-t)/60:e)*255}var Zy=Math.PI/180,Gy=180/Math.PI,xr=18,Qy=.96422,Ky=1,jy=.82521,$y=4/29,Ya=6/29,Jy=3*Ya*Ya,BE=Ya*Ya*Ya;function Iy(t){if(t instanceof Ie)return new Ie(t.l,t.a,t.b,t.opacity);if(t instanceof _n)return Wy(t);t instanceof Xt||(t=dd(t));var e=fd(t.r),n=fd(t.g),l=fd(t.b),a=rd((.2225045*e+.7168786*n+.0606169*l)/Ky),o,i;return e===n&&n===l?o=i=a:(o=rd((.4360747*e+.3850649*n+.1430804*l)/Qy),i=rd((.0139322*e+.0971045*n+.7141733*l)/jy)),new Ie(116*a-16,500*(o-a),200*(a-i),t.opacity)}function Fy(t,e,n,l){return arguments.length===1?Iy(t):new Ie(t,e,n,l??1)}function Ie(t,e,n,l){this.l=+t,this.a=+e,this.b=+n,this.opacity=+l}qa(Ie,Fy,pi(al,{brighter(t){return new Ie(this.l+xr*(t??1),this.a,this.b,this.opacity)},darker(t){return new Ie(this.l-xr*(t??1),this.a,this.b,this.opacity)},rgb(){var t=(this.l+16)/116,e=isNaN(this.a)?t:t+this.a/500,n=isNaN(this.b)?t:t-this.b/200;return e=Qy*cd(e),t=Ky*cd(t),n=jy*cd(n),new Xt(sd(3.1338561*e-1.6168667*t-.4906146*n),sd(-.9787684*e+1.9161415*t+.033454*n),sd(.0719453*e-.2289914*t+1.4052427*n),this.opacity)}}));function rd(t){return t>BE?Math.pow(t,1/3):t/Jy+$y}function cd(t){return t>Ya?t*t*t:Jy*(t-$y)}function sd(t){return 255*(t<=.0031308?12.92*t:1.055*Math.pow(t,1/2.4)-.055)}function fd(t){return(t/=255)<=.04045?t/12.92:Math.pow((t+.055)/1.055,2.4)}function kE(t){if(t instanceof _n)return new _n(t.h,t.c,t.l,t.opacity);if(t instanceof Ie||(t=Iy(t)),t.a===0&&t.b===0)return new _n(NaN,0<t.l&&t.l<100?0:NaN,t.l,t.opacity);var e=Math.atan2(t.b,t.a)*Gy;return new _n(e<0?e+360:e,Math.sqrt(t.a*t.a+t.b*t.b),t.l,t.opacity)}function _r(t,e,n,l){return arguments.length===1?kE(t):new _n(t,e,n,l??1)}function _n(t,e,n,l){this.h=+t,this.c=+e,this.l=+n,this.opacity=+l}function Wy(t){if(isNaN(t.h))return new Ie(t.l,0,0,t.opacity);var e=t.h*Zy;return new Ie(t.l,Math.cos(e)*t.c,Math.sin(e)*t.c,t.opacity)}qa(_n,_r,pi(al,{brighter(t){return new _n(this.h,this.c,this.l+xr*(t??1),this.opacity)},darker(t){return new _n(this.h,this.c,this.l-xr*(t??1),this.opacity)},rgb(){return Wy(this).rgb()}}));var Py=-.14861,hd=1.78277,gd=-.29227,wr=-.90649,gi=1.97294,Yy=gi*wr,Vy=gi*hd,qy=hd*gd-wr*Py;function UE(t){if(t instanceof kl)return new kl(t.h,t.s,t.l,t.opacity);t instanceof Xt||(t=dd(t));var e=t.r/255,n=t.g/255,l=t.b/255,a=(qy*l+Yy*e-Vy*n)/(qy+Yy-Vy),o=l-a,i=(gi*(n-a)-gd*o)/wr,u=Math.sqrt(i*i+o*o)/(gi*a*(1-a)),r=u?Math.atan2(i,o)*Gy-120:NaN;return new kl(r<0?r+360:r,u,a,t.opacity)}function Er(t,e,n,l){return arguments.length===1?UE(t):new kl(t,e,n,l??1)}function kl(t,e,n,l){this.h=+t,this.s=+e,this.l=+n,this.opacity=+l}qa(kl,Er,pi(al,{brighter(t){return t=t==null?Va:Math.pow(Va,t),new kl(this.h,this.s,this.l*t,this.opacity)},darker(t){return t=t==null?Ul:Math.pow(Ul,t),new kl(this.h,this.s,this.l*t,this.opacity)},rgb(){var t=isNaN(this.h)?0:(this.h+120)*Zy,e=+this.l,n=isNaN(this.s)?0:this.s*e*(1-e),l=Math.cos(t),a=Math.sin(t);return new Xt(255*(e+n*(Py*l+hd*a)),255*(e+n*(gd*l+wr*a)),255*(e+n*(gi*l)),this.opacity)}}));function n1(t,e,n,l,a){var o=t*t,i=o*t;return((1-3*t+3*o-i)*e+(4-6*o+3*i)*n+(1+3*t+3*o-3*i)*l+i*a)/6}function LE(t){var e=t.length-1;return function(n){var l=n<=0?n=0:n>=1?(n=1,e-1):Math.floor(n*e),a=t[l],o=t[l+1],i=l>0?t[l-1]:2*a-o,u=l<e-1?t[l+2]:2*o-a;return n1((n-l/e)*e,i,a,o,u)}}function YE(t){var e=t.length;return function(n){var l=Math.floor(((n%=1)<0?++n:n)*e),a=t[(l+e-1)%e],o=t[l%e],i=t[(l+1)%e],u=t[(l+2)%e];return n1((n-l/e)*e,a,o,i,u)}}var Mr=t=>()=>t;function l1(t,e){return function(n){return t+n*e}}function VE(t,e,n){return t=Math.pow(t,n),e=Math.pow(e,n)-t,n=1/n,function(l){return Math.pow(t+l*e,n)}}function vd(t,e){var n=e-t;return n?l1(t,n>180||n<-180?n-360*Math.round(n/360):n):Mr(isNaN(t)?e:t)}function qE(t){return(t=+t)==1?ce:function(e,n){return n-e?VE(e,n,t):Mr(isNaN(e)?n:e)}}function ce(t,e){var n=e-t;return n?l1(t,n):Mr(isNaN(t)?e:t)}var yi=(function t(e){var n=qE(e);function l(a,o){var i=n((a=mi(a)).r,(o=mi(o)).r),u=n(a.g,o.g),r=n(a.b,o.b),c=ce(a.opacity,o.opacity);return function(f){return a.r=i(f),a.g=u(f),a.b=r(f),a.opacity=c(f),a+""}}return l.gamma=t,l})(1);function a1(t){return function(e){var n=e.length,l=new Array(n),a=new Array(n),o=new Array(n),i,u;for(i=0;i<n;++i)u=mi(e[i]),l[i]=u.r||0,a[i]=u.g||0,o[i]=u.b||0;return l=t(l),a=t(a),o=t(o),u.opacity=1,function(r){return u.r=l(r),u.g=a(r),u.b=o(r),u+""}}}var lA=a1(LE),aA=a1(YE);function XE(t,e){e||(e=[]);var n=t?Math.min(e.length,t.length):0,l=e.slice(),a;return function(o){for(a=0;a<n;++a)l[a]=t[a]*(1-o)+e[a]*o;return l}}function ZE(t){return ArrayBuffer.isView(t)&&!(t instanceof DataView)}function GE(t,e){var n=e?e.length:0,l=t?Math.min(n,t.length):0,a=new Array(l),o=new Array(n),i;for(i=0;i<l;++i)a[i]=Xa(t[i],e[i]);for(;i<n;++i)o[i]=e[i];return function(u){for(i=0;i<l;++i)o[i]=a[i](u);return o}}function QE(t,e){var n=new Date;return t=+t,e=+e,function(l){return n.setTime(t*(1-l)+e*l),n}}function Ve(t,e){return t=+t,e=+e,function(n){return t*(1-n)+e*n}}function KE(t,e){var n={},l={},a;(t===null||typeof t!="object")&&(t={}),(e===null||typeof e!="object")&&(e={});for(a in e)a in t?n[a]=Xa(t[a],e[a]):l[a]=e[a];return function(o){for(a in n)l[a]=n[a](o);return l}}var md=/[-+]?(?:\\d+\\.?\\d*|\\.?\\d+)(?:[eE][-+]?\\d+)?/g,pd=new RegExp(md.source,"g");function jE(t){return function(){return t}}function $E(t){return function(e){return t(e)+""}}function bd(t,e){var n=md.lastIndex=pd.lastIndex=0,l,a,o,i=-1,u=[],r=[];for(t=t+"",e=e+"";(l=md.exec(t))&&(a=pd.exec(e));)(o=a.index)>n&&(o=e.slice(n,o),u[i]?u[i]+=o:u[++i]=o),(l=l[0])===(a=a[0])?u[i]?u[i]+=a:u[++i]=a:(u[++i]=null,r.push({i,x:Ve(l,a)})),n=pd.lastIndex;return n<e.length&&(o=e.slice(n),u[i]?u[i]+=o:u[++i]=o),u.length<2?r[0]?$E(r[0].x):jE(e):(e=r.length,function(c){for(var f=0,d;f<e;++f)u[(d=r[f]).i]=d.x(c);return u.join("")})}function Xa(t,e){var n=typeof e,l;return e==null||n==="boolean"?Mr(e):(n==="number"?Ve:n==="string"?(l=wn(e))?(e=l,yi):bd:e instanceof wn?yi:e instanceof Date?QE:ZE(e)?XE:Array.isArray(e)?GE:typeof e.valueOf!="function"&&typeof e.toString!="function"||isNaN(e)?KE:Ve)(t,e)}var t1=180/Math.PI,yd={translateX:0,translateY:0,rotate:0,skewX:0,scaleX:1,scaleY:1};function o1(t,e,n,l,a,o){var i,u,r;return(i=Math.sqrt(t*t+e*e))&&(t/=i,e/=i),(r=t*n+e*l)&&(n-=t*r,l-=e*r),(u=Math.sqrt(n*n+l*l))&&(n/=u,l/=u,r/=u),t*l<e*n&&(t=-t,e=-e,r=-r,i=-i),{translateX:a,translateY:o,rotate:Math.atan2(e,t)*t1,skewX:Math.atan(r)*t1,scaleX:i,scaleY:u}}var Nr;function JE(t){let e=new(typeof DOMMatrix=="function"?DOMMatrix:WebKitCSSMatrix)(t+"");return e.isIdentity?yd:o1(e.a,e.b,e.c,e.d,e.e,e.f)}function IE(t){return t==null||(Nr||(Nr=document.createElementNS("http://www.w3.org/2000/svg","g")),Nr.setAttribute("transform",t),!(t=Nr.transform.baseVal.consolidate()))?yd:(t=t.matrix,o1(t.a,t.b,t.c,t.d,t.e,t.f))}function i1(t,e,n,l){function a(c){return c.length?c.pop()+" ":""}function o(c,f,d,s,g,b){if(c!==d||f!==s){var v=g.push("translate(",null,e,null,n);b.push({i:v-4,x:Ve(c,d)},{i:v-2,x:Ve(f,s)})}else(d||s)&&g.push("translate("+d+e+s+n)}function i(c,f,d,s){c!==f?(c-f>180?f+=360:f-c>180&&(c+=360),s.push({i:d.push(a(d)+"rotate(",null,l)-2,x:Ve(c,f)})):f&&d.push(a(d)+"rotate("+f+l)}function u(c,f,d,s){c!==f?s.push({i:d.push(a(d)+"skewX(",null,l)-2,x:Ve(c,f)}):f&&d.push(a(d)+"skewX("+f+l)}function r(c,f,d,s,g,b){if(c!==d||f!==s){var v=g.push(a(g)+"scale(",null,",",null,")");b.push({i:v-4,x:Ve(c,d)},{i:v-2,x:Ve(f,s)})}else(d!==1||s!==1)&&g.push(a(g)+"scale("+d+","+s+")")}return function(c,f){var d=[],s=[];return c=t(c),f=t(f),o(c.translateX,c.translateY,f.translateX,f.translateY,d,s),i(c.rotate,f.rotate,d,s),u(c.skewX,f.skewX,d,s),r(c.scaleX,c.scaleY,f.scaleX,f.scaleY,d,s),c=f=null,function(g){for(var b=-1,v=s.length,S;++b<v;)d[(S=s[b]).i]=S.x(g);return d.join("")}}}var u1=i1(JE,"px, ","px)","deg)"),r1=i1(IE,", ",")",")"),FE=1e-12;function e1(t){return((t=Math.exp(t))+1/t)/2}function WE(t){return((t=Math.exp(t))-1/t)/2}function PE(t){return((t=Math.exp(2*t))-1)/(t+1)}var Za=(function t(e,n,l){function a(o,i){var u=o[0],r=o[1],c=o[2],f=i[0],d=i[1],s=i[2],g=f-u,b=d-r,v=g*g+b*b,S,p;if(v<FE)p=Math.log(s/c)/e,S=function(w){return[u+w*g,r+w*b,c*Math.exp(e*w*p)]};else{var m=Math.sqrt(v),h=(s*s-c*c+l*v)/(2*c*n*m),y=(s*s-c*c-l*v)/(2*s*n*m),x=Math.log(Math.sqrt(h*h+1)-h),E=Math.log(Math.sqrt(y*y+1)-y);p=(E-x)/e,S=function(w){var N=w*p,z=e1(x),U=c/(n*m)*(z*PE(e*N+x)-WE(x));return[u+U*g,r+U*b,c*z/e1(e*N+x)]}}return S.duration=Math.abs(p)*1e3*e/Math.SQRT2,S}return a.rho=function(o){var i=Math.max(.001,+o),u=i*i,r=u*u;return t(i,u,r)},a})(Math.SQRT2,2,4);function c1(t){return function(e,n){var l=t((e=Sr(e)).h,(n=Sr(n)).h),a=ce(e.s,n.s),o=ce(e.l,n.l),i=ce(e.opacity,n.opacity);return function(u){return e.h=l(u),e.s=a(u),e.l=o(u),e.opacity=i(u),e+""}}}var oA=c1(vd),iA=c1(ce);function s1(t){return function(e,n){var l=t((e=_r(e)).h,(n=_r(n)).h),a=ce(e.c,n.c),o=ce(e.l,n.l),i=ce(e.opacity,n.opacity);return function(u){return e.h=l(u),e.c=a(u),e.l=o(u),e.opacity=i(u),e+""}}}var uA=s1(vd),rA=s1(ce);function f1(t){return(function e(n){n=+n;function l(a,o){var i=t((a=Er(a)).h,(o=Er(o)).h),u=ce(a.s,o.s),r=ce(a.l,o.l),c=ce(a.opacity,o.opacity);return function(f){return a.h=i(f),a.s=u(f),a.l=r(Math.pow(f,n)),a.opacity=c(f),a+""}}return l.gamma=e,l})(1)}var cA=f1(vd),sA=f1(ce);var Ga=0,bi=0,vi=0,h1=1e3,zr,xi,Cr=0,Ll=0,Tr=0,Si=typeof performance=="object"&&performance.now?performance:Date,g1=typeof window=="object"&&window.requestAnimationFrame?window.requestAnimationFrame.bind(window):function(t){setTimeout(t,17)};function Dr(){return Ll||(g1(tN),Ll=Si.now()+Tr)}function tN(){Ll=0}function Ar(){this._call=this._time=this._next=null}Ar.prototype=Sd.prototype={constructor:Ar,restart:function(t,e,n){if(typeof t!="function")throw new TypeError("callback is not a function");n=(n==null?Dr():+n)+(e==null?0:+e),!this._next&&xi!==this&&(xi?xi._next=this:zr=this,xi=this),this._call=t,this._time=n,xd()},stop:function(){this._call&&(this._call=null,this._time=1/0,xd())}};function Sd(t,e,n){var l=new Ar;return l.restart(t,e,n),l}function eN(){Dr(),++Ga;for(var t=zr,e;t;)(e=Ll-t._time)>=0&&t._call.call(void 0,e),t=t._next;--Ga}function d1(){Ll=(Cr=Si.now())+Tr,Ga=bi=0;try{eN()}finally{Ga=0,lN(),Ll=0}}function nN(){var t=Si.now(),e=t-Cr;e>h1&&(Tr-=e,Cr=t)}function lN(){for(var t,e=zr,n,l=1/0;e;)e._call?(l>e._time&&(l=e._time),t=e,e=e._next):(n=e._next,e._next=null,e=t?t._next=n:zr=n);xi=t,xd(l)}function xd(t){if(!Ga){bi&&(bi=clearTimeout(bi));var e=t-Ll;e>24?(t<1/0&&(bi=setTimeout(d1,Math.ceil(t-Si.now()-Tr)+1)),vi&&(vi=clearInterval(vi))):(vi||(Cr=Si.now(),vi=setInterval(nN,h1)),Ga=1,g1(d1))}}function _d(t,e,n){var l=new Ar;return e=e==null?0:+e,l.restart(a=>{l.stop(),t(a+e)},e,n),l}function m1(t){return((t*=2)<=1?t*t*t:(t-=2)*t*t+2)/2}var wd=3,hA=(function t(e){e=+e;function n(l){return Math.pow(l,e)}return n.exponent=t,n})(wd),gA=(function t(e){e=+e;function n(l){return 1-Math.pow(1-l,e)}return n.exponent=t,n})(wd),pA=(function t(e){e=+e;function n(l){return((l*=2)<=1?Math.pow(l,e):2-Math.pow(2-l,e))/2}return n.exponent=t,n})(wd),aN=Math.PI,mA=aN/2;function Or(t){return(Math.pow(2,-10*t)-.0009765625)*1.0009775171065494}var p1=4/11,yA=6/11,vA=8/11,bA=3/4,xA=9/11,SA=10/11,_A=15/16,wA=21/22,EA=63/64,NA=1/p1/p1;var Ed=1.70158,MA=(function t(e){e=+e;function n(l){return(l=+l)*l*(e*(l-1)+l)}return n.overshoot=t,n})(Ed),zA=(function t(e){e=+e;function n(l){return--l*l*((l+1)*e+l)+1}return n.overshoot=t,n})(Ed),CA=(function t(e){e=+e;function n(l){return((l*=2)<1?l*l*((e+1)*l-e):(l-=2)*l*((e+1)*l+e)+2)/2}return n.overshoot=t,n})(Ed),Qa=2*Math.PI,Nd=1,Md=.3,AA=(function t(e,n){var l=Math.asin(1/(e=Math.max(1,e)))*(n/=Qa);function a(o){return e*Or(- --o)*Math.sin((l-o)/n)}return a.amplitude=function(o){return t(o,n*Qa)},a.period=function(o){return t(e,o)},a})(Nd,Md),TA=(function t(e,n){var l=Math.asin(1/(e=Math.max(1,e)))*(n/=Qa);function a(o){return 1-e*Or(o=+o)*Math.sin((o+l)/n)}return a.amplitude=function(o){return t(o,n*Qa)},a.period=function(o){return t(e,o)},a})(Nd,Md),DA=(function t(e,n){var l=Math.asin(1/(e=Math.max(1,e)))*(n/=Qa);function a(o){return((o=o*2-1)<0?e*Or(-o)*Math.sin((l-o)/n):2-e*Or(o)*Math.sin((l+o)/n))/2}return a.amplitude=function(o){return t(o,n*Qa)},a.period=function(o){return t(e,o)},a})(Nd,Md);var oN=Dl("start","end","cancel","interrupt"),iN=[],b1=0,y1=1,zd=2,Hr=3,v1=4,Cd=5,Rr=6;function Br(t,e,n,l,a,o){var i=t.__transition;if(!i)t.__transition={};else if(n in i)return;uN(t,n,{name:e,index:l,group:a,on:oN,tween:iN,time:o.time,delay:o.delay,duration:o.duration,ease:o.ease,timer:null,state:b1})}function Ad(t,e){var n=qe(t,e);if(n.state>b1)throw new Error("too late; already scheduled");return n}function Fe(t,e){var n=qe(t,e);if(n.state>Hr)throw new Error("too late; already running");return n}function qe(t,e){var n=t.__transition;if(!n||!(n=n[e]))throw new Error("transition not found");return n}function uN(t,e,n){var l=t.__transition,a;l[e]=n,n.timer=Sd(o,0,n.time);function o(c){n.state=y1,n.timer.restart(i,n.delay,n.time),n.delay<=c&&i(c-n.delay)}function i(c){var f,d,s,g;if(n.state!==y1)return r();for(f in l)if(g=l[f],g.name===n.name){if(g.state===Hr)return _d(i);g.state===v1?(g.state=Rr,g.timer.stop(),g.on.call("interrupt",t,t.__data__,g.index,g.group),delete l[f]):+f<e&&(g.state=Rr,g.timer.stop(),g.on.call("cancel",t,t.__data__,g.index,g.group),delete l[f])}if(_d(function(){n.state===Hr&&(n.state=v1,n.timer.restart(u,n.delay,n.time),u(c))}),n.state=zd,n.on.call("start",t,t.__data__,n.index,n.group),n.state===zd){for(n.state=Hr,a=new Array(s=n.tween.length),f=0,d=-1;f<s;++f)(g=n.tween[f].value.call(t,t.__data__,n.index,n.group))&&(a[++d]=g);a.length=d+1}}function u(c){for(var f=c<n.duration?n.ease.call(null,c/n.duration):(n.timer.restart(r),n.state=Cd,1),d=-1,s=a.length;++d<s;)a[d].call(t,f);n.state===Cd&&(n.on.call("end",t,t.__data__,n.index,n.group),r())}function r(){n.state=Rr,n.timer.stop(),delete l[e];for(var c in l)return;delete t.__transition}}function _i(t,e){var n=t.__transition,l,a,o=!0,i;if(n){e=e==null?null:e+"";for(i in n){if((l=n[i]).name!==e){o=!1;continue}a=l.state>zd&&l.state<Cd,l.state=Rr,l.timer.stop(),l.on.call(a?"interrupt":"cancel",t,t.__data__,l.index,l.group),delete n[i]}o&&delete t.__transition}}function rN(t){return this.each(function(){_i(this,t)})}function cN(t,e){var n,l;return function(){var a=Fe(this,t),o=a.tween;if(o!==n){l=n=o;for(var i=0,u=l.length;i<u;++i)if(l[i].name===e){l=l.slice(),l.splice(i,1);break}}a.tween=l}}function sN(t,e,n){var l,a;if(typeof n!="function")throw new Error;return function(){var o=Fe(this,t),i=o.tween;if(i!==l){a=(l=i).slice();for(var u={name:e,value:n},r=0,c=a.length;r<c;++r)if(a[r].name===e){a[r]=u;break}r===c&&a.push(u)}o.tween=a}}function fN(t,e){var n=this._id;if(t+="",arguments.length<2){for(var l=qe(this.node(),n).tween,a=0,o=l.length,i;a<o;++a)if((i=l[a]).name===t)return i.value;return null}return this.each((e==null?cN:sN)(n,t,e))}function Td(t,e,n){var l=t._id;return t.each(function(){var a=Fe(this,l);(a.value||(a.value={}))[e]=n.apply(this,arguments)}),function(a){return qe(a,l).value[e]}}function x1(t,e){var n;return(typeof e=="number"?Ve:e instanceof wn?yi:(n=wn(e))?(e=n,yi):bd)(t,e)}function dN(t){return function(){this.removeAttribute(t)}}function hN(t){return function(){this.removeAttributeNS(t.space,t.local)}}function gN(t,e,n){var l,a=n+"",o;return function(){var i=this.getAttribute(t);return i===a?null:i===l?o:o=e(l=i,n)}}function pN(t,e,n){var l,a=n+"",o;return function(){var i=this.getAttributeNS(t.space,t.local);return i===a?null:i===l?o:o=e(l=i,n)}}function mN(t,e,n){var l,a,o;return function(){var i,u=n(this),r;return u==null?void this.removeAttribute(t):(i=this.getAttribute(t),r=u+"",i===r?null:i===l&&r===a?o:(a=r,o=e(l=i,u)))}}function yN(t,e,n){var l,a,o;return function(){var i,u=n(this),r;return u==null?void this.removeAttributeNS(t.space,t.local):(i=this.getAttributeNS(t.space,t.local),r=u+"",i===r?null:i===l&&r===a?o:(a=r,o=e(l=i,u)))}}function vN(t,e){var n=fi(t),l=n==="transform"?r1:x1;return this.attrTween(t,typeof e=="function"?(n.local?yN:mN)(n,l,Td(this,"attr."+t,e)):e==null?(n.local?hN:dN)(n):(n.local?pN:gN)(n,l,e))}function bN(t,e){return function(n){this.setAttribute(t,e.call(this,n))}}function xN(t,e){return function(n){this.setAttributeNS(t.space,t.local,e.call(this,n))}}function SN(t,e){var n,l;function a(){var o=e.apply(this,arguments);return o!==l&&(n=(l=o)&&xN(t,o)),n}return a._value=e,a}function _N(t,e){var n,l;function a(){var o=e.apply(this,arguments);return o!==l&&(n=(l=o)&&bN(t,o)),n}return a._value=e,a}function wN(t,e){var n="attr."+t;if(arguments.length<2)return(n=this.tween(n))&&n._value;if(e==null)return this.tween(n,null);if(typeof e!="function")throw new Error;var l=fi(t);return this.tween(n,(l.local?SN:_N)(l,e))}function EN(t,e){return function(){Ad(this,t).delay=+e.apply(this,arguments)}}function NN(t,e){return e=+e,function(){Ad(this,t).delay=e}}function MN(t){var e=this._id;return arguments.length?this.each((typeof t=="function"?EN:NN)(e,t)):qe(this.node(),e).delay}function zN(t,e){return function(){Fe(this,t).duration=+e.apply(this,arguments)}}function CN(t,e){return e=+e,function(){Fe(this,t).duration=e}}function AN(t){var e=this._id;return arguments.length?this.each((typeof t=="function"?zN:CN)(e,t)):qe(this.node(),e).duration}function TN(t,e){if(typeof e!="function")throw new Error;return function(){Fe(this,t).ease=e}}function DN(t){var e=this._id;return arguments.length?this.each(TN(e,t)):qe(this.node(),e).ease}function ON(t,e){return function(){var n=e.apply(this,arguments);if(typeof n!="function")throw new Error;Fe(this,t).ease=n}}function HN(t){if(typeof t!="function")throw new Error;return this.each(ON(this._id,t))}function RN(t){typeof t!="function"&&(t=td(t));for(var e=this._groups,n=e.length,l=new Array(n),a=0;a<n;++a)for(var o=e[a],i=o.length,u=l[a]=[],r,c=0;c<i;++c)(r=o[c])&&t.call(r,r.__data__,c,o)&&u.push(r);return new Nn(l,this._parents,this._name,this._id)}function BN(t){if(t._id!==this._id)throw new Error;for(var e=this._groups,n=t._groups,l=e.length,a=n.length,o=Math.min(l,a),i=new Array(l),u=0;u<o;++u)for(var r=e[u],c=n[u],f=r.length,d=i[u]=new Array(f),s,g=0;g<f;++g)(s=r[g]||c[g])&&(d[g]=s);for(;u<l;++u)i[u]=e[u];return new Nn(i,this._parents,this._name,this._id)}function kN(t){return(t+"").trim().split(/^|\\s+/).every(function(e){var n=e.indexOf(".");return n>=0&&(e=e.slice(0,n)),!e||e==="start"})}function UN(t,e,n){var l,a,o=kN(e)?Ad:Fe;return function(){var i=o(this,t),u=i.on;u!==l&&(a=(l=u).copy()).on(e,n),i.on=a}}function LN(t,e){var n=this._id;return arguments.length<2?qe(this.node(),n).on.on(t):this.each(UN(n,t,e))}function YN(t){return function(){var e=this.parentNode;for(var n in this.__transition)if(+n!==t)return;e&&e.removeChild(this)}}function VN(){return this.on("end.remove",YN(this._id))}function qN(t){var e=this._name,n=this._id;typeof t!="function"&&(t=pr(t));for(var l=this._groups,a=l.length,o=new Array(a),i=0;i<a;++i)for(var u=l[i],r=u.length,c=o[i]=new Array(r),f,d,s=0;s<r;++s)(f=u[s])&&(d=t.call(f,f.__data__,s,u))&&("__data__"in f&&(d.__data__=f.__data__),c[s]=d,Br(c[s],e,n,s,c,qe(f,n)));return new Nn(o,this._parents,e,n)}function XN(t){var e=this._name,n=this._id;typeof t!="function"&&(t=Pf(t));for(var l=this._groups,a=l.length,o=[],i=[],u=0;u<a;++u)for(var r=l[u],c=r.length,f,d=0;d<c;++d)if(f=r[d]){for(var s=t.call(f,f.__data__,d,r),g,b=qe(f,n),v=0,S=s.length;v<S;++v)(g=s[v])&&Br(g,e,n,v,s,b);o.push(s),i.push(f)}return new Nn(o,i,e,n)}var ZN=Hl.prototype.constructor;function GN(){return new ZN(this._groups,this._parents)}function QN(t,e){var n,l,a;return function(){var o=Ol(this,t),i=(this.style.removeProperty(t),Ol(this,t));return o===i?null:o===n&&i===l?a:a=e(n=o,l=i)}}function S1(t){return function(){this.style.removeProperty(t)}}function KN(t,e,n){var l,a=n+"",o;return function(){var i=Ol(this,t);return i===a?null:i===l?o:o=e(l=i,n)}}function jN(t,e,n){var l,a,o;return function(){var i=Ol(this,t),u=n(this),r=u+"";return u==null&&(r=u=(this.style.removeProperty(t),Ol(this,t))),i===r?null:i===l&&r===a?o:(a=r,o=e(l=i,u))}}function $N(t,e){var n,l,a,o="style."+e,i="end."+o,u;return function(){var r=Fe(this,t),c=r.on,f=r.value[o]==null?u||(u=S1(e)):void 0;(c!==n||a!==f)&&(l=(n=c).copy()).on(i,a=f),r.on=l}}function JN(t,e,n){var l=(t+="")=="transform"?u1:x1;return e==null?this.styleTween(t,QN(t,l)).on("end.style."+t,S1(t)):typeof e=="function"?this.styleTween(t,jN(t,l,Td(this,"style."+t,e))).each($N(this._id,t)):this.styleTween(t,KN(t,l,e),n).on("end.style."+t,null)}function IN(t,e,n){return function(l){this.style.setProperty(t,e.call(this,l),n)}}function FN(t,e,n){var l,a;function o(){var i=e.apply(this,arguments);return i!==a&&(l=(a=i)&&IN(t,i,n)),l}return o._value=e,o}function WN(t,e,n){var l="style."+(t+="");if(arguments.length<2)return(l=this.tween(l))&&l._value;if(e==null)return this.tween(l,null);if(typeof e!="function")throw new Error;return this.tween(l,FN(t,e,n??""))}function PN(t){return function(){this.textContent=t}}function t3(t){return function(){var e=t(this);this.textContent=e??""}}function e3(t){return this.tween("text",typeof t=="function"?t3(Td(this,"text",t)):PN(t==null?"":t+""))}function n3(t){return function(e){this.textContent=t.call(this,e)}}function l3(t){var e,n;function l(){var a=t.apply(this,arguments);return a!==n&&(e=(n=a)&&n3(a)),e}return l._value=t,l}function a3(t){var e="text";if(arguments.length<1)return(e=this.tween(e))&&e._value;if(t==null)return this.tween(e,null);if(typeof t!="function")throw new Error;return this.tween(e,l3(t))}function o3(){for(var t=this._name,e=this._id,n=_1(),l=this._groups,a=l.length,o=0;o<a;++o)for(var i=l[o],u=i.length,r,c=0;c<u;++c)if(r=i[c]){var f=qe(r,e);Br(r,t,n,c,i,{time:f.time+f.delay+f.duration,delay:0,duration:f.duration,ease:f.ease})}return new Nn(l,this._parents,t,n)}function i3(){var t,e,n=this,l=n._id,a=n.size();return new Promise(function(o,i){var u={value:i},r={value:function(){--a===0&&o()}};n.each(function(){var c=Fe(this,l),f=c.on;f!==t&&(e=(t=f).copy(),e._.cancel.push(u),e._.interrupt.push(u),e._.end.push(r)),c.on=e}),a===0&&o()})}var u3=0;function Nn(t,e,n,l){this._groups=t,this._parents=e,this._name=n,this._id=l}function r3(t){return Hl().transition(t)}function _1(){return++u3}var En=Hl.prototype;Nn.prototype=r3.prototype={constructor:Nn,select:qN,selectAll:XN,selectChild:En.selectChild,selectChildren:En.selectChildren,filter:RN,merge:BN,selection:GN,transition:o3,call:En.call,nodes:En.nodes,node:En.node,size:En.size,empty:En.empty,each:En.each,on:LN,attr:vN,attrTween:wN,style:JN,styleTween:WN,text:e3,textTween:a3,remove:VN,tween:fN,delay:MN,duration:AN,ease:DN,easeVarying:HN,end:i3,[Symbol.iterator]:En[Symbol.iterator]};var c3={time:null,delay:0,duration:250,ease:m1};function s3(t,e){for(var n;!(n=t.__transition)||!(n=n[e]);)if(!(t=t.parentNode))throw new Error(`transition ${e} not found`);return n}function f3(t){var e,n;t instanceof Nn?(e=t._id,t=t._name):(e=_1(),(n=c3).time=Dr(),t=t==null?null:t+"");for(var l=this._groups,a=l.length,o=0;o<a;++o)for(var i=l[o],u=i.length,r,c=0;c<u;++c)(r=i[c])&&Br(r,t,e,c,i,n||s3(r,e));return new Nn(l,this._parents,t,e)}Hl.prototype.interrupt=rN;Hl.prototype.transition=f3;var kr=t=>()=>t;function d3(t,{sourceEvent:e,target:n,transform:l,dispatch:a}){Object.defineProperties(this,{type:{value:t,enumerable:!0,configurable:!0},sourceEvent:{value:e,enumerable:!0,configurable:!0},target:{value:n,enumerable:!0,configurable:!0},transform:{value:l,enumerable:!0,configurable:!0},_:{value:a}})}function Mn(t,e,n){this.k=t,this.x=e,this.y=n}Mn.prototype={constructor:Mn,scale:function(t){return t===1?this:new Mn(this.k*t,this.x,this.y)},translate:function(t,e){return t===0&e===0?this:new Mn(this.k,this.x+this.k*t,this.y+this.k*e)},apply:function(t){return[t[0]*this.k+this.x,t[1]*this.k+this.y]},applyX:function(t){return t*this.k+this.x},applyY:function(t){return t*this.k+this.y},invert:function(t){return[(t[0]-this.x)/this.k,(t[1]-this.y)/this.k]},invertX:function(t){return(t-this.x)/this.k},invertY:function(t){return(t-this.y)/this.k},rescaleX:function(t){return t.copy().domain(t.range().map(this.invertX,this).map(t.invert,t))},rescaleY:function(t){return t.copy().domain(t.range().map(this.invertY,this).map(t.invert,t))},toString:function(){return"translate("+this.x+","+this.y+") scale("+this.k+")"}};var Ei=new Mn(1,0,0);Od.prototype=Mn.prototype;function Od(t){for(;!t.__zoom;)if(!(t=t.parentNode))return Ei;return t.__zoom}function Dd(t){t.stopImmediatePropagation()}function wi(t){t.preventDefault(),t.stopImmediatePropagation()}function h3(t){return(!t.ctrlKey||t.type==="wheel")&&!t.button}function g3(){var t=this;return t instanceof SVGElement?(t=t.ownerSVGElement||t,t.hasAttribute("viewBox")?(t=t.viewBox.baseVal,[[t.x,t.y],[t.x+t.width,t.y+t.height]]):[[0,0],[t.width.baseVal.value,t.height.baseVal.value]]):[[0,0],[t.clientWidth,t.clientHeight]]}function w1(){return this.__zoom||Ei}function p3(t){return-t.deltaY*(t.deltaMode===1?.05:t.deltaMode?1:.002)*(t.ctrlKey?10:1)}function m3(){return navigator.maxTouchPoints||"ontouchstart"in this}function y3(t,e,n){var l=t.invertX(e[0][0])-n[0][0],a=t.invertX(e[1][0])-n[1][0],o=t.invertY(e[0][1])-n[0][1],i=t.invertY(e[1][1])-n[1][1];return t.translate(a>l?(l+a)/2:Math.min(0,l)||Math.max(0,a),i>o?(o+i)/2:Math.min(0,o)||Math.max(0,i))}function Hd(){var t=h3,e=g3,n=y3,l=p3,a=m3,o=[0,1/0],i=[[-1/0,-1/0],[1/0,1/0]],u=250,r=Za,c=Dl("start","zoom","end"),f,d,s,g=500,b=150,v=0,S=10;function p(_){_.property("__zoom",w1).on("wheel.zoom",N,{passive:!1}).on("mousedown.zoom",z).on("dblclick.zoom",U).filter(a).on("touchstart.zoom",H).on("touchmove.zoom",B).on("touchend.zoom touchcancel.zoom",Y).style("-webkit-tap-highlight-color","rgba(0,0,0,0)")}p.transform=function(_,C,M,T){var A=_.selection?_.selection():_;A.property("__zoom",w1),_!==A?x(_,C,M,T):A.interrupt().each(function(){E(this,arguments).event(T).start().zoom(null,typeof C=="function"?C.apply(this,arguments):C).end()})},p.scaleBy=function(_,C,M,T){p.scaleTo(_,function(){var A=this.__zoom.k,O=typeof C=="function"?C.apply(this,arguments):C;return A*O},M,T)},p.scaleTo=function(_,C,M,T){p.transform(_,function(){var A=e.apply(this,arguments),O=this.__zoom,L=M==null?y(A):typeof M=="function"?M.apply(this,arguments):M,q=O.invert(L),V=typeof C=="function"?C.apply(this,arguments):C;return n(h(m(O,V),L,q),A,i)},M,T)},p.translateBy=function(_,C,M,T){p.transform(_,function(){return n(this.__zoom.translate(typeof C=="function"?C.apply(this,arguments):C,typeof M=="function"?M.apply(this,arguments):M),e.apply(this,arguments),i)},null,T)},p.translateTo=function(_,C,M,T,A){p.transform(_,function(){var O=e.apply(this,arguments),L=this.__zoom,q=T==null?y(O):typeof T=="function"?T.apply(this,arguments):T;return n(Ei.translate(q[0],q[1]).scale(L.k).translate(typeof C=="function"?-C.apply(this,arguments):-C,typeof M=="function"?-M.apply(this,arguments):-M),O,i)},T,A)};function m(_,C){return C=Math.max(o[0],Math.min(o[1],C)),C===_.k?_:new Mn(C,_.x,_.y)}function h(_,C,M){var T=C[0]-M[0]*_.k,A=C[1]-M[1]*_.k;return T===_.x&&A===_.y?_:new Mn(_.k,T,A)}function y(_){return[(+_[0][0]+ +_[1][0])/2,(+_[0][1]+ +_[1][1])/2]}function x(_,C,M,T){_.on("start.zoom",function(){E(this,arguments).event(T).start()}).on("interrupt.zoom end.zoom",function(){E(this,arguments).event(T).end()}).tween("zoom",function(){var A=this,O=arguments,L=E(A,O).event(T),q=e.apply(A,O),V=M==null?y(q):typeof M=="function"?M.apply(A,O):M,G=Math.max(q[1][0]-q[0][0],q[1][1]-q[0][1]),Z=A.__zoom,$=typeof C=="function"?C.apply(A,O):C,tt=r(Z.invert(V).concat(G/Z.k),$.invert(V).concat(G/$.k));return function(K){if(K===1)K=$;else{var X=tt(K),j=G/X[2];K=new Mn(j,V[0]-X[0]*j,V[1]-X[1]*j)}L.zoom(null,K)}})}function E(_,C,M){return!M&&_.__zooming||new w(_,C)}function w(_,C){this.that=_,this.args=C,this.active=0,this.sourceEvent=null,this.extent=e.apply(_,C),this.taps=0}w.prototype={event:function(_){return _&&(this.sourceEvent=_),this},start:function(){return++this.active===1&&(this.that.__zooming=this,this.emit("start")),this},zoom:function(_,C){return this.mouse&&_!=="mouse"&&(this.mouse[1]=C.invert(this.mouse[0])),this.touch0&&_!=="touch"&&(this.touch0[1]=C.invert(this.touch0[0])),this.touch1&&_!=="touch"&&(this.touch1[1]=C.invert(this.touch1[0])),this.that.__zoom=C,this.emit("zoom"),this},end:function(){return--this.active===0&&(delete this.that.__zooming,this.emit("end")),this},emit:function(_){var C=It(this.that).datum();c.call(_,this.that,new d3(_,{sourceEvent:this.sourceEvent,target:p,transform:this.that.__zoom,dispatch:c}),C)}};function N(_,...C){if(!t.apply(this,arguments))return;var M=E(this,C).event(_),T=this.__zoom,A=Math.max(o[0],Math.min(o[1],T.k*Math.pow(2,l.apply(this,arguments)))),O=re(_);if(M.wheel)(M.mouse[0][0]!==O[0]||M.mouse[0][1]!==O[1])&&(M.mouse[1]=T.invert(M.mouse[0]=O)),clearTimeout(M.wheel);else{if(T.k===A)return;M.mouse=[O,T.invert(O)],_i(this),M.start()}wi(_),M.wheel=setTimeout(L,b),M.zoom("mouse",n(h(m(T,A),M.mouse[0],M.mouse[1]),M.extent,i));function L(){M.wheel=null,M.end()}}function z(_,...C){if(s||!t.apply(this,arguments))return;var M=_.currentTarget,T=E(this,C,!0).event(_),A=It(_.view).on("mousemove.zoom",V,!0).on("mouseup.zoom",G,!0),O=re(_,M),L=_.clientX,q=_.clientY;ad(_.view),Dd(_),T.mouse=[O,this.__zoom.invert(O)],_i(this),T.start();function V(Z){if(wi(Z),!T.moved){var $=Z.clientX-L,tt=Z.clientY-q;T.moved=$*$+tt*tt>v}T.event(Z).zoom("mouse",n(h(T.that.__zoom,T.mouse[0]=re(Z,M),T.mouse[1]),T.extent,i))}function G(Z){A.on("mousemove.zoom mouseup.zoom",null),od(Z.view,T.moved),wi(Z),T.event(Z).end()}}function U(_,...C){if(t.apply(this,arguments)){var M=this.__zoom,T=re(_.changedTouches?_.changedTouches[0]:_,this),A=M.invert(T),O=M.k*(_.shiftKey?.5:2),L=n(h(m(M,O),T,A),e.apply(this,C),i);wi(_),u>0?It(this).transition().duration(u).call(x,L,T,_):It(this).call(p.transform,L,T,_)}}function H(_,...C){if(t.apply(this,arguments)){var M=_.touches,T=M.length,A=E(this,C,_.changedTouches.length===T).event(_),O,L,q,V;for(Dd(_),L=0;L<T;++L)q=M[L],V=re(q,this),V=[V,this.__zoom.invert(V),q.identifier],A.touch0?!A.touch1&&A.touch0[2]!==V[2]&&(A.touch1=V,A.taps=0):(A.touch0=V,O=!0,A.taps=1+!!f);f&&(f=clearTimeout(f)),O&&(A.taps<2&&(d=V[0],f=setTimeout(function(){f=null},g)),_i(this),A.start())}}function B(_,...C){if(this.__zooming){var M=E(this,C).event(_),T=_.changedTouches,A=T.length,O,L,q,V;for(wi(_),O=0;O<A;++O)L=T[O],q=re(L,this),M.touch0&&M.touch0[2]===L.identifier?M.touch0[0]=q:M.touch1&&M.touch1[2]===L.identifier&&(M.touch1[0]=q);if(L=M.that.__zoom,M.touch1){var G=M.touch0[0],Z=M.touch0[1],$=M.touch1[0],tt=M.touch1[1],K=(K=$[0]-G[0])*K+(K=$[1]-G[1])*K,X=(X=tt[0]-Z[0])*X+(X=tt[1]-Z[1])*X;L=m(L,Math.sqrt(K/X)),q=[(G[0]+$[0])/2,(G[1]+$[1])/2],V=[(Z[0]+tt[0])/2,(Z[1]+tt[1])/2]}else if(M.touch0)q=M.touch0[0],V=M.touch0[1];else return;M.zoom("touch",n(h(L,q,V),M.extent,i))}}function Y(_,...C){if(this.__zooming){var M=E(this,C).event(_),T=_.changedTouches,A=T.length,O,L;for(Dd(_),s&&clearTimeout(s),s=setTimeout(function(){s=null},g),O=0;O<A;++O)L=T[O],M.touch0&&M.touch0[2]===L.identifier?delete M.touch0:M.touch1&&M.touch1[2]===L.identifier&&delete M.touch1;if(M.touch1&&!M.touch0&&(M.touch0=M.touch1,delete M.touch1),M.touch0)M.touch0[1]=this.__zoom.invert(M.touch0[0]);else if(M.end(),M.taps===2&&(L=re(L,this),Math.hypot(d[0]-L[0],d[1]-L[1])<S)){var q=It(this).on("dblclick.zoom");q&&q.apply(this,arguments)}}}return p.wheelDelta=function(_){return arguments.length?(l=typeof _=="function"?_:kr(+_),p):l},p.filter=function(_){return arguments.length?(t=typeof _=="function"?_:kr(!!_),p):t},p.touchable=function(_){return arguments.length?(a=typeof _=="function"?_:kr(!!_),p):a},p.extent=function(_){return arguments.length?(e=typeof _=="function"?_:kr([[+_[0][0],+_[0][1]],[+_[1][0],+_[1][1]]]),p):e},p.scaleExtent=function(_){return arguments.length?(o[0]=+_[0],o[1]=+_[1],p):[o[0],o[1]]},p.translateExtent=function(_){return arguments.length?(i[0][0]=+_[0][0],i[1][0]=+_[1][0],i[0][1]=+_[0][1],i[1][1]=+_[1][1],p):[[i[0][0],i[0][1]],[i[1][0],i[1][1]]]},p.constrain=function(_){return arguments.length?(n=_,p):n},p.duration=function(_){return arguments.length?(u=+_,p):u},p.interpolate=function(_){return arguments.length?(r=_,p):r},p.on=function(){var _=c.on.apply(c,arguments);return _===c?p:_},p.clickDistance=function(_){return arguments.length?(v=(_=+_)*_,p):Math.sqrt(v)},p.tapDistance=function(_){return arguments.length?(S=+_,p):S},p}var _e={error001:()=>"[React Flow]: Seems like you have not used zustand provider as an ancestor. Help: https://reactflow.dev/error#001",error002:()=>"It looks like you\'ve created a new nodeTypes or edgeTypes object. If this wasn\'t on purpose please define the nodeTypes/edgeTypes outside of the component or memoize them.",error003:t=>`Node type "${t}" not found. Using fallback type "default".`,error004:()=>"The React Flow parent container needs a width and a height to render the graph.",error005:()=>"Only child nodes can use a parent extent.",error006:()=>"Can\'t create edge. An edge needs a source and a target.",error007:t=>`The old edge with id=${t} does not exist.`,error009:t=>`Marker type "${t}" doesn\'t exist.`,error008:(t,{id:e,sourceHandle:n,targetHandle:l})=>`Couldn\'t create edge for ${t} handle id: "${t==="source"?n:l}", edge id: ${e}.`,error010:()=>"Handle: No node id found. Make sure to only use a Handle inside a custom Node.",error011:t=>`Edge type "${t}" not found. Using fallback type "default".`,error012:t=>`Node with id "${t}" does not exist, it may have been removed. This can happen when a node is deleted before the "onNodeClick" handler is called.`,error013:(t="react")=>`It seems that you haven\'t loaded the styles. Please import \'@xyflow/${t}/dist/style.css\' or base.css to make sure everything is working properly.`,error014:()=>"useNodeConnections: No node ID found. Call useNodeConnections inside a custom Node or provide a node ID.",error015:()=>"It seems that you are trying to drag a node that is not initialized. Please use onNodesChange as explained in the docs."},Fa=[[Number.NEGATIVE_INFINITY,Number.NEGATIVE_INFINITY],[Number.POSITIVE_INFINITY,Number.POSITIVE_INFINITY]],Ld=["Enter"," ","Escape"],Yd={"node.a11yDescription.default":"Press enter or space to select a node. Press delete to remove it and escape to cancel.","node.a11yDescription.keyboardDisabled":"Press enter or space to select a node. You can then use the arrow keys to move the node around. Press delete to remove it and escape to cancel.","node.a11yDescription.ariaLiveMessage":({direction:t,x:e,y:n})=>`Moved selected node ${t}. New position, x: ${e}, y: ${n}`,"edge.a11yDescription.default":"Press enter or space to select an edge. You can then press delete to remove it or escape to cancel.","controls.ariaLabel":"Control Panel","controls.zoomIn.ariaLabel":"Zoom In","controls.zoomOut.ariaLabel":"Zoom Out","controls.fitView.ariaLabel":"Fit View","controls.interactive.ariaLabel":"Toggle Interactivity","minimap.ariaLabel":"Mini Map","handle.ariaLabel":"Handle"},ul;(function(t){t.Strict="strict",t.Loose="loose"})(ul||(ul={}));var zn;(function(t){t.Free="free",t.Vertical="vertical",t.Horizontal="horizontal"})(zn||(zn={}));var Yl;(function(t){t.Partial="partial",t.Full="full"})(Yl||(Yl={}));var Vd={inProgress:!1,isValid:null,from:null,fromHandle:null,fromPosition:null,fromNode:null,to:null,toHandle:null,toPosition:null,toNode:null},We;(function(t){t.Bezier="default",t.Straight="straight",t.Step="step",t.SmoothStep="smoothstep",t.SimpleBezier="simplebezier"})(We||(We={}));var $a;(function(t){t.Arrow="arrow",t.ArrowClosed="arrowclosed"})($a||($a={}));var Q;(function(t){t.Left="left",t.Top="top",t.Right="right",t.Bottom="bottom"})(Q||(Q={}));var E1={[Q.Left]:Q.Right,[Q.Right]:Q.Left,[Q.Top]:Q.Bottom,[Q.Bottom]:Q.Top};function qd(t){return t===null?null:t?"valid":"invalid"}var Xd=t=>"id"in t&&"source"in t&&"target"in t,U1=t=>"id"in t&&"position"in t&&!("source"in t)&&!("target"in t),Zd=t=>"id"in t&&"internals"in t&&!("source"in t)&&!("target"in t);var Ci=(t,e=[0,0])=>{let{width:n,height:l}=Pe(t),a=t.origin??e,o=n*a[0],i=l*a[1];return{x:t.position.x-o,y:t.position.y-i}},Gd=(t,e={nodeOrigin:[0,0]})=>{if(t.length===0)return{x:0,y:0,width:0,height:0};let n=t.reduce((l,a)=>{let o=typeof a=="string",i=!e.nodeLookup&&!o?a:void 0;e.nodeLookup&&(i=o?e.nodeLookup.get(a):Zd(a)?a:e.nodeLookup.get(a.id));let u=i?Yr(i,e.nodeOrigin):{x:0,y:0,x2:0,y2:0};return qr(l,u)},{x:1/0,y:1/0,x2:-1/0,y2:-1/0});return Xr(n)},Wa=(t,e={})=>{let n={x:1/0,y:1/0,x2:-1/0,y2:-1/0},l=!1;return t.forEach(a=>{(e.filter===void 0||e.filter(a))&&(n=qr(n,Yr(a)),l=!0)}),l?Xr(n):{x:0,y:0,width:0,height:0}},Vr=(t,e,[n,l,a]=[0,0,1],o=!1,i=!1)=>{let u={...eo(e,[n,l,a]),width:e.width/a,height:e.height/a},r=[];for(let c of t.values()){let{measured:f,selectable:d=!0,hidden:s=!1}=c;if(i&&!d||s)continue;let g=f.width??c.width??c.initialWidth??null,b=f.height??c.height??c.initialHeight??null,v=Pa(u,ql(c)),S=(g??0)*(b??0),p=o&&v>0;(!c.internals.handleBounds||p||v>=S||c.dragging)&&r.push(c)}return r},L1=(t,e)=>{let n=new Set;return t.forEach(l=>{n.add(l.id)}),e.filter(l=>n.has(l.source)||n.has(l.target))};function v3(t,e){let n=new Map,l=e?.nodes?new Set(e.nodes.map(a=>a.id)):null;return t.forEach(a=>{a.measured.width&&a.measured.height&&(e?.includeHiddenNodes||!a.hidden)&&(!l||l.has(a.id))&&n.set(a.id,a)}),n}async function Y1({nodes:t,width:e,height:n,panZoom:l,minZoom:a,maxZoom:o},i){if(t.size===0)return Promise.resolve(!0);let u=v3(t,i),r=Wa(u),c=Ai(r,e,n,i?.minZoom??a,i?.maxZoom??o,i?.padding??.1);return await l.setViewport(c,{duration:i?.duration,ease:i?.ease,interpolate:i?.interpolate}),Promise.resolve(!0)}function Qd({nodeId:t,nextPosition:e,nodeLookup:n,nodeOrigin:l=[0,0],nodeExtent:a,onError:o}){let i=n.get(t),u=i.parentId?n.get(i.parentId):void 0,{x:r,y:c}=u?u.internals.positionAbsolute:{x:0,y:0},f=i.origin??l,d=i.extent||a;if(i.extent==="parent"&&!i.expandParent)if(!u)o?.("005",_e.error005());else{let g=u.measured.width,b=u.measured.height;g&&b&&(d=[[r,c],[r+g,c+b]])}else u&&Ia(i.extent)&&(d=[[i.extent[0][0]+r,i.extent[0][1]+c],[i.extent[1][0]+r,i.extent[1][1]+c]]);let s=Ia(d)?Vl(e,d,i.measured):e;return(i.measured.width===void 0||i.measured.height===void 0)&&o?.("015",_e.error015()),{position:{x:s.x-r+(i.measured.width??0)*f[0],y:s.y-c+(i.measured.height??0)*f[1]},positionAbsolute:s}}async function V1({nodesToRemove:t=[],edgesToRemove:e=[],nodes:n,edges:l,onBeforeDelete:a}){let o=new Set(t.map(s=>s.id)),i=[];for(let s of n){if(s.deletable===!1)continue;let g=o.has(s.id),b=!g&&s.parentId&&i.find(v=>v.id===s.parentId);(g||b)&&i.push(s)}let u=new Set(e.map(s=>s.id)),r=l.filter(s=>s.deletable!==!1),f=L1(i,r);for(let s of r)u.has(s.id)&&!f.find(b=>b.id===s.id)&&f.push(s);if(!a)return{edges:f,nodes:i};let d=await a({nodes:i,edges:f});return typeof d=="boolean"?d?{edges:f,nodes:i}:{edges:[],nodes:[]}:d}var Ja=(t,e=0,n=1)=>Math.min(Math.max(t,e),n),Vl=(t={x:0,y:0},e,n)=>({x:Ja(t.x,e[0][0],e[1][0]-(n?.width??0)),y:Ja(t.y,e[0][1],e[1][1]-(n?.height??0))});function q1(t,e,n){let{width:l,height:a}=Pe(n),{x:o,y:i}=n.internals.positionAbsolute;return Vl(t,[[o,i],[o+l,i+a]],e)}var N1=(t,e,n)=>t<e?Ja(Math.abs(t-e),1,e)/e:t>n?-Ja(Math.abs(t-n),1,e)/e:0,X1=(t,e,n=15,l=40)=>{let a=N1(t.x,l,e.width-l)*n,o=N1(t.y,l,e.height-l)*n;return[a,o]},qr=(t,e)=>({x:Math.min(t.x,e.x),y:Math.min(t.y,e.y),x2:Math.max(t.x2,e.x2),y2:Math.max(t.y2,e.y2)}),Ud=({x:t,y:e,width:n,height:l})=>({x:t,y:e,x2:t+n,y2:e+l}),Xr=({x:t,y:e,x2:n,y2:l})=>({x:t,y:e,width:n-t,height:l-e}),ql=(t,e=[0,0])=>{let{x:n,y:l}=Zd(t)?t.internals.positionAbsolute:Ci(t,e);return{x:n,y:l,width:t.measured?.width??t.width??t.initialWidth??0,height:t.measured?.height??t.height??t.initialHeight??0}},Yr=(t,e=[0,0])=>{let{x:n,y:l}=Zd(t)?t.internals.positionAbsolute:Ci(t,e);return{x:n,y:l,x2:n+(t.measured?.width??t.width??t.initialWidth??0),y2:l+(t.measured?.height??t.height??t.initialHeight??0)}},Kd=(t,e)=>Xr(qr(Ud(t),Ud(e))),Pa=(t,e)=>{let n=Math.max(0,Math.min(t.x+t.width,e.x+e.width)-Math.max(t.x,e.x)),l=Math.max(0,Math.min(t.y+t.height,e.y+e.height)-Math.max(t.y,e.y));return Math.ceil(n*l)},jd=t=>Re(t.width)&&Re(t.height)&&Re(t.x)&&Re(t.y),Re=t=>!isNaN(t)&&isFinite(t),$d=(t,e)=>{},to=(t,e=[1,1])=>({x:e[0]*Math.round(t.x/e[0]),y:e[1]*Math.round(t.y/e[1])}),eo=({x:t,y:e},[n,l,a],o=!1,i=[1,1])=>{let u={x:(t-n)/a,y:(e-l)/a};return o?to(u,i):u},Mi=({x:t,y:e},[n,l,a])=>({x:t*a+n,y:e*a+l});function Ka(t,e){if(typeof t=="number")return Math.floor((e-e/(1+t))*.5);if(typeof t=="string"&&t.endsWith("px")){let n=parseFloat(t);if(!Number.isNaN(n))return Math.floor(n)}if(typeof t=="string"&&t.endsWith("%")){let n=parseFloat(t);if(!Number.isNaN(n))return Math.floor(e*n*.01)}return console.error(`[React Flow] The padding value "${t}" is invalid. Please provide a number or a string with a valid unit (px or %).`),0}function b3(t,e,n){if(typeof t=="string"||typeof t=="number"){let l=Ka(t,n),a=Ka(t,e);return{top:l,right:a,bottom:l,left:a,x:a*2,y:l*2}}if(typeof t=="object"){let l=Ka(t.top??t.y??0,n),a=Ka(t.bottom??t.y??0,n),o=Ka(t.left??t.x??0,e),i=Ka(t.right??t.x??0,e);return{top:l,right:i,bottom:a,left:o,x:o+i,y:l+a}}return{top:0,right:0,bottom:0,left:0,x:0,y:0}}function x3(t,e,n,l,a,o){let{x:i,y:u}=Mi(t,[e,n,l]),{x:r,y:c}=Mi({x:t.x+t.width,y:t.y+t.height},[e,n,l]),f=a-r,d=o-c;return{left:Math.floor(i),top:Math.floor(u),right:Math.floor(f),bottom:Math.floor(d)}}var Ai=(t,e,n,l,a,o)=>{let i=b3(o,e,n),u=(e-i.x)/t.width,r=(n-i.y)/t.height,c=Math.min(u,r),f=Ja(c,l,a),d=t.x+t.width/2,s=t.y+t.height/2,g=e/2-d*f,b=n/2-s*f,v=x3(t,g,b,f,e,n),S={left:Math.min(v.left-i.left,0),top:Math.min(v.top-i.top,0),right:Math.min(v.right-i.right,0),bottom:Math.min(v.bottom-i.bottom,0)};return{x:g-S.left+S.right,y:b-S.top+S.bottom,zoom:f}},no=()=>typeof navigator<"u"&&navigator?.userAgent?.indexOf("Mac")>=0;function Ia(t){return t!=null&&t!=="parent"}function Pe(t){return{width:t.measured?.width??t.width??t.initialWidth??0,height:t.measured?.height??t.height??t.initialHeight??0}}function Jd(t){return(t.measured?.width??t.width??t.initialWidth)!==void 0&&(t.measured?.height??t.height??t.initialHeight)!==void 0}function Id(t,e={width:0,height:0},n,l,a){let o={...t},i=l.get(n);if(i){let u=i.origin||a;o.x+=i.internals.positionAbsolute.x-(e.width??0)*u[0],o.y+=i.internals.positionAbsolute.y-(e.height??0)*u[1]}return o}function Fd(t,e){if(t.size!==e.size)return!1;for(let n of t)if(!e.has(n))return!1;return!0}function Z1(){let t,e;return{promise:new Promise((l,a)=>{t=l,e=a}),resolve:t,reject:e}}function G1(t){return{...Yd,...t||{}}}function Ni(t,{snapGrid:e=[0,0],snapToGrid:n=!1,transform:l,containerBounds:a}){let{x:o,y:i}=Be(t),u=eo({x:o-(a?.left??0),y:i-(a?.top??0)},l),{x:r,y:c}=n?to(u,e):u;return{xSnapped:r,ySnapped:c,...u}}var Zr=t=>({width:t.offsetWidth,height:t.offsetHeight}),Wd=t=>t?.getRootNode?.()||window?.document,S3=["INPUT","SELECT","TEXTAREA"];function Pd(t){let e=t.composedPath?.()?.[0]||t.target;return e?.nodeType!==1?!1:S3.includes(e.nodeName)||e.hasAttribute("contenteditable")||!!e.closest(".nokey")}var th=t=>"clientX"in t,Be=(t,e)=>{let n=th(t),l=n?t.clientX:t.touches?.[0].clientX,a=n?t.clientY:t.touches?.[0].clientY;return{x:l-(e?.left??0),y:a-(e?.top??0)}},M1=(t,e,n,l,a)=>{let o=e.querySelectorAll(`.${t}`);return!o||!o.length?null:Array.from(o).map(i=>{let u=i.getBoundingClientRect();return{id:i.getAttribute("data-handleid"),type:t,nodeId:a,position:i.getAttribute("data-handlepos"),x:(u.left-n.left)/l,y:(u.top-n.top)/l,...Zr(i)}})};function Gr({sourceX:t,sourceY:e,targetX:n,targetY:l,sourceControlX:a,sourceControlY:o,targetControlX:i,targetControlY:u}){let r=t*.125+a*.375+i*.375+n*.125,c=e*.125+o*.375+u*.375+l*.125,f=Math.abs(r-t),d=Math.abs(c-e);return[r,c,f,d]}function Ur(t,e){return t>=0?.5*t:e*25*Math.sqrt(-t)}function z1({pos:t,x1:e,y1:n,x2:l,y2:a,c:o}){switch(t){case Q.Left:return[e-Ur(e-l,o),n];case Q.Right:return[e+Ur(l-e,o),n];case Q.Top:return[e,n-Ur(n-a,o)];case Q.Bottom:return[e,n+Ur(a-n,o)]}}function Qr({sourceX:t,sourceY:e,sourcePosition:n=Q.Bottom,targetX:l,targetY:a,targetPosition:o=Q.Top,curvature:i=.25}){let[u,r]=z1({pos:n,x1:t,y1:e,x2:l,y2:a,c:i}),[c,f]=z1({pos:o,x1:l,y1:a,x2:t,y2:e,c:i}),[d,s,g,b]=Gr({sourceX:t,sourceY:e,targetX:l,targetY:a,sourceControlX:u,sourceControlY:r,targetControlX:c,targetControlY:f});return[`M${t},${e} C${u},${r} ${c},${f} ${l},${a}`,d,s,g,b]}function eh({sourceX:t,sourceY:e,targetX:n,targetY:l}){let a=Math.abs(n-t)/2,o=n<t?n+a:n-a,i=Math.abs(l-e)/2,u=l<e?l+i:l-i;return[o,u,a,i]}function Q1({sourceNode:t,targetNode:e,selected:n=!1,zIndex:l,elevateOnSelect:a=!1}){if(l!==void 0)return l;let o=a&&n?1e3:0,i=Math.max(t.parentId||a&&t.selected?t.internals.z:0,e.parentId||a&&e.selected?e.internals.z:0);return o+i}function K1({sourceNode:t,targetNode:e,width:n,height:l,transform:a}){let o=qr(Yr(t),Yr(e));o.x===o.x2&&(o.x2+=1),o.y===o.y2&&(o.y2+=1);let i={x:-a[0]/a[2],y:-a[1]/a[2],width:n/a[2],height:l/a[2]};return Pa(i,Xr(o))>0}var _3=({source:t,sourceHandle:e,target:n,targetHandle:l})=>`xy-edge__${t}${e||""}-${n}${l||""}`,w3=(t,e)=>e.some(n=>n.source===t.source&&n.target===t.target&&(n.sourceHandle===t.sourceHandle||!n.sourceHandle&&!t.sourceHandle)&&(n.targetHandle===t.targetHandle||!n.targetHandle&&!t.targetHandle)),nh=(t,e)=>{if(!t.source||!t.target)return $d("006",_e.error006()),e;let n;return Xd(t)?n={...t}:n={...t,id:_3(t)},w3(n,e)?e:(n.sourceHandle===null&&delete n.sourceHandle,n.targetHandle===null&&delete n.targetHandle,e.concat(n))};function Kr({sourceX:t,sourceY:e,targetX:n,targetY:l}){let[a,o,i,u]=eh({sourceX:t,sourceY:e,targetX:n,targetY:l});return[`M ${t},${e}L ${n},${l}`,a,o,i,u]}var C1={[Q.Left]:{x:-1,y:0},[Q.Right]:{x:1,y:0},[Q.Top]:{x:0,y:-1},[Q.Bottom]:{x:0,y:1}},E3=({source:t,sourcePosition:e=Q.Bottom,target:n})=>e===Q.Left||e===Q.Right?t.x<n.x?{x:1,y:0}:{x:-1,y:0}:t.y<n.y?{x:0,y:1}:{x:0,y:-1},A1=(t,e)=>Math.sqrt(Math.pow(e.x-t.x,2)+Math.pow(e.y-t.y,2));function N3({source:t,sourcePosition:e=Q.Bottom,target:n,targetPosition:l=Q.Top,center:a,offset:o,stepPosition:i}){let u=C1[e],r=C1[l],c={x:t.x+u.x*o,y:t.y+u.y*o},f={x:n.x+r.x*o,y:n.y+r.y*o},d=E3({source:c,sourcePosition:e,target:f}),s=d.x!==0?"x":"y",g=d[s],b=[],v,S,p={x:0,y:0},m={x:0,y:0},[,,h,y]=eh({sourceX:t.x,sourceY:t.y,targetX:n.x,targetY:n.y});if(u[s]*r[s]===-1){s==="x"?(v=a.x??c.x+(f.x-c.x)*i,S=a.y??(c.y+f.y)/2):(v=a.x??(c.x+f.x)/2,S=a.y??c.y+(f.y-c.y)*i);let E=[{x:v,y:c.y},{x:v,y:f.y}],w=[{x:c.x,y:S},{x:f.x,y:S}];u[s]===g?b=s==="x"?E:w:b=s==="x"?w:E}else{let E=[{x:c.x,y:f.y}],w=[{x:f.x,y:c.y}];if(s==="x"?b=u.x===g?w:E:b=u.y===g?E:w,e===l){let B=Math.abs(t[s]-n[s]);if(B<=o){let Y=Math.min(o-1,o-B);u[s]===g?p[s]=(c[s]>t[s]?-1:1)*Y:m[s]=(f[s]>n[s]?-1:1)*Y}}if(e!==l){let B=s==="x"?"y":"x",Y=u[s]===r[B],_=c[B]>f[B],C=c[B]<f[B];(u[s]===1&&(!Y&&_||Y&&C)||u[s]!==1&&(!Y&&C||Y&&_))&&(b=s==="x"?E:w)}let N={x:c.x+p.x,y:c.y+p.y},z={x:f.x+m.x,y:f.y+m.y},U=Math.max(Math.abs(N.x-b[0].x),Math.abs(z.x-b[0].x)),H=Math.max(Math.abs(N.y-b[0].y),Math.abs(z.y-b[0].y));U>=H?(v=(N.x+z.x)/2,S=b[0].y):(v=b[0].x,S=(N.y+z.y)/2)}return[[t,{x:c.x+p.x,y:c.y+p.y},...b,{x:f.x+m.x,y:f.y+m.y},n],v,S,h,y]}function M3(t,e,n,l){let a=Math.min(A1(t,e)/2,A1(e,n)/2,l),{x:o,y:i}=e;if(t.x===o&&o===n.x||t.y===i&&i===n.y)return`L${o} ${i}`;if(t.y===i){let c=t.x<n.x?-1:1,f=t.y<n.y?1:-1;return`L ${o+a*c},${i}Q ${o},${i} ${o},${i+a*f}`}let u=t.x<n.x?1:-1,r=t.y<n.y?-1:1;return`L ${o},${i+a*r}Q ${o},${i} ${o+a*u},${i}`}function Ti({sourceX:t,sourceY:e,sourcePosition:n=Q.Bottom,targetX:l,targetY:a,targetPosition:o=Q.Top,borderRadius:i=5,centerX:u,centerY:r,offset:c=20,stepPosition:f=.5}){let[d,s,g,b,v]=N3({source:{x:t,y:e},sourcePosition:n,target:{x:l,y:a},targetPosition:o,center:{x:u,y:r},offset:c,stepPosition:f});return[d.reduce((p,m,h)=>{let y="";return h>0&&h<d.length-1?y=M3(d[h-1],m,d[h+1],i):y=`${h===0?"M":"L"}${m.x} ${m.y}`,p+=y,p},""),s,g,b,v]}function T1(t){return t&&!!(t.internals.handleBounds||t.handles?.length)&&!!(t.measured.width||t.width||t.initialWidth)}function j1(t){let{sourceNode:e,targetNode:n}=t;if(!T1(e)||!T1(n))return null;let l=e.internals.handleBounds||D1(e.handles),a=n.internals.handleBounds||D1(n.handles),o=O1(l?.source??[],t.sourceHandle),i=O1(t.connectionMode===ul.Strict?a?.target??[]:(a?.target??[]).concat(a?.source??[]),t.targetHandle);if(!o||!i)return t.onError?.("008",_e.error008(o?"target":"source",{id:t.id,sourceHandle:t.sourceHandle,targetHandle:t.targetHandle})),null;let u=o?.position||Q.Bottom,r=i?.position||Q.Top,c=zi(e,o,u),f=zi(n,i,r);return{sourceX:c.x,sourceY:c.y,targetX:f.x,targetY:f.y,sourcePosition:u,targetPosition:r}}function D1(t){if(!t)return null;let e=[],n=[];for(let l of t)l.width=l.width??1,l.height=l.height??1,l.type==="source"?e.push(l):l.type==="target"&&n.push(l);return{source:e,target:n}}function zi(t,e,n=Q.Left,l=!1){let a=(e?.x??0)+t.internals.positionAbsolute.x,o=(e?.y??0)+t.internals.positionAbsolute.y,{width:i,height:u}=e??Pe(t);if(l)return{x:a+i/2,y:o+u/2};switch(e?.position??n){case Q.Top:return{x:a+i/2,y:o};case Q.Right:return{x:a+i,y:o+u/2};case Q.Bottom:return{x:a+i/2,y:o+u};case Q.Left:return{x:a,y:o+u/2}}}function O1(t,e){return t&&(e?t.find(n=>n.id===e):t[0])||null}function jr(t,e){return t?typeof t=="string"?t:`${e?`${e}__`:""}${Object.keys(t).sort().map(l=>`${l}=${t[l]}`).join("&")}`:""}function $1(t,{id:e,defaultColor:n,defaultMarkerStart:l,defaultMarkerEnd:a}){let o=new Set;return t.reduce((i,u)=>([u.markerStart||l,u.markerEnd||a].forEach(r=>{if(r&&typeof r=="object"){let c=jr(r,e);o.has(c)||(i.push({id:c,color:r.color||n,...r}),o.add(c))}}),i),[]).sort((i,u)=>i.id.localeCompare(u.id))}var J1=1e3,z3=10,lh={nodeOrigin:[0,0],nodeExtent:Fa,elevateNodesOnSelect:!0,defaults:{}},C3={...lh,checkEquality:!0};function ah(t,e){let n={...t};for(let l in e)e[l]!==void 0&&(n[l]=e[l]);return n}function I1(t,e,n){let l=ah(lh,n);for(let a of t.values())if(a.parentId)oh(a,t,e,l);else{let o=Ci(a,l.nodeOrigin),i=Ia(a.extent)?a.extent:l.nodeExtent,u=Vl(o,i,Pe(a));a.internals.positionAbsolute=u}}function A3(t,e){if(!t.handles)return t.measured?e?.internals.handleBounds:void 0;let n=[],l=[];for(let a of t.handles){let o={id:a.id,width:a.width??1,height:a.height??1,nodeId:t.id,x:a.x,y:a.y,position:a.position,type:a.type};a.type==="source"?n.push(o):a.type==="target"&&l.push(o)}return{source:n,target:l}}function $r(t,e,n,l){let a=ah(C3,l),o={i:-1},i=t.length>0,u=new Map(e),r=a?.elevateNodesOnSelect?J1:0;e.clear(),n.clear();for(let c of t){let f=u.get(c.id);if(a.checkEquality&&c===f?.internals.userNode)e.set(c.id,f);else{let d=Ci(c,a.nodeOrigin),s=Ia(c.extent)?c.extent:a.nodeExtent,g=Vl(d,s,Pe(c));f={...a.defaults,...c,measured:{width:c.measured?.width,height:c.measured?.height},internals:{positionAbsolute:g,handleBounds:A3(c,f),z:F1(c,r),userNode:c}},e.set(c.id,f)}(f.measured===void 0||f.measured.width===void 0||f.measured.height===void 0)&&!f.hidden&&(i=!1),c.parentId&&oh(f,e,n,l,o)}return i}function T3(t,e){if(!t.parentId)return;let n=e.get(t.parentId);n?n.set(t.id,t):e.set(t.parentId,new Map([[t.id,t]]))}function oh(t,e,n,l,a){let{elevateNodesOnSelect:o,nodeOrigin:i,nodeExtent:u}=ah(lh,l),r=t.parentId,c=e.get(r);if(!c){console.warn(`Parent node ${r} not found. Please make sure that parent nodes are in front of their child nodes in the nodes array.`);return}T3(t,n),a&&!c.parentId&&c.internals.rootParentIndex===void 0&&(c.internals.rootParentIndex=++a.i,c.internals.z=c.internals.z+a.i*z3),a&&c.internals.rootParentIndex!==void 0&&(a.i=c.internals.rootParentIndex);let f=o?J1:0,{x:d,y:s,z:g}=D3(t,c,i,u,f),{positionAbsolute:b}=t.internals,v=d!==b.x||s!==b.y;(v||g!==t.internals.z)&&e.set(t.id,{...t,internals:{...t.internals,positionAbsolute:v?{x:d,y:s}:b,z:g}})}function F1(t,e){return(Re(t.zIndex)?t.zIndex:0)+(t.selected?e:0)}function D3(t,e,n,l,a){let{x:o,y:i}=e.internals.positionAbsolute,u=Pe(t),r=Ci(t,n),c=Ia(t.extent)?Vl(r,t.extent,u):r,f=Vl({x:o+c.x,y:i+c.y},l,u);t.extent==="parent"&&(f=q1(f,u,e));let d=F1(t,a),s=e.internals.z??0;return{x:f.x,y:f.y,z:s>=d?s+1:d}}function Jr(t,e,n,l=[0,0]){let a=[],o=new Map;for(let i of t){let u=e.get(i.parentId);if(!u)continue;let r=o.get(i.parentId)?.expandedRect??ql(u),c=Kd(r,i.rect);o.set(i.parentId,{expandedRect:c,parent:u})}return o.size>0&&o.forEach(({expandedRect:i,parent:u},r)=>{let c=u.internals.positionAbsolute,f=Pe(u),d=u.origin??l,s=i.x<c.x?Math.round(Math.abs(c.x-i.x)):0,g=i.y<c.y?Math.round(Math.abs(c.y-i.y)):0,b=Math.max(f.width,Math.round(i.width)),v=Math.max(f.height,Math.round(i.height)),S=(b-f.width)*d[0],p=(v-f.height)*d[1];(s>0||g>0||S||p)&&(a.push({id:r,type:"position",position:{x:u.position.x-s+S,y:u.position.y-g+p}}),n.get(r)?.forEach(m=>{t.some(h=>h.id===m.id)||a.push({id:m.id,type:"position",position:{x:m.position.x+s,y:m.position.y+g}})})),(f.width<i.width||f.height<i.height||s||g)&&a.push({id:r,type:"dimensions",setAttributes:!0,dimensions:{width:b+(s?d[0]*s-S:0),height:v+(g?d[1]*g-p:0)}})}),a}function W1(t,e,n,l,a,o){let i=l?.querySelector(".xyflow__viewport"),u=!1;if(!i)return{changes:[],updatedInternals:u};let r=[],c=window.getComputedStyle(i),{m22:f}=new window.DOMMatrixReadOnly(c.transform),d=[];for(let s of t.values()){let g=e.get(s.id);if(!g)continue;if(g.hidden){e.set(g.id,{...g,internals:{...g.internals,handleBounds:void 0}}),u=!0;continue}let b=Zr(s.nodeElement),v=g.measured.width!==b.width||g.measured.height!==b.height;if(!!(b.width&&b.height&&(v||!g.internals.handleBounds||s.force))){let p=s.nodeElement.getBoundingClientRect(),m=Ia(g.extent)?g.extent:o,{positionAbsolute:h}=g.internals;g.parentId&&g.extent==="parent"?h=q1(h,b,e.get(g.parentId)):m&&(h=Vl(h,m,b));let y={...g,measured:b,internals:{...g.internals,positionAbsolute:h,handleBounds:{source:M1("source",s.nodeElement,p,f,g.id),target:M1("target",s.nodeElement,p,f,g.id)}}};e.set(g.id,y),g.parentId&&oh(y,e,n,{nodeOrigin:a}),u=!0,v&&(r.push({id:g.id,type:"dimensions",dimensions:b}),g.expandParent&&g.parentId&&d.push({id:g.id,parentId:g.parentId,rect:ql(y,a)}))}}if(d.length>0){let s=Jr(d,e,n,a);r.push(...s)}return{changes:r,updatedInternals:u}}async function P1({delta:t,panZoom:e,transform:n,translateExtent:l,width:a,height:o}){if(!e||!t.x&&!t.y)return Promise.resolve(!1);let i=await e.setViewportConstrained({x:n[0]+t.x,y:n[1]+t.y,zoom:n[2]},[[0,0],[a,o]],l),u=!!i&&(i.x!==n[0]||i.y!==n[1]||i.k!==n[2]);return Promise.resolve(u)}function H1(t,e,n,l,a,o){let i=a,u=l.get(i)||new Map;l.set(i,u.set(n,e)),i=`${a}-${t}`;let r=l.get(i)||new Map;if(l.set(i,r.set(n,e)),o){i=`${a}-${t}-${o}`;let c=l.get(i)||new Map;l.set(i,c.set(n,e))}}function ih(t,e,n){t.clear(),e.clear();for(let l of n){let{source:a,target:o,sourceHandle:i=null,targetHandle:u=null}=l,r={edgeId:l.id,source:a,target:o,sourceHandle:i,targetHandle:u},c=`${a}-${i}--${o}-${u}`,f=`${o}-${u}--${a}-${i}`;H1("source",r,f,t,a,i),H1("target",r,c,t,o,u),e.set(l.id,l)}}function tv(t,e){if(!t.parentId)return!1;let n=e.get(t.parentId);return n?n.selected?!0:tv(n,e):!1}function R1(t,e,n){let l=t;do{if(l?.matches?.(e))return!0;if(l===n)return!1;l=l?.parentElement}while(l);return!1}function O3(t,e,n,l){let a=new Map;for(let[o,i]of t)if((i.selected||i.id===l)&&(!i.parentId||!tv(i,t))&&(i.draggable||e&&typeof i.draggable>"u")){let u=t.get(o);u&&a.set(o,{id:o,position:u.position||{x:0,y:0},distance:{x:n.x-u.internals.positionAbsolute.x,y:n.y-u.internals.positionAbsolute.y},extent:u.extent,parentId:u.parentId,origin:u.origin,expandParent:u.expandParent,internals:{positionAbsolute:u.internals.positionAbsolute||{x:0,y:0}},measured:{width:u.measured.width??0,height:u.measured.height??0}})}return a}function Rd({nodeId:t,dragItems:e,nodeLookup:n,dragging:l=!0}){let a=[];for(let[i,u]of e){let r=n.get(i)?.internals.userNode;r&&a.push({...r,position:u.position,dragging:l})}if(!t)return[a[0],a];let o=n.get(t)?.internals.userNode;return[o?{...o,position:e.get(t)?.position||o.position,dragging:l}:a[0],a]}function H3({dragItems:t,snapGrid:e,x:n,y:l}){let a=t.values().next().value;if(!a)return null;let o={x:n-a.distance.x,y:l-a.distance.y},i=to(o,e);return{x:i.x-o.x,y:i.y-o.y}}function ev({onNodeMouseDown:t,getStoreItems:e,onDragStart:n,onDrag:l,onDragStop:a}){let o={x:null,y:null},i=0,u=new Map,r=!1,c={x:0,y:0},f=null,d=!1,s=null,g=!1,b=!1,v=null;function S({noDragClassName:m,handleSelector:h,domNode:y,isSelectable:x,nodeId:E,nodeClickDistance:w=0}){s=It(y);function N({x:B,y:Y}){let{nodeLookup:_,nodeExtent:C,snapGrid:M,snapToGrid:T,nodeOrigin:A,onNodeDrag:O,onSelectionDrag:L,onError:q,updateNodePositions:V}=e();o={x:B,y:Y};let G=!1,Z=u.size>1,$=Z&&C?Ud(Wa(u)):null,tt=Z&&T?H3({dragItems:u,snapGrid:M,x:B,y:Y}):null;for(let[K,X]of u){if(!_.has(K))continue;let j={x:B-X.distance.x,y:Y-X.distance.y};T&&(j=tt?{x:Math.round(j.x+tt.x),y:Math.round(j.y+tt.y)}:to(j,M));let ot=null;if(Z&&C&&!X.extent&&$){let{positionAbsolute:F}=X.internals,ut=F.x-$.x+C[0][0],St=F.x+X.measured.width-$.x2+C[1][0],_t=F.y-$.y+C[0][1],Zt=F.y+X.measured.height-$.y2+C[1][1];ot=[[ut,_t],[St,Zt]]}let{position:et,positionAbsolute:I}=Qd({nodeId:K,nextPosition:j,nodeLookup:_,nodeExtent:ot||C,nodeOrigin:A,onError:q});G=G||X.position.x!==et.x||X.position.y!==et.y,X.position=et,X.internals.positionAbsolute=I}if(b=b||G,!!G&&(V(u,!0),v&&(l||O||!E&&L))){let[K,X]=Rd({nodeId:E,dragItems:u,nodeLookup:_});l?.(v,u,K,X),O?.(v,K,X),E||L?.(v,X)}}async function z(){if(!f)return;let{transform:B,panBy:Y,autoPanSpeed:_,autoPanOnNodeDrag:C}=e();if(!C){r=!1,cancelAnimationFrame(i);return}let[M,T]=X1(c,f,_);(M!==0||T!==0)&&(o.x=(o.x??0)-M/B[2],o.y=(o.y??0)-T/B[2],await Y({x:M,y:T})&&N(o)),i=requestAnimationFrame(z)}function U(B){let{nodeLookup:Y,multiSelectionActive:_,nodesDraggable:C,transform:M,snapGrid:T,snapToGrid:A,selectNodesOnDrag:O,onNodeDragStart:L,onSelectionDragStart:q,unselectNodesAndEdges:V}=e();d=!0,(!O||!x)&&!_&&E&&(Y.get(E)?.selected||V()),x&&O&&E&&t?.(E);let G=Ni(B.sourceEvent,{transform:M,snapGrid:T,snapToGrid:A,containerBounds:f});if(o=G,u=O3(Y,C,G,E),u.size>0&&(n||L||!E&&q)){let[Z,$]=Rd({nodeId:E,dragItems:u,nodeLookup:Y});n?.(B.sourceEvent,u,Z,$),L?.(B.sourceEvent,Z,$),E||q?.(B.sourceEvent,$)}}let H=id().clickDistance(w).on("start",B=>{let{domNode:Y,nodeDragThreshold:_,transform:C,snapGrid:M,snapToGrid:T}=e();f=Y?.getBoundingClientRect()||null,g=!1,b=!1,v=B.sourceEvent,_===0&&U(B),o=Ni(B.sourceEvent,{transform:C,snapGrid:M,snapToGrid:T,containerBounds:f}),c=Be(B.sourceEvent,f)}).on("drag",B=>{let{autoPanOnNodeDrag:Y,transform:_,snapGrid:C,snapToGrid:M,nodeDragThreshold:T,nodeLookup:A}=e(),O=Ni(B.sourceEvent,{transform:_,snapGrid:C,snapToGrid:M,containerBounds:f});if(v=B.sourceEvent,(B.sourceEvent.type==="touchmove"&&B.sourceEvent.touches.length>1||E&&!A.has(E))&&(g=!0),!g){if(!r&&Y&&d&&(r=!0,z()),!d){let L=Be(B.sourceEvent,f),q=L.x-c.x,V=L.y-c.y;Math.sqrt(q*q+V*V)>T&&U(B)}(o.x!==O.xSnapped||o.y!==O.ySnapped)&&u&&d&&(c=Be(B.sourceEvent,f),N(O))}}).on("end",B=>{if(!(!d||g)&&(r=!1,d=!1,cancelAnimationFrame(i),u.size>0)){let{nodeLookup:Y,updateNodePositions:_,onNodeDragStop:C,onSelectionDragStop:M}=e();if(b&&(_(u,!1),b=!1),a||C||!E&&M){let[T,A]=Rd({nodeId:E,dragItems:u,nodeLookup:Y,dragging:!1});a?.(B.sourceEvent,u,T,A),C?.(B.sourceEvent,T,A),E||M?.(B.sourceEvent,A)}}}).filter(B=>{let Y=B.target;return!B.button&&(!m||!R1(Y,`.${m}`,y))&&(!h||R1(Y,h,y))});s.call(H)}function p(){s?.on(".drag",null)}return{update:S,destroy:p}}function R3(t,e,n){let l=[],a={x:t.x-n,y:t.y-n,width:n*2,height:n*2};for(let o of e.values())Pa(a,ql(o))>0&&l.push(o);return l}var B3=250;function k3(t,e,n,l){let a=[],o=1/0,i=R3(t,n,e+B3);for(let u of i){let r=[...u.internals.handleBounds?.source??[],...u.internals.handleBounds?.target??[]];for(let c of r){if(l.nodeId===c.nodeId&&l.type===c.type&&l.id===c.id)continue;let{x:f,y:d}=zi(u,c,c.position,!0),s=Math.sqrt(Math.pow(f-t.x,2)+Math.pow(d-t.y,2));s>e||(s<o?(a=[{...c,x:f,y:d}],o=s):s===o&&a.push({...c,x:f,y:d}))}}if(!a.length)return null;if(a.length>1){let u=l.type==="source"?"target":"source";return a.find(r=>r.type===u)??a[0]}return a[0]}function nv(t,e,n,l,a,o=!1){let i=l.get(t);if(!i)return null;let u=a==="strict"?i.internals.handleBounds?.[e]:[...i.internals.handleBounds?.source??[],...i.internals.handleBounds?.target??[]],r=(n?u?.find(c=>c.id===n):u?.[0])??null;return r&&o?{...r,...zi(i,r,r.position,!0)}:r}function lv(t,e){return t||(e?.classList.contains("target")?"target":e?.classList.contains("source")?"source":null)}function U3(t,e){let n=null;return e?n=!0:t&&!e&&(n=!1),n}var av=()=>!0;function L3(t,{connectionMode:e,connectionRadius:n,handleId:l,nodeId:a,edgeUpdaterType:o,isTarget:i,domNode:u,nodeLookup:r,lib:c,autoPanOnConnect:f,flowId:d,panBy:s,cancelConnection:g,onConnectStart:b,onConnect:v,onConnectEnd:S,isValidConnection:p=av,onReconnectEnd:m,updateConnection:h,getTransform:y,getFromHandle:x,autoPanSpeed:E,dragThreshold:w=1,handleDomNode:N}){let z=Wd(t.target),U=0,H,{x:B,y:Y}=Be(t),_=lv(o,N),C=u?.getBoundingClientRect(),M=!1;if(!C||!_)return;let T=nv(a,_,l,r,e);if(!T)return;let A=Be(t,C),O=!1,L=null,q=!1,V=null;function G(){if(!f||!C)return;let[et,I]=X1(A,C,E);s({x:et,y:I}),U=requestAnimationFrame(G)}let Z={...T,nodeId:a,type:_,position:T.position},$=r.get(a),K={inProgress:!0,isValid:null,from:zi($,Z,Q.Left,!0),fromHandle:Z,fromPosition:Z.position,fromNode:$,to:A,toHandle:null,toPosition:E1[Z.position],toNode:null};function X(){M=!0,h(K),b?.(t,{nodeId:a,handleId:l,handleType:_})}w===0&&X();function j(et){if(!M){let{x:St,y:_t}=Be(et),Zt=St-B,tn=_t-Y;if(!(Zt*Zt+tn*tn>w*w))return;X()}if(!x()||!Z){ot(et);return}let I=y();A=Be(et,C),H=k3(eo(A,I,!1,[1,1]),n,r,Z),O||(G(),O=!0);let F=ov(et,{handle:H,connectionMode:e,fromNodeId:a,fromHandleId:l,fromType:i?"target":"source",isValidConnection:p,doc:z,lib:c,flowId:d,nodeLookup:r});V=F.handleDomNode,L=F.connection,q=U3(!!H,F.isValid);let ut={...K,isValid:q,to:F.toHandle&&q?Mi({x:F.toHandle.x,y:F.toHandle.y},I):A,toHandle:F.toHandle,toPosition:q&&F.toHandle?F.toHandle.position:E1[Z.position],toNode:F.toHandle?r.get(F.toHandle.nodeId):null};q&&H&&K.toHandle&&ut.toHandle&&K.toHandle.type===ut.toHandle.type&&K.toHandle.nodeId===ut.toHandle.nodeId&&K.toHandle.id===ut.toHandle.id&&K.to.x===ut.to.x&&K.to.y===ut.to.y||(h(ut),K=ut)}function ot(et){if(!("touches"in et&&et.touches.length>0)){if(M){(H||V)&&L&&q&&v?.(L);let{inProgress:I,...F}=K,ut={...F,toPosition:K.toHandle?K.toPosition:null};S?.(et,ut),o&&m?.(et,ut)}g(),cancelAnimationFrame(U),O=!1,q=!1,L=null,V=null,z.removeEventListener("mousemove",j),z.removeEventListener("mouseup",ot),z.removeEventListener("touchmove",j),z.removeEventListener("touchend",ot)}}z.addEventListener("mousemove",j),z.addEventListener("mouseup",ot),z.addEventListener("touchmove",j),z.addEventListener("touchend",ot)}function ov(t,{handle:e,connectionMode:n,fromNodeId:l,fromHandleId:a,fromType:o,doc:i,lib:u,flowId:r,isValidConnection:c=av,nodeLookup:f}){let d=o==="target",s=e?i.querySelector(`.${u}-flow__handle[data-id="${r}-${e?.nodeId}-${e?.id}-${e?.type}"]`):null,{x:g,y:b}=Be(t),v=i.elementFromPoint(g,b),S=v?.classList.contains(`${u}-flow__handle`)?v:s,p={handleDomNode:S,isValid:!1,connection:null,toHandle:null};if(S){let m=lv(void 0,S),h=S.getAttribute("data-nodeid"),y=S.getAttribute("data-handleid"),x=S.classList.contains("connectable"),E=S.classList.contains("connectableend");if(!h||!m)return p;let w={source:d?h:l,sourceHandle:d?y:a,target:d?l:h,targetHandle:d?a:y};p.connection=w;let z=x&&E&&(n===ul.Strict?d&&m==="source"||!d&&m==="target":h!==l||y!==a);p.isValid=z&&c(w),p.toHandle=nv(h,m,y,f,n,!0)}return p}var Ir={onPointerDown:L3,isValid:ov};function iv({domNode:t,panZoom:e,getTransform:n,getViewScale:l}){let a=It(t);function o({translateExtent:u,width:r,height:c,zoomStep:f=1,pannable:d=!0,zoomable:s=!0,inversePan:g=!1}){let b=h=>{if(h.sourceEvent.type!=="wheel"||!e)return;let y=n(),x=h.sourceEvent.ctrlKey&&no()?10:1,E=-h.sourceEvent.deltaY*(h.sourceEvent.deltaMode===1?.05:h.sourceEvent.deltaMode?1:.002)*f,w=y[2]*Math.pow(2,E*x);e.scaleTo(w)},v=[0,0],S=h=>{(h.sourceEvent.type==="mousedown"||h.sourceEvent.type==="touchstart")&&(v=[h.sourceEvent.clientX??h.sourceEvent.touches[0].clientX,h.sourceEvent.clientY??h.sourceEvent.touches[0].clientY])},p=h=>{let y=n();if(h.sourceEvent.type!=="mousemove"&&h.sourceEvent.type!=="touchmove"||!e)return;let x=[h.sourceEvent.clientX??h.sourceEvent.touches[0].clientX,h.sourceEvent.clientY??h.sourceEvent.touches[0].clientY],E=[x[0]-v[0],x[1]-v[1]];v=x;let w=l()*Math.max(y[2],Math.log(y[2]))*(g?-1:1),N={x:y[0]-E[0]*w,y:y[1]-E[1]*w},z=[[0,0],[r,c]];e.setViewportConstrained({x:N.x,y:N.y,zoom:y[2]},z,u)},m=Hd().on("start",S).on("zoom",d?p:null).on("zoom.wheel",s?b:null);a.call(m,{})}function i(){a.on("zoom",null)}return{update:o,destroy:i,pointer:re}}var Fr=t=>({x:t.x,y:t.y,zoom:t.k}),Bd=({x:t,y:e,zoom:n})=>Ei.translate(t,e).scale(n),ja=(t,e)=>t.target.closest(`.${e}`),uv=(t,e)=>e===2&&Array.isArray(t)&&t.includes(2),Y3=t=>((t*=2)<=1?t*t*t:(t-=2)*t*t+2)/2,kd=(t,e=0,n=Y3,l=()=>{})=>{let a=typeof e=="number"&&e>0;return a||l(),a?t.transition().duration(e).ease(n).on("end",l):t},rv=t=>{let e=t.ctrlKey&&no()?10:1;return-t.deltaY*(t.deltaMode===1?.05:t.deltaMode?1:.002)*e};function V3({zoomPanValues:t,noWheelClassName:e,d3Selection:n,d3Zoom:l,panOnScrollMode:a,panOnScrollSpeed:o,zoomOnPinch:i,onPanZoomStart:u,onPanZoom:r,onPanZoomEnd:c}){return f=>{if(ja(f,e))return f.ctrlKey&&f.preventDefault(),!1;f.preventDefault(),f.stopImmediatePropagation();let d=n.property("__zoom").k||1;if(f.ctrlKey&&i){let S=re(f),p=rv(f),m=d*Math.pow(2,p);l.scaleTo(n,m,S,f);return}let s=f.deltaMode===1?20:1,g=a===zn.Vertical?0:f.deltaX*s,b=a===zn.Horizontal?0:f.deltaY*s;!no()&&f.shiftKey&&a!==zn.Vertical&&(g=f.deltaY*s,b=0),l.translateBy(n,-(g/d)*o,-(b/d)*o,{internal:!0});let v=Fr(n.property("__zoom"));clearTimeout(t.panScrollTimeout),t.isPanScrolling?(r?.(f,v),t.panScrollTimeout=setTimeout(()=>{c?.(f,v),t.isPanScrolling=!1},150)):(t.isPanScrolling=!0,u?.(f,v))}}function q3({noWheelClassName:t,preventScrolling:e,d3ZoomHandler:n}){return function(l,a){let o=l.type==="wheel",i=!e&&o&&!l.ctrlKey,u=ja(l,t);if(l.ctrlKey&&o&&u&&l.preventDefault(),i||u)return null;l.preventDefault(),n.call(this,l,a)}}function X3({zoomPanValues:t,onDraggingChange:e,onPanZoomStart:n}){return l=>{if(l.sourceEvent?.internal)return;let a=Fr(l.transform);t.mouseButton=l.sourceEvent?.button||0,t.isZoomingOrPanning=!0,t.prevViewport=a,l.sourceEvent?.type==="mousedown"&&e(!0),n&&n?.(l.sourceEvent,a)}}function Z3({zoomPanValues:t,panOnDrag:e,onPaneContextMenu:n,onTransformChange:l,onPanZoom:a}){return o=>{t.usedRightMouseButton=!!(n&&uv(e,t.mouseButton??0)),o.sourceEvent?.sync||l([o.transform.x,o.transform.y,o.transform.k]),a&&!o.sourceEvent?.internal&&a?.(o.sourceEvent,Fr(o.transform))}}function G3({zoomPanValues:t,panOnDrag:e,panOnScroll:n,onDraggingChange:l,onPanZoomEnd:a,onPaneContextMenu:o}){return i=>{if(!i.sourceEvent?.internal&&(t.isZoomingOrPanning=!1,o&&uv(e,t.mouseButton??0)&&!t.usedRightMouseButton&&i.sourceEvent&&o(i.sourceEvent),t.usedRightMouseButton=!1,l(!1),a)){let u=Fr(i.transform);t.prevViewport=u,clearTimeout(t.timerId),t.timerId=setTimeout(()=>{a?.(i.sourceEvent,u)},n?150:0)}}}function Q3({zoomActivationKeyPressed:t,zoomOnScroll:e,zoomOnPinch:n,panOnDrag:l,panOnScroll:a,zoomOnDoubleClick:o,userSelectionActive:i,noWheelClassName:u,noPanClassName:r,lib:c,connectionInProgress:f}){return d=>{let s=t||e,g=n&&d.ctrlKey,b=d.type==="wheel";if(d.button===1&&d.type==="mousedown"&&(ja(d,`${c}-flow__node`)||ja(d,`${c}-flow__edge`)))return!0;if(!l&&!s&&!a&&!o&&!n||i||f&&!b||ja(d,u)&&b||ja(d,r)&&(!b||a&&b&&!t)||!n&&d.ctrlKey&&b)return!1;if(!n&&d.type==="touchstart"&&d.touches?.length>1)return d.preventDefault(),!1;if(!s&&!a&&!g&&b||!l&&(d.type==="mousedown"||d.type==="touchstart")||Array.isArray(l)&&!l.includes(d.button)&&d.type==="mousedown")return!1;let v=Array.isArray(l)&&l.includes(d.button)||!d.button||d.button<=1;return(!d.ctrlKey||b)&&v}}function cv({domNode:t,minZoom:e,maxZoom:n,translateExtent:l,viewport:a,onPanZoom:o,onPanZoomStart:i,onPanZoomEnd:u,onDraggingChange:r}){let c={isZoomingOrPanning:!1,usedRightMouseButton:!1,prevViewport:{x:0,y:0,zoom:0},mouseButton:0,timerId:void 0,panScrollTimeout:void 0,isPanScrolling:!1},f=t.getBoundingClientRect(),d=Hd().scaleExtent([e,n]).translateExtent(l),s=It(t).call(d);m({x:a.x,y:a.y,zoom:Ja(a.zoom,e,n)},[[0,0],[f.width,f.height]],l);let g=s.on("wheel.zoom"),b=s.on("dblclick.zoom");d.wheelDelta(rv);function v(H,B){return s?new Promise(Y=>{d?.interpolate(B?.interpolate==="linear"?Xa:Za).transform(kd(s,B?.duration,B?.ease,()=>Y(!0)),H)}):Promise.resolve(!1)}function S({noWheelClassName:H,noPanClassName:B,onPaneContextMenu:Y,userSelectionActive:_,panOnScroll:C,panOnDrag:M,panOnScrollMode:T,panOnScrollSpeed:A,preventScrolling:O,zoomOnPinch:L,zoomOnScroll:q,zoomOnDoubleClick:V,zoomActivationKeyPressed:G,lib:Z,onTransformChange:$,connectionInProgress:tt,paneClickDistance:K,selectionOnDrag:X}){_&&!c.isZoomingOrPanning&&p();let j=C&&!G&&!_;d.clickDistance(X?1/0:!Re(K)||K<0?0:K);let ot=j?V3({zoomPanValues:c,noWheelClassName:H,d3Selection:s,d3Zoom:d,panOnScrollMode:T,panOnScrollSpeed:A,zoomOnPinch:L,onPanZoomStart:i,onPanZoom:o,onPanZoomEnd:u}):q3({noWheelClassName:H,preventScrolling:O,d3ZoomHandler:g});if(s.on("wheel.zoom",ot,{passive:!1}),!_){let I=X3({zoomPanValues:c,onDraggingChange:r,onPanZoomStart:i});d.on("start",I);let F=Z3({zoomPanValues:c,panOnDrag:M,onPaneContextMenu:!!Y,onPanZoom:o,onTransformChange:$});d.on("zoom",F);let ut=G3({zoomPanValues:c,panOnDrag:M,panOnScroll:C,onPaneContextMenu:Y,onPanZoomEnd:u,onDraggingChange:r});d.on("end",ut)}let et=Q3({zoomActivationKeyPressed:G,panOnDrag:M,zoomOnScroll:q,panOnScroll:C,zoomOnDoubleClick:V,zoomOnPinch:L,userSelectionActive:_,noPanClassName:B,noWheelClassName:H,lib:Z,connectionInProgress:tt});d.filter(et),V?s.on("dblclick.zoom",b):s.on("dblclick.zoom",null)}function p(){d.on("zoom",null)}async function m(H,B,Y){let _=Bd(H),C=d?.constrain()(_,B,Y);return C&&await v(C),new Promise(M=>M(C))}async function h(H,B){let Y=Bd(H);return await v(Y,B),new Promise(_=>_(Y))}function y(H){if(s){let B=Bd(H),Y=s.property("__zoom");(Y.k!==H.zoom||Y.x!==H.x||Y.y!==H.y)&&d?.transform(s,B,null,{sync:!0})}}function x(){let H=s?Od(s.node()):{x:0,y:0,k:1};return{x:H.x,y:H.y,zoom:H.k}}function E(H,B){return s?new Promise(Y=>{d?.interpolate(B?.interpolate==="linear"?Xa:Za).scaleTo(kd(s,B?.duration,B?.ease,()=>Y(!0)),H)}):Promise.resolve(!1)}function w(H,B){return s?new Promise(Y=>{d?.interpolate(B?.interpolate==="linear"?Xa:Za).scaleBy(kd(s,B?.duration,B?.ease,()=>Y(!0)),H)}):Promise.resolve(!1)}function N(H){d?.scaleExtent(H)}function z(H){d?.translateExtent(H)}function U(H){let B=!Re(H)||H<0?0:H;d?.clickDistance(B)}return{update:S,destroy:p,setViewport:h,setViewportConstrained:m,getViewport:x,scaleTo:E,scaleBy:w,setScaleExtent:N,setTranslateExtent:z,syncViewport:y,setClickDistance:U}}var rl;(function(t){t.Line="line",t.Handle="handle"})(rl||(rl={}));function K3({width:t,prevWidth:e,height:n,prevHeight:l,affectsX:a,affectsY:o}){let i=t-e,u=n-l,r=[i>0?1:i<0?-1:0,u>0?1:u<0?-1:0];return i&&a&&(r[0]=r[0]*-1),u&&o&&(r[1]=r[1]*-1),r}function B1(t){let e=t.includes("right")||t.includes("left"),n=t.includes("bottom")||t.includes("top"),l=t.includes("left"),a=t.includes("top");return{isHorizontal:e,isVertical:n,affectsX:l,affectsY:a}}function ol(t,e){return Math.max(0,e-t)}function il(t,e){return Math.max(0,t-e)}function Lr(t,e,n){return Math.max(0,e-t,t-n)}function k1(t,e){return t?!e:e}function j3(t,e,n,l,a,o,i,u){let{affectsX:r,affectsY:c}=e,{isHorizontal:f,isVertical:d}=e,s=f&&d,{xSnapped:g,ySnapped:b}=n,{minWidth:v,maxWidth:S,minHeight:p,maxHeight:m}=l,{x:h,y,width:x,height:E,aspectRatio:w}=t,N=Math.floor(f?g-t.pointerX:0),z=Math.floor(d?b-t.pointerY:0),U=x+(r?-N:N),H=E+(c?-z:z),B=-o[0]*x,Y=-o[1]*E,_=Lr(U,v,S),C=Lr(H,p,m);if(i){let A=0,O=0;r&&N<0?A=ol(h+N+B,i[0][0]):!r&&N>0&&(A=il(h+U+B,i[1][0])),c&&z<0?O=ol(y+z+Y,i[0][1]):!c&&z>0&&(O=il(y+H+Y,i[1][1])),_=Math.max(_,A),C=Math.max(C,O)}if(u){let A=0,O=0;r&&N>0?A=il(h+N,u[0][0]):!r&&N<0&&(A=ol(h+U,u[1][0])),c&&z>0?O=il(y+z,u[0][1]):!c&&z<0&&(O=ol(y+H,u[1][1])),_=Math.max(_,A),C=Math.max(C,O)}if(a){if(f){let A=Lr(U/w,p,m)*w;if(_=Math.max(_,A),i){let O=0;!r&&!c||r&&!c&&s?O=il(y+Y+U/w,i[1][1])*w:O=ol(y+Y+(r?N:-N)/w,i[0][1])*w,_=Math.max(_,O)}if(u){let O=0;!r&&!c||r&&!c&&s?O=ol(y+U/w,u[1][1])*w:O=il(y+(r?N:-N)/w,u[0][1])*w,_=Math.max(_,O)}}if(d){let A=Lr(H*w,v,S)/w;if(C=Math.max(C,A),i){let O=0;!r&&!c||c&&!r&&s?O=il(h+H*w+B,i[1][0])/w:O=ol(h+(c?z:-z)*w+B,i[0][0])/w,C=Math.max(C,O)}if(u){let O=0;!r&&!c||c&&!r&&s?O=ol(h+H*w,u[1][0])/w:O=il(h+(c?z:-z)*w,u[0][0])/w,C=Math.max(C,O)}}}z=z+(z<0?C:-C),N=N+(N<0?_:-_),a&&(s?U>H*w?z=(k1(r,c)?-N:N)/w:N=(k1(r,c)?-z:z)*w:f?(z=N/w,c=r):(N=z*w,r=c));let M=r?h+N:h,T=c?y+z:y;return{width:x+(r?-N:N),height:E+(c?-z:z),x:o[0]*N*(r?-1:1)+M,y:o[1]*z*(c?-1:1)+T}}var sv={width:0,height:0,x:0,y:0},$3={...sv,pointerX:0,pointerY:0,aspectRatio:1};function J3(t){return[[0,0],[t.measured.width,t.measured.height]]}function I3(t,e,n){let l=e.position.x+t.position.x,a=e.position.y+t.position.y,o=t.measured.width??0,i=t.measured.height??0,u=n[0]*o,r=n[1]*i;return[[l-u,a-r],[l+o-u,a+i-r]]}function fv({domNode:t,nodeId:e,getStoreItems:n,onChange:l,onEnd:a}){let o=It(t),i={controlDirection:B1("bottom-right"),boundaries:{minWidth:0,minHeight:0,maxWidth:Number.MAX_VALUE,maxHeight:Number.MAX_VALUE},resizeDirection:void 0,keepAspectRatio:!1};function u({controlPosition:c,boundaries:f,keepAspectRatio:d,resizeDirection:s,onResizeStart:g,onResize:b,onResizeEnd:v,shouldResize:S}){let p={...sv},m={...$3};i={boundaries:f,resizeDirection:s,keepAspectRatio:d,controlDirection:B1(c)};let h,y=null,x=[],E,w,N,z=!1,U=id().on("start",H=>{let{nodeLookup:B,transform:Y,snapGrid:_,snapToGrid:C,nodeOrigin:M,paneDomNode:T}=n();if(h=B.get(e),!h)return;y=T?.getBoundingClientRect()??null;let{xSnapped:A,ySnapped:O}=Ni(H.sourceEvent,{transform:Y,snapGrid:_,snapToGrid:C,containerBounds:y});p={width:h.measured.width??0,height:h.measured.height??0,x:h.position.x??0,y:h.position.y??0},m={...p,pointerX:A,pointerY:O,aspectRatio:p.width/p.height},E=void 0,h.parentId&&(h.extent==="parent"||h.expandParent)&&(E=B.get(h.parentId),w=E&&h.extent==="parent"?J3(E):void 0),x=[],N=void 0;for(let[L,q]of B)if(q.parentId===e&&(x.push({id:L,position:{...q.position},extent:q.extent}),q.extent==="parent"||q.expandParent)){let V=I3(q,h,q.origin??M);N?N=[[Math.min(V[0][0],N[0][0]),Math.min(V[0][1],N[0][1])],[Math.max(V[1][0],N[1][0]),Math.max(V[1][1],N[1][1])]]:N=V}g?.(H,{...p})}).on("drag",H=>{let{transform:B,snapGrid:Y,snapToGrid:_,nodeOrigin:C}=n(),M=Ni(H.sourceEvent,{transform:B,snapGrid:Y,snapToGrid:_,containerBounds:y}),T=[];if(!h)return;let{x:A,y:O,width:L,height:q}=p,V={},G=h.origin??C,{width:Z,height:$,x:tt,y:K}=j3(m,i.controlDirection,M,i.boundaries,i.keepAspectRatio,G,w,N),X=Z!==L,j=$!==q,ot=tt!==A&&X,et=K!==O&&j;if(!ot&&!et&&!X&&!j)return;if((ot||et||G[0]===1||G[1]===1)&&(V.x=ot?tt:p.x,V.y=et?K:p.y,p.x=V.x,p.y=V.y,x.length>0)){let St=tt-A,_t=K-O;for(let Zt of x)Zt.position={x:Zt.position.x-St+G[0]*(Z-L),y:Zt.position.y-_t+G[1]*($-q)},T.push(Zt)}if((X||j)&&(V.width=X&&(!i.resizeDirection||i.resizeDirection==="horizontal")?Z:p.width,V.height=j&&(!i.resizeDirection||i.resizeDirection==="vertical")?$:p.height,p.width=V.width,p.height=V.height),E&&h.expandParent){let St=G[0]*(V.width??0);V.x&&V.x<St&&(p.x=St,m.x=m.x-(V.x-St));let _t=G[1]*(V.height??0);V.y&&V.y<_t&&(p.y=_t,m.y=m.y-(V.y-_t))}let I=K3({width:p.width,prevWidth:L,height:p.height,prevHeight:q,affectsX:i.controlDirection.affectsX,affectsY:i.controlDirection.affectsY}),F={...p,direction:I};S?.(H,F)!==!1&&(z=!0,b?.(H,F),l(V,T))}).on("end",H=>{z&&(v?.(H,{...p}),a?.({...p}),z=!1)});o.call(U)}function r(){o.on(".drag",null)}return{update:u,destroy:r}}var wv=se(An(),1),Ev=se(bv(),1);var xv=t=>{let e,n=new Set,l=(f,d)=>{let s=typeof f=="function"?f(e):f;if(!Object.is(s,e)){let g=e;e=d??(typeof s!="object"||s===null)?s:Object.assign({},e,s),n.forEach(b=>b(e,g))}},a=()=>e,r={setState:l,getState:a,getInitialState:()=>c,subscribe:f=>(n.add(f),()=>n.delete(f)),destroy:()=>{(import.meta.env?import.meta.env.MODE:void 0)!=="production"&&console.warn("[DEPRECATED] The `destroy` method will be unsupported in a future version. Instead use unsubscribe function returned by subscribe. Everything will be garbage-collected if store is garbage-collected."),n.clear()}},c=e=t(l,a,r);return r},Sv=t=>t?xv(t):xv;var{useDebugValue:gM}=wv.default,{useSyncExternalStoreWithSelector:pM}=Ev.default,mM=t=>t;function rh(t,e=mM,n){let l=pM(t.subscribe,t.getState,t.getServerState||t.getInitialState,e,n);return gM(l),l}var _v=(t,e)=>{let n=Sv(t),l=(a,o=e)=>rh(n,a,o);return Object.assign(l,n),l},Nv=(t,e)=>t?_v(t,e):_v;function Nt(t,e){if(Object.is(t,e))return!0;if(typeof t!="object"||t===null||typeof e!="object"||e===null)return!1;if(t instanceof Map&&e instanceof Map){if(t.size!==e.size)return!1;for(let[l,a]of t)if(!Object.is(a,e.get(l)))return!1;return!0}if(t instanceof Set&&e instanceof Set){if(t.size!==e.size)return!1;for(let l of t)if(!e.has(l))return!1;return!0}let n=Object.keys(t);if(n.length!==Object.keys(e).length)return!1;for(let l of n)if(!Object.prototype.hasOwnProperty.call(e,l)||!Object.is(t[l],e[l]))return!1;return!0}var yM=se(Nc()),nc=(0,R.createContext)(null),vM=nc.Provider,Jv=_e.error001();function rt(t,e){let n=(0,R.useContext)(nc);if(n===null)throw new Error(Jv);return rh(n,t,e)}function Mt(){let t=(0,R.useContext)(nc);if(t===null)throw new Error(Jv);return(0,R.useMemo)(()=>({getState:t.getState,setState:t.setState,subscribe:t.subscribe}),[t])}var Mv={display:"none"},bM={position:"absolute",width:1,height:1,margin:-1,border:0,padding:0,overflow:"hidden",clip:"rect(0px, 0px, 0px, 0px)",clipPath:"inset(100%)"},Iv="react-flow__node-desc",Fv="react-flow__edge-desc",xM="react-flow__aria-live",SM=t=>t.ariaLiveMessage,_M=t=>t.ariaLabelConfig;function wM({rfId:t}){let e=rt(SM);return(0,D.jsx)("div",{id:`${xM}-${t}`,"aria-live":"assertive","aria-atomic":"true",style:bM,children:e})}function EM({rfId:t,disableKeyboardA11y:e}){let n=rt(_M);return(0,D.jsxs)(D.Fragment,{children:[(0,D.jsx)("div",{id:`${Iv}-${t}`,style:Mv,children:e?n["node.a11yDescription.default"]:n["node.a11yDescription.keyboardDisabled"]}),(0,D.jsx)("div",{id:`${Fv}-${t}`,style:Mv,children:n["edge.a11yDescription.default"]}),!e&&(0,D.jsx)(wM,{rfId:t})]})}var lc=(0,R.forwardRef)(({position:t="top-left",children:e,className:n,style:l,...a},o)=>{let i=`${t}`.split("-");return(0,D.jsx)("div",{className:Tt(["react-flow__panel",n,...i]),style:l,ref:o,...a,children:e})});lc.displayName="Panel";function NM({proOptions:t,position:e="bottom-right"}){return t?.hideAttribution?null:(0,D.jsx)(lc,{position:e,className:"react-flow__attribution","data-message":"Please only hide this attribution when you are subscribed to React Flow Pro: https://pro.reactflow.dev",children:(0,D.jsx)("a",{href:"https://reactflow.dev",target:"_blank",rel:"noopener noreferrer","aria-label":"React Flow attribution",children:"React Flow"})})}var MM=t=>{let e=[],n=[];for(let[,l]of t.nodeLookup)l.selected&&e.push(l.internals.userNode);for(let[,l]of t.edgeLookup)l.selected&&n.push(l);return{selectedNodes:e,selectedEdges:n}},Pr=t=>t.id;function zM(t,e){return Nt(t.selectedNodes.map(Pr),e.selectedNodes.map(Pr))&&Nt(t.selectedEdges.map(Pr),e.selectedEdges.map(Pr))}function CM({onSelectionChange:t}){let e=Mt(),{selectedNodes:n,selectedEdges:l}=rt(MM,zM);return(0,R.useEffect)(()=>{let a={nodes:n,edges:l};t?.(a),e.getState().onSelectionChangeHandlers.forEach(o=>o(a))},[n,l,t]),null}var AM=t=>!!t.onSelectionChangeHandlers;function TM({onSelectionChange:t}){let e=rt(AM);return t||e?(0,D.jsx)(CM,{onSelectionChange:t}):null}var Wv=[0,0],DM={x:0,y:0,zoom:1},OM=["nodes","edges","defaultNodes","defaultEdges","onConnect","onConnectStart","onConnectEnd","onClickConnectStart","onClickConnectEnd","nodesDraggable","autoPanOnNodeFocus","nodesConnectable","nodesFocusable","edgesFocusable","edgesReconnectable","elevateNodesOnSelect","elevateEdgesOnSelect","minZoom","maxZoom","nodeExtent","onNodesChange","onEdgesChange","elementsSelectable","connectionMode","snapGrid","snapToGrid","translateExtent","connectOnClick","defaultEdgeOptions","fitView","fitViewOptions","onNodesDelete","onEdgesDelete","onDelete","onNodeDrag","onNodeDragStart","onNodeDragStop","onSelectionDrag","onSelectionDragStart","onSelectionDragStop","onMoveStart","onMove","onMoveEnd","noPanClassName","nodeOrigin","autoPanOnConnect","autoPanOnNodeDrag","onError","connectionRadius","isValidConnection","selectNodesOnDrag","nodeDragThreshold","connectionDragThreshold","onBeforeDelete","debug","autoPanSpeed","ariaLabelConfig"],zv=[...OM,"rfId"],HM=t=>({setNodes:t.setNodes,setEdges:t.setEdges,setMinZoom:t.setMinZoom,setMaxZoom:t.setMaxZoom,setTranslateExtent:t.setTranslateExtent,setNodeExtent:t.setNodeExtent,reset:t.reset,setDefaultNodesAndEdges:t.setDefaultNodesAndEdges}),Cv={translateExtent:Fa,nodeOrigin:Wv,minZoom:.5,maxZoom:2,elementsSelectable:!0,noPanClassName:"nopan",rfId:"1"};function RM(t){let{setNodes:e,setEdges:n,setMinZoom:l,setMaxZoom:a,setTranslateExtent:o,setNodeExtent:i,reset:u,setDefaultNodesAndEdges:r}=rt(HM,Nt),c=Mt();(0,R.useEffect)(()=>(r(t.defaultNodes,t.defaultEdges),()=>{f.current=Cv,u()}),[]);let f=(0,R.useRef)(Cv);return(0,R.useEffect)(()=>{for(let d of zv){let s=t[d],g=f.current[d];s!==g&&(typeof t[d]>"u"||(d==="nodes"?e(s):d==="edges"?n(s):d==="minZoom"?l(s):d==="maxZoom"?a(s):d==="translateExtent"?o(s):d==="nodeExtent"?i(s):d==="ariaLabelConfig"?c.setState({ariaLabelConfig:G1(s)}):d==="fitView"?c.setState({fitViewQueued:s}):d==="fitViewOptions"?c.setState({fitViewOptions:s}):c.setState({[d]:s})))}f.current=t},zv.map(d=>t[d])),null}function Av(){return typeof window>"u"||!window.matchMedia?null:window.matchMedia("(prefers-color-scheme: dark)")}function BM(t){let[e,n]=(0,R.useState)(t==="system"?null:t);return(0,R.useEffect)(()=>{if(t!=="system"){n(t);return}let l=Av(),a=()=>n(l?.matches?"dark":"light");return a(),l?.addEventListener("change",a),()=>{l?.removeEventListener("change",a)}},[t]),e!==null?e:Av()?.matches?"dark":"light"}var Tv=typeof document<"u"?document:null;function Di(t=null,e={target:Tv,actInsideInputWithModifier:!0}){let[n,l]=(0,R.useState)(!1),a=(0,R.useRef)(!1),o=(0,R.useRef)(new Set([])),[i,u]=(0,R.useMemo)(()=>{if(t!==null){let c=(Array.isArray(t)?t:[t]).filter(d=>typeof d=="string").map(d=>d.replace("+",`\n`).replace(`\n\n`,`\n+`).split(`\n`)),f=c.reduce((d,s)=>d.concat(...s),[]);return[c,f]}return[[],[]]},[t]);return(0,R.useEffect)(()=>{let r=e?.target??Tv,c=e?.actInsideInputWithModifier??!0;if(t!==null){let f=g=>{if(a.current=g.ctrlKey||g.metaKey||g.shiftKey||g.altKey,(!a.current||a.current&&!c)&&Pd(g))return!1;let v=Ov(g.code,u);if(o.current.add(g[v]),Dv(i,o.current,!1)){let S=g.composedPath?.()?.[0]||g.target,p=S?.nodeName==="BUTTON"||S?.nodeName==="A";e.preventDefault!==!1&&(a.current||!p)&&g.preventDefault(),l(!0)}},d=g=>{let b=Ov(g.code,u);Dv(i,o.current,!0)?(l(!1),o.current.clear()):o.current.delete(g[b]),g.key==="Meta"&&o.current.clear(),a.current=!1},s=()=>{o.current.clear(),l(!1)};return r?.addEventListener("keydown",f),r?.addEventListener("keyup",d),window.addEventListener("blur",s),window.addEventListener("contextmenu",s),()=>{r?.removeEventListener("keydown",f),r?.removeEventListener("keyup",d),window.removeEventListener("blur",s),window.removeEventListener("contextmenu",s)}}},[t,l]),n}function Dv(t,e,n){return t.filter(l=>n||l.length===e.size).some(l=>l.every(a=>e.has(a)))}function Ov(t,e){return e.includes(t)?"code":"key"}var kM=()=>{let t=Mt();return(0,R.useMemo)(()=>({zoomIn:e=>{let{panZoom:n}=t.getState();return n?n.scaleBy(1.2,{duration:e?.duration}):Promise.resolve(!1)},zoomOut:e=>{let{panZoom:n}=t.getState();return n?n.scaleBy(1/1.2,{duration:e?.duration}):Promise.resolve(!1)},zoomTo:(e,n)=>{let{panZoom:l}=t.getState();return l?l.scaleTo(e,{duration:n?.duration}):Promise.resolve(!1)},getZoom:()=>t.getState().transform[2],setViewport:async(e,n)=>{let{transform:[l,a,o],panZoom:i}=t.getState();return i?(await i.setViewport({x:e.x??l,y:e.y??a,zoom:e.zoom??o},n),Promise.resolve(!0)):Promise.resolve(!1)},getViewport:()=>{let[e,n,l]=t.getState().transform;return{x:e,y:n,zoom:l}},setCenter:async(e,n,l)=>t.getState().setCenter(e,n,l),fitBounds:async(e,n)=>{let{width:l,height:a,minZoom:o,maxZoom:i,panZoom:u}=t.getState(),r=Ai(e,l,a,o,i,n?.padding??.1);return u?(await u.setViewport(r,{duration:n?.duration,ease:n?.ease,interpolate:n?.interpolate}),Promise.resolve(!0)):Promise.resolve(!1)},screenToFlowPosition:(e,n={})=>{let{transform:l,snapGrid:a,snapToGrid:o,domNode:i}=t.getState();if(!i)return e;let{x:u,y:r}=i.getBoundingClientRect(),c={x:e.x-u,y:e.y-r},f=n.snapGrid??a,d=n.snapToGrid??o;return eo(c,l,d,f)},flowToScreenPosition:e=>{let{transform:n,domNode:l}=t.getState();if(!l)return e;let{x:a,y:o}=l.getBoundingClientRect(),i=Mi(e,n);return{x:i.x+a,y:i.y+o}}}),[])};function Pv(t,e){let n=[],l=new Map,a=[];for(let o of t)if(o.type==="add"){a.push(o);continue}else if(o.type==="remove"||o.type==="replace")l.set(o.id,[o]);else{let i=l.get(o.id);i?i.push(o):l.set(o.id,[o])}for(let o of e){let i=l.get(o.id);if(!i){n.push(o);continue}if(i[0].type==="remove")continue;if(i[0].type==="replace"){n.push({...i[0].item});continue}let u={...o};for(let r of i)UM(r,u);n.push(u)}return a.length&&a.forEach(o=>{o.index!==void 0?n.splice(o.index,0,{...o.item}):n.push({...o.item})}),n}function UM(t,e){switch(t.type){case"select":{e.selected=t.selected;break}case"position":{typeof t.position<"u"&&(e.position=t.position),typeof t.dragging<"u"&&(e.dragging=t.dragging);break}case"dimensions":{typeof t.dimensions<"u"&&(e.measured??={},e.measured.width=t.dimensions.width,e.measured.height=t.dimensions.height,t.setAttributes&&((t.setAttributes===!0||t.setAttributes==="width")&&(e.width=t.dimensions.width),(t.setAttributes===!0||t.setAttributes==="height")&&(e.height=t.dimensions.height))),typeof t.resizing=="boolean"&&(e.resizing=t.resizing);break}}}function LM(t,e){return Pv(t,e)}function YM(t,e){return Pv(t,e)}function Xl(t,e){return{id:t,type:"select",selected:e}}function ao(t,e=new Set,n=!1){let l=[];for(let[a,o]of t){let i=e.has(a);!(o.selected===void 0&&!i)&&o.selected!==i&&(n&&(o.selected=i),l.push(Xl(o.id,i)))}return l}function Hv({items:t=[],lookup:e}){let n=[],l=new Map(t.map(a=>[a.id,a]));for(let[a,o]of t.entries()){let i=e.get(o.id),u=i?.internals?.userNode??i;u!==void 0&&u!==o&&n.push({id:o.id,item:o,type:"replace"}),u===void 0&&n.push({item:o,type:"add",index:a})}for(let[a]of e)l.get(a)===void 0&&n.push({id:a,type:"remove"});return n}function Rv(t){return{id:t.id,type:"remove"}}var Bv=t=>U1(t),VM=t=>Xd(t);function tb(t){return(0,R.forwardRef)(t)}var qM=typeof window<"u"?R.useLayoutEffect:R.useEffect;function kv(t){let[e,n]=(0,R.useState)(BigInt(0)),[l]=(0,R.useState)(()=>XM(()=>n(a=>a+BigInt(1))));return qM(()=>{let a=l.get();a.length&&(t(a),l.reset())},[e]),l}function XM(t){let e=[];return{get:()=>e,reset:()=>{e=[]},push:n=>{e.push(n),t()}}}var eb=(0,R.createContext)(null);function ZM({children:t}){let e=Mt(),n=(0,R.useCallback)(u=>{let{nodes:r=[],setNodes:c,hasDefaultNodes:f,onNodesChange:d,nodeLookup:s,fitViewQueued:g}=e.getState(),b=r;for(let S of u)b=typeof S=="function"?S(b):S;let v=Hv({items:b,lookup:s});f&&c(b),v.length>0?d?.(v):g&&window.requestAnimationFrame(()=>{let{fitViewQueued:S,nodes:p,setNodes:m}=e.getState();S&&m(p)})},[]),l=kv(n),a=(0,R.useCallback)(u=>{let{edges:r=[],setEdges:c,hasDefaultEdges:f,onEdgesChange:d,edgeLookup:s}=e.getState(),g=r;for(let b of u)g=typeof b=="function"?b(g):b;f?c(g):d&&d(Hv({items:g,lookup:s}))},[]),o=kv(a),i=(0,R.useMemo)(()=>({nodeQueue:l,edgeQueue:o}),[]);return(0,D.jsx)(eb.Provider,{value:i,children:t})}function GM(){let t=(0,R.useContext)(eb);if(!t)throw new Error("useBatchContext must be used within a BatchProvider");return t}var QM=t=>!!t.panZoom;function dh(){let t=kM(),e=Mt(),n=GM(),l=rt(QM),a=(0,R.useMemo)(()=>{let o=d=>e.getState().nodeLookup.get(d),i=d=>{n.nodeQueue.push(d)},u=d=>{n.edgeQueue.push(d)},r=d=>{let{nodeLookup:s,nodeOrigin:g}=e.getState(),b=Bv(d)?d:s.get(d.id),v=b.parentId?Id(b.position,b.measured,b.parentId,s,g):b.position,S={...b,position:v,width:b.measured?.width??b.width,height:b.measured?.height??b.height};return ql(S)},c=(d,s,g={replace:!1})=>{i(b=>b.map(v=>{if(v.id===d){let S=typeof s=="function"?s(v):s;return g.replace&&Bv(S)?S:{...v,...S}}return v}))},f=(d,s,g={replace:!1})=>{u(b=>b.map(v=>{if(v.id===d){let S=typeof s=="function"?s(v):s;return g.replace&&VM(S)?S:{...v,...S}}return v}))};return{getNodes:()=>e.getState().nodes.map(d=>({...d})),getNode:d=>o(d)?.internals.userNode,getInternalNode:o,getEdges:()=>{let{edges:d=[]}=e.getState();return d.map(s=>({...s}))},getEdge:d=>e.getState().edgeLookup.get(d),setNodes:i,setEdges:u,addNodes:d=>{let s=Array.isArray(d)?d:[d];n.nodeQueue.push(g=>[...g,...s])},addEdges:d=>{let s=Array.isArray(d)?d:[d];n.edgeQueue.push(g=>[...g,...s])},toObject:()=>{let{nodes:d=[],edges:s=[],transform:g}=e.getState(),[b,v,S]=g;return{nodes:d.map(p=>({...p})),edges:s.map(p=>({...p})),viewport:{x:b,y:v,zoom:S}}},deleteElements:async({nodes:d=[],edges:s=[]})=>{let{nodes:g,edges:b,onNodesDelete:v,onEdgesDelete:S,triggerNodeChanges:p,triggerEdgeChanges:m,onDelete:h,onBeforeDelete:y}=e.getState(),{nodes:x,edges:E}=await V1({nodesToRemove:d,edgesToRemove:s,nodes:g,edges:b,onBeforeDelete:y}),w=E.length>0,N=x.length>0;if(w){let z=E.map(Rv);S?.(E),m(z)}if(N){let z=x.map(Rv);v?.(x),p(z)}return(N||w)&&h?.({nodes:x,edges:E}),{deletedNodes:x,deletedEdges:E}},getIntersectingNodes:(d,s=!0,g)=>{let b=jd(d),v=b?d:r(d),S=g!==void 0;return v?(g||e.getState().nodes).filter(p=>{let m=e.getState().nodeLookup.get(p.id);if(m&&!b&&(p.id===d.id||!m.internals.positionAbsolute))return!1;let h=ql(S?p:m),y=Pa(h,v);return s&&y>0||y>=h.width*h.height||y>=v.width*v.height}):[]},isNodeIntersecting:(d,s,g=!0)=>{let v=jd(d)?d:r(d);if(!v)return!1;let S=Pa(v,s);return g&&S>0||S>=s.width*s.height||S>=v.width*v.height},updateNode:c,updateNodeData:(d,s,g={replace:!1})=>{c(d,b=>{let v=typeof s=="function"?s(b):s;return g.replace?{...b,data:v}:{...b,data:{...b.data,...v}}},g)},updateEdge:f,updateEdgeData:(d,s,g={replace:!1})=>{f(d,b=>{let v=typeof s=="function"?s(b):s;return g.replace?{...b,data:v}:{...b,data:{...b.data,...v}}},g)},getNodesBounds:d=>{let{nodeLookup:s,nodeOrigin:g}=e.getState();return Gd(d,{nodeLookup:s,nodeOrigin:g})},getHandleConnections:({type:d,id:s,nodeId:g})=>Array.from(e.getState().connectionLookup.get(`${g}-${d}${s?`-${s}`:""}`)?.values()??[]),getNodeConnections:({type:d,handleId:s,nodeId:g})=>Array.from(e.getState().connectionLookup.get(`${g}${d?s?`-${d}-${s}`:`-${d}`:""}`)?.values()??[]),fitView:async d=>{let s=e.getState().fitViewResolver??Z1();return e.setState({fitViewQueued:!0,fitViewOptions:d,fitViewResolver:s}),n.nodeQueue.push(g=>[...g]),s.promise}}},[]);return(0,R.useMemo)(()=>({...a,...t,viewportInitialized:l}),[l])}var Uv=t=>t.selected,KM=typeof window<"u"?window:void 0;function jM({deleteKeyCode:t,multiSelectionKeyCode:e}){let n=Mt(),{deleteElements:l}=dh(),a=Di(t,{actInsideInputWithModifier:!1}),o=Di(e,{target:KM});(0,R.useEffect)(()=>{if(a){let{edges:i,nodes:u}=n.getState();l({nodes:u.filter(Uv),edges:i.filter(Uv)}),n.setState({nodesSelectionActive:!1})}},[a]),(0,R.useEffect)(()=>{n.setState({multiSelectionActive:o})},[o])}function $M(t){let e=Mt();(0,R.useEffect)(()=>{let n=()=>{if(!t.current||!(t.current.checkVisibility?.()??!0))return!1;let l=Zr(t.current);(l.height===0||l.width===0)&&e.getState().onError?.("004",_e.error004()),e.setState({width:l.width||500,height:l.height||500})};if(t.current){n(),window.addEventListener("resize",n);let l=new ResizeObserver(()=>n());return l.observe(t.current),()=>{window.removeEventListener("resize",n),l&&t.current&&l.unobserve(t.current)}}},[])}var ac={position:"absolute",width:"100%",height:"100%",top:0,left:0},JM=t=>({userSelectionActive:t.userSelectionActive,lib:t.lib,connectionInProgress:t.connection.inProgress});function IM({onPaneContextMenu:t,zoomOnScroll:e=!0,zoomOnPinch:n=!0,panOnScroll:l=!1,panOnScrollSpeed:a=.5,panOnScrollMode:o=zn.Free,zoomOnDoubleClick:i=!0,panOnDrag:u=!0,defaultViewport:r,translateExtent:c,minZoom:f,maxZoom:d,zoomActivationKeyCode:s,preventScrolling:g=!0,children:b,noWheelClassName:v,noPanClassName:S,onViewportChange:p,isControlledViewport:m,paneClickDistance:h,selectionOnDrag:y}){let x=Mt(),E=(0,R.useRef)(null),{userSelectionActive:w,lib:N,connectionInProgress:z}=rt(JM,Nt),U=Di(s),H=(0,R.useRef)();$M(E);let B=(0,R.useCallback)(Y=>{p?.({x:Y[0],y:Y[1],zoom:Y[2]}),m||x.setState({transform:Y})},[p,m]);return(0,R.useEffect)(()=>{if(E.current){H.current=cv({domNode:E.current,minZoom:f,maxZoom:d,translateExtent:c,viewport:r,onDraggingChange:M=>x.setState({paneDragging:M}),onPanZoomStart:(M,T)=>{let{onViewportChangeStart:A,onMoveStart:O}=x.getState();O?.(M,T),A?.(T)},onPanZoom:(M,T)=>{let{onViewportChange:A,onMove:O}=x.getState();O?.(M,T),A?.(T)},onPanZoomEnd:(M,T)=>{let{onViewportChangeEnd:A,onMoveEnd:O}=x.getState();O?.(M,T),A?.(T)}});let{x:Y,y:_,zoom:C}=H.current.getViewport();return x.setState({panZoom:H.current,transform:[Y,_,C],domNode:E.current.closest(".react-flow")}),()=>{H.current?.destroy()}}},[]),(0,R.useEffect)(()=>{H.current?.update({onPaneContextMenu:t,zoomOnScroll:e,zoomOnPinch:n,panOnScroll:l,panOnScrollSpeed:a,panOnScrollMode:o,zoomOnDoubleClick:i,panOnDrag:u,zoomActivationKeyPressed:U,preventScrolling:g,noPanClassName:S,userSelectionActive:w,noWheelClassName:v,lib:N,onTransformChange:B,connectionInProgress:z,selectionOnDrag:y,paneClickDistance:h})},[t,e,n,l,a,o,i,u,U,g,S,w,v,N,B,z,y,h]),(0,D.jsx)("div",{className:"react-flow__renderer",ref:E,style:ac,children:b})}var FM=t=>({userSelectionActive:t.userSelectionActive,userSelectionRect:t.userSelectionRect});function WM(){let{userSelectionActive:t,userSelectionRect:e}=rt(FM,Nt);return t&&e?(0,D.jsx)("div",{className:"react-flow__selection react-flow__container",style:{width:e.width,height:e.height,transform:`translate(${e.x}px, ${e.y}px)`}}):null}var ch=(t,e)=>n=>{n.target===e.current&&t?.(n)},PM=t=>({userSelectionActive:t.userSelectionActive,elementsSelectable:t.elementsSelectable,connectionInProgress:t.connection.inProgress,dragging:t.paneDragging});function tz({isSelecting:t,selectionKeyPressed:e,selectionMode:n=Yl.Full,panOnDrag:l,paneClickDistance:a,selectionOnDrag:o,onSelectionStart:i,onSelectionEnd:u,onPaneClick:r,onPaneContextMenu:c,onPaneScroll:f,onPaneMouseEnter:d,onPaneMouseMove:s,onPaneMouseLeave:g,children:b}){let v=Mt(),{userSelectionActive:S,elementsSelectable:p,dragging:m,connectionInProgress:h}=rt(PM,Nt),y=p&&(t||S),x=(0,R.useRef)(null),E=(0,R.useRef)(),w=(0,R.useRef)(new Set),N=(0,R.useRef)(new Set),z=(0,R.useRef)(!1),U=A=>{if(z.current||h){z.current=!1;return}r?.(A),v.getState().resetSelectedElements(),v.setState({nodesSelectionActive:!1})},H=A=>{if(Array.isArray(l)&&l?.includes(2)){A.preventDefault();return}c?.(A)},B=f?A=>f(A):void 0,Y=A=>{z.current&&(A.stopPropagation(),z.current=!1)},_=A=>{let{domNode:O}=v.getState();if(E.current=O?.getBoundingClientRect(),!E.current)return;let L=A.target===x.current;if(!L&&!!A.target.closest(".nokey")||!t||!(o&&L||e)||A.button!==0||!A.isPrimary)return;A.target?.setPointerCapture?.(A.pointerId),z.current=!1;let{x:G,y:Z}=Be(A.nativeEvent,E.current);v.setState({userSelectionRect:{width:0,height:0,startX:G,startY:Z,x:G,y:Z}}),L||(A.stopPropagation(),A.preventDefault())},C=A=>{let{userSelectionRect:O,transform:L,nodeLookup:q,edgeLookup:V,connectionLookup:G,triggerNodeChanges:Z,triggerEdgeChanges:$,defaultEdgeOptions:tt,resetSelectedElements:K}=v.getState();if(!E.current||!O)return;let{x:X,y:j}=Be(A.nativeEvent,E.current),{startX:ot,startY:et}=O;if(!z.current){let _t=e?0:a;if(Math.hypot(X-ot,j-et)<=_t)return;K(),i?.(A)}z.current=!0;let I={startX:ot,startY:et,x:X<ot?X:ot,y:j<et?j:et,width:Math.abs(X-ot),height:Math.abs(j-et)},F=w.current,ut=N.current;w.current=new Set(Vr(q,I,L,n===Yl.Partial,!0).map(_t=>_t.id)),N.current=new Set;let St=tt?.selectable??!0;for(let _t of w.current){let Zt=G.get(_t);if(Zt)for(let{edgeId:tn}of Zt.values()){let sl=V.get(tn);sl&&(sl.selectable??St)&&N.current.add(tn)}}if(!Fd(F,w.current)){let _t=ao(q,w.current,!0);Z(_t)}if(!Fd(ut,N.current)){let _t=ao(V,N.current);$(_t)}v.setState({userSelectionRect:I,userSelectionActive:!0,nodesSelectionActive:!1})},M=A=>{A.button===0&&(A.target?.releasePointerCapture?.(A.pointerId),!S&&A.target===x.current&&v.getState().userSelectionRect&&U?.(A),v.setState({userSelectionActive:!1,userSelectionRect:null}),z.current&&(u?.(A),v.setState({nodesSelectionActive:w.current.size>0})))},T=l===!0||Array.isArray(l)&&l.includes(0);return(0,D.jsxs)("div",{className:Tt(["react-flow__pane",{draggable:T,dragging:m,selection:t}]),onClick:y?void 0:ch(U,x),onContextMenu:ch(H,x),onWheel:ch(B,x),onPointerEnter:y?void 0:d,onPointerMove:y?C:s,onPointerUp:y?M:void 0,onPointerDownCapture:y?_:void 0,onClickCapture:y?Y:void 0,onPointerLeave:g,ref:x,style:ac,children:[b,(0,D.jsx)(WM,{})]})}function fh({id:t,store:e,unselect:n=!1,nodeRef:l}){let{addSelectedNodes:a,unselectNodesAndEdges:o,multiSelectionActive:i,nodeLookup:u,onError:r}=e.getState(),c=u.get(t);if(!c){r?.("012",_e.error012(t));return}e.setState({nodesSelectionActive:!1}),c.selected?(n||c.selected&&i)&&(o({nodes:[c],edges:[]}),requestAnimationFrame(()=>l?.current?.blur())):a([t])}function nb({nodeRef:t,disabled:e=!1,noDragClassName:n,handleSelector:l,nodeId:a,isSelectable:o,nodeClickDistance:i}){let u=Mt(),[r,c]=(0,R.useState)(!1),f=(0,R.useRef)();return(0,R.useEffect)(()=>{f.current=ev({getStoreItems:()=>u.getState(),onNodeMouseDown:d=>{fh({id:d,store:u,nodeRef:t})},onDragStart:()=>{c(!0)},onDragStop:()=>{c(!1)}})},[]),(0,R.useEffect)(()=>{if(e)f.current?.destroy();else if(t.current)return f.current?.update({noDragClassName:n,handleSelector:l,domNode:t.current,isSelectable:o,nodeId:a,nodeClickDistance:i}),()=>{f.current?.destroy()}},[n,l,e,o,t,a]),r}var ez=t=>e=>e.selected&&(e.draggable||t&&typeof e.draggable>"u");function lb(){let t=Mt();return(0,R.useCallback)(n=>{let{nodeExtent:l,snapToGrid:a,snapGrid:o,nodesDraggable:i,onError:u,updateNodePositions:r,nodeLookup:c,nodeOrigin:f}=t.getState(),d=new Map,s=ez(i),g=a?o[0]:5,b=a?o[1]:5,v=n.direction.x*g*n.factor,S=n.direction.y*b*n.factor;for(let[,p]of c){if(!s(p))continue;let m={x:p.internals.positionAbsolute.x+v,y:p.internals.positionAbsolute.y+S};a&&(m=to(m,o));let{position:h,positionAbsolute:y}=Qd({nodeId:p.id,nextPosition:m,nodeLookup:c,nodeExtent:l,nodeOrigin:f,onError:u});p.position=h,p.internals.positionAbsolute=y,d.set(p.id,p)}r(d)},[])}var hh=(0,R.createContext)(null),nz=hh.Provider;hh.Consumer;var ab=()=>(0,R.useContext)(hh),lz=t=>({connectOnClick:t.connectOnClick,noPanClassName:t.noPanClassName,rfId:t.rfId}),az=(t,e,n)=>l=>{let{connectionClickStartHandle:a,connectionMode:o,connection:i}=l,{fromHandle:u,toHandle:r,isValid:c}=i,f=r?.nodeId===t&&r?.id===e&&r?.type===n;return{connectingFrom:u?.nodeId===t&&u?.id===e&&u?.type===n,connectingTo:f,clickConnecting:a?.nodeId===t&&a?.id===e&&a?.type===n,isPossibleEndHandle:o===ul.Strict?u?.type!==n:t!==u?.nodeId||e!==u?.id,connectionInProcess:!!u,clickConnectionInProcess:!!a,valid:f&&c}};function oz({type:t="source",position:e=Q.Top,isValidConnection:n,isConnectable:l=!0,isConnectableStart:a=!0,isConnectableEnd:o=!0,id:i,onConnect:u,children:r,className:c,onMouseDown:f,onTouchStart:d,...s},g){let b=i||null,v=t==="target",S=Mt(),p=ab(),{connectOnClick:m,noPanClassName:h,rfId:y}=rt(lz,Nt),{connectingFrom:x,connectingTo:E,clickConnecting:w,isPossibleEndHandle:N,connectionInProcess:z,clickConnectionInProcess:U,valid:H}=rt(az(p,b,t),Nt);p||S.getState().onError?.("010",_e.error010());let B=C=>{let{defaultEdgeOptions:M,onConnect:T,hasDefaultEdges:A}=S.getState(),O={...M,...C};if(A){let{edges:L,setEdges:q}=S.getState();q(nh(O,L))}T?.(O),u?.(O)},Y=C=>{if(!p)return;let M=th(C.nativeEvent);if(a&&(M&&C.button===0||!M)){let T=S.getState();Ir.onPointerDown(C.nativeEvent,{handleDomNode:C.currentTarget,autoPanOnConnect:T.autoPanOnConnect,connectionMode:T.connectionMode,connectionRadius:T.connectionRadius,domNode:T.domNode,nodeLookup:T.nodeLookup,lib:T.lib,isTarget:v,handleId:b,nodeId:p,flowId:T.rfId,panBy:T.panBy,cancelConnection:T.cancelConnection,onConnectStart:T.onConnectStart,onConnectEnd:T.onConnectEnd,updateConnection:T.updateConnection,onConnect:B,isValidConnection:n||T.isValidConnection,getTransform:()=>S.getState().transform,getFromHandle:()=>S.getState().connection.fromHandle,autoPanSpeed:T.autoPanSpeed,dragThreshold:T.connectionDragThreshold})}M?f?.(C):d?.(C)},_=C=>{let{onClickConnectStart:M,onClickConnectEnd:T,connectionClickStartHandle:A,connectionMode:O,isValidConnection:L,lib:q,rfId:V,nodeLookup:G,connection:Z}=S.getState();if(!p||!A&&!a)return;if(!A){M?.(C.nativeEvent,{nodeId:p,handleId:b,handleType:t}),S.setState({connectionClickStartHandle:{nodeId:p,type:t,id:b}});return}let $=Wd(C.target),tt=n||L,{connection:K,isValid:X}=Ir.isValid(C.nativeEvent,{handle:{nodeId:p,id:b,type:t},connectionMode:O,fromNodeId:A.nodeId,fromHandleId:A.id||null,fromType:A.type,isValidConnection:tt,flowId:V,doc:$,lib:q,nodeLookup:G});X&&K&&B(K);let j=structuredClone(Z);delete j.inProgress,j.toPosition=j.toHandle?j.toHandle.position:null,T?.(C,j),S.setState({connectionClickStartHandle:null})};return(0,D.jsx)("div",{"data-handleid":b,"data-nodeid":p,"data-handlepos":e,"data-id":`${y}-${p}-${b}-${t}`,className:Tt(["react-flow__handle",`react-flow__handle-${e}`,"nodrag",h,c,{source:!v,target:v,connectable:l,connectablestart:a,connectableend:o,clickconnecting:w,connectingfrom:x,connectingto:E,valid:H,connectionindicator:l&&(!z||N)&&(z||U?o:a)}]),onMouseDown:Y,onTouchStart:Y,onClick:m?_:void 0,ref:g,...s,children:r})}var Zl=(0,R.memo)(tb(oz));function iz({data:t,isConnectable:e,sourcePosition:n=Q.Bottom}){return(0,D.jsxs)(D.Fragment,{children:[t?.label,(0,D.jsx)(Zl,{type:"source",position:n,isConnectable:e})]})}function uz({data:t,isConnectable:e,targetPosition:n=Q.Top,sourcePosition:l=Q.Bottom}){return(0,D.jsxs)(D.Fragment,{children:[(0,D.jsx)(Zl,{type:"target",position:n,isConnectable:e}),t?.label,(0,D.jsx)(Zl,{type:"source",position:l,isConnectable:e})]})}function rz(){return null}function cz({data:t,isConnectable:e,targetPosition:n=Q.Top}){return(0,D.jsxs)(D.Fragment,{children:[(0,D.jsx)(Zl,{type:"target",position:n,isConnectable:e}),t?.label]})}var ec={ArrowUp:{x:0,y:-1},ArrowDown:{x:0,y:1},ArrowLeft:{x:-1,y:0},ArrowRight:{x:1,y:0}},Lv={input:iz,default:uz,output:cz,group:rz};function sz(t){return t.internals.handleBounds===void 0?{width:t.width??t.initialWidth??t.style?.width,height:t.height??t.initialHeight??t.style?.height}:{width:t.width??t.style?.width,height:t.height??t.style?.height}}var fz=t=>{let{width:e,height:n,x:l,y:a}=Wa(t.nodeLookup,{filter:o=>!!o.selected});return{width:Re(e)?e:null,height:Re(n)?n:null,userSelectionActive:t.userSelectionActive,transformString:`translate(${t.transform[0]}px,${t.transform[1]}px) scale(${t.transform[2]}) translate(${l}px,${a}px)`}};function dz({onSelectionContextMenu:t,noPanClassName:e,disableKeyboardA11y:n}){let l=Mt(),{width:a,height:o,transformString:i,userSelectionActive:u}=rt(fz,Nt),r=lb(),c=(0,R.useRef)(null);if((0,R.useEffect)(()=>{n||c.current?.focus({preventScroll:!0})},[n]),nb({nodeRef:c}),u||!a||!o)return null;let f=t?s=>{let g=l.getState().nodes.filter(b=>b.selected);t(s,g)}:void 0,d=s=>{Object.prototype.hasOwnProperty.call(ec,s.key)&&(s.preventDefault(),r({direction:ec[s.key],factor:s.shiftKey?4:1}))};return(0,D.jsx)("div",{className:Tt(["react-flow__nodesselection","react-flow__container",e]),style:{transform:i},children:(0,D.jsx)("div",{ref:c,className:"react-flow__nodesselection-rect",onContextMenu:f,tabIndex:n?void 0:-1,onKeyDown:n?void 0:d,style:{width:a,height:o}})})}var Yv=typeof window<"u"?window:void 0,hz=t=>({nodesSelectionActive:t.nodesSelectionActive,userSelectionActive:t.userSelectionActive});function ob({children:t,onPaneClick:e,onPaneMouseEnter:n,onPaneMouseMove:l,onPaneMouseLeave:a,onPaneContextMenu:o,onPaneScroll:i,paneClickDistance:u,deleteKeyCode:r,selectionKeyCode:c,selectionOnDrag:f,selectionMode:d,onSelectionStart:s,onSelectionEnd:g,multiSelectionKeyCode:b,panActivationKeyCode:v,zoomActivationKeyCode:S,elementsSelectable:p,zoomOnScroll:m,zoomOnPinch:h,panOnScroll:y,panOnScrollSpeed:x,panOnScrollMode:E,zoomOnDoubleClick:w,panOnDrag:N,defaultViewport:z,translateExtent:U,minZoom:H,maxZoom:B,preventScrolling:Y,onSelectionContextMenu:_,noWheelClassName:C,noPanClassName:M,disableKeyboardA11y:T,onViewportChange:A,isControlledViewport:O}){let{nodesSelectionActive:L,userSelectionActive:q}=rt(hz),V=Di(c,{target:Yv}),G=Di(v,{target:Yv}),Z=G||N,$=G||y,tt=f&&Z!==!0,K=V||q||tt;return jM({deleteKeyCode:r,multiSelectionKeyCode:b}),(0,D.jsx)(IM,{onPaneContextMenu:o,elementsSelectable:p,zoomOnScroll:m,zoomOnPinch:h,panOnScroll:$,panOnScrollSpeed:x,panOnScrollMode:E,zoomOnDoubleClick:w,panOnDrag:!V&&Z,defaultViewport:z,translateExtent:U,minZoom:H,maxZoom:B,zoomActivationKeyCode:S,preventScrolling:Y,noWheelClassName:C,noPanClassName:M,onViewportChange:A,isControlledViewport:O,paneClickDistance:u,selectionOnDrag:tt,children:(0,D.jsxs)(tz,{onSelectionStart:s,onSelectionEnd:g,onPaneClick:e,onPaneMouseEnter:n,onPaneMouseMove:l,onPaneMouseLeave:a,onPaneContextMenu:o,onPaneScroll:i,panOnDrag:Z,isSelecting:!!K,selectionMode:d,selectionKeyPressed:V,paneClickDistance:u,selectionOnDrag:tt,children:[t,L&&(0,D.jsx)(dz,{onSelectionContextMenu:_,noPanClassName:M,disableKeyboardA11y:T})]})})}ob.displayName="FlowRenderer";var gz=(0,R.memo)(ob),pz=t=>e=>t?Vr(e.nodeLookup,{x:0,y:0,width:e.width,height:e.height},e.transform,!0).map(n=>n.id):Array.from(e.nodeLookup.keys());function mz(t){return rt((0,R.useCallback)(pz(t),[t]),Nt)}var yz=t=>t.updateNodeInternals;function vz(){let t=rt(yz),[e]=(0,R.useState)(()=>typeof ResizeObserver>"u"?null:new ResizeObserver(n=>{let l=new Map;n.forEach(a=>{let o=a.target.getAttribute("data-id");l.set(o,{id:o,nodeElement:a.target,force:!0})}),t(l)}));return(0,R.useEffect)(()=>()=>{e?.disconnect()},[e]),e}function bz({node:t,nodeType:e,hasDimensions:n,resizeObserver:l}){let a=Mt(),o=(0,R.useRef)(null),i=(0,R.useRef)(null),u=(0,R.useRef)(t.sourcePosition),r=(0,R.useRef)(t.targetPosition),c=(0,R.useRef)(e),f=n&&!!t.internals.handleBounds;return(0,R.useEffect)(()=>{o.current&&!t.hidden&&(!f||i.current!==o.current)&&(i.current&&l?.unobserve(i.current),l?.observe(o.current),i.current=o.current)},[f,t.hidden]),(0,R.useEffect)(()=>()=>{i.current&&(l?.unobserve(i.current),i.current=null)},[]),(0,R.useEffect)(()=>{if(o.current){let d=c.current!==e,s=u.current!==t.sourcePosition,g=r.current!==t.targetPosition;(d||s||g)&&(c.current=e,u.current=t.sourcePosition,r.current=t.targetPosition,a.getState().updateNodeInternals(new Map([[t.id,{id:t.id,nodeElement:o.current,force:!0}]])))}},[t.id,e,t.sourcePosition,t.targetPosition]),o}function xz({id:t,onClick:e,onMouseEnter:n,onMouseMove:l,onMouseLeave:a,onContextMenu:o,onDoubleClick:i,nodesDraggable:u,elementsSelectable:r,nodesConnectable:c,nodesFocusable:f,resizeObserver:d,noDragClassName:s,noPanClassName:g,disableKeyboardA11y:b,rfId:v,nodeTypes:S,nodeClickDistance:p,onError:m}){let{node:h,internals:y,isParent:x}=rt(X=>{let j=X.nodeLookup.get(t),ot=X.parentLookup.has(t);return{node:j,internals:j.internals,isParent:ot}},Nt),E=h.type||"default",w=S?.[E]||Lv[E];w===void 0&&(m?.("003",_e.error003(E)),E="default",w=S?.default||Lv.default);let N=!!(h.draggable||u&&typeof h.draggable>"u"),z=!!(h.selectable||r&&typeof h.selectable>"u"),U=!!(h.connectable||c&&typeof h.connectable>"u"),H=!!(h.focusable||f&&typeof h.focusable>"u"),B=Mt(),Y=Jd(h),_=bz({node:h,nodeType:E,hasDimensions:Y,resizeObserver:d}),C=nb({nodeRef:_,disabled:h.hidden||!N,noDragClassName:s,handleSelector:h.dragHandle,nodeId:t,isSelectable:z,nodeClickDistance:p}),M=lb();if(h.hidden)return null;let T=Pe(h),A=sz(h),O=z||N||e||n||l||a,L=n?X=>n(X,{...y.userNode}):void 0,q=l?X=>l(X,{...y.userNode}):void 0,V=a?X=>a(X,{...y.userNode}):void 0,G=o?X=>o(X,{...y.userNode}):void 0,Z=i?X=>i(X,{...y.userNode}):void 0,$=X=>{let{selectNodesOnDrag:j,nodeDragThreshold:ot}=B.getState();z&&(!j||!N||ot>0)&&fh({id:t,store:B,nodeRef:_}),e&&e(X,{...y.userNode})},tt=X=>{if(!(Pd(X.nativeEvent)||b)){if(Ld.includes(X.key)&&z){let j=X.key==="Escape";fh({id:t,store:B,unselect:j,nodeRef:_})}else if(N&&h.selected&&Object.prototype.hasOwnProperty.call(ec,X.key)){X.preventDefault();let{ariaLabelConfig:j}=B.getState();B.setState({ariaLiveMessage:j["node.a11yDescription.ariaLiveMessage"]({direction:X.key.replace("Arrow","").toLowerCase(),x:~~y.positionAbsolute.x,y:~~y.positionAbsolute.y})}),M({direction:ec[X.key],factor:X.shiftKey?4:1})}}},K=()=>{if(b||!_.current?.matches(":focus-visible"))return;let{transform:X,width:j,height:ot,autoPanOnNodeFocus:et,setCenter:I}=B.getState();if(!et)return;Vr(new Map([[t,h]]),{x:0,y:0,width:j,height:ot},X,!0).length>0||I(h.position.x+T.width/2,h.position.y+T.height/2,{zoom:X[2]})};return(0,D.jsx)("div",{className:Tt(["react-flow__node",`react-flow__node-${E}`,{[g]:N},h.className,{selected:h.selected,selectable:z,parent:x,draggable:N,dragging:C}]),ref:_,style:{zIndex:y.z,transform:`translate(${y.positionAbsolute.x}px,${y.positionAbsolute.y}px)`,pointerEvents:O?"all":"none",visibility:Y?"visible":"hidden",...h.style,...A},"data-id":t,"data-testid":`rf__node-${t}`,onMouseEnter:L,onMouseMove:q,onMouseLeave:V,onContextMenu:G,onClick:$,onDoubleClick:Z,onKeyDown:H?tt:void 0,tabIndex:H?0:void 0,onFocus:H?K:void 0,role:h.ariaRole??(H?"group":void 0),"aria-roledescription":"node","aria-describedby":b?void 0:`${Iv}-${v}`,"aria-label":h.ariaLabel,...h.domAttributes,children:(0,D.jsx)(nz,{value:t,children:(0,D.jsx)(w,{id:t,data:h.data,type:E,positionAbsoluteX:y.positionAbsolute.x,positionAbsoluteY:y.positionAbsolute.y,selected:h.selected??!1,selectable:z,draggable:N,deletable:h.deletable??!0,isConnectable:U,sourcePosition:h.sourcePosition,targetPosition:h.targetPosition,dragging:C,dragHandle:h.dragHandle,zIndex:y.z,parentId:h.parentId,...T})})})}var Sz=(0,R.memo)(xz),_z=t=>({nodesDraggable:t.nodesDraggable,nodesConnectable:t.nodesConnectable,nodesFocusable:t.nodesFocusable,elementsSelectable:t.elementsSelectable,onError:t.onError});function ib(t){let{nodesDraggable:e,nodesConnectable:n,nodesFocusable:l,elementsSelectable:a,onError:o}=rt(_z,Nt),i=mz(t.onlyRenderVisibleElements),u=vz();return(0,D.jsx)("div",{className:"react-flow__nodes",style:ac,children:i.map(r=>(0,D.jsx)(Sz,{id:r,nodeTypes:t.nodeTypes,nodeExtent:t.nodeExtent,onClick:t.onNodeClick,onMouseEnter:t.onNodeMouseEnter,onMouseMove:t.onNodeMouseMove,onMouseLeave:t.onNodeMouseLeave,onContextMenu:t.onNodeContextMenu,onDoubleClick:t.onNodeDoubleClick,noDragClassName:t.noDragClassName,noPanClassName:t.noPanClassName,rfId:t.rfId,disableKeyboardA11y:t.disableKeyboardA11y,resizeObserver:u,nodesDraggable:e,nodesConnectable:n,nodesFocusable:l,elementsSelectable:a,nodeClickDistance:t.nodeClickDistance,onError:o},r))})}ib.displayName="NodeRenderer";var wz=(0,R.memo)(ib);function Ez(t){return rt((0,R.useCallback)(n=>{if(!t)return n.edges.map(a=>a.id);let l=[];if(n.width&&n.height)for(let a of n.edges){let o=n.nodeLookup.get(a.source),i=n.nodeLookup.get(a.target);o&&i&&K1({sourceNode:o,targetNode:i,width:n.width,height:n.height,transform:n.transform})&&l.push(a.id)}return l},[t]),Nt)}var Nz=({color:t="none",strokeWidth:e=1})=>{let n={strokeWidth:e,...t&&{stroke:t}};return(0,D.jsx)("polyline",{className:"arrow",style:n,strokeLinecap:"round",fill:"none",strokeLinejoin:"round",points:"-5,-4 0,0 -5,4"})},Mz=({color:t="none",strokeWidth:e=1})=>{let n={strokeWidth:e,...t&&{stroke:t,fill:t}};return(0,D.jsx)("polyline",{className:"arrowclosed",style:n,strokeLinecap:"round",strokeLinejoin:"round",points:"-5,-4 0,0 -5,4 -5,-4"})},Vv={[$a.Arrow]:Nz,[$a.ArrowClosed]:Mz};function zz(t){let e=Mt();return(0,R.useMemo)(()=>Object.prototype.hasOwnProperty.call(Vv,t)?Vv[t]:(e.getState().onError?.("009",_e.error009(t)),null),[t])}var Cz=({id:t,type:e,color:n,width:l=12.5,height:a=12.5,markerUnits:o="strokeWidth",strokeWidth:i,orient:u="auto-start-reverse"})=>{let r=zz(e);return r?(0,D.jsx)("marker",{className:"react-flow__arrowhead",id:t,markerWidth:`${l}`,markerHeight:`${a}`,viewBox:"-10 -10 20 20",markerUnits:o,orient:u,refX:"0",refY:"0",children:(0,D.jsx)(r,{color:n,strokeWidth:i})}):null},ub=({defaultColor:t,rfId:e})=>{let n=rt(o=>o.edges),l=rt(o=>o.defaultEdgeOptions),a=(0,R.useMemo)(()=>$1(n,{id:e,defaultColor:t,defaultMarkerStart:l?.markerStart,defaultMarkerEnd:l?.markerEnd}),[n,l,e,t]);return a.length?(0,D.jsx)("svg",{className:"react-flow__marker","aria-hidden":"true",children:(0,D.jsx)("defs",{children:a.map(o=>(0,D.jsx)(Cz,{id:o.id,type:o.type,color:o.color,width:o.width,height:o.height,markerUnits:o.markerUnits,strokeWidth:o.strokeWidth,orient:o.orient},o.id))})}):null};ub.displayName="MarkerDefinitions";var Az=(0,R.memo)(ub);function rb({x:t,y:e,label:n,labelStyle:l,labelShowBg:a=!0,labelBgStyle:o,labelBgPadding:i=[2,4],labelBgBorderRadius:u=2,children:r,className:c,...f}){let[d,s]=(0,R.useState)({x:1,y:0,width:0,height:0}),g=Tt(["react-flow__edge-textwrapper",c]),b=(0,R.useRef)(null);return(0,R.useEffect)(()=>{if(b.current){let v=b.current.getBBox();s({x:v.x,y:v.y,width:v.width,height:v.height})}},[n]),n?(0,D.jsxs)("g",{transform:`translate(${t-d.width/2} ${e-d.height/2})`,className:g,visibility:d.width?"visible":"hidden",...f,children:[a&&(0,D.jsx)("rect",{width:d.width+2*i[0],x:-i[0],y:-i[1],height:d.height+2*i[1],className:"react-flow__edge-textbg",style:o,rx:u,ry:u}),(0,D.jsx)("text",{className:"react-flow__edge-text",y:d.height/2,dy:"0.3em",ref:b,style:l,children:n}),r]}):null}rb.displayName="EdgeText";var Tz=(0,R.memo)(rb);function oc({path:t,labelX:e,labelY:n,label:l,labelStyle:a,labelShowBg:o,labelBgStyle:i,labelBgPadding:u,labelBgBorderRadius:r,interactionWidth:c=20,...f}){return(0,D.jsxs)(D.Fragment,{children:[(0,D.jsx)("path",{...f,d:t,fill:"none",className:Tt(["react-flow__edge-path",f.className])}),c?(0,D.jsx)("path",{d:t,fill:"none",strokeOpacity:0,strokeWidth:c,className:"react-flow__edge-interaction"}):null,l&&Re(e)&&Re(n)?(0,D.jsx)(Tz,{x:e,y:n,label:l,labelStyle:a,labelShowBg:o,labelBgStyle:i,labelBgPadding:u,labelBgBorderRadius:r}):null]})}function qv({pos:t,x1:e,y1:n,x2:l,y2:a}){return t===Q.Left||t===Q.Right?[.5*(e+l),n]:[e,.5*(n+a)]}function cb({sourceX:t,sourceY:e,sourcePosition:n=Q.Bottom,targetX:l,targetY:a,targetPosition:o=Q.Top}){let[i,u]=qv({pos:n,x1:t,y1:e,x2:l,y2:a}),[r,c]=qv({pos:o,x1:l,y1:a,x2:t,y2:e}),[f,d,s,g]=Gr({sourceX:t,sourceY:e,targetX:l,targetY:a,sourceControlX:i,sourceControlY:u,targetControlX:r,targetControlY:c});return[`M${t},${e} C${i},${u} ${r},${c} ${l},${a}`,f,d,s,g]}function sb(t){return(0,R.memo)(({id:e,sourceX:n,sourceY:l,targetX:a,targetY:o,sourcePosition:i,targetPosition:u,label:r,labelStyle:c,labelShowBg:f,labelBgStyle:d,labelBgPadding:s,labelBgBorderRadius:g,style:b,markerEnd:v,markerStart:S,interactionWidth:p})=>{let[m,h,y]=cb({sourceX:n,sourceY:l,sourcePosition:i,targetX:a,targetY:o,targetPosition:u}),x=t.isInternal?void 0:e;return(0,D.jsx)(oc,{id:x,path:m,labelX:h,labelY:y,label:r,labelStyle:c,labelShowBg:f,labelBgStyle:d,labelBgPadding:s,labelBgBorderRadius:g,style:b,markerEnd:v,markerStart:S,interactionWidth:p})})}var Dz=sb({isInternal:!1}),fb=sb({isInternal:!0});Dz.displayName="SimpleBezierEdge";fb.displayName="SimpleBezierEdgeInternal";function db(t){return(0,R.memo)(({id:e,sourceX:n,sourceY:l,targetX:a,targetY:o,label:i,labelStyle:u,labelShowBg:r,labelBgStyle:c,labelBgPadding:f,labelBgBorderRadius:d,style:s,sourcePosition:g=Q.Bottom,targetPosition:b=Q.Top,markerEnd:v,markerStart:S,pathOptions:p,interactionWidth:m})=>{let[h,y,x]=Ti({sourceX:n,sourceY:l,sourcePosition:g,targetX:a,targetY:o,targetPosition:b,borderRadius:p?.borderRadius,offset:p?.offset,stepPosition:p?.stepPosition}),E=t.isInternal?void 0:e;return(0,D.jsx)(oc,{id:E,path:h,labelX:y,labelY:x,label:i,labelStyle:u,labelShowBg:r,labelBgStyle:c,labelBgPadding:f,labelBgBorderRadius:d,style:s,markerEnd:v,markerStart:S,interactionWidth:m})})}var hb=db({isInternal:!1}),gb=db({isInternal:!0});hb.displayName="SmoothStepEdge";gb.displayName="SmoothStepEdgeInternal";function pb(t){return(0,R.memo)(({id:e,...n})=>{let l=t.isInternal?void 0:e;return(0,D.jsx)(hb,{...n,id:l,pathOptions:(0,R.useMemo)(()=>({borderRadius:0,offset:n.pathOptions?.offset}),[n.pathOptions?.offset])})})}var Oz=pb({isInternal:!1}),mb=pb({isInternal:!0});Oz.displayName="StepEdge";mb.displayName="StepEdgeInternal";function yb(t){return(0,R.memo)(({id:e,sourceX:n,sourceY:l,targetX:a,targetY:o,label:i,labelStyle:u,labelShowBg:r,labelBgStyle:c,labelBgPadding:f,labelBgBorderRadius:d,style:s,markerEnd:g,markerStart:b,interactionWidth:v})=>{let[S,p,m]=Kr({sourceX:n,sourceY:l,targetX:a,targetY:o}),h=t.isInternal?void 0:e;return(0,D.jsx)(oc,{id:h,path:S,labelX:p,labelY:m,label:i,labelStyle:u,labelShowBg:r,labelBgStyle:c,labelBgPadding:f,labelBgBorderRadius:d,style:s,markerEnd:g,markerStart:b,interactionWidth:v})})}var Hz=yb({isInternal:!1}),vb=yb({isInternal:!0});Hz.displayName="StraightEdge";vb.displayName="StraightEdgeInternal";function bb(t){return(0,R.memo)(({id:e,sourceX:n,sourceY:l,targetX:a,targetY:o,sourcePosition:i=Q.Bottom,targetPosition:u=Q.Top,label:r,labelStyle:c,labelShowBg:f,labelBgStyle:d,labelBgPadding:s,labelBgBorderRadius:g,style:b,markerEnd:v,markerStart:S,pathOptions:p,interactionWidth:m})=>{let[h,y,x]=Qr({sourceX:n,sourceY:l,sourcePosition:i,targetX:a,targetY:o,targetPosition:u,curvature:p?.curvature}),E=t.isInternal?void 0:e;return(0,D.jsx)(oc,{id:E,path:h,labelX:y,labelY:x,label:r,labelStyle:c,labelShowBg:f,labelBgStyle:d,labelBgPadding:s,labelBgBorderRadius:g,style:b,markerEnd:v,markerStart:S,interactionWidth:m})})}var Rz=bb({isInternal:!1}),xb=bb({isInternal:!0});Rz.displayName="BezierEdge";xb.displayName="BezierEdgeInternal";var Xv={default:xb,straight:vb,step:mb,smoothstep:gb,simplebezier:fb},Zv={sourceX:null,sourceY:null,targetX:null,targetY:null,sourcePosition:null,targetPosition:null},Bz=(t,e,n)=>n===Q.Left?t-e:n===Q.Right?t+e:t,kz=(t,e,n)=>n===Q.Top?t-e:n===Q.Bottom?t+e:t,Gv="react-flow__edgeupdater";function Qv({position:t,centerX:e,centerY:n,radius:l=10,onMouseDown:a,onMouseEnter:o,onMouseOut:i,type:u}){return(0,D.jsx)("circle",{onMouseDown:a,onMouseEnter:o,onMouseOut:i,className:Tt([Gv,`${Gv}-${u}`]),cx:Bz(e,l,t),cy:kz(n,l,t),r:l,stroke:"transparent",fill:"transparent"})}function Uz({isReconnectable:t,reconnectRadius:e,edge:n,sourceX:l,sourceY:a,targetX:o,targetY:i,sourcePosition:u,targetPosition:r,onReconnect:c,onReconnectStart:f,onReconnectEnd:d,setReconnecting:s,setUpdateHover:g}){let b=Mt(),v=(y,x)=>{if(y.button!==0)return;let{autoPanOnConnect:E,domNode:w,isValidConnection:N,connectionMode:z,connectionRadius:U,lib:H,onConnectStart:B,onConnectEnd:Y,cancelConnection:_,nodeLookup:C,rfId:M,panBy:T,updateConnection:A}=b.getState(),O=x.type==="target",L=(G,Z)=>{s(!1),d?.(G,n,x.type,Z)},q=G=>c?.(n,G),V=(G,Z)=>{s(!0),f?.(y,n,x.type),B?.(G,Z)};Ir.onPointerDown(y.nativeEvent,{autoPanOnConnect:E,connectionMode:z,connectionRadius:U,domNode:w,handleId:x.id,nodeId:x.nodeId,nodeLookup:C,isTarget:O,edgeUpdaterType:x.type,lib:H,flowId:M,cancelConnection:_,panBy:T,isValidConnection:N,onConnect:q,onConnectStart:V,onConnectEnd:Y,onReconnectEnd:L,updateConnection:A,getTransform:()=>b.getState().transform,getFromHandle:()=>b.getState().connection.fromHandle,dragThreshold:b.getState().connectionDragThreshold,handleDomNode:y.currentTarget})},S=y=>v(y,{nodeId:n.target,id:n.targetHandle??null,type:"target"}),p=y=>v(y,{nodeId:n.source,id:n.sourceHandle??null,type:"source"}),m=()=>g(!0),h=()=>g(!1);return(0,D.jsxs)(D.Fragment,{children:[(t===!0||t==="source")&&(0,D.jsx)(Qv,{position:u,centerX:l,centerY:a,radius:e,onMouseDown:S,onMouseEnter:m,onMouseOut:h,type:"source"}),(t===!0||t==="target")&&(0,D.jsx)(Qv,{position:r,centerX:o,centerY:i,radius:e,onMouseDown:p,onMouseEnter:m,onMouseOut:h,type:"target"})]})}function Lz({id:t,edgesFocusable:e,edgesReconnectable:n,elementsSelectable:l,onClick:a,onDoubleClick:o,onContextMenu:i,onMouseEnter:u,onMouseMove:r,onMouseLeave:c,reconnectRadius:f,onReconnect:d,onReconnectStart:s,onReconnectEnd:g,rfId:b,edgeTypes:v,noPanClassName:S,onError:p,disableKeyboardA11y:m}){let h=rt(I=>I.edgeLookup.get(t)),y=rt(I=>I.defaultEdgeOptions);h=y?{...y,...h}:h;let x=h.type||"default",E=v?.[x]||Xv[x];E===void 0&&(p?.("011",_e.error011(x)),x="default",E=v?.default||Xv.default);let w=!!(h.focusable||e&&typeof h.focusable>"u"),N=typeof d<"u"&&(h.reconnectable||n&&typeof h.reconnectable>"u"),z=!!(h.selectable||l&&typeof h.selectable>"u"),U=(0,R.useRef)(null),[H,B]=(0,R.useState)(!1),[Y,_]=(0,R.useState)(!1),C=Mt(),{zIndex:M,sourceX:T,sourceY:A,targetX:O,targetY:L,sourcePosition:q,targetPosition:V}=rt((0,R.useCallback)(I=>{let F=I.nodeLookup.get(h.source),ut=I.nodeLookup.get(h.target);if(!F||!ut)return{zIndex:h.zIndex,...Zv};let St=j1({id:t,sourceNode:F,targetNode:ut,sourceHandle:h.sourceHandle||null,targetHandle:h.targetHandle||null,connectionMode:I.connectionMode,onError:p});return{zIndex:Q1({selected:h.selected,zIndex:h.zIndex,sourceNode:F,targetNode:ut,elevateOnSelect:I.elevateEdgesOnSelect}),...St||Zv}},[h.source,h.target,h.sourceHandle,h.targetHandle,h.selected,h.zIndex]),Nt),G=(0,R.useMemo)(()=>h.markerStart?`url(\'#${jr(h.markerStart,b)}\')`:void 0,[h.markerStart,b]),Z=(0,R.useMemo)(()=>h.markerEnd?`url(\'#${jr(h.markerEnd,b)}\')`:void 0,[h.markerEnd,b]);if(h.hidden||T===null||A===null||O===null||L===null)return null;let $=I=>{let{addSelectedEdges:F,unselectNodesAndEdges:ut,multiSelectionActive:St}=C.getState();z&&(C.setState({nodesSelectionActive:!1}),h.selected&&St?(ut({nodes:[],edges:[h]}),U.current?.blur()):F([t])),a&&a(I,h)},tt=o?I=>{o(I,{...h})}:void 0,K=i?I=>{i(I,{...h})}:void 0,X=u?I=>{u(I,{...h})}:void 0,j=r?I=>{r(I,{...h})}:void 0,ot=c?I=>{c(I,{...h})}:void 0,et=I=>{if(!m&&Ld.includes(I.key)&&z){let{unselectNodesAndEdges:F,addSelectedEdges:ut}=C.getState();I.key==="Escape"?(U.current?.blur(),F({edges:[h]})):ut([t])}};return(0,D.jsx)("svg",{style:{zIndex:M},children:(0,D.jsxs)("g",{className:Tt(["react-flow__edge",`react-flow__edge-${x}`,h.className,S,{selected:h.selected,animated:h.animated,inactive:!z&&!a,updating:H,selectable:z}]),onClick:$,onDoubleClick:tt,onContextMenu:K,onMouseEnter:X,onMouseMove:j,onMouseLeave:ot,onKeyDown:w?et:void 0,tabIndex:w?0:void 0,role:h.ariaRole??(w?"group":"img"),"aria-roledescription":"edge","data-id":t,"data-testid":`rf__edge-${t}`,"aria-label":h.ariaLabel===null?void 0:h.ariaLabel||`Edge from ${h.source} to ${h.target}`,"aria-describedby":w?`${Fv}-${b}`:void 0,ref:U,...h.domAttributes,children:[!Y&&(0,D.jsx)(E,{id:t,source:h.source,target:h.target,type:h.type,selected:h.selected,animated:h.animated,selectable:z,deletable:h.deletable??!0,label:h.label,labelStyle:h.labelStyle,labelShowBg:h.labelShowBg,labelBgStyle:h.labelBgStyle,labelBgPadding:h.labelBgPadding,labelBgBorderRadius:h.labelBgBorderRadius,sourceX:T,sourceY:A,targetX:O,targetY:L,sourcePosition:q,targetPosition:V,data:h.data,style:h.style,sourceHandleId:h.sourceHandle,targetHandleId:h.targetHandle,markerStart:G,markerEnd:Z,pathOptions:"pathOptions"in h?h.pathOptions:void 0,interactionWidth:h.interactionWidth}),N&&(0,D.jsx)(Uz,{edge:h,isReconnectable:N,reconnectRadius:f,onReconnect:d,onReconnectStart:s,onReconnectEnd:g,sourceX:T,sourceY:A,targetX:O,targetY:L,sourcePosition:q,targetPosition:V,setUpdateHover:B,setReconnecting:_})]})})}var Yz=(0,R.memo)(Lz),Vz=t=>({edgesFocusable:t.edgesFocusable,edgesReconnectable:t.edgesReconnectable,elementsSelectable:t.elementsSelectable,connectionMode:t.connectionMode,onError:t.onError});function Sb({defaultMarkerColor:t,onlyRenderVisibleElements:e,rfId:n,edgeTypes:l,noPanClassName:a,onReconnect:o,onEdgeContextMenu:i,onEdgeMouseEnter:u,onEdgeMouseMove:r,onEdgeMouseLeave:c,onEdgeClick:f,reconnectRadius:d,onEdgeDoubleClick:s,onReconnectStart:g,onReconnectEnd:b,disableKeyboardA11y:v}){let{edgesFocusable:S,edgesReconnectable:p,elementsSelectable:m,onError:h}=rt(Vz,Nt),y=Ez(e);return(0,D.jsxs)("div",{className:"react-flow__edges",children:[(0,D.jsx)(Az,{defaultColor:t,rfId:n}),y.map(x=>(0,D.jsx)(Yz,{id:x,edgesFocusable:S,edgesReconnectable:p,elementsSelectable:m,noPanClassName:a,onReconnect:o,onContextMenu:i,onMouseEnter:u,onMouseMove:r,onMouseLeave:c,onClick:f,reconnectRadius:d,onDoubleClick:s,onReconnectStart:g,onReconnectEnd:b,rfId:n,onError:h,edgeTypes:l,disableKeyboardA11y:v},x))]})}Sb.displayName="EdgeRenderer";var qz=(0,R.memo)(Sb),Xz=t=>`translate(${t.transform[0]}px,${t.transform[1]}px) scale(${t.transform[2]})`;function Zz({children:t}){let e=rt(Xz);return(0,D.jsx)("div",{className:"react-flow__viewport xyflow__viewport react-flow__container",style:{transform:e},children:t})}function Gz(t){let e=dh(),n=(0,R.useRef)(!1);(0,R.useEffect)(()=>{!n.current&&e.viewportInitialized&&t&&(setTimeout(()=>t(e),1),n.current=!0)},[t,e.viewportInitialized])}var Qz=t=>t.panZoom?.syncViewport;function Kz(t){let e=rt(Qz),n=Mt();return(0,R.useEffect)(()=>{t&&(e?.(t),n.setState({transform:[t.x,t.y,t.zoom]}))},[t,e]),null}function Kv(t){return t.connection.inProgress?{...t.connection,to:eo(t.connection.to,t.transform)}:{...t.connection}}function jz(t){return t?n=>{let l=Kv(n);return t(l)}:Kv}function $z(t){let e=jz(t);return rt(e,Nt)}var Jz=t=>({nodesConnectable:t.nodesConnectable,isValid:t.connection.isValid,inProgress:t.connection.inProgress,width:t.width,height:t.height});function Iz({containerStyle:t,style:e,type:n,component:l}){let{nodesConnectable:a,width:o,height:i,isValid:u,inProgress:r}=rt(Jz,Nt);return!(o&&a&&r)?null:(0,D.jsx)("svg",{style:t,width:o,height:i,className:"react-flow__connectionline react-flow__container",children:(0,D.jsx)("g",{className:Tt(["react-flow__connection",qd(u)]),children:(0,D.jsx)(_b,{style:e,type:n,CustomComponent:l,isValid:u})})})}var _b=({style:t,type:e=We.Bezier,CustomComponent:n,isValid:l})=>{let{inProgress:a,from:o,fromNode:i,fromHandle:u,fromPosition:r,to:c,toNode:f,toHandle:d,toPosition:s}=$z();if(!a)return;if(n)return(0,D.jsx)(n,{connectionLineType:e,connectionLineStyle:t,fromNode:i,fromHandle:u,fromX:o.x,fromY:o.y,toX:c.x,toY:c.y,fromPosition:r,toPosition:s,connectionStatus:qd(l),toNode:f,toHandle:d});let g="",b={sourceX:o.x,sourceY:o.y,sourcePosition:r,targetX:c.x,targetY:c.y,targetPosition:s};switch(e){case We.Bezier:[g]=Qr(b);break;case We.SimpleBezier:[g]=cb(b);break;case We.Step:[g]=Ti({...b,borderRadius:0});break;case We.SmoothStep:[g]=Ti(b);break;default:[g]=Kr(b)}return(0,D.jsx)("path",{d:g,fill:"none",className:"react-flow__connection-path",style:t})};_b.displayName="ConnectionLine";var Fz={};function jv(t=Fz){let e=(0,R.useRef)(t),n=Mt();(0,R.useEffect)(()=>{},[t])}function Wz(){let t=Mt(),e=(0,R.useRef)(!1);(0,R.useEffect)(()=>{},[])}function wb({nodeTypes:t,edgeTypes:e,onInit:n,onNodeClick:l,onEdgeClick:a,onNodeDoubleClick:o,onEdgeDoubleClick:i,onNodeMouseEnter:u,onNodeMouseMove:r,onNodeMouseLeave:c,onNodeContextMenu:f,onSelectionContextMenu:d,onSelectionStart:s,onSelectionEnd:g,connectionLineType:b,connectionLineStyle:v,connectionLineComponent:S,connectionLineContainerStyle:p,selectionKeyCode:m,selectionOnDrag:h,selectionMode:y,multiSelectionKeyCode:x,panActivationKeyCode:E,zoomActivationKeyCode:w,deleteKeyCode:N,onlyRenderVisibleElements:z,elementsSelectable:U,defaultViewport:H,translateExtent:B,minZoom:Y,maxZoom:_,preventScrolling:C,defaultMarkerColor:M,zoomOnScroll:T,zoomOnPinch:A,panOnScroll:O,panOnScrollSpeed:L,panOnScrollMode:q,zoomOnDoubleClick:V,panOnDrag:G,onPaneClick:Z,onPaneMouseEnter:$,onPaneMouseMove:tt,onPaneMouseLeave:K,onPaneScroll:X,onPaneContextMenu:j,paneClickDistance:ot,nodeClickDistance:et,onEdgeContextMenu:I,onEdgeMouseEnter:F,onEdgeMouseMove:ut,onEdgeMouseLeave:St,reconnectRadius:_t,onReconnect:Zt,onReconnectStart:tn,onReconnectEnd:sl,noDragClassName:Hi,noWheelClassName:Ri,noPanClassName:io,disableKeyboardA11y:uo,nodeExtent:uc,rfId:Bi,viewport:Gl,onViewportChange:ro}){return jv(t),jv(e),Wz(),Gz(n),Kz(Gl),(0,D.jsx)(gz,{onPaneClick:Z,onPaneMouseEnter:$,onPaneMouseMove:tt,onPaneMouseLeave:K,onPaneContextMenu:j,onPaneScroll:X,paneClickDistance:ot,deleteKeyCode:N,selectionKeyCode:m,selectionOnDrag:h,selectionMode:y,onSelectionStart:s,onSelectionEnd:g,multiSelectionKeyCode:x,panActivationKeyCode:E,zoomActivationKeyCode:w,elementsSelectable:U,zoomOnScroll:T,zoomOnPinch:A,zoomOnDoubleClick:V,panOnScroll:O,panOnScrollSpeed:L,panOnScrollMode:q,panOnDrag:G,defaultViewport:H,translateExtent:B,minZoom:Y,maxZoom:_,onSelectionContextMenu:d,preventScrolling:C,noDragClassName:Hi,noWheelClassName:Ri,noPanClassName:io,disableKeyboardA11y:uo,onViewportChange:ro,isControlledViewport:!!Gl,children:(0,D.jsxs)(Zz,{children:[(0,D.jsx)(qz,{edgeTypes:e,onEdgeClick:a,onEdgeDoubleClick:i,onReconnect:Zt,onReconnectStart:tn,onReconnectEnd:sl,onlyRenderVisibleElements:z,onEdgeContextMenu:I,onEdgeMouseEnter:F,onEdgeMouseMove:ut,onEdgeMouseLeave:St,reconnectRadius:_t,defaultMarkerColor:M,noPanClassName:io,disableKeyboardA11y:uo,rfId:Bi}),(0,D.jsx)(Iz,{style:v,type:b,component:S,containerStyle:p}),(0,D.jsx)("div",{className:"react-flow__edgelabel-renderer"}),(0,D.jsx)(wz,{nodeTypes:t,onNodeClick:l,onNodeDoubleClick:o,onNodeMouseEnter:u,onNodeMouseMove:r,onNodeMouseLeave:c,onNodeContextMenu:f,nodeClickDistance:et,onlyRenderVisibleElements:z,noPanClassName:io,noDragClassName:Hi,disableKeyboardA11y:uo,nodeExtent:uc,rfId:Bi}),(0,D.jsx)("div",{className:"react-flow__viewport-portal"})]})})}wb.displayName="GraphView";var Pz=(0,R.memo)(wb),$v=({nodes:t,edges:e,defaultNodes:n,defaultEdges:l,width:a,height:o,fitView:i,fitViewOptions:u,minZoom:r=.5,maxZoom:c=2,nodeOrigin:f,nodeExtent:d}={})=>{let s=new Map,g=new Map,b=new Map,v=new Map,S=l??e??[],p=n??t??[],m=f??[0,0],h=d??Fa;ih(b,v,S);let y=$r(p,s,g,{nodeOrigin:m,nodeExtent:h,elevateNodesOnSelect:!1}),x=[0,0,1];if(i&&a&&o){let E=Wa(s,{filter:U=>!!((U.width||U.initialWidth)&&(U.height||U.initialHeight))}),{x:w,y:N,zoom:z}=Ai(E,a,o,r,c,u?.padding??.1);x=[w,N,z]}return{rfId:"1",width:a??0,height:o??0,transform:x,nodes:p,nodesInitialized:y,nodeLookup:s,parentLookup:g,edges:S,edgeLookup:v,connectionLookup:b,onNodesChange:null,onEdgesChange:null,hasDefaultNodes:n!==void 0,hasDefaultEdges:l!==void 0,panZoom:null,minZoom:r,maxZoom:c,translateExtent:Fa,nodeExtent:h,nodesSelectionActive:!1,userSelectionActive:!1,userSelectionRect:null,connectionMode:ul.Strict,domNode:null,paneDragging:!1,noPanClassName:"nopan",nodeOrigin:m,nodeDragThreshold:1,connectionDragThreshold:1,snapGrid:[15,15],snapToGrid:!1,nodesDraggable:!0,nodesConnectable:!0,nodesFocusable:!0,edgesFocusable:!0,edgesReconnectable:!0,elementsSelectable:!0,elevateNodesOnSelect:!0,elevateEdgesOnSelect:!1,selectNodesOnDrag:!0,multiSelectionActive:!1,fitViewQueued:i??!1,fitViewOptions:u,fitViewResolver:null,connection:{...Vd},connectionClickStartHandle:null,connectOnClick:!0,ariaLiveMessage:"",autoPanOnConnect:!0,autoPanOnNodeDrag:!0,autoPanOnNodeFocus:!0,autoPanSpeed:15,connectionRadius:20,onError:$d,isValidConnection:void 0,onSelectionChangeHandlers:[],lib:"react",debug:!1,ariaLabelConfig:Yd}},tC=({nodes:t,edges:e,defaultNodes:n,defaultEdges:l,width:a,height:o,fitView:i,fitViewOptions:u,minZoom:r,maxZoom:c,nodeOrigin:f,nodeExtent:d})=>Nv((s,g)=>{async function b(){let{nodeLookup:v,panZoom:S,fitViewOptions:p,fitViewResolver:m,width:h,height:y,minZoom:x,maxZoom:E}=g();S&&(await Y1({nodes:v,width:h,height:y,panZoom:S,minZoom:x,maxZoom:E},p),m?.resolve(!0),s({fitViewResolver:null}))}return{...$v({nodes:t,edges:e,width:a,height:o,fitView:i,fitViewOptions:u,minZoom:r,maxZoom:c,nodeOrigin:f,nodeExtent:d,defaultNodes:n,defaultEdges:l}),setNodes:v=>{let{nodeLookup:S,parentLookup:p,nodeOrigin:m,elevateNodesOnSelect:h,fitViewQueued:y}=g(),x=$r(v,S,p,{nodeOrigin:m,nodeExtent:d,elevateNodesOnSelect:h,checkEquality:!0});y&&x?(b(),s({nodes:v,nodesInitialized:x,fitViewQueued:!1,fitViewOptions:void 0})):s({nodes:v,nodesInitialized:x})},setEdges:v=>{let{connectionLookup:S,edgeLookup:p}=g();ih(S,p,v),s({edges:v})},setDefaultNodesAndEdges:(v,S)=>{if(v){let{setNodes:p}=g();p(v),s({hasDefaultNodes:!0})}if(S){let{setEdges:p}=g();p(S),s({hasDefaultEdges:!0})}},updateNodeInternals:v=>{let{triggerNodeChanges:S,nodeLookup:p,parentLookup:m,domNode:h,nodeOrigin:y,nodeExtent:x,debug:E,fitViewQueued:w}=g(),{changes:N,updatedInternals:z}=W1(v,p,m,h,y,x);z&&(I1(p,m,{nodeOrigin:y,nodeExtent:x}),w?(b(),s({fitViewQueued:!1,fitViewOptions:void 0})):s({}),N?.length>0&&(E&&console.log("React Flow: trigger node changes",N),S?.(N)))},updateNodePositions:(v,S=!1)=>{let p=[],m=[],{nodeLookup:h,triggerNodeChanges:y}=g();for(let[x,E]of v){let w=h.get(x),N=!!(w?.expandParent&&w?.parentId&&E?.position),z={id:x,type:"position",position:N?{x:Math.max(0,E.position.x),y:Math.max(0,E.position.y)}:E.position,dragging:S};N&&w.parentId&&p.push({id:x,parentId:w.parentId,rect:{...E.internals.positionAbsolute,width:E.measured.width??0,height:E.measured.height??0}}),m.push(z)}if(p.length>0){let{parentLookup:x,nodeOrigin:E}=g(),w=Jr(p,h,x,E);m.push(...w)}y(m)},triggerNodeChanges:v=>{let{onNodesChange:S,setNodes:p,nodes:m,hasDefaultNodes:h,debug:y}=g();if(v?.length){if(h){let x=LM(v,m);p(x)}y&&console.log("React Flow: trigger node changes",v),S?.(v)}},triggerEdgeChanges:v=>{let{onEdgesChange:S,setEdges:p,edges:m,hasDefaultEdges:h,debug:y}=g();if(v?.length){if(h){let x=YM(v,m);p(x)}y&&console.log("React Flow: trigger edge changes",v),S?.(v)}},addSelectedNodes:v=>{let{multiSelectionActive:S,edgeLookup:p,nodeLookup:m,triggerNodeChanges:h,triggerEdgeChanges:y}=g();if(S){let x=v.map(E=>Xl(E,!0));h(x);return}h(ao(m,new Set([...v]),!0)),y(ao(p))},addSelectedEdges:v=>{let{multiSelectionActive:S,edgeLookup:p,nodeLookup:m,triggerNodeChanges:h,triggerEdgeChanges:y}=g();if(S){let x=v.map(E=>Xl(E,!0));y(x);return}y(ao(p,new Set([...v]))),h(ao(m,new Set,!0))},unselectNodesAndEdges:({nodes:v,edges:S}={})=>{let{edges:p,nodes:m,nodeLookup:h,triggerNodeChanges:y,triggerEdgeChanges:x}=g(),E=v||m,w=S||p,N=E.map(U=>{let H=h.get(U.id);return H&&(H.selected=!1),Xl(U.id,!1)}),z=w.map(U=>Xl(U.id,!1));y(N),x(z)},setMinZoom:v=>{let{panZoom:S,maxZoom:p}=g();S?.setScaleExtent([v,p]),s({minZoom:v})},setMaxZoom:v=>{let{panZoom:S,minZoom:p}=g();S?.setScaleExtent([p,v]),s({maxZoom:v})},setTranslateExtent:v=>{g().panZoom?.setTranslateExtent(v),s({translateExtent:v})},resetSelectedElements:()=>{let{edges:v,nodes:S,triggerNodeChanges:p,triggerEdgeChanges:m,elementsSelectable:h}=g();if(!h)return;let y=S.reduce((E,w)=>w.selected?[...E,Xl(w.id,!1)]:E,[]),x=v.reduce((E,w)=>w.selected?[...E,Xl(w.id,!1)]:E,[]);p(y),m(x)},setNodeExtent:v=>{let{nodes:S,nodeLookup:p,parentLookup:m,nodeOrigin:h,elevateNodesOnSelect:y,nodeExtent:x}=g();v[0][0]===x[0][0]&&v[0][1]===x[0][1]&&v[1][0]===x[1][0]&&v[1][1]===x[1][1]||($r(S,p,m,{nodeOrigin:h,nodeExtent:v,elevateNodesOnSelect:y,checkEquality:!1}),s({nodeExtent:v}))},panBy:v=>{let{transform:S,width:p,height:m,panZoom:h,translateExtent:y}=g();return P1({delta:v,panZoom:h,transform:S,translateExtent:y,width:p,height:m})},setCenter:async(v,S,p)=>{let{width:m,height:h,maxZoom:y,panZoom:x}=g();if(!x)return Promise.resolve(!1);let E=typeof p?.zoom<"u"?p.zoom:y;return await x.setViewport({x:m/2-v*E,y:h/2-S*E,zoom:E},{duration:p?.duration,ease:p?.ease,interpolate:p?.interpolate}),Promise.resolve(!0)},cancelConnection:()=>{s({connection:{...Vd}})},updateConnection:v=>{s({connection:v})},reset:()=>s({...$v()})}},Object.is);function eC({initialNodes:t,initialEdges:e,defaultNodes:n,defaultEdges:l,initialWidth:a,initialHeight:o,initialMinZoom:i,initialMaxZoom:u,initialFitViewOptions:r,fitView:c,nodeOrigin:f,nodeExtent:d,children:s}){let[g]=(0,R.useState)(()=>tC({nodes:t,edges:e,defaultNodes:n,defaultEdges:l,width:a,height:o,fitView:c,minZoom:i,maxZoom:u,fitViewOptions:r,nodeOrigin:f,nodeExtent:d}));return(0,D.jsx)(vM,{value:g,children:(0,D.jsx)(ZM,{children:s})})}function nC({children:t,nodes:e,edges:n,defaultNodes:l,defaultEdges:a,width:o,height:i,fitView:u,fitViewOptions:r,minZoom:c,maxZoom:f,nodeOrigin:d,nodeExtent:s}){return(0,R.useContext)(nc)?(0,D.jsx)(D.Fragment,{children:t}):(0,D.jsx)(eC,{initialNodes:e,initialEdges:n,defaultNodes:l,defaultEdges:a,initialWidth:o,initialHeight:i,fitView:u,initialFitViewOptions:r,initialMinZoom:c,initialMaxZoom:f,nodeOrigin:d,nodeExtent:s,children:t})}var lC={width:"100%",height:"100%",overflow:"hidden",position:"relative",zIndex:0};function aC({nodes:t,edges:e,defaultNodes:n,defaultEdges:l,className:a,nodeTypes:o,edgeTypes:i,onNodeClick:u,onEdgeClick:r,onInit:c,onMove:f,onMoveStart:d,onMoveEnd:s,onConnect:g,onConnectStart:b,onConnectEnd:v,onClickConnectStart:S,onClickConnectEnd:p,onNodeMouseEnter:m,onNodeMouseMove:h,onNodeMouseLeave:y,onNodeContextMenu:x,onNodeDoubleClick:E,onNodeDragStart:w,onNodeDrag:N,onNodeDragStop:z,onNodesDelete:U,onEdgesDelete:H,onDelete:B,onSelectionChange:Y,onSelectionDragStart:_,onSelectionDrag:C,onSelectionDragStop:M,onSelectionContextMenu:T,onSelectionStart:A,onSelectionEnd:O,onBeforeDelete:L,connectionMode:q,connectionLineType:V=We.Bezier,connectionLineStyle:G,connectionLineComponent:Z,connectionLineContainerStyle:$,deleteKeyCode:tt="Backspace",selectionKeyCode:K="Shift",selectionOnDrag:X=!1,selectionMode:j=Yl.Full,panActivationKeyCode:ot="Space",multiSelectionKeyCode:et=no()?"Meta":"Control",zoomActivationKeyCode:I=no()?"Meta":"Control",snapToGrid:F,snapGrid:ut,onlyRenderVisibleElements:St=!1,selectNodesOnDrag:_t,nodesDraggable:Zt,autoPanOnNodeFocus:tn,nodesConnectable:sl,nodesFocusable:Hi,nodeOrigin:Ri=Wv,edgesFocusable:io,edgesReconnectable:uo,elementsSelectable:uc=!0,defaultViewport:Bi=DM,minZoom:Gl=.5,maxZoom:ro=2,translateExtent:vh=Fa,preventScrolling:Rb=!0,nodeExtent:rc,defaultMarkerColor:Bb="#b1b1b7",zoomOnScroll:kb=!0,zoomOnPinch:Ub=!0,panOnScroll:Lb=!1,panOnScrollSpeed:Yb=.5,panOnScrollMode:Vb=zn.Free,zoomOnDoubleClick:qb=!0,panOnDrag:Xb=!0,onPaneClick:Zb,onPaneMouseEnter:Gb,onPaneMouseMove:Qb,onPaneMouseLeave:Kb,onPaneScroll:jb,onPaneContextMenu:$b,paneClickDistance:Jb=0,nodeClickDistance:Ib=0,children:Fb,onReconnect:Wb,onReconnectStart:Pb,onReconnectEnd:tx,onEdgeContextMenu:ex,onEdgeDoubleClick:nx,onEdgeMouseEnter:lx,onEdgeMouseMove:ax,onEdgeMouseLeave:ox,reconnectRadius:ix=10,onNodesChange:ux,onEdgesChange:rx,noDragClassName:cx="nodrag",noWheelClassName:sx="nowheel",noPanClassName:bh="nopan",fitView:xh,fitViewOptions:Sh,connectOnClick:fx,attributionPosition:dx,proOptions:hx,defaultEdgeOptions:gx,elevateNodesOnSelect:px,elevateEdgesOnSelect:mx,disableKeyboardA11y:_h=!1,autoPanOnConnect:yx,autoPanOnNodeDrag:vx,autoPanSpeed:bx,connectionRadius:xx,isValidConnection:Sx,onError:_x,style:wx,id:wh,nodeDragThreshold:Ex,connectionDragThreshold:Nx,viewport:Mx,onViewportChange:zx,width:Cx,height:Ax,colorMode:Tx="light",debug:Dx,onScroll:Eh,ariaLabelConfig:Ox,...Hx},Rx){let cc=wh||"1",Bx=BM(Tx),kx=(0,R.useCallback)(Nh=>{Nh.currentTarget.scrollTo({top:0,left:0,behavior:"instant"}),Eh?.(Nh)},[Eh]);return(0,D.jsx)("div",{"data-testid":"rf__wrapper",...Hx,onScroll:kx,style:{...wx,...lC},ref:Rx,className:Tt(["react-flow",a,Bx]),id:wh,role:"application",children:(0,D.jsxs)(nC,{nodes:t,edges:e,width:Cx,height:Ax,fitView:xh,fitViewOptions:Sh,minZoom:Gl,maxZoom:ro,nodeOrigin:Ri,nodeExtent:rc,children:[(0,D.jsx)(Pz,{onInit:c,onNodeClick:u,onEdgeClick:r,onNodeMouseEnter:m,onNodeMouseMove:h,onNodeMouseLeave:y,onNodeContextMenu:x,onNodeDoubleClick:E,nodeTypes:o,edgeTypes:i,connectionLineType:V,connectionLineStyle:G,connectionLineComponent:Z,connectionLineContainerStyle:$,selectionKeyCode:K,selectionOnDrag:X,selectionMode:j,deleteKeyCode:tt,multiSelectionKeyCode:et,panActivationKeyCode:ot,zoomActivationKeyCode:I,onlyRenderVisibleElements:St,defaultViewport:Bi,translateExtent:vh,minZoom:Gl,maxZoom:ro,preventScrolling:Rb,zoomOnScroll:kb,zoomOnPinch:Ub,zoomOnDoubleClick:qb,panOnScroll:Lb,panOnScrollSpeed:Yb,panOnScrollMode:Vb,panOnDrag:Xb,onPaneClick:Zb,onPaneMouseEnter:Gb,onPaneMouseMove:Qb,onPaneMouseLeave:Kb,onPaneScroll:jb,onPaneContextMenu:$b,paneClickDistance:Jb,nodeClickDistance:Ib,onSelectionContextMenu:T,onSelectionStart:A,onSelectionEnd:O,onReconnect:Wb,onReconnectStart:Pb,onReconnectEnd:tx,onEdgeContextMenu:ex,onEdgeDoubleClick:nx,onEdgeMouseEnter:lx,onEdgeMouseMove:ax,onEdgeMouseLeave:ox,reconnectRadius:ix,defaultMarkerColor:Bb,noDragClassName:cx,noWheelClassName:sx,noPanClassName:bh,rfId:cc,disableKeyboardA11y:_h,nodeExtent:rc,viewport:Mx,onViewportChange:zx}),(0,D.jsx)(RM,{nodes:t,edges:e,defaultNodes:n,defaultEdges:l,onConnect:g,onConnectStart:b,onConnectEnd:v,onClickConnectStart:S,onClickConnectEnd:p,nodesDraggable:Zt,autoPanOnNodeFocus:tn,nodesConnectable:sl,nodesFocusable:Hi,edgesFocusable:io,edgesReconnectable:uo,elementsSelectable:uc,elevateNodesOnSelect:px,elevateEdgesOnSelect:mx,minZoom:Gl,maxZoom:ro,nodeExtent:rc,onNodesChange:ux,onEdgesChange:rx,snapToGrid:F,snapGrid:ut,connectionMode:q,translateExtent:vh,connectOnClick:fx,defaultEdgeOptions:gx,fitView:xh,fitViewOptions:Sh,onNodesDelete:U,onEdgesDelete:H,onDelete:B,onNodeDragStart:w,onNodeDrag:N,onNodeDragStop:z,onSelectionDrag:C,onSelectionDragStart:_,onSelectionDragStop:M,onMove:f,onMoveStart:d,onMoveEnd:s,noPanClassName:bh,nodeOrigin:Ri,rfId:cc,autoPanOnConnect:yx,autoPanOnNodeDrag:vx,autoPanSpeed:bx,onError:_x,connectionRadius:xx,isValidConnection:Sx,selectNodesOnDrag:_t,nodeDragThreshold:Ex,connectionDragThreshold:Nx,onBeforeDelete:L,debug:Dx,ariaLabelConfig:Ox}),(0,D.jsx)(TM,{onSelectionChange:Y}),Fb,(0,D.jsx)(NM,{proOptions:hx,position:dx}),(0,D.jsx)(EM,{rfId:cc,disableKeyboardA11y:_h})]})})}var Eb=tb(aC);var b5=_e.error014();function oC({dimensions:t,lineWidth:e,variant:n,className:l}){return(0,D.jsx)("path",{strokeWidth:e,d:`M${t[0]/2} 0 V${t[1]} M0 ${t[1]/2} H${t[0]}`,className:Tt(["react-flow__background-pattern",n,l])})}function iC({radius:t,className:e}){return(0,D.jsx)("circle",{cx:t,cy:t,r:t,className:Tt(["react-flow__background-pattern","dots",e])})}var cl;(function(t){t.Lines="lines",t.Dots="dots",t.Cross="cross"})(cl||(cl={}));var uC={[cl.Dots]:1,[cl.Lines]:1,[cl.Cross]:6},rC=t=>({transform:t.transform,patternId:`pattern-${t.rfId}`});function Nb({id:t,variant:e=cl.Dots,gap:n=20,size:l,lineWidth:a=1,offset:o=0,color:i,bgColor:u,style:r,className:c,patternClassName:f}){let d=(0,R.useRef)(null),{transform:s,patternId:g}=rt(rC,Nt),b=l||uC[e],v=e===cl.Dots,S=e===cl.Cross,p=Array.isArray(n)?n:[n,n],m=[p[0]*s[2]||1,p[1]*s[2]||1],h=b*s[2],y=Array.isArray(o)?o:[o,o],x=S?[h,h]:m,E=[y[0]*s[2]||1+x[0]/2,y[1]*s[2]||1+x[1]/2],w=`${g}${t||""}`;return(0,D.jsxs)("svg",{className:Tt(["react-flow__background",c]),style:{...r,...ac,"--xy-background-color-props":u,"--xy-background-pattern-color-props":i},ref:d,"data-testid":"rf__background",children:[(0,D.jsx)("pattern",{id:w,x:s[0]%m[0],y:s[1]%m[1],width:m[0],height:m[1],patternUnits:"userSpaceOnUse",patternTransform:`translate(-${E[0]},-${E[1]})`,children:v?(0,D.jsx)(iC,{radius:h/2,className:f}):(0,D.jsx)(oC,{dimensions:x,lineWidth:a,variant:e,className:f})}),(0,D.jsx)("rect",{x:"0",y:"0",width:"100%",height:"100%",fill:`url(#${w})`})]})}Nb.displayName="Background";var Mb=(0,R.memo)(Nb);function cC(){return(0,D.jsx)("svg",{xmlns:"http://www.w3.org/2000/svg",viewBox:"0 0 32 32",children:(0,D.jsx)("path",{d:"M32 18.133H18.133V32h-4.266V18.133H0v-4.266h13.867V0h4.266v13.867H32z"})})}function sC(){return(0,D.jsx)("svg",{xmlns:"http://www.w3.org/2000/svg",viewBox:"0 0 32 5",children:(0,D.jsx)("path",{d:"M0 0h32v4.2H0z"})})}function fC(){return(0,D.jsx)("svg",{xmlns:"http://www.w3.org/2000/svg",viewBox:"0 0 32 30",children:(0,D.jsx)("path",{d:"M3.692 4.63c0-.53.4-.938.939-.938h5.215V0H4.708C2.13 0 0 2.054 0 4.63v5.216h3.692V4.631zM27.354 0h-5.2v3.692h5.17c.53 0 .984.4.984.939v5.215H32V4.631A4.624 4.624 0 0027.354 0zm.954 24.83c0 .532-.4.94-.939.94h-5.215v3.768h5.215c2.577 0 4.631-2.13 4.631-4.707v-5.139h-3.692v5.139zm-23.677.94c-.531 0-.939-.4-.939-.94v-5.138H0v5.139c0 2.577 2.13 4.707 4.708 4.707h5.138V25.77H4.631z"})})}function dC(){return(0,D.jsx)("svg",{xmlns:"http://www.w3.org/2000/svg",viewBox:"0 0 25 32",children:(0,D.jsx)("path",{d:"M21.333 10.667H19.81V7.619C19.81 3.429 16.38 0 12.19 0 8 0 4.571 3.429 4.571 7.619v3.048H3.048A3.056 3.056 0 000 13.714v15.238A3.056 3.056 0 003.048 32h18.285a3.056 3.056 0 003.048-3.048V13.714a3.056 3.056 0 00-3.048-3.047zM12.19 24.533a3.056 3.056 0 01-3.047-3.047 3.056 3.056 0 013.047-3.048 3.056 3.056 0 013.048 3.048 3.056 3.056 0 01-3.048 3.047zm4.724-13.866H7.467V7.619c0-2.59 2.133-4.724 4.723-4.724 2.591 0 4.724 2.133 4.724 4.724v3.048z"})})}function hC(){return(0,D.jsx)("svg",{xmlns:"http://www.w3.org/2000/svg",viewBox:"0 0 25 32",children:(0,D.jsx)("path",{d:"M21.333 10.667H19.81V7.619C19.81 3.429 16.38 0 12.19 0c-4.114 1.828-1.37 2.133.305 2.438 1.676.305 4.42 2.59 4.42 5.181v3.048H3.047A3.056 3.056 0 000 13.714v15.238A3.056 3.056 0 003.048 32h18.285a3.056 3.056 0 003.048-3.048V13.714a3.056 3.056 0 00-3.048-3.047zM12.19 24.533a3.056 3.056 0 01-3.047-3.047 3.056 3.056 0 013.047-3.048 3.056 3.056 0 013.048 3.048 3.056 3.056 0 01-3.048 3.047z"})})}function tc({children:t,className:e,...n}){return(0,D.jsx)("button",{type:"button",className:Tt(["react-flow__controls-button",e]),...n,children:t})}var gC=t=>({isInteractive:t.nodesDraggable||t.nodesConnectable||t.elementsSelectable,minZoomReached:t.transform[2]<=t.minZoom,maxZoomReached:t.transform[2]>=t.maxZoom,ariaLabelConfig:t.ariaLabelConfig});function zb({style:t,showZoom:e=!0,showFitView:n=!0,showInteractive:l=!0,fitViewOptions:a,onZoomIn:o,onZoomOut:i,onFitView:u,onInteractiveChange:r,className:c,children:f,position:d="bottom-left",orientation:s="vertical","aria-label":g}){let b=Mt(),{isInteractive:v,minZoomReached:S,maxZoomReached:p,ariaLabelConfig:m}=rt(gC,Nt),{zoomIn:h,zoomOut:y,fitView:x}=dh(),E=()=>{h(),o?.()},w=()=>{y(),i?.()},N=()=>{x(a),u?.()},z=()=>{b.setState({nodesDraggable:!v,nodesConnectable:!v,elementsSelectable:!v}),r?.(!v)};return(0,D.jsxs)(lc,{className:Tt(["react-flow__controls",s==="horizontal"?"horizontal":"vertical",c]),position:d,style:t,"data-testid":"rf__controls","aria-label":g??m["controls.ariaLabel"],children:[e&&(0,D.jsxs)(D.Fragment,{children:[(0,D.jsx)(tc,{onClick:E,className:"react-flow__controls-zoomin",title:m["controls.zoomIn.ariaLabel"],"aria-label":m["controls.zoomIn.ariaLabel"],disabled:p,children:(0,D.jsx)(cC,{})}),(0,D.jsx)(tc,{onClick:w,className:"react-flow__controls-zoomout",title:m["controls.zoomOut.ariaLabel"],"aria-label":m["controls.zoomOut.ariaLabel"],disabled:S,children:(0,D.jsx)(sC,{})})]}),n&&(0,D.jsx)(tc,{className:"react-flow__controls-fitview",onClick:N,title:m["controls.fitView.ariaLabel"],"aria-label":m["controls.fitView.ariaLabel"],children:(0,D.jsx)(fC,{})}),l&&(0,D.jsx)(tc,{className:"react-flow__controls-interactive",onClick:z,title:m["controls.interactive.ariaLabel"],"aria-label":m["controls.interactive.ariaLabel"],children:v?(0,D.jsx)(hC,{}):(0,D.jsx)(dC,{})}),f]})}zb.displayName="Controls";var Cb=(0,R.memo)(zb);function pC({id:t,x:e,y:n,width:l,height:a,style:o,color:i,strokeColor:u,strokeWidth:r,className:c,borderRadius:f,shapeRendering:d,selected:s,onClick:g}){let{background:b,backgroundColor:v}=o||{},S=i||b||v;return(0,D.jsx)("rect",{className:Tt(["react-flow__minimap-node",{selected:s},c]),x:e,y:n,rx:f,ry:f,width:l,height:a,style:{fill:S,stroke:u,strokeWidth:r},shapeRendering:d,onClick:g?p=>g(p,t):void 0})}var mC=(0,R.memo)(pC),yC=t=>t.nodes.map(e=>e.id),sh=t=>t instanceof Function?t:()=>t;function vC({nodeStrokeColor:t,nodeColor:e,nodeClassName:n="",nodeBorderRadius:l=5,nodeStrokeWidth:a,nodeComponent:o=mC,onClick:i}){let u=rt(yC,Nt),r=sh(e),c=sh(t),f=sh(n),d=typeof window>"u"||window.chrome?"crispEdges":"geometricPrecision";return(0,D.jsx)(D.Fragment,{children:u.map(s=>(0,D.jsx)(xC,{id:s,nodeColorFunc:r,nodeStrokeColorFunc:c,nodeClassNameFunc:f,nodeBorderRadius:l,nodeStrokeWidth:a,NodeComponent:o,onClick:i,shapeRendering:d},s))})}function bC({id:t,nodeColorFunc:e,nodeStrokeColorFunc:n,nodeClassNameFunc:l,nodeBorderRadius:a,nodeStrokeWidth:o,shapeRendering:i,NodeComponent:u,onClick:r}){let{node:c,x:f,y:d,width:s,height:g}=rt(b=>{let{internals:v}=b.nodeLookup.get(t),S=v.userNode,{x:p,y:m}=v.positionAbsolute,{width:h,height:y}=Pe(S);return{node:S,x:p,y:m,width:h,height:y}},Nt);return!c||c.hidden||!Jd(c)?null:(0,D.jsx)(u,{x:f,y:d,width:s,height:g,style:c.style,selected:!!c.selected,className:l(c),color:e(c),borderRadius:a,strokeColor:n(c),strokeWidth:o,shapeRendering:i,onClick:r,id:c.id})}var xC=(0,R.memo)(bC),SC=(0,R.memo)(vC),_C=200,wC=150,EC=t=>!t.hidden,NC=t=>{let e={x:-t.transform[0]/t.transform[2],y:-t.transform[1]/t.transform[2],width:t.width/t.transform[2],height:t.height/t.transform[2]};return{viewBB:e,boundingRect:t.nodeLookup.size>0?Kd(Wa(t.nodeLookup,{filter:EC}),e):e,rfId:t.rfId,panZoom:t.panZoom,translateExtent:t.translateExtent,flowWidth:t.width,flowHeight:t.height,ariaLabelConfig:t.ariaLabelConfig}},MC="react-flow__minimap-desc";function Ab({style:t,className:e,nodeStrokeColor:n,nodeColor:l,nodeClassName:a="",nodeBorderRadius:o=5,nodeStrokeWidth:i,nodeComponent:u,bgColor:r,maskColor:c,maskStrokeColor:f,maskStrokeWidth:d,position:s="bottom-right",onClick:g,onNodeClick:b,pannable:v=!1,zoomable:S=!1,ariaLabel:p,inversePan:m,zoomStep:h=1,offsetScale:y=5}){let x=Mt(),E=(0,R.useRef)(null),{boundingRect:w,viewBB:N,rfId:z,panZoom:U,translateExtent:H,flowWidth:B,flowHeight:Y,ariaLabelConfig:_}=rt(NC,Nt),C=t?.width??_C,M=t?.height??wC,T=w.width/C,A=w.height/M,O=Math.max(T,A),L=O*C,q=O*M,V=y*O,G=w.x-(L-w.width)/2-V,Z=w.y-(q-w.height)/2-V,$=L+V*2,tt=q+V*2,K=`${MC}-${z}`,X=(0,R.useRef)(0),j=(0,R.useRef)();X.current=O,(0,R.useEffect)(()=>{if(E.current&&U)return j.current=iv({domNode:E.current,panZoom:U,getTransform:()=>x.getState().transform,getViewScale:()=>X.current}),()=>{j.current?.destroy()}},[U]),(0,R.useEffect)(()=>{j.current?.update({translateExtent:H,width:B,height:Y,inversePan:m,pannable:v,zoomStep:h,zoomable:S})},[v,S,m,h,H,B,Y]);let ot=g?F=>{let[ut,St]=j.current?.pointer(F)||[0,0];g(F,{x:ut,y:St})}:void 0,et=b?(0,R.useCallback)((F,ut)=>{let St=x.getState().nodeLookup.get(ut).internals.userNode;b(F,St)},[]):void 0,I=p??_["minimap.ariaLabel"];return(0,D.jsx)(lc,{position:s,style:{...t,"--xy-minimap-background-color-props":typeof r=="string"?r:void 0,"--xy-minimap-mask-background-color-props":typeof c=="string"?c:void 0,"--xy-minimap-mask-stroke-color-props":typeof f=="string"?f:void 0,"--xy-minimap-mask-stroke-width-props":typeof d=="number"?d*O:void 0,"--xy-minimap-node-background-color-props":typeof l=="string"?l:void 0,"--xy-minimap-node-stroke-color-props":typeof n=="string"?n:void 0,"--xy-minimap-node-stroke-width-props":typeof i=="number"?i:void 0},className:Tt(["react-flow__minimap",e]),"data-testid":"rf__minimap",children:(0,D.jsxs)("svg",{width:C,height:M,viewBox:`${G} ${Z} ${$} ${tt}`,className:"react-flow__minimap-svg",role:"img","aria-labelledby":K,ref:E,onClick:ot,children:[I&&(0,D.jsx)("title",{id:K,children:I}),(0,D.jsx)(SC,{onClick:et,nodeColor:l,nodeStrokeColor:n,nodeBorderRadius:o,nodeClassName:a,nodeStrokeWidth:i,nodeComponent:u}),(0,D.jsx)("path",{className:"react-flow__minimap-mask",d:`M${G-V},${Z-V}h${$+V*2}v${tt+V*2}h${-$-V*2}z\n        M${N.x},${N.y}h${N.width}v${N.height}h${-N.width}z`,fillRule:"evenodd",pointerEvents:"none"})]})})}Ab.displayName="MiniMap";var Tb=(0,R.memo)(Ab),zC=t=>e=>t?`${Math.max(1/e.transform[2],1)}`:void 0,CC={[rl.Line]:"right",[rl.Handle]:"bottom-right"};function AC({nodeId:t,position:e,variant:n=rl.Handle,className:l,style:a=void 0,children:o,color:i,minWidth:u=10,minHeight:r=10,maxWidth:c=Number.MAX_VALUE,maxHeight:f=Number.MAX_VALUE,keepAspectRatio:d=!1,resizeDirection:s,autoScale:g=!0,shouldResize:b,onResizeStart:v,onResize:S,onResizeEnd:p}){let m=ab(),h=typeof t=="string"?t:m,y=Mt(),x=(0,R.useRef)(null),E=n===rl.Handle,w=rt((0,R.useCallback)(zC(E&&g),[E,g]),Nt),N=(0,R.useRef)(null),z=e??CC[n];(0,R.useEffect)(()=>{if(!(!x.current||!h))return N.current||(N.current=fv({domNode:x.current,nodeId:h,getStoreItems:()=>{let{nodeLookup:H,transform:B,snapGrid:Y,snapToGrid:_,nodeOrigin:C,domNode:M}=y.getState();return{nodeLookup:H,transform:B,snapGrid:Y,snapToGrid:_,nodeOrigin:C,paneDomNode:M}},onChange:(H,B)=>{let{triggerNodeChanges:Y,nodeLookup:_,parentLookup:C,nodeOrigin:M}=y.getState(),T=[],A={x:H.x,y:H.y},O=_.get(h);if(O&&O.expandParent&&O.parentId){let L=O.origin??M,q=H.width??O.measured.width??0,V=H.height??O.measured.height??0,G={id:O.id,parentId:O.parentId,rect:{width:q,height:V,...Id({x:H.x??O.position.x,y:H.y??O.position.y},{width:q,height:V},O.parentId,_,L)}},Z=Jr([G],_,C,M);T.push(...Z),A.x=H.x?Math.max(L[0]*q,H.x):void 0,A.y=H.y?Math.max(L[1]*V,H.y):void 0}if(A.x!==void 0&&A.y!==void 0){let L={id:h,type:"position",position:{...A}};T.push(L)}if(H.width!==void 0&&H.height!==void 0){let q={id:h,type:"dimensions",resizing:!0,setAttributes:s?s==="horizontal"?"width":"height":!0,dimensions:{width:H.width,height:H.height}};T.push(q)}for(let L of B){let q={...L,type:"position"};T.push(q)}Y(T)},onEnd:({width:H,height:B})=>{let Y={id:h,type:"dimensions",resizing:!1,dimensions:{width:H,height:B}};y.getState().triggerNodeChanges([Y])}})),N.current.update({controlPosition:z,boundaries:{minWidth:u,minHeight:r,maxWidth:c,maxHeight:f},keepAspectRatio:d,resizeDirection:s,onResizeStart:v,onResize:S,onResizeEnd:p,shouldResize:b}),()=>{N.current?.destroy()}},[z,u,r,c,f,d,v,S,p,b]);let U=z.split("-");return(0,D.jsx)("div",{className:Tt(["react-flow__resize-control","nodrag",...U,n,l]),ref:x,style:{...a,scale:w,...i&&{[E?"backgroundColor":"borderColor"]:i}},children:o})}var x5=(0,R.memo)(AC);var Oi=se(An(),1);function ic(t){let[e,n]=t.split(":");return{id:e,state:n==="done"?"done":n==="active"?"active":"todo"}}function gh(t,e){let[n,l]=t.split(":"),a=e.flags[n]??n;return l?`${a} ${l}`:a}function Db(t,e,n,l){let a=[`${t} ${n.title??""}`.trim()];e==="contract-unit"&&a.push(l.contractTag);let o=(n.steps??[]).map(ic).find(i=>i.state==="active");if(o)a.push(`${l.steps[o.id]??o.id} ${l.state.active}`);else{let i=(n.steps??[]).map(ic).filter(u=>u.state==="done");i.length&&a.push(`${l.steps[i[i.length-1].id]??""} ${l.state.done}`)}for(let i of n.flags??[])a.push(gh(i,l));return n.bolts&&a.push(`${l.bolt} ${n.bolts.done}/${n.bolts.total}${n.bolts.estimated?` ${l.estimated}`:""}`),a.join(", ")}var zt=se(ll(),1),Ob={requirements:"design",design:"design",tasks:"design",impl:"build",verify:"build",mr:"ops",done:"ops",deploy:"ops"};function TC({state:t,family:e,label:n}){return(0,zt.jsxs)("svg",{className:`hk-gate ${e} ${t}`,width:"14",height:"14",viewBox:"0 0 14 14",role:"img","aria-label":n,children:[(0,zt.jsx)("title",{children:n}),(0,zt.jsx)("path",{d:"M7 1 13 7 7 13 1 7Z"})]})}function ph({data:t,selected:e}){let n=t,l=n.labels,a=(n.steps??[]).map(ic),o=a.find(c=>c.state==="active"),i=[...a].reverse().find(c=>c.state==="done"),u=o??i,r=n.bolts;return(0,zt.jsxs)("div",{className:`hk-node${n.contract?" contract":""}${e?" selected":""}`,children:[(0,zt.jsx)(Zl,{type:"target",position:n.contract?Q.Top:Q.Left,isConnectable:!1}),(0,zt.jsxs)("div",{className:"hk-node-head",children:[n.contract?(0,zt.jsx)("span",{className:"hk-pill contract",children:l.contractTag}):null,(0,zt.jsx)("span",{className:"hk-key",children:n.issue??n.unitId}),(0,zt.jsx)("span",{className:"hk-uid",children:n.unitId}),n.area?(0,zt.jsx)("span",{className:"hk-pill area",children:n.area}):null]}),(0,zt.jsx)("div",{className:"hk-title",children:n.title??""}),n.contract?(0,zt.jsx)("div",{className:"hk-sub",children:(n.contracts??[]).join(" · ")}):(0,zt.jsx)("div",{className:"hk-sub",children:n.session?`${n.session.name??l.noSession} · ${n.session.harness??""}`:l.noSession}),(0,zt.jsx)("div",{className:"hk-rail",children:a.map(c=>{let f=l.steps[c.id]??c.id;return(0,zt.jsx)(TC,{state:c.state,family:Ob[c.id]??"design",label:`${f} ${l.state[c.state]}`},c.id)})}),(0,zt.jsxs)("div",{className:"hk-state",children:[u?(0,zt.jsx)("span",{className:`hk-pill ${Ob[u.id]??"design"}`,children:`${l.steps[u.id]??u.id} ${o?l.state.active:l.state.done}`}):null,r&&!n.contract?(0,zt.jsxs)("span",{className:"hk-bolts",children:[l.bolt," ",r.done,"/",r.total,r.estimated?` ${l.estimated}`:""]}):null]}),(n.flags??[]).length?(0,zt.jsx)("div",{className:"hk-flags",children:(n.flags??[]).map(c=>(0,zt.jsx)("span",{className:"hk-pill gate",children:gh(c,l)},c))}):null,(0,zt.jsx)(Zl,{type:"source",position:n.contract?Q.Bottom:Q.Right,isConnectable:!1})]})}var oo=se(ll(),1),DC=280,OC=160,HC={unit:ph,"contract-unit":ph};function mh({data:t,selectedId:e,labels:n,onSelect:l}){let a=(0,Oi.useMemo)(()=>t.nodes.map(u=>({id:u.id,type:u.type,position:{x:u.position.x*DC,y:u.position.y*OC},data:{...u.data,labels:n,unitId:u.id,contract:u.type==="contract-unit"},selected:u.id===e,draggable:!1,connectable:!1,ariaLabel:Db(u.id,u.type,u.data,n)})),[t,e,n]),o=(0,Oi.useMemo)(()=>t.edges.map((u,r)=>({id:`${u.source}->${u.target}:${r}`,source:u.source,target:u.target,type:"smoothstep",className:u.kind==="contract"?"hk-edge hk-edge-contract":"hk-edge",...u.label?{label:u.label}:u.kind==="contract"?{label:n.contract}:{},focusable:!1})),[t,n]),i=(0,Oi.useCallback)(u=>{for(let r of u)r.type==="select"&&(r.selected?l(r.id):r.id===e&&l(null))},[e,l]);return(0,oo.jsxs)(Eb,{nodes:a,edges:o,nodeTypes:HC,nodesDraggable:!1,nodesConnectable:!1,elementsSelectable:!0,nodesFocusable:!0,edgesFocusable:!1,fitView:!0,fitViewOptions:{padding:.18,maxZoom:1},minZoom:.2,maxZoom:1.6,proOptions:{hideAttribution:!0},onNodesChange:i,onPaneClick:()=>l(null),"aria-label":n.canvas,children:[(0,oo.jsx)(Mb,{gap:24}),(0,oo.jsx)(Cb,{showInteractive:!1,"aria-label":n.controls}),(0,oo.jsx)(Tb,{pannable:!0,zoomable:!0,ariaLabel:n.minimap,nodeColor:()=>"#aeb9c7",nodeStrokeColor:()=>"#46536b",nodeStrokeWidth:2,maskColor:"rgb(20 33 61 / 0.08)"})]})}var yh=se(ll(),1);function R5(t,e){let n=(0,Hb.createRoot)(t);return n.render((0,yh.jsx)(mh,{...e})),{update:l=>n.render((0,yh.jsx)(mh,{...l})),unmount:()=>n.unmount()}}export{R5 as mount};\n' };
 
 // src/cli.ts
 var import_node_tty = __toESM(require("node:tty"));
@@ -137,7 +547,9 @@ var COMMAND_OPTIONS = {
     flow: { type: "string" },
     gate: { type: "string" },
     all: { type: "boolean" },
-    ops: { type: "boolean" }
+    ops: { type: "boolean" },
+    burn: { type: "boolean" },
+    days: { type: "string" }
   },
   projects: {},
   approve: { gate: { type: "string" }, phrase: { type: "string" }, "changes-requested": { type: "boolean" }, "rule-candidate": { type: "boolean" } },
@@ -155,7 +567,18 @@ var COMMAND_OPTIONS = {
   },
   flow: { add: { type: "string" }, after: { type: "string" }, remove: { type: "string" } },
   quality: { findings: { type: "boolean" }, issue: { type: "string" }, severity: { type: "string" }, new: { type: "boolean" } },
-  history: { q: { type: "string" } },
+  history: { q: { type: "string" }, session: { type: "string" }, role: { type: "string" } },
+  // 스킬 목록 · 사용량(HK-18, 설계 07 §3.9 · 06 §3.18)
+  skills: {
+    stage: { type: "string" },
+    harness: { type: "string" },
+    conflicts: { type: "boolean" },
+    errors: { type: "boolean" },
+    all: { type: "boolean" },
+    "no-user": { type: "boolean" },
+    refresh: { type: "boolean" }
+  },
+  usage: { days: { type: "string" }, kit: { type: "boolean" }, now: { type: "boolean" }, sources: { type: "boolean" }, harness: { type: "string" } },
   // 확장 층(HK-14, 설계 04)
   pack: { dir: { type: "string" }, from: { type: "string", multiple: true }, "kit-range": { type: "string" } },
   local: {},
@@ -199,16 +622,16 @@ function byteCompare(a, b) {
 }
 function walkFiles(dir) {
   const out = [];
-  const walk3 = (d, prefix) => {
+  const walk4 = (d, prefix) => {
     for (const name of import_node_fs.default.readdirSync(d)) {
       const full11 = import_node_path.default.join(d, name);
       const rel2 = prefix ? `${prefix}/${name}` : name;
       const st = import_node_fs.default.lstatSync(full11);
-      if (st.isDirectory()) walk3(full11, rel2);
+      if (st.isDirectory()) walk4(full11, rel2);
       else if (st.isFile()) out.push(rel2);
     }
   };
-  walk3(dir, "");
+  walk4(dir, "");
   return out.sort(byteCompare);
 }
 function lstatOrNull(p) {
@@ -388,8 +811,8 @@ function matchSegment(layout2, rel2) {
 function applyPathTokens(layout2, rel2, tokens) {
   let out = rel2;
   for (const [needle, key] of Object.entries(layout2.pathTokens)) {
-    const value = tokens[key] ?? "";
-    if (value !== "") out = out.split(needle).join(value);
+    const value2 = tokens[key] ?? "";
+    if (value2 !== "") out = out.split(needle).join(value2);
   }
   return out;
 }
@@ -433,8 +856,8 @@ ${indent}]`;
 ${entries.map(([k, x]) => `${inner}${JSON.stringify(k)}: ${block(x, inner)}`).join(",\n")}
 ${indent}}`;
 }
-function formatJson(value) {
-  return `${block(value, "")}
+function formatJson(value2) {
+  return `${block(value2, "")}
 `;
 }
 
@@ -472,9 +895,9 @@ function v1ProjectionEntry(sha, label, rel2) {
 }
 function parseV1(text2) {
   const seen = /* @__PURE__ */ new Map();
-  const lines = text2.split("\n");
-  for (let i = 1; i < lines.length; i += 1) {
-    const line = lines[i].replace(/\r$/, "");
+  const lines2 = text2.split("\n");
+  for (let i = 1; i < lines2.length; i += 1) {
+    const line = lines2[i].replace(/\r$/, "");
     if (line === "" || line.startsWith("#")) continue;
     const cols = line.split("	");
     if (cols.length !== 4 || cols.some((c) => c === "")) throw new Error(`v1 lock ${i + 1}번째 줄: 칸이 4개가 아니다`);
@@ -891,11 +1314,11 @@ function kiroCliHooks(hooks, map, modules, subagentsOnly = false) {
   }
   return out;
 }
-function substitute(value, tokens) {
-  if (typeof value === "string") return Object.entries(tokens).reduce((v, [k, x]) => x ? v.split(`{{kit:${k}}}`).join(x).split(`{{${k}}}`).join(x) : v, value);
-  if (Array.isArray(value)) return value.map((x) => substitute(x, tokens));
-  if (isObj2(value)) return Object.fromEntries(Object.entries(value).map(([k, x]) => [k, substitute(x, tokens)]));
-  return value;
+function substitute(value2, tokens) {
+  if (typeof value2 === "string") return Object.entries(tokens).reduce((v, [k, x]) => x ? v.split(`{{kit:${k}}}`).join(x).split(`{{${k}}}`).join(x) : v, value2);
+  if (Array.isArray(value2)) return value2.map((x) => substitute(x, tokens));
+  if (isObj2(value2)) return Object.fromEntries(Object.entries(value2).map(([k, x]) => [k, substitute(x, tokens)]));
+  return value2;
 }
 function renderKiroCoordinator(spec, tokens, cliHooks) {
   const base = substitute(spec.kiroCoordinator, tokens);
@@ -913,8 +1336,8 @@ function kitScriptSuffixes(hooks, map) {
 var HOOKS_DIR = ".agents/hooks.d";
 var PROJECT_HOOKS = "project.json";
 function hookDocPaths(names) {
-  const enc = (n) => Buffer.from(n, "utf8");
-  return names.filter((n) => n.endsWith(".json") && !n.startsWith(".")).sort((a, b) => Number(a === PROJECT_HOOKS) - Number(b === PROJECT_HOOKS) || Buffer.compare(enc(a), enc(b))).map((n) => `${HOOKS_DIR}/${n}`);
+  const enc2 = (n) => Buffer.from(n, "utf8");
+  return names.filter((n) => n.endsWith(".json") && !n.startsWith(".")).sort((a, b) => Number(a === PROJECT_HOOKS) - Number(b === PROJECT_HOOKS) || Buffer.compare(enc2(a), enc2(b))).map((n) => `${HOOKS_DIR}/${n}`);
 }
 function mergeHookDocs(docs, map, floor) {
   const hooks = [];
@@ -982,10 +1405,10 @@ function scalar(raw) {
 }
 function parseFrontmatter(block2) {
   const out = {};
-  const lines = block2.split("\n");
+  const lines2 = block2.split("\n");
   let i = 0;
-  while (i < lines.length) {
-    const line = lines[i];
+  while (i < lines2.length) {
+    const line = lines2[i];
     i += 1;
     const m = FM_KEY.exec(line);
     if (!m) continue;
@@ -993,8 +1416,8 @@ function parseFrontmatter(block2) {
     const raw = strip(m[2]);
     if (raw === "") {
       const items = [];
-      while (i < lines.length && LIST_ITEM.test(lines[i])) {
-        items.push(scalar(LIST_ITEM.exec(lines[i])[1]));
+      while (i < lines2.length && LIST_ITEM.test(lines2[i])) {
+        items.push(scalar(LIST_ITEM.exec(lines2[i])[1]));
         i += 1;
       }
       out[key] = items.length ? items : "";
@@ -1165,10 +1588,10 @@ function withNewline(text2) {
 `;
 }
 function renderClaudeRole(r, fields) {
-  const lines = ["---", `name: ${r.name}`, `description: ${r.description}`, `tools: ${claudeTools(r.tools).join(", ")}`];
-  for (const [k, v] of Object.entries(fields)) lines.push(`${k}: ${v}`);
-  lines.push("---", genMd(r.source));
-  return `${lines.join("\n")}
+  const lines2 = ["---", `name: ${r.name}`, `description: ${r.description}`, `tools: ${claudeTools(r.tools).join(", ")}`];
+  for (const [k, v] of Object.entries(fields)) lines2.push(`${k}: ${v}`);
+  lines2.push("---", genMd(r.source));
+  return `${lines2.join("\n")}
 ${r.body}`;
 }
 function control(ch, keep) {
@@ -1178,24 +1601,24 @@ function control(ch, keep) {
   return ch;
 }
 var TOML_SHORT = { "\b": "\\b", "	": "\\t", "\n": "\\n", "\f": "\\f", "\r": "\\r", '"': '\\"', "\\": "\\\\" };
-function tomlString(value) {
+function tomlString(value2) {
   let out = "";
-  for (const ch of value) out += TOML_SHORT[ch] ?? control(ch, "");
+  for (const ch of value2) out += TOML_SHORT[ch] ?? control(ch, "");
   return `"${out}"`;
 }
-function tomlMultiline(value) {
-  const escaped = value.split("\\").join("\\\\").split('"""').join('""\\"');
+function tomlMultiline(value2) {
+  const escaped = value2.split("\\").join("\\\\").split('"""').join('""\\"');
   let out = "";
   for (const ch of escaped) out += control(ch, "\n	");
   return out;
 }
 function renderCodexRole(r, fields, spec) {
-  const lines = [genToml(r.source), `name = ${tomlString(r.name)}`, `description = ${tomlString(r.description)}`, `sandbox_mode = "${r.mode === "write" ? "workspace-write" : "read-only"}"`];
-  for (const [k, v] of Object.entries(fields)) lines.push(`${k} = ${tomlString(v)}`);
-  lines.push("", 'developer_instructions = """');
+  const lines2 = [genToml(r.source), `name = ${tomlString(r.name)}`, `description = ${tomlString(r.description)}`, `sandbox_mode = "${r.mode === "write" ? "workspace-write" : "read-only"}"`];
+  for (const [k, v] of Object.entries(fields)) lines2.push(`${k} = ${tomlString(v)}`);
+  lines2.push("", 'developer_instructions = """');
   const instructions = (r.mode !== "write" ? `${spec.readOnlyLine}
 ` : "") + withNewline(r.body);
-  return `${lines.join("\n")}
+  return `${lines2.join("\n")}
 ${tomlMultiline(instructions)}"""
 `;
 }
@@ -1236,36 +1659,36 @@ var MERGE_KIND = {
 var fail = (reason) => ({ ok: false, reason });
 var isBlank = (l) => l.trim() === "";
 function splitLines(text2) {
-  const lines = text2.split("\n");
-  if (lines.length && lines[lines.length - 1] === "") lines.pop();
-  return lines;
+  const lines2 = text2.split("\n");
+  if (lines2.length && lines2[lines2.length - 1] === "") lines2.pop();
+  return lines2;
 }
-function joinLines(lines) {
-  return lines.length ? `${lines.join("\n")}
+function joinLines(lines2) {
+  return lines2.length ? `${lines2.join("\n")}
 ` : "";
 }
-function stripTrailingBlank(lines) {
-  const out = [...lines];
+function stripTrailingBlank(lines2) {
+  const out = [...lines2];
   while (out.length && isBlank(out[out.length - 1])) out.pop();
   return out;
 }
-function allBlank(lines, comments = false) {
-  return lines.every((l) => isBlank(l) || comments && l.trimStart().startsWith("#"));
+function allBlank(lines2, comments = false) {
+  return lines2.every((l) => isBlank(l) || comments && l.trimStart().startsWith("#"));
 }
-function findBlock(lines, begin, end) {
-  const b = lines.findIndex((l) => l.startsWith(begin));
+function findBlock(lines2, begin, end) {
+  const b = lines2.findIndex((l) => l.startsWith(begin));
   if (b < 0) return null;
   let e = -1;
-  for (let i = b + 1; i < lines.length; i += 1) {
-    if (lines[i].trim() === end) {
+  for (let i = b + 1; i < lines2.length; i += 1) {
+    if (lines2[i].trim() === end) {
       e = i;
       break;
     }
   }
   return e < 0 ? "unclosed" : [b, e];
 }
-function appendBlock(lines, block2) {
-  const out = [...lines];
+function appendBlock(lines2, block2) {
+  const out = [...lines2];
   if (out.length && !isBlank(out[out.length - 1])) out.push("");
   return [...out, ...block2];
 }
@@ -1276,39 +1699,39 @@ var claudeMd = {
   merge(cur, want, prev = []) {
     const block2 = want.block;
     if (cur === null) return { ok: true, text: joinLines([AGENTS_LINE, "", ...block2]), keys: ["line:@AGENTS.md", "block:claude"], created: true };
-    let lines = splitLines(cur);
-    const found = findBlock(lines, CLAUDE_BEGIN, CLAUDE_END);
+    let lines2 = splitLines(cur);
+    const found = findBlock(lines2, CLAUDE_BEGIN, CLAUDE_END);
     if (found === "unclosed") return fail("CLAUDE.md 킷 블록의 끝 표지가 없다");
-    const hasLine = lines.some((l) => l === AGENTS_LINE);
+    const hasLine = lines2.some((l) => l === AGENTS_LINE);
     const keys = [];
     if (found !== null) {
       const [b, e] = found;
       const insert = hasLine ? [] : [AGENTS_LINE, ""];
-      lines = [...lines.slice(0, b), ...insert, ...block2, ...lines.slice(e + 1)];
+      lines2 = [...lines2.slice(0, b), ...insert, ...block2, ...lines2.slice(e + 1)];
       if (!hasLine || prev.includes("line:@AGENTS.md")) keys.push("line:@AGENTS.md");
     } else {
       if (!hasLine) {
-        lines = appendBlock(lines, [AGENTS_LINE, ""]);
+        lines2 = appendBlock(lines2, [AGENTS_LINE, ""]);
         keys.push("line:@AGENTS.md");
       } else if (prev.includes("line:@AGENTS.md")) keys.push("line:@AGENTS.md");
-      lines = appendBlock(lines, block2);
+      lines2 = appendBlock(lines2, block2);
     }
     keys.push("block:claude");
-    return { ok: true, text: joinLines(lines), keys, created: false };
+    return { ok: true, text: joinLines(lines2), keys, created: false };
   },
   unmerge(cur, keys) {
-    let lines = splitLines(cur);
-    const found = findBlock(lines, CLAUDE_BEGIN, CLAUDE_END);
+    let lines2 = splitLines(cur);
+    const found = findBlock(lines2, CLAUDE_BEGIN, CLAUDE_END);
     if (found === "unclosed") return fail("CLAUDE.md 킷 블록의 끝 표지가 없다");
-    if (found !== null && keys.includes("block:claude")) lines = [...lines.slice(0, found[0]), ...lines.slice(found[1] + 1)];
-    if (keys.includes("line:@AGENTS.md") && lines.includes(AGENTS_LINE)) lines.splice(lines.indexOf(AGENTS_LINE), 1);
-    lines = stripTrailingBlank(lines);
-    return { ok: true, text: joinLines(lines), empty: allBlank(lines) };
+    if (found !== null && keys.includes("block:claude")) lines2 = [...lines2.slice(0, found[0]), ...lines2.slice(found[1] + 1)];
+    if (keys.includes("line:@AGENTS.md") && lines2.includes(AGENTS_LINE)) lines2.splice(lines2.indexOf(AGENTS_LINE), 1);
+    lines2 = stripTrailingBlank(lines2);
+    return { ok: true, text: joinLines(lines2), empty: allBlank(lines2) };
   },
   missing(cur, keys) {
-    const lines = splitLines(cur);
-    const found = findBlock(lines, CLAUDE_BEGIN, CLAUDE_END);
-    return keys.filter((k) => k === "line:@AGENTS.md" && !lines.includes(AGENTS_LINE) || k === "block:claude" && !Array.isArray(found));
+    const lines2 = splitLines(cur);
+    const found = findBlock(lines2, CLAUDE_BEGIN, CLAUDE_END);
+    return keys.filter((k) => k === "line:@AGENTS.md" && !lines2.includes(AGENTS_LINE) || k === "block:claude" && !Array.isArray(found));
   }
 };
 function gitattributesWant(spec, agents) {
@@ -1319,26 +1742,26 @@ var gitattributes = {
   merge(cur, want) {
     const block2 = want.lines;
     if (cur === null) return { ok: true, text: joinLines(block2), keys: ["block:generated"], created: true };
-    let lines = splitLines(cur);
-    const found = findBlock(lines, GEN_BEGIN, GEN_END);
+    let lines2 = splitLines(cur);
+    const found = findBlock(lines2, GEN_BEGIN, GEN_END);
     if (found === "unclosed") return fail(".gitattributes 킷 블록의 끝 표지가 없다");
-    lines = found === null ? appendBlock(lines, block2) : [...lines.slice(0, found[0]), ...block2, ...lines.slice(found[1] + 1)];
-    return { ok: true, text: joinLines(lines), keys: ["block:generated"], created: false };
+    lines2 = found === null ? appendBlock(lines2, block2) : [...lines2.slice(0, found[0]), ...block2, ...lines2.slice(found[1] + 1)];
+    return { ok: true, text: joinLines(lines2), keys: ["block:generated"], created: false };
   },
   unmerge(cur) {
-    let lines = splitLines(cur);
-    const found = findBlock(lines, GEN_BEGIN, GEN_END);
+    let lines2 = splitLines(cur);
+    const found = findBlock(lines2, GEN_BEGIN, GEN_END);
     if (found === "unclosed") return fail(".gitattributes 킷 블록의 끝 표지가 없다");
-    if (Array.isArray(found)) lines = [...lines.slice(0, found[0]), ...lines.slice(found[1] + 1)];
-    lines = stripTrailingBlank(lines);
-    return { ok: true, text: joinLines(lines), empty: allBlank(lines) };
+    if (Array.isArray(found)) lines2 = [...lines2.slice(0, found[0]), ...lines2.slice(found[1] + 1)];
+    lines2 = stripTrailingBlank(lines2);
+    return { ok: true, text: joinLines(lines2), empty: allBlank(lines2) };
   },
   missing(cur, keys) {
     const found = findBlock(splitLines(cur), GEN_BEGIN, GEN_END);
     return keys.filter((k) => k === "block:generated" && !Array.isArray(found));
   }
 };
-var sub = (value, tokens) => Object.entries(tokens).reduce((v, [k, x]) => x ? v.split(`{{kit:${k}}}`).join(x).split(`{{${k}}}`).join(x) : v, value);
+var sub = (value2, tokens) => Object.entries(tokens).reduce((v, [k, x]) => x ? v.split(`{{kit:${k}}}`).join(x).split(`{{${k}}}`).join(x) : v, value2);
 function settingsWant(spec, tokens, hooks = [], suffixes = []) {
   return { deny: spec.claudeSettings.deny.map((d) => sub(d, tokens)), hooks: hooks.map((h) => ({ ...h })), suffixes: [...suffixes] };
 }
@@ -1559,34 +1982,34 @@ function codexConfigWant(spec, roles, keep = []) {
     keep: [...keep]
   };
 }
-function tables(lines) {
+function tables(lines2) {
   const heads = [];
-  lines.forEach((l, i) => {
+  lines2.forEach((l, i) => {
     const m = TABLE_HEADER.exec(l);
     if (m) heads.push([i, m[1]]);
   });
   return heads.map(([i, name], n) => {
-    const j = n + 1 < heads.length ? heads[n + 1][0] : lines.length;
+    const j = n + 1 < heads.length ? heads[n + 1][0] : lines2.length;
     let last = i;
     for (let k = i + 1; k < j; k += 1) {
-      const s = lines[k].trim();
+      const s = lines2[k].trim();
       if (s && !s.startsWith("#")) last = k;
     }
     return [name, i, last + 1];
   });
 }
-function findTable(lines, name) {
-  return tables(lines).find((t) => t[0] === name) ?? null;
+function findTable(lines2, name) {
+  return tables(lines2).find((t) => t[0] === name) ?? null;
 }
-function keyLine(lines, t, key) {
+function keyLine(lines2, t, key) {
   const pat = new RegExp(`^\\s*(?:${escapeRe(key)}|"${escapeRe(key)}")\\s*=`);
-  for (let k = t[1] + 1; k < t[2]; k += 1) if (pat.test(lines[k])) return k;
+  for (let k = t[1] + 1; k < t[2]; k += 1) if (pat.test(lines2[k])) return k;
   return -1;
 }
-function removeTable(lines, t) {
+function removeTable(lines2, t) {
   let start = t[1];
-  while (start > 0 && isBlank(lines[start - 1])) start -= 1;
-  return [...lines.slice(0, start), ...lines.slice(t[2])];
+  while (start > 0 && isBlank(lines2[start - 1])) start -= 1;
+  return [...lines2.slice(0, start), ...lines2.slice(t[2])];
 }
 function roleTable(r) {
   return [`[agents.${r.name}]`, `description = ${tomlString(r.description)}`, `config_file = ${tomlString(`agents/${r.name}.toml`)}`];
@@ -1596,23 +2019,23 @@ function keyKinds(want) {
 }
 var codexConfig = {
   merge(cur, want, prev = []) {
-    let lines = splitLines(cur === null ? joinLines(want.header) : cur);
+    let lines2 = splitLines(cur === null ? joinLines(want.header) : cur);
     const keys = [];
     for (const d of want.defaults) {
       const key = `toml:${d.table}.${d.key}`;
-      const t = findTable(lines, d.table);
+      const t = findTable(lines2, d.table);
       if (t === null) {
-        lines = appendBlock(lines, [`[${d.table}]`, d.line]);
+        lines2 = appendBlock(lines2, [`[${d.table}]`, d.line]);
         keys.push(key);
-      } else if (keyLine(lines, t, d.key) < 0) {
-        lines = [...lines.slice(0, t[2]), d.line, ...lines.slice(t[2])];
+      } else if (keyLine(lines2, t, d.key) < 0) {
+        lines2 = [...lines2.slice(0, t[2]), d.line, ...lines2.slice(t[2])];
         keys.push(key);
       } else if (prev.includes(key)) keys.push(key);
     }
     for (const tb of want.tables) {
       const key = `toml:${tb.table}`;
-      if (findTable(lines, tb.table) === null) {
-        lines = appendBlock(lines, [`[${tb.table}]`, ...tb.lines]);
+      if (findTable(lines2, tb.table) === null) {
+        lines2 = appendBlock(lines2, [`[${tb.table}]`, ...tb.lines]);
         keys.push(key);
       } else if (prev.includes(key)) keys.push(key);
     }
@@ -1621,23 +2044,23 @@ var codexConfig = {
     const keep = new Set(want.keep.map((n) => `toml:agents.${n}`));
     for (const k of prev) {
       if (k.startsWith("toml:agents.") && !defaults.has(k) && !tableKeys.has(k) && !wanted2.has(k) && !keep.has(k)) {
-        const t = findTable(lines, k.slice("toml:".length));
-        if (t !== null) lines = removeTable(lines, t);
+        const t = findTable(lines2, k.slice("toml:".length));
+        if (t !== null) lines2 = removeTable(lines2, t);
       }
     }
     for (const k of [...keep].sort((a, b) => Buffer.compare(Buffer.from(a), Buffer.from(b)))) {
-      if (prev.includes(k) && findTable(lines, k.slice("toml:".length)) !== null) keys.push(k);
+      if (prev.includes(k) && findTable(lines2, k.slice("toml:".length)) !== null) keys.push(k);
     }
     for (const r of want.roles) {
       const block2 = roleTable(r);
-      const t = findTable(lines, `agents.${r.name}`);
-      lines = t === null ? appendBlock(lines, block2) : [...lines.slice(0, t[1]), ...block2, ...lines.slice(t[2])];
+      const t = findTable(lines2, `agents.${r.name}`);
+      lines2 = t === null ? appendBlock(lines2, block2) : [...lines2.slice(0, t[1]), ...block2, ...lines2.slice(t[2])];
       keys.push(`toml:agents.${r.name}`);
     }
-    return { ok: true, text: joinLines(lines), keys, created: cur === null };
+    return { ok: true, text: joinLines(lines2), keys, created: cur === null };
   },
   unmerge(cur, keys, want) {
-    let lines = splitLines(cur);
+    let lines2 = splitLines(cur);
     const { defaults } = keyKinds(want);
     for (const k of keys) {
       const name = k.slice("toml:".length);
@@ -1645,33 +2068,33 @@ var codexConfig = {
         const dot = name.lastIndexOf(".");
         const table = name.slice(0, dot);
         const key = name.slice(dot + 1);
-        let t = findTable(lines, table);
+        let t = findTable(lines2, table);
         if (t === null) continue;
-        const at = keyLine(lines, t, key);
+        const at = keyLine(lines2, t, key);
         if (at >= 0) {
-          lines = [...lines.slice(0, at), ...lines.slice(at + 1)];
-          t = findTable(lines, table);
-          if (t !== null && allBlank(lines.slice(t[1] + 1, t[2]), true)) lines = removeTable(lines, t);
+          lines2 = [...lines2.slice(0, at), ...lines2.slice(at + 1)];
+          t = findTable(lines2, table);
+          if (t !== null && allBlank(lines2.slice(t[1] + 1, t[2]), true)) lines2 = removeTable(lines2, t);
         }
       } else {
-        const t = findTable(lines, name);
-        if (t !== null) lines = removeTable(lines, t);
+        const t = findTable(lines2, name);
+        if (t !== null) lines2 = removeTable(lines2, t);
       }
     }
-    lines = stripTrailingBlank(lines);
-    return { ok: true, text: joinLines(lines), empty: allBlank(lines, true) };
+    lines2 = stripTrailingBlank(lines2);
+    return { ok: true, text: joinLines(lines2), empty: allBlank(lines2, true) };
   },
   missing(cur, keys, want) {
-    const lines = splitLines(cur);
+    const lines2 = splitLines(cur);
     const { defaults } = keyKinds(want);
     return keys.filter((k) => {
       const name = k.slice("toml:".length);
       if (defaults.has(k)) {
         const dot = name.lastIndexOf(".");
-        const t = findTable(lines, name.slice(0, dot));
-        return t === null || keyLine(lines, t, name.slice(dot + 1)) < 0;
+        const t = findTable(lines2, name.slice(0, dot));
+        return t === null || keyLine(lines2, t, name.slice(dot + 1)) < 0;
       }
-      return findTable(lines, name) === null;
+      return findTable(lines2, name) === null;
     });
   }
 };
@@ -1784,17 +2207,17 @@ function stem(source) {
   const base = source.slice(source.lastIndexOf("/") + 1);
   return base.endsWith(".md") ? base.slice(0, -".md".length) : base;
 }
-function mirrorDir(path60, harness, skill, deferred) {
+function mirrorDir(path62, harness, skill, deferred) {
   const t = treeSha(skill.files);
-  return { op: "mirror", path: path60, harness, from: skill.source, kind: "dir", files: skill.files, data: Buffer.alloc(0), executable: false, sha256: t, fromSha256: t, deferred: deferred.has(skill.source) };
+  return { op: "mirror", path: path62, harness, from: skill.source, kind: "dir", files: skill.files, data: Buffer.alloc(0), executable: false, sha256: t, fromSha256: t, deferred: deferred.has(skill.source) };
 }
-function mirrorFile(path60, harness, rule, view, deferred) {
+function mirrorFile(path62, harness, rule, view, deferred) {
   const s = sha256(rule.data);
-  return { op: "mirror", path: path60, harness, from: rule.source, kind: "file", files: [], data: rule.data, executable: view.executable(rule.source), sha256: s, fromSha256: s, deferred: deferred.has(rule.source) };
+  return { op: "mirror", path: path62, harness, from: rule.source, kind: "file", files: [], data: rule.data, executable: view.executable(rule.source), sha256: s, fromSha256: s, deferred: deferred.has(rule.source) };
 }
-function renderWant(path60, harness, from, text2, sourceData, deferred) {
+function renderWant(path62, harness, from, text2, sourceData, deferred) {
   const data = Buffer.from(text2, "utf8");
-  return { op: "render", path: path60, harness, from, kind: "file", files: [], data, executable: false, sha256: sha256(data), fromSha256: sha256(sourceData), deferred: deferred.has(from) };
+  return { op: "render", path: path62, harness, from, kind: "file", files: [], data, executable: false, sha256: sha256(data), fromSha256: sha256(sourceData), deferred: deferred.has(from) };
 }
 function skillData(skill) {
   return skill.files.find((f) => f.rel === "SKILL.md")?.bytes ?? Buffer.alloc(0);
@@ -2145,8 +2568,8 @@ var Engine = class {
   }
   merge(w, prev, claimed) {
     let cur = readTextAt(this.target, w.path);
-    const exists = lstat(full3(this.target, w.path)) !== null;
-    if (cur === null && exists) {
+    const exists2 = lstat(full3(this.target, w.path)) !== null;
+    if (cur === null && exists2) {
       this.emit({ path: w.path, op: "merge", harness: w.harness, action: "conflict", reason: "일반 파일이 아니다" }, prev);
       return;
     }
@@ -2173,7 +2596,7 @@ var Engine = class {
       return;
     }
     created = created || r.created;
-    const action = cur === null && !exists ? "create" : cur === r.text ? "same" : "merge";
+    const action = cur === null && !exists2 ? "create" : cur === r.text ? "same" : "merge";
     this.emit({ path: w.path, op: "merge", harness: w.harness, action, ...action !== "same" ? { effect: { text: r.text } } : {} }, mergeEntry(w.path, r.keys, created));
   }
   install(w, prev, force) {
@@ -2444,8 +2867,8 @@ function prepare(args) {
 function assertNoCopyOverlap(wants, copyPaths) {
   const copies = [...copyPaths];
   for (const w of wants) {
-    const hit = copies.find((p) => p === w.path || w.op === "mirror" && w.kind === "dir" && p.startsWith(`${w.path}/`));
-    if (hit) throw new CliError(EXIT.STATE, `템플릿 copy 경로와 배치 경로가 겹친다: ${hit}`, "템플릿에서 그 하네스 파일을 지운다(하네스 파일은 .agents/ 원본에서 만든다)");
+    const hit2 = copies.find((p) => p === w.path || w.op === "mirror" && w.kind === "dir" && p.startsWith(`${w.path}/`));
+    if (hit2) throw new CliError(EXIT.STATE, `템플릿 copy 경로와 배치 경로가 겹친다: ${hit2}`, "템플릿에서 그 하네스 파일을 지운다(하네스 파일은 .agents/ 원본에서 만든다)");
   }
 }
 function needsHuman(plan, findings) {
@@ -2562,13 +2985,13 @@ function resolveTokens(layout2, sel, src) {
   };
   return Object.fromEntries(layout2.tokens.map((k) => [k, valueFor(k)]));
 }
-function replaceAllBytes(buf, needle, value) {
+function replaceAllBytes(buf, needle, value2) {
   let at = buf.indexOf(needle);
   if (at < 0) return buf;
   const parts = [];
   let from = 0;
   while (at >= 0) {
-    parts.push(buf.subarray(from, at), value);
+    parts.push(buf.subarray(from, at), value2);
     from = at + needle.length;
     at = buf.indexOf(needle, from);
   }
@@ -2579,9 +3002,9 @@ function substitute2(content, tokens, order) {
   if (content.includes(0)) return content;
   let out = content;
   for (const key of order) {
-    const value = tokens[key] ?? "";
-    if (value === "") continue;
-    out = replaceAllBytes(out, Buffer.from(`{{${key}}}`, "utf8"), Buffer.from(value, "utf8"));
+    const value2 = tokens[key] ?? "";
+    if (value2 === "") continue;
+    out = replaceAllBytes(out, Buffer.from(`{{${key}}}`, "utf8"), Buffer.from(value2, "utf8"));
   }
   return out;
 }
@@ -3286,22 +3709,22 @@ function upgradeSections(text2) {
   }
   return out.map((s) => ({ version: s.version, body: trimBlank(s.body) }));
 }
-function trimBlank(lines) {
+function trimBlank(lines2) {
   let a = 0;
-  let b = lines.length;
-  while (a < b && lines[a].trim() === "") a += 1;
-  while (b > a && lines[b - 1].trim() === "") b -= 1;
-  return lines.slice(a, b);
+  let b = lines2.length;
+  while (a < b && lines2[a].trim() === "") a += 1;
+  while (b > a && lines2[b - 1].trim() === "") b -= 1;
+  return lines2.slice(a, b);
 }
 function addDays(day, n) {
   const [y, m, d] = day.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 }
 function isKitNotice(text2) {
-  const lines = text2.replace(/\r\n/g, "\n").split("\n");
-  if (lines[0]?.trim() !== "---") return false;
-  const end = lines.indexOf("---", 1);
-  const head = lines.slice(1, end < 0 ? 1 : end);
+  const lines2 = text2.replace(/\r\n/g, "\n").split("\n");
+  if (lines2[0]?.trim() !== "---") return false;
+  const end = lines2.indexOf("---", 1);
+  const head = lines2.slice(1, end < 0 ? 1 : end);
   return head.some((l) => l.startsWith("kitFrom:")) && head.some((l) => l.startsWith("kitTo:"));
 }
 function planNotice(args) {
@@ -3719,9 +4142,9 @@ function significant(line) {
 }
 var isBlank2 = (line) => /^[ \t\r]*$/.test(line);
 function splitLines2(text2) {
-  const lines = text2.split("\n");
-  if (lines[lines.length - 1] === "") return { lines: lines.slice(0, -1), eol: true };
-  return { lines, eol: false };
+  const lines2 = text2.split("\n");
+  if (lines2[lines2.length - 1] === "") return { lines: lines2.slice(0, -1), eol: true };
+  return { lines: lines2, eol: false };
 }
 function lcsPairs(a, b) {
   let head = 0;
@@ -3759,9 +4182,9 @@ function lcsPairs(a, b) {
   for (let k = 0; k < tail; k += 1) pairs.push([a.length - tail + k, b.length - tail + k]);
   return pairs;
 }
-function frontmatterEnd(lines) {
-  if (lines[0] !== "---") return 0;
-  for (let k = 1; k < lines.length; k += 1) if (lines[k] === "---") return k + 1;
+function frontmatterEnd(lines2) {
+  if (lines2[0] !== "---") return 0;
+  for (let k = 1; k < lines2.length; k += 1) if (lines2[k] === "---") return k + 1;
   return 0;
 }
 function mergeLines(current4, kit) {
@@ -3816,7 +4239,7 @@ function parseStrict(text2) {
   const ws = () => {
     while (i < text2.length && (text2[i] === " " || text2[i] === "	" || text2[i] === "\n" || text2[i] === "\r")) i += 1;
   };
-  const str5 = () => {
+  const str6 = () => {
     if (text2[i] !== '"') throw new BadJson("문자열");
     i += 1;
     let out = "";
@@ -3847,7 +4270,7 @@ function parseStrict(text2) {
     if (LONE_SURROGATE.test(out)) throw new BadJson("짝 없는 서로게이트");
     return out;
   };
-  const value = () => {
+  const value2 = () => {
     ws();
     const ch = text2[i];
     if (ch === "{") {
@@ -3861,13 +4284,13 @@ function parseStrict(text2) {
       }
       for (; ; ) {
         ws();
-        const k = str5();
+        const k = str6();
         if (keys.has(k)) throw new BadJson("같은 키");
         keys.add(k);
         ws();
         if (text2[i] !== ":") throw new BadJson(":");
         i += 1;
-        pairs.push([k, value()]);
+        pairs.push([k, value2()]);
         ws();
         if (text2[i] === ",") {
           i += 1;
@@ -3889,7 +4312,7 @@ function parseStrict(text2) {
         return { t: "arr", items };
       }
       for (; ; ) {
-        items.push(value());
+        items.push(value2());
         ws();
         if (text2[i] === ",") {
           i += 1;
@@ -3902,7 +4325,7 @@ function parseStrict(text2) {
         throw new BadJson("배열");
       }
     }
-    if (ch === '"') return { t: "str", v: str5() };
+    if (ch === '"') return { t: "str", v: str6() };
     for (const lit of ["true", "false", "null"]) {
       if (text2.startsWith(lit, i)) {
         i += lit.length;
@@ -3915,7 +4338,7 @@ function parseStrict(text2) {
     i += m[0].length;
     return { t: "raw", v: m[0] };
   };
-  const v = value();
+  const v = value2();
   ws();
   if (i !== text2.length) throw new BadJson("끝 뒤 글자");
   return v;
@@ -3952,16 +4375,16 @@ function mergeObj(c, d) {
   return { v: { t: "obj", pairs }, extra };
 }
 function dump2(v, level = 0) {
-  const pad = "  ".repeat(level + 1);
+  const pad2 = "  ".repeat(level + 1);
   const end = "  ".repeat(level);
   switch (v.t) {
     case "obj":
       return v.pairs.length ? `{
-${v.pairs.map(([k, x]) => `${pad}${JSON.stringify(k)}: ${dump2(x, level + 1)}`).join(",\n")}
+${v.pairs.map(([k, x]) => `${pad2}${JSON.stringify(k)}: ${dump2(x, level + 1)}`).join(",\n")}
 ${end}}` : "{}";
     case "arr":
       return v.items.length ? `[
-${v.items.map((x) => pad + dump2(x, level + 1)).join(",\n")}
+${v.items.map((x) => pad2 + dump2(x, level + 1)).join(",\n")}
 ${end}]` : "[]";
     case "str":
       return JSON.stringify(v.v);
@@ -4067,9 +4490,9 @@ function readLocalConfig(target) {
     out.error = "최상위가 객체가 아니다";
     return out;
   }
-  for (const [key, value] of Object.entries(raw)) {
-    if (key === "roles" && isObj5(value)) {
-      for (const [role, conf] of Object.entries(value)) {
+  for (const [key, value2] of Object.entries(raw)) {
+    if (key === "roles" && isObj5(value2)) {
+      for (const [role, conf] of Object.entries(value2)) {
         if (!isObj5(conf)) {
           out.ignored.push(`roles.${role}`);
           continue;
@@ -4079,12 +4502,12 @@ function readLocalConfig(target) {
           else out.ignored.push(`roles.${role}.${k}`);
         }
       }
-    } else if (key === "git" && isObj5(value)) {
-      for (const [k, v] of Object.entries(value)) {
+    } else if (key === "git" && isObj5(value2)) {
+      for (const [k, v] of Object.entries(value2)) {
         if (k === "ide" && typeof v === "string") out.ide = v;
         else out.ignored.push(`git.${k}`);
       }
-    } else if (isObj5(value)) for (const k of Object.keys(value)) out.ignored.push(`${key}.${k}`);
+    } else if (isObj5(value2)) for (const k of Object.keys(value2)) out.ignored.push(`${key}.${k}`);
     else out.ignored.push(key);
   }
   return out;
@@ -4108,10 +4531,10 @@ function walk2(target, rel2) {
 }
 function planLocal(target, agents, spec, sharedHookIds2) {
   const plan = { wants: [], settingsHooks: [], findings: [] };
-  const exists = (rel2) => import_node_fs18.default.existsSync(import_node_path20.default.join(target, ...rel2.split("/")));
+  const exists2 = (rel2) => import_node_fs18.default.existsSync(import_node_path20.default.join(target, ...rel2.split("/")));
   for (const e of listDir(target, `${LOCAL_DIR}/skills`)) {
-    if (!e.isDirectory() || !exists(`${LOCAL_DIR}/skills/${e.name}/SKILL.md`)) continue;
-    if (exists(`.agents/skills/${e.name}`)) {
+    if (!e.isDirectory() || !exists2(`${LOCAL_DIR}/skills/${e.name}/SKILL.md`)) continue;
+    if (exists2(`.agents/skills/${e.name}`)) {
       plan.findings.push({ kind: "personal-shadowed", severity: "warn", path: `${LOCAL_DIR}/skills/${e.name}`, hint: `개인 스킬 ${e.name} 은 공유 스킬과 이름이 같아 배치하지 않았다` });
       continue;
     }
@@ -4127,7 +4550,7 @@ function planLocal(target, agents, spec, sharedHookIds2) {
     if (!e.isFile() || !e.name.endsWith(".md")) continue;
     const name = e.name.slice(0, -3);
     const rel2 = `${LOCAL_DIR}/rules/${e.name}`;
-    if (exists(`.agents/rules/${e.name}`)) {
+    if (exists2(`.agents/rules/${e.name}`)) {
       plan.findings.push({ kind: "personal-shadowed", severity: "warn", path: rel2, hint: `개인 규칙 ${name} 은 공유 규칙과 이름이 같아 배치하지 않았다` });
       continue;
     }
@@ -4136,7 +4559,7 @@ function planLocal(target, agents, spec, sharedHookIds2) {
   }
   let hooks = [];
   try {
-    const text2 = exists(LOCAL_HOOKS) ? import_node_fs18.default.readFileSync(import_node_path20.default.join(target, ...LOCAL_HOOKS.split("/")), "utf8") : null;
+    const text2 = exists2(LOCAL_HOOKS) ? import_node_fs18.default.readFileSync(import_node_path20.default.join(target, ...LOCAL_HOOKS.split("/")), "utf8") : null;
     hooks = parseHooks(text2, spec.hookMap) ?? [];
   } catch (err) {
     plan.findings.push({ kind: "local-invalid", severity: "error", path: LOCAL_HOOKS, hint: err instanceof HooksError ? err.message : String(err) });
@@ -4171,10 +4594,10 @@ function writeExclude(target, paths) {
   } catch {
     text2 = "";
   }
-  const lines = text2.split("\n");
-  const b = lines.indexOf(EXCLUDE_BEGIN);
-  const e = lines.indexOf(EXCLUDE_END);
-  const outside = b >= 0 && e > b ? [...lines.slice(0, b), ...lines.slice(e + 1)] : lines;
+  const lines2 = text2.split("\n");
+  const b = lines2.indexOf(EXCLUDE_BEGIN);
+  const e = lines2.indexOf(EXCLUDE_END);
+  const outside = b >= 0 && e > b ? [...lines2.slice(0, b), ...lines2.slice(e + 1)] : lines2;
   const body = outside.join("\n").replace(/\n+$/, "");
   const block2 = paths.length ? [EXCLUDE_BEGIN, ...paths.map((p) => `/${p}`), EXCLUDE_END] : [];
   const next = `${[body, ...block2.length ? [block2.join("\n")] : []].filter(Boolean).join("\n")}
@@ -4280,13 +4703,13 @@ function localAfter(ctx, target, inst, templatesDir, dryRun) {
   return { result, lines: localLines(result, readLocalConfig(target).ignored, ctx.quiet) };
 }
 function localLines(r, ignored, quiet) {
-  const lines = [`  개인 층: 씀 ${r.written.length} · 지움 ${r.removed.length} · 남김(고침) ${r.kept.length} · settings.local.json ${r.settings}`];
+  const lines2 = [`  개인 층: 씀 ${r.written.length} · 지움 ${r.removed.length} · 남김(고침) ${r.kept.length} · settings.local.json ${r.settings}`];
   if (!quiet) {
-    lines.push(...r.written.map((p) => `    + ${p}`), ...r.removed.map((p) => `    - ${p}`), ...r.kept.map((p) => `    ↷ ${p}  (사람이 고쳤다 — 두었다)`));
-    lines.push(...r.findings.map((f) => `    ${f.severity === "error" ? "✖" : f.severity === "warn" ? "⚠" : "·"} ${f.kind} ${f.path} — ${f.hint}`));
-    if (ignored.length) lines.push(`    ⚠ 개인 설정에서 무시한 키: ${ignored.join(" · ")}(개인 층은 roles.<역할>.harness · git.ide 만 바꾼다)`);
+    lines2.push(...r.written.map((p) => `    + ${p}`), ...r.removed.map((p) => `    - ${p}`), ...r.kept.map((p) => `    ↷ ${p}  (사람이 고쳤다 — 두었다)`));
+    lines2.push(...r.findings.map((f) => `    ${f.severity === "error" ? "✖" : f.severity === "warn" ? "⚠" : "·"} ${f.kind} ${f.path} — ${f.hint}`));
+    if (ignored.length) lines2.push(`    ⚠ 개인 설정에서 무시한 키: ${ignored.join(" · ")}(개인 층은 roles.<역할>.harness · git.ide 만 바꾼다)`);
   }
-  return lines;
+  return lines2;
 }
 function runLocal(ctx) {
   const [sub2, ...rest] = ctx.positionals;
@@ -4300,14 +4723,14 @@ function runLocal(ctx) {
   const dryRun = sub2 === "list" || bool(ctx.values, "dry-run");
   const result = syncLocal(target, plan, dryRun);
   const data = { command: "local", sub: sub2, target, dryRun, config: { roles: config.roles, ide: config.ide, ignored: config.ignored, error: config.error }, plan: plan.wants.map((w) => w.path), ...result };
-  const lines = [
+  const lines2 = [
     `harness-kit local ${sub2} — ${target}`,
     `  설정: ${config.present ? config.error ? `✖ ${config.error}` : `roles ${JSON.stringify(config.roles)} · git.ide ${config.ide ?? "-"}` : "없음(.agents/local/harness-kit.local.json)"}`,
     ...localLines(result, config.ignored, ctx.quiet),
     ...dryRun ? ["  (쓰지 않았다)"] : []
   ];
   const bad4 = plan.findings.some((f) => f.severity === "error") || result.settings === "conflict" || Boolean(config.error);
-  return { code: bad4 ? EXIT.HUMAN : EXIT.OK, data, lines };
+  return { code: bad4 ? EXIT.HUMAN : EXIT.OK, data, lines: lines2 };
 }
 
 // src/commands/update-packs.ts
@@ -4420,8 +4843,8 @@ function runUpdatePacks(ctx) {
 ${problems.map((p) => `  ${p}`).join("\n")}`, "팩을 고쳐 새 판을 내거나 packs 에서 뺀다");
   const clash = conflictsBetween(plans);
   if (clash.length) {
-    const lines2 = [`✖ 팩 충돌 ${clash.length}건 — 아무것도 쓰지 않았다`, ...clash, "  해결: 한 팩에서 빼고 새 판을 낸다. 또는 프로젝트가 직접 관리한다: harness-kit update --forget <경로>(주인을 user 로)"];
-    return { code: EXIT.HUMAN, data: { command: "update", packs: true, target, conflicts: clash.map((l) => l.trim()) }, lines: lines2 };
+    const lines3 = [`✖ 팩 충돌 ${clash.length}건 — 아무것도 쓰지 않았다`, ...clash, "  해결: 한 팩에서 빼고 새 판을 낸다. 또는 프로젝트가 직접 관리한다: harness-kit update --forget <경로>(주인을 user 로)"];
+    return { code: EXIT.HUMAN, data: { command: "update", packs: true, target, conflicts: clash.map((l) => l.trim()) }, lines: lines3 };
   }
   const byPath = new Map(inst.lock.entries.map((e) => [e.path, e]));
   const live = new Set(fetched.map((p) => `pack:${p.manifest.name}`));
@@ -4453,7 +4876,7 @@ ${problems.map((p) => `  ${p}`).join("\n")}`, "팩을 고쳐 새 판을 내거�
   const conflict = ops.filter((o) => o.action === "conflict");
   const human = conflict.length > 0 || ops.some((o) => o.action === "orphan") || (projection ? needsHuman(projection.plan, projection.findings) : false);
   const shown = ops.filter((o) => o.action !== "same" || o.reason);
-  const lines = [
+  const lines2 = [
     `harness-kit update --packs — ${target}`,
     ...records.map((r) => `  팩: ${r.name}@${r.version}  ${r.source}  (${r.resolved.slice(0, 19)})`),
     ...records.length ? [] : ["  packs 가 비었다 — 팩 파일을 뺀다"],
@@ -4473,7 +4896,7 @@ ${problems.map((p) => `  ${p}`).join("\n")}`, "팩을 고쳐 새 판을 내거�
     conflicts: [...conflict.map((o) => ({ path: o.path, new: o.newFile ?? null })), ...projectionConflicts(projection?.plan ?? null)]
   };
   if (projection) data.projection = projectionData(projection.plan, projection.findings);
-  return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines };
+  return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines: lines2 };
 }
 
 // src/commands/update.ts
@@ -4576,26 +4999,26 @@ function conflictList(plan) {
 function mergedLines(merged, backupDir) {
   if (merged.length === 0) return [];
   const n = merged.filter((m) => m.kind !== "kit").length;
-  const lines = [`  v1 lock 첫 업데이트 — 병합 ${n} · 킷 판 ${merged.length - n}(원본: ${backupDir}/)`];
+  const lines2 = [`  v1 lock 첫 업데이트 — 병합 ${n} · 킷 판 ${merged.length - n}(원본: ${backupDir}/)`];
   for (const m of merged) {
-    if (m.kind !== "kit") lines.push(`    ${m.kind}  ${m.path}`);
-    else if (m.path === "CLAUDE.md") lines.push("    kit    CLAUDE.md   (배치가 새 파일로 바꿨다 — 사람이 쓴 내용이면 원본에서 블록 밖으로 옮긴다)");
+    if (m.kind !== "kit") lines2.push(`    ${m.kind}  ${m.path}`);
+    else if (m.path === "CLAUDE.md") lines2.push("    kit    CLAUDE.md   (배치가 새 파일로 바꿨다 — 사람이 쓴 내용이면 원본에서 블록 밖으로 옮긴다)");
   }
-  if (n) lines.push("    병합본의 '<!-- harness-kit: 설치 전 내용(병합) -->' 묶음을 보고 필요 없으면 지운다");
-  return lines;
+  if (n) lines2.push("    병합본의 '<!-- harness-kit: 설치 전 내용(병합) -->' 묶음을 보고 필요 없으면 지운다");
+  return lines2;
 }
 function humanLines(ctx, head, plan, shown, conflicts, dryRun, board, merged, backupDir) {
-  const lines = [...head, ...shown.map(opLine), countsLine(plan.counts), ...mergedLines(merged, backupDir)];
+  const lines2 = [...head, ...shown.map(opLine), countsLine(plan.counts), ...mergedLines(merged, backupDir)];
   const b = boardLine(board);
-  if (b) lines.push(b);
+  if (b) lines2.push(b);
   if (conflicts.length) {
-    lines.push("  충돌 — 고친 파일이라 덮지 않았다. 새 판은 .new 에 있다(리포 폴더에서):");
-    for (const c of conflicts) if (c.diff) lines.push(`    ${String(c.diff)}`);
-    lines.push("  병합했으면 .new 를 지운다. 새 판을 그대로 쓰려면 mv 로 덮는다. 전부 새 판으로: harness-kit update --accept-all");
+    lines2.push("  충돌 — 고친 파일이라 덮지 않았다. 새 판은 .new 에 있다(리포 폴더에서):");
+    for (const c of conflicts) if (c.diff) lines2.push(`    ${String(c.diff)}`);
+    lines2.push("  병합했으면 .new 를 지운다. 새 판을 그대로 쓰려면 mv 로 덮는다. 전부 새 판으로: harness-kit update --accept-all");
   }
-  if (plan.ops.some((o) => o.action === "orphan") && !bool(ctx.values, "prune")) lines.push("  킷에서 빠진 미수정 파일을 지우려면: harness-kit update --prune");
-  lines.push(dryRun ? "  (dry-run — 쓰지 않았다)" : "  다음: harness-kit doctor");
-  return lines;
+  if (plan.ops.some((o) => o.action === "orphan") && !bool(ctx.values, "prune")) lines2.push("  킷에서 빠진 미수정 파일을 지우려면: harness-kit update --prune");
+  lines2.push(dryRun ? "  (dry-run — 쓰지 않았다)" : "  다음: harness-kit doctor");
+  return lines2;
 }
 function writtenState(ctx, target, inst, entries, sel, tokens, source, mergeBackups) {
   const lockText2 = serializeLock({ schema: "harness-kit.lock/v2", kit: { version: VERSION, source }, packs: inst.lock.packs, entries });
@@ -4676,17 +5099,17 @@ function runUpdate(ctx) {
     ...retiredModules.map((m) => retiredNote(m, "meta")),
     ...droppedModules.length ? [`  ⚠ 킷에 없는 모듈을 뺀다: ${droppedModules.join(", ")}`] : []
   ];
-  const lines = humanLines(ctx, head, plan, shown, conflicts, dryRun, board, merged, `${MERGE_BACKUP_DIR}/${stamp}`);
+  const lines2 = humanLines(ctx, head, plan, shown, conflicts, dryRun, board, merged, `${MERGE_BACKUP_DIR}/${stamp}`);
   const noticeLine = NOTICE_LINES[notice.action];
-  if (noticeLine) lines.splice(lines.length - 1, 0, `  ${noticeLine}`);
+  if (noticeLine) lines2.splice(lines2.length - 1, 0, `  ${noticeLine}`);
   const local = localAfter(ctx, target, inst, loc.dir, dryRun);
   if (local) {
     data.local = local.result;
-    lines.splice(lines.length - 1, 0, ...local.lines);
+    lines2.splice(lines2.length - 1, 0, ...local.lines);
   }
-  if (projection) lines.splice(head.length + shown.length + 1, 0, ...projectionLines(projection.plan, projection.findings, ctx.quiet));
-  else if (inst.lock.entries.some((e) => PROJECTION_OPS.has(e.op))) lines.splice(head.length + shown.length + 1, 0, "  배치: 이 템플릿에 projection.json 이 없다 — 배치 항목은 그대로 둔다");
-  return { code, data, lines };
+  if (projection) lines2.splice(head.length + shown.length + 1, 0, ...projectionLines(projection.plan, projection.findings, ctx.quiet));
+  else if (inst.lock.entries.some((e) => PROJECTION_OPS.has(e.op))) lines2.splice(head.length + shown.length + 1, 0, "  배치: 이 템플릿에 projection.json 이 없다 — 배치 항목은 그대로 둔다");
+  return { code, data, lines: lines2 };
 }
 var NOTICE_LINES = {
   write: `업그레이드 공지: ${NOTICE_REL} (세션 시작 때 제목 한 줄이 붙는다, 30일 뒤 만료 — 커밋하면 동료도 받는다)`,
@@ -4900,7 +5323,7 @@ function report(ctx, l, rep) {
   const projection = projectionData(rep.result.projection ?? null, rep.result.projectionFindings ?? []);
   if (projection) data.projection = projection;
   const counts2 = Object.entries(countsOf(rep.result.ops)).filter(([, n]) => n > 0).map(([k, n]) => `${k} ${n}`).join(" · ");
-  const lines = [
+  const lines2 = [
     `harness-kit ${rep.command} — ${l.target}`,
     `  하네스 ${l.before.agents.join(",")} → ${rep.after.agents.join(",")} · 모듈 ${l.before.modules.join(",") || "none"} → ${rep.after.modules.join(",") || "none"}`,
     ...rep.notes,
@@ -4910,13 +5333,13 @@ function report(ctx, l, rep) {
     `  파일: ${counts2 || "바꿀 것 없음"}`,
     ...projectionLines(rep.result.projection ?? null, rep.result.projectionFindings ?? [], ctx.quiet)
   ];
-  if (m && m.action !== "same") lines.push(`  매니페스트 ${MANIFEST_PATH}: ${m.action}${m.newFile ? ` → ${m.newFile}` : ""}`);
+  if (m && m.action !== "same") lines2.push(`  매니페스트 ${MANIFEST_PATH}: ${m.action}${m.newFile ? ` → ${m.newFile}` : ""}`);
   if (conflicts.length) {
-    lines.push("  충돌 — 고친 파일이라 덮지 않았다. 새 판은 .new 에 있다(리포 폴더에서):");
-    for (const c of conflicts) if (c.diff) lines.push(`    ${String(c.diff)}`);
+    lines2.push("  충돌 — 고친 파일이라 덮지 않았다. 새 판은 .new 에 있다(리포 폴더에서):");
+    for (const c of conflicts) if (c.diff) lines2.push(`    ${String(c.diff)}`);
   }
-  lines.push(rep.dryRun ? "  (dry-run — 쓰지 않았다)" : "  다음: harness-kit doctor");
-  return { data, lines };
+  lines2.push(rep.dryRun ? "  (dry-run — 쓰지 않았다)" : "  다음: harness-kit doctor");
+  return { data, lines: lines2 };
 }
 var dryRunOf = (ctx) => bool(ctx.values, "dry-run");
 function retiredOnly(ctx, command, names) {
@@ -4989,14 +5412,14 @@ function runAdd(ctx) {
   const dryRun = dryRunOf(ctx);
   const featureDocs = dryRun ? null : applyChange(ctx, l, after, result);
   const notes = [...retiredNotes(names), ...already.length ? [`  · 이미 켜져 있다 — 그 몫에서 빠진 파일만 채운다: ${already.join(", ")}`] : []];
-  const { data, lines } = report(ctx, l, { command: "add", names: { ...names, already }, after, result, dryRun, featureDocs, notes });
+  const { data, lines: lines2 } = report(ctx, l, { command: "add", names: { ...names, already }, after, result, dryRun, featureDocs, notes });
   const conflict = result.ops.some((o) => o.action === "conflict") || result.manifest?.action === "conflict" || needsHuman(result.projection ?? null, result.projectionFindings ?? []);
-  return { code: conflict ? EXIT.HUMAN : EXIT.OK, data, lines };
+  return { code: conflict ? EXIT.HUMAN : EXIT.OK, data, lines: lines2 };
 }
 
 // src/commands/dashboard.ts
 var import_node_child_process9 = require("node:child_process");
-var import_node_path50 = __toESM(require("node:path"));
+var import_node_path52 = __toESM(require("node:path"));
 
 // ../dashboard/src/export.ts
 var import_node_fs32 = __toESM(require("node:fs"));
@@ -5041,11 +5464,11 @@ function ensureDir(dir, mode) {
 }
 var CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 function ulid(now = Date.now()) {
-  let value = BigInt(Math.floor(now)) << 80n | BigInt(`0x${import_node_crypto4.default.randomBytes(10).toString("hex")}`);
+  let value2 = BigInt(Math.floor(now)) << 80n | BigInt(`0x${import_node_crypto4.default.randomBytes(10).toString("hex")}`);
   let out = "";
   for (let i = 0; i < 26; i += 1) {
-    out = CROCKFORD[Number(value & 31n)] + out;
-    value >>= 5n;
+    out = CROCKFORD[Number(value2 & 31n)] + out;
+    value2 >>= 5n;
   }
   return out;
 }
@@ -5130,8 +5553,8 @@ function newEntry(line, at, gate, decision) {
   return { line, at, gate, decision, approver: null, target: null, phrase: null, path: null, entryId: null, source: null, evidence: null, ruleCandidate: false, rollbackWaiver: null, errors: [], valid: true };
 }
 var DAYS = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
-function validTime(value) {
-  const m = TIME.exec(value);
+function validTime(value2) {
+  const m = TIME.exec(value2);
   if (!m) return false;
   const [y, mo, d, h, mi, s] = m.slice(1, 7).map(Number);
   if (y < 1 || mo < 1 || mo > 12 || h > 23 || mi > 59 || s > 59) return false;
@@ -5145,8 +5568,8 @@ function validTime(value) {
   }
   return true;
 }
-function parseTarget(value) {
-  const parts = value.split(" · ");
+function parseTarget(value2) {
+  const parts = value2.split(" · ");
   if (!parts[0]) return null;
   const target = { name: parts[0], sha256: null, fingerprint: null, head: null };
   for (const part of parts.slice(1)) {
@@ -5163,28 +5586,28 @@ function parseTarget(value) {
   }
   return target;
 }
-function unquote(value) {
-  return value.length >= 2 && value[0] === '"' && value[value.length - 1] === '"' ? value.slice(1, -1) : value;
+function unquote(value2) {
+  return value2.length >= 2 && value2[0] === '"' && value2[value2.length - 1] === '"' ? value2.slice(1, -1) : value2;
 }
-function setField(entry, seen, name, value) {
+function setField(entry, seen, name, value2) {
   const key = Object.hasOwn(FIELDS2, name) ? FIELDS2[name] : void 0;
   if (key === void 0) return ["unknown-field"];
   if (seen.has(key)) return ["duplicate-field"];
   seen.add(key);
   if (key === "approver") {
-    const m = APPROVER.exec(value);
+    const m = APPROVER.exec(value2);
     if (!m) return ["bad-approver"];
     entry.approver = { email: m[1], name: m[2] ?? null, group: m[3] ?? null };
   } else if (key === "target") {
-    entry.target = parseTarget(value);
+    entry.target = parseTarget(value2);
     return entry.target ? [] : ["bad-target"];
   } else if (key === "phrase") {
-    entry.phrase = unquote(value);
+    entry.phrase = unquote(value2);
   } else if (key === "ruleCandidate") {
-    if (value !== "예") return ["bad-rule-candidate"];
+    if (value2 !== "예") return ["bad-rule-candidate"];
     entry.ruleCandidate = true;
   } else {
-    entry[key] = value;
+    entry[key] = value2;
   }
   return [];
 }
@@ -5237,9 +5660,9 @@ function parse(text2) {
   let seen = /* @__PURE__ */ new Set();
   let errors = [];
   let skipping = false;
-  const lines = src.split("\n");
-  for (let i = 0; i < lines.length; i += 1) {
-    const raw = lines[i];
+  const lines2 = src.split("\n");
+  for (let i = 0; i < lines2.length; i += 1) {
+    const raw = lines2[i];
     const number = i + 1;
     const line = raw.endsWith("\r") ? raw.slice(0, -1) : raw;
     if (line.startsWith("## ")) {
@@ -5342,17 +5765,17 @@ function bare(line) {
 }
 function approvalSha(input) {
   const data = typeof input === "string" ? Buffer.from(input, "utf8") : Buffer.from(input);
-  const lines = splitKeep(data);
-  if (lines.length === 0 || bare(lines[0]) !== "---") return sha2562(data);
+  const lines2 = splitKeep(data);
+  if (lines2.length === 0 || bare(lines2[0]) !== "---") return sha2562(data);
   let end = -1;
-  for (let i = 1; i < lines.length; i += 1) {
-    if (bare(lines[i]) === "---") {
+  for (let i = 1; i < lines2.length; i += 1) {
+    if (bare(lines2[i]) === "---") {
       end = i;
       break;
     }
   }
   if (end < 0) return sha2562(data);
-  const kept = lines.filter((l, i) => !(i > 0 && i < end && /^(status|state):/.test(l.toString("latin1"))));
+  const kept = lines2.filter((l, i) => !(i > 0 && i < end && /^(status|state):/.test(l.toString("latin1"))));
   return sha2562(Buffer.concat(kept));
 }
 function newFileText(key) {
@@ -5370,13 +5793,13 @@ function renderEntry(entry) {
   if (t.fingerprint) parts.push(`지문: ${t.fingerprint}`);
   if (t.head) parts.push(`head: ${t.head}`);
   const phrase = String(entry.phrase ?? "").split(/\s+/).filter(Boolean).join(" ");
-  const lines = [`## ${entry.at} · ${entry.gate} · ${entry.decision}`, `- 승인자: ${who}`, `- 대상: ${parts.join(" · ")}`];
-  if (phrase) lines.push(`- 문구: "${phrase}"`);
-  lines.push(`- 경로: ${entry.path}`);
-  if (entry.ruleCandidate) lines.push("- 규칙 후보: 예");
-  if (entry.rollbackWaiver) lines.push(`- 롤백 면제: ${entry.rollbackWaiver}`);
-  lines.push(`- 기록 ID: ${entry.entryId}`);
-  return `${lines.join("\n")}
+  const lines2 = [`## ${entry.at} · ${entry.gate} · ${entry.decision}`, `- 승인자: ${who}`, `- 대상: ${parts.join(" · ")}`];
+  if (phrase) lines2.push(`- 문구: "${phrase}"`);
+  lines2.push(`- 경로: ${entry.path}`);
+  if (entry.ruleCandidate) lines2.push("- 규칙 후보: 예");
+  if (entry.rollbackWaiver) lines2.push(`- 롤백 면제: ${entry.rollbackWaiver}`);
+  lines2.push(`- 기록 ID: ${entry.entryId}`);
+  return `${lines2.join("\n")}
 `;
 }
 function appendedText(current4, key, entries) {
@@ -5410,7 +5833,7 @@ function fileStamp(file) {
 }
 function treeStamp(dir, depth = 4, filter = () => true) {
   const out = [];
-  const walk3 = (d, left) => {
+  const walk4 = (d, left) => {
     let names;
     try {
       names = import_node_fs24.default.readdirSync(d).sort();
@@ -5429,25 +5852,25 @@ function treeStamp(dir, depth = 4, filter = () => true) {
       }
       if (st.isDirectory()) {
         out.push(`${f}/`);
-        if (left > 0) walk3(f, left - 1);
+        if (left > 0) walk4(f, left - 1);
       } else out.push(`${f}:${st.mtimeMs}:${st.size}:${st.ino}${st.isSymbolicLink() ? ":l" : ""}`);
     }
   };
-  walk3(dir, depth);
+  walk4(dir, depth);
   return out.join("\n");
 }
 var Cache = class {
   items = /* @__PURE__ */ new Map();
   pending = /* @__PURE__ */ new Map();
   async get(key, stamp, compute, ttlMs) {
-    const hit = this.items.get(key);
-    if (hit && hit.stamp === stamp && (ttlMs === void 0 || Date.now() - hit.computedAt < ttlMs)) return hit.value;
+    const hit2 = this.items.get(key);
+    if (hit2 && hit2.stamp === stamp && (ttlMs === void 0 || Date.now() - hit2.computedAt < ttlMs)) return hit2.value;
     const running = this.pending.get(key);
     if (running && running.stamp === stamp) return running.promise;
     const promise = (async () => {
-      const value = await compute();
-      this.items.set(key, { stamp, value, computedAt: Date.now() });
-      return value;
+      const value2 = await compute();
+      this.items.set(key, { stamp, value: value2, computedAt: Date.now() });
+      return value2;
     })();
     this.pending.set(key, { stamp, promise });
     try {
@@ -5486,16 +5909,16 @@ var FENCE = "---";
 var FrontmatterError = class extends Error {
 };
 function split(text2) {
-  const lines = text2.split("\n");
-  if (lines.length === 0 || lines[0].replace(/\r$/, "") !== FENCE) return [null, text2];
-  for (let i = 1; i < lines.length; i += 1) {
-    if (lines[i].replace(/\r$/, "") === FENCE) return [lines.slice(1, i), lines.slice(i + 1).join("\n")];
+  const lines2 = text2.split("\n");
+  if (lines2.length === 0 || lines2[0].replace(/\r$/, "") !== FENCE) return [null, text2];
+  for (let i = 1; i < lines2.length; i += 1) {
+    if (lines2[i].replace(/\r$/, "") === FENCE) return [lines2.slice(1, i), lines2.slice(i + 1).join("\n")];
   }
   throw new FrontmatterError("frontmatter is not closed with ---");
 }
-function unquote2(value) {
-  if (value.length >= 2 && value[0] === value[value.length - 1] && (value[0] === '"' || value[0] === "'")) return value.slice(1, -1);
-  return value;
+function unquote2(value2) {
+  if (value2.length >= 2 && value2[0] === value2[value2.length - 1] && (value2[0] === '"' || value2[0] === "'")) return value2.slice(1, -1);
+  return value2;
 }
 function parse2(text2) {
   const [head] = split(text2);
@@ -5519,13 +5942,13 @@ function parseLoose(text2) {
     return {};
   }
 }
-function setField2(text2, key, value) {
+function setField2(text2, key, value2) {
   const eol = text2.includes("\r\n") ? "\r\n" : "\n";
-  const lines = text2.split("\n");
-  if ((lines[0] ?? "").replace(/\r$/, "") !== FENCE) return `${FENCE}${eol}${key}: ${value}${eol}${FENCE}${eol}${text2}`;
+  const lines2 = text2.split("\n");
+  if ((lines2[0] ?? "").replace(/\r$/, "") !== FENCE) return `${FENCE}${eol}${key}: ${value2}${eol}${FENCE}${eol}${text2}`;
   let end = -1;
-  for (let i = 1; i < lines.length; i += 1) {
-    if (lines[i].replace(/\r$/, "") === FENCE) {
+  for (let i = 1; i < lines2.length; i += 1) {
+    if (lines2[i].replace(/\r$/, "") === FENCE) {
       end = i;
       break;
     }
@@ -5533,17 +5956,17 @@ function setField2(text2, key, value) {
   if (end < 0) throw new FrontmatterError("frontmatter is not closed with ---");
   const re = new RegExp(`^${key}:`);
   for (let i = 1; i < end; i += 1) {
-    const line = lines[i];
+    const line = lines2[i];
     if (re.test(line)) {
       const cr2 = line.endsWith("\r") ? "\r" : "";
       const comment = /(\s+#[^\n]*?)\r?$/.exec(line.replace(/^[^:]*:\s*/, ""))?.[1] ?? "";
-      lines[i] = `${key}: ${value}${comment}${cr2}`;
-      return lines.join("\n");
+      lines2[i] = `${key}: ${value2}${comment}${cr2}`;
+      return lines2.join("\n");
     }
   }
   const cr = eol === "\r\n" ? "\r" : "";
-  lines.splice(end, 0, `${key}: ${value}${cr}`);
-  return lines.join("\n");
+  lines2.splice(end, 0, `${key}: ${value2}${cr}`);
+  return lines2.join("\n");
 }
 
 // ../dashboard/src/questions.ts
@@ -5552,10 +5975,10 @@ var CHOICE = /^- ([A-D])\. (.+?) — 영향: (.+)$/;
 var RECOMMEND = /^- 권장: ([A-D])\b/;
 var ANSWER = /^- 답:\s*(.*)$/;
 function parseQuestions(text2) {
-  const lines = text2.split("\n").map((l) => l.replace(/\r$/, ""));
+  const lines2 = text2.split("\n").map((l) => l.replace(/\r$/, ""));
   const questions = [];
   let cur = null;
-  lines.forEach((line, i) => {
+  lines2.forEach((line, i) => {
     const h = HEAD.exec(line);
     if (h) {
       cur = { id: h[1], category: h[2], role: h[3], blocks: h[4] ?? null, text: "", choices: [], recommended: null, answer: null, open: true, notes: [], opinions: [], line: i + 1 };
@@ -5585,31 +6008,31 @@ function parseQuestions(text2) {
 function writeAnswer(text2, input) {
   const eol = text2.includes("\r\n") ? "\r\n" : "\n";
   const cr = eol === "\r\n" ? "\r" : "";
-  const lines = text2.split("\n");
-  const bareOf = (i) => lines[i].replace(/\r$/, "");
+  const lines2 = text2.split("\n");
+  const bareOf = (i) => lines2[i].replace(/\r$/, "");
   let start = -1;
-  for (let i = 0; i < lines.length; i += 1) {
+  for (let i = 0; i < lines2.length; i += 1) {
     const h = HEAD.exec(bareOf(i));
     if (h && h[1] === input.qid) start = i;
   }
   if (start < 0) throw new Error(`질문 없음: ${input.qid}`);
-  let end = lines.length;
-  for (let i = start + 1; i < lines.length; i += 1) {
+  let end = lines2.length;
+  for (let i = start + 1; i < lines2.length; i += 1) {
     if (bareOf(i).startsWith("## ") || bareOf(i).startsWith("# ")) {
       end = i;
       break;
     }
   }
   const memo = input.text ? input.text.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 500) : "";
-  const block2 = lines.slice(start, end);
+  const block2 = lines2.slice(start, end);
   if (input.opinion) {
     let at = block2.length;
     while (at > 1 && !block2[at - 1].replace(/\r$/, "").trim()) at -= 1;
     block2.splice(at, 0, `- 의견: ${input.choice} · ${input.email}${memo ? ` — ${memo}` : ""}${cr}`);
   } else {
     const ai = block2.findIndex((l) => ANSWER.test(l.replace(/\r$/, "")));
-    const value = `${input.choice} · ${input.email} · ${input.at}`;
-    const added = [`- 답: ${value}${cr}`];
+    const value2 = `${input.choice} · ${input.email} · ${input.at}`;
+    const added = [`- 답: ${value2}${cr}`];
     if (memo) added.push(`- 메모: ${memo}${cr}`);
     if (ai < 0) {
       let at = block2.length;
@@ -5623,7 +6046,7 @@ function writeAnswer(text2, input) {
       block2.splice(ai, drop, ...added);
     }
   }
-  let out = [...lines.slice(0, start), ...block2, ...lines.slice(end)].join("\n");
+  let out = [...lines2.slice(0, start), ...block2, ...lines2.slice(end)].join("\n");
   const allAnswered = parseQuestions(out).questions.every((q2) => !q2.open);
   let statusChanged = null;
   const before = parseLoose(out)?.status ?? null;
@@ -5793,7 +6216,7 @@ function intentModel(p, info, issues) {
   };
 }
 function flowData(p, info, issues, sessions) {
-  const { units, data } = readUnitsFile(info.abs);
+  const { units, data, raw } = readUnitsFile(info.abs);
   let fm = {};
   try {
     fm = parseLoose(import_node_fs25.default.readFileSync(import_node_path27.default.join(info.abs, "intent.md"), "utf8")) ?? {};
@@ -5831,6 +6254,7 @@ function flowData(p, info, issues, sessions) {
     }),
     edges,
     proposal: proposalOf(info.abs),
+    unitsSha256: unitsSha(raw),
     readAt: (/* @__PURE__ */ new Date()).toISOString()
   };
 }
@@ -5922,6 +6346,7 @@ function appliedUnitsBytes(raw, data, units, changes) {
   const text2 = `${JSON.stringify({ ...data, units: merged }, null, 2)}${raw.toString("utf8").endsWith("\n") ? "\n" : ""}`;
   return Buffer.from(text2, "utf8");
 }
+var unitsSha = (raw) => raw ? sha2562(raw) : null;
 
 // ../dashboard/src/md.ts
 var import_node_path28 = __toESM(require("node:path"));
@@ -5968,20 +6393,20 @@ function inline2(text2, opts) {
   s = escapeHtml(s).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>").replace(/__([^_]+)__/g, "<strong>$1</strong>").replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>").replace(/~~([^~]+)~~/g, "<del>$1</del>");
   return s.replace(/\u0000([CP])(\d+)\u0000/g, (_m, k, i) => k === "C" ? codes[Number(i)] : parts[Number(i)]);
 }
-function stripFrontmatter(lines) {
-  if (lines[0] !== "---") return lines;
-  for (let i = 1; i < lines.length; i += 1) if (lines[i] === "---") return lines.slice(i + 1);
-  return lines;
+function stripFrontmatter(lines2) {
+  if (lines2[0] !== "---") return lines2;
+  for (let i = 1; i < lines2.length; i += 1) if (lines2[i] === "---") return lines2.slice(i + 1);
+  return lines2;
 }
 var LIST = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/;
-function renderList(lines, opts) {
-  const items = lines.map((l) => {
+function renderList(lines2, opts) {
+  const items = lines2.map((l) => {
     const m = LIST.exec(l);
     if (!m) return { indent: 99, ordered: false, text: l.trim() };
     return { indent: m[1].length, ordered: /\d/.test(m[2]), text: m[3] };
   });
   let i = 0;
-  const walk3 = (base2) => {
+  const walk4 = (base2) => {
     const ordered = items[i]?.ordered ?? false;
     let out = ordered ? "<ol>" : "<ul>";
     while (i < items.length) {
@@ -5989,7 +6414,7 @@ function renderList(lines, opts) {
       if (it.indent < base2) break;
       if (it.indent > base2 && it.indent !== 99) {
         out = out.replace(/<\/li>$/, "");
-        out += `${walk3(it.indent)}</li>`;
+        out += `${walk4(it.indent)}</li>`;
         continue;
       }
       if (it.indent === 99) {
@@ -6006,7 +6431,7 @@ function renderList(lines, opts) {
   };
   const base = items[0]?.indent ?? 0;
   let html = "";
-  while (i < items.length) html += walk3(Math.min(base, items[i]?.indent ?? 0));
+  while (i < items.length) html += walk4(Math.min(base, items[i]?.indent ?? 0));
   return html;
 }
 function cells(row2) {
@@ -6016,7 +6441,7 @@ function cells(row2) {
   return r.split("|").map((c) => c.trim());
 }
 function renderMarkdown(source, opts) {
-  const lines = stripFrontmatter(source.replace(/\u0000/g, "").replace(/\r\n?/g, "\n").split("\n"));
+  const lines2 = stripFrontmatter(source.replace(/\u0000/g, "").replace(/\r\n?/g, "\n").split("\n"));
   const out = [];
   let i = 0;
   const para = [];
@@ -6024,22 +6449,22 @@ function renderMarkdown(source, opts) {
     if (para.length) out.push(`<p>${para.map((l) => inline2(l, opts)).join("<br>")}</p>`);
     para.length = 0;
   };
-  while (i < lines.length) {
-    const line = lines[i];
+  while (i < lines2.length) {
+    const line = lines2[i];
     const fence = /^(\s*)(```+|~~~+)(.*)$/.exec(line);
     if (fence) {
       flush();
       const mark = fence[2];
       const body = [];
       i += 1;
-      while (i < lines.length && !lines[i].trim().startsWith(mark)) body.push(lines[i++]);
+      while (i < lines2.length && !lines2[i].trim().startsWith(mark)) body.push(lines2[i++]);
       i += 1;
       out.push(`<pre><code>${escapeHtml(body.join("\n"))}</code></pre>`);
       continue;
     }
     if (/^\s*<!--/.test(line)) {
       flush();
-      while (i < lines.length && !lines[i].includes("-->")) i += 1;
+      while (i < lines2.length && !lines2[i].includes("-->")) i += 1;
       i += 1;
       continue;
     }
@@ -6060,16 +6485,16 @@ function renderMarkdown(source, opts) {
     if (/^\s*>/.test(line)) {
       flush();
       const body = [];
-      while (i < lines.length && /^\s*>/.test(lines[i])) body.push(lines[i++].replace(/^\s*>\s?/, ""));
+      while (i < lines2.length && /^\s*>/.test(lines2[i])) body.push(lines2[i++].replace(/^\s*>\s?/, ""));
       out.push(`<blockquote>${renderMarkdown(body.join("\n"), opts)}</blockquote>`);
       continue;
     }
-    if (line.includes("|") && i + 1 < lines.length && /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(lines[i + 1])) {
+    if (line.includes("|") && i + 1 < lines2.length && /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(lines2[i + 1])) {
       flush();
       const head = cells(line);
       i += 2;
       const rows = [];
-      while (i < lines.length && lines[i].includes("|") && lines[i].trim()) rows.push(cells(lines[i++]));
+      while (i < lines2.length && lines2[i].includes("|") && lines2[i].trim()) rows.push(cells(lines2[i++]));
       out.push(
         `<table><thead><tr>${head.map((c) => `<th>${inline2(c, opts)}</th>`).join("")}</tr></thead><tbody>${rows.map((r) => `<tr>${r.map((c) => `<td>${inline2(c, opts)}</td>`).join("")}</tr>`).join("")}</tbody></table>`
       );
@@ -6078,7 +6503,7 @@ function renderMarkdown(source, opts) {
     if (LIST.test(line)) {
       flush();
       const body = [];
-      while (i < lines.length && (LIST.test(lines[i]) || /^\s{2,}\S/.test(lines[i]) && body.length)) body.push(lines[i++]);
+      while (i < lines2.length && (LIST.test(lines2[i]) || /^\s{2,}\S/.test(lines2[i]) && body.length)) body.push(lines2[i++]);
       out.push(renderList(body, opts));
       continue;
     }
@@ -6276,11 +6701,11 @@ var Project = class _Project {
   meta() {
     const file = import_node_path30.default.join(this.root, ".agents/harness-kit.json");
     const stamp = fileStamp(file);
-    const hit = this.metaCache;
-    if (hit && hit.stamp === stamp) return hit.value;
-    const value = readJson(file) ?? {};
-    this.metaCache = { stamp, value };
-    return value;
+    const hit2 = this.metaCache;
+    if (hit2 && hit2.stamp === stamp) return hit2.value;
+    const value2 = readJson(file) ?? {};
+    this.metaCache = { stamp, value: value2 };
+    return value2;
   }
   metaCache = null;
   name() {
@@ -6288,8 +6713,8 @@ var Project = class _Project {
     return isObj6(project) && typeof project.name === "string" && project.name ? project.name : import_node_path30.default.basename(this.root);
   }
   gates() {
-    const flow = this.meta().flow;
-    const g = isObj6(flow) && Array.isArray(flow.gates) ? flow.gates.filter((x) => typeof x === "string") : null;
+    const flow2 = this.meta().flow;
+    const g = isObj6(flow2) && Array.isArray(flow2.gates) ? flow2.gates.filter((x) => typeof x === "string") : null;
     return g && g.length ? g : DEFAULT_GATES2;
   }
   base() {
@@ -6338,7 +6763,7 @@ function clarifyCount(text2) {
   return text2.split(CLARIFY).length - 1;
 }
 function bolts(text2) {
-  const lines = text2.split(/\r?\n/);
+  const lines2 = text2.split(/\r?\n/);
   let total = 0;
   let done = 0;
   let open = 0;
@@ -6346,7 +6771,7 @@ function bolts(text2) {
   const close = () => {
     if (total > 0 && tasks > 0 && open === 0) done += 1;
   };
-  for (const line of lines) {
+  for (const line of lines2) {
     if (/^#{2,4}\s+Phase\b/i.test(line)) {
       close();
       total += 1;
@@ -7012,7 +7437,7 @@ async function sessionInfo(p, mode) {
   const meta = p.meta();
   const user = await p.user();
   const groups = p.policy().groups ?? {};
-  const flow = isObj6(meta.flow) ? meta.flow : {};
+  const flow2 = isObj6(meta.flow) ? meta.flow : {};
   return {
     repo: p.name(),
     projectId: p.id,
@@ -7020,7 +7445,7 @@ async function sessionInfo(p, mode) {
     user: { email: user.email, name: user.name, groups: Object.entries(groups).filter(([, m]) => m.some((x) => x.toLowerCase() === (user.email ?? "").toLowerCase())).map(([g]) => g).sort() },
     modules: p.modules(),
     agents: Array.isArray(meta.agents) ? meta.agents : [],
-    flow: { design: flow.design ?? "kit", record: flow.record ?? "none", gates: p.gates(), floor: GATE_FLOOR },
+    flow: { design: flow2.design ?? "kit", record: flow2.record ?? "none", gates: p.gates(), floor: GATE_FLOOR },
     approvers: p.policy().approvers ?? {},
     readOnly: p.readOnly,
     mode,
@@ -7145,22 +7570,22 @@ var ExportError = class extends Error {
     this.code = code;
   }
 };
-function scrub(value, map) {
-  if (typeof value === "string") {
-    let s = value;
+function scrub(value2, map) {
+  if (typeof value2 === "string") {
+    let s = value2;
     for (const [from, to] of map) s = s.split(from).join(to);
     return s;
   }
-  if (Array.isArray(value)) return value.map((v) => scrub(v, map));
-  if (value && typeof value === "object") {
+  if (Array.isArray(value2)) return value2.map((v) => scrub(v, map));
+  if (value2 && typeof value2 === "object") {
     const out = {};
-    for (const [k, v] of Object.entries(value)) {
+    for (const [k, v] of Object.entries(value2)) {
       if (["email", "createdBy", "approver", "user", "sessions", "main", "approvers", "by"].includes(k)) continue;
       out[k] = scrub(v, map);
     }
     return out;
   }
-  return value;
+  return value2;
 }
 function page(title, body) {
   return `<!doctype html>
@@ -7203,7 +7628,7 @@ async function exportStatic(opts) {
     written.push(rel2);
   };
   try {
-    for (const [name, value] of Object.entries(data)) write(`data/${name}.json`, `${JSON.stringify(scrub(value, map), null, 2)}
+    for (const [name, value2] of Object.entries(data)) write(`data/${name}.json`, `${JSON.stringify(scrub(value2, map), null, 2)}
 `);
     const o = scrub(data.overview, map);
     const rows = issues.map((i) => scrub(i, map));
@@ -7244,26 +7669,26 @@ function check2(out, p, home) {
   })();
   if (token) needles.add(token);
   const hits = [];
-  const walk3 = (d) => {
+  const walk4 = (d) => {
     for (const n of import_node_fs32.default.readdirSync(d)) {
       const f = import_node_path35.default.join(d, n);
-      if (import_node_fs32.default.statSync(f).isDirectory()) walk3(f);
+      if (import_node_fs32.default.statSync(f).isDirectory()) walk4(f);
       else {
         const text2 = import_node_fs32.default.readFileSync(f, "utf8");
         for (const needle of needles) if (text2.includes(needle)) hits.push(`${import_node_path35.default.relative(out, f)}: ${needle === token ? "<토큰>" : needle}`);
       }
     }
   };
-  walk3(out);
+  walk4(out);
   if (hits.length) throw new ExportLeakError(hits);
 }
 
 // ../dashboard/src/server.ts
-var import_node_crypto6 = __toESM(require("node:crypto"));
-var import_node_fs41 = __toESM(require("node:fs"));
+var import_node_crypto7 = __toESM(require("node:crypto"));
+var import_node_fs43 = __toESM(require("node:fs"));
 var import_node_http = __toESM(require("node:http"));
 var import_node_os3 = __toESM(require("node:os"));
-var import_node_path45 = __toESM(require("node:path"));
+var import_node_path47 = __toESM(require("node:path"));
 
 // ../dashboard/src/agent.ts
 var import_node_child_process7 = require("node:child_process");
@@ -7316,6 +7741,75 @@ function parentMarker(start = process.ppid) {
 }
 function agentSession(env) {
   return envMarker(env) ?? parentMarker();
+}
+
+// ../dashboard/src/burn.ts
+var DAY2 = 864e5;
+var localDate = (ms) => {
+  const d = new Date(ms);
+  const p2 = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+};
+async function history(p, issue) {
+  if (!issue.root) return [];
+  const rel2 = `${issue.dir}/tasks.md`;
+  const log = await git(issue.root, p.env, "log", "--format=%H%x09%cI", "--", rel2);
+  if (log.code !== 0) return [];
+  const pts = [];
+  for (const line of log.stdout.split("\n").filter(Boolean).reverse()) {
+    const [sha, iso] = line.split("	");
+    const shown = await git(issue.root, p.env, "show", `${sha}:${rel2}`);
+    if (shown.code !== 0) continue;
+    const b = bolts(shown.stdout);
+    pts.push({ at: Date.parse(iso), total: b.total, done: b.done });
+  }
+  return pts;
+}
+async function burnData(p, info, issues, daysText) {
+  const days = daysText === null ? 14 : Number(daysText);
+  if (!Number.isInteger(days) || days < 1 || days > 90) throw bad3("days 는 1~90 이다");
+  const { units } = readUnitsFile(info.abs);
+  const live = units.filter((u) => u.planned && !(u.kind === "contract" && !u.issue));
+  const startDay = /* @__PURE__ */ new Date();
+  startDay.setHours(0, 0, 0, 0);
+  const first = startDay.getTime() - (days - 1) * DAY2;
+  const tracks = [];
+  let unitsDone = 0;
+  for (const u of live) {
+    const issue = u.issue ? issues.find((i) => i.key === u.issue) : void 0;
+    const tasks = issue?.docs.tasks?.bolts;
+    if (issue?.stage === "completed") unitsDone += 1;
+    if (issue && tasks && tasks.total > 0) tracks.push({ estimated: false, points: await history(p, issue), now: tasks });
+    else tracks.push({ estimated: true, points: [], now: { total: Math.max(1, Math.ceil(u.stories.length / 3)), done: 0 } });
+  }
+  const series = [];
+  for (let i = 0; i < days; i += 1) {
+    const end = first + (i + 1) * DAY2 - 1;
+    const today2 = i === days - 1;
+    let total = 0;
+    let done = 0;
+    for (const t of tracks) {
+      if (t.estimated || today2) {
+        total += t.now.total;
+        done += t.now.done;
+        continue;
+      }
+      const last = t.points.filter((x) => x.at <= end).pop();
+      if (last) {
+        total += last.total;
+        done += last.done;
+      }
+    }
+    series.push({ date: localDate(first + i * DAY2 + DAY2 / 2), remaining: total - done, total, done });
+  }
+  const now = series[series.length - 1] ?? { remaining: 0, total: 0, done: 0 };
+  return {
+    intent: info.key,
+    days,
+    series,
+    now: { remaining: now.remaining, total: now.total, done: now.done, units: { done: unitsDone, total: live.length } },
+    estimated: tracks.some((t) => t.estimated)
+  };
 }
 
 // ../dashboard/src/projects.ts
@@ -7373,7 +7867,7 @@ function removeProject(home, nameOrPath) {
 }
 function discover(dir, depth = 3) {
   const out = [];
-  const walk3 = (d, left) => {
+  const walk4 = (d, left) => {
     if (isHarnessRepo(d)) out.push({ path: d, name: import_node_path37.default.basename(d), addedAt: "" });
     if (left === 0) return;
     let names = [];
@@ -7386,12 +7880,12 @@ function discover(dir, depth = 3) {
       if (n.startsWith(".") || n === "node_modules") continue;
       const f = import_node_path37.default.join(d, n);
       try {
-        if (import_node_fs33.default.lstatSync(f).isDirectory()) walk3(f, left - 1);
+        if (import_node_fs33.default.lstatSync(f).isDirectory()) walk4(f, left - 1);
       } catch {
       }
     }
   };
-  walk3(import_node_fs33.default.realpathSync(dir), depth);
+  walk4(import_node_fs33.default.realpathSync(dir), depth);
   return out;
 }
 function workspaceEntries(file) {
@@ -7422,8 +7916,8 @@ var Projects = class {
       const id = projectIdOf(e.path);
       let slot = this.slots.get(id);
       if (!slot || slot.entry.path !== e.path) {
-        const exists = import_node_fs33.default.existsSync(e.path);
-        const state = !exists ? "missing" : isHarnessRepo(e.path) ? "ok" : "not-harness";
+        const exists2 = import_node_fs33.default.existsSync(e.path);
+        const state = !exists2 ? "missing" : isHarnessRepo(e.path) ? "ok" : "not-harness";
         let project = null;
         if (state === "ok") {
           try {
@@ -7508,23 +8002,1416 @@ async function machineSessions(projects) {
   return { sessions: out };
 }
 
-// ../dashboard/src/writers/answers.ts
-var import_node_fs36 = __toESM(require("node:fs"));
-var import_node_path40 = __toESM(require("node:path"));
-
-// ../dashboard/src/writers/approvals.ts
-var import_node_fs35 = __toESM(require("node:fs"));
-var import_node_path39 = __toESM(require("node:path"));
-
-// ../dashboard/src/writers/intent-gates.ts
+// ../dashboard/src/skills.ts
+var import_node_crypto6 = __toESM(require("node:crypto"));
 var import_node_fs34 = __toESM(require("node:fs"));
 var import_node_path38 = __toESM(require("node:path"));
+
+// ../dashboard/src/yaml-lite.ts
+var YamlError = class extends Error {
+};
+var MAX_DEPTH = 8;
+function stripComment(s) {
+  let quote = "";
+  for (let i = 0; i < s.length; i += 1) {
+    const c = s[i];
+    if (quote) {
+      if (c === "\\" && quote === '"') i += 1;
+      else if (c === quote) quote = "";
+    } else if (c === '"' || c === "'") {
+      if (i === 0 || /[\s[{,:]/.test(s[i - 1])) quote = c;
+    } else if (c === "#" && (i === 0 || /\s/.test(s[i - 1]))) return s.slice(0, i).trimEnd();
+  }
+  return s.trimEnd();
+}
+function dq(s) {
+  let out = "";
+  for (let i = 0; i < s.length; i += 1) {
+    const c = s[i];
+    if (c !== "\\") {
+      out += c;
+      continue;
+    }
+    const n = s[++i];
+    if (n === "n") out += "\n";
+    else if (n === "t") out += "	";
+    else if (n === "r") out += "\r";
+    else if (n === "0") out += "\0";
+    else if (n === "u") {
+      const hex = s.slice(i + 1, i + 5);
+      if (!/^[0-9a-fA-F]{4}$/.test(hex)) throw new YamlError("잘못된 \\u 이스케이프");
+      out += String.fromCharCode(parseInt(hex, 16));
+      i += 4;
+    } else if (n === void 0) throw new YamlError("끝의 역슬래시");
+    else out += n;
+  }
+  return out;
+}
+function scalar2(raw) {
+  const s = raw.trim();
+  if (s === "" || s === "~" || s === "null" || s === "Null" || s === "NULL") return null;
+  if (s === "true" || s === "True" || s === "TRUE") return true;
+  if (s === "false" || s === "False" || s === "FALSE") return false;
+  if (/^[-+]?(0|[1-9][0-9]*)$/.test(s)) return Number(s);
+  if (/^[-+]?(\.[0-9]+|[0-9]+(\.[0-9]*)?)([eE][-+]?[0-9]+)?$/.test(s)) return Number(s);
+  return s;
+}
+function value(raw, depth) {
+  const s = raw.trim();
+  if (depth > MAX_DEPTH) throw new YamlError("깊이 8 초과");
+  if (s === "") return null;
+  const c = s[0];
+  if (c === "*") throw new YamlError("별칭(*)은 쓸 수 없다");
+  if (c === "&") throw new YamlError("앵커(&)는 쓸 수 없다");
+  if (c === "!") throw new YamlError("태그(!)는 쓸 수 없다");
+  if (c === '"') {
+    const end = closing(s, '"');
+    if (s.slice(end + 1).trim()) throw new YamlError("따옴표 뒤에 글이 남았다");
+    return dq(s.slice(1, end));
+  }
+  if (c === "'") {
+    const end = closing(s, "'");
+    if (s.slice(end + 1).trim()) throw new YamlError("따옴표 뒤에 글이 남았다");
+    return s.slice(1, end).replace(/''/g, "'");
+  }
+  if (c === "[") return flow(s, depth);
+  if (c === "{") return flow(s, depth);
+  if (c === "@" || c === "`") throw new YamlError(`예약된 첫 글자 ${c}`);
+  return scalar2(s);
+}
+function closing(s, q2) {
+  for (let i = 1; i < s.length; i += 1) {
+    const c = s[i];
+    if (q2 === '"' && c === "\\") {
+      i += 1;
+      continue;
+    }
+    if (c === q2) {
+      if (q2 === "'" && s[i + 1] === "'") {
+        i += 1;
+        continue;
+      }
+      return i;
+    }
+  }
+  throw new YamlError("따옴표가 닫히지 않았다");
+}
+function flow(s, depth) {
+  let i = 0;
+  const ws = () => {
+    while (i < s.length && /\s/.test(s[i])) i += 1;
+  };
+  const item = (d) => {
+    ws();
+    if (d > MAX_DEPTH) throw new YamlError("깊이 8 초과");
+    const c = s[i];
+    if (c === "[") {
+      i += 1;
+      const out2 = [];
+      ws();
+      if (s[i] === "]") {
+        i += 1;
+        return out2;
+      }
+      for (; ; ) {
+        out2.push(item(d + 1));
+        ws();
+        if (s[i] === ",") {
+          i += 1;
+          ws();
+          if (s[i] === "]") {
+            i += 1;
+            return out2;
+          }
+          continue;
+        }
+        if (s[i] === "]") {
+          i += 1;
+          return out2;
+        }
+        throw new YamlError("흐름 배열이 닫히지 않았다");
+      }
+    }
+    if (c === "{") {
+      i += 1;
+      const out2 = {};
+      ws();
+      if (s[i] === "}") {
+        i += 1;
+        return out2;
+      }
+      for (; ; ) {
+        ws();
+        const k = String(item(d + 1));
+        ws();
+        if (s[i] !== ":") throw new YamlError("흐름 맵의 ':' 가 없다");
+        i += 1;
+        if (Object.hasOwn(out2, k)) throw new YamlError(`같은 키 ${k}`);
+        out2[k] = item(d + 1);
+        ws();
+        if (s[i] === ",") {
+          i += 1;
+          continue;
+        }
+        if (s[i] === "}") {
+          i += 1;
+          return out2;
+        }
+        throw new YamlError("흐름 맵이 닫히지 않았다");
+      }
+    }
+    if (c === '"' || c === "'") {
+      const end = closing(s.slice(i), c) + i;
+      const lit2 = s.slice(i, end + 1);
+      i = end + 1;
+      return value(lit2, d);
+    }
+    let j = i;
+    while (j < s.length && !",]}".includes(s[j]) && !(s[j] === ":" && /[\s]/.test(s[j + 1] ?? " "))) j += 1;
+    const lit = s.slice(i, j);
+    i = j;
+    return value(lit, d);
+  };
+  const out = item(depth);
+  ws();
+  if (i < s.length) throw new YamlError("흐름 값 뒤에 글이 남았다");
+  return out;
+}
+function lines(text2) {
+  const out = [];
+  text2.split("\n").forEach((raw, n) => {
+    const line = raw.replace(/\r$/, "");
+    if (/^\t/.test(line) || /^ *\t/.test(line)) {
+      if (line.trim()) throw new YamlError(`탭 들여쓰기(${n + 1}째 줄)`);
+    }
+    out.push({ indent: line.length - line.trimStart().length, text: line.trimStart(), no: n + 1 });
+  });
+  return out;
+}
+var Reader = class {
+  constructor(all) {
+    this.all = all;
+  }
+  all;
+  i = 0;
+  skipBlank() {
+    while (this.i < this.all.length && this.all[this.i].text.trim() === "") this.i += 1;
+  }
+  peek() {
+    this.skipBlank();
+    return this.i < this.all.length ? this.all[this.i] : null;
+  }
+};
+function blockScalar(r, header, parentIndent) {
+  const m = /^([|>])([+-]?)([1-9]?)$/.exec(header.trim());
+  if (!m) throw new YamlError(`블록 문자열 머리가 틀렸다: ${header}`);
+  const [, style, chomp] = m;
+  const body = [];
+  let contentIndent = -1;
+  while (r.i < r.all.length) {
+    const l = r.all[r.i];
+    if (l.text.trim() === "") {
+      body.push({ indent: 0, text: "" });
+      r.i += 1;
+      continue;
+    }
+    if (l.indent <= parentIndent) break;
+    if (contentIndent < 0) contentIndent = l.indent;
+    if (l.indent < contentIndent) break;
+    body.push({ indent: l.indent, text: " ".repeat(l.indent - contentIndent) + l.text });
+    r.i += 1;
+  }
+  while (body.length && body[body.length - 1].text === "" && chomp !== "+") body.pop();
+  let out;
+  if (style === "|") out = body.map((b) => b.text).join("\n");
+  else {
+    out = "";
+    body.forEach((b, k) => {
+      if (k === 0) out = b.text;
+      else if (b.text === "") out += "\n";
+      else if (body[k - 1] && body[k - 1].text === "") out += b.text;
+      else out += ` ${b.text}`;
+    });
+  }
+  return chomp === "-" || body.length === 0 ? out : `${out}
+`;
+}
+function parseBlock(r, indent, depth) {
+  if (depth > MAX_DEPTH) throw new YamlError("깊이 8 초과");
+  const first = r.peek();
+  if (!first) return null;
+  if (first.text.startsWith("- ") || first.text === "-") return parseSeq(r, first.indent, depth);
+  return parseMap(r, indent < 0 ? first.indent : first.indent, depth);
+}
+function parseSeq(r, indent, depth) {
+  const out = [];
+  for (; ; ) {
+    const l = r.peek();
+    if (!l || l.indent !== indent || !(l.text.startsWith("- ") || l.text === "-")) {
+      if (l && l.indent > indent) throw new YamlError(`들여쓰기가 맞지 않다(${l.no}째 줄)`);
+      return out;
+    }
+    r.i += 1;
+    const rest = stripComment(l.text.slice(1).trim());
+    if (rest === "") {
+      const nxt = r.peek();
+      out.push(nxt && nxt.indent > indent ? parseBlock(r, nxt.indent, depth + 1) : null);
+    } else if (/^[^"'[{&*!|>#][^:]*:(\s|$)/.test(rest) || /^"[^"]*":(\s|$)/.test(rest)) {
+      const inner = indent + 2;
+      r.i -= 1;
+      r.all[r.i] = { indent: inner, text: rest, no: l.no };
+      out.push(parseMap(r, inner, depth + 1));
+    } else if (rest[0] === "|" || rest[0] === ">") out.push(blockScalar(r, rest, indent));
+    else out.push(value(rest, depth + 1));
+  }
+}
+function parseMap(r, indent, depth) {
+  const out = {};
+  for (; ; ) {
+    const l = r.peek();
+    if (!l || l.indent < indent) return out;
+    if (l.indent > indent) throw new YamlError(`들여쓰기가 맞지 않다(${l.no}째 줄)`);
+    if (l.text.startsWith("- ") || l.text === "-") return out;
+    const text2 = stripComment(l.text);
+    const m = /^("(?:[^"\\]|\\.)*"|'(?:[^']|'')*'|[^\s:#][^:]*?)\s*:(?:\s+(.*))?$/.exec(text2);
+    if (!m) throw new YamlError(`'키: 값' 모양이 아니다(${l.no}째 줄)`);
+    let key = m[1];
+    if (key[0] === '"' || key[0] === "'") key = String(value(key, depth));
+    else if (/^[&*!]/.test(key)) throw new YamlError("키에 별칭 · 앵커 · 태그를 쓸 수 없다");
+    if (key === "<<") throw new YamlError("병합 키(<<)는 쓸 수 없다");
+    if (Object.hasOwn(out, key)) throw new YamlError(`같은 키 ${key}(${l.no}째 줄)`);
+    r.i += 1;
+    const rest = (m[2] ?? "").trim();
+    if (rest === "") {
+      const nxt = r.peek();
+      if (nxt && (nxt.indent > indent || nxt.indent === indent && (nxt.text.startsWith("- ") || nxt.text === "-"))) {
+        out[key] = parseBlock(r, nxt.indent, depth + 1);
+      } else out[key] = null;
+    } else if (rest[0] === "|" || rest[0] === ">") out[key] = blockScalar(r, rest, indent);
+    else {
+      let cur = rest;
+      if (!/^["'[{]/.test(cur)) {
+        for (; ; ) {
+          const nxt = r.all[r.i];
+          if (!nxt) break;
+          if (nxt.text.trim() === "") {
+            const after = r.all.slice(r.i).find((x) => x.text.trim() !== "");
+            if (after && after.indent > indent) {
+              cur += "\n";
+              r.i += 1;
+              continue;
+            }
+            break;
+          }
+          if (nxt.indent <= indent) break;
+          cur += ` ${stripComment(nxt.text)}`;
+          r.i += 1;
+        }
+        cur = cur.replace(/ ?\n ?/g, " ").trim();
+      } else if (cur[0] === "[" || cur[0] === "{") {
+        let guard = 0;
+        while (!flowClosed(cur) && r.i < r.all.length && guard < 200) {
+          cur += ` ${stripComment(r.all[r.i].text)}`;
+          r.i += 1;
+          guard += 1;
+        }
+      }
+      out[key] = value(cur, depth + 1);
+    }
+  }
+}
+function flowClosed(s) {
+  let depth = 0;
+  let quote = "";
+  for (let i = 0; i < s.length; i += 1) {
+    const c = s[i];
+    if (quote) {
+      if (c === "\\" && quote === '"') i += 1;
+      else if (c === quote) quote = "";
+    } else if (c === '"' || c === "'") quote = c;
+    else if (c === "[" || c === "{") depth += 1;
+    else if (c === "]" || c === "}") depth -= 1;
+  }
+  return depth <= 0;
+}
+function parseYaml(text2) {
+  const r = new Reader(lines(text2));
+  const first = r.peek();
+  if (!first) return {};
+  const res = parseBlock(r, first.indent, 0);
+  if (r.peek()) throw new YamlError(`읽지 못한 줄이 남았다(${r.peek().no}째 줄)`);
+  if (res === null || typeof res !== "object" || Array.isArray(res)) throw new YamlError("머리가 맵이 아니다");
+  return res;
+}
+
+// ../dashboard/src/skills.ts
+var HARNESSES = ["claude", "codex", "cursor", "kiro", "gemini"];
+var STAGES = ["design", "implement", "verify", "docs", "ops"];
+var STAGE_ALIAS = { 설계: "design", 구현: "implement", 검증: "verify", 반영: "docs", 운영: "ops" };
+var READ_HEAD = 64 * 1024;
+var MAX_FILE = 256 * 1024;
+var CONCURRENCY = 32;
+var TTL_MS = 10 * 60 * 1e3;
+var NESTED_DEPTH = 4;
+var SKIP_DIRS = /* @__PURE__ */ new Set([".git", "node_modules", "build", "dist", "target", ".venv", ".gradle"]);
+var KEEP_FIELDS = ["model", "effort", "context", "agent", "disable-model-invocation", "user-invocable", "allowed-tools", "argument-hint"];
+function display(p, home, repo) {
+  if (p === home || p.startsWith(`${home}${import_node_path38.default.sep}`)) return `~${p.slice(home.length)}`.split(import_node_path38.default.sep).join("/");
+  if (p === repo) return ".";
+  if (p.startsWith(`${repo}${import_node_path38.default.sep}`)) return p.slice(repo.length + 1).split(import_node_path38.default.sep).join("/");
+  return p.split(import_node_path38.default.sep).join("/");
+}
+async function mapLimit(items, limit, fn) {
+  const out = new Array(items.length);
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i]);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length || 1) }, worker));
+  return out;
+}
+function exists(f) {
+  try {
+    import_node_fs34.default.statSync(f);
+    return true;
+  } catch {
+    return false;
+  }
+}
+function nestedRoots(repo) {
+  const out = [];
+  const walk4 = (dir, depth) => {
+    let names;
+    try {
+      names = import_node_fs34.default.readdirSync(dir).sort();
+    } catch {
+      return;
+    }
+    for (const n of names) {
+      if (SKIP_DIRS.has(n) || n.endsWith(".worktrees") || n === "worktrees" && import_node_path38.default.basename(dir) === ".claude") continue;
+      const full11 = import_node_path38.default.join(dir, n);
+      let st;
+      try {
+        st = import_node_fs34.default.lstatSync(full11);
+      } catch {
+        continue;
+      }
+      if (!st.isDirectory()) continue;
+      if (n === ".claude" || n === ".agents") {
+        const skills = import_node_path38.default.join(full11, "skills");
+        if (dir !== repo && exists(skills)) out.push({ abs: skills, sub: import_node_path38.default.relative(repo, dir).split(import_node_path38.default.sep).join("/"), kind: n === ".claude" ? "claude" : "agents" });
+        continue;
+      }
+      if (n.startsWith(".")) continue;
+      if (depth < NESTED_DEPTH) walk4(full11, depth + 1);
+    }
+  };
+  walk4(repo, 1);
+  return out;
+}
+function projectRoots(repo, home) {
+  const mk = (rel2, harnesses, dirRank) => ({ abs: import_node_path38.default.join(repo, rel2), display: rel2, scope: "project", harnesses, kind: "project", dirRank });
+  return [
+    mk(".agents/skills", ["codex", "cursor", "gemini"], 0),
+    mk(".claude/skills", ["claude", "cursor"], 1),
+    mk(".kiro/skills", ["kiro"], 1),
+    mk(".cursor/skills", ["cursor"], 1),
+    mk(".gemini/skills", ["gemini"], 1),
+    mk(".codex/skills", ["cursor"], 1),
+    ...nestedRoots(repo).map((n) => ({ abs: n.abs, display: display(n.abs, home, repo), scope: `nested:${n.sub}`, harnesses: n.kind === "claude" ? ["claude", "cursor"] : ["cursor"], kind: "nested", dirRank: 1 }))
+  ];
+}
+function userRoots(home) {
+  const mk = (rel2, harnesses, dirRank) => ({ abs: import_node_path38.default.join(home, rel2), display: `~/${rel2}`, scope: "user", harnesses, kind: "user", dirRank });
+  return [
+    mk(".agents/skills", ["codex", "cursor", "gemini"], 0),
+    mk(".claude/skills", ["claude", "cursor"], 1),
+    mk(".codex/skills", ["cursor"], 1),
+    mk(".cursor/skills", ["cursor"], 1),
+    mk(".kiro/skills", ["kiro"], 1),
+    mk(".gemini/skills", ["gemini"], 1)
+  ];
+}
+function semverKey(v) {
+  const m = /^v?(\d+)\.(\d+)\.(\d+)/.exec(v);
+  return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+}
+function cmpSemver(a, b) {
+  for (let i = 0; i < 3; i += 1) if (a[i] !== b[i]) return a[i] - b[i];
+  return 0;
+}
+function pluginRoots(repo, home) {
+  const out = { roots: [], errors: [], warning: null };
+  const base = import_node_path38.default.join(home, ".claude/plugins");
+  const installed = readJson(import_node_path38.default.join(base, "installed_plugins.json"));
+  if (!installed) return out;
+  if (installed.version !== 2) {
+    out.warning = "installed_plugins.json 의 version 이 2 가 아니라 플러그인 해석을 건너뛴다";
+    return out;
+  }
+  const enabled = /* @__PURE__ */ new Map();
+  for (const f of [import_node_path38.default.join(home, ".claude/settings.json"), import_node_path38.default.join(repo, ".claude/settings.json"), import_node_path38.default.join(repo, ".claude/settings.local.json")]) {
+    const s = readJson(f);
+    const e = s && isObj6(s.enabledPlugins) ? s.enabledPlugins : {};
+    for (const [id, on] of Object.entries(e)) if (typeof on === "boolean") enabled.set(id, on);
+  }
+  const plugins = isObj6(installed.plugins) ? installed.plugins : {};
+  const cacheRoot = import_node_path38.default.join(base, "cache");
+  for (const [id, on] of [...enabled].sort(([a], [b]) => a < b ? -1 : 1)) {
+    if (!on) continue;
+    const entries = (Array.isArray(plugins[id]) ? plugins[id] : []).filter(isObj6);
+    const repoReal = safeReal(repo);
+    const usable = entries.filter((e) => e.scope === "user" || (e.scope === "project" || e.scope === "local") && typeof e.projectPath === "string" && safeReal(e.projectPath) === repoReal);
+    usable.sort((a, b) => {
+      const ra = a.scope === "user" ? 0 : 1;
+      const rb = b.scope === "user" ? 0 : 1;
+      if (ra !== rb) return rb - ra;
+      return String(b.lastUpdated ?? "") < String(a.lastUpdated ?? "") ? -1 : 1;
+    });
+    let installPath = null;
+    let version = "";
+    let versionSource = "installed";
+    const pick = usable[0];
+    const [pluginName, market] = id.split("@");
+    if (pick && typeof pick.installPath === "string") {
+      installPath = pick.installPath;
+      version = typeof pick.version === "string" ? pick.version : "";
+    } else if (market) {
+      const dir = import_node_path38.default.join(cacheRoot, market, pluginName);
+      try {
+        const versions = import_node_fs34.default.readdirSync(dir).filter((v) => import_node_fs34.default.statSync(import_node_path38.default.join(dir, v)).isDirectory());
+        const scored = versions.map((v) => ({ v, key: semverKey(v), mtime: import_node_fs34.default.statSync(import_node_path38.default.join(dir, v)).mtimeMs }));
+        const semver = scored.filter((s) => s.key !== null).sort((a, b) => cmpSemver(b.key, a.key));
+        const best = semver[0] ?? scored.sort((a, b) => b.mtime - a.mtime)[0];
+        if (best) {
+          installPath = import_node_path38.default.join(dir, best.v);
+          version = best.v;
+          versionSource = "cache-guess";
+        }
+      } catch {
+      }
+    }
+    if (!installPath) continue;
+    const real2 = safeReal(installPath);
+    if (!real2.startsWith(`${safeReal(cacheRoot)}${import_node_path38.default.sep}`)) {
+      out.errors.push({ path: `plugin:${id}`, error: "install-path" });
+      continue;
+    }
+    const manifest = readJson(import_node_path38.default.join(real2, ".claude-plugin/plugin.json")) ?? readJson(import_node_path38.default.join(real2, "plugin.json")) ?? {};
+    const sp = manifest.skills;
+    const skillPaths = typeof sp === "string" ? [sp] : Array.isArray(sp) ? sp.filter((x) => typeof x === "string") : ["./skills/"];
+    for (const p of skillPaths.length ? skillPaths : ["./skills/"]) {
+      const abs = import_node_path38.default.resolve(real2, p);
+      if (abs !== real2 && !abs.startsWith(`${real2}${import_node_path38.default.sep}`)) continue;
+      out.roots.push({ abs, display: `plugin:${id}`, scope: `plugin:${pluginName}`, harnesses: ["claude"], kind: "plugin", dirRank: 1, version, versionSource, plugin: pluginName });
+    }
+  }
+  return out;
+}
+function safeReal(p) {
+  try {
+    return import_node_fs34.default.realpathSync(p);
+  } catch {
+    return import_node_path38.default.resolve(p);
+  }
+}
+async function readSkillFile(file) {
+  let st;
+  try {
+    st = import_node_fs34.default.statSync(file);
+  } catch (e) {
+    return { sha256: null, fm: null, error: e.code === "ELOOP" ? "symlink-loop" : "unreadable" };
+  }
+  if (!st.isFile()) return { sha256: null, fm: null, error: "not-file" };
+  if (st.size > MAX_FILE) return { sha256: null, fm: null, error: "too-large" };
+  let bytes;
+  try {
+    bytes = await import_node_fs34.default.promises.readFile(file);
+  } catch {
+    return { sha256: null, fm: null, error: "unreadable" };
+  }
+  const sha2563 = import_node_crypto6.default.createHash("sha256").update(bytes).digest("hex");
+  let text2;
+  try {
+    text2 = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, READ_HEAD));
+  } catch {
+    try {
+      text2 = new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, Math.max(0, Math.min(bytes.length, READ_HEAD) - 3)));
+    } catch {
+      return { sha256: sha2563, fm: null, error: "encoding" };
+    }
+  }
+  const lines2 = text2.split("\n");
+  if ((lines2[0] ?? "").replace(/\r$/, "") !== "---") return { sha256: sha2563, fm: null, error: "no-frontmatter" };
+  let end = -1;
+  for (let i = 1; i < lines2.length; i += 1) {
+    if (lines2[i].replace(/\r$/, "") === "---") {
+      end = i;
+      break;
+    }
+  }
+  if (end < 0) return { sha256: sha2563, fm: null, error: "no-frontmatter" };
+  try {
+    return { sha256: sha2563, fm: parseYaml(lines2.slice(1, end).join("\n")), error: null };
+  } catch (e) {
+    return { sha256: sha2563, fm: null, error: e instanceof YamlError ? "yaml" : "yaml" };
+  }
+}
+async function readRoot(root, home, repo) {
+  const res = { root, skills: [], count: 0, symlinks: 0, nested: 0, errors: 0 };
+  let names;
+  try {
+    names = import_node_fs34.default.readdirSync(root.abs).sort();
+  } catch (e) {
+    const code = e.code;
+    if (code !== "ENOENT" && code !== "ENOTDIR") res.error = code ?? "unreadable";
+    return res;
+  }
+  const found = await mapLimit(names, CONCURRENCY, async (name) => {
+    const dir = import_node_path38.default.join(root.abs, name);
+    let dirLink = false;
+    try {
+      dirLink = import_node_fs34.default.lstatSync(dir).isSymbolicLink();
+      if (!import_node_fs34.default.statSync(dir).isDirectory()) return null;
+    } catch (e) {
+      if (dirLink || e.code === "ELOOP") {
+        res.symlinks += dirLink ? 1 : 0;
+        const bad4 = import_node_path38.default.join(dir, "SKILL.md");
+        const loop = e.code === "ELOOP";
+        return loop ? rawError(root, dir, bad4, name, "symlink-loop", true, home, repo) : null;
+      }
+      return null;
+    }
+    const file = import_node_path38.default.join(dir, "SKILL.md");
+    let lst;
+    try {
+      lst = import_node_fs34.default.lstatSync(file);
+    } catch {
+      try {
+        for (const sub2 of import_node_fs34.default.readdirSync(dir)) if (exists(import_node_path38.default.join(dir, sub2, "SKILL.md"))) res.nested += 1;
+      } catch {
+      }
+      return null;
+    }
+    const link = dirLink || lst.isSymbolicLink();
+    if (link) res.symlinks += 1;
+    const { sha256: sha2563, fm, error } = await readSkillFile(file);
+    const real2 = error === "symlink-loop" ? null : safeReal(file);
+    if (error && !fm) return { ...rawError(root, dir, file, name, error, link, home, repo), sha256: sha2563, real: real2 };
+    const f = fm;
+    const warnings = [];
+    const fname = typeof f.name === "string" && f.name ? f.name : null;
+    if (!fname) warnings.push("name-missing");
+    const nm = fname ?? name;
+    const desc = typeof f.description === "string" && f.description ? f.description : null;
+    if (!desc) warnings.push("description-missing");
+    if (nm.includes(":")) warnings.push("name-colon");
+    if (fname && fname !== name) warnings.push("name-dir-mismatch");
+    const fields = {};
+    for (const k of KEEP_FIELDS) if (k in f) fields[k] = f[k];
+    const meta = isObj6(f.metadata) ? f.metadata : {};
+    const hx = meta["hx-stages"];
+    const stages = Array.isArray(hx) ? hx.filter((x) => typeof x === "string") : typeof hx === "string" ? [hx] : [];
+    return {
+      root,
+      dir,
+      file,
+      real: real2,
+      viaLink: link,
+      id: root.plugin ? `${root.plugin}:${nm}` : nm,
+      name: nm,
+      description: desc,
+      sha256: sha2563,
+      fields,
+      stages,
+      warnings,
+      error: null
+    };
+  });
+  for (const s of found) {
+    if (!s) continue;
+    res.count += 1;
+    if (s.error) res.errors += 1;
+    res.skills.push(s);
+  }
+  return res;
+}
+function rawError(root, dir, file, name, error, link, _home, _repo) {
+  return { root, dir, file, real: null, viaLink: link, id: root.plugin ? `${root.plugin}:${name}` : name, name, description: null, sha256: null, fields: {}, stages: [], warnings: [], error };
+}
+var WORDS = {
+  design: ["prd", "requirement", "user stor", "persona", "wireframe", "storyboard", "ux", "ui design", "design system", "ia", "journey", "기획", "요구사항", "화면", "와이어프레임", "스토리", "디자인"],
+  implement: ["tdd", "test-driven", "implement", "refactor", "scaffold", "patterns", "coding standard", "build error", "구현", "리팩터"],
+  verify: ["review", "security", "audit", "scan", "vulnerab", "qa", "coverage", "lint", "regression", "리뷰", "보안", "검증", "점검", "취약"],
+  docs: ["documentation", "docs", "changelog", "release note", "readme", "codemap", "문서", "릴리스 노트"],
+  ops: ["deploy", "canary", "monitor", "incident", "retro", "rollback", "observability", "on-call", "배포", "장애", "운영", "회고"]
+};
+function hit(text2, word) {
+  if (/^[a-z]{1,3}$/.test(word)) return new RegExp(`(^|[^a-z0-9])${word}([^a-z0-9]|$)`).test(text2);
+  return text2.includes(word);
+}
+function guessStages(name, description) {
+  const n = name.toLowerCase();
+  const d = (description ?? "").toLowerCase();
+  const score = {};
+  const matched = {};
+  for (const st of STAGES) {
+    let s = 0;
+    const m = [];
+    for (const w of WORDS[st]) {
+      const inName = hit(n, w);
+      const inDesc = hit(d, w);
+      if (inName) s += 3;
+      if (inDesc) s += 1;
+      if (inName || inDesc) m.push(w);
+    }
+    score[st] = s;
+    matched[st] = m;
+  }
+  const top = Math.max(...STAGES.map((s) => score[s]));
+  if (top < 2) return { stages: [], matched: [] };
+  const stages = STAGES.filter((s) => score[s] === top);
+  return { stages, matched: stages.flatMap((s) => matched[s]) };
+}
+function readSkillMap(repo) {
+  const raw = readJson(import_node_path38.default.join(repo, ".agents/skill-map.json"));
+  const local = readJson(import_node_path38.default.join(repo, ".agents/local/skill-map.local.json"));
+  const prepend = {};
+  if (local && isObj6(local.prepend)) {
+    for (const [k, v] of Object.entries(local.prepend)) if (Array.isArray(v)) prepend[k] = v.filter((x) => typeof x === "string");
+  }
+  if (!raw) return { map: null, prepend };
+  const stages = {};
+  if (isObj6(raw.stages)) {
+    for (const [st, slots] of Object.entries(raw.stages)) {
+      if (!isObj6(slots)) continue;
+      stages[st] = {};
+      for (const [slot, ids2] of Object.entries(slots)) if (Array.isArray(ids2)) stages[st][slot] = ids2.filter((x) => typeof x === "string");
+    }
+  }
+  const commands = {};
+  if (isObj6(raw.commands)) {
+    for (const [c, v] of Object.entries(raw.commands)) {
+      if (!isObj6(v)) continue;
+      commands[c] = { slots: Array.isArray(v.slots) ? v.slots.filter((x) => typeof x === "string") : [], fallback: typeof v.fallback === "string" ? v.fallback : "builtin", ...typeof v.mode === "string" ? { mode: v.mode } : {} };
+    }
+  }
+  const exclude = Array.isArray(raw.exclude) ? raw.exclude.filter((x) => typeof x === "string") : [];
+  return { map: { stages, commands, exclude }, prepend };
+}
+function rankOf(h, r) {
+  if (h === "claude") return r.kind === "user" ? 0 : 1;
+  if (h === "gemini") return (r.kind === "user" ? 1 : 0) * 10 + r.dirRank;
+  return 0;
+}
+function statusOf(skill, all, h) {
+  const vis = skill.roots.filter((r) => r.harnesses.includes(h));
+  if (!vis.length || skill.error) return { status: "no" };
+  const others = all.filter((o) => o !== skill && !o.error && o.name === skill.name && !o.plugin && !skill.plugin && o.sha256 !== skill.sha256 && o.roots.some((r) => r.harnesses.includes(h)));
+  if (!others.length) return { status: "loaded" };
+  if (h === "codex" || h === "cursor" || h === "kiro") return { status: "both" };
+  const mine = Math.min(...vis.map((r) => rankOf(h, r)));
+  let best = mine;
+  let by = null;
+  for (const o of others) {
+    const r = Math.min(...o.roots.filter((x) => x.harnesses.includes(h)).map((x) => rankOf(h, x)));
+    if (r < best) {
+      best = r;
+      by = o;
+    }
+  }
+  return best < mine && by ? { status: "shadowed", by: by.display } : { status: "loaded" };
+}
+function activeHarnesses(p) {
+  const a = p.meta().agents;
+  const list3 = Array.isArray(a) ? a.filter((x) => typeof x === "string" && HARNESSES.includes(x)) : [];
+  return list3.length ? list3 : ["claude"];
+}
+async function scan(p, opts) {
+  const repo = p.root;
+  const home = p.home;
+  const specs = [...projectRoots(repo, home)];
+  const warnings = [];
+  const pluginErrors = [];
+  if (opts.user) {
+    specs.push(...userRoots(home));
+    const pl = pluginRoots(repo, home);
+    specs.push(...pl.roots);
+    pluginErrors.push(...pl.errors);
+    if (pl.warning) warnings.push(pl.warning);
+  }
+  const reads = await mapLimit(specs, 4, (s) => readRoot(s, home, repo));
+  const groups = /* @__PURE__ */ new Map();
+  const rootsOut = [];
+  for (const r of reads) {
+    if (r.error && !r.count) {
+      rootsOut.push({ path: r.root.display, scope: r.root.scope, count: 0, symlinks: 0, nested: 0, errors: 0, error: r.error });
+      continue;
+    }
+    if (!r.count && !import_node_fs34.default.existsSync(r.root.abs)) continue;
+    rootsOut.push({
+      path: r.root.display,
+      scope: r.root.scope,
+      count: r.count,
+      symlinks: r.symlinks,
+      nested: r.nested,
+      errors: r.errors,
+      ...r.root.version ? { version: r.root.version, versionSource: r.root.versionSource } : {},
+      ...r.error ? { error: r.error } : {}
+    });
+    for (const s of r.skills) {
+      const key = s.real ? `r:${s.real}` : `e:${s.file}`;
+      const g = groups.get(key);
+      const locPath = display(s.dir, home, repo);
+      const loc = { path: locPath, scope: r.root.scope, ...s.viaLink ? { via: "symlink" } : {} };
+      if (g) {
+        g.roots.push(r.root);
+        g.locations.push(loc);
+        continue;
+      }
+      groups.set(key, {
+        name: s.name,
+        id: s.id,
+        real: s.real,
+        sha256: s.sha256,
+        description: s.description,
+        plugin: r.root.plugin ?? null,
+        roots: [r.root],
+        locations: [loc],
+        fields: s.fields,
+        warnings: s.warnings,
+        error: s.error,
+        stages: s.stages,
+        display: locPath
+      });
+    }
+  }
+  for (const e of pluginErrors) rootsOut.push({ path: e.path, scope: "plugin", count: 0, symlinks: 0, nested: 0, errors: 1, error: e.error });
+  const list3 = [...groups.values()];
+  const { map, prepend } = readSkillMap(repo);
+  const excluded = new Set(map?.exclude ?? []);
+  const mapStages = /* @__PURE__ */ new Map();
+  if (map) for (const [st, slots] of Object.entries(map.stages)) for (const [slot, ids2] of Object.entries(slots)) for (const id of ids2) mapStages.set(id, [...mapStages.get(id) ?? [], { stage: st, slot }]);
+  const bySha = /* @__PURE__ */ new Map();
+  for (const g of list3) if (g.sha256) bySha.set(g.sha256, [...bySha.get(g.sha256) ?? [], g]);
+  const skills = list3.map((g) => {
+    const harnesses = {};
+    const shadowedBy = {};
+    for (const h of HARNESSES) {
+      const s = statusOf(g, list3, h);
+      harnesses[h] = s.status;
+      if (s.by) shadowedBy[h] = s.by;
+    }
+    let stages = [];
+    const fromMap = mapStages.get(g.id);
+    if (fromMap) stages = fromMap.map((m) => ({ stage: m.stage, slot: m.slot, source: "map" }));
+    else if (g.stages.length) stages = g.stages.map((st) => ({ stage: STAGE_ALIAS[st] ?? st, slot: null, source: "metadata" }));
+    else if (!excluded.has(g.id)) {
+      const gs = guessStages(g.name, g.description);
+      stages = gs.stages.map((st) => ({ stage: st, slot: null, source: "추정", matched: gs.matched }));
+    }
+    const copies = (g.sha256 ? bySha.get(g.sha256) ?? [] : []).filter((o) => o !== g).map((o) => o.display);
+    return {
+      id: g.id,
+      name: g.name,
+      description: g.description ? g.description.slice(0, 1024) : null,
+      sha256: g.sha256,
+      locations: g.locations,
+      copies,
+      harnesses,
+      shadowedBy,
+      stages,
+      fields: g.fields,
+      warnings: g.warnings,
+      error: g.error
+    };
+  });
+  skills.sort((a, b) => a.id < b.id ? -1 : a.id > b.id ? 1 : 0);
+  const conflicts = [];
+  const byName = /* @__PURE__ */ new Map();
+  for (const g of list3) if (!g.plugin && !g.error && g.sha256) byName.set(g.name, [...byName.get(g.name) ?? [], g]);
+  for (const [name, gs] of [...byName].sort(([a], [b]) => a < b ? -1 : 1)) {
+    const distinct = new Set(gs.map((g) => g.sha256));
+    if (distinct.size < 2) continue;
+    const winner = {};
+    let any = false;
+    for (const h of HARNESSES) {
+      const vis = gs.filter((g) => g.roots.some((r) => r.harnesses.includes(h)));
+      if (new Set(vis.map((g) => g.sha256)).size < 2) continue;
+      any = true;
+      const sts = vis.map((g) => ({ g, s: statusOf(g, list3, h) }));
+      const w = sts.find((x) => x.s.status === "loaded");
+      winner[h] = w ? w.g.display : "both";
+    }
+    if (any) conflicts.push({ name, candidates: gs.map((g) => g.display), winner });
+  }
+  return {
+    schema: "harness-kit.skills-inventory/v1",
+    scannedAt: (/* @__PURE__ */ new Date()).toISOString(),
+    harnesses: activeHarnesses(p),
+    roots: rootsOut,
+    skills,
+    conflicts,
+    map: { present: map !== null, resolved: map ? resolveAll(map, prepend, skills, activeHarnesses(p)) : [] },
+    warnings
+  };
+}
+function resolveAll(map, prepend, skills, harnesses) {
+  const out = [];
+  for (const [command, def] of Object.entries(map.commands)) {
+    for (const h of harnesses) {
+      for (const slot of def.slots) {
+        const [stage, slotName] = slot.split(".");
+        const ids2 = [...prepend[slot] ?? [], ...(map.stages[stage] ?? {})[slotName ?? ""] ?? []];
+        const found = ids2.find((id) => {
+          const s = skills.find((x) => x.id === id);
+          return s && !s.error && ["loaded", "both"].includes(s.harnesses[h] ?? "no");
+        });
+        out.push({ command, slot, harness: h, skill: found ?? null, fallback: found ? "" : def.fallback });
+      }
+    }
+  }
+  return out;
+}
+async function stampOf(p, opts) {
+  const parts = [`user:${opts.user}`];
+  const roots = [...projectRoots(p.root, p.home), ...opts.user ? userRoots(p.home) : []];
+  for (const r of roots) parts.push(fileStamp(r.abs));
+  if (opts.user) {
+    parts.push(fileStamp(import_node_path38.default.join(p.home, ".claude/plugins/installed_plugins.json")), fileStamp(import_node_path38.default.join(p.home, ".claude/settings.json")));
+  }
+  parts.push(fileStamp(import_node_path38.default.join(p.root, ".claude/settings.json")), fileStamp(import_node_path38.default.join(p.root, ".claude/settings.local.json")), fileStamp(import_node_path38.default.join(p.root, ".agents/skill-map.json")), fileStamp(import_node_path38.default.join(p.root, ".agents/local/skill-map.local.json")));
+  return parts.join("\n");
+}
+async function skillsInventory(p, opts = {}) {
+  const o = { user: opts.user ?? true, refresh: opts.refresh ?? false };
+  if (o.refresh) return scan(p, o);
+  return p.cache.get(`skills:${o.user}`, await stampOf(p, o), () => scan(p, o), TTL_MS);
+}
+function filterInventory(inv, q2) {
+  const stage = q2.stage ? STAGE_ALIAS[q2.stage] ?? q2.stage : null;
+  const harness = q2.harness ?? null;
+  const shown = q2.all ? [...HARNESSES] : inv.harnesses;
+  const order = { map: 0, metadata: 1, 추정: 2 };
+  let skills = inv.skills;
+  if (stage) skills = skills.filter((s) => s.stages.some((x) => x.stage === stage));
+  if (harness) skills = skills.filter((s) => ["loaded", "both"].includes(s.harnesses[harness] ?? "no"));
+  if (q2.errors) skills = skills.filter((s) => s.error || s.warnings.length);
+  if (q2.conflicts) {
+    const names = new Set(inv.conflicts.map((c) => c.name));
+    skills = skills.filter((s) => names.has(s.name));
+  }
+  if (stage) skills = [...skills].sort((a, b) => (order[a.stages.find((x) => x.stage === stage)?.source ?? "추정"] ?? 2) - (order[b.stages.find((x) => x.stage === stage)?.source ?? "추정"] ?? 2));
+  return { ...inv, harnesses: shown, skills, conflicts: q2.conflicts || q2.stage || q2.harness ? inv.conflicts.filter((c) => skills.some((s) => s.name === c.name)) : inv.conflicts, total: inv.skills.length, shown: skills.length };
+}
+
+// ../dashboard/src/usage.ts
+var import_node_fs35 = __toESM(require("node:fs"));
+var import_node_path39 = __toESM(require("node:path"));
+var HISTORY_LIMIT = 200;
+var PROMPT_CHARS = 2e3;
+var DAY3 = 864e5;
+var DEFAULT_WINDOWS = [[/^claude-/, 2e5]];
+var SESSION_START_LIMIT = 2560;
+var LOADED_FILES = [/^CLAUDE\.md$/, /^AGENTS\.md$/, /^GEMINI\.md$/, /^\.claude\/rules\//, /^\.agents\/rules\//, /^\.kiro\/steering\//, /^\.cursor\/rules\//];
+var states = /* @__PURE__ */ new WeakMap();
+var num2 = (v) => typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0;
+var str4 = (v) => typeof v === "string" && v ? v : null;
+function historyOn(p) {
+  return p.machineConfig().history === "on";
+}
+function configHint(p) {
+  return { config: "~/.config/harness-kit/config.json", enable: '{ "history": "on" }', current: p.machineConfig().history ?? null };
+}
+function enc(dir) {
+  return dir.replace(/[^A-Za-z0-9]/g, "-");
+}
+function realOr(p) {
+  try {
+    return import_node_fs35.default.realpathSync(p);
+  } catch {
+    return import_node_path39.default.resolve(p);
+  }
+}
+function projectDirs(p) {
+  const git3 = isObj6(p.meta().git) ? p.meta().git : {};
+  const tpl = typeof git3.worktreeRoot === "string" ? git3.worktreeRoot : "../{repo}.worktrees";
+  const root = realOr(p.root);
+  const wt = import_node_path39.default.resolve(root, tpl.replace("{repo}", import_node_path39.default.basename(root)));
+  return [.../* @__PURE__ */ new Set([root, p.root, wt, realOr(wt)])];
+}
+function inside(cwd, dirs) {
+  return !!cwd && dirs.some((d) => cwd === d || cwd.startsWith(`${d}${import_node_path39.default.sep}`));
+}
+async function readAppended(file, st) {
+  const fh = await import_node_fs35.default.promises.open(file, "r");
+  try {
+    const stat = await fh.stat();
+    if (stat.size < st.offset) {
+      st.offset = 0;
+      st.recs.clear();
+      st.cwd = st.session = st.model = null;
+    }
+    const len = stat.size - st.offset;
+    if (len <= 0) return [];
+    const buf = Buffer.alloc(len);
+    const { bytesRead } = await fh.read(buf, 0, len, st.offset);
+    const text2 = buf.subarray(0, bytesRead).toString("utf8");
+    const cut = text2.lastIndexOf("\n");
+    if (cut < 0) return [];
+    st.offset += Buffer.byteLength(text2.slice(0, cut + 1), "utf8");
+    return text2.slice(0, cut).split("\n");
+  } finally {
+    await fh.close();
+  }
+}
+function parseClaude(line, st) {
+  let j;
+  try {
+    j = JSON.parse(line);
+  } catch {
+    st.bad += 1;
+    return;
+  }
+  if (!isObj6(j)) return;
+  if (str4(j.cwd)) st.cwd = str4(j.cwd);
+  if (str4(j.sessionId)) st.session = str4(j.sessionId);
+  if (j.type !== "assistant" || !isObj6(j.message)) return;
+  const m = j.message;
+  const u = isObj6(m.usage) ? m.usage : null;
+  const ts = typeof j.timestamp === "string" ? Date.parse(j.timestamp) : NaN;
+  if (!u || !Number.isFinite(ts)) return;
+  const id = str4(m.id) ?? `${ts}:${st.recs.size}`;
+  st.recs.set(id, {
+    ts,
+    session: str4(j.sessionId) ?? st.session ?? "",
+    cwd: str4(j.cwd) ?? st.cwd,
+    branch: str4(j.gitBranch),
+    model: str4(m.model),
+    input: num2(u.input_tokens),
+    output: num2(u.output_tokens),
+    cacheRead: num2(u.cache_read_input_tokens),
+    cacheWrite: num2(u.cache_creation_input_tokens),
+    harness: "claude"
+  });
+}
+function parseCodex(line, st) {
+  let j;
+  try {
+    j = JSON.parse(line);
+  } catch {
+    st.bad += 1;
+    return;
+  }
+  if (!isObj6(j) || !isObj6(j.payload)) return;
+  const pl = j.payload;
+  if (j.type === "session_meta") {
+    st.cwd = str4(pl.cwd) ?? st.cwd;
+    st.session = str4(pl.id) ?? st.session;
+    return;
+  }
+  if (j.type === "turn_context") {
+    st.model = str4(pl.model) ?? st.model;
+    st.cwd = str4(pl.cwd) ?? st.cwd;
+    return;
+  }
+  if (j.type !== "event_msg" || pl.type !== "token_count" || !isObj6(pl.info)) return;
+  const last = isObj6(pl.info.last_token_usage) ? pl.info.last_token_usage : null;
+  const ts = typeof j.timestamp === "string" ? Date.parse(j.timestamp) : NaN;
+  if (!last || !Number.isFinite(ts)) return;
+  const cached = num2(last.cached_input_tokens);
+  st.recs.set(`${ts}:${st.recs.size}`, {
+    ts,
+    session: st.session ?? "",
+    cwd: st.cwd,
+    branch: null,
+    model: st.model,
+    input: Math.max(0, num2(last.input_tokens) - cached),
+    output: num2(last.output_tokens),
+    cacheRead: cached,
+    cacheWrite: 0,
+    harness: "codex"
+  });
+}
+async function walk3(dir, depth, out, keep) {
+  let ents;
+  try {
+    ents = await import_node_fs35.default.promises.readdir(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const e of ents) {
+    const full11 = import_node_path39.default.join(dir, e.name);
+    if (e.isDirectory() && depth > 0) await walk3(full11, depth - 1, out, keep);
+    else if (e.isFile() && e.name.endsWith(".jsonl") && keep(e.name)) out.push(full11);
+  }
+}
+async function loadFile(p, file, parse3, from) {
+  let stat;
+  try {
+    stat = await import_node_fs35.default.promises.stat(file);
+  } catch {
+    return null;
+  }
+  if (stat.mtimeMs < from) return null;
+  const map = states.get(p) ?? /* @__PURE__ */ new Map();
+  states.set(p, map);
+  let st = map.get(file);
+  if (!st) {
+    st = { size: 0, mtimeMs: 0, offset: 0, recs: /* @__PURE__ */ new Map(), cwd: null, session: null, model: null, bad: 0, ok: true };
+    map.set(file, st);
+  }
+  if (st.mtimeMs !== stat.mtimeMs || st.size !== stat.size) {
+    try {
+      for (const l of await readAppended(file, st)) if (l) parse3(l, st);
+      st.ok = true;
+    } catch {
+      st.ok = false;
+    }
+    st.mtimeMs = stat.mtimeMs;
+    st.size = stat.size;
+  }
+  return st;
+}
+async function loadRecords(p, from, harness) {
+  const dirs = projectDirs(p);
+  const home = p.home;
+  const recs = [];
+  const sources = [];
+  let unreadable = 0;
+  const source = { id: "claude-projects", label: "~/.claude/projects/_/*.jsonl", kind: "tokens", files: 0, sessions: /* @__PURE__ */ new Set(), unreadable: 0 };
+  if (!harness || harness === "claude") {
+    const base = import_node_path39.default.join(home, ".claude/projects");
+    const prefix = enc(realOr(p.root));
+    const prefixes = [.../* @__PURE__ */ new Set([prefix, enc(p.root)])];
+    let names = [];
+    try {
+      names = await import_node_fs35.default.promises.readdir(base);
+    } catch {
+      names = [];
+    }
+    for (const n of names.filter((x) => prefixes.some((pre) => x === pre || x.startsWith(`${pre}-`)))) {
+      const files = [];
+      await walk3(import_node_path39.default.join(base, n), 0, files, () => true);
+      for (const f of files) {
+        const st = await loadFile(p, f, parseClaude, from);
+        if (!st) continue;
+        source.files += 1;
+        if (!st.ok || st.bad > 0) {
+          source.unreadable += st.ok ? 0 : 1;
+          unreadable += st.ok ? 0 : 1;
+        }
+        for (const r of st.recs.values()) {
+          if (r.ts >= from && inside(r.cwd, dirs)) {
+            recs.push(r);
+            source.sessions.add(r.session);
+          }
+        }
+      }
+    }
+  }
+  sources.push({ id: source.id, label: source.label, kind: source.kind, state: "read", files: source.files, sessions: source.sessions.size, unreadable: source.unreadable });
+  const codex2 = { files: 0, sessions: /* @__PURE__ */ new Set(), unreadable: 0 };
+  if (!harness || harness === "codex") {
+    const files = [];
+    await walk3(import_node_path39.default.join(home, ".codex/sessions"), 4, files, () => true);
+    for (const f of files) {
+      const st = await loadFile(p, f, parseCodex, from);
+      if (!st || !inside(st.cwd, dirs)) continue;
+      codex2.files += 1;
+      if (!st.ok) {
+        codex2.unreadable += 1;
+        unreadable += 1;
+      }
+      for (const r of st.recs.values()) {
+        if (r.ts >= from) {
+          recs.push(r);
+          codex2.sessions.add(r.session);
+        }
+      }
+    }
+  }
+  sources.push({ id: "codex-sessions", label: "~/.codex/sessions/**", kind: "tokens", state: "read", files: codex2.files, sessions: codex2.sessions.size, unreadable: codex2.unreadable });
+  sources.push({ id: "kiro", label: "Kiro", kind: "tokens", state: "none", note: "기록 위치 확인 필요 · 자료 없음", files: 0, sessions: 0, unreadable: 0 });
+  return { recs, sources, unreadable };
+}
+function sourcesOff() {
+  return [
+    { id: "claude-projects", label: "~/.claude/projects/_/*.jsonl", kind: "tokens", state: "off", files: 0, sessions: 0, unreadable: 0 },
+    { id: "claude-history", label: "~/.claude/history.jsonl", kind: "prompts", state: "off", files: 0, sessions: 0, unreadable: 0 },
+    { id: "codex-sessions", label: "~/.codex/sessions/**", kind: "tokens", state: "off", files: 0, sessions: 0, unreadable: 0 },
+    { id: "kiro", label: "Kiro", kind: "tokens", state: "none", note: "기록 위치 확인 필요 · 자료 없음", files: 0, sessions: 0, unreadable: 0 }
+  ];
+}
+var localDate2 = (ms) => {
+  const d = new Date(ms);
+  const p2 = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+};
+function rangeOf(daysText) {
+  const days = daysText === null ? 7 : Number(daysText);
+  if (!Number.isInteger(days) || days < 1 || days > 90) throw bad3("days 는 1~90 이다");
+  const start = /* @__PURE__ */ new Date();
+  start.setHours(0, 0, 0, 0);
+  return { days, from: start.getTime() - (days - 1) * DAY3, to: Date.now() };
+}
+var issueOf = (branch) => /^[a-z]+\/([A-Z][A-Z0-9]*-[0-9]+)(?:-|$)/.exec(branch ?? "")?.[1] ?? null;
+async function sessionMap(p) {
+  const m = /* @__PURE__ */ new Map();
+  for (const s of await readSessions(p)) m.set(s.id, { role: s.role ?? null, issue: s.issue ?? null });
+  return m;
+}
+function priceOf(p, model) {
+  const usage = p.machineConfig().usage;
+  const pricing = isObj6(usage) && isObj6(usage.pricing) ? usage.pricing : null;
+  if (!pricing || !model) return null;
+  const key = Object.keys(pricing).sort((a, b) => b.length - a.length).find((k) => model.startsWith(k));
+  const v = key ? pricing[key] : null;
+  return isObj6(v) ? { input: num2(v.input), output: num2(v.output), cacheRead: num2(v.cacheRead), cacheWrite: num2(v.cacheWrite) } : null;
+}
+async function usageData(p, q2) {
+  const range = rangeOf(q2.days);
+  if (q2.harness && !["claude", "codex", "kiro"].includes(q2.harness)) throw bad3("harness 는 claude · codex · kiro 중 하나다");
+  if (!historyOn(p)) return { enabled: false, ...configHint(p), range: { days: range.days }, sources: sourcesOff(), totals: null, daily: [], roles: [], byIssue: [], cache: { average: null, daily: [] }, cost: null, unreadable: 0 };
+  const { recs, sources, unreadable } = await loadRecords(p, range.from, q2.harness);
+  const sess = await sessionMap(p);
+  const days = [];
+  for (let i = 0; i < range.days; i += 1) days.push(localDate2(range.from + i * DAY3 + DAY3 / 2));
+  const daily = new Map(days.map((d) => [d, { date: d, input: 0, output: 0, cacheRead: 0, cacheWrite: 0, sum: 0, byRole: {} }]));
+  const issues = /* @__PURE__ */ new Map();
+  const totals = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, sum: 0, requests: recs.length };
+  let cost = 0;
+  let priced = false;
+  const roles = /* @__PURE__ */ new Set();
+  for (const r of recs) {
+    const d = daily.get(localDate2(r.ts));
+    if (!d) continue;
+    const sum = r.input + r.output + r.cacheRead + r.cacheWrite;
+    const meta = sess.get(r.session);
+    const role = meta?.role ?? "역할 없음";
+    roles.add(role);
+    d.input += r.input;
+    d.output += r.output;
+    d.cacheRead += r.cacheRead;
+    d.cacheWrite += r.cacheWrite;
+    d.sum += sum;
+    d.byRole[role] = (d.byRole[role] ?? 0) + sum;
+    const issue = meta?.issue ?? issueOf(r.branch) ?? "이슈 없음";
+    issues.set(issue, (issues.get(issue) ?? 0) + sum);
+    totals.input += r.input;
+    totals.output += r.output;
+    totals.cacheRead += r.cacheRead;
+    totals.cacheWrite += r.cacheWrite;
+    totals.sum += sum;
+    const price = priceOf(p, r.model);
+    if (price) {
+      priced = true;
+      cost += (r.input * price.input + r.output * price.output + r.cacheRead * price.cacheRead + r.cacheWrite * price.cacheWrite) / 1e6;
+    }
+  }
+  const ratio = (x) => {
+    const den = x.input + x.cacheRead + x.cacheWrite;
+    return den > 0 ? x.cacheRead / den : null;
+  };
+  const dayList = [...daily.values()];
+  return {
+    enabled: true,
+    range: { from: new Date(range.from).toISOString(), to: new Date(range.to).toISOString(), days: range.days },
+    sources,
+    totals,
+    daily: dayList,
+    roles: [...roles].sort(),
+    byIssue: [...issues].map(([issue, sum]) => ({ issue, sum })).sort((a, b) => b.sum - a.sum || (a.issue < b.issue ? -1 : 1)),
+    cache: { average: ratio(totals), daily: dayList.map((d) => ({ date: d.date, ratio: ratio(d) })) },
+    cost: priced ? { estimate: Math.round(cost * 100) / 100, note: "usage.pricing 으로 센 추정이다. 청구 금액이 아니다" } : null,
+    unreadable
+  };
+}
+async function usageNow(p) {
+  if (!historyOn(p)) return { enabled: false, ...configHint(p), session: null };
+  const { recs } = await loadRecords(p, Date.now() - 2 * DAY3, null);
+  const sess = await sessionMap(p);
+  const last = recs.reduce((a, r) => !a || r.ts > a.ts ? r : a, null);
+  if (!last) return { enabled: true, session: null };
+  const usage = isObj6(p.machineConfig().usage) ? p.machineConfig().usage : {};
+  const windows = isObj6(usage.contextWindows) ? usage.contextWindows : {};
+  let window = null;
+  if (last.model) {
+    const w = windows[last.model];
+    window = typeof w === "number" && w > 0 ? w : DEFAULT_WINDOWS.find(([re]) => re.test(last.model))?.[1] ?? null;
+  }
+  const used = last.input + last.cacheRead + last.cacheWrite;
+  const warnAt = typeof usage.warnAt === "number" && usage.warnAt > 0 && usage.warnAt <= 1 ? usage.warnAt : 0.8;
+  const mine = recs.filter((r) => r.session === last.session);
+  const ratio = window ? used / window : null;
+  const meta = sess.get(last.session);
+  return {
+    enabled: true,
+    session: {
+      id: last.session,
+      harness: last.harness,
+      model: last.model,
+      role: meta?.role ?? null,
+      issue: meta?.issue ?? issueOf(last.branch),
+      at: new Date(last.ts).toISOString(),
+      since: new Date(Math.min(...mine.map((r) => r.ts))).toISOString(),
+      requests: mine.length,
+      last: { input: last.input, output: last.output, cacheRead: last.cacheRead, cacheWrite: last.cacheWrite },
+      used,
+      window,
+      ratio,
+      warnAt,
+      warn: ratio !== null && ratio >= warnAt,
+      windowNote: window ? null : "기록에 없다"
+    }
+  };
+}
+function isSessionStart(event) {
+  return /^session-?start$/i.test(event);
+}
+async function usageKit(p) {
+  const file = import_node_path39.default.join(p.root, ".agents/state/hook-output.jsonl");
+  const by = /* @__PURE__ */ new Map();
+  let skipped = 0;
+  try {
+    for (const line of import_node_fs35.default.readFileSync(file, "utf8").split("\n")) {
+      if (!line.trim()) continue;
+      let j;
+      try {
+        j = JSON.parse(line);
+      } catch {
+        skipped += 1;
+        continue;
+      }
+      if (!isObj6(j) || typeof j.hook !== "string" || typeof j.event !== "string") {
+        skipped += 1;
+        continue;
+      }
+      const key = `${j.event}\0${j.hook}`;
+      const e = by.get(key) ?? { event: j.event, hook: j.hook, count: 0, total: 0, last: 0, max: 0, truncated: 0 };
+      const b = num2(j.bytes);
+      e.count += 1;
+      e.total += b;
+      e.last = b;
+      e.max = Math.max(e.max, b);
+      if (j.truncated === true) e.truncated += 1;
+      by.set(key, e);
+    }
+  } catch {
+  }
+  const hooks = [...by.values()].map((e) => ({ event: e.event, hook: e.hook, count: e.count, avgBytes: Math.round(e.total / e.count), lastBytes: e.last, maxBytes: e.max, truncated: e.truncated })).sort((a, b) => a.event + a.hook < b.event + b.hook ? -1 : 1);
+  const start = hooks.filter((h) => isSessionStart(h.event));
+  const avgTotal = start.reduce((s, h) => s + h.avgBytes, 0);
+  return {
+    hooks,
+    skipped,
+    sessionStart: { avgBytes: avgTotal, maxBytes: start.reduce((s, h) => s + h.maxBytes, 0), limit: SESSION_START_LIMIT, ratio: avgTotal / SESSION_START_LIMIT, within: avgTotal <= SESSION_START_LIMIT, estTokens: Math.round(avgTotal / 3) },
+    modules: modulesOf(p),
+    note: "바이트 ÷ 3 은 한글 위주 글의 토큰 추정이다"
+  };
+}
+function modulesOf(p) {
+  const lock = readJson(import_node_path39.default.join(p.root, ".agents/harness-kit.lock"));
+  const entries = lock && Array.isArray(lock.entries) ? lock.entries.filter(isObj6) : [];
+  const out = /* @__PURE__ */ new Map();
+  const get = (owner) => {
+    const e = out.get(owner) ?? { owner, files: 0, bytes: 0, hooks: {} };
+    out.set(owner, e);
+    return e;
+  };
+  for (const e of entries) {
+    const rel2 = typeof e.path === "string" ? e.path : "";
+    if (!LOADED_FILES.some((re) => re.test(rel2))) continue;
+    try {
+      const st = import_node_fs35.default.statSync(import_node_path39.default.join(p.root, rel2));
+      if (!st.isFile()) continue;
+      const o = get(typeof e.owner === "string" ? e.owner : "kit");
+      o.files += 1;
+      o.bytes += st.size;
+    } catch {
+    }
+  }
+  const hooks = readJson(import_node_path39.default.join(p.root, ".agents/hooks.json"));
+  for (const h of hooks && Array.isArray(hooks.hooks) ? hooks.hooks.filter(isObj6) : []) {
+    const o = get(typeof h.owner === "string" ? h.owner : "kit");
+    const ev = typeof h.event === "string" ? h.event : "-";
+    o.hooks[ev] = (o.hooks[ev] ?? 0) + 1;
+  }
+  return [...out.values()].sort((a, b) => a.owner < b.owner ? -1 : 1).map((o) => ({ ...o, estTokens: Math.round(o.bytes / 3) }));
+}
+async function historyData(p, q2) {
+  if (!historyOn(p)) throw new ApiError(404, "history_off", '대화 기록 읽기가 꺼져 있다. 켜려면 사람이 ~/.config/harness-kit/config.json 에 "history": "on" 을 쓴다', configHint(p));
+  const dirs = projectDirs(p);
+  const sess = await sessionMap(p);
+  const prompts = [];
+  let unreadable = 0;
+  const readLines = (file) => {
+    try {
+      return import_node_fs35.default.readFileSync(file, "utf8").split("\n");
+    } catch {
+      return [];
+    }
+  };
+  for (const line of readLines(import_node_path39.default.join(p.home, ".claude/history.jsonl"))) {
+    if (!line.trim()) continue;
+    try {
+      const j = JSON.parse(line);
+      if (!isObj6(j) || typeof j.display !== "string" || !inside(str4(j.project), dirs)) continue;
+      const ts = typeof j.timestamp === "number" ? j.timestamp : NaN;
+      if (!Number.isFinite(ts)) continue;
+      const id = str4(j.sessionId);
+      const meta = id ? sess.get(id) : void 0;
+      prompts.push({ at: new Date(ts).toISOString(), text: j.display.slice(0, PROMPT_CHARS), session: id, role: meta?.role ?? null, issue: meta?.issue ?? null, harness: "claude" });
+    } catch {
+      unreadable += 1;
+    }
+  }
+  const codexCwd = /* @__PURE__ */ new Map();
+  const files = [];
+  await walk3(import_node_path39.default.join(p.home, ".codex/sessions"), 4, files, () => true);
+  for (const f of files) {
+    const st = await loadFile(p, f, parseCodex, 0);
+    if (st?.session) codexCwd.set(st.session, st.cwd);
+  }
+  for (const line of readLines(import_node_path39.default.join(p.home, ".codex/history.jsonl"))) {
+    if (!line.trim()) continue;
+    try {
+      const j = JSON.parse(line);
+      if (!isObj6(j) || typeof j.text !== "string") continue;
+      const id = str4(j.session_id);
+      if (!id || !inside(codexCwd.get(id) ?? null, dirs)) continue;
+      const ts = typeof j.ts === "number" ? j.ts * 1e3 : NaN;
+      if (!Number.isFinite(ts)) continue;
+      prompts.push({ at: new Date(ts).toISOString(), text: j.text.slice(0, PROMPT_CHARS), session: id, role: sess.get(id)?.role ?? null, issue: sess.get(id)?.issue ?? null, harness: "codex" });
+    } catch {
+      unreadable += 1;
+    }
+  }
+  const needle = q2.q?.toLowerCase() ?? null;
+  const all = prompts.filter((x) => (!needle || x.text.toLowerCase().includes(needle)) && (!q2.session || x.session === q2.session) && (!q2.role || x.role === q2.role)).sort((a, b) => a.at < b.at ? 1 : a.at > b.at ? -1 : 0);
+  return { enabled: true, prompts: all.slice(0, HISTORY_LIMIT), total: all.length, shown: Math.min(all.length, HISTORY_LIMIT), unreadable, note: "글을 보여 주기만 한다. 내보내기 · 커밋 · 세션 요청에 넣지 않는다" };
+}
+
+// ../dashboard/src/writers/answers.ts
+var import_node_fs38 = __toESM(require("node:fs"));
+var import_node_path42 = __toESM(require("node:path"));
+
+// ../dashboard/src/writers/approvals.ts
+var import_node_fs37 = __toESM(require("node:fs"));
+var import_node_path41 = __toESM(require("node:path"));
+
+// ../dashboard/src/writers/intent-gates.ts
+var import_node_fs36 = __toESM(require("node:fs"));
+var import_node_path40 = __toESM(require("node:path"));
 var BUNDLE_GATES = ["codebase", "plans"];
 var CLARIFY2 = "[NEEDS CLARIFICATION";
 var STATUSES = ["draft", "in-review", "approved"];
 async function gateInfo(p, root, key, gate) {
-  const own = import_node_path38.default.join(root, "scripts/harness/intent_gate.py");
-  const script = import_node_fs34.default.existsSync(own) ? own : import_node_path38.default.join(p.root, "scripts/harness/intent_gate.py");
+  const own = import_node_path40.default.join(root, "scripts/harness/intent_gate.py");
+  const script = import_node_fs36.default.existsSync(own) ? own : import_node_path40.default.join(p.root, "scripts/harness/intent_gate.py");
   const r = await python(root, p.env, [script, key, gate, "--json"], 12e4);
   try {
     return JSON.parse(r.stdout);
@@ -7533,24 +9420,24 @@ async function gateInfo(p, root, key, gate) {
   }
 }
 function headValue(text2, key) {
-  const lines = text2.split("\n").map((l) => l.replace(/\r$/, ""));
-  if (lines[0] !== "---") return null;
-  for (let i = 1; i < lines.length && lines[i] !== "---"; i += 1) {
-    const m = new RegExp(`^${key}:\\s*(.*?)\\s*(?:#.*)?$`).exec(lines[i]);
+  const lines2 = text2.split("\n").map((l) => l.replace(/\r$/, ""));
+  if (lines2[0] !== "---") return null;
+  for (let i = 1; i < lines2.length && lines2[i] !== "---"; i += 1) {
+    const m = new RegExp(`^${key}:\\s*(.*?)\\s*(?:#.*)?$`).exec(lines2[i]);
     if (m) return m[1].replace(/^["']|["']$/g, "") || null;
   }
   return null;
 }
 function bundleSha(files) {
-  const lines = [...files].sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0).map((f) => `${f.path}	${f.sha256}
+  const lines2 = [...files].sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0).map((f) => `${f.path}	${f.sha256}
 `);
-  return sha2562(lines.join(""));
+  return sha2562(lines2.join(""));
 }
 async function bundleOf(p, key, gate) {
   const co = await resolveIntentCheckout(p, key);
   const info = await gateInfo(p, co.root, key, gate);
   const files = info.files.map((f) => {
-    const bytes = import_node_fs34.default.readFileSync(import_node_path38.default.join(co.root, f.path));
+    const bytes = import_node_fs36.default.readFileSync(import_node_path40.default.join(co.root, f.path));
     return { name: f.name, path: f.path, sha256: sha2562(bytes), approvalSha256: approvalSha(bytes) };
   });
   return { co, info, files, sha256: bundleSha(files) };
@@ -7565,16 +9452,16 @@ async function approveBundle(p, gate, key, decision, phrase, body, via) {
   const { co, info, files, sha256: bundle } = await bundleOf(p, key, gate);
   if (!files.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 대상 파일이 없다`, { reasons: info.reasons });
   if (body.docSha256 !== bundle) throw new ApiError(409, "doc_changed", "승인 화면을 연 뒤 대상 파일이 바뀌었다. 다시 읽고 승인한다", { currentSha256: bundle });
-  const approvalsFile = import_node_path38.default.join(co.root, info.folder, "approvals.md");
-  const current4 = import_node_fs34.default.existsSync(approvalsFile) ? import_node_fs34.default.readFileSync(approvalsFile, "utf8") : null;
+  const approvalsFile = import_node_path40.default.join(co.root, info.folder, "approvals.md");
+  const current4 = import_node_fs36.default.existsSync(approvalsFile) ? import_node_fs36.default.readFileSync(approvalsFile, "utf8") : null;
   const entries = current4 ? parse(current4).entries : [];
   const first = files[0];
-  const firstText = import_node_fs34.default.readFileSync(import_node_path38.default.join(co.root, first.path), "utf8");
+  const firstText = import_node_fs36.default.readFileSync(import_node_path40.default.join(co.root, first.path), "utf8");
   const status = gate === "codebase" ? headValue(firstText, "status") : null;
   if (gate === "codebase" && !STATUSES.includes(status ?? "")) throw new ApiError(422, "gate_precondition", `current-state.md 머리 status 가 ${status ?? "없음"} 이다`, { reasons: [`status ${status ?? "없음"}`] });
   if (decision === "approved") {
     if (files.every((f) => approvalState(entries, gate, f.approvalSha256, p.policy()) === "valid")) throw new ApiError(409, "already_approved", "같은 내용으로 승인한 기록이 있다");
-    const unclear = files.filter((f) => f.path.endsWith(".md") && import_node_fs34.default.readFileSync(import_node_path38.default.join(co.root, f.path), "utf8").includes(CLARIFY2));
+    const unclear = files.filter((f) => f.path.endsWith(".md") && import_node_fs36.default.readFileSync(import_node_path40.default.join(co.root, f.path), "utf8").includes(CLARIFY2));
     if (unclear.length) throw new ApiError(422, "needs_clarification", `${unclear.map((f) => f.name).join(", ")} 에 [NEEDS CLARIFICATION 가 남았다`);
     if (info.stale.length) throw new ApiError(422, "model_stale", "역공학 문서가 오래됐다 — /hx-intent 가 codebase_scan.py 로 갱신한 뒤 승인한다", { stale: info.stale });
     if (info.reasons.length) throw new ApiError(422, "gate_precondition", `${gate} 게이트 조건이 맞지 않는다`, { reasons: info.reasons });
@@ -7595,7 +9482,7 @@ async function approveBundle(p, gate, key, decision, phrase, body, via) {
   const writes = [{ file: approvalsFile, data: Buffer.from(appendedText(current4, key, made), "utf8") }];
   let statusChanged = null;
   if (gate === "codebase" && decision === "approved" && status !== "approved") {
-    writes.push({ file: import_node_path38.default.join(co.root, first.path), data: Buffer.from(setField2(firstText, "status", "approved"), "utf8") });
+    writes.push({ file: import_node_path40.default.join(co.root, first.path), data: Buffer.from(setField2(firstText, "status", "approved"), "utf8") });
     statusChanged = `${status ?? "없음"}→approved`;
   }
   writeAll(writes);
@@ -7612,7 +9499,7 @@ function riskOfFolder(abs) {
   const files = {};
   for (const name of Object.values(DOC_FILES)) {
     try {
-      files[name] = import_node_fs35.default.readFileSync(import_node_path39.default.join(abs, name));
+      files[name] = import_node_fs37.default.readFileSync(import_node_path41.default.join(abs, name));
     } catch {
       files[name] = null;
     }
@@ -7620,10 +9507,10 @@ function riskOfFolder(abs) {
   return riskOf(files);
 }
 function issueFolder(root, key) {
-  const dir = import_node_path39.default.join(root, ".agents/docs/issues");
+  const dir = import_node_path41.default.join(root, ".agents/docs/issues");
   let names = [];
   try {
-    names = import_node_fs35.default.readdirSync(dir);
+    names = import_node_fs37.default.readdirSync(dir);
   } catch {
     names = [];
   }
@@ -7638,18 +9525,18 @@ function writeAll(writes) {
     for (const w of writes) {
       let before = null;
       try {
-        before = import_node_fs35.default.readFileSync(w.file);
+        before = import_node_fs37.default.readFileSync(w.file);
       } catch {
         before = null;
       }
-      if (w.data === null) import_node_fs35.default.rmSync(w.file, { force: true });
+      if (w.data === null) import_node_fs37.default.rmSync(w.file, { force: true });
       else atomicWrite(w.file, w.data);
       done.push({ file: w.file, before });
     }
   } catch (err) {
     for (const d of done.reverse()) {
       try {
-        if (d.before === null) import_node_fs35.default.rmSync(d.file, { force: true });
+        if (d.before === null) import_node_fs37.default.rmSync(d.file, { force: true });
         else atomicWrite(d.file, d.before);
       } catch {
       }
@@ -7660,11 +9547,11 @@ function writeAll(writes) {
   }
 }
 function appendLog(root, record) {
-  const file = import_node_path39.default.join(root, LOG);
-  ensureDir(import_node_path39.default.dirname(file), 448);
-  const ignore = import_node_path39.default.join(import_node_path39.default.dirname(file), ".gitignore");
-  if (!import_node_fs35.default.existsSync(ignore)) import_node_fs35.default.writeFileSync(ignore, "*\n", { mode: 384 });
-  import_node_fs35.default.appendFileSync(file, `${JSON.stringify(record)}
+  const file = import_node_path41.default.join(root, LOG);
+  ensureDir(import_node_path41.default.dirname(file), 448);
+  const ignore = import_node_path41.default.join(import_node_path41.default.dirname(file), ".gitignore");
+  if (!import_node_fs37.default.existsSync(ignore)) import_node_fs37.default.writeFileSync(ignore, "*\n", { mode: 384 });
+  import_node_fs37.default.appendFileSync(file, `${JSON.stringify(record)}
 `, { mode: 384 });
 }
 async function approver(p, co, gate) {
@@ -7680,8 +9567,8 @@ function phraseOf(body, field = "phrase") {
   return v.replace(/\s+/g, " ").trim().slice(0, 500);
 }
 async function preconditions(p, co, key, gate) {
-  const own = import_node_path39.default.join(co.root, "scripts/harness/sdd_gates.py");
-  const script = import_node_fs35.default.existsSync(own) ? own : import_node_path39.default.join(p.root, "scripts/harness/sdd_gates.py");
+  const own = import_node_path41.default.join(co.root, "scripts/harness/sdd_gates.py");
+  const script = import_node_fs37.default.existsSync(own) ? own : import_node_path41.default.join(p.root, "scripts/harness/sdd_gates.py");
   const r = await python(co.root, p.env, [script, "check", key, "--json", "--root", co.root], 6e4);
   if (r.code !== 0) throw new ApiError(422, "gate_precondition", "게이트 조건을 판정하지 못했다", { reasons: [(r.stderr.trim().split("\n").pop() ?? "").slice(0, 300)] });
   const data = JSON.parse(r.stdout);
@@ -7711,22 +9598,22 @@ async function postApproval(p, body, via) {
   const key = target.issue;
   const co = await resolveIssueCheckout(p, key, null);
   const folder = issueFolder(co.root, key);
-  const approvalsFile = import_node_path39.default.join(co.root, folder, "approvals.md");
-  const current4 = import_node_fs35.default.existsSync(approvalsFile) ? import_node_fs35.default.readFileSync(approvalsFile, "utf8") : null;
+  const approvalsFile = import_node_path41.default.join(co.root, folder, "approvals.md");
+  const current4 = import_node_fs37.default.existsSync(approvalsFile) ? import_node_fs37.default.readFileSync(approvalsFile, "utf8") : null;
   const entries = current4 ? parse(current4).entries : [];
   const writes = [];
   let targetRef;
   let statusChanged = null;
   if (Object.hasOwn(DOC_FILES, gate)) {
-    const docFile = import_node_path39.default.join(co.root, folder, DOC_FILES[gate]);
-    if (!import_node_fs35.default.existsSync(docFile)) throw notFound(`${DOC_FILES[gate]} 가 없다`);
-    const bytes = import_node_fs35.default.readFileSync(docFile);
+    const docFile = import_node_path41.default.join(co.root, folder, DOC_FILES[gate]);
+    if (!import_node_fs37.default.existsSync(docFile)) throw notFound(`${DOC_FILES[gate]} 가 없다`);
+    const bytes = import_node_fs37.default.readFileSync(docFile);
     const text2 = bytes.toString("utf8");
     const fm = parseLoose(text2) ?? {};
     const status = fm.status ?? null;
     const aSha = approvalSha(bytes);
     if (gate !== "tasks" && !["draft", "in-review", "approved"].includes(status ?? "")) throw new ApiError(422, "gate_precondition", `${DOC_FILES[gate]} 머리 status 가 ${status ?? "없음"} 이다(draft · in-review 만 승인한다)`, { reasons: [`status ${status ?? "없음"}`] });
-    const need = needOf(p.meta(), riskOfFolder(import_node_path39.default.join(co.root, folder)), gate);
+    const need = needOf(p.meta(), riskOfFolder(import_node_path41.default.join(co.root, folder)), gate);
     const state = approvalState(entries, gate, aSha, p.policy(), need);
     if (decision === "approved" && state === "valid") throw new ApiError(409, "already_approved", `${gate}: 같은 내용(sha ${aSha.slice(0, 12)})으로 승인한 기록이 있다`);
     const me = ((await gitUser(co.root, p.env)).email ?? "").toLowerCase();
@@ -7759,13 +9646,13 @@ async function postApproval(p, body, via) {
 async function approveIntent(p, key, decision, phrase, body, via) {
   const co = await resolveIntentCheckout(p, key);
   const info = findIntent(co.root, key);
-  const intentFile = import_node_path39.default.join(info.abs, "intent.md");
-  if (!import_node_fs35.default.existsSync(intentFile)) throw notFound("intent.md 가 없다");
-  const bytes = import_node_fs35.default.readFileSync(intentFile);
+  const intentFile = import_node_path41.default.join(info.abs, "intent.md");
+  if (!import_node_fs37.default.existsSync(intentFile)) throw notFound("intent.md 가 없다");
+  const bytes = import_node_fs37.default.readFileSync(intentFile);
   const text2 = bytes.toString("utf8");
   const status = parseLoose(text2)?.status ?? null;
-  const approvalsFile = import_node_path39.default.join(info.abs, "approvals.md");
-  const current4 = import_node_fs35.default.existsSync(approvalsFile) ? import_node_fs35.default.readFileSync(approvalsFile, "utf8") : null;
+  const approvalsFile = import_node_path41.default.join(info.abs, "approvals.md");
+  const current4 = import_node_fs37.default.existsSync(approvalsFile) ? import_node_fs37.default.readFileSync(approvalsFile, "utf8") : null;
   const entries = current4 ? parse(current4).entries : [];
   const aSha = approvalSha(bytes);
   if (!["draft", "in-review", "approved"].includes(status ?? "")) throw new ApiError(422, "gate_precondition", `intent.md 머리 status 가 ${status ?? "없음"} 이다`, { reasons: [`status ${status ?? "없음"}`] });
@@ -7775,13 +9662,13 @@ async function approveIntent(p, key, decision, phrase, body, via) {
   if (decision === "approved") {
     const reasons = [];
     try {
-      const q2 = parseQuestions(import_node_fs35.default.readFileSync(import_node_path39.default.join(info.abs, "questions.md"), "utf8"));
+      const q2 = parseQuestions(import_node_fs37.default.readFileSync(import_node_path41.default.join(info.abs, "questions.md"), "utf8"));
       const open = q2.questions.filter((x) => x.open && x.blocks === "intent");
       if (open.length) reasons.push(`막는 게이트가 intent 인 열린 질문 ${open.length}건(${open.map((x) => x.id).join(", ")})`);
     } catch {
     }
-    const check3 = import_node_path39.default.join(co.root, "scripts/harness/intent.py");
-    if (import_node_fs35.default.existsSync(check3)) {
+    const check3 = import_node_path41.default.join(co.root, "scripts/harness/intent.py");
+    if (import_node_fs37.default.existsSync(check3)) {
       const r = await python(co.root, p.env, [check3, "check", info.abs, "--json"], 6e4);
       if (r.code !== 0) {
         let problems = [];
@@ -7803,8 +9690,8 @@ async function approveIntent(p, key, decision, phrase, body, via) {
   if (decision === "approved" && proposal) {
     if (!units.raw || !units.data || proposal.baseSha256 !== sha2562(units.raw)) throw new ApiError(409, "proposal_stale", "제안을 만든 뒤 units.json 이 바뀌었다. 제안을 다시 저장하거나 버린다");
     unitsBytes = appliedUnitsBytes(units.raw, units.data, units.units, proposal.changes ?? []);
-    writes.push({ file: import_node_path39.default.join(info.abs, "units.json"), data: unitsBytes });
-    writes.push({ file: import_node_path39.default.join(info.abs, "units.proposed.json"), data: null });
+    writes.push({ file: import_node_path41.default.join(info.abs, "units.json"), data: unitsBytes });
+    writes.push({ file: import_node_path41.default.join(info.abs, "units.proposed.json"), data: null });
   }
   let statusChanged = null;
   if (decision === "approved" && status !== "approved") {
@@ -7822,9 +9709,9 @@ async function approveIntent(p, key, decision, phrase, body, via) {
 async function reviewFinding(p, key, findingId) {
   const co = await resolveIssueCheckout(p, key, null);
   const folder = issueFolder(co.root, key);
-  const own = import_node_path39.default.join(co.root, "scripts/harness/review_state.py");
-  const script = import_node_fs35.default.existsSync(own) ? own : import_node_path39.default.join(p.root, "scripts/harness/review_state.py");
-  const r = await python(co.root, p.env, [script, import_node_path39.default.join(co.root, folder), "--json"], 3e4);
+  const own = import_node_path41.default.join(co.root, "scripts/harness/review_state.py");
+  const script = import_node_fs37.default.existsSync(own) ? own : import_node_path41.default.join(p.root, "scripts/harness/review_state.py");
+  const r = await python(co.root, p.env, [script, import_node_path41.default.join(co.root, folder), "--json"], 3e4);
   if (r.code === 2) throw notFound(`리뷰 보고서가 없다(.agents/reports/review/${key}.md)`);
   const data = JSON.parse(r.stdout);
   const item = data.findings.find((f) => f.id === findingId);
@@ -7840,8 +9727,8 @@ async function postReviewDecision(p, key, findingId, body, via) {
   const phrase = phraseOf(body);
   const found = await reviewFinding(p, key, findingId);
   const who = await approver(p, found.co, "mr");
-  const approvalsFile = import_node_path39.default.join(found.co.root, found.folder, "approvals.md");
-  const current4 = import_node_fs35.default.existsSync(approvalsFile) ? import_node_fs35.default.readFileSync(approvalsFile, "utf8") : null;
+  const approvalsFile = import_node_path41.default.join(found.co.root, found.folder, "approvals.md");
+  const current4 = import_node_fs37.default.existsSync(approvalsFile) ? import_node_fs37.default.readFileSync(approvalsFile, "utf8") : null;
   const entry = { at: nowText(), gate: `review/${findingId}`, decision, approver: who, target: { name: `.agents/reports/review/${key}.md`, fingerprint: found.fp }, phrase, path: via, entryId: ulid() };
   writeAll([{ file: approvalsFile, data: Buffer.from(appendedText(current4, key, [entry]), "utf8") }]);
   appendLog(found.co.root, { entryId: entry.entryId, target: found.folder, gate: entry.gate, sha256: found.fp, at: entry.at, path: via });
@@ -7851,21 +9738,21 @@ async function postReviewDecision(p, key, findingId, body, via) {
 // ../dashboard/src/writers/answers.ts
 async function locate2(p, target) {
   if (!KEY.test(target)) throw bad3(`대상 키 형식이 아니다: ${target}`);
-  const isIntent = import_node_fs36.default.existsSync(import_node_path40.default.join(p.root, ".agents/docs/intents")) && import_node_fs36.default.readdirSync(import_node_path40.default.join(p.root, ".agents/docs/intents")).some((n) => INTENT_FOLDER.exec(n)?.[1] === target);
+  const isIntent = import_node_fs38.default.existsSync(import_node_path42.default.join(p.root, ".agents/docs/intents")) && import_node_fs38.default.readdirSync(import_node_path42.default.join(p.root, ".agents/docs/intents")).some((n) => INTENT_FOLDER.exec(n)?.[1] === target);
   if (isIntent) {
     const co2 = await resolveIntentCheckout(p, target);
     const info = findIntent(co2.root, target);
-    return { co: co2, rel: `${info.dir}/questions.md`, abs: import_node_path40.default.join(info.abs, "questions.md") };
+    return { co: co2, rel: `${info.dir}/questions.md`, abs: import_node_path42.default.join(info.abs, "questions.md") };
   }
   const co = await resolveIssueCheckout(p, target, null);
   const folder = issueFolder(co.root, target);
-  return { co, rel: `${folder}/questions.md`, abs: import_node_path40.default.join(co.root, folder, "questions.md") };
+  return { co, rel: `${folder}/questions.md`, abs: import_node_path42.default.join(co.root, folder, "questions.md") };
 }
 async function getQuestions(p, target) {
   if (!target) throw bad3("target 이 필요하다");
   const { rel: rel2, abs } = await locate2(p, target);
-  if (!import_node_fs36.default.existsSync(abs)) return { target, path: rel2, sha256: null, status: null, questions: [] };
-  const bytes = import_node_fs36.default.readFileSync(abs);
+  if (!import_node_fs38.default.existsSync(abs)) return { target, path: rel2, sha256: null, status: null, questions: [] };
+  const bytes = import_node_fs38.default.readFileSync(abs);
   const doc = parseQuestions(bytes.toString("utf8"));
   return { target, path: rel2, sha256: sha2562(bytes), status: doc.frontmatter.status ?? null, round: doc.frontmatter.round ?? null, questions: doc.questions };
 }
@@ -7873,9 +9760,9 @@ async function postAnswer(p, target, qid, body) {
   if (p.readOnly) throw readOnly();
   if (!isObj6(body)) throw bad3("본문이 객체가 아니다");
   const { co, rel: rel2, abs } = await locate2(p, target);
-  if (!import_node_fs36.default.existsSync(abs)) throw notFound(`질문 파일이 없다: ${rel2}`);
+  if (!import_node_fs38.default.existsSync(abs)) throw notFound(`질문 파일이 없다: ${rel2}`);
   return p.withLock(abs, async () => {
-    const bytes = import_node_fs36.default.readFileSync(abs);
+    const bytes = import_node_fs38.default.readFileSync(abs);
     if (body.baseSha256 !== sha2562(bytes)) throw new ApiError(409, "conflict", "다른 곳에서 먼저 저장했다", { currentSha256: sha2562(bytes), currentMarkdown: bytes.toString("utf8") });
     const doc = parseQuestions(bytes.toString("utf8"));
     const q2 = doc.questions.find((x) => x.id === qid);
@@ -7897,9 +9784,9 @@ async function postAnswer(p, target, qid, body) {
 }
 
 // ../dashboard/src/writers/dispatch.ts
-var import_node_fs37 = __toESM(require("node:fs"));
+var import_node_fs39 = __toESM(require("node:fs"));
 var import_node_net2 = __toESM(require("node:net"));
-var import_node_path41 = __toESM(require("node:path"));
+var import_node_path43 = __toESM(require("node:path"));
 var KINDS = ["doc-changed", "answers-ready", "approved", "changes-requested", "review-findings", "custom"];
 var MAX = 1e3;
 function dispatchBody(body) {
@@ -7995,7 +9882,7 @@ async function postDispatch(p, raw, createdBy) {
     return { status: 202, data: { method: "deeplink", url: deeplink(cwd, text2) } };
   }
   const dir = queueDir(p);
-  ensureDir(import_node_path41.default.dirname(dir), 448);
+  ensureDir(import_node_path43.default.dirname(dir), 448);
   ensureDir(dir, 448);
   const id = ulid();
   const created = /* @__PURE__ */ new Date();
@@ -8010,22 +9897,22 @@ async function postDispatch(p, raw, createdBy) {
     paths: b.paths,
     expiresAt: nowText(new Date(created.getTime() + 7 * 24 * 3600 * 1e3))
   };
-  atomicWrite(import_node_path41.default.join(dir, `${id}.json`), `${JSON.stringify(item, null, 2)}
+  atomicWrite(import_node_path43.default.join(dir, `${id}.json`), `${JSON.stringify(item, null, 2)}
 `, 384);
   return { status: 202, data: { method: "queue", id } };
 }
 function dropQueued(p, id) {
   if (p.readOnly) throw readOnly();
   if (!/^[0-9A-HJKMNP-TV-Z]{26}$/.test(id)) throw bad3("대기함 id 형식이 아니다");
-  const file = import_node_path41.default.join(queueDir(p), `${id}.json`);
-  if (!import_node_fs37.default.existsSync(file)) throw notFound(`대기함 항목이 없다: ${id}`);
-  import_node_fs37.default.unlinkSync(file);
+  const file = import_node_path43.default.join(queueDir(p), `${id}.json`);
+  if (!import_node_fs39.default.existsSync(file)) throw notFound(`대기함 항목이 없다: ${id}`);
+  import_node_fs39.default.unlinkSync(file);
   return { id, dropped: true };
 }
 
 // ../dashboard/src/writers/docs.ts
-var import_node_fs38 = __toESM(require("node:fs"));
-var import_node_path42 = __toESM(require("node:path"));
+var import_node_fs40 = __toESM(require("node:fs"));
+var import_node_path44 = __toESM(require("node:path"));
 
 // ../dashboard/src/paths.ts
 var ISSUE_DOC = /^\.agents\/docs\/issues\/([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5})-[^/]+\/(requirements|design|tasks)\.md$/;
@@ -8093,7 +9980,7 @@ async function locateForRead(p, t) {
   if (t.kind === "issue" && t.key) {
     const cos = await checkouts(p);
     const co2 = cos.find((c) => c.key === t.key);
-    if (co2 && lstatChain(co2.root, t.rel) === "file") return { co: co2, ref: null, bytes: import_node_fs38.default.readFileSync(import_node_path42.default.join(co2.root, t.rel)) };
+    if (co2 && lstatChain(co2.root, t.rel) === "file") return { co: co2, ref: null, bytes: import_node_fs40.default.readFileSync(import_node_path44.default.join(co2.root, t.rel)) };
     const branch = (await branches(p)).find((b) => ISSUE_BRANCH.exec(b)?.[2] === t.key && !cos.some((c) => c.branch === b));
     if (branch) {
       const prefix = p.loc.prefix ? `${p.loc.prefix}/` : "";
@@ -8111,7 +9998,7 @@ async function locateForRead(p, t) {
     }
   }
   if (lstatChain(co.root, t.rel) !== "file") throw notFound(`문서가 없다: ${t.rel}`);
-  return { co, ref: null, bytes: import_node_fs38.default.readFileSync(import_node_path42.default.join(co.root, t.rel)) };
+  return { co, ref: null, bytes: import_node_fs40.default.readFileSync(import_node_path44.default.join(co.root, t.rel)) };
 }
 async function readRaw(p, relPath) {
   const issue = /^\.agents\/docs\/issues\/([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5})-[^/]+\//.exec(relPath);
@@ -8181,8 +10068,8 @@ function changeSummary(before, after) {
     for (let i = s; i < ea; i += 1) removedIdx.push(i);
     for (let j = s; j < eb; j += 1) addedIdx.push(j);
   }
-  const headingAt = (lines, idx) => {
-    for (let k = idx; k >= 0; k -= 1) if (/^#{1,6}\s/.test(lines[k])) return lines[k];
+  const headingAt = (lines2, idx) => {
+    for (let k = idx; k >= 0; k -= 1) if (/^#{1,6}\s/.test(lines2[k])) return lines2[k];
     return null;
   };
   const headings = /* @__PURE__ */ new Set();
@@ -8210,9 +10097,9 @@ async function putDoc(p, body) {
   const co = await writeCheckout(p, t);
   const kind = lstatChain(co.root, t.rel);
   if (kind !== "file" && !(kind === "missing" && t.creatable)) throw kind === "missing" ? notFound(`문서가 없다: ${t.rel}`) : forbiddenPath(t.rel);
-  const abs = import_node_path42.default.join(co.root, t.rel);
+  const abs = import_node_path44.default.join(co.root, t.rel);
   return p.withLock(abs, async () => {
-    const current4 = kind === "file" ? import_node_fs38.default.readFileSync(abs) : Buffer.alloc(0);
+    const current4 = kind === "file" ? import_node_fs40.default.readFileSync(abs) : Buffer.alloc(0);
     if (current4.length > LIMIT) throw bad3("1 MiB 를 넘는 문서다");
     const currentText = current4.toString("utf8");
     if (sha2562(current4) !== b.baseSha256) throw new ApiError(409, "conflict", "다른 곳에서 먼저 저장했다", { currentSha256: sha2562(current4), currentMarkdown: currentText });
@@ -8256,9 +10143,9 @@ async function leaseHolder(p, co, relPath) {
 }
 
 // ../dashboard/src/writers/intake.ts
-var import_node_fs39 = __toESM(require("node:fs"));
+var import_node_fs41 = __toESM(require("node:fs"));
 var import_node_os2 = __toESM(require("node:os"));
-var import_node_path43 = __toESM(require("node:path"));
+var import_node_path45 = __toESM(require("node:path"));
 var KINDS2 = /* @__PURE__ */ new Set(["product", "feature", "change", "refactor", "bug"]);
 var NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 var FILE_NAME = /^[^/\\\0]{1,120}$/;
@@ -8298,19 +10185,19 @@ function rejected(out) {
 async function postIntake(p, body, via) {
   if (p.readOnly) throw readOnly();
   const b = intakeBody(body, via);
-  const tmp = import_node_fs39.default.mkdtempSync(import_node_path43.default.join(import_node_os2.default.tmpdir(), "hk-intake-"));
+  const tmp = import_node_fs41.default.mkdtempSync(import_node_path45.default.join(import_node_os2.default.tmpdir(), "hk-intake-"));
   try {
-    import_node_fs39.default.chmodSync(tmp, 448);
-    const textFile = import_node_path43.default.join(tmp, "text.md");
-    import_node_fs39.default.writeFileSync(textFile, b.text, { mode: 384 });
+    import_node_fs41.default.chmodSync(tmp, 448);
+    const textFile = import_node_path45.default.join(tmp, "text.md");
+    import_node_fs41.default.writeFileSync(textFile, b.text, { mode: 384 });
     const attach = b.files.map((f, i) => {
-      const dir = import_node_path43.default.join(tmp, String(i));
-      import_node_fs39.default.mkdirSync(dir, { mode: 448 });
-      const file = import_node_path43.default.join(dir, import_node_path43.default.basename(f.name));
-      import_node_fs39.default.writeFileSync(file, f.data, { mode: 384 });
+      const dir = import_node_path45.default.join(tmp, String(i));
+      import_node_fs41.default.mkdirSync(dir, { mode: 448 });
+      const file = import_node_path45.default.join(dir, import_node_path45.default.basename(f.name));
+      import_node_fs41.default.writeFileSync(file, f.data, { mode: 384 });
       return file;
     });
-    const files = [...b.paths.map((x) => import_node_path43.default.resolve(p.root, x)), ...attach];
+    const files = [...b.paths.map((x) => import_node_path45.default.resolve(p.root, x)), ...attach];
     const args = ["scripts/harness/intake.py", "new", "--json", "--title", b.title, "--kind", b.kind, "--name", b.name, "--text-file", textFile];
     if (b.area) args.push("--area", b.area);
     for (const f of files) args.push("--attach", f);
@@ -8323,24 +10210,24 @@ async function postIntake(p, body, via) {
       throw new ApiError(500, "internal", `intake.py 출력이 JSON 이 아니다: ${r.stdout.slice(0, 200)}`);
     }
   } finally {
-    import_node_fs39.default.rmSync(tmp, { recursive: true, force: true });
+    import_node_fs41.default.rmSync(tmp, { recursive: true, force: true });
   }
 }
 
 // ../dashboard/src/writers/proposals.ts
-var import_node_fs40 = __toESM(require("node:fs"));
-var import_node_path44 = __toESM(require("node:path"));
+var import_node_fs42 = __toESM(require("node:fs"));
+var import_node_path46 = __toESM(require("node:path"));
 async function postProposal(p, body) {
   if (p.readOnly) throw readOnly();
   const b = proposalBody(body);
   const co = await resolveIntentCheckout(p, b.intent);
   const info = findIntent(co.root, b.intent);
-  return p.withLock(import_node_path44.default.join(info.abs, "units.proposed.json"), async () => {
+  return p.withLock(import_node_path46.default.join(info.abs, "units.proposed.json"), async () => {
     const units = readUnitsFile(info.abs);
     if (!units.raw) throw notFound("units.json 이 없다");
     if (sha2562(units.raw) !== b.baseSha256) throw new ApiError(409, "conflict", "units.json 이 바뀌었다. 다시 읽고 제안한다", { currentSha256: sha2562(units.raw) });
-    const file = import_node_path44.default.join(info.abs, "units.proposed.json");
-    if (b.proposalSha256 && import_node_fs40.default.existsSync(file) && sha2562(import_node_fs40.default.readFileSync(file)) !== b.proposalSha256) throw new ApiError(409, "conflict", "다른 곳에서 제안을 먼저 저장했다");
+    const file = import_node_path46.default.join(info.abs, "units.proposed.json");
+    if (b.proposalSha256 && import_node_fs42.default.existsSync(file) && sha2562(import_node_fs42.default.readFileSync(file)) !== b.proposalSha256) throw new ApiError(409, "conflict", "다른 곳에서 제안을 먼저 저장했다");
     applyChanges(units.units, b.changes);
     const u = await gitUser(co.root, p.env);
     const proposal = { schema: "harness-kit.units-proposal/v1", intent: b.intent, baseSha256: b.baseSha256, createdBy: u.email, createdAt: nowText(), changes: b.changes };
@@ -8355,7 +10242,7 @@ async function deleteProposal(p, intent) {
   const co = await resolveIntentCheckout(p, intent);
   const info = findIntent(co.root, intent);
   if (!proposalOf(info.abs)) throw notFound("변경 제안이 없다");
-  import_node_fs40.default.unlinkSync(import_node_path44.default.join(info.abs, "units.proposed.json"));
+  import_node_fs42.default.unlinkSync(import_node_path46.default.join(info.abs, "units.proposed.json"));
   return { intent, discarded: true };
 }
 
@@ -8376,9 +10263,9 @@ async function oneIssue(p, key) {
   if (!i) throw notFound(`이슈가 없다: ${key}`);
   return i;
 }
-var stub = (method, path60, stage, cli, what) => ({
+var stub = (method, path62, stage, cli, what) => ({
   method,
-  path: path60,
+  path: path62,
   stub: stage,
   cli,
   handler: async () => {
@@ -8407,7 +10294,15 @@ var ROUTES = [
     }
   },
   { method: "GET", path: "/intents/{key}/gates", cli: "status --intent <INT> --gate codebase|plans", handler: async (p, r) => ok(await getGateBundle(p, r.params.key, q(r, "gate") ?? "")) },
-  stub("GET", "/intents/{key}/burn", "HK-18", "status --flow <INT> --burn(HK-18)", "남은 Bolt 계단선"),
+  {
+    method: "GET",
+    path: "/intents/{key}/burn",
+    cli: "status --flow <INT> --burn [--days n]",
+    handler: async (p, r) => {
+      const { issues } = await load(p);
+      return ok(await burnData(p, findIntent(p.root, r.params.key), issues, q(r, "days")));
+    }
+  },
   { method: "GET", path: "/issues", cli: "status --issues [--area --stage --intent]", handler: issueList },
   { method: "GET", path: "/issues/{key}", cli: "status --issue <키>", handler: async (p, r) => ok(publicIssue(await oneIssue(p, r.params.key))) },
   { method: "GET", path: "/docs", cli: "status --doc <경로>", handler: async (p, r) => ok(await getDoc(p, q(r, "path"), r.sign)) },
@@ -8470,7 +10365,16 @@ var ROUTES = [
       return ok({ sessions: (await readSessions(p)).map(publicSession) });
     }
   },
-  stub("GET", "/skills", "HK-18", "skills(HK-18)", "스킬 목록"),
+  {
+    method: "GET",
+    path: "/skills",
+    cli: "skills [--stage <단계>] [--harness <h>] [--conflicts] [--errors] [--all] [--no-user] [--refresh]",
+    handler: async (p, r) => {
+      const inv = await skillsInventory(p, { user: q(r, "user") !== "0", refresh: q(r, "refresh") === "1" });
+      const flag = (k) => q(r, k) === "1" || q(r, k) === "true";
+      return ok(filterInventory(inv, { stage: q(r, "stage"), harness: q(r, "harness"), conflicts: flag("conflicts"), errors: flag("errors"), all: flag("all") }));
+    }
+  },
   {
     method: "GET",
     path: "/harness",
@@ -8540,18 +10444,14 @@ var ROUTES = [
       return ok(await projectsOverview(r.projects));
     }
   },
-  stub("GET", "/usage", "HK-18", "usage(HK-18)", "토큰 사용량"),
-  stub("GET", "/usage/now", "HK-18", "usage --now(HK-18)", "지금 세션 컨텍스트"),
-  stub("GET", "/usage/kit", "HK-18", "usage --kit(HK-18)", "킷이 덧붙인 양"),
+  { method: "GET", path: "/usage", cli: "usage [--days n] [--harness h] [--sources]", handler: async (p, r) => ok(await usageData(p, { days: q(r, "days"), harness: q(r, "harness") })) },
+  { method: "GET", path: "/usage/now", cli: "usage --now", handler: async (p) => ok(await usageNow(p)) },
+  { method: "GET", path: "/usage/kit", cli: "usage --kit", handler: async (p) => ok(await usageKit(p)) },
   {
     method: "GET",
     path: "/history",
-    stub: "HK-18",
-    cli: "history [--q] (꺼짐이면 history_off)",
-    handler: async (p) => {
-      if (p.machineConfig().history !== "on") throw new ApiError(404, "history_off", '대화 기록 읽기가 꺼져 있다. 켜려면 사람이 ~/.config/harness-kit/config.json 에 "history": "on" 을 쓴다', { config: "~/.config/harness-kit/config.json" });
-      throw notImplemented("HK-18", "프롬프트 기록");
-    }
+    cli: "history [--q …] [--session id] [--role r] (꺼짐이면 history_off)",
+    handler: async (p, r) => ok(await historyData(p, { q: q(r, "q"), session: q(r, "session"), role: q(r, "role") }))
   },
   { method: "GET", path: "/raw/{path}", cli: "— (브라우저 이미지 · 와이어프레임, 서명 URL)", handler: async () => {
     throw notFound("서명 URL 로만 연다");
@@ -8565,10 +10465,10 @@ var COMPILED = ROUTES.map((route) => {
   })}$`);
   return { route, re, names };
 });
-function match(method, path60) {
+function match(method, path62) {
   const methods = [];
   for (const c of COMPILED) {
-    const m = c.re.exec(path60);
+    const m = c.re.exec(path62);
     if (!m) continue;
     if (c.route.method !== method) {
       methods.push(c.route.method);
@@ -8582,9 +10482,9 @@ function match(method, path60) {
   }
   return methods.length ? { methods } : null;
 }
-async function callApi(p, method, path60, opts = {}) {
-  const m = match(method, path60);
-  if (!m || !("route" in m)) throw notFound(`경로 없음: ${method} ${path60}`);
+async function callApi(p, method, path62, opts = {}) {
+  const m = match(method, path62);
+  if (!m || !("route" in m)) throw notFound(`경로 없음: ${method} ${path62}`);
   return m.route.handler(p, { method, params: m.params, query: new URLSearchParams(opts.query ?? {}), body: opts.body, via: opts.via ?? "terminal", mode: opts.mode ?? "single", ...opts.projects ? { projects: opts.projects } : {} });
 }
 
@@ -8606,7 +10506,7 @@ var CROCKFORD2 = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 var PAGE_CSP = "default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'";
 var RAW_CSP = "default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'";
 function newPin() {
-  const bytes = import_node_crypto6.default.randomBytes(10);
+  const bytes = import_node_crypto7.default.randomBytes(10);
   let out = "";
   for (let i = 0; i < 10; i += 1) out += CROCKFORD2[bytes[i] & 31];
   return out;
@@ -8614,25 +10514,25 @@ function newPin() {
 function same(a, b) {
   const x = Buffer.from(a);
   const y = Buffer.from(b);
-  return x.length === y.length && import_node_crypto6.default.timingSafeEqual(x, y);
+  return x.length === y.length && import_node_crypto7.default.timingSafeEqual(x, y);
 }
 function stateFiles(root) {
-  const dir = import_node_path45.default.join(root, ".agents/state");
-  return { dir, token: import_node_path45.default.join(dir, "dashboard.token"), info: import_node_path45.default.join(dir, "dashboard.json") };
+  const dir = import_node_path47.default.join(root, ".agents/state");
+  return { dir, token: import_node_path47.default.join(dir, "dashboard.token"), info: import_node_path47.default.join(dir, "dashboard.json") };
 }
 function writeSecret(file, text2) {
   try {
-    const st = import_node_fs41.default.lstatSync(file);
-    if (st.isSymbolicLink() || st.isFile()) import_node_fs41.default.unlinkSync(file);
+    const st = import_node_fs43.default.lstatSync(file);
+    if (st.isSymbolicLink() || st.isFile()) import_node_fs43.default.unlinkSync(file);
   } catch {
   }
-  const fd = import_node_fs41.default.openSync(file, import_node_fs41.default.constants.O_WRONLY | import_node_fs41.default.constants.O_CREAT | import_node_fs41.default.constants.O_EXCL | (import_node_fs41.default.constants.O_NOFOLLOW ?? 0), 384);
+  const fd = import_node_fs43.default.openSync(file, import_node_fs43.default.constants.O_WRONLY | import_node_fs43.default.constants.O_CREAT | import_node_fs43.default.constants.O_EXCL | (import_node_fs43.default.constants.O_NOFOLLOW ?? 0), 384);
   try {
-    import_node_fs41.default.writeSync(fd, text2);
+    import_node_fs43.default.writeSync(fd, text2);
   } finally {
-    import_node_fs41.default.closeSync(fd);
+    import_node_fs43.default.closeSync(fd);
   }
-  import_node_fs41.default.chmodSync(file, 384);
+  import_node_fs43.default.chmodSync(file, 384);
 }
 function pidAlive(pid) {
   try {
@@ -8671,7 +10571,7 @@ async function findRunning(cwd, env, agent = () => agentSession(env)) {
   if (agent()) return { url: base, port: info.port };
   let token = "";
   try {
-    token = import_node_fs41.default.readFileSync(files.token, "utf8").trim();
+    token = import_node_fs43.default.readFileSync(files.token, "utf8").trim();
   } catch {
     token = "";
   }
@@ -8681,8 +10581,8 @@ function send(res, status, body, headers) {
   res.writeHead(status, { "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer", ...headers });
   res.end(body);
 }
-function sendJson(res, status, value, extra = {}) {
-  send(res, status, JSON.stringify(value), { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...extra });
+function sendJson(res, status, value2, extra = {}) {
+  send(res, status, JSON.stringify(value2), { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store", ...extra });
 }
 function sendError(res, err) {
   sendJson(res, err.status, err.body());
@@ -8723,13 +10623,13 @@ async function startServer(opts) {
   } else {
     projects = new Projects(() => modeEntries(mode, home), { ...projectOpts, multi: true });
   }
-  const token = import_node_crypto6.default.randomBytes(32).toString("base64url");
+  const token = import_node_crypto7.default.randomBytes(32).toString("base64url");
   const pin = readOnly2 ? null : newPin();
   let failures = 0;
   const files = single ? stateFiles(single.root) : null;
   if (files) {
-    import_node_fs41.default.mkdirSync(files.dir, { recursive: true, mode: 448 });
-    import_node_fs41.default.chmodSync(files.dir, 448);
+    import_node_fs43.default.mkdirSync(files.dir, { recursive: true, mode: 448 });
+    import_node_fs43.default.chmodSync(files.dir, 448);
     writeSecret(files.token, `${token}
 `);
   }
@@ -8738,7 +10638,7 @@ async function startServer(opts) {
   const origins = () => [`http://127.0.0.1:${port}`, `http://localhost:${port}`];
   const sign = (prefix) => (relPath) => {
     const exp = Math.floor(Date.now() / 1e3) + RAW_TTL;
-    const sig = import_node_crypto6.default.createHmac("sha256", token).update(`${relPath}
+    const sig = import_node_crypto7.default.createHmac("sha256", token).update(`${relPath}
 ${exp}`).digest("hex");
     return `${prefix}/raw/${relPath.split("/").map(encodeURIComponent).join("/")}?exp=${exp}&sig=${sig}`;
   };
@@ -8808,7 +10708,7 @@ ${exp}`).digest("hex");
     const envelope = { ok: true, data: out.data, ...out.meta ? { meta: out.meta } : {} };
     const text2 = JSON.stringify(envelope);
     if (method === "GET") {
-      const etag = `W/"${import_node_crypto6.default.createHash("sha256").update(text2).digest("hex").slice(0, 32)}"`;
+      const etag = `W/"${import_node_crypto7.default.createHash("sha256").update(text2).digest("hex").slice(0, 32)}"`;
       if (req.headers["if-none-match"] === etag) {
         res.writeHead(304, { ETag: etag, "Cache-Control": "no-store" });
         res.end();
@@ -8839,7 +10739,7 @@ ${exp}`).digest("hex");
     const sig = url.searchParams.get("sig") ?? "";
     const now = Math.floor(Date.now() / 1e3);
     if (!Number.isInteger(exp) || exp < now || exp > now + RAW_TTL + 5) throw new ApiError(403, "forbidden_path", "서명 URL 이 지났다");
-    const want = import_node_crypto6.default.createHmac("sha256", token).update(`${relPath}
+    const want = import_node_crypto7.default.createHmac("sha256", token).update(`${relPath}
 ${exp}`).digest("hex");
     if (!same(sig, want)) throw new ApiError(403, "forbidden_path", "서명이 틀렸다");
     const bytes = await readRaw(p, relPath);
@@ -8922,7 +10822,7 @@ ${exp}`).digest("hex");
         server.closeAllConnections?.();
       });
       if (files) {
-        for (const f of [files.token, files.info]) import_node_fs41.default.rmSync(f, { force: true });
+        for (const f of [files.token, files.info]) import_node_fs43.default.rmSync(f, { force: true });
       }
     }
   };
@@ -8932,16 +10832,16 @@ ${exp}`).digest("hex");
 var import_node_os4 = __toESM(require("node:os"));
 
 // src/commands/doctor.ts
-var import_node_fs44 = __toESM(require("node:fs"));
-var import_node_path48 = __toESM(require("node:path"));
+var import_node_fs46 = __toESM(require("node:fs"));
+var import_node_path50 = __toESM(require("node:path"));
 
 // src/commands/doctor-overrides.ts
-var import_node_fs42 = __toESM(require("node:fs"));
-var import_node_path46 = __toESM(require("node:path"));
+var import_node_fs44 = __toESM(require("node:fs"));
+var import_node_path48 = __toESM(require("node:path"));
 var isObj7 = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 function readJson2(target, rel2) {
   try {
-    return JSON.parse(import_node_fs42.default.readFileSync(import_node_path46.default.join(target, ...rel2.split("/")), "utf8"));
+    return JSON.parse(import_node_fs44.default.readFileSync(import_node_path48.default.join(target, ...rel2.split("/")), "utf8"));
   } catch {
     return null;
   }
@@ -8968,11 +10868,11 @@ function overridesReport(ctx, target, inst) {
     if (e.op !== "copy" && e.op !== "none") continue;
     const kitHas = kit?.has(e.path) ?? false;
     if (e.owner.startsWith("pack:") && kitHas) out.push({ target: e.path, winner: e.layer && e.layer.startsWith("pack:") ? e.layer : e.owner, losers: [kitVer], declared: true });
-    else if (e.owner === "user" && kitHas) out.push({ target: e.path, winner: "user", losers: [kitVer], note: import_node_fs42.default.existsSync(import_node_path46.default.join(target, ...`${e.path}.new`.split("/"))) ? ".new 있음" : ".new 없음" });
+    else if (e.owner === "user" && kitHas) out.push({ target: e.path, winner: "user", losers: [kitVer], note: import_node_fs44.default.existsSync(import_node_path48.default.join(target, ...`${e.path}.new`.split("/"))) ? ".new 있음" : ".new 없음" });
     else if (e.owner === "kit" && e.op === "copy" && typeof e.sha256 === "string") {
       let cur = null;
       try {
-        cur = sha256(import_node_fs42.default.readFileSync(import_node_path46.default.join(target, ...e.path.split("/"))));
+        cur = sha256(import_node_fs44.default.readFileSync(import_node_path48.default.join(target, ...e.path.split("/"))));
       } catch {
         cur = null;
       }
@@ -9017,14 +10917,14 @@ function overridesLines(r) {
 }
 
 // src/projection/check.ts
-var import_node_fs43 = __toESM(require("node:fs"));
-var import_node_path47 = __toESM(require("node:path"));
+var import_node_fs45 = __toESM(require("node:fs"));
+var import_node_path49 = __toESM(require("node:path"));
 var PROJECTION_KINDS = ["stale", "symlink-found", "merge-missing", "relative-ref", "skill-model-field", "role-model-locked", "pending-new", "steering-size", "layout-conflict"];
 var LIMIT3 = 24 * 1024;
 var SOURCE_DIRS = [".agents/rules/", ".agents/skills/", ".agents/roles/"];
 function lstat2(p) {
   try {
-    return import_node_fs43.default.lstatSync(p);
+    return import_node_fs45.default.lstatSync(p);
   } catch {
     return null;
   }
@@ -9033,14 +10933,14 @@ function currentSha(p, isDir2) {
   const st = lstat2(p);
   if (!st || st.isSymbolicLink()) return null;
   if (isDir2) return st.isDirectory() ? treeSha(walkView(new FsView(p), "")) : null;
-  return st.isFile() ? sha256(import_node_fs43.default.readFileSync(p)) : null;
+  return st.isFile() ? sha256(import_node_fs45.default.readFileSync(p)) : null;
 }
 function linksInside(p, prefix = "") {
   const st = lstat2(p);
   if (!st?.isDirectory() || st.isSymbolicLink()) return [];
   const out = [];
-  for (const name of import_node_fs43.default.readdirSync(p).sort()) {
-    const q2 = import_node_path47.default.join(p, name);
+  for (const name of import_node_fs45.default.readdirSync(p).sort()) {
+    const q2 = import_node_path49.default.join(p, name);
     const s = lstat2(q2);
     const rel2 = prefix ? `${prefix}/${name}` : name;
     if (s?.isSymbolicLink()) out.push(rel2);
@@ -9053,38 +10953,38 @@ function hasRelativeRef(text2) {
   return /\[[^\]]*\]\((\.\.\/[^)\s]*)\)/.test(stripped);
 }
 function fmOf(file) {
-  const { block: block2 } = splitFrontmatter(import_node_fs43.default.readFileSync(file, "utf8"));
+  const { block: block2 } = splitFrontmatter(import_node_fs45.default.readFileSync(file, "utf8"));
   return block2 === null ? {} : parseFrontmatter(block2);
 }
 function kiroAlwaysBytes(target) {
-  const dir = import_node_path47.default.join(target, ".kiro/steering");
-  if (!import_node_fs43.default.existsSync(dir)) return 0;
+  const dir = import_node_path49.default.join(target, ".kiro/steering");
+  if (!import_node_fs45.default.existsSync(dir)) return 0;
   let total = 0;
-  for (const name of import_node_fs43.default.readdirSync(dir).filter((n) => n.endsWith(".md"))) {
-    const p = import_node_path47.default.join(dir, name);
+  for (const name of import_node_fs45.default.readdirSync(dir).filter((n) => n.endsWith(".md"))) {
+    const p = import_node_path49.default.join(dir, name);
     if (!lstat2(p)?.isFile()) continue;
     const inc = fmOf(p).inclusion;
-    if ((typeof inc === "string" && inc || "always") === "always") total += import_node_fs43.default.statSync(p).size;
+    if ((typeof inc === "string" && inc || "always") === "always") total += import_node_fs45.default.statSync(p).size;
   }
   return total;
 }
 function specAt(target) {
-  const file = import_node_path47.default.join(target, "scripts/harness/projection.json");
-  return import_node_fs43.default.existsSync(file) ? parseSpec(import_node_fs43.default.readFileSync(file, "utf8")) : null;
+  const file = import_node_path49.default.join(target, "scripts/harness/projection.json");
+  return import_node_fs45.default.existsSync(file) ? parseSpec(import_node_fs45.default.readFileSync(file, "utf8")) : null;
 }
 function layoutFindings(target, entries) {
   const out = [];
-  const meta = readMeta(import_node_path47.default.join(target, META_REL));
+  const meta = readMeta(import_node_path49.default.join(target, META_REL));
   const tokens = meta.status === "ok" ? meta.meta.tokens : {};
   const agents = meta.status === "ok" ? meta.meta.agents : [];
   let spec;
   for (const e of entries) {
     if (e.owner !== "kit") continue;
-    const p = import_node_path47.default.join(target, ...e.path.split("/"));
+    const p = import_node_path49.default.join(target, ...e.path.split("/"));
     const from = typeof e.from === "string" ? e.from : null;
     if (e.op === "mirror" || e.op === "render") {
       const st = lstat2(p);
-      const isDir2 = e.op === "mirror" && (Boolean(st?.isDirectory()) && !st?.isSymbolicLink() || Boolean(from && lstat2(import_node_path47.default.join(target, ...from.split("/")))?.isDirectory()));
+      const isDir2 = e.op === "mirror" && (Boolean(st?.isDirectory()) && !st?.isSymbolicLink() || Boolean(from && lstat2(import_node_path49.default.join(target, ...from.split("/")))?.isDirectory()));
       if (st?.isSymbolicLink()) {
         out.push({ kind: "symlink-found", severity: "error", path: e.path, hint: "링크 대신 실제 파일을 둔다 → npx harness-kit repair" });
         continue;
@@ -9100,7 +11000,7 @@ function layoutFindings(target, entries) {
         continue;
       }
       if (from && typeof e.fromSha256 === "string") {
-        const sp = import_node_path47.default.join(target, ...from.split("/"));
+        const sp = import_node_path49.default.join(target, ...from.split("/"));
         const now = from === HOOKS_REL ? hooksBundleSha(new FsView(target)) : currentSha(sp, Boolean(lstat2(sp)?.isDirectory()));
         if (now === null) out.push({ kind: "stale", severity: "error", path: e.path, hint: `원본 ${from} 이 없다 → npx harness-kit update` });
         else if (now !== e.fromSha256) out.push({ kind: "stale", severity: "error", path: e.path, hint: `원본 ${from} 가 바뀌었다 → npx harness-kit repair` });
@@ -9111,21 +11011,21 @@ function layoutFindings(target, entries) {
       if (spec === void 0) spec = specAt(target);
       if (!spec) continue;
       const st = lstat2(p);
-      const cur = st?.isFile() ? import_node_fs43.default.readFileSync(p, "utf8") : null;
+      const cur = st?.isFile() ? import_node_fs45.default.readFileSync(p, "utf8") : null;
       const keys = e.keys;
       const lost = cur === null ? keys : missingWith(kind, cur, keys, fullMergeWant(kind, spec, tokens, loadSources(new FsView(target))));
       if (lost.length) out.push({ kind: "merge-missing", severity: "error", path: e.path, hint: `킷 키 ${lost.slice(0, 3).join(", ")}${lost.length > 3 ? " …" : ""} 가 없다 → npx harness-kit repair` });
     } else if (e.op === "copy") {
       const st = lstat2(p);
       if (!st?.isFile()) continue;
-      if (SOURCE_DIRS.some((d) => e.path.startsWith(d)) && e.path.endsWith(".md") && hasRelativeRef(import_node_fs43.default.readFileSync(p, "utf8"))) {
+      if (SOURCE_DIRS.some((d) => e.path.startsWith(d)) && e.path.endsWith(".md") && hasRelativeRef(import_node_fs45.default.readFileSync(p, "utf8"))) {
         out.push({ kind: "relative-ref", severity: "error", path: e.path, hint: "킷 원본은 `../` 대신 리포 기준 경로(.agents/…)를 쓴다(복사본에서 깨진다)" });
       }
     }
   }
   for (const e of entries) {
     for (const side of [`${e.path}.new`, `${e.path}.bak`]) {
-      if (lstat2(import_node_path47.default.join(target, ...side.split("/")))) out.push({ kind: "pending-new", severity: "warn", path: side, hint: `병합하거나 지운다(diff -u ${e.path} ${side})` });
+      if (lstat2(import_node_path49.default.join(target, ...side.split("/")))) out.push({ kind: "pending-new", severity: "warn", path: side, hint: `병합하거나 지운다(diff -u ${e.path} ${side})` });
     }
   }
   try {
@@ -9193,7 +11093,7 @@ function copyFindings(target, lock) {
       continue;
     }
     if (e.op !== "copy" || e.owner !== "kit") continue;
-    const state = fileState(import_node_path48.default.join(target, ...e.path.split("/")), e.sha256);
+    const state = fileState(import_node_path50.default.join(target, ...e.path.split("/")), e.sha256);
     if (state === "ok") ok2 += 1;
     else if (state === "missing") {
       findings.push({ kind: "missing", severity: "error", path: e.path, owner: e.owner, hint: "킷 파일이 없다. harness-kit repair 로 되살린다" });
@@ -9209,15 +11109,15 @@ function copyFindings(target, lock) {
   return { ok: ok2, findings };
 }
 function gitignoreFinding(target) {
-  let lines = [];
+  let lines2 = [];
   try {
-    lines = import_node_fs44.default.readFileSync(import_node_path48.default.join(target, ".gitignore"), "utf8").split(/\r?\n/).map((l) => l.trim());
+    lines2 = import_node_fs46.default.readFileSync(import_node_path50.default.join(target, ".gitignore"), "utf8").split(/\r?\n/).map((l) => l.trim());
   } catch {
-    lines = [];
+    lines2 = [];
   }
   const has = (want) => {
     const bare2 = want.replace(/\/$/, "");
-    return [want, bare2, `/${want}`, `/${bare2}`].some((v) => lines.includes(v));
+    return [want, bare2, `/${want}`, `/${bare2}`].some((v) => lines2.includes(v));
   };
   const missing = GITIGNORE_NEEDS.filter((w) => !has(w));
   if (missing.length === 0) return null;
@@ -9226,7 +11126,7 @@ function gitignoreFinding(target) {
 function entrySizeFinding(target) {
   let bytes = 0;
   for (const f of ENTRY_FILES) {
-    const st = lstatOrNull(import_node_path48.default.join(target, f));
+    const st = lstatOrNull(import_node_path50.default.join(target, f));
     if (st?.isFile()) bytes += st.size;
   }
   if (bytes <= ENTRY_LIMIT) return null;
@@ -9250,12 +11150,12 @@ var isObjAny = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 var EMAIL = /^[^@\s]+@[^@\s]+$/;
 function floorFindings(target, raw) {
   const out = [];
-  const flow = raw && isObjAny(raw.flow) ? raw.flow : null;
-  const missingGates = missingFloorGates(flow?.gates);
+  const flow2 = raw && isObjAny(raw.flow) ? raw.flow : null;
+  const missingGates = missingFloorGates(flow2?.gates);
   if (missingGates.length) out.push({ kind: "gate-floor", severity: "error", path: META_REL, hint: `flow.gates 에 하한 게이트 ${missingGates.join(" · ")} 가 없다. 하한은 빼지 못한다(check-sdd-prerequisites 는 설정과 상관없이 검사한다)`, detail: { missing: missingGates } });
   let hooks = null;
   try {
-    hooks = JSON.parse(import_node_fs44.default.readFileSync(import_node_path48.default.join(target, ".agents/hooks.json"), "utf8"));
+    hooks = JSON.parse(import_node_fs46.default.readFileSync(import_node_path50.default.join(target, ".agents/hooks.json"), "utf8"));
   } catch {
     hooks = null;
   }
@@ -9279,7 +11179,7 @@ function personalFindings(target) {
   for (const key of conf.ignored) out.push({ kind: "personal-ignored", severity: "warn", path: LOCAL_CONFIG, hint: `${key} — 개인 층은 roles.<역할>.harness · git.ide 만 바꾼다(무시했다)` });
   let local = null;
   try {
-    local = JSON.parse(import_node_fs44.default.readFileSync(import_node_path48.default.join(target, ...SETTINGS_LOCAL.split("/")), "utf8"));
+    local = JSON.parse(import_node_fs46.default.readFileSync(import_node_path50.default.join(target, ...SETTINGS_LOCAL.split("/")), "utf8"));
   } catch {
     local = null;
   }
@@ -9302,7 +11202,7 @@ function approverFindings(raw) {
 function noticeFinding(target, day) {
   let text2;
   try {
-    text2 = import_node_fs44.default.readFileSync(import_node_path48.default.join(target, ...NOTICE_REL.split("/")), "utf8");
+    text2 = import_node_fs46.default.readFileSync(import_node_path50.default.join(target, ...NOTICE_REL.split("/")), "utf8");
   } catch {
     return null;
   }
@@ -9310,14 +11210,14 @@ function noticeFinding(target, day) {
   return { kind: "upgrade-notice-expired", severity: "info", path: NOTICE_REL, hint: "만료된 업그레이드 공지다. 다음 update 가 지운다(지금 지워도 된다)" };
 }
 function collect(target, day) {
-  const metaRead = readMeta(import_node_path48.default.join(target, META_REL));
+  const metaRead = readMeta(import_node_path50.default.join(target, META_REL));
   if (metaRead.status === "missing") {
     throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 harness-kit init");
   }
   const findings = [];
   const meta = metaRead.status === "ok" ? metaRead.meta : null;
   if (metaRead.status === "invalid") findings.push({ kind: "meta-invalid", severity: "error", path: META_REL, hint: metaRead.error });
-  const lockRead = readLock(import_node_path48.default.join(target, LOCK_REL));
+  const lockRead = readLock(import_node_path50.default.join(target, LOCK_REL));
   const lock = lockRead.status === "ok" ? lockRead.lock : null;
   if (lockRead.status === "ok" && lockRead.format === "v1") {
     findings.push({ kind: "lock-v1", severity: "info", path: LOCK_REL, hint: "v1(TSV) lock 이다. update 가 v2 로 바꾼다" });
@@ -9365,7 +11265,7 @@ function runDoctor(ctx) {
   if (c.projection) summary.projection = c.projection;
   const code = bool(ctx.values, "check") && (summary.errors ?? 0) > 0 ? EXIT.CHECK : EXIT.OK;
   const kit = { installed: c.meta?.kit.version ?? null, lock: c.lock?.kit.version ?? null, cli: VERSION };
-  const lines = [
+  const lines2 = [
     `harness-kit doctor — ${target}`,
     `  킷: 설치 ${kit.installed ?? "?"} · lock ${kit.lock ?? "?"} · CLI ${kit.cli}`,
     `  copy 항목: ok ${summary.ok} · drifted ${summary.drifted} · missing ${summary.missing}`,
@@ -9373,11 +11273,11 @@ function runDoctor(ctx) {
     `  오류 ${summary.errors} · 경고 ${summary.warnings} · 정보 ${summary.infos}`,
     ...ctx.quiet ? [] : findings.map(findingLine)
   ];
-  return { code, data: { command: "doctor", target, kit, summary, findings }, lines };
+  return { code, data: { command: "doctor", target, kit, summary, findings }, lines: lines2 };
 }
 
 // src/commands/outdated.ts
-var import_node_path49 = __toESM(require("node:path"));
+var import_node_path51 = __toESM(require("node:path"));
 
 // src/core/git.ts
 var import_node_child_process8 = require("node:child_process");
@@ -9394,8 +11294,8 @@ function git2(args, env, timeout = 3e4) {
   return run4;
 }
 function gitRepoPath(dir, env) {
-  const inside = git2(["-C", dir, "rev-parse", "--git-dir"], env);
-  if (inside.status !== 0) return null;
+  const inside2 = git2(["-C", dir, "rev-parse", "--git-dir"], env);
+  if (inside2.status !== 0) return null;
   const top = git2(["-C", dir, "rev-parse", "--show-toplevel"], env);
   return top.status === 0 && top.stdout.trim() ? top.stdout.trim() : dir;
 }
@@ -9431,7 +11331,7 @@ function fromKitSource(raw, env) {
   return null;
 }
 function sourceOf(ctx, target) {
-  const lock = readLock(import_node_path49.default.join(target, LOCK_REL));
+  const lock = readLock(import_node_path51.default.join(target, LOCK_REL));
   return pickSource(str(ctx.values, "source"), ctx.io.env, lock.status === "ok" ? lock.lock.kit.source : null);
 }
 function pickSource(flag, envVars, lockSource) {
@@ -9450,7 +11350,7 @@ var isPre = (v) => /^\d+\.\d+\.\d+-/.test(v);
 var newer = (a, b) => (compareSemver(a, b) ?? 0) > 0;
 function runOutdated(ctx) {
   const target = targetOf(ctx);
-  const m = readMeta(import_node_path49.default.join(target, META_REL));
+  const m = readMeta(import_node_path51.default.join(target, META_REL));
   if (m.status === "missing") throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 harness-kit init");
   if (m.status === "invalid") throw new CliError(EXIT.STATE, `메타를 해석하지 못했다: ${m.error}`, "harness-kit doctor 로 상태를 본다");
   const installed = m.meta.kit.version;
@@ -9473,14 +11373,14 @@ function runOutdated(ctx) {
   const upgrade = !isNewer ? null : newest === VERSION ? "harness-kit update" : `npx harness-kit@${newest} update`;
   const data = { command: "outdated", target, installed, cli: VERSION, latest, newest, newer: isNewer, upgrade, packs: m.meta.packs };
   const latestText = latest.status === "ok" ? `${String(latest.version ?? "없음")} (${String(latest.source)})` : `확인 못 함 — ${String(latest.reason)}`;
-  const lines = [
+  const lines2 = [
     `harness-kit outdated — ${target}`,
     `  설치 ${installed} · CLI ${VERSION} · 최신 태그 ${latestText}`,
     isNewer ? `  → 새 판 ${newest} 이 있다: ${String(upgrade)}` : "  최신이다",
     ...newer(installed, VERSION) ? [`  ⚠ 설치된 킷(${installed})이 이 CLI 보다 새것이다. 새 CLI 를 쓴다`] : []
   ];
   const code = bool(ctx.values, "check") && isNewer ? EXIT.CHECK : EXIT.OK;
-  return { code, data, lines };
+  return { code, data, lines: lines2 };
 }
 
 // src/commands/dashboard-deps.ts
@@ -9542,10 +11442,10 @@ function humanTerminal(ctx) {
   if (!ctx.io.isTTY) return new ApiError(403, "read_only", "TTY 가 아니다 — 사람이 터미널에서 직접 실행한다");
   return null;
 }
-async function run3(ctx, method, path60, opts, human) {
+async function run3(ctx, method, path62, opts, human) {
   try {
     const p = opts.project ?? await openProject(ctx);
-    const r = await callApi(p, method, path60, { ...opts.query ? { query: opts.query } : {}, body: opts.body, via: "terminal", mode: opts.mode ?? "single", ...opts.projects ? { projects: opts.projects } : {} });
+    const r = await callApi(p, method, path62, { ...opts.query ? { query: opts.query } : {}, body: opts.body, via: "terminal", mode: opts.mode ?? "single", ...opts.projects ? { projects: opts.projects } : {} });
     const data = r.data;
     return { code: EXIT.OK, data, lines: human(data) };
   } catch (err) {
@@ -9598,8 +11498,8 @@ function modeOf(ctx) {
   const ws = str(v, "workspace");
   if ([all, root !== void 0, ws !== void 0].filter(Boolean).length > 1) throw usageError("--all · --root · --workspace 는 하나만 준다");
   if (all) return { kind: "all" };
-  if (root !== void 0) return { kind: "root", dir: import_node_path50.default.resolve(ctx.io.cwd, root) };
-  if (ws !== void 0) return { kind: "workspace", file: import_node_path50.default.resolve(ctx.io.cwd, ws) };
+  if (root !== void 0) return { kind: "root", dir: import_node_path52.default.resolve(ctx.io.cwd, root) };
+  if (ws !== void 0) return { kind: "workspace", file: import_node_path52.default.resolve(ctx.io.cwd, ws) };
   return { kind: "single" };
 }
 function openBrowser(url) {
@@ -9611,7 +11511,7 @@ function openBrowser(url) {
 }
 async function runExport(ctx, out) {
   try {
-    const r = await exportStatic({ cwd: targetOf(ctx), env: ctx.io.env, out: import_node_path50.default.resolve(ctx.io.cwd, out) });
+    const r = await exportStatic({ cwd: targetOf(ctx), env: ctx.io.env, out: import_node_path52.default.resolve(ctx.io.cwd, out) });
     return { code: EXIT.OK, data: { command: "dashboard", export: r.out, files: r.files }, lines: [`정적 내보내기: ${r.out} (파일 ${r.files.length}개, 스크립트 · 버튼 없음)`] };
   } catch (err) {
     if (err instanceof ExportLeakError) throw new CliError(EXIT.CHECK, `${err.message} — 출력 폴더를 지웠다`, err.hits.slice(0, 5).join(" · "));
@@ -9751,16 +11651,16 @@ async function runReview(ctx) {
 }
 
 // src/commands/init.ts
-var import_node_fs45 = __toESM(require("node:fs"));
-var import_node_path51 = __toESM(require("node:path"));
+var import_node_fs47 = __toESM(require("node:fs"));
+var import_node_path53 = __toESM(require("node:path"));
 
 // src/cli/prompt.ts
 var import_node_readline = __toESM(require("node:readline"));
 function createPrompter(input, write) {
   const rl = import_node_readline.default.createInterface({ input, terminal: false });
-  const lines = rl[Symbol.asyncIterator]();
+  const lines2 = rl[Symbol.asyncIterator]();
   const next = async () => {
-    const r = await lines.next();
+    const r = await lines2.next();
     return r.done ? null : String(r.value);
   };
   return {
@@ -9855,11 +11755,11 @@ function readOptions(ctx, layout2) {
 }
 function assertInstallable(target) {
   const st = lstatOrNull(target);
-  if (st && !(st.isDirectory() || st.isSymbolicLink() && import_node_fs45.default.statSync(target).isDirectory())) {
+  if (st && !(st.isDirectory() || st.isSymbolicLink() && import_node_fs47.default.statSync(target).isDirectory())) {
     throw new CliError(EXIT.STATE, `대상이 폴더가 아니다: ${target}`);
   }
-  if (import_node_fs45.default.existsSync(import_node_path51.default.join(target, META_REL))) {
-    throw new CliError(EXIT.STATE, `이미 설치된 리포다: ${import_node_path51.default.join(target, META_REL)}`, "킷 갱신은 harness-kit update, 하네스 · 모듈 추가는 harness-kit add 다. 지금 상태는 harness-kit doctor");
+  if (import_node_fs47.default.existsSync(import_node_path53.default.join(target, META_REL))) {
+    throw new CliError(EXIT.STATE, `이미 설치된 리포다: ${import_node_path53.default.join(target, META_REL)}`, "킷 갱신은 harness-kit update, 하네스 · 모듈 추가는 harness-kit add 다. 지금 상태는 harness-kit doctor");
   }
 }
 function selectionInput(ctx) {
@@ -9901,7 +11801,7 @@ async function runInit(ctx) {
   try {
     const input = prompter ? await askMissing(prompter, selectionInput(ctx), layout2, loc.dir) : selectionInput(ctx);
     const selection = resolveSelection(layout2, loc.dir, input, { target, env: io2.env });
-    const tokens = resolveTokens(layout2, selection, { flags: opts.flags, env: io2.env, targetBasename: import_node_path51.default.basename(target) });
+    const tokens = resolveTokens(layout2, selection, { flags: opts.flags, env: io2.env, targetBasename: import_node_path53.default.basename(target) });
     checkSlug(tokens.PROJECT_SLUG ?? "");
     const plan = buildPlan({ layout: layout2, templatesDir: loc.dir, target, selection, tokens, mode: { force: opts.force, adopt: opts.adopt } });
     const shown = command === "plan" && !ctx.quiet ? plan.ops : plan.ops.filter(needsAttention);
@@ -9911,12 +11811,12 @@ async function runInit(ctx) {
     const human = needsHuman(plan.projection, plan.projectionFindings);
     const conflicts = projectionConflicts(plan.projection);
     if (conflicts.length) data.conflicts = conflicts;
-    const lines = [`harness-kit ${command} — ${target}`, selectionLine2(selection), ...(selection.retiredModules ?? []).map((m) => retiredNote(m, "flag"))];
+    const lines2 = [`harness-kit ${command} — ${target}`, selectionLine2(selection), ...(selection.retiredModules ?? []).map((m) => retiredNote(m, "flag"))];
     if (selection.retiredModules) data.retiredModules = selection.retiredModules;
     const projectionShown = projectionLines(plan.projection, plan.projectionFindings, ctx.quiet, command === "plan" && !ctx.quiet, /* @__PURE__ */ new Set(["create"]));
     if (command === "plan") {
-      lines.push(...shown.map(opLine3), countsLine2(plan), ...projectionShown, STATE_LINE, "  (plan — 쓰지 않았다)");
-      return { code: EXIT.OK, data, lines };
+      lines2.push(...shown.map(opLine3), countsLine2(plan), ...projectionShown, STATE_LINE, "  (plan — 쓰지 않았다)");
+      return { code: EXIT.OK, data, lines: lines2 };
     }
     if (prompter) {
       io2.stderr(`${countsLine2(plan)}
@@ -9926,17 +11826,17 @@ async function runInit(ctx) {
     const meta = buildMeta({ version: VERSION, selection, tokens, issue: { source: opts.issueSource, prefix: str(ctx.values, "issue-prefix") }, base: str(ctx.values, "base"), today: today(io2) });
     const result = applyPlan({ plan, metaText: serializeMeta(meta), lockText: lockText(plan, loc.source), env: io2.env });
     data.featureDocs = result.featureDocs;
-    lines.push(countsLine2(plan), ...shown.map(opLine3), ...projectionShown, STATE_LINE, docsLine(result.featureDocs), "  다음: harness-kit doctor");
-    return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines };
+    lines2.push(countsLine2(plan), ...shown.map(opLine3), ...projectionShown, STATE_LINE, docsLine(result.featureDocs), "  다음: harness-kit doctor");
+    return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines: lines2 };
   } finally {
     prompter?.close();
   }
 }
 
 // src/commands/intake.ts
-var import_node_fs46 = __toESM(require("node:fs"));
-var import_node_path52 = __toESM(require("node:path"));
-var str4 = (ctx, k) => typeof ctx.values[k] === "string" ? ctx.values[k] : void 0;
+var import_node_fs48 = __toESM(require("node:fs"));
+var import_node_path54 = __toESM(require("node:path"));
+var str5 = (ctx, k) => typeof ctx.values[k] === "string" ? ctx.values[k] : void 0;
 var list2 = (ctx, k) => Array.isArray(ctx.values[k]) ? ctx.values[k] : [];
 async function readStdin(ctx) {
   const input = ctx.io.stdin;
@@ -9946,24 +11846,24 @@ async function readStdin(ctx) {
   return Buffer.concat(chunks).toString("utf8");
 }
 async function runIntake(ctx) {
-  const title = str4(ctx, "title");
-  const kind = str4(ctx, "kind");
-  const name = str4(ctx, "name");
+  const title = str5(ctx, "title");
+  const kind = str5(ctx, "kind");
+  const name = str5(ctx, "name");
   if (!title || !kind || !name) throw usageError("harness-kit intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]…");
-  const textArg = str4(ctx, "text");
-  const textFile = str4(ctx, "text-file");
+  const textArg = str5(ctx, "text");
+  const textFile = str5(ctx, "text-file");
   if (textArg !== void 0 && textFile !== void 0) throw usageError("--text 와 --text-file 은 하나만 쓴다");
   const cwd = targetOf(ctx);
   let text2 = textArg === "-" ? await readStdin(ctx) : textArg ?? "";
   if (textFile !== void 0) {
-    const file = import_node_path52.default.resolve(ctx.io.cwd, textFile);
-    if (!import_node_fs46.default.existsSync(file)) throw usageError(`--text-file 이 없다: ${textFile}`);
-    text2 = import_node_fs46.default.readFileSync(file, "utf8");
+    const file = import_node_path54.default.resolve(ctx.io.cwd, textFile);
+    if (!import_node_fs48.default.existsSync(file)) throw usageError(`--text-file 이 없다: ${textFile}`);
+    text2 = import_node_fs48.default.readFileSync(file, "utf8");
   }
-  const paths = list2(ctx, "attach").map((a) => import_node_path52.default.resolve(ctx.io.cwd, a));
-  const missing = paths.find((a) => !import_node_fs46.default.statSync(a, { throwIfNoEntry: false })?.isFile());
-  if (missing) throw usageError(`첨부가 없다: ${import_node_path52.default.relative(cwd, missing) || missing}`);
-  const area = str4(ctx, "area");
+  const paths = list2(ctx, "attach").map((a) => import_node_path54.default.resolve(ctx.io.cwd, a));
+  const missing = paths.find((a) => !import_node_fs48.default.statSync(a, { throwIfNoEntry: false })?.isFile());
+  if (missing) throw usageError(`첨부가 없다: ${import_node_path54.default.relative(cwd, missing) || missing}`);
+  const area = str5(ctx, "area");
   const body = { title, kind, name, text: text2, links: list2(ctx, "link"), paths, ...area ? { area } : {} };
   return run3(ctx, "POST", "/intake", { body }, (d) => {
     const warnings = Array.isArray(d.warnings) ? d.warnings : [];
@@ -9972,7 +11872,7 @@ async function runIntake(ctx) {
 }
 
 // src/commands/list.ts
-var import_node_path53 = __toESM(require("node:path"));
+var import_node_path55 = __toESM(require("node:path"));
 function tally(values) {
   const out = /* @__PURE__ */ new Map();
   for (const v of values) out.set(v, (out.get(v) ?? 0) + 1);
@@ -9980,7 +11880,7 @@ function tally(values) {
 }
 function runList(ctx) {
   const target = targetOf(ctx);
-  const read = readMeta(import_node_path53.default.join(target, META_REL));
+  const read = readMeta(import_node_path55.default.join(target, META_REL));
   if (read.status === "missing") throw new CliError(EXIT.STATE, `설치되지 않은 리포다(${META_REL} 없음): ${target}`, "설치는 harness-kit init");
   if (read.status === "invalid") throw new CliError(EXIT.STATE, `메타를 해석하지 못했다: ${read.error}`, "harness-kit doctor 로 상태를 본다");
   const m = read.meta;
@@ -10001,7 +11901,7 @@ function runList(ctx) {
     installedAt: m.installedAt,
     updatedAt: m.updatedAt
   };
-  const lines = [
+  const lines2 = [
     `harness-kit list — ${target}`,
     `  킷 ${m.kit.version} (메타 ${read.schema}) · 설치 ${m.installedAt || "?"} · 갱신 ${m.updatedAt || "?"}`,
     `  ${m.project.name} (${m.project.slug}) · 스택 ${m.stack} · 변형 ${m.arch} · 도메인 ${m.domain || "없음"}`,
@@ -10009,7 +11909,7 @@ function runList(ctx) {
     `  이슈 키 ${m.issueKey.source}:${m.issueKey.prefix} · base ${m.git.base}`
   ];
   if (bool(ctx.values, "files")) {
-    const lr = readLock(import_node_path53.default.join(target, LOCK_REL));
+    const lr = readLock(import_node_path55.default.join(target, LOCK_REL));
     if (lr.status !== "ok") {
       throw new CliError(EXIT.STATE, `lock 을 읽지 못했다: ${lr.status === "missing" ? "없음" : lr.error}`, "harness-kit doctor 로 상태를 본다");
     }
@@ -10017,14 +11917,14 @@ function runList(ctx) {
     const files = { format: lr.format, total: entries.length, byOwner: tally(entries.map((e) => e.owner)), byOp: tally(entries.map((e) => e.op)), entries };
     data.files = files;
     const own = Object.entries(files.byOwner).map(([k, n]) => `${k} ${n}`).join(" · ");
-    lines.push(`  파일 ${files.total} (${own}) · lock ${lr.format}`);
-    if (!ctx.quiet) for (const e of entries) lines.push(`  ${`${e.owner}/${e.op}`.padEnd(10)} ${e.path}${e.layer ? `  [${e.layer}]` : ""}`);
+    lines2.push(`  파일 ${files.total} (${own}) · lock ${lr.format}`);
+    if (!ctx.quiet) for (const e of entries) lines2.push(`  ${`${e.owner}/${e.op}`.padEnd(10)} ${e.path}${e.layer ? `  [${e.layer}]` : ""}`);
   }
-  return { code: EXIT.OK, data, lines };
+  return { code: EXIT.OK, data, lines: lines2 };
 }
 
 // src/commands/remove.ts
-var import_node_path54 = __toESM(require("node:path"));
+var import_node_path56 = __toESM(require("node:path"));
 function keepAction(e) {
   const owner = ownerKind2(e.owner);
   if (owner === "external") return "skip-external";
@@ -10039,7 +11939,7 @@ function judgeDrop(l, p, e, cur, ambiguous) {
   if (cur.kind === "none") return { op: { path: p, owner: e.owner, layer, action: "absent" }, entry: void 0 };
   if (cur.kind === "file" && e.sha256 && cur.sha === e.sha256) {
     const neu = `${p}.new`;
-    const alsoNew = existing(import_node_path54.default.join(l.target, ...neu.split("/"))).kind === "file" ? { alsoNew: neu } : {};
+    const alsoNew = existing(import_node_path56.default.join(l.target, ...neu.split("/"))).kind === "file" ? { alsoNew: neu } : {};
     return { op: { path: p, owner: e.owner, layer, action: "delete", ...alsoNew }, entry: void 0 };
   }
   const reason = cur.kind === "other" ? cur.what : ambiguous.has(p) ? AMBIGUOUS_REASON : e.sha256 ? "사람이 고친 파일이다" : "lock 에 기준 해시가 없다(고친 파일로 본다)";
@@ -10055,7 +11955,7 @@ function judgeRelayer(l, p, w, e, cur) {
   if (cur.sha === w.sha256) return { op: { path: p, owner: "kit", layer: w.layer, action: "same" }, entry: kit };
   if (e.sha256 && cur.sha === e.sha256) return { op: { path: p, ...withD3, action: "update" }, entry: kit };
   const neu = `${p}.new`;
-  const newFile = existing(import_node_path54.default.join(l.target, ...neu.split("/"))).kind === "other" ? {} : { newFile: neu };
+  const newFile = existing(import_node_path56.default.join(l.target, ...neu.split("/"))).kind === "other" ? {} : { newFile: neu };
   return { op: { path: p, ...withD3, action: "conflict", ...newFile }, entry: { ...e, layer: w.layer } };
 }
 function planRemove(l, after) {
@@ -10107,18 +12007,18 @@ function runRemove(ctx) {
   const featureDocs = dryRun || nothing ? null : applyChange(ctx, l, after, result);
   const notes = [...retiredNotes(asked), ...notOn.length ? [`  · 켜져 있지 않다 — 건너뛴다: ${notOn.join(", ")}`] : []];
   const keep = [...result.ops.filter((o) => o.action === "keep-modified").map((o) => o.path), ...(result.projection?.ops ?? []).filter((o) => o.action === "keep-modified").map((o) => o.path)];
-  const { data, lines } = report(ctx, l, { command: "remove", names: { ...names, notOn }, after, result, dryRun, featureDocs, notes, extra: { keep } });
-  if (keep.length) lines.splice(lines.length - 1, 0, "  고친 파일은 남겼다(lock 은 owner user). 필요 없으면 직접 지운다");
+  const { data, lines: lines2 } = report(ctx, l, { command: "remove", names: { ...names, notOn }, after, result, dryRun, featureDocs, notes, extra: { keep } });
+  if (keep.length) lines2.splice(lines2.length - 1, 0, "  고친 파일은 남겼다(lock 은 owner user). 필요 없으면 직접 지운다");
   const human = keep.length > 0 || result.ops.some((o) => o.action === "conflict") || result.manifest?.action === "conflict" || needsHuman(result.projection ?? null, result.projectionFindings ?? []);
-  return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines };
+  return { code: human ? EXIT.HUMAN : EXIT.OK, data, lines: lines2 };
 }
 
 // src/commands/repair.ts
-var import_node_fs47 = __toESM(require("node:fs"));
-var import_node_path55 = __toESM(require("node:path"));
+var import_node_fs49 = __toESM(require("node:fs"));
+var import_node_path57 = __toESM(require("node:path"));
 var REPAIR_KINDS = ["missing", "drifted", "stale", "merge"];
 function full9(target, rel2) {
-  return import_node_path55.default.join(target, ...rel2.split("/"));
+  return import_node_path57.default.join(target, ...rel2.split("/"));
 }
 function parseOnly2(raw) {
   if (raw === void 0) return [...REPAIR_KINDS];
@@ -10128,7 +12028,7 @@ function parseOnly2(raw) {
   return only;
 }
 function survey(target, inst) {
-  const ancestors = new AncestorCheck(target, import_node_fs47.default.realpathSync(target));
+  const ancestors = new AncestorCheck(target, import_node_fs49.default.realpathSync(target));
   const out = { ok: 0, drifted: 0, skipped: 0, missing: [] };
   for (const e of inst.lock.entries) {
     if (ownerKind2(e.owner) !== "kit" || entryKind(e) !== "copy") {
@@ -10218,7 +12118,7 @@ function repairProjection(ctx, target, inst, only) {
 }
 function repairMerge(target, w, e, only) {
   const p = full9(target, w.path);
-  const cur = import_node_fs47.default.existsSync(p) && import_node_fs47.default.lstatSync(p).isFile() ? import_node_fs47.default.readFileSync(p, "utf8") : null;
+  const cur = import_node_fs49.default.existsSync(p) && import_node_fs49.default.lstatSync(p).isFile() ? import_node_fs49.default.readFileSync(p, "utf8") : null;
   const keys = e && Array.isArray(e.keys) ? e.keys : void 0;
   const lost = cur === null ? ["(파일 없음)"] : keys ? missingWith(w.kind, cur, keys, w.want) : [];
   if (lost.length === 0 && e || !chosen(only, cur === null ? "missing" : "merge")) return null;
@@ -10280,7 +12180,7 @@ function runRepair(ctx) {
   const data = { command: "repair", target, dryRun, kit: { lock: lockVersion, cli: VERSION }, only, counts: counts2, ops: opsJson, hints };
   if (projection) data.projection = { counts: projCounts(projection.ops), ops: projection.ops.map(projOpJson), findings: projection.findings };
   if (source) data.templates = source.templates;
-  const lines = [
+  const lines2 = [
     `harness-kit repair — ${target}`,
     `  킷: lock ${lockVersion ?? "?(v1)"} · CLI ${VERSION}`,
     ...ops.map((o) => `  ${o.action.padEnd(13)} ${o.path}${o.reason ? `  ${o.reason}` : ""}`),
@@ -10294,15 +12194,13 @@ function runRepair(ctx) {
   const local = localAfter(ctx, target, inst, tpl, dryRun);
   if (local) {
     data.local = local.result;
-    lines.splice(lines.length - (dryRun ? 1 : 0), 0, ...local.lines);
+    lines2.splice(lines2.length - (dryRun ? 1 : 0), 0, ...local.lines);
   }
-  return { code, data, lines };
+  return { code, data, lines: lines2 };
 }
 
 // src/commands/reserved.ts
 var RESERVED = {
-  skills: "P20 · HK-18(스킬 목록, 설계 07)",
-  usage: "P20 · HK-18(관리 페이지 사용량, 설계 06 §3.18 · 12)",
   mob: "P21 · HK-19(설계 단계, 설계 08)",
   deploy: "P24(배포 · 운영, 설계 14)",
   ops: "P24(배포 · 운영, 설계 14)",
@@ -10311,9 +12209,105 @@ var RESERVED = {
   sync: "P24(설계 10)"
 };
 
+// src/commands/skills.ts
+var STAGE_KO = { design: "설계", implement: "구현", verify: "검증", docs: "반영", ops: "운영" };
+var SOURCE_KO = { map: "지도", metadata: "머리", 추정: "추정" };
+var pad = (s, n) => s.length >= n ? `${s} ` : s.padEnd(n);
+function skillLines(d, stage) {
+  const roots = d.roots ?? [];
+  const skills = d.skills ?? [];
+  const harnesses = d.harnesses ?? [];
+  const conflicts = d.conflicts ?? [];
+  const lines2 = [];
+  if (stage === void 0) {
+    lines2.push("위치별 개수", ...roots.map((r) => `  ${pad(r.path, 44)} ${pad(r.scope, 16)} ${String(r.count).padStart(4)}${r.error ? ` (읽지 못함: ${r.error})` : ""}`));
+    const map = d.map;
+    lines2.push(map.present ? "지도 칸별 해석" : "스킬 지도 없음(.agents/skill-map.json) — 단계는 설명 낱말로 추정한다");
+    for (const r of map.resolved) lines2.push(`  ${pad(r.command, 18)} ${pad(r.slot, 22)} ${pad(r.harness, 8)} ${r.skill ?? `— (${r.fallback})`}`);
+  }
+  lines2.push(`스킬 ${String(d.shown ?? skills.length)}개(전체 ${String(d.total ?? skills.length)}) — 하네스: ${harnesses.join(" · ")}`);
+  if (skills.length) {
+    lines2.push(`${pad("이름", 34)} ${pad("단계", 12)} ${pad("출처", 8)} ${harnesses.map((h) => pad(h, 8)).join("")}위치`);
+    for (const s of skills) {
+      const want = stage ? STAGE_ALIAS[stage] ?? stage : null;
+      const st = want ? s.stages.find((x) => x.stage === want) : s.stages[0];
+      const stText = st ? `${STAGE_KO[st.stage] ?? st.stage}${st.slot ? `/${st.slot}` : ""}` : "미분류";
+      const overlap = conflicts.some((c) => c.name === s.id) ? " (이름 겹침)" : "";
+      lines2.push(`${pad(s.id, 34)} ${pad(stText, 12)} ${pad(SOURCE_KO[st?.source ?? ""] ?? "-", 8)} ${harnesses.map((h) => pad(s.harnesses[h] ?? "no", 8)).join("")}${s.locations[0]?.path ?? ""}${overlap}${s.error ? ` [오류: ${s.error}]` : ""}`);
+    }
+  }
+  if (conflicts.length) lines2.push("이름 겹침", ...conflicts.map((c) => `  ${c.name}: ${c.candidates.join(" · ")}`));
+  return lines2;
+}
+async function runSkills(ctx) {
+  const v = ctx.values;
+  const query = {};
+  for (const k of ["stage", "harness"]) if (str(v, k)) query[k] = str(v, k);
+  for (const k of ["conflicts", "errors", "all", "refresh"]) if (bool(v, k)) query[k] = "1";
+  if (bool(v, "no-user")) query.user = "0";
+  return run3(ctx, "GET", "/skills", { query }, (d) => skillLines(d, str(v, "stage")));
+}
+function fmt(n) {
+  const trim = (x) => x.toFixed(1).replace(/\.0$/, "");
+  return n >= 1e6 ? `${trim(n / 1e6)}M` : n >= 1e3 ? `${trim(n / 1e3)}K` : String(n);
+}
+async function runUsage(ctx) {
+  const v = ctx.values;
+  if (bool(v, "kit")) {
+    return run3(ctx, "GET", "/usage/kit", {}, (d) => {
+      const s = d.sessionStart;
+      const hooks = d.hooks ?? [];
+      const mods = d.modules ?? [];
+      return [
+        `세션 시작 평균 ${s.avgBytes} / ${s.limit}바이트 ${s.within ? "(상한 안)" : "(상한 넘음)"}`,
+        ...hooks.map((h) => `  ${pad(h.event, 14)} ${pad(h.hook, 30)} ${String(h.count).padStart(5)}회 평균 ${h.avgBytes} 최대 ${h.maxBytes}바이트`),
+        ...mods.map((m) => `  owner ${pad(m.owner, 16)} 세션마다 실리는 파일 ${m.files}개 ${m.bytes}바이트`)
+      ];
+    });
+  }
+  if (bool(v, "now")) {
+    return run3(ctx, "GET", "/usage/now", {}, (d) => {
+      if (d.enabled === false) return ['대화 기록 읽기가 꺼져 있다 — ~/.config/harness-kit/config.json 에 "history": "on"'];
+      const s = d.session;
+      if (!s) return ["이 리포의 최근 세션 기록이 없다"];
+      return [`${s.id} · ${s.model ?? "모델 모름"} · 컨텍스트 ${fmt(s.used)}${s.window ? ` / ${fmt(s.window)} (${Math.round((s.ratio ?? 0) * 100)}%)` : " (창 크기: 기록에 없다)"}${s.warn ? " · 알림 기준을 넘었다" : ""}${s.issue ? ` · ${s.issue}` : ""}`];
+    });
+  }
+  const query = {};
+  if (str(v, "days")) query.days = str(v, "days");
+  if (str(v, "harness")) query.harness = str(v, "harness");
+  return run3(ctx, "GET", "/usage", { query }, (d) => {
+    const sources = d.sources ?? [];
+    const srcLines = sources.map((s) => `  ${pad(s.label, 36)} ${pad(s.state, 5)} 파일 ${s.files} 세션 ${s.sessions}${s.unreadable ? ` 읽지 못함 ${s.unreadable}` : ""}${s.note ? ` · ${s.note}` : ""}`);
+    if (bool(v, "sources")) return ["읽는 곳", ...srcLines];
+    if (d.enabled === false) return ['대화 기록 읽기가 꺼져 있다(기본). 켜려면 사람이 ~/.config/harness-kit/config.json 에 "history": "on" 을 쓴다', ...srcLines];
+    const t = d.totals;
+    const daily = d.daily ?? [];
+    const issues = d.byIssue ?? [];
+    const cache = d.cache;
+    return [
+      `토큰 ${fmt(t.sum)} (입력 ${fmt(t.input)} · 출력 ${fmt(t.output)} · 캐시 읽기 ${fmt(t.cacheRead)} · 캐시 쓰기 ${fmt(t.cacheWrite)}) · 요청 ${t.requests}회 · 캐시 읽기 비율 ${cache.average === null ? "-" : `${Math.round(cache.average * 100)}%`}`,
+      "하루 토큰",
+      ...daily.map((x) => `  ${x.date} ${fmt(x.sum)}`),
+      "이슈별 토큰",
+      ...issues.slice(0, 10).map((x) => `  ${pad(x.issue, 14)} ${fmt(x.sum)}`),
+      "읽는 곳",
+      ...srcLines
+    ];
+  });
+}
+async function runHistory(ctx) {
+  const query = {};
+  for (const k of ["q", "session", "role"]) if (str(ctx.values, k)) query[k] = str(ctx.values, k);
+  return run3(ctx, "GET", "/history", { query }, (d) => {
+    const list3 = d.prompts ?? [];
+    return list3.length ? [`프롬프트 ${String(d.total)}건 중 ${list3.length}건`, ...list3.map((x) => `${x.at.slice(0, 16).replace("T", " ")} ${pad(x.harness, 7)} ${pad(x.issue ?? "-", 12)} ${x.text.replace(/\s+/g, " ").slice(0, 100)}`)] : ["프롬프트 기록이 없다"];
+  });
+}
+
 // src/commands/status.ts
-var import_node_fs48 = __toESM(require("node:fs"));
-var import_node_path56 = __toESM(require("node:path"));
+var import_node_fs50 = __toESM(require("node:fs"));
+var import_node_path58 = __toESM(require("node:path"));
 function registryProjects(ctx) {
   const home = homeOf(ctx);
   return new Projects(() => readRegistry(home), { env: ctx.io.env, home, readOnly: true, multi: true, deps: dashboardDeps() });
@@ -10342,6 +12336,7 @@ async function runStatus(ctx) {
   }
   if (bool(v, "ops")) return run3(ctx, "GET", "/ops", {}, jsonLines);
   if (bool(v, "session")) return run3(ctx, "GET", "/session", {}, jsonLines);
+  if (str(v, "flow") !== void 0 && bool(v, "burn")) return run3(ctx, "GET", `/intents/${encodeURIComponent(str(v, "flow"))}/burn`, { query: str(v, "days") ? { days: str(v, "days") } : {} }, jsonLines);
   if (str(v, "flow") !== void 0) return run3(ctx, "GET", "/flow", { query: { intent: str(v, "flow") } }, jsonLines);
   if (str(v, "doc") !== void 0) return run3(ctx, "GET", "/docs", { query: { path: str(v, "doc") } }, (d) => [String(d.markdown ?? "")]);
   if (bool(v, "verify")) return run3(ctx, "GET", "/verify", { query: str(v, "issue") ? { issue: str(v, "issue") } : {} }, jsonLines);
@@ -10382,9 +12377,6 @@ async function runQuality(ctx) {
   }
   return run3(ctx, "GET", "/reports/summary", {}, jsonLines);
 }
-async function runHistory(ctx) {
-  return run3(ctx, "GET", "/history", {}, jsonLines);
-}
 async function runFlow(ctx) {
   const [sub2] = ctx.positionals;
   if (sub2 !== "gates" || ctx.positionals.length > 1) throw usageError("harness-kit flow gates [--add <게이트> --after <게이트> | --remove <게이트>] [--json]");
@@ -10392,9 +12384,9 @@ async function runFlow(ctx) {
   const remove = str(ctx.values, "remove");
   if (add === void 0 && remove === void 0) return run3(ctx, "GET", "/flow/gates", {}, (d) => [`게이트: ${d.gates.join(" → ")}`, `바닥(줄일 수 없음): ${d.floor.join(" · ")}`]);
   const p = await openProject(ctx);
-  const file = import_node_path56.default.join(p.root, ".agents/harness-kit.json");
-  const meta = JSON.parse(import_node_fs48.default.readFileSync(file, "utf8"));
-  const flow = meta.flow && typeof meta.flow === "object" ? meta.flow : {};
+  const file = import_node_path58.default.join(p.root, ".agents/harness-kit.json");
+  const meta = JSON.parse(import_node_fs50.default.readFileSync(file, "utf8"));
+  const flow2 = meta.flow && typeof meta.flow === "object" ? meta.flow : {};
   let gates = p.gates();
   if (remove !== void 0) {
     if (GATE_FLOOR.includes(remove)) throw new CliError(EXIT.CHECK, `${remove} 는 게이트 바닥이다(줄일 수 없다, 설계 04 §3.8)`);
@@ -10407,17 +12399,17 @@ async function runFlow(ctx) {
     if (after !== void 0 && at === 0) throw new CliError(EXIT.CHECK, `--after ${after} 가 flow.gates 에 없다`);
     gates = [...gates.slice(0, at), add, ...gates.slice(at)];
   }
-  const next = { ...meta, flow: { ...flow, gates } };
+  const next = { ...meta, flow: { ...flow2, gates } };
   const tmp = `${file}.${process.pid}.tmp`;
-  import_node_fs48.default.writeFileSync(tmp, formatJson(next));
-  import_node_fs48.default.renameSync(tmp, file);
+  import_node_fs50.default.writeFileSync(tmp, formatJson(next));
+  import_node_fs50.default.renameSync(tmp, file);
   return { code: EXIT.OK, data: { gates, floor: GATE_FLOOR, file: ".agents/harness-kit.json" }, lines: [`flow.gates: ${gates.join(" → ")}`, "팀 설정이다. MR 로 올린다"] };
 }
 
 // src/commands/uninstall.ts
 var import_node_child_process10 = require("node:child_process");
-var import_node_fs49 = __toESM(require("node:fs"));
-var import_node_path57 = __toESM(require("node:path"));
+var import_node_fs51 = __toESM(require("node:fs"));
+var import_node_path59 = __toESM(require("node:path"));
 var ACTIONS = ["delete", "keep-modified", "absent", "keep-user", "keep-external", "keep-pack", "unmerge"];
 var COUNT_ONLY = /* @__PURE__ */ new Set(["absent", "keep-user", "keep-external", "keep-pack"]);
 var HOOKS_PATH = "scripts/git-hooks";
@@ -10458,7 +12450,7 @@ function planProjectionEntry(p, e) {
   if (!dir && cur.kind !== "other" && current3(p, `${e.path}.new`).kind === "file") p.ops.push({ path: `${e.path}.new`, owner: e.owner, action: "delete", reason: "update 가 둔 .new" });
 }
 function full10(target, rel2) {
-  return import_node_path57.default.join(target, ...rel2.split("/"));
+  return import_node_path59.default.join(target, ...rel2.split("/"));
 }
 function current3(p, rel2) {
   if (p.ancestors.state(rel2) === "blocked") return { kind: "other", what: BLOCKED };
@@ -10501,9 +12493,9 @@ function planManifest(p, inst) {
   else p.ops.push({ path: MANIFEST_PATH, owner: "kit", action: "keep-modified", reason: "킷 판과 다르다" });
 }
 function uninstallSpec(ctx, target) {
-  const installed = import_node_path57.default.join(target, "scripts/harness/projection.json");
+  const installed = import_node_path59.default.join(target, "scripts/harness/projection.json");
   try {
-    if (import_node_fs49.default.existsSync(installed)) return parseSpec(import_node_fs49.default.readFileSync(installed, "utf8"));
+    if (import_node_fs51.default.existsSync(installed)) return parseSpec(import_node_fs51.default.readFileSync(installed, "utf8"));
     const { io: io2 } = ctx;
     return loadSpecOrNull(locateTemplates({ flag: str(ctx.values, "templates"), env: io2.env, cliFile: io2.cliFile, cwd: io2.cwd, version: VERSION }).dir);
   } catch (err) {
@@ -10512,10 +12504,10 @@ function uninstallSpec(ctx, target) {
   }
 }
 function planNotice2(p) {
-  const file = import_node_path57.default.join(p.target, ...NOTICE_REL.split("/"));
+  const file = import_node_path59.default.join(p.target, ...NOTICE_REL.split("/"));
   let text2;
   try {
-    text2 = import_node_fs49.default.readFileSync(file, "utf8");
+    text2 = import_node_fs51.default.readFileSync(file, "utf8");
   } catch {
     return;
   }
@@ -10523,7 +12515,7 @@ function planNotice2(p) {
 }
 function buildUninstall(ctx, target, inst, keepPacks, keepState, ambiguous) {
   const spec = inst.lock.entries.some((e) => e.op === "merge") ? uninstallSpec(ctx, target) : null;
-  const p = { target, ancestors: new AncestorCheck(target, import_node_fs49.default.realpathSync(target)), keepPacks, ops: [], ambiguous, spec, tokens: inst.meta.tokens };
+  const p = { target, ancestors: new AncestorCheck(target, import_node_fs51.default.realpathSync(target)), keepPacks, ops: [], ambiguous, spec, tokens: inst.meta.tokens };
   for (const e of inst.lock.entries) planEntry(p, e);
   planManifest(p, inst);
   planNotice2(p);
@@ -10537,17 +12529,17 @@ function unhookGit(target, env, dryRun) {
   if (top.status !== 0) return { status: "none" };
   let topReal;
   try {
-    topReal = import_node_fs49.default.realpathSync(top.stdout.trim());
+    topReal = import_node_fs51.default.realpathSync(top.stdout.trim());
   } catch {
     return { status: "none" };
   }
-  if (topReal !== import_node_fs49.default.realpathSync(target)) return { status: "none" };
+  if (topReal !== import_node_fs51.default.realpathSync(target)) return { status: "none" };
   const get = git3("config", "--local", "--get", "core.hooksPath");
   if (get.status !== 0) return { status: "none" };
-  const value = get.stdout.trim();
-  if (value !== HOOKS_PATH) return { status: "kept", value };
-  if (!dryRun && git3("config", "--local", "--unset", "core.hooksPath").status !== 0) return { status: "failed", value };
-  return { status: "unset", value };
+  const value2 = get.stdout.trim();
+  if (value2 !== HOOKS_PATH) return { status: "kept", value: value2 };
+  if (!dryRun && git3("config", "--local", "--unset", "core.hooksPath").status !== 0) return { status: "failed", value: value2 };
+  return { status: "unset", value: value2 };
 }
 function applyUninstall(target, inst, ops, unhook) {
   const state = /* @__PURE__ */ new Set([LOCK_REL, META_REL]);
@@ -10555,7 +12547,7 @@ function applyUninstall(target, inst, ops, unhook) {
   try {
     for (const o of ops) {
       current4 = o.path;
-      if (o.action === "unmerge" && o.text !== void 0) writeFileAtomic(import_node_path57.default.join(target, ...o.path.split("/")), Buffer.from(o.text, "utf8"), false);
+      if (o.action === "unmerge" && o.text !== void 0) writeFileAtomic(import_node_path59.default.join(target, ...o.path.split("/")), Buffer.from(o.text, "utf8"), false);
       if (o.action !== "delete" || state.has(o.path)) continue;
       if (o.dir) removeTarget(target, o.path, true);
       else removeFile(target, o.path);
@@ -10641,7 +12633,7 @@ async function runUninstall(ctx) {
     gitHooks,
     keepState
   };
-  const lines = [
+  const lines2 = [
     `harness-kit uninstall — ${target}`,
     ...listed.map(opLine4),
     `  지움 ${c.delete} · 남김(사람이 고침) ${c["keep-modified"]} · 이미 없음 ${c.absent} · 사람 · 외부 · 팩 파일 ${c["keep-user"] + c["keep-external"] + c["keep-pack"]}`,
@@ -10650,12 +12642,12 @@ async function runUninstall(ctx) {
     ...keep.length ? ["  고친 파일은 남겼다. 필요 없으면 직접 지운다"] : [],
     ...dryRun ? ["  (dry-run — 지우지 않았다)"] : []
   ];
-  return { code: keep.length ? EXIT.HUMAN : EXIT.OK, data, lines };
+  return { code: keep.length ? EXIT.HUMAN : EXIT.OK, data, lines: lines2 };
 }
 
 // src/commands/pack.ts
-var import_node_fs50 = __toESM(require("node:fs"));
-var import_node_path58 = __toESM(require("node:path"));
+var import_node_fs52 = __toESM(require("node:fs"));
+var import_node_path60 = __toESM(require("node:path"));
 var TEST_PY = `"""팩 자체 검사(설계 04 §3.2 검증) — 이 폴더에서 python3 -m unittest tests.test_pack 으로 돈다. 팩과 함께 설치하지 않는다."""
 
 import json
@@ -10719,16 +12711,16 @@ function classify(dest, provides, name) {
   return true;
 }
 function filesUnder(target, rel2) {
-  const abs = import_node_path58.default.join(target, ...rel2.split("/"));
-  const st = import_node_fs50.default.lstatSync(abs);
+  const abs = import_node_path60.default.join(target, ...rel2.split("/"));
+  const st = import_node_fs52.default.lstatSync(abs);
   if (st.isSymbolicLink()) throw usageError(`--from 은 링크를 받지 않는다: ${rel2}`);
   if (st.isFile()) return [rel2];
-  return import_node_fs50.default.readdirSync(abs).sort(byteCompare).flatMap((n) => filesUnder(target, `${rel2}/${n}`));
+  return import_node_fs52.default.readdirSync(abs).sort(byteCompare).flatMap((n) => filesUnder(target, `${rel2}/${n}`));
 }
 function pickItem(target, rel2, id, key) {
   let doc;
   try {
-    doc = JSON.parse(import_node_fs50.default.readFileSync(import_node_path58.default.join(target, ...rel2.split("/")), "utf8"));
+    doc = JSON.parse(import_node_fs52.default.readFileSync(import_node_path60.default.join(target, ...rel2.split("/")), "utf8"));
   } catch (err) {
     throw usageError(`--from ${rel2}#${id}: 읽을 수 없다(${err instanceof Error ? err.message : String(err)})`);
   }
@@ -10745,10 +12737,10 @@ function runPack(ctx) {
   const dirFlag = str(ctx.values, "dir");
   if (!dirFlag) throw usageError("pack new 는 --dir <경로> 가 필요하다(빈 폴더나 없는 경로)");
   const target = targetOf(ctx);
-  const dir = import_node_path58.default.resolve(ctx.io.cwd, dirFlag);
-  const relToRepo = import_node_path58.default.relative(import_node_path58.default.join(target, ".agents"), dir);
-  if (!relToRepo.startsWith("..") && !import_node_path58.default.isAbsolute(relToRepo)) throw usageError(`--dir 은 리포 .agents/ 안일 수 없다: ${dir}`);
-  if (import_node_fs50.default.existsSync(dir) && (!import_node_fs50.default.statSync(dir).isDirectory() || import_node_fs50.default.readdirSync(dir).length)) throw usageError(`--dir 은 빈 폴더나 없는 경로다: ${dir}`);
+  const dir = import_node_path60.default.resolve(ctx.io.cwd, dirFlag);
+  const relToRepo = import_node_path60.default.relative(import_node_path60.default.join(target, ".agents"), dir);
+  if (!relToRepo.startsWith("..") && !import_node_path60.default.isAbsolute(relToRepo)) throw usageError(`--dir 은 리포 .agents/ 안일 수 없다: ${dir}`);
+  if (import_node_fs52.default.existsSync(dir) && (!import_node_fs52.default.statSync(dir).isDirectory() || import_node_fs52.default.readdirSync(dir).length)) throw usageError(`--dir 은 빈 폴더나 없는 경로다: ${dir}`);
   const inst = loadInstalled(target, "pack new");
   const loc = locateTemplates({ flag: str(ctx.values, "templates"), env: ctx.io.env, cliFile: ctx.io.cliFile, cwd: ctx.io.cwd, version: VERSION });
   const layout2 = loadLayout(loc.dir);
@@ -10782,7 +12774,7 @@ function runPack(ctx) {
       } else throw usageError(`--from <파일>#<id> 는 .agents/hooks.json · hooks.d · verify-checks.json · verify-checks.d 에만 쓴다: ${raw}`);
       continue;
     }
-    if (!import_node_fs50.default.existsSync(import_node_path58.default.join(target, ...rel2.split("/")))) throw usageError(`--from 파일이 없다: ${rel2}`);
+    if (!import_node_fs52.default.existsSync(import_node_path60.default.join(target, ...rel2.split("/")))) throw usageError(`--from 파일이 없다: ${rel2}`);
     for (const f of filesUnder(target, rel2)) {
       const packPath = reverseMap(layout2, f);
       if (!packPath) throw usageError(`팩이 가질 수 없는 경로다(하네스 파일 · 루트 문서): ${f}`, "원본(.agents/ · scripts/)을 준다");
@@ -10790,8 +12782,8 @@ function runPack(ctx) {
         overrides.push(f);
         warnings.push(`${f} 는 킷 경로다 — overrides 에 넣었다(킷 판을 덮는다)`);
       } else if (!classify(f, provides, name)) throw usageError(`provides 로 나눌 수 없는 경로다: ${f}`, "규칙 · 스킬 · 역할 · 가드 · scripts · _spec-templates · tools/<팩>/ 만 옮긴다");
-      const abs = import_node_path58.default.join(target, ...f.split("/"));
-      files.set(packPath, { data: import_node_fs50.default.readFileSync(abs), executable: (import_node_fs50.default.statSync(abs).mode & 73) !== 0 });
+      const abs = import_node_path60.default.join(target, ...f.split("/"));
+      files.set(packPath, { data: import_node_fs52.default.readFileSync(abs), executable: (import_node_fs52.default.statSync(abs).mode & 73) !== 0 });
     }
   }
   const range = str(ctx.values, "kit-range") ?? defaultRange();
@@ -10813,12 +12805,12 @@ function runPack(ctx) {
     ...files
   ]);
   try {
-    import_node_fs50.default.mkdirSync(import_node_path58.default.join(dir, "common"), { recursive: true });
-    for (const [rel2, f] of out) writeFileAtomic(import_node_path58.default.join(dir, ...rel2.split("/")), f.data, f.executable);
+    import_node_fs52.default.mkdirSync(import_node_path60.default.join(dir, "common"), { recursive: true });
+    for (const [rel2, f] of out) writeFileAtomic(import_node_path60.default.join(dir, ...rel2.split("/")), f.data, f.executable);
   } catch (err) {
     throw new CliError(EXIT.ENV, `팩 골격을 쓰지 못했다: ${err instanceof Error ? err.message : String(err)}`);
   }
-  const lines = [
+  const lines2 = [
     `harness-kit pack new ${name} — ${dir}`,
     ...[...out.keys()].sort(byteCompare).map((p) => `  + ${p}`),
     ...warnings.map((w) => `  ⚠ ${w}`),
@@ -10827,12 +12819,12 @@ function runPack(ctx) {
     `    프로젝트 .agents/harness-kit.json packs 에 "git:<host>/<path>#v0.1.0" 을 더한다(MR)`,
     "    npx harness-kit update --packs"
   ];
-  return { code: EXIT.OK, data: { command: "pack", sub: "new", name, dir, files: [...out.keys()].sort(byteCompare), manifest, warnings }, lines };
+  return { code: EXIT.OK, data: { command: "pack", sub: "new", name, dir, files: [...out.keys()].sort(byteCompare), manifest, warnings }, lines: lines2 };
 }
 
 // src/commands/work.ts
-var import_node_fs51 = __toESM(require("node:fs"));
-var import_node_path59 = __toESM(require("node:path"));
+var import_node_fs53 = __toESM(require("node:fs"));
+var import_node_path61 = __toESM(require("node:path"));
 var ISSUE_ROLE = /^([A-Z][A-Z0-9]{1,9}-[1-9][0-9]{0,5}):([a-z][a-z0-9-]*)$/;
 async function runDispatch(ctx) {
   const [sub2, id, extra] = ctx.positionals;
@@ -10852,7 +12844,7 @@ async function runDispatch(ctx) {
   const kind = str(ctx.values, "kind") ?? (text2 ? "custom" : "doc-changed");
   const m = ISSUE_ROLE.exec(to);
   const p = await openProject(ctx);
-  const isSession = import_node_fs51.default.existsSync(import_node_path59.default.join(p.root, ".agents/state/sessions", `${to}.json`));
+  const isSession = import_node_fs53.default.existsSync(import_node_path61.default.join(p.root, ".agents/state/sessions", `${to}.json`));
   const target = m ? { issue: m[1], role: m[2] } : isSession ? { sessionId: to } : { name: to };
   const via = str(ctx.values, "via");
   return run3(
@@ -10913,7 +12905,7 @@ async function runProjects(ctx) {
       return { code: EXIT.OK, data, lines: rows.length ? rows.map((r) => `${r.name.padEnd(24)} ${r.state === "ok" ? "" : `(${r.state}) `}${r.path}`) : ["등록한 프로젝트가 없다"] };
     }
     if (sub2 === "add" && arg && !extra) {
-      const r = addProject(home, import_node_path59.default.resolve(ctx.io.cwd, arg), today(ctx.io));
+      const r = addProject(home, import_node_path61.default.resolve(ctx.io.cwd, arg), today(ctx.io));
       return { code: EXIT.OK, data: { added: r.added, project: r.entry }, lines: [r.added ? `등록했다: ${r.entry.name} ${r.entry.path}` : `이미 있다: ${r.entry.name}`] };
     }
     if (sub2 === "remove" && arg && !extra) {
@@ -10951,6 +12943,8 @@ var COMMANDS = {
   flow: runFlow,
   quality: runQuality,
   history: runHistory,
+  skills: runSkills,
+  usage: runUsage,
   pack: runPack,
   local: runLocal,
   intake: runIntake
@@ -10975,6 +12969,7 @@ var USAGE = `harness-kit ${VERSION} — 하네스 엔지니어링 스타터 킷
   approve    사람 터미널 승인(approvals.md 에 덧붙인다). answer 질문 답 · review show|decide 리뷰 판단
   sessions   켜 둔 세션. dispatch 세션에 작업 요청(사람이 고를 때만) · dispatch list|drop 대기함
   units      Unit 변경 제안(propose · discard). flow gates 흐름 틀 · quality 품질 결과 · projects 등록부
+  skills     이 컴퓨터 · 리포의 스킬 목록(단계 · 하네스 · 이름 겹침). usage 토큰 사용량 · 킷이 덧붙인 양 · history 프롬프트 기록
   pack       pack new <이름> --dir <경로> --from <파일>… — 프로젝트 파일로 회사 팩 골격을 만든다
   local      local sync | list — 개인 층(.agents/local/)을 하네스 폴더에 배치한다(공유 lock 밖)
   intake     요구사항 접수 — 글 · 첨부를 Intent 폴더(bug 는 이슈 폴더)로 받는다(신뢰하지 않는 입력으로 표시)
@@ -11001,7 +12996,7 @@ var COMMAND_HELP = {
   repair: "harness-kit repair [--dry-run] [--only missing,drifted,stale,merge] [--json] — 되살리지 못한 missing 이 있으면 exit 4\n",
   uninstall: "harness-kit uninstall [--dry-run] [--yes] [--keep-state] [--keep-packs] [--json] — 고친 파일을 남기면 exit 4. TTY 가 아니면 --yes\n",
   dashboard: "harness-kit dashboard [--port <n>] [--open] [--read-only] [--export <폴더>] [--all | --root <dir> | --workspace <file>] — 127.0.0.1 에만 연다. 주소는 stdout, 승인 PIN 은 stderr\n",
-  status: "harness-kit status [--session | --intents | --intent <INT> [--gate codebase|plans] | --issues [--area --stage --intent] | --issue <키> | --doc <경로> | --verify [--issue] | --worktrees | --harness | --flow <INT> | --all] [--json]\n",
+  status: "harness-kit status [--session | --intents | --intent <INT> [--gate codebase|plans] | --issues [--area --stage --intent] | --issue <키> | --doc <경로> | --verify [--issue] | --worktrees | --harness | --flow <INT> [--burn [--days n]] | --all] [--json]\n",
   projects: "harness-kit projects list | add <폴더> | remove <이름|경로> [--json] — 등록부 ~/.config/harness-kit/projects.json\n",
   approve: 'harness-kit approve <키> --gate <게이트> --phrase "<문구>" [--changes-requested [--rule-candidate]] [--json] — 사람 터미널에서만(에이전트 세션 · TTY 아님은 exit 3)\n',
   answer: "harness-kit answer <INT|키> --list | <Q-n> --choice <A-D|other> [--text …] [--json] — 사람 터미널에서만\n",
@@ -11011,7 +13006,9 @@ var COMMAND_HELP = {
   units: "harness-kit units propose <INT> --add-dep U-a:U-b | --remove-dep U-a:U-b | --split U-n=제목1|제목2 | --merge U-a,U-b | --order U-a,U-b [--reason …] | units discard <INT>\n",
   flow: "harness-kit flow gates [--add <게이트> --after <게이트> | --remove <게이트>] [--json]\n",
   quality: "harness-kit quality [--findings [--issue <키>] [--severity S] [--new]] [--json]\n",
-  history: "harness-kit history [--q …] [--json] — ~/.config/harness-kit/config.json 의 history 가 on 일 때만(HK-18)\n",
+  history: "harness-kit history [--q …] [--session <id>] [--role <역할>] [--json] — ~/.config/harness-kit/config.json 의 history 가 on 일 때만. 꺼져 있으면 exit 1(history_off)\n",
+  skills: "harness-kit skills [--stage <단계>] [--harness <h>] [--conflicts] [--errors] [--all] [--no-user] [--refresh] [--json] — 읽기만 한다. 단계는 설계 · 구현 · 검증 · 반영 · 운영(영어도 된다)\n",
+  usage: "harness-kit usage [--days n] [--harness h] [--sources] | usage --now | usage --kit [--json] — 대화 기록 읽기가 꺼져 있으면(기본) 킷이 덧붙인 양(--kit)만 보인다\n",
   pack: 'harness-kit pack new <이름> --dir <경로> [--from <파일|폴더>[#훅·검사 id]]… [--kit-range ">=2.0.0 <3.0.0"] [--json] — --dir 은 빈 폴더나 없는 경로\n',
   intake: "harness-kit intake --title <제목> --kind feature|change|refactor|product|bug --name <영문-kebab> [--area <영역>] [--text … | --text - | --text-file 파일] [--attach 파일]… [--link URL]… [--json] — 비밀값이 든 글은 접수하지 않는다(exit 1)\n",
   local: "harness-kit local sync [--dry-run] | local list [--json] — 개인 스킬 · Kiro 규칙 · 개인 훅(.claude/settings.local.json · .kiro/hooks/local-*). 공유 원본과 이름이 같으면 배치하지 않는다\n"
