@@ -61,7 +61,6 @@ describe("진입점", () => {
   });
 
   it.each([
-    ["skills", "HK-18"],
     ["intake", "HK-19"],
     ["mob", "P21"],
     ["sync", "P24"],

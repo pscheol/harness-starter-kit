@@ -98,7 +98,7 @@ describe("대화 기록은 기본 꺼짐(DB-R28)", () => {
       writeFile(repo.home, ".config/harness-kit/config.json", JSON.stringify({ history: "on" }));
       const before = snapshotTree(repo.root);
       const on = await call(srv, "GET", "/api/v1/history");
-      expect([on.status, on.json.error.code, on.json.error.details.stage]).toEqual([501, "not_implemented", "HK-18"]);
+      expect([on.status, on.json.data.enabled, on.json.data.prompts]).toEqual([200, true, []]);
       expect(snapshotTree(repo.root)).toEqual(before);
     } finally {
       (fs as any).readFileSync = origRead;
@@ -110,7 +110,7 @@ describe("대화 기록은 기본 꺼짐(DB-R28)", () => {
 
   it("범위 밖 API 는 501 과 제공 이슈를 낸다", async () => {
     const srv = await serve(makeRepo());
-    for (const [route, stage, method] of [["skills", "HK-18", "GET"], ["usage", "HK-18", "GET"], ["ops", "HK-21", "GET"], ["checkpoints", "HK-20", "GET"], ["intents/INT-1/burn", "HK-18", "GET"], ["intake", "HK-19", "POST"]] as const) {
+    for (const [route, stage, method] of [["ops", "HK-21", "GET"], ["checkpoints", "HK-20", "GET"], ["intake", "HK-19", "POST"]] as const) {
       const r = await call(srv, method, `/api/v1/${route}`, method === "POST" ? { body: {} } : {});
       expect([route, r.status, r.json.error.code, r.json.error.details.stage]).toEqual([route, 501, "not_implemented", stage]);
     }

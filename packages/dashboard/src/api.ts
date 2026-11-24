@@ -3,7 +3,8 @@
  * 표의 cli 칸은 같은 결과를 내는 콘솔 명령이다. 이 모듈의 쓰기 처리는 세션에 아무것도 보내지 않는다(DB-R25) —
  * 세션 요청은 POST /dispatch 하나뿐이고 사람이 고를 때만 부른다.
  */
-import { ApiError, bad, notFound, notImplemented } from "./errors";
+import { burnData } from "./burn";
+import { bad, notFound, notImplemented } from "./errors";
 import { findIntent, flowData, intentFolders, intentModel } from "./flow";
 import { doctorOf, load, overview, sessionInfo } from "./model";
 import { GATE_FLOOR, type Project } from "./project";
@@ -12,6 +13,8 @@ import { publicIssue } from "./readers/issues";
 import { publicSession, readQueue, readSessions } from "./readers/sessions";
 import { readFindings, readReview, readSummary, readVerify, readWorktrees } from "./readers/state";
 import { checkouts } from "./repo";
+import { filterInventory, skillsInventory } from "./skills";
+import { historyData, usageData, usageKit, usageNow } from "./usage";
 import { isObj } from "./util";
 import { postAnswer, getQuestions } from "./writers/answers";
 import { issueFolder, postApproval, postReviewDecision, type Via } from "./writers/approvals";
@@ -95,7 +98,13 @@ export const ROUTES: Route[] = [
       return ok(intentModel(p, findIntent(p.root, r.params.key as string), issues));
     },
   },
-  stub("GET", "/intents/{key}/burn", "HK-18", "status --flow <INT> --burn(HK-18)", "남은 Bolt 계단선"),
+  {
+    method: "GET", path: "/intents/{key}/burn", cli: "status --flow <INT> --burn [--days n]",
+    handler: async (p, r) => {
+      const { issues } = await load(p);
+      return ok(await burnData(p, findIntent(p.root, r.params.key as string), issues, q(r, "days")));
+    },
+  },
   { method: "GET", path: "/issues", cli: "status --issues [--area --stage --intent]", handler: issueList },
   { method: "GET", path: "/issues/{key}", cli: "status --issue <키>", handler: async (p, r) => ok(publicIssue(await oneIssue(p, r.params.key as string))) },
   { method: "GET", path: "/docs", cli: "status --doc <경로>", handler: async (p, r) => ok(await getDoc(p, q(r, "path"), r.sign)) },
@@ -146,7 +155,14 @@ export const ROUTES: Route[] = [
       return ok({ sessions: (await readSessions(p)).map(publicSession) });
     },
   },
-  stub("GET", "/skills", "HK-18", "skills(HK-18)", "스킬 목록"),
+  {
+    method: "GET", path: "/skills", cli: "skills [--stage <단계>] [--harness <h>] [--conflicts] [--errors] [--all] [--no-user] [--refresh]",
+    handler: async (p, r) => {
+      const inv = await skillsInventory(p, { user: q(r, "user") !== "0", refresh: q(r, "refresh") === "1" });
+      const flag = (k: string): boolean => q(r, k) === "1" || q(r, k) === "true";
+      return ok(filterInventory(inv, { stage: q(r, "stage"), harness: q(r, "harness"), conflicts: flag("conflicts"), errors: flag("errors"), all: flag("all") }));
+    },
+  },
   {
     method: "GET", path: "/harness", cli: "status --harness",
     handler: async (p) => {
@@ -202,15 +218,12 @@ export const ROUTES: Route[] = [
       return ok(await projectsOverview(r.projects));
     },
   },
-  stub("GET", "/usage", "HK-18", "usage(HK-18)", "토큰 사용량"),
-  stub("GET", "/usage/now", "HK-18", "usage --now(HK-18)", "지금 세션 컨텍스트"),
-  stub("GET", "/usage/kit", "HK-18", "usage --kit(HK-18)", "킷이 덧붙인 양"),
+  { method: "GET", path: "/usage", cli: "usage [--days n] [--harness h] [--sources]", handler: async (p, r) => ok(await usageData(p, { days: q(r, "days"), harness: q(r, "harness") })) },
+  { method: "GET", path: "/usage/now", cli: "usage --now", handler: async (p) => ok(await usageNow(p)) },
+  { method: "GET", path: "/usage/kit", cli: "usage --kit", handler: async (p) => ok(await usageKit(p)) },
   {
-    method: "GET", path: "/history", stub: "HK-18", cli: "history [--q] (꺼짐이면 history_off)",
-    handler: async (p) => {
-      if (p.machineConfig().history !== "on") throw new ApiError(404, "history_off", "대화 기록 읽기가 꺼져 있다. 켜려면 사람이 ~/.config/harness-kit/config.json 에 \"history\": \"on\" 을 쓴다", { config: "~/.config/harness-kit/config.json" });
-      throw notImplemented("HK-18", "프롬프트 기록");
-    },
+    method: "GET", path: "/history", cli: "history [--q …] [--session id] [--role r] (꺼짐이면 history_off)",
+    handler: async (p, r) => ok(await historyData(p, { q: q(r, "q"), session: q(r, "session"), role: q(r, "role") })),
   },
   { method: "GET", path: "/raw/{path}", cli: "— (브라우저 이미지 · 와이어프레임, 서명 URL)", handler: async () => { throw notFound("서명 URL 로만 연다"); } },
 ];
