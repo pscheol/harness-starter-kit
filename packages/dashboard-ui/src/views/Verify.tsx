@@ -38,7 +38,7 @@ function GatePanel({ g }: { g: Loose | null }) {
     return (
       <Panel title="품질 게이트">
         <Notice kind="info" title="품질 게이트 결과가 아직 없습니다. ">게이트가 돌면 .agents/reports/quality-gate-last.json 이 생깁니다.</Notice>
-        <CommandBox cmd="npx knots-sync quality" />
+        <CommandBox cmd="knots-sync quality" />
       </Panel>
     );
   }
@@ -179,7 +179,7 @@ export default function Verify({ route: _route }: { route: Route }) {
               ) : (
                 <>
                   <Empty title="정적 분석 결과가 없습니다" text="분석기가 돌면 .agents/reports/findings-latest.json 이 생깁니다." />
-                  <CommandBox cmd="npx knots-sync quality --findings" />
+                  <CommandBox cmd="knots-sync quality --findings" />
                 </>
               )}
             </Panel>

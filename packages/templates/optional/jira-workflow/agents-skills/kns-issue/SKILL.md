@@ -44,7 +44,7 @@ description: 이슈 트래커 단품 조작 — 조회·착수(락 + In Progress
 5. 락은 쓴 뒤 **다시 읽어 자기 것인지 확인**한다. 실패하면 착수하지 않는다.
 6. 실패는 그대로 보고한다. **부분 성공을 성공으로 적지 않는다**(상태는 바뀌고 코멘트는 실패한 경우 등).
 
-> v2: 상태 맞추기 · 원격 링크는 `npx knots-sync sync jira`, 사람이 한 승인 전이 가져오기는 `npx knots-sync sync jira --approvals`(경로 `jira`). 승인 기록을 직접 쓰지 않는다.
+> v2: 상태 맞추기 · 원격 링크는 `knots-sync sync jira`, 사람이 한 승인 전이 가져오기는 `knots-sync sync jira --approvals`(경로 `jira`). 승인 기록을 직접 쓰지 않는다.
 >
 > 이 명령은 **트래커만** 다룬다. 티켓을 받아 SDD 스펙을 쓰고 구현해 리뷰까지 올리는 **전 여정**은 `/kns-ticket`.
 

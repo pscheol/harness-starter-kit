@@ -90,6 +90,8 @@ CASES = (
     Case("24-electron-feature", "electron", "feature"),
     Case("25-python-layered-module-later-wins", "python", "layered", modules=OVERLAP_MODULE, patch=LATER_PATCH),
     Case("26-go-special-tokens", "go", "hexagonal", agents="claude", tokens=SPECIAL_TOKENS),
+    # ci 모듈: 모듈 폴더(진입 파일) + 모듈 안 stacks/<스택>/ 층(실행 환경 액션)
+    Case("27-web-spa-ci-module", "web", "react-spa", agents="claude,codex", modules="ci,jira-workflow"),
 )
 
 
@@ -328,6 +330,23 @@ class CliParityTest(unittest.TestCase):
             with self.subTest(path=rel, lock=True):
                 self.assertEqual(sh_layers[rel], [f"mod/{OVERLAP_MODULE}"])
                 self.assertEqual(cl_layers[rel], [f"optional/{OVERLAP_MODULE}"])
+
+    def test_ci_entry_files_only_with_ci_module(self):
+        """CI 진입 파일은 ci 모듈을 고른 설치에만 있다. 실행 환경 액션은 모듈 안 stacks/<스택>/ 층에서 온다(두 설치 같은 라벨)."""
+        entry = (".gitlab-ci.yml", ".github/workflows/harness-verify.yml")
+        action = ".github/actions/harness-setup/action.yml"
+        for o in self.outcomes:
+            with_ci = "ci" in o.case.modules.split(",") or o.case.modules == "all"
+            for target in (o.sh, o.cli):
+                with self.subTest(case=o.case.name, target=target.parent.name):
+                    for rel in (*entry, action):
+                        self.assertEqual((target / rel).is_file(), with_ci, rel)
+                    self.assertFalse((target / "stacks").exists())
+        o = self.outcome("27-web-spa-ci-module")
+        sh_layers, cl_layers = lock_layers(o.sh / STATE[0]), lock_layers(o.cli / STATE[0])
+        for rel in entry:
+            self.assertEqual((sh_layers[rel], cl_layers[rel]), (["mod/ci"], ["optional/ci"]), rel)
+        self.assertEqual((sh_layers[action], cl_layers[action]), (["mod/ci/stacks/web"], ["optional/ci/stacks/web"]))
 
     def test_retired_module_is_ignored_with_notice(self):
         """없앤 모듈 platform-guards: setup.sh · CLI init 모두 한 줄 알리고 넘긴다. 메타에 적지 않는다(HK-25 R2)."""

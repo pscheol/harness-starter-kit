@@ -7,7 +7,7 @@ description: '기획물 — /kns-plans doc|screen|design|backlog <Intent 키>. �
 
 절차(`<종류>` = doc · screen · design · backlog):
 1. `python3 scripts/harness/intent.py next <키>` — intent 게이트가 `flow.gates` 에 있고 승인 전이면 멈춘다.
-2. 스킬 지도 `.agents/skill-map.json` 의 `design.<종류>` 칸(해석 결과는 `npx knots-sync skills --json` 의 `map.resolved` — 지도에 없으면 템플릿)에 이 컴퓨터에 깔린 스킬이 있으면 그 스킬에 입력(intent.md · units.json · 출력 경로 · 템플릿 경로 · `.agents/rules/writing-style.md`)을 주고, 없으면 템플릿을 복사해 intent.md · units.json 에서 채운다. 머리 `generatedWith` 에 `skill:<이름>` 또는 `template:plans/<파일>` 을 적는다.
+2. 스킬 지도 `.agents/skill-map.json` 의 `design.<종류>` 칸(해석 결과는 `knots-sync skills --json` 의 `map.resolved` — 지도에 없으면 템플릿)에 이 컴퓨터에 깔린 스킬이 있으면 그 스킬에 입력(intent.md · units.json · 출력 경로 · 템플릿 경로 · `.agents/rules/writing-style.md`)을 주고, 없으면 템플릿을 복사해 intent.md · units.json 에서 채운다. 머리 `generatedWith` 에 `skill:<이름>` 또는 `template:plans/<파일>` 을 적는다.
 
 | 종류 | 출력 |
 |---|---|

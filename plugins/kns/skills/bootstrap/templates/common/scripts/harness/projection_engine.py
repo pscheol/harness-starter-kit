@@ -280,6 +280,13 @@ def owner_kind(owner: str) -> str:
     return "unknown"
 
 
+# 훅 설정 병합(.claude/settings.json · .codex/hooks.json)
+HOOK_MERGE_KINDS = frozenset({"settings", "codex-hooks"})
+# v1.0.7 이하 킷이 훅 스크립트를 둔 폴더(v1.0.8 부터 scripts/hooks/)
+LEGACY_HOOK_DIRS = (".claude/hooks/", ".codex/hooks/")
+KEPT_LEGACY_HOOK = "사람이 고친 옛 훅 스크립트다 — 지우지 않았고 설정의 호출 줄도 남겼다(새 훅과 함께 돈다). 고친 내용을 새 훅으로 옮긴 뒤 호출 줄과 파일을 지운다"
+
+
 class Engine:
     """설치 · update 판정과 적용(design §6.2 · §6.3). dry_run 이면 판정만 한다."""
 
@@ -293,6 +300,21 @@ class Engine:
         self.sources = load_sources(root)
         self.ops: list[Op] = []
         self.entries: list[Entry] = []
+        # 이번 update 가 지우는 v1 포인터 경로. 그 경로로 끝나는 훅 줄은 킷 줄로 보고 새 훅으로 바꾼다 — 남기면 지운 파일을 부른다.
+        self.gone_scripts: list[str] = []
+
+    def will_remove(self, e: Entry) -> bool:
+        """drop 이 지울 항목인가(킷 소유 copy 이고 파일이 없거나 설치 때 그대로다). drop 의 판정과 같다."""
+        if owner_kind(e.owner) != "kit" or e.op == "merge":
+            return False
+        p = self.root / e.path
+        cur = state(self.root, e.path, p.is_dir() and not p.is_symlink())
+        return cur["kind"] == "none" or (cur["kind"] == "file" and e.sha is not None and cur["sha"] == e.sha)
+
+    def with_gone_scripts(self, w: Want) -> dict:
+        if not self.gone_scripts or w.kind not in HOOK_MERGE_KINDS:
+            return w.merge
+        return {**w.merge, "suffixes": list(w.merge.get("suffixes") or []) + self.gone_scripts}
 
     def wants_by_path(self) -> dict[str, Want]:
         return {w.path: w for w in self.wants}
@@ -313,6 +335,7 @@ class Engine:
             self.emit(Op(w.path, "merge", "conflict", "일반 파일이 아니다"), prev)
             return
         merge, _, _ = MERGERS[w.kind]
+        want = self.with_gone_scripts(w)
         v1 = next((c for c in claimed if c.path == w.path), None)
         created = bool(prev and prev.created)
         if v1 is not None and cur is not None:
@@ -323,14 +346,14 @@ class Engine:
                 if unmodified:
                     cur, created = None, True
                 elif not has_block:
-                    fresh = merge(None, w.merge)
+                    fresh = merge(None, want)
                     self.emit(Op(w.path, "merge", "conflict", "v1 CLAUDE.md 를 사람이 고쳤다", new_files=[f"{w.path}.new"]), v1)
                     if not self.dry_run:
                         write_atomic(self.root / f"{w.path}.new", fresh["text"].encode("utf-8"), False)
                     return
             else:
                 created = unmodified
-        r = merge(cur, w.merge, prev.keys if prev and prev.keys is not None else None)
+        r = merge(cur, want, prev.keys if prev and prev.keys is not None else None)
         if not r["ok"]:
             self.emit(Op(w.path, "merge", "conflict", r["reason"]), prev or Entry(w.path, "merge", "kit", harness=w.harness, keys=[]))
             return
@@ -478,7 +501,8 @@ class Engine:
                 delete_want_path(self.root, e.path, is_dir)
             self.ops.append(Op(e.path, e.op, action, why))
             return
-        self.emit(Op(e.path, e.op, "keep-modified", "사람이 고친 파일이다 — 지우지 않았다"), Entry(e.path, e.op, "user", None, e.harness, label=e.label))
+        reason = KEPT_LEGACY_HOOK if e.path.startswith(LEGACY_HOOK_DIRS) else "사람이 고친 파일이다 — 지우지 않았다"
+        self.emit(Op(e.path, e.op, "keep-modified", reason), Entry(e.path, e.op, "user", None, e.harness, label=e.label))
 
 
 def claims(w: Want, path: str) -> bool:
@@ -510,6 +534,8 @@ def run_update(engine: Engine, prev: list[Entry], copy_now: set[str], accept_all
             claimed.setdefault(w.path, []).append(e)
         else:
             rest.append(e)
+    retiring = [e for e in rest if e.path.startswith(HARNESS_DIRS) and not replacement_deferred(e.path, wants)]
+    engine.gone_scripts = [e.path for e in sorted(retiring, key=lambda e: e.path.encode("utf-8")) if engine.will_remove(e)]
     for w in sorted(engine.wants, key=lambda w: w.path.encode("utf-8")):
         engine.update(w, projection.get(w.path), claimed.get(w.path, []), accept_all)
     for path in byte_sorted(p for p in projection if p not in wants):

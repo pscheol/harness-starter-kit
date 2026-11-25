@@ -99,6 +99,13 @@ class ProtectApprovalsTest(unittest.TestCase):
             "npx knots-sync review decide DEMO-1 F-1 --risk-accepted",
             # HK-17(06 §3.15): 질문 답 명령 · 답 · 리뷰 판단 API 도 사람만 한다
             "npx knots-sync answer INT-1 Q-1 --choice A",
+            # 같은 CLI 의 다른 이름 · 부르는 길(전역 설치 · bin 별칭 · GitHub 판 고정 npx)도 막는다(2026-11-25)
+            "knots-sync approve DEMO-1 --gate done",
+            "kns approve DEMO-1 --gate done",
+            "harness-kit approve DEMO-1 --gate done",
+            "npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.2 approve DEMO-1 --gate done",
+            "npx github:pscheol/harness-starter-kit review decide DEMO-1 F-1 --risk-accepted",
+            "kns answer INT-1 Q-1 --choice A",
             "curl -s -X POST http://127.0.0.1:4310/api/v1/questions/INT-1/Q-1/answer -d '{}'",
             "curl -s -X POST http://127.0.0.1:4310/api/v1/reviews/DEMO-1/F-1/decision -d '{}'",
         )
@@ -120,6 +127,9 @@ class ProtectApprovalsTest(unittest.TestCase):
             "npx knots-sync answer INT-1 --list",
             "npx knots-sync review show DEMO-1",
             "npx knots-sync status --issues --json",
+            "kns answer INT-1 --list",
+            "npx -y github:pscheol/harness-starter-kit#main status --issues --json",
+            "ls .claude/skills/kns-plan",
         ):
             with self.subTest(command=command):
                 self.assert_allowed(tool("Bash", command=command))

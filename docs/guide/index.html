@@ -54,7 +54,7 @@
 <tr><th scope="row">SDD 기록</th><td>요구사항 접수 → Intent → Unit → 이슈별 requirements · design · tasks, 승인 기록 <code>approvals.md</code></td><td><code>.agents/docs/intents/</code> · <code>.agents/docs/issues/</code></td></tr>
 <tr><th scope="row">검증 게이트</th><td>단일 검증 입구 <code>scripts/verify.sh</code>(fast · changed · affected · full), 정적 분석 · 품질 게이트, 승인 스크립트</td><td><code>scripts/</code> · <code>scripts/harness/</code></td></tr>
 <tr><th scope="row">관리 페이지</th><td>내 컴퓨터(127.0.0.1)에서만 여는 웹 화면. 처리할 일 · 진행 · 문서 · 승인 · 검증 · 스킬 · 운영 · 사용량</td><td><code>knots-sync dashboard</code></td></tr>
-<tr><th scope="row">선택 모듈</th><td>AI-DLC(설계 도구) · Entire(대화 체크포인트) · jira-workflow · notion · multi-harness. 기본은 모두 꺼짐</td><td><code>knots-sync add &lt;모듈&gt;</code></td></tr>
+<tr><th scope="row">선택 모듈</th><td>AI-DLC(설계 도구) · Entire(대화 체크포인트) · jira-workflow · notion · multi-harness · ci(CI 진입 파일). 기본은 모두 꺼짐</td><td><code>knots-sync add &lt;모듈&gt;</code></td></tr>
 </tbody></table></div>
 <p>여기에 배포 기록 · 운영 기록 · 전달 지표 · 규칙 후보가 더해져, 운영에서 배운 것이 다음 요구사항과 규칙으로 돌아온다(→ <a href="ops.html">배포 · 운영 · 지표</a>).</p>
 
@@ -90,8 +90,8 @@
 <p>빈 리포 하나에 킷을 깔고, 요구사항 하나를 접수하고, 관리 페이지를 여는 데까지다. 아래 출력은 이 안내서를 쓰며 일회용 폴더(<code>/tmp/…/demo-app</code>)와 일회용 HOME 에서 실제로 돌린 결과를 그대로 옮겼다.</p>
 
 <div class="warn">
-<span class="box-title">npx 는 GitHub 에서 태그를 고정해 부른다</span>
-<p>npm 에는 아직 올리지 않았다(결정 D3 — v2.2 까지 명령이 그대로면 올린다). 지금은 <code>npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.1 &lt;명령&gt;</code> 로 부르거나 셸 별칭 <code>alias knots-sync='npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.1'</code> 를 둔다. 관리 페이지와 이 안내서가 보여 주는 <code>npx knots-sync …</code> 는 이 별칭으로 읽는다. <code>npx kns</code> 는 npm 의 다른 사람 패키지라 쓰지 않는다.</p>
+<span class="box-title">CLI 는 GitHub 에서 받는다</span>
+<p>npm 에는 아직 올리지 않았다(결정 D3 — v2.2 까지 명령이 그대로면 올린다). 처음이면 Claude Code 플러그인(<code>/kns:bootstrap</code> · <code>/kns:update</code>)으로 시작하고, 터미널 CLI 는 <code>npm i -g https://codeload.github.com/pscheol/harness-starter-kit/tar.gz/refs/tags/v2.0.0-alpha.2</code> 로 전역 설치한다. 이 안내서와 관리 페이지의 <code>knots-sync …</code> 는 그 CLI 다. <code>npx kns</code> · <code>npx knots-sync</code> 는 쓰지 않는다.</p>
 </div>
 
 <ol class="steps">

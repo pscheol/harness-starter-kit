@@ -166,7 +166,7 @@ export async function projectsList(projects: Projects): Promise<Record<string, u
     projects: (await projects.list()).map((s) => ({
       id: s.id, name: s.entry.name, path: s.entry.path, addedAt: s.entry.addedAt || null, state: s.state,
       version: s.project ? (isObj(s.project.meta().kit) ? ((s.project.meta().kit as Record<string, unknown>).version ?? null) : null) : null,
-      remove: s.state === "ok" ? null : `npx knots-sync projects remove ${s.entry.name}`,
+      remove: s.state === "ok" ? null : `knots-sync projects remove ${s.entry.name}`,
     })),
   };
 }

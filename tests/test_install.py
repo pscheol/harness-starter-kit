@@ -426,6 +426,66 @@ class InstallTest(unittest.TestCase):
                 self.assertTrue(os.access(root / "scripts/harness/approve.py", os.X_OK))
 
 
+CI_ENTRY = (".gitlab-ci.yml", ".github/workflows/harness-verify.yml")
+CI_ACTION = ".github/actions/harness-setup/action.yml"
+STACK_TITLES = {"jvm": "JVM", "python": "Python", "go": "Go", "web": "Web", "electron": "Electron"}
+
+
+def lock_labels(root: Path) -> dict[str, str]:
+    """setup.sh lock(v1 TSV) 의 설치 경로 → 레이어 라벨."""
+    out = {}
+    for line in (root / ".agents/knots-sync.lock").read_text(encoding="utf-8").splitlines():
+        cols = line.split("\t")
+        if len(cols) == 4 and not line.startswith("#"):
+            out[cols[3]] = cols[1]
+    return out
+
+
+class CiModuleTest(unittest.TestCase):
+    """CI 진입 파일은 ci 모듈을 고를 때만 깐다. 진입 파일이 생기면 다음 push 부터 원격 파이프라인이 돈다."""
+
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="kit ci "))
+        self.addCleanup(shutil.rmtree, self.tmp, ignore_errors=True)
+
+    def installed(self, stack: str, **kwargs) -> Path:
+        target = self.tmp / f"{stack}-{kwargs.get('modules', 'none')}"
+        result = install(target, stack, agents="claude", **kwargs)
+        self.assertEqual(result.returncode, 0, result.stdout[-3000:] + result.stderr[-3000:])
+        return target
+
+    def test_default_install_has_no_ci_entry_files(self):
+        for stack in STACKS:
+            with self.subTest(stack=stack):
+                root = self.installed(stack)
+                labels = lock_labels(root)
+                for rel in (*CI_ENTRY, CI_ACTION):
+                    self.assertFalse((root / rel).exists(), rel)
+                    self.assertNotIn(rel, labels)
+                self.assertFalse((root / ".github").exists())
+                # include 되는 단계 템플릿은 진입 파일 없이 돌지 않는다 — 공통 층에 남는다
+                self.assertTrue((root / "ci/knots-sync.gitlab-ci.yml").is_file())
+
+    def test_ci_module_installs_entry_files_and_stack_action(self):
+        for stack in STACKS:
+            with self.subTest(stack=stack):
+                root = self.installed(stack, modules="ci")
+                labels = lock_labels(root)
+                for rel in CI_ENTRY:
+                    self.assertTrue((root / rel).is_file(), rel)
+                    self.assertEqual(labels[rel], "mod/ci", rel)
+                self.assertIn(f"하네스 검증 실행 환경({STACK_TITLES[stack]})", (root / CI_ACTION).read_text(encoding="utf-8"))
+                self.assertEqual(labels[CI_ACTION], f"mod/ci/stacks/{stack}")
+                self.assertFalse((root / "stacks").exists(), "모듈 안 stacks/ 가 리포 루트에 깔렸다")
+                self.assertEqual(json.loads((root / ".agents/knots-sync.json").read_text())["modules"], ["ci"])
+
+    def test_list_modules_counts_ci_for_one_stack(self):
+        result = subprocess.run(["bash", str(SETUP), "--stack=go", "--list-modules"], capture_output=True, text=True, timeout=60)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        line = next((line for line in result.stdout.splitlines() if line.split()[:1] == ["ci"]), "")
+        self.assertRegex(line, r"^\s+ci\s+3 files\s+\S", result.stdout)
+
+
 class HarnessScriptTests(unittest.TestCase):
     """Knots 에서 옮긴 하네스 자체 시험(scripts/tests)을 설치본에 넣어 돈다."""
 
@@ -433,7 +493,8 @@ class HarnessScriptTests(unittest.TestCase):
         tmp = Path(tempfile.mkdtemp(prefix="kit harness "))
         self.addCleanup(shutil.rmtree, tmp, ignore_errors=True)
         root = tmp / "python"
-        result = install(root, "python")
+        # CI 템플릿 시험(test_ci_templates)이 설치본의 진입 파일을 읽는다 — ci 모듈을 켠다.
+        result = install(root, "python", modules="ci")
         self.assertEqual(result.returncode, 0, result.stderr)
         shutil.copytree(HARNESS_TESTS, root / "scripts/tests")
         git_init(root)

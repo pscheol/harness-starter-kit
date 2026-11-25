@@ -122,7 +122,7 @@ def legacy_lines() -> list[str]:
 
 
 # 선택 모듈(layout.json modules). platform-guards 는 HK-25 에서 없앴다 — 파일이 공통 층과 같다.
-MODULES = ("jira-workflow", "multi-harness")
+MODULES = ("jira-workflow", "multi-harness", "ci")
 
 
 def install_counts() -> dict[str, Counter]:
@@ -136,22 +136,25 @@ def install_counts() -> dict[str, Counter]:
                 return seg["harness"] or "core"
         return "core"
 
-    def count(folder: str, skip_arch: bool = False) -> Counter:
+    def count(folder: str, skip: str | None = None) -> Counter:
         root = TEMPLATES / folder
         found = Counter()
+        if not root.is_dir():
+            return found
         for path in root.rglob("*"):
             rel = path.relative_to(root).as_posix()
-            if not path.is_file() or path.name in layout["ignore"] or "__pycache__" in path.parts or path.suffix == ".pyc" or (skip_arch and rel.startswith("arch/")):
+            if not path.is_file() or path.name in layout["ignore"] or "__pycache__" in path.parts or path.suffix == ".pyc" or (skip and rel.startswith(skip)):
                 continue
             found[harness_of(rel)] += 1
         return found
 
-    stack = count("stacks/jvm", skip_arch=True) + count("stacks/jvm/arch/hexagonal")
+    stack = count("stacks/jvm", skip="arch/") + count("stacks/jvm/arch/hexagonal")
+    # 모듈의 stacks/<스택>/ 은 그 스택 층으로만 깔린다(layout.json module-stack 층). 스택마다 같은 수라 jvm 으로 센다.
     return {
         "common": count("common"),
         "backend": count("common") + stack,
         "frontend": count("common") + count("domains/frontend") + stack,
-        **{m: count(f"optional/{m}") for m in MODULES},
+        **{m: count(f"optional/{m}", skip="stacks/") + count(f"optional/{m}/stacks/jvm") for m in MODULES},
     }
 
 

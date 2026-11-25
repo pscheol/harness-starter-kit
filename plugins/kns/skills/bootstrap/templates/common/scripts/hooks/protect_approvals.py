@@ -37,8 +37,10 @@ QUESTIONS_DOC = re.compile(r"(?:^|/)\.agents/docs/(?:intents|issues)/[^/]+/quest
 ANSWER_LINE = re.compile(r"(?m)^[+\s]*- 답:[ \t]*\S")
 FULL_KEYS = ("content", "contents", "file_text", "text")
 ANSWER_HOW = "→ 답은 사람이 관리 페이지 질문 화면 · knots-sync answer 로 쓴다(08 §3.3). 에이전트는 질문 · 선택지 · 빈 '- 답:' 줄만 쓴다."
-APPROVE_COMMAND = re.compile(r"\bapprove\.py\b|\bknots-sync(?:\.js)?\s+(?:approve|answer(?![^|;&\n]*--list)|review\s+decide|mob\s+(?:start|next|close|end))\b"
-                             r"|\bmob\.py\s+(?:start|next|close|end)\b")
+# CLI 를 부르는 이름: knots-sync(.js) · bin 별칭 kns · 옛 이름 harness-kit · GitHub 판 고정 npx(`npx -y github:<owner>/<repo>#<판>`)
+CLI_NAME = r"(?:\bknots-sync(?:\.js)?|(?<![\w./-])(?:kns|harness-kit)|\bgithub:[\w.-]+/[\w.-]+(?:#\S*)?)"
+APPROVE_COMMAND = re.compile(CLI_NAME + r"\s+(?:approve|answer(?![^|;&\n]*--list)|review\s+decide|mob\s+(?:start|next|close|end))\b"
+                             r"|\bapprove\.py\b|\bmob\.py\s+(?:start|next|close|end)\b")
 #: 관리 페이지의 승인 · 질문 답 · 리뷰 판단 API(06 §3.15). 토큰 · PIN 이 없어도 부르는 명령 자체를 막는다
 PIN_API = re.compile(r"api/v1/(?:p/[0-9a-f]{12}/)?(?:approvals\b|questions/[^/\s]+/[^/\s]+/answer\b|reviews/[^/\s]+/[^/\s]+/decision\b)")
 WRITE_WORDS = frozenset({"mv", "rm", "truncate", "touch", "ln", "dd", "unlink", "install", "shred"})

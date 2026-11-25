@@ -58,7 +58,7 @@ describe("outdated", () => {
     expect(j.latest).toMatchObject({ status: "ok", version: "2.2.0-rc.1", stable: "2.1.0", source: remote, tags: 4 });
     expect(j.newest).toBe("2.2.0-rc.1");
     expect(j.newer).toBe(true);
-    expect(j.upgrade).toBe("npx knots-sync@2.2.0-rc.1 update");
+    expect(j.upgrade).toBe("npx -y github:pscheol/harness-starter-kit#v2.2.0-rc.1 update");
     expect((await cli("outdated", ["--check", "--source", remote])).code).toBe(1);
     expect(readTree(target)).toEqual(before);
     const human = await cli("outdated", ["--source", remote]);

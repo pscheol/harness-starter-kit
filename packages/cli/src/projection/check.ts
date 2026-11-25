@@ -100,24 +100,24 @@ export function layoutFindings(target: string, entries: LockEntry[]): LayoutFind
       const st = lstat(p);
       const isDir = e.op === "mirror" && ((Boolean(st?.isDirectory()) && !st?.isSymbolicLink()) || Boolean(from && lstat(path.join(target, ...from.split("/")))?.isDirectory()));
       if (st?.isSymbolicLink()) {
-        out.push({ kind: "symlink-found", severity: "error", path: e.path, hint: "링크 대신 실제 파일을 둔다 → npx knots-sync repair" });
+        out.push({ kind: "symlink-found", severity: "error", path: e.path, hint: "링크 대신 실제 파일을 둔다 → knots-sync repair" });
         continue;
       }
-      for (const inner of linksInside(p)) out.push({ kind: "symlink-found", severity: "error", path: `${e.path}/${inner}`, hint: "링크 대신 실제 파일을 둔다 → npx knots-sync repair" });
+      for (const inner of linksInside(p)) out.push({ kind: "symlink-found", severity: "error", path: `${e.path}/${inner}`, hint: "링크 대신 실제 파일을 둔다 → knots-sync repair" });
       const cur = currentSha(p, isDir);
       if (cur === null) {
-        out.push({ kind: "missing", severity: "error", path: e.path, hint: `원본 ${from ?? "?"} 에서 다시 만든다 → npx knots-sync repair` });
+        out.push({ kind: "missing", severity: "error", path: e.path, hint: `원본 ${from ?? "?"} 에서 다시 만든다 → knots-sync repair` });
         continue;
       }
       if (typeof e.sha256 !== "string" || cur !== e.sha256) {
-        out.push({ kind: "drifted", severity: "error", path: e.path, hint: `복사본 · 생성물을 직접 고쳤다. 원본 ${from ?? "?"} 을 고친다 → npx knots-sync repair` });
+        out.push({ kind: "drifted", severity: "error", path: e.path, hint: `복사본 · 생성물을 직접 고쳤다. 원본 ${from ?? "?"} 을 고친다 → knots-sync repair` });
         continue;
       }
       if (from && typeof e.fromSha256 === "string") {
         const sp = path.join(target, ...from.split("/"));
         const now = from === HOOKS_REL ? hooksBundleSha(new FsView(target)) : currentSha(sp, Boolean(lstat(sp)?.isDirectory()));
-        if (now === null) out.push({ kind: "stale", severity: "error", path: e.path, hint: `원본 ${from} 이 없다 → npx knots-sync update` });
-        else if (now !== e.fromSha256) out.push({ kind: "stale", severity: "error", path: e.path, hint: `원본 ${from} 가 바뀌었다 → npx knots-sync repair` });
+        if (now === null) out.push({ kind: "stale", severity: "error", path: e.path, hint: `원본 ${from} 이 없다 → knots-sync update` });
+        else if (now !== e.fromSha256) out.push({ kind: "stale", severity: "error", path: e.path, hint: `원본 ${from} 가 바뀌었다 → knots-sync repair` });
       }
     } else if (e.op === "merge" && Array.isArray(e.keys) && e.keys.length) {
       const kind = MERGE_KIND[e.path];
@@ -128,7 +128,7 @@ export function layoutFindings(target: string, entries: LockEntry[]): LayoutFind
       const cur = st?.isFile() ? fs.readFileSync(p, "utf8") : null;
       const keys = e.keys as string[];
       const lost = cur === null ? keys : missingWith(kind, cur, keys, fullMergeWant(kind, spec, tokens, loadSources(new FsView(target))));
-      if (lost.length) out.push({ kind: "merge-missing", severity: "error", path: e.path, hint: `킷 키 ${lost.slice(0, 3).join(", ")}${lost.length > 3 ? " …" : ""} 가 없다 → npx knots-sync repair` });
+      if (lost.length) out.push({ kind: "merge-missing", severity: "error", path: e.path, hint: `킷 키 ${lost.slice(0, 3).join(", ")}${lost.length > 3 ? " …" : ""} 가 없다 → knots-sync repair` });
     } else if (e.op === "copy") {
       const st = lstat(p);
       if (!st?.isFile()) continue; // missing 은 doctor 의 copy 검사가 낸다

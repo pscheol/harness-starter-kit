@@ -79,7 +79,7 @@
 <h3><code>/kns:bootstrap</code> 이 보이지 않는다</h3>
 <p>플러그인 · 스킬 목록은 세션 시작 때 읽힌다. 하네스를 다시 켠다. Kiro 는 <code>~/.kiro/skills/kns-bootstrap/SKILL.md</code> 가 있는지(한 겹 더 감싼 <code>skills/kns/skills/…</code> 는 인식되지 않는다) 본다.</p>
 <h3><code>npx knots-sync</code> · <code>npx kns</code> 가 이상한 패키지를 받는다</h3>
-<p>아직 npm 에 올리지 않았고, npm 의 <code>kns</code> 는 다른 사람의 패키지다. <code>npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.1 &lt;명령&gt;</code> 처럼 GitHub 에서 태그를 고정해 부르거나, 킷 저장소의 <code>plugins/kns/skills/bootstrap/bin/knots-sync.js</code> 를 <code>node</code> 로 부른다(→ <a href="install.html#cli">설치 · CLI</a>).</p>
+<p>아직 npm 에 올리지 않았고, npm 의 <code>kns</code> 는 다른 사람의 패키지다. <code>npm i -g https://codeload.github.com/pscheol/harness-starter-kit/tar.gz/refs/tags/v2.0.0-alpha.2</code> 로 전역 설치해 <code>knots-sync &lt;명령&gt;</code> 으로 부르거나, 한 번만 쓸 때는 <code>npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.2 &lt;명령&gt;</code> 처럼 GitHub 에서 태그를 고정해 부른다(→ <a href="install.html#cli">설치 · CLI</a>). <code>npm i -g github:…</code> 는 npm 11 에서 명령 링크가 깨지니 쓰지 않는다.</p>
 <h3>Node 를 지정했는데 "명령을 찾을 수 없다" · exit 126</h3>
 <p>asdf · nvm 같은 버전 관리자의 shim 은 <code>HOME</code> 을 바꾸면(일회용 HOME 시험) 실제 node 를 못 찾는다. 실제 실행 파일 경로(<code>asdf which node</code> 등)로 부른다.</p>
 <h3><code>update</code> 뒤 <code>.new</code> 파일이 생겼다</h3>

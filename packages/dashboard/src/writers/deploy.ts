@@ -36,7 +36,7 @@ export interface DeployCheck {
 export async function deployCheck(p: Project, id: string, waive?: string): Promise<DeployCheck> {
   if (!RECORD.test(id)) throw bad("배포 기록 이름이 아닙니다");
   const script = path.join(p.root, "scripts/harness/deploy.py");
-  if (!fs.existsSync(script)) throw new ApiError(422, "gate_precondition", "scripts/harness/deploy.py 가 없습니다 — npx knots-sync update 로 킷을 올립니다", { conditions: [], reasons: ["deploy.py 없음"] });
+  if (!fs.existsSync(script)) throw new ApiError(422, "gate_precondition", "scripts/harness/deploy.py 가 없습니다 — knots-sync update 로 킷을 올립니다", { conditions: [], reasons: ["deploy.py 없음"] });
   const args = [script, "--root", p.root, "check", id, "--json", ...(waive ? ["--waive", waive] : [])];
   const r = await python(p.root, p.env, args, 120_000);
   try {

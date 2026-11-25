@@ -11,7 +11,7 @@ description: 하네스 컨텍스트를 로드한다 (작업 시작 시 실행)
 3. `.agents/docs/README.md` — SDD 기록 시스템 개요
 4. `ARCHITECTURE.md` — 모듈·레이어 맵
 5. `.agents/docs/decisions/core-beliefs.md` — 핵심 원칙
-6. 하네스 폴더(`.claude/` `.cursor/` `.kiro/`)의 규칙 · 스킬 · 역할 — `.agents/` 원본의 복사본 · 생성물(`npx knots-sync repair`)
+6. 하네스 폴더(`.claude/` `.cursor/` `.kiro/`)의 규칙 · 스킬 · 역할 — `.agents/` 원본의 복사본 · 생성물(`knots-sync repair`)
 7. `.agents/rules/code-maintenance.md`·`.agents/rules/session-collaboration.md` — 새 코드·리팩토링 기준과 동시 세션의 파일 소유권
 
 쓰기를 시작하기 전에 `python3 scripts/session-coordination.py status`로 명시적 점유와 공지를 확인한다.

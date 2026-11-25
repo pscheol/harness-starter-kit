@@ -74,9 +74,9 @@ export default function Projects({ route: _route }: { route: Route }) {
       <Page title="전체 프로젝트" sub={sub} crumbs={crumbs} tools={tools}>
         <Notice kind="info" title="지금은 한 리포만 연 서버입니다. ">여러 리포를 한 화면에서 보려면 등록부(~/.config/knots-sync/projects.json)나 폴더를 가리켜 서버를 다시 엽니다.</Notice>
         <VStack gap={2}>
-          <CommandBox cmd="npx knots-sync dashboard --all" label="--all 복사" />
-          <CommandBox cmd="npx knots-sync dashboard --root ~/work" label="--root 복사" />
-          <CommandBox cmd="npx knots-sync projects add <폴더>" label="등록 명령 복사" />
+          <CommandBox cmd="knots-sync dashboard --all" label="--all 복사" />
+          <CommandBox cmd="knots-sync dashboard --root ~/work" label="--root 복사" />
+          <CommandBox cmd="knots-sync projects add <폴더>" label="등록 명령 복사" />
         </VStack>
       </Page>
     );
@@ -86,7 +86,7 @@ export default function Projects({ route: _route }: { route: Route }) {
   if (!projects.length) {
     return (
       <Page title="전체 프로젝트" sub={sub} crumbs={crumbs} tools={tools}>
-        <Empty title="등록된 프로젝트가 없습니다" text="킷을 설치한 리포를 등록하면 여기서 한꺼번에 봅니다." actions={<CommandBox cmd="npx knots-sync projects add <폴더>" label="명령 복사" />} />
+        <Empty title="등록된 프로젝트가 없습니다" text="킷을 설치한 리포를 등록하면 여기서 한꺼번에 봅니다." actions={<CommandBox cmd="knots-sync projects add <폴더>" label="명령 복사" />} />
       </Page>
     );
   }
@@ -145,7 +145,7 @@ export default function Projects({ route: _route }: { route: Route }) {
                         <HStack gap={2} align="center" wrap="wrap"><Ico name="folder" /><Text weight="semibold">{p.name}</Text><Tag label={p.state === "missing" ? "없음" : "킷 리포 아님"} /></HStack>
                         <Muted size="xsm">{p.path}</Muted>
                         <Muted>폴더가 없습니다. 옮겼거나 지웠습니다. 등록부에서 저절로 지우지 않습니다.</Muted>
-                        <CommandBox cmd={p.remove ?? `npx knots-sync projects remove ${p.name}`} label="복사" />
+                        <CommandBox cmd={p.remove ?? `knots-sync projects remove ${p.name}`} label="복사" />
                       </VStack>
                     </Card>
                   );

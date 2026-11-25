@@ -1,0 +1,19 @@
+{
+  "schema": "knots-sync.module/v1",
+  "id": "ci",
+  "title": "CI 진입 파일",
+  "summary": "리포 루트 .gitlab-ci.yml · GitHub Actions 워크플로와 스택별 실행 환경 액션. 깔면 다음 push 부터 원격 파이프라인이 돈다",
+  "kind": "kit",
+  "requires": { "modules": [], "tools": [] },
+  "conflicts": [],
+  "files": "layer",
+  "hooks": [],
+  "settings": [],
+  "externalPaths": [],
+  "config": { "set": {}, "unset": {} },
+  "steps": {
+    "add": [{ "applyKit": true }, { "setConfig": true }],
+    "remove": [{ "removeKit": true }, { "unsetConfig": true }]
+  },
+  "doctor": []
+}

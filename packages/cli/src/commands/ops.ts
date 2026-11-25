@@ -12,7 +12,7 @@ import { targetOf } from "../cli/context";
 import { CliError, EXIT, usageError } from "../core/errors";
 import { failure, humanTerminal } from "./api-call";
 
-const SCRIPTS_HINT = "npx knots-sync update 로 킷을 올린다(scripts/harness 에 배포 · 운영 스크립트가 있어야 한다)";
+const SCRIPTS_HINT = "knots-sync update 로 킷을 올린다(scripts/harness 에 배포 · 운영 스크립트가 있어야 한다)";
 
 interface Out {
   code: number;

@@ -18,7 +18,7 @@ KIT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 NODE="${KNOTS_SYNC_NODE:-node}"
 CLI="$KIT_DIR/bin/knots-sync.js"
 HARNESSES=" claude codex cursor kiro "
-MODULES=" jira-workflow multi-harness "
+MODULES=" jira-workflow multi-harness ci "
 RETIRED=" platform-guards "   # 없앤 모듈(HK-25, 공통 층에 포함됨) — add-agent.sh 에 넘겨 같은 안내를 낸다
 TOKENS=" PROJECT_NAME PROJECT_SLUG PACKAGE_NS SERVICE_NAME PRIMARY_LANGUAGE BUILD_TOOL TEST_CMD DOMAIN_EXAMPLE PROTECTED_PATH "
 

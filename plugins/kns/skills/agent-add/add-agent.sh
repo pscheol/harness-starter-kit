@@ -10,7 +10,7 @@
 #
 # 옵션:
 #   --agents=<목록>   추가할 에이전트 (claude,codex,cursor,kiro · all)
-#   --modules=<목록>  추가할 선택 모듈 (jira-workflow,multi-harness · all). 없앤 모듈(platform-guards)은 안내만 한다
+#   --modules=<목록>  추가할 선택 모듈 (jira-workflow,multi-harness,ci · all). 없앤 모듈(platform-guards)은 안내만 한다
 #                     둘 중 하나는 있어야 한다
 #   --dry-run         실제로 쓰지 않고 계획만 출력
 #   --force           이미 있는 파일도 덮어쓴다 (기본: skip)

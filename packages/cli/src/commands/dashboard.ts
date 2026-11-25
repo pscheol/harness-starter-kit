@@ -44,7 +44,7 @@ async function runExport(ctx: Ctx, out: string): Promise<CommandResult> {
   } catch (err) {
     if (err instanceof ExportLeakError) throw new CliError(EXIT.CHECK, `${err.message} — 출력 폴더를 지웠다`, err.hits.slice(0, 5).join(" · "));
     if (err instanceof ExportError) throw new CliError(EXIT.USAGE, err.message);
-    throw new CliError(EXIT.STATE, err instanceof Error ? err.message : String(err), "npx knots-sync doctor");
+    throw new CliError(EXIT.STATE, err instanceof Error ? err.message : String(err), "knots-sync doctor");
   }
 }
 

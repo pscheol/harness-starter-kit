@@ -108,7 +108,7 @@ export function ApprovePanel({ issue, gate, doc, onDone }: { issue: Loose; gate:
       ) : null}
       {readOnly ? (
         <Notice kind="warn" title="읽기 전용. ">
-          에이전트 세션에서 연 서버는 승인을 받지 않습니다. 사람이 자기 터미널에서 연 관리 페이지(또는 <Code>{`npx knots-sync approve ${issue.key} --gate ${gate}`}</Code>)에서 합니다.
+          에이전트 세션에서 연 서버는 승인을 받지 않습니다. 사람이 자기 터미널에서 연 관리 페이지(또는 <Code>{`knots-sync approve ${issue.key} --gate ${gate}`}</Code>)에서 합니다.
         </Notice>
       ) : null}
       <TextArea label="승인 문구" value={phrase} onChange={setPhrase} rows={3} isDisabled={readOnly} placeholder="예: R2.3 보관 기간 3일로 반영해. 승인합니다." description="승인 PIN 은 처음 승인할 때 한 번 묻습니다(서버를 연 터미널에만 나온 값). 승인 기록은 이 화면에서 남긴 approvals.md 로만 인정합니다." />

@@ -153,7 +153,7 @@ def advance(root: Path, target: str, close: bool) -> dict:
     rel = folder.relative_to(root).as_posix()
     key = session["intent"]
     out = {"action": "close" if close else "next", "path": f"{rel}/mob.json", "ended": ended, "session": session, **summary(folder, session)}
-    out["suggest"] = f"npx knots-sync dispatch --to {key}:design --kind answers-ready --path {rel}/questions.md"
+    out["suggest"] = f"knots-sync dispatch --to {key}:design --kind answers-ready --path {rel}/questions.md"
     return out
 
 

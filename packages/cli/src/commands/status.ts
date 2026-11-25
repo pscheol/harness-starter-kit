@@ -39,7 +39,7 @@ export async function runStatus(ctx: Ctx): Promise<CommandResult> {
   if (bool(v, "all")) {
     const data = await projectsOverview(registryProjects(ctx));
     const rows = data.projects as { name: string; state: string; total?: number; error?: string }[];
-    return { code: EXIT.OK, data, lines: rows.length ? rows.map((r) => `${r.name.padEnd(24)} ${r.state === "ok" ? `처리할 일 ${String(r.total ?? 0)}건` : (r.error ?? r.state)}`) : ["등록한 프로젝트가 없다 — npx knots-sync projects add <폴더>"] };
+    return { code: EXIT.OK, data, lines: rows.length ? rows.map((r) => `${r.name.padEnd(24)} ${r.state === "ok" ? `처리할 일 ${String(r.total ?? 0)}건` : (r.error ?? r.state)}`) : ["등록한 프로젝트가 없다 — knots-sync projects add <폴더>"] };
   }
   if (bool(v, "ops")) return run(ctx, "GET", "/ops", {}, jsonLines);
   if (bool(v, "session")) return run(ctx, "GET", "/session", {}, jsonLines);

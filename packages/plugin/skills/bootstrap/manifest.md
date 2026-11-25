@@ -1,6 +1,6 @@
 # 매니페스트 — 무엇이 어디에 설치되나 (v5 · 킷 1.0.8 · 다중 스택 · SDLC 단계형 SDD · 기능 문서)
 
-`setup.sh` 가 아래 **5개 레이어**를 이 순서로 프로젝트 표준 경로에 복사한다. 뒤 레이어가 앞을 덮는다.
+`setup.sh` 가 아래 **6개 레이어**를 이 순서로 프로젝트 표준 경로에 복사한다. 뒤 레이어가 앞을 덮는다.
 
 | # | 레이어 | 언제 붙나 |
 |---|---|---|
@@ -8,7 +8,8 @@
 | 2 | `templates/domains/<DOMAIN>/` | 스택에 도메인이 매핑돼 있을 때만 |
 | 3 | `templates/stacks/<STACK>/` (`arch/` 제외) | 항상 |
 | 4 | `templates/stacks/<STACK>/arch/<ARCH>/` | 항상(변형 하나) |
-| 5 | `templates/optional/<MODULE>/` | `--modules=` 로 고른 것만 |
+| 5 | `templates/optional/<MODULE>/` (`stacks/` 제외) | `--modules=` 로 고른 것만 |
+| 6 | `templates/optional/<MODULE>/stacks/<STACK>/` | 고른 모듈에 그 스택 폴더가 있을 때만(`ci` 의 실행 환경 액션) |
 
 핵심 설계(v4):
 - **규칙 원본은 공통** — 가드레일·보안·API 표준 등 규칙은 `.agents/rules/` 한 곳에 두고 Claude Code·Codex·Cursor·Kiro 가 공유한다.
@@ -21,6 +22,7 @@
 - **스택 오버레이** — 하네스 골격(SDD·게이트 구조·에이전트 배선)은 한 벌, 언어 종속 규약(컨벤션·주석·보안·검증 명령)만 스택별로 갈아 끼운다.
 - **아키텍처 변형 레이어** — 아키텍처에 종속되는 파일은 3개뿐(`ARCHITECTURE.md`·`agents-rules/structure.md`·`agents-rules/tech.md`)이다. 이 3개만 `arch/<variant>/`에 두고 선택한 하나만 설치하므로 조합이 늘어도 설치 파일 수는 달라지지 않는다.
 - **선택 모듈은 기본 꺼짐** — `--modules=` 로 명시할 때만 깔린다. 각 모듈 폴더의 `ABOUT` 첫 줄이 `--list-modules` 설명이며, `ABOUT` 자체는 설치되지 않는다.
+- **CI 진입 파일은 모듈** — `.gitlab-ci.yml` · `.github/workflows/harness-verify.yml` 이 리포에 생기면 다음 push 부터 원격 파이프라인이 돈다. 그래서 `ci` 모듈을 고를 때만 깐다. 진입 파일이 include 하는 단계 템플릿(`ci/`)은 진입 파일 없이 돌지 않아 공통 층에 둔다.
 - **에이전트 선택 설치** — 템플릿 전체를 다 깔지 않는다. core 는 항상 깔고 에이전트 배선은 고른 것만 얹는다.
 - **설치 상태 기록** — `.agents/knots-sync.json`(버전·스택·도메인·변형·에이전트·모듈·치환값) + `.agents/knots-sync.lock`(파일별 설치 시점 해시). `kns:agent-add`·`kns:update` 가 이 둘을 읽는다. 커밋 대상이다.
 
@@ -68,8 +70,8 @@
 
 | 스택군 | core | claude | codex | cursor | kiro | 전부 고를 때 |
 |---|---|---|---|---|---|---|
-| `jvm` · `python` · `go` | 309 | 0 | 1 | 0 | 1 | **311** |
-| `web` · `electron` (`frontend` 도메인 +4 core) | 313 | 0 | 1 | 0 | 1 | **315** |
+| `jvm` · `python` · `go` | 306 | 0 | 1 | 0 | 1 | **308** |
+| `web` · `electron` (`frontend` 도메인 +4 core) | 310 | 0 | 1 | 0 | 1 | **312** |
 
 하네스 폴더 파일은 설치가 `.agents/` 원본에서 만든다(배치 — mirror · render · merge, 모듈 없음 기준):
 
@@ -92,11 +94,14 @@
 |---|---|---|
 | `jira-workflow` | 5 (core 5) | `.agents/issue-tracker.yml`(접근 수단·상태·전이 ID·락 설정, 전부 `TBD`) + `issue-tracker-workflow.md`·`issue-agent-lock.md` 규칙 + 슬래시 커맨드 **2종 × 4하네스** — `/kns-issue`(트래커 단품) · `/kns-ticket`(티켓→SDD→구현→리뷰 전 여정) |
 | `multi-harness` | 14 (core 14) | `tools/harness/sync.py`(공통 파일 원본 `tools/harness/shared/` → 등록표 `tools/harness/units.json`의 하네스로 배포, 지문 충돌 거부) · `sync_safety.py`(배포 잠금) · `gates.py`(메인 게이트가 하위 게이트를 부른다) · `install_verification_entry.py` + 시험 6개 + 리포 간 조율 — `agents-rules/cross-repo.md` · `scripts/harness/check_submodules.py`(submodule 초기화 · 포인터 · 작업 상태 · 브랜치 키 검사, `affected` 가 바뀐 도메인에만 부른다, `--record` 가 상위 `specs-index.md` 에 도메인별 SHA 를 적는다) · `scripts/guards/no-cross-domain-paths.sh`(경고 가드) · `.agents/guards/cross-domain-allow.txt`. CLI `knots-sync sync units` 가 `sync.py` 와 같은 결과로 배포한다 |
+| `ci` | 3 (core 3) | CI 진입 파일 — `.gitlab-ci.yml`(`ci/knots-sync.gitlab-ci.yml` 을 include 만 한다) · `.github/workflows/harness-verify.yml` + 고른 스택의 실행 환경 액션 `.github/actions/harness-setup/action.yml`(모듈 안 `stacks/<STACK>/`). **깔면 다음 push 부터 원격 파이프라인이 돈다** |
 
 - `jira-workflow` 핵심: **한 세션 = 한 활성 티켓** · pull gate · **표시 이름이 아니라 ID 로 전이** · 에이전트는 In Review(v2 검증)까지 · 승인 전이는 사람이 하고 `sync jira --approvals` 가 가져온다.
   **킷은 트래커 호출 수단을 제공하지 않는다** — MCP·CLI·REST 중 무엇으로 닿을지는 `access` 절에 프로젝트가 적는다.
   `access.method` 나 ID 가 `TBD` 면 커맨드는 **읽기만** 한다. 설정 절차는 킷 스킬 `kns:jira-setup`.
 - 고유 불변식 가드는 모듈이 아니라 공통 층이다(`scripts/run-guards.sh` · `scripts/guards/_template.sh` · `platform-invariants.md`). 불변식을 **문서 → 경고 가드(`# harness-guard-enforce: 0`) → 강제 가드(`: 1`)** 3단으로 승격시키고, `verify.sh` 가 자동으로 부른다.
+- `ci` 는 회사 GitLab · GitHub 리포에 파이프라인을 켠다. 실행 환경(이미지 · 런타임 · 분석기)은 팀이 채운다 — `.gitlab-ci.yml` 의 `.knots-sync-setup` · `harness-setup/action.yml`.
+  진입 파일을 늘 깔던 옛 설치(2.0.0-alpha.1 까지)에서 `update` 는 그 세 파일을 '킷에서 빠짐'으로 알리고 지우지 않는다. 계속 쓰려면 `knots-sync add ci`, 지우려면 `update --prune`(고치지 않은 것만).
 - 모듈 폴더의 `ABOUT` 첫 줄이 `--list-modules` 의 설명이다. `ABOUT` 은 템플릿이 아니라 **설치되지 않는다**.
 
 ## 상태 파일 (설치 후 생김)
@@ -111,7 +116,7 @@
 
 ## 경로 매핑
 
-다섯 템플릿 루트 모두 같은 세그먼트 규칙을 쓴다(공통 → 도메인 → 스택(`arch/` 제외) → `arch/<ARCH>` → 선택 모듈 순으로 복사).
+여섯 템플릿 루트 모두 같은 세그먼트 규칙을 쓴다(공통 → 도메인 → 스택(`arch/` 제외) → `arch/<ARCH>` → 선택 모듈(`stacks/` 제외) → 모듈의 `stacks/<STACK>/` 순으로 복사).
 
 | 템플릿 세그먼트 | 설치 경로 | 계층 |
 |---|---|---|
@@ -130,9 +135,9 @@
 
 ## 공통 vs 스택별 (무엇이 어디에 있나)
 
-| 영역 | `templates/common/` (296개) | `templates/domains/frontend/` (8개 · web·electron 만) | `templates/stacks/<stack>/` (변형 무관 14개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
+| 영역 | `templates/common/` (294개) | `templates/domains/frontend/` (8개 · web·electron 만) | `templates/stacks/<stack>/` (변형 무관 11개) | `templates/stacks/<stack>/arch/<변형>/` (4개) |
 |---|---|---|---|---|
-| 진입점 | `README.md` | — | `AGENTS.md` · `.gitignore` · `.github/actions/harness-setup/action.yml` | `root/ARCHITECTURE.md` |
+| 진입점 | `README.md` | — | `AGENTS.md` · `.gitignore` | `root/ARCHITECTURE.md` |
 | 규칙 | `agent-harness.md` · `sdd-workflow.md` · `product.md` · `writing-style.md` · `design-principles.md` · `reuse-before-new.md` · `verification-ladder.md` · `pr-review-policy.md` · `git-workflow.md` · `platform-invariants.md` · **`code-maintenance.md`** · **`session-collaboration.md`** · **`approval-vocabulary.md`** | `design-system.md` · `accessibility.md` · `ui-state.md` · `frontend-performance.md` | `code-comments.md` · `api-standards.md` · `security.md` · `reliability.md` · `quality-score.md` · `guardrails.md` | `agents-rules/structure.md` · `agents-rules/tech.md` |
 | 스크립트 | `verify-entry.sh`(진입) · `verify-changed.py`(changed 계획) · `check_harness.py` · `new-feature.sh`·`sdd-layout.py`(이슈 SDD) · `check-sdd-prerequisites.sh` · `check-exec-plan-status.sh` · `check-spec-freshness.sh` · `board.sh` · `session-coordination.py` · `check-maintenance.py` · `hooks/` · `git-hooks/` · `guards/` · `harness/`(파이썬 모듈) | — | `verify.sh` (스택 검증 게이트 — 진입 블록이 changed·fast·full 을 가르고 하네스 검사·문서 검사를 부른다) | — |
 | SDD 기록 | `agents-docs/` 전체 — 이슈 폴더 템플릿(requirements 정책·화면 표, design §4.3·§4.4·§7.1~7.3, tasks Polish 문서 반영) | — | — | — |
@@ -144,12 +149,12 @@
 > 반대로 **레이어 책임은 변형 무관 원칙으로 중립화**해 `guardrails.md`에 두고, 구체 경로·계약은 `structure.md`·`ARCHITECTURE.md`(변형별)로 위임한다.
 > `frontend` 도메인 규칙 4종이 스택이 아니라 도메인에 있는 이유: web 과 electron 이 **같은 규약을 쓴다**. 스택에 두면 두 벌이 되고 곧 어긋난다.
 > 템플릿 합계 = 200 + 10 + 4 = **214개**(백엔드 3스택) · 200 + 4 + 10 + 4 = **218개**(web·electron). 하네스 폴더 파일은 배치가 더한다(위 「에이전트 선택」 표).
-> 선택 모듈(`jira-workflow` 5 · `multi-harness` 14)은 여기에 더해진다.
+> 선택 모듈(`jira-workflow` 5 · `multi-harness` 14 · `ci` 3)은 여기에 더해진다.
 > 여기에 상태 파일 2개(`knots-sync.json`·`knots-sync.lock`)가 더해진다.
 >
 > 슬래시 커맨드는 원본 1곳 + 복사본 · 생성물. 본문 원본은 `agents-skills/kns-*/SKILL.md`(설치 위치 `.agents/skills/`)이고
 > 스킬이 `.agents/rules/sdd-workflow.md`의 해당 절을 읽는다. Claude · Kiro 스킬은 폴더 복사본, Cursor · Kiro 명령은 본문 전체를 담은 생성물이다.
-> 원본을 고치면 `npx knots-sync repair`(Node 가 없으면 `python3 scripts/harness/projection.py sync`)가 다시 만든다.
+> 원본을 고치면 `knots-sync repair`(Node 가 없으면 `python3 scripts/harness/projection.py sync`)가 다시 만든다.
 > 설치본의 `scripts/harness/check_layout.py`가 lock 기준으로 복사본 · 생성물이 원본과 같은지(stale · drifted) 검사한다.
 
 ## 에이전트가 규칙을 공유하는 방식
@@ -174,7 +179,7 @@
 | `AGENTS.md` | 에이전트 진입 목차(map) | ✅ | 인간(1회) |
 | `CLAUDE.md` | `@AGENTS.md` 가져오기 + 킷 블록(`knots-sync:begin claude` … `end`, merge). 블록 밖은 프로젝트 몫 | — | 배치 + 인간 |
 | `ARCHITECTURE.md` | **변형별** 아키텍처 원본(레이아웃·의존 방향·기계적 강제 수단·선택 기준·승격 신호·전환 절차·Anti-pattern) | ✅ 변형별 | 인간(1회+갱신) |
-| `.github/workflows/harness-verify.yml` · `.gitlab-ci.yml` · `ci/` | CI 템플릿(GitHub Actions · GitLab CI · GoCD) — 검증 단계는 `scripts/verify.sh` 한 곳만 부른다. 스택별 런타임 셋업은 `.github/actions/harness-setup/action.yml` | ✅ | 인간 |
+| `.github/workflows/harness-verify.yml` · `.gitlab-ci.yml` · `ci/` | CI 템플릿(GitHub Actions · GitLab CI · GoCD) — 검증 단계는 `scripts/verify.sh` 한 곳만 부른다. 스택별 런타임 셋업은 `.github/actions/harness-setup/action.yml`. **진입 파일 둘과 셋업 액션은 모듈 `ci`** 일 때만 깔린다(`ci/` 단계 템플릿은 늘 깔리지만 진입 파일 없이는 돌지 않는다) | ✅ | 인간 |
 | `README.md` | 사람이 읽는 리포 안내 — 하네스·SDLC 단계·검증 명령·기능 문서 위치 | — | 인간(1회+갱신) |
 | `.gitignore` | 프로젝트 위생(스택별 빌드 결과물·캐시) | ✅ | 인간 |
 | `.agents/rules/agent-harness.md` | **하네스 규약 원본**(기준 문서·완료 게이트·강제 레이어·1곳+N트리거) | — | 인간 |

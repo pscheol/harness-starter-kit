@@ -14,6 +14,13 @@ function real(rel: string): string {
   return fs.readFileSync(path.join(REAL_TEMPLATES, ...rel.split("/")), "utf8");
 }
 
+/** 킷 hooks.json 이 부르는 스크립트 자리(doctor hook-script-missing 이 새 설치에서 오류를 내지 않게). 내용은 쓰지 않는다. */
+function hookScriptStubs(): Record<string, string> {
+  const hooks = (JSON.parse(real(HOOKS_REL)) as { hooks: { script: string }[] }).hooks;
+  const scripts = new Set(["scripts/hooks/dispatch.sh", ...hooks.map((h) => h.script)]);
+  return Object.fromEntries([...scripts].map((s) => [`common/${s}`, "#!/usr/bin/env bash\nexit 0\n"]));
+}
+
 /** 배치 원본이 든 작은 템플릿(설치 경로: .agents/rules · skills · roles · model-policy.json · hooks.json · scripts/harness/projection.json). */
 export function projectionFiles(extra: Record<string, string> = {}): Record<string, string> {
   return {
@@ -32,6 +39,7 @@ export function projectionFiles(extra: Record<string, string> = {}): Record<stri
     [POLICY_REL]: real(POLICY_REL),
     [SPEC_REL]: real(SPEC_REL),
     [HOOKS_REL]: real(HOOKS_REL),
+    ...hookScriptStubs(),
     "stacks/jvm/agents-rules/tech.md": '---\npaths:\n  - "**/*.gradle.kts"\n---\njvm {{BUILD_TOOL}}\n',
     "stacks/jvm/arch/hexagonal/agents-rules/structure.md": '---\npaths:\n  - "src/**"\n---\nhexagonal\n',
     ...extra,

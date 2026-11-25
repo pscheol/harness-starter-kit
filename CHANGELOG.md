@@ -2,6 +2,20 @@
 
 `scripts/release.sh <버전>` 은 이 파일에 `## <버전>` 절이 있어야 돈다(설계 11 §3.5). 버전 규칙은 설계 11 §3.6.
 
+## 2.0.0-alpha.2
+
+실제 리포(v1.0.7 로 설치한 knots-ai)를 올려 보다 찾은 것을 고쳤다(2026-11-25). alpha.1 로 올리지 않은 리포는 이 판으로 올린다.
+
+- **v1.0.7 이하에서 올리면 지운 훅 스크립트를 설정이 계속 불렀다.** v1.0.2~1.0.7 은 훅 스크립트를 `.claude/hooks/` · `.codex/hooks/` 에 두었고(v1.0.8 부터 `scripts/hooks/`), update 는 고치지 않은 그 스크립트를 지우면서 설정의 호출 줄은 사람 줄로 보고 남겼다 — 세션을 열 때마다 훅 오류가 났고 턴 끝 검증이 두 번 돌았다. 이제 update 가 지우는 파일로 끝나는 훅 줄은 킷 줄로 보고 새 훅으로 바꾼다. 사람이 고쳐 남긴 옛 훅은 줄도 남기고 이유를 알린다(CLI · `update.sh` 같은 판정, `tests/test_projection_upgrade_v107.py`)
+- **CI 진입 파일은 선택 모듈 `ci` 다.** `.gitlab-ci.yml` · `.github/workflows/harness-verify.yml` · 스택별 `.github/actions/harness-setup/action.yml` 은 `knots-sync add ci` 로 켤 때만 깐다 — 회사 GitLab 리포가 킷 갱신만으로 다음 push 부터 파이프라인을 돌렸다. 단계 템플릿(`ci/`)은 그대로 깔린다. alpha.1 까지 받은 리포는 update 가 그 파일을 '킷에서 빠짐'으로 알린다(계속 쓰려면 `add ci`, 지우려면 `update --prune`). 이전 안내서 1.2 절
+- **안내 문구의 `npx knots-sync …` 를 `knots-sync …` 로 바꿨다.** npm 에 없는 이름이라 따라 치면 남이 올린 패키지를 받을 수 있었다(CLI · 관리 페이지 · 템플릿 규칙 · 스킬 · `verify.sh` · 하네스 스크립트 63개 파일). 판 고정은 `npx -y github:pscheol/harness-starter-kit#v<판>`. 다시 들어오지 않게 `tests/test_no_npx_hint.py`
+- **승인 훅이 다른 이름으로 부른 승인 명령을 막지 못했다.** `kns approve` · `harness-kit approve` · `npx github:… approve` 도 막는다
+- `doctor` 에 `hook-script-missing` 을 더했다 — 훅이 리포에 없는 스크립트를 부르면 오류
+- 리포 밖에서 `knots-sync dashboard` 를 열면 리포 안에서 열거나 `--root` · `--all` 을 쓰라고 안내한다
+- 안내서 · README 설치 절을 플러그인 먼저로 다시 썼다(리포 폴더에서 `/kns:update` · `/kns:bootstrap`, 상위 폴더에서 열면 안 되는 이유). 터미널 CLI 는 GitHub 묶음 주소 전역 설치(`npm i -g https://codeload.github.com/…/tar.gz/refs/tags/<태그>`) — `npm i -g github:…` 는 npm 11 에서 명령 링크가 깨진다. zsh 별칭 주의
+- CLI · 관리 페이지 시험 제한 60초 → 180초 — 다른 시험 묶음과 겹쳐 부하가 높을 때 무거운 통합 시험이 넘어 릴리스를 멈췄다
+- 알려진 것: 안내서 화면 캡처는 alpha.1 화면이라 명령 복사 칸에 `npx knots-sync` 가 보인다
+
 ## 2.0.0-alpha.1
 
 - `npx github:<owner>/harness-starter-kit#<태그> <명령>` 으로 CLI 를 부를 수 있게 했다(결정 D3 · 설계 02 R1.1 — alpha.0 에서 빠졌다). 루트 package.json 에 bin `knots-sync` 와 담을 파일(`plugins/kns/`, 약 1.8MB)을 지정하고, 묶어서 npx 로 도는지 보는 시험(`tests/test_npx_package.py`)을 더했다. README · 안내서 · 이전 안내서의 CLI 안내를 이 방식으로 바꿨다. npm 의 `kns` 는 다른 사람 패키지라 쓰지 않는다

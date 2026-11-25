@@ -23,6 +23,7 @@ import { measureFor, moduleFindings, MODULE_KINDS } from "../modules/doctor";
 import { HARNESS_LOAD, hookCount, type Measure } from "../core/measure";
 import { locateTemplates } from "../core/templates";
 import { legacyStateFiles, lockFile, metaFile } from "../core/legacy-names";
+import { missingHookScripts } from "../core/hook-scripts";
 
 export type Severity = "error" | "warn" | "info";
 
@@ -38,7 +39,7 @@ export interface Finding {
 export const FLOOR_KINDS = ["gate-floor", "floor-hook-missing", "floor-override", "full-allowed", "approvers"];
 export const PACK_KINDS = ["pack-unpinned", "pack-local-path"];
 export const LOCAL_KINDS = ["personal-ignored", "personal-weakens", "local-invalid"];
-export const DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "legacy-names", "version-mismatch", "missing", "drifted", "gitignore", "entry-size", "upgrade-notice-expired", ...FLOOR_KINDS, ...PACK_KINDS, ...LOCAL_KINDS, ...DEPLOY_KINDS, ...PROJECTION_KINDS, ...MODULE_KINDS];
+export const DOCTOR_KINDS = ["meta-invalid", "lock-invalid", "lock-v1", "legacy-names", "version-mismatch", "missing", "drifted", "gitignore", "entry-size", "upgrade-notice-expired", "hook-script-missing", ...FLOOR_KINDS, ...PACK_KINDS, ...LOCAL_KINDS, ...DEPLOY_KINDS, ...PROJECTION_KINDS, ...MODULE_KINDS];
 export const GITIGNORE_NEEDS = [".agents/state/", ".agents/local/", ".agents/reports/"];
 export const ENTRY_FILES = ["AGENTS.md", "CLAUDE.md"];
 export const ENTRY_LIMIT = 24 * 1024;
@@ -187,6 +188,17 @@ function floorFindings(target: string, raw: Record<string, unknown> | null): Fin
 }
 
 /** 개인 층 설정이 받지 않는 키 · 하네스 로컬 설정이 킷 훅을 끄는 경우(04 §3.6). */
+/** 훅 설정이 없는 스크립트를 부른다 — 세션 · 턴마다 훅 오류가 난다. */
+function hookScriptFindings(target: string): Finding[] {
+  return missingHookScripts(target).map((m) => ({
+    kind: "hook-script-missing",
+    severity: "error" as const,
+    path: m.file,
+    hint: `${m.event} 훅이 없는 파일 ${m.script} 를 부른다 — 부를 때마다 훅 오류가 난다. knots-sync update 로 바꾸거나 그 줄을 지운다`,
+    detail: { event: m.event, script: m.script, command: m.command },
+  }));
+}
+
 function personalFindings(target: string): Finding[] {
   const out: Finding[] = [];
   const conf = readLocalConfig(target);
@@ -260,6 +272,7 @@ function collect(ctx: Ctx, target: string, day: string): Collected {
   findings.push(...layout.map((f) => ({ kind: f.kind, severity: f.severity, path: f.path, hint: f.hint })));
   for (const f of [gitignoreFinding(target), entrySizeFinding(target), noticeFinding(target, day)]) if (f) findings.push(f);
   findings.push(...deployFindings(target));
+  findings.push(...hookScriptFindings(target));
   findings.push(...floorFindings(target, metaRead.status === "ok" ? (metaRead.meta as unknown as Record<string, unknown>) : null));
   let load: Measure[] | undefined;
   if (meta && lock) {

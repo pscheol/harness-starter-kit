@@ -75,4 +75,4 @@ Claude Code · Codex · Kiro가 함께 작업한다. 규칙은 `.agents/rules/`,
 
 ## 규칙 변경 절차 (드리프트 방지)
 
-규칙/지식이 바뀌면 `.agents/rules/`의 원본을 먼저 고치고 이 목차를 맞춘다. 하네스 폴더의 복사본 · 생성물은 고치지 않는다(`npx knots-sync repair`가 다시 만든다).
+규칙/지식이 바뀌면 `.agents/rules/`의 원본을 먼저 고치고 이 목차를 맞춘다. 하네스 폴더의 복사본 · 생성물은 고치지 않는다(`knots-sync repair`가 다시 만든다).

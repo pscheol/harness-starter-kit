@@ -172,7 +172,7 @@ export function runPack(ctx: Ctx): CommandResult {
   const manifest = { schema: PACK_SCHEMA, name, version: "0.1.0", description: `${name} 팩`, requires: { kit: range }, provides: prune(provides), overrides, tokens: [] as string[] };
   const out = new Map<string, { data: Buffer; executable: boolean }>([
     ["pack.json", { data: Buffer.from(`${JSON.stringify(manifest, null, 2)}\n`), executable: false }],
-    ["README.md", { data: Buffer.from(`# ${name} 하네스 팩\n\n프로젝트의 \`.agents/knots-sync.json\` \`packs\` 에 \`git:<host>/<path>#v0.1.0\` 을 더하고 \`npx knots-sync update --packs\` 로 깐다.\n`), executable: false }],
+    ["README.md", { data: Buffer.from(`# ${name} 하네스 팩\n\n프로젝트의 \`.agents/knots-sync.json\` \`packs\` 에 \`git:<host>/<path>#v0.1.0\` 을 더하고 \`knots-sync update --packs\` 로 깐다.\n`), executable: false }],
     ["fragments/hooks.json", { data: Buffer.from(`${JSON.stringify({ schema: "knots-sync.hooks/v1", hooks }, null, 2)}\n`), executable: false }],
     ["fragments/verify-checks.json", { data: Buffer.from(`${JSON.stringify({ checks }, null, 2)}\n`), executable: false }],
     ["tests/test_pack.py", { data: Buffer.from(TEST_PY), executable: false }],
@@ -192,7 +192,7 @@ export function runPack(ctx: Ctx): CommandResult {
     "  다음:",
     `    cd ${dirFlag} && git init && git add -A && git commit -m "${name} 0.1.0" && git tag v0.1.0`,
     `    프로젝트 .agents/knots-sync.json packs 에 "git:<host>/<path>#v0.1.0" 을 더한다(MR)`,
-    "    npx knots-sync update --packs",
+    "    knots-sync update --packs",
   ];
   return { code: EXIT.OK, data: { command: "pack", sub: "new", name, dir, files: [...out.keys()].sort(byteCompare), manifest, warnings }, lines };
 }
