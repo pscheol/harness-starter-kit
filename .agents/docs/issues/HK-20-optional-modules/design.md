@@ -3,7 +3,7 @@ key: HK-20
 area: modules
 type: feat
 title: 모듈 엔진 · aidlc · entire(HK-20a) — module.json · 도구 설치 · 어댑터 · 체크포인트 · 세션 적재량 측정
-status: draft
+status: approved
 created: 2026-11-24
 ---
 

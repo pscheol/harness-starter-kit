@@ -3,7 +3,7 @@ key: HK-24
 area: hooks
 type: feat
 title: hooks.json에서 하네스별 훅을 만들고, worktree를 따라가며, 복사본을 원본과 맞춘다
-status: in-review
+status: approved
 created: 2026-11-24
 ---
 

@@ -3,7 +3,7 @@ key: HK-19
 area: design
 type: feat
 title: 킷 설계 단계 — 요구사항 접수 · /hx-intent · Unit 목록 · 질문 · 기획물 · 역할 배정
-status: in-review
+status: approved
 created: 2026-11-24
 ---
 

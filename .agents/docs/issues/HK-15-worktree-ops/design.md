@@ -3,7 +3,7 @@ key: HK-15
 area: worktree
 type: feat
 title: worktree 운영 — 리포 옆 폴더 · 둘째 세션부터 · 리포당 3개 · 끝나면 지움
-status: in-review
+status: approved
 created: 2026-11-24
 ---
 

@@ -3,7 +3,7 @@ key: HK-20
 area: modules
 type: feat
 title: 선택 모듈 — module.json · aidlc · entire(선택 설치) · jira-workflow · notion · 모듈 토큰 측정
-status: in-review
+status: approved
 created: 2026-11-23
 ---
 

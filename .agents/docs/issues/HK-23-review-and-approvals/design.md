@@ -3,7 +3,7 @@ key: HK-23
 area: verify
 type: feat
 title: 자체 리뷰 에이전트와 승인 규칙 강제
-status: in-review
+status: approved
 created: 2026-11-23
 ---
 

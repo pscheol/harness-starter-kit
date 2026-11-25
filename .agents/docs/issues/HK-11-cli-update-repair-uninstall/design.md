@@ -3,7 +3,7 @@ key: HK-11
 area: cli
 type: feat
 title: CLI update(3방향 비교) · repair · uninstall
-status: in-review
+status: approved
 created: 2026-11-23
 ---
 

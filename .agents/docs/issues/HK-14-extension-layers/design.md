@@ -3,7 +3,7 @@ key: HK-14
 area: cli
 type: feat
 title: 확장 층 — 회사 팩 · 프로젝트 · 개인 층과 게이트 하한
-status: in-review
+status: approved
 created: 2026-11-24
 ---
 

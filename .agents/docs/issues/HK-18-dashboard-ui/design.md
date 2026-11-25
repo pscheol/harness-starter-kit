@@ -3,7 +3,7 @@ key: HK-18
 area: dashboard
 type: feat
 title: 관리 페이지 화면 · 흐름 보기(React Flow) · 전체 프로젝트 · 기록 · 사용량 · 스킬 목록
-status: in-review
+status: approved
 created: 2026-11-24
 ---
 
