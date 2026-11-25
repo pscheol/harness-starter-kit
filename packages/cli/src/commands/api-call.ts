@@ -21,7 +21,7 @@ export async function openProject(ctx: Ctx): Promise<Project> {
   try {
     return await Project.open(targetOf(ctx), { env: ctx.io.env, home: homeOf(ctx), readOnly: false, multi: false, deps: dashboardDeps() });
   } catch (err) {
-    throw new CliError(EXIT.STATE, err instanceof Error ? err.message : String(err), "npx knots-sync doctor");
+    throw new CliError(EXIT.STATE, err instanceof Error ? err.message : String(err), "knots-sync doctor");
   }
 }
 

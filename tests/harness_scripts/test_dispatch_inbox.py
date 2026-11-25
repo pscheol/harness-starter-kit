@@ -56,7 +56,7 @@ class DispatchInboxTest(SessionRegisterCase):
         first_text = lines[1][3:].split(" · 경로: ")[0]
         self.assertLessEqual(len(first_text.encode("utf-8")), 200)
         self.assertIn("· 경로: .agents/docs/issues/DEMO-3-upload-cleanup/requirements.md", lines[1])
-        self.assertEqual(lines[2], "나머지: npx knots-sync dispatch list")
+        self.assertEqual(lines[2], "나머지: knots-sync dispatch list")
         self.assertEqual(len(self.waiting()), 4)
         consumed = list((self.queue / "consumed").glob("*.json"))
         self.assertEqual([path.name for path in consumed], ["01JDQ500000000000000000001.json"])

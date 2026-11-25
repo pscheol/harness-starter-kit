@@ -142,6 +142,41 @@ describe("doctor", () => {
     expect(es.detail.bytes).toBeGreaterThan(24576);
   });
 
+  it("훅 줄이 없는 스크립트를 부르면 hook-script-missing 오류(지운 v1 훅이 남은 리포, 2026-11-25 실측)", async () => {
+    const { target, doctor } = await installed();
+    fs.mkdirSync(path.join(target, ".claude/hooks"), { recursive: true });
+    fs.mkdirSync(path.join(target, ".codex"), { recursive: true });
+    fs.writeFileSync(path.join(target, ".claude/hooks/verify.sh"), "#!/usr/bin/env bash\n");
+    const hooks = (cmds: string[]) => ({ hooks: { SessionStart: [{ hooks: cmds.map((command) => ({ type: "command", command })) }] } });
+    fs.writeFileSync(
+      path.join(target, ".claude/settings.json"),
+      JSON.stringify(hooks([
+        'bash "$CLAUDE_PROJECT_DIR"/.claude/hooks/session-start.sh',
+        'bash "$CLAUDE_PROJECT_DIR"/.claude/hooks/verify.sh',
+        "aidlc engine hook session-start",
+        "bash /opt/elsewhere/hook.sh",
+      ])),
+    );
+    fs.writeFileSync(
+      path.join(target, ".codex/hooks.json"),
+      JSON.stringify(hooks([
+        "bash .codex/hooks/session-start.sh",
+        `bash -c 'r="$PWD"; [ -f "$r/scripts/hooks/dispatch.sh" ] || exit 0; exec bash "$r/scripts/hooks/dispatch.sh" "$1" "$2"' _ harness-x scripts/hooks/gone.sh`,
+      ])),
+    );
+    const r = await doctor("--check", "--json");
+    expect(r.code).toBe(1);
+    const missing = (json(r).findings as { kind: string; severity: string; path: string; hint: string }[]).filter((f) => f.kind === "hook-script-missing");
+    expect(missing.map((f) => [f.path, f.severity])).toEqual([
+      [".claude/settings.json", "error"],
+      [".codex/hooks.json", "error"],
+      [".codex/hooks.json", "error"],
+    ]);
+    expect(missing.map((f) => f.hint).join("\n")).toContain(".claude/hooks/session-start.sh");
+    expect(missing.map((f) => f.hint).join("\n")).toContain("scripts/hooks/gone.sh");
+    expect(missing.map((f) => f.hint).join("\n")).not.toContain("verify.sh");
+  });
+
   it("실제 템플릿 새 설치: doctor --check 0, 오류 0", async () => {
     const target = path.join(tmpDir(), "acme");
     const hasPython = spawnSync("python3", ["--version"]).status === 0;

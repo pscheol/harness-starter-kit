@@ -6,6 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { ROUTES } from "../src/api";
+import { StartError, startServer } from "../src/server";
 import { call, cleanEnv, commitAll, makeRepo, serve, snapshotTree, tmpDir, writeFile, writeIssue } from "./helpers";
 
 function registry(home: string, paths: string[]): void {
@@ -67,6 +68,16 @@ describe("dashboard --all", () => {
     expect((await call(srv2, "GET", "/api/v1/projects")).json.data.projects.map((p: any) => p.name)).toEqual(["b"]);
     const single = await serve(makeRepo());
     expect((await call(single, "GET", "/api/v1/projects")).status).toBe(404);
+  });
+
+  it("리포 밖에서 연 단일 모드는 exit 3 과 함께 리포 안에서 열거나 --root · --all 을 쓰라고 안내한다", async () => {
+    const outside = tmpDir();
+    const err = await startServer({ cwd: outside, env: cleanEnv(outside), agentSession: () => null, stderr: () => undefined }).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(StartError);
+    expect((err as StartError).exitCode).toBe(3);
+    expect((err as StartError).hint).toContain("--root");
+    expect((err as StartError).hint).toContain("--all");
+    expect((err as StartError).hint).not.toContain("npx");
   });
 });
 

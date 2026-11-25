@@ -94,7 +94,7 @@ GET {baseUrl}/rest/api/3/issue/{issueKey}/transitions
 2. `approvalTransitions` 에 **사람만 하는 전이**를 `"<이전 상태 ID>><이동 상태 ID>": <게이트>` 로 적는다. 기본 네 개: 요구사항 승인 대기 → 설계(`requirements`), 설계 → 구현 중(`design`), 검증 → 완료(`done`), 완료 → 배포됨(`deploy`). 이 전이는 에이전트도 `sync jira` 도 하지 않는다.
 3. Jira 워크플로 조건에서 위 네 전이를 `groupMap` 의 그룹(`jira-po` · `jira-dev` · `jira-qa` · `jira-ops`)만 하게 건다. 그룹 구성원은 `knots-sync.json` 의 `groups` 와 같은 사람이다(설정 화면 작업은 사람이 한다).
 4. `sync.method` 를 `rest`(승인 가져오기 · 상태 맞추기) · `mcp`(세션의 `/kns-issue` 만) · `none` 중 하나로 정한다. `rest` 면 `restTokenEnv`(기본 `JIRA_API_TOKEN`) · `restUserEnv`(기본 `JIRA_USER_EMAIL`) 환경 변수 **이름**만 적는다.
-5. `npx knots-sync sync jira --dry-run` 으로 어떤 전이가 일어날지 먼저 본다. 승인 가져오기는 `npx knots-sync sync jira --approvals --dry-run`.
+5. `knots-sync sync jira --dry-run` 으로 어떤 전이가 일어날지 먼저 본다. 승인 가져오기는 `knots-sync sync jira --approvals --dry-run`.
 
 `sync.method: none`(기본)이거나 모듈이 꺼져 있어도 킷 흐름과 보드는 같은 여덟 상태로 돈다.
 

@@ -61,7 +61,7 @@ statusMap:
   deployed: TBD
 
 # 사람만 하는 전이: "<이전 상태 ID>>이동 상태 ID": 게이트 이름. 이 전이는 에이전트도 `sync jira` 도 하지 않는다(MD-R14).
-# 사람이 Jira 에서 옮긴 기록만 `npx knots-sync sync jira --approvals` 가 approvals.md 로 가져온다.
+# 사람이 Jira 에서 옮긴 기록만 `knots-sync sync jira --approvals` 가 approvals.md 로 가져온다.
 approvalTransitions: {}
   # "<requirements-review ID>><design ID>": requirements
   # "<design ID>><implementing ID>": design

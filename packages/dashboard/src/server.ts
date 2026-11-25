@@ -13,6 +13,10 @@ import { ApiError } from "./errors";
 import { contentType, rawTarget } from "./paths";
 import { type Deps, Project } from "./project";
 import { modeEntries, Projects, type ProjectsMode } from "./projects";
+import { LocateError } from "./repo";
+
+/** 리포 밖에서 연 단일 모드(2026-11-25 사용자 실측: 홈 폴더에서 dashboard) */
+export const NOT_A_REPO_HINT = "knots-sync 를 깐 리포 폴더 안에서 엽니다. 여러 리포를 한 화면에 보려면 --root <폴더>(깊이 3까지 찾습니다) 또는 --all(등록한 프로젝트)을 씁니다";
 import { type Env, readJson } from "./util";
 import { readRaw } from "./writers/docs";
 
@@ -187,10 +191,10 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     try {
       single = await Project.open(opts.cwd, { ...projectOpts, multi: false });
     } catch (err) {
-      throw new StartError(3, err instanceof Error ? err.message : String(err), "npx knots-sync doctor");
+      throw new StartError(3, err instanceof Error ? err.message : String(err), err instanceof LocateError ? NOT_A_REPO_HINT : "knots-sync doctor");
     }
     const meta = single.meta();
-    if (meta.schema !== "knots-sync/v2") throw new StartError(3, `.agents/knots-sync.json 의 schema 가 knots-sync/v2 가 아닙니다(${String(meta.schema ?? "없음")})`, "npx knots-sync doctor");
+    if (meta.schema !== "knots-sync/v2") throw new StartError(3, `.agents/knots-sync.json 의 schema 가 knots-sync/v2 가 아닙니다(${String(meta.schema ?? "없음")})`, "knots-sync doctor");
   } else {
     projects = new Projects(() => modeEntries(mode, home, opts.env), { ...projectOpts, multi: true });
   }

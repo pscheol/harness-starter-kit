@@ -76,7 +76,7 @@ def main():
     if unlinked:
         parts.append(f"킷에 연결되지 않은 AI-DLC Intent {unlinked}개")
     if parts:
-        print(json.dumps({"systemMessage": " · ".join(parts) + " — npx knots-sync sync aidlc"}, ensure_ascii=False))
+        print(json.dumps({"systemMessage": " · ".join(parts) + " — knots-sync sync aidlc"}, ensure_ascii=False))
     return 0
 
 

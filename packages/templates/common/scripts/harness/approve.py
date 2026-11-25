@@ -104,7 +104,7 @@ def check_gate(issue, gate):
     if REVIEW.match(gate) or gate in sdd_gates.ISSUE_GATES:
         return
     if gate in INTENT_GATES:
-        raise Refusal(f"{gate} 는 Intent 폴더 게이트다 — npx knots-sync approve <INT> --gate {gate} 로 한다(관리 페이지와 같은 처리)", 2)
+        raise Refusal(f"{gate} 는 Intent 폴더 게이트다 — knots-sync approve <INT> --gate {gate} 로 한다(관리 페이지와 같은 처리)", 2)
     raise Refusal(f"모르는 게이트: {gate} (requirements · design · tasks · mr · done · review/F-n)", 2)
 
 

@@ -28,7 +28,7 @@ export function runSyncUnits(ctx: Ctx): CommandResult {
     if (check) {
       const problems = [...plans.flatMap((p) => differences(p)), ...clashes];
       if (problems.length) {
-        ctx.io.stderr("✖ 공통 하네스 파일이 원본과 다릅니다. tools/harness/shared 를 고치고 npx knots-sync sync units 를 실행하십시오.\n");
+        ctx.io.stderr("✖ 공통 하네스 파일이 원본과 다릅니다. tools/harness/shared 를 고치고 knots-sync sync units 를 실행하십시오.\n");
         return { code: EXIT.CHECK, data: { check: true, ok: false, problems, units: plans.length }, lines: problems };
       }
       return { code: EXIT.OK, data: { check: true, ok: true, problems: [], units: plans.length }, lines: [`공통 하네스 파일 일치 — 단위 ${plans.length}개`] };

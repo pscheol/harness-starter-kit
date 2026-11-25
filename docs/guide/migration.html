@@ -68,7 +68,7 @@
 <li>킷 판: v1 은 <code>.agents/harness-kit.json</code> 의 <code>kitVersion</code>, 옮긴 리포는 <code>.agents/knots-sync.json</code> 의 <code>kit.version</code>.</li>
 <li>사람이 고친 파일이 많을수록(점검의 <code>drifted</code>) <code>.new</code> 병합이 길어진다.</li>
 <li>외부 도구(AI-DLC · Entire)가 이미 깔려 있어도 킷은 그 파일을 지우거나 덮지 않는다. 외부 도구 명령을 실제 홈에서 처음 돌리지 않는다 — 시험은 일회용 HOME 에서.</li>
-<li>npm 배포 전이라 안내서의 <code>npx knots-sync</code> 는 플러그인 안의 CLI(<code>bash &lt;플러그인&gt;/skills/bootstrap/kit.sh &lt;명령&gt;</code>)로 읽는다.</li>
+<li>안내서의 <code>knots-sync</code> 는 전역 설치한 CLI 다(→ <a href="install.html#cli">설치 · CLI</a>). Node 가 없으면 플러그인 안의 <code>bash &lt;플러그인&gt;/skills/bootstrap/kit.sh &lt;명령&gt;</code> 이 v1 스크립트로 내려간다. 플러그인만 깔았다면 리포 폴더에서 연 Claude Code 에 <code>/kns:update</code> 를 입력해도 된다.</li>
 </ul>
 
 <h2 id="steps">공통 절차 7단계</h2>

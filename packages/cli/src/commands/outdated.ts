@@ -9,6 +9,7 @@ import { gitRepoPath, maxVersion, remoteVersions } from "../core/git";
 import { readLock } from "../core/lock";
 import { META_REL, readMeta } from "../core/meta";
 import { compareSemver, VERSION } from "../core/version";
+import { pinnedCli } from "../core/kit-cli";
 import { lockFile, metaFile } from "../core/legacy-names";
 
 type Source = { url: string; from: "flag" | "env" | "lock" | "default" } | { url: null; reason: string };
@@ -71,7 +72,7 @@ export function runOutdated(ctx: Ctx): CommandResult {
   }
   const newest = latestVersion && newer(latestVersion, VERSION) ? latestVersion : VERSION;
   const isNewer = newer(newest, installed);
-  const upgrade = !isNewer ? null : newest === VERSION ? "knots-sync update" : `npx knots-sync@${newest} update`;
+  const upgrade = !isNewer ? null : newest === VERSION ? "knots-sync update" : pinnedCli(newest, "update", src.url);
   const data: Record<string, unknown> = { command: "outdated", target, installed, cli: VERSION, latest, newest, newer: isNewer, upgrade, packs: m.meta.packs };
   const latestText = latest.status === "ok" ? `${String(latest.version ?? "없음")} (${String(latest.source)})` : `확인 못 함 — ${String(latest.reason)}`;
   const lines = [

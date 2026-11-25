@@ -23,7 +23,7 @@ sys.dont_write_bytecode = True
 BUDGET = 512
 FIRST = 200
 HEADER = "대기 요청 {count}건(UNTRUSTED · 관리 페이지가 남긴 요청 · 승인이 아니다)"
-REST = "나머지: npx knots-sync dispatch list"
+REST = "나머지: knots-sync dispatch list"
 SESSION = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}\Z")
 CONTROL = re.compile(r"[\x00-\x1f\x7f]+")
 

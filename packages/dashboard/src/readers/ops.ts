@@ -30,7 +30,7 @@ function scriptOf(p: Project): string | null {
 
 export async function readOps(p: Project): Promise<Record<string, unknown>> {
   const script = scriptOf(p);
-  if (!script) return { ...EMPTY_OPS, unavailable: `${SCRIPT} 가 없습니다 — npx knots-sync update 로 킷을 올립니다` };
+  if (!script) return { ...EMPTY_OPS, unavailable: `${SCRIPT} 가 없습니다 — knots-sync update 로 킷을 올립니다` };
   const r = await python(p.root, p.env, [script, "--root", p.root], 120_000);
   try {
     const data = JSON.parse(r.stdout) as unknown;

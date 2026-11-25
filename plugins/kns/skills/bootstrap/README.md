@@ -118,7 +118,7 @@ skills/bootstrap/          ← 스킬 루트 (= SKILL_DIR)
 
 > **Codex 주의** — 프로젝트 로컬 `.codex/prompts/` 는 탐색 경로가 아니다(유저 홈 전용 + deprecated). 그래서 Codex 공식 프로젝트 스킬 경로인 `.agents/skills/` 를 쓴다.
 >
-> **커맨드를 고칠 때** — 원본 `.agents/skills/kns-*/SKILL.md`(킷은 `templates/common/agents-skills/`)만 고친다. 하네스 폴더 사본은 `npx knots-sync repair`(Node 가 없으면 `python3 scripts/harness/projection.py sync`)가 다시 만든다. 사본을 직접 고치면 배치 검사가 `drifted`로 막는다.
+> **커맨드를 고칠 때** — 원본 `.agents/skills/kns-*/SKILL.md`(킷은 `templates/common/agents-skills/`)만 고친다. 하네스 폴더 사본은 `knots-sync repair`(Node 가 없으면 `python3 scripts/harness/projection.py sync`)가 다시 만든다. 사본을 직접 고치면 배치 검사가 `drifted`로 막는다.
 
 ## 규칙 공유 흐름
 

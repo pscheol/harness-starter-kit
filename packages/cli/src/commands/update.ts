@@ -33,6 +33,7 @@ import { runUpdatePacks } from "./update-packs";
 import { runUpdateTools } from "./update-tools";
 import { lockFile } from "../core/legacy-names";
 import { renameLegacyState } from "../core/legacy-names";
+import { pinnedCli } from "../core/kit-cli";
 
 export const V1_LOCK_BACKUP = ".agents/state/knots-sync.lock.v1.bak";
 
@@ -49,7 +50,7 @@ function checkFlags(ctx: Ctx): string | undefined {
   const to = str(ctx.values, "to");
   if (to === undefined || to === VERSION) return to;
   if (/[:#/]/.test(to)) throw usageError(`--to 에 소스는 아직 받지 않는다: '${to}'`, "다른 템플릿 폴더는 --templates <폴더> 로 준다");
-  throw usageError(`이 CLI 는 ${VERSION} 판만 깐다: --to ${to}`, `그 판은 npx knots-sync@${to} update 로 올린다`);
+  throw usageError(`이 CLI 는 ${VERSION} 판만 깐다: --to ${to}`, `그 판은 ${pinnedCli(to, "update")} 로 올린다`);
 }
 
 /** 깐 팩이 요구하는 킷 범위 밖이면 쓰기 전에 exit 3(설계 04 §3.4). */

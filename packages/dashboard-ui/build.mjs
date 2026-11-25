@@ -60,7 +60,7 @@ fs.writeFileSync(
 </head>
 <body>
 <div id="root"><p>관리 페이지를 불러오는 중입니다…</p></div>
-<noscript><p>이 화면은 JavaScript 가 필요합니다. 같은 기능은 콘솔 명령으로도 됩니다: <code>npx knots-sync status</code></p></noscript>
+<noscript><p>이 화면은 JavaScript 가 필요합니다. 같은 기능은 콘솔 명령으로도 됩니다: <code>knots-sync status</code></p></noscript>
 <script type="module" src="/app/main.js"></script>
 </body>
 </html>

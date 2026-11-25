@@ -382,7 +382,7 @@ def next_step(folder: Path) -> dict:
     flow = meta.get("flow") if isinstance(meta.get("flow"), dict) else {}
     key = FOLDER.match(folder.name)[1]
     if flow.get("design") == "aidlc":
-        return {"step": "aidlc", "reason": "flow.design = aidlc — 설계 단계는 /aidlc 가 맡는다. 끝나면 npx knots-sync sync aidlc", "blocking": []}
+        return {"step": "aidlc", "reason": "flow.design = aidlc — 설계 단계는 /aidlc 가 맡는다. 끝나면 knots-sync sync aidlc", "blocking": []}
     gates = gates_of(meta)
     intent_path = folder / "intent.md"
     head = front(intent_path)

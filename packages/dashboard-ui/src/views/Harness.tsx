@@ -64,7 +64,7 @@ export default function Harness({ route: _route }: { route: Route }) {
                 <Muted>doctor 결과가 없습니다.</Muted>
               )}
               {d?.counts && Object.keys(d.counts).length ? <Muted>{Object.entries(d.counts as Record<string, number>).map(([k, n]) => `${k} ${n}`).join(" · ")}</Muted> : null}
-              <CommandBox cmd="npx knots-sync doctor" />
+              <CommandBox cmd="knots-sync doctor" />
             </Panel>
             <Panel title="흐름 · 승인 권한" aside={<Muted size="xsm">flow.gates · approvers</Muted>} flush>
               <Table
@@ -83,7 +83,7 @@ export default function Harness({ route: _route }: { route: Route }) {
                   <Ico name="commit" size={14} />
                   <Text size="sm">지금 <b>{s?.user?.email ?? "git user.email 없음"}</b>{s?.user?.groups?.length ? ` · 그룹 ${(s.user.groups as string[]).join(", ")}` : ""}</Text>
                 </HStack>
-                <CommandBox cmd="npx knots-sync flow gates --add <게이트> --after <게이트>" label="흐름 틀 명령 복사" />
+                <CommandBox cmd="knots-sync flow gates --add <게이트> --after <게이트>" label="흐름 틀 명령 복사" />
               </VStack>
             </Panel>
           </>
@@ -102,7 +102,7 @@ export default function Harness({ route: _route }: { route: Route }) {
                 <Muted size="xsm">버튼을 눌렀을 때만 네트워크를 씁니다</Muted>
               </HStack>
               {out ? <Notice kind={out.kind} title={out.title}>{out.text}</Notice> : null}
-              <CommandBox cmd="npx knots-sync outdated" />
+              <CommandBox cmd="knots-sync outdated" />
             </Panel>
             <Panel title="역할 배정" flush>
               {Object.keys(hr.roles).length ? (

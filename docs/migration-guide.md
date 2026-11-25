@@ -31,7 +31,7 @@
 
 그대로인 것: GitHub 저장소 이름(`harness-starter-kit`), 파일 머리 표지 `HARNESS STARTER KIT`, `scripts/harness/` 폴더, 훅 id `harness-*`. 이것들은 "하네스 엔지니어링"이라는 개념 이름이거나 v1 파일을 알아보는 열쇠다.
 
-CLI 는 GitHub 에서 태그를 고정해 npx 로 부른다(결정 D3): `npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.1 <명령>`. 셸 별칭 `alias knots-sync='npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.1'` 를 두면 아래의 `npx knots-sync <명령>` 을 그대로 `knots-sync <명령>` 으로 쓸 수 있다. npm 에는 아직 올리지 않았으니 `npx knots-sync`(npm)는 쓰지 않고, `npx kns` 는 npm 의 다른 사람 패키지라 절대 쓰지 않는다. Node 가 없으면 플러그인 안의 `bash <플러그인>/skills/bootstrap/kit.sh <명령>` 이 v1 스크립트로 내려간다.
+가장 쉬운 길은 Claude Code 플러그인이다: 리포 폴더에서 연 Claude Code 에 `/kns:update` 를 입력하면 미리보기 → 요약 → 승인 → 반영을 진행한다. 터미널에서는 CLI 를 GitHub 묶음 주소로 전역 설치해 `knots-sync <명령>` 으로 부른다(결정 D3, npm 에는 v2.2 에 올린다): `npm i -g https://codeload.github.com/pscheol/harness-starter-kit/tar.gz/refs/tags/v2.0.0-alpha.2`. 한 번만 쓸 때는 `npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.2 <명령>`. `npm i -g github:…` 는 npm 11 에서 명령 링크가 깨지고, `npx knots-sync`(npm 에 없는 이름) · `npx kns`(npm 의 다른 사람 패키지)는 쓰지 않는다. Node 가 없으면 플러그인 안의 `bash <플러그인>/skills/bootstrap/kit.sh <명령>` 이 v1 스크립트로 내려간다.
 
 ## 2. 작업 공간 만들기
 
@@ -47,12 +47,12 @@ export CARGO_TARGET_DIR=~/knots-work/.cargo-target   # Rust · Tauri 빌드 폴�
 ## 3. 공통 절차(7단계)
 
 ```text
-1 점검   npx knots-sync doctor                  읽기만. 결과를 이전 이슈의 handoff 문서에 붙인다
-2 계획   npx knots-sync update --dry-run         바뀔 파일 · .new 가 생길 파일 · 외부 소유로 잡힐 파일 목록
-3 승인   사람이 목록을 보고 이전 이슈의 tasks 계획을 승인한다(관리 페이지 또는 npx knots-sync approve)
-4 적용   npx knots-sync update                  .new 생성, lock v2 쓰기
+1 점검   knots-sync doctor                  읽기만. 결과를 이전 이슈의 handoff 문서에 붙인다
+2 계획   knots-sync update --dry-run         바뀔 파일 · .new 가 생길 파일 · 외부 소유로 잡힐 파일 목록
+3 승인   사람이 목록을 보고 이전 이슈의 tasks 계획을 승인한다(관리 페이지 또는 knots-sync approve)
+4 적용   knots-sync update                  .new 생성, lock v2 쓰기
 5 병합   .new 파일을 하나씩 병합 → 원본 자리로   남은 .new 0개
-6 검증   bash scripts/verify.sh --full(사람 터미널 또는 CI) · npx knots-sync doctor --check(exit 0)
+6 검증   bash scripts/verify.sh --full(사람 터미널 또는 CI) · knots-sync doctor --check(exit 0)
 7 커밋   이전 커밋 하나. 메시지: "chore: 하네스 v<버전> 이전 — <단계>"   사람 승인 뒤
 ```
 
@@ -89,7 +89,7 @@ rm <파일>.new                                    # 병합했으면 지운다
 ### 3.4 검증
 
 ```bash
-npx knots-sync doctor --check --json     # exit 0, drifted · missing · stale · symlink-found 0
+knots-sync doctor --check --json     # exit 0, drifted · missing · stale · symlink-found 0
 bash scripts/board.sh > /tmp/board.after  # 이전 전의 보드 출력과 같은지(차이 0)
 git ls-files --others --exclude-standard '*.new'   # 위 주의 때문에 find 결과와 함께 본다
 wc -c AGENTS.md CLAUDE.md                 # 진입 파일 합계(24,576바이트 이하가 목표)
@@ -104,7 +104,7 @@ wc -c AGENTS.md CLAUDE.md                 # 진입 파일 합계(24,576바이트
 | 단계 | 킷 판 | 할 일 | 끝의 확인 |
 |---|---|---|---|
 | K0 | 1.1 | 이슈 단위 SDD: `sdd-layout.py migrate --dry-run` 목록 → 승인 → 적용. tasks 템플릿의 `--full` 지시를 "affected 결과 · CI full 링크"로 | `board.sh` 결과가 이전과 같다 |
-| K1 | 2.0 | `npx knots-sync doctor` 만. 쓰지 않는다 | 보고서에 lock v1 변환 가능, drifted 수, 외부 훅 17개 |
+| K1 | 2.0 | `knots-sync doctor` 만. 쓰지 않는다 | 보고서에 lock v1 변환 가능, drifted 수, 외부 훅 17개 |
 | K2 | 2.4 | 루트 `update`: lock v1 → v2, 포인터 → 복사본, `.claude/settings.json` 은 킷 키만 병합. AI-DLC 결정(아래) | `doctor --check` exit 0, CI `full` 통과, AI-DLC 파일 sha256 불변 |
 | K3 | 2.6 | `knots-sync sync units --check` 를 `sync.py --check` 와 나란히 돌려 같아지면 호출을 바꾼다 | 두 출력 일치 |
 | K4 | 2.6 | 점유 상태 prune, 진입 파일 61KB → 24KB 이하로 나눔 | `doctor` 의 진입 파일 경고 0 |
@@ -113,19 +113,19 @@ K2 의 AI-DLC 결정(사람이 고르고 ADR 로 남긴다):
 
 | 선택 | 할 일 | 결과 |
 |---|---|---|
-| A. 쓴다 | `npx knots-sync add aidlc` — 파일을 `external:aidlc` 로 등록, `flow.design = "aidlc"` | AI-DLC 훅 17개는 계속 돈다. 세션마다 약 73KB 가 실린다 |
+| A. 쓴다 | `knots-sync add aidlc` — 파일을 `external:aidlc` 로 등록, `flow.design = "aidlc"` | AI-DLC 훅 17개는 계속 돈다. 세션마다 약 73KB 가 실린다 |
 | B. 쓰지 않는다(Intent 가 0건이면 추천) | `flow.design = "kit"`. AI-DLC 훅은 `aidlc uninstall`(도구 명령) 또는 사람이 설정에서 뺀다. 파일은 남기거나 사람이 지운다 | 훅 17개가 빠진다. 킷은 파일을 지우지 않는다 |
 
 ### 4.2 hr-vision-3d(hdr)
 
 | 단계 | 킷 판 | 할 일 | 끝의 확인 |
 |---|---|---|---|
-| H1 | 2.0 | `npx knots-sync init --adopt --dry-run` → 목록 검토 → 승인 → `init --adopt` | 기존 파일이 `owner: user` 로 남았는가, `doctor --check` exit 0 |
+| H1 | 2.0 | `knots-sync init --adopt --dry-run` → 목록 검토 → 승인 → `init --adopt` | 기존 파일이 `owner: user` 로 남았는가, `doctor --check` exit 0 |
 | H2 | 2.1 | worktree 는 도메인 리포 단위로만. 기존 `.gitlab-ci.yml` 에 킷 CI include 를 더한다 | MR 파이프라인에 `harness:fast` · `harness:affected` |
 | H3 | 2.5 | 승인 강제 켬. 각자 `.claude/settings.local.json` 의 `Bash(git push*)` · `Bash(git commit*)` 무조건 허용을 지운다(개인 파일) | 승인 기록 없는 completed 이동이 막힌다 |
 | H4 | 2.6 | multi-harness 모듈: submodule 규칙 사본을 `sync units` 로 합친다 | `sync units --check` exit 0 |
 
-`--adopt` 로 `owner: user` 가 된 파일은 킷 `update` 가 건드리지 않는다. 킷 기본 파일로 바꾸려면 사람이 지운 뒤 `npx knots-sync repair`.
+`--adopt` 로 `owner: user` 가 된 파일은 킷 `update` 가 건드리지 않는다. 킷 기본 파일로 바꾸려면 사람이 지운 뒤 `knots-sync repair`.
 
 `init --adopt` 도 기존 파일을 한 번은 바꾼다 — `CLAUDE.md` 에는 킷 블록(`knots-sync:begin claude … end`)이 병합되고, 보드 블록(`BOARD:BEGIN`)이 있는 문서(`.agents/docs/product-specs/index.md` 같은)는 보드를 다시 만들 때 블록이 덧붙는다. 적용 뒤 `git diff --stat` 의 변경(`M`) 파일이 이 둘뿐인지 눈으로 본다.
 
@@ -144,11 +144,11 @@ K2 의 AI-DLC 결정(사람이 고르고 ADR 로 남긴다):
 
 | 점검 | 명령 | 통과 |
 |---|---|---|
-| 배치 | `npx knots-sync doctor --check --json` | exit 0 |
+| 배치 | `knots-sync doctor --check --json` | exit 0 |
 | 남은 `.new` | `find . -name '*.new' -not -path './.git/*'` | 0줄 |
 | 보드 | 이전 전후 `bash scripts/board.sh` 출력 비교 | 차이 0 |
 | 진입 파일 | `wc -c AGENTS.md CLAUDE.md` | 이전 → 이후 |
-| 세션마다 실리는 양 | `npx knots-sync doctor` 의 "세션마다 실리는 양" 줄 | 이전 → 이후(하네스별) |
+| 세션마다 실리는 양 | `knots-sync doctor` 의 "세션마다 실리는 양" 줄 | 이전 → 이후(하네스별) |
 | 세션 훅 수 | `.claude/settings.json` 의 `hooks.*[].hooks[]` 개수 | 이전 → 이후 |
 | 검증 | CI 파이프라인 `full` 결과 링크 | passed |
 | 작업 공간 정리(knots) | `git worktree list` · `knots-work-gc` | 이전 작업 공간 0개 |

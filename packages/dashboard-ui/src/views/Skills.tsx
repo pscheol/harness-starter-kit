@@ -138,7 +138,7 @@ export default function Skills({ route }: { route: Route }) {
               ) : (
                 <Empty title="스킬 지도가 없습니다" text="킷 명령은 .agents/skill-map.json 에서 깔린 스킬을 찾아 쓰고, 없으면 킷 기본 템플릿을 씁니다. 지도가 없으면 단계는 설명 낱말로 추정합니다." />
               )}
-              <Muted>지도는 팀이 MR 로 고칩니다. 터미널: <Code>npx knots-sync skills --stage 설계</Code></Muted>
+              <Muted>지도는 팀이 MR 로 고칩니다. 터미널: <Code>knots-sync skills --stage 설계</Code></Muted>
             </Panel>
             <Panel title="단계 × 하네스" aside={<Muted>{`단계가 붙은 스킬 ${skills.filter((s) => s.stages.length).length}`}</Muted>} flush>
               <Table
@@ -155,7 +155,7 @@ export default function Skills({ route }: { route: Route }) {
               <Button label="다시 수집" icon={<Ico name="refresh" />} href={`${location.pathname}?refresh=1`} />
               <Muted size="xsm">{`${clock(inv.scannedAt)} 수집`}</Muted>
             </HStack>
-            <CommandBox cmd="npx knots-sync skills --stage 설계" />
+            <CommandBox cmd="knots-sync skills --stage 설계" />
           </>
         }
       />

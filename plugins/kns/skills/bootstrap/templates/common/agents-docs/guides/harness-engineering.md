@@ -291,7 +291,7 @@ sequenceDiagram
 
 **공통 규칙**(공통 파일 전부 — 규칙 · 역할 · 스킬 · 템플릿 · 배선 · SDD 스크립트 · 이 설명서):
 
-1. 메인 리포 `tools/harness/shared/`의 원본을 고친다. 새 규칙 파일이면 `npx knots-sync repair`로 하네스 폴더 생성물을 만든다.
+1. 메인 리포 `tools/harness/shared/`의 원본을 고친다. 새 규칙 파일이면 `knots-sync repair`로 하네스 폴더 생성물을 만든다.
 2. 변경 전 `python3 tools/harness/sync.py --snapshot <path>`, 수정 후 `--baseline <path>`로 등록 하네스에 배포한다. 지문 충돌은 파일을 덮지 않고 확인한다.
 3. 메인 리포 루트에서 `python3 tools/harness/sync.py --check`로 배포 드리프트를 확인하고 `bash scripts/verify.sh --files <변경 파일> --tests <관련 테스트>`로 선택 검증한다. 도메인·단위 전체 구조 검사는 `HARNESS_VERIFY_LEVEL=fast bash scripts/verify.sh`, MR 전에는 `bash scripts/verify.sh --affected`, 전체 빌드·테스트(full)는 CI가 돈다.
 4. 두 단계로 커밋한다. 바뀐 도메인 리포마다 커밋·push 한 뒤, 메인 리포에서 `tools/harness/shared` 변경과 도메인 포인터(`git add <도메인 폴더>`)를 커밋·push 한다.
@@ -301,7 +301,7 @@ sequenceDiagram
 **고유 규칙**:
 
 1. 그 하네스 `.agents/rules/<규칙>.md`를 고친다.
-2. `AGENTS.md` 규칙 색인을 맞추고 `npx knots-sync repair`로 복사본 · 생성물을 다시 만든다.
+2. `AGENTS.md` 규칙 색인을 맞추고 `knots-sync repair`로 복사본 · 생성물을 다시 만든다.
 3. 그 하네스 루트에서 `bash scripts/verify.sh`.
 4. 도메인 리포 안이면 그 리포에 커밋·push 하고, 메인 리포 안이면 포인터를 올린다.
 

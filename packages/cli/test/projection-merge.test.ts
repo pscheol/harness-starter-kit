@@ -145,15 +145,15 @@ describe("settings.json(§5.2, 03 §3.5 · §5 #6)", () => {
       hooks: {
         SessionStart: [
           { hooks: [{ type: "command", command: 'KNS_HARNESS=claude bash "$CLAUDE_PROJECT_DIR"/scripts/hooks/session-register.sh' }] },
-          { hooks: [{ type: "command", command: "npx knots-sync doctor --quiet" }] },
+          { hooks: [{ type: "command", command: "knots-sync doctor --quiet" }] },
         ],
         PreToolUse: [{ matcher: "Write|Edit|MultiEdit|NotebookEdit|Bash", hooks: [{ type: "command", command: 'bash "$CLAUDE_PROJECT_DIR"/scripts/hooks/protect-approvals.sh' }] }],
       },
     };
     const j = JSON.parse(ok(settings.merge(`${JSON.stringify(old, null, 2)}\n`, want)).text);
     const commands = Object.values(j.hooks).flatMap((groups: any) => groups.flatMap((g: any) => g.hooks.map((h: any) => h.command)));
-    expect(commands.filter((c: string) => !c.includes("dispatch.sh"))).toEqual(["npx knots-sync doctor --quiet"]);
-    expect(j.hooks.SessionStart.map((g: any) => g.hooks[0].command)).toEqual([`KNS_HARNESS=claude ${dispatch("harness-session-start", "session-start.sh")}`, "npx knots-sync doctor --quiet"]);
+    expect(commands.filter((c: string) => !c.includes("dispatch.sh"))).toEqual(["knots-sync doctor --quiet"]);
+    expect(j.hooks.SessionStart.map((g: any) => g.hooks[0].command)).toEqual([`KNS_HARNESS=claude ${dispatch("harness-session-start", "session-start.sh")}`, "knots-sync doctor --quiet"]);
   });
 
   it("deny: lock 키에 있는데 이번에 원하지 않으면 뺀다 · 다른 값은 둔다", () => {

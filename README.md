@@ -65,39 +65,56 @@ harness-starter-kit/                        ← 마켓플레이스 루트 · pnp
 
 ## 설치
 
-### Claude Code
+처음이면 **Claude Code 플러그인**으로 시작한다. 플러그인 안에 CLI 가 들어 있어 따로 설치할 것이 없고, `/kns:update` · `/kns:bootstrap` 이 미리보기 → 요약 → 승인 → 반영을 대신 진행한다. 터미널 CLI 는 관리 페이지(`dashboard`)와 CI 에서 쓴다.
 
-```bash
-# 로컬 경로로 등록
-/plugin marketplace add /path/to/harness-starter-kit
+### Claude Code — 플러그인(먼저)
+
+```text
+# 옛 플러그인(harness-kit)을 깔았던 적이 있으면 그 마켓플레이스부터 뺀다
+/plugin marketplace remove harness-starter-kit
+
+/plugin marketplace add pscheol/harness-starter-kit
 /plugin install kns@knots-sync
-
-# GitHub에 올린 뒤에는
-/plugin marketplace add <owner>/harness-starter-kit
+# Claude Code 를 다시 시작하면 /kns:bootstrap · /kns:update 가 보인다
 ```
+
+그다음 **리포 폴더에서** Claude Code 를 연다. 리포 여러 개를 담은 상위 폴더에서 열면 안 된다 — Claude Code 는 연 폴더와 그 위쪽의 `.claude/` · `CLAUDE.md` 만 읽고 아래 폴더는 읽지 않아서, 리포 안에 깐 규칙 · 훅 · 스킬이 동작하지 않는다.
+
+| 리포 상태 | 입력 |
+|---|---|
+| 킷이 없다 | `/kns:bootstrap` |
+| 옛 킷(harness-kit v1)이나 이전 판이 깔려 있다 | `/kns:update` — 미리보기를 먼저 보이고 승인을 받은 뒤 반영한다. 사람이 고친 파일은 덮지 않고 `.new` 로 옆에 둔다 |
+
+로컬 경로로 시험할 때는 `/plugin marketplace add /path/to/harness-starter-kit` 로 등록한다.
 
 ### Codex
 
 ```bash
-# 로컬 경로로 등록
-codex plugin marketplace add /path/to/harness-starter-kit
+codex plugin marketplace add pscheol/harness-starter-kit
 codex plugin add kns@knots-sync
-
-# GitHub에 올린 뒤에는
-codex plugin marketplace add <owner>/harness-starter-kit
 ```
 
-### 터미널 CLI — npx(GitHub, 태그 고정)
+### 터미널 CLI — 관리 페이지 · CI 용
 
-플러그인 없이 터미널에서 바로 쓴다. npm 에는 아직 올리지 않았다(결정 D3 — v2.2 까지 명령이 그대로면 올린다).
+npm 에는 아직 올리지 않았다(결정 D3 — v2.2 까지 명령이 그대로면 올린다). 자주 쓰면 **전역 설치**가 빠르다(설치 한 번 약 5초, 이후 명령마다 약 0.5초).
 
 ```bash
-npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.1 --version
-npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.1 init --stack python --agents claude,codex
-alias knots-sync='npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.1'   # 자주 쓰면 별칭
+npm i -g https://codeload.github.com/pscheol/harness-starter-kit/tar.gz/refs/tags/v2.0.0-alpha.2
+knots-sync --version
+# 최신 main 을 받으려면 끝을 refs/heads/main 으로 바꾼다. 새 판은 같은 줄을 다시 친다
 ```
 
-`npx kns` 는 npm 에 있는 **다른 사람의 패키지**라 쓰지 않는다. `kns` 별칭은 설치된 CLI 안에서만 쓴다.
+한 번만 쓸 때는 npx 로 부른다(명령마다 GitHub 에서 받아 약 13초 걸린다).
+
+```bash
+npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.2 --version
+knots-sync() { npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.2 "$@"; }   # 자주 쓰면 함수로
+```
+
+- `npm i -g github:pscheol/harness-starter-kit…` 는 쓰지 않는다. npm 11 에서 설치는 성공한 것처럼 끝나지만 명령 링크가 지워진 임시 폴더를 가리켜 실행되지 않는다.
+- 별칭(`alias`)을 쓰려면 정의하는 줄과 쓰는 줄을 따로 친다. zsh 는 붙여 넣은 여러 줄을 한 번에 읽어, 같은 덩어리 안에서 만든 별칭을 다음 줄에 쓰지 않는다. 함수는 그런 제약이 없다.
+- `npx kns` · `npx knots-sync` 는 쓰지 않는다. `kns` 는 npm 에 있는 **다른 사람의 패키지**이고, `knots-sync` 는 아직 npm 에 없는 이름이라 남이 먼저 올릴 수 있다.
+- 관리 페이지는 **킷을 깐 리포 안에서** `knots-sync dashboard` 로 연다. 여러 리포를 한 화면에 보려면 `knots-sync dashboard --root <폴더>`(깊이 3까지 찾는다) 또는 `--all`(등록한 프로젝트)을 쓴다. 승인 PIN 은 사람 터미널에서 연 서버에서만 받는다.
 
 ### Kiro — `install-kiro.sh`
 
@@ -565,10 +582,10 @@ node scripts/gen-plugins.mjs --check   # 다르면 1 (tests/test_generated.py �
 
 ```bash
 codex plugin marketplace upgrade                 # Codex
-/plugin marketplace update harness-starter-kit   # Claude Code
+/plugin marketplace update knots-sync            # Claude Code
 ```
 
-슬래시 커맨드를 고칠 때는 원본 한 곳만 고친다. 설치본의 하네스 폴더 사본은 `npx knots-sync repair`(Node 가 없으면 `python3 scripts/harness/projection.py sync`)가 다시 만든다.
+슬래시 커맨드를 고칠 때는 원본 한 곳만 고친다. 설치본의 하네스 폴더 사본은 `knots-sync repair`(Node 가 없으면 `python3 scripts/harness/projection.py sync`)가 다시 만든다.
 사본을 직접 고치면 배치 검사(`scripts/harness/check_layout.py`)가 `drifted`로 막는다.
 
 ```bash

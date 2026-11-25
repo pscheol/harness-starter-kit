@@ -149,7 +149,7 @@
 >
 > 슬래시 커맨드는 원본 1곳 + 복사본 · 생성물. 본문 원본은 `agents-skills/kns-*/SKILL.md`(설치 위치 `.agents/skills/`)이고
 > 스킬이 `.agents/rules/sdd-workflow.md`의 해당 절을 읽는다. Claude · Kiro 스킬은 폴더 복사본, Cursor · Kiro 명령은 본문 전체를 담은 생성물이다.
-> 원본을 고치면 `npx knots-sync repair`(Node 가 없으면 `python3 scripts/harness/projection.py sync`)가 다시 만든다.
+> 원본을 고치면 `knots-sync repair`(Node 가 없으면 `python3 scripts/harness/projection.py sync`)가 다시 만든다.
 > 설치본의 `scripts/harness/check_layout.py`가 lock 기준으로 복사본 · 생성물이 원본과 같은지(stale · drifted) 검사한다.
 
 ## 에이전트가 규칙을 공유하는 방식

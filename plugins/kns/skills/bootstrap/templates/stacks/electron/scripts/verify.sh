@@ -66,7 +66,7 @@ bash scripts/check-exec-plan-status.sh || { echo "✖ exec-plan 상태 일관성
 
 echo "▶ 하네스 구조(문서 기준·SDD 상태·에이전트 배선)"
 python3 scripts/check_harness.py || { echo "✖ 하네스 구조 검사 실패"; fail=1; }
-python3 scripts/harness/check_layout.py || { echo "✖ 배치 검사 실패(복사본 · 생성물이 원본과 다르다 → npx knots-sync repair)"; fail=1; }
+python3 scripts/harness/check_layout.py || { echo "✖ 배치 검사 실패(복사본 · 생성물이 원본과 다르다 → knots-sync repair)"; fail=1; }
 
 # 기능 문서(SDLC S7). 생성기가 있으면 배정·원고·스냅숏 지문·생성 결과를 검사한다(파일을 쓰지 않는다).
 if [ -f tools/docs/feature_docs.py ]; then

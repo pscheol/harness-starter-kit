@@ -262,7 +262,7 @@ function ProposalPanel({ flow, intentKey, planned, selected, readOnly, reload, n
       <Muted>제안은 승인이 아닙니다. units.json 은 바뀌지 않고, intent 게이트 승인 때만 반영됩니다. 팀 흐름 틀(flow.gates)은 여기서 바꾸지 않습니다.</Muted>
       {flow.proposal ? <Notice kind="warn" title={`저장된 제안 ${flow.proposal.changes?.length ?? 0}건 · ${flow.proposal.createdBy ?? ""} · ${clock(flow.proposal.createdAt)}`}>다시 저장하면 바뀝니다.</Notice> : null}
       {readOnly ? (
-        <Notice kind="warn" title="읽기 전용. ">제안을 저장하지 않습니다. 사람이 자기 터미널에서 연 서버나 <code>{`npx knots-sync units propose ${intentKey} …`}</code> 로 합니다.</Notice>
+        <Notice kind="warn" title="읽기 전용. ">제안을 저장하지 않습니다. 사람이 자기 터미널에서 연 서버나 <code>{`knots-sync units propose ${intentKey} …`}</code> 로 합니다.</Notice>
       ) : (
         <VStack gap={3}>
           <Selector label="종류" value={op} onChange={(v) => v && setOp(v)} options={OPS} />

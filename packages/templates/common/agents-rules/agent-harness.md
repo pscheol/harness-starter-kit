@@ -143,7 +143,7 @@ Claude·Codex·Kiro hook 은 로직 없이 `scripts/hooks/*`(세션 안내 · �
 규칙이나 지식이 바뀌면 순서를 지킨다.
 
 1. `.agents/rules/`의 원본을 먼저 고친다. 규칙은 여기가 유일한 출처다.
-2. `AGENTS.md` 목차를 원본에 맞춘다. 하네스 폴더(`.claude/` `.cursor/` `.kiro/` …)의 복사본 · 생성물은 `npx knots-sync repair`(Node 가 없으면 `python3 scripts/harness/projection.py sync`)가 다시 만든다. 직접 고치지 않는다.
+2. `AGENTS.md` 목차를 원본에 맞춘다. 하네스 폴더(`.claude/` `.cursor/` `.kiro/` …)의 복사본 · 생성물은 `knots-sync repair`(Node 가 없으면 `python3 scripts/harness/projection.py sync`)가 다시 만든다. 직접 고치지 않는다.
 3. 진입 파일은 계속 짧게 유지한다. 거대한 지침 파일 하나를 만들지 않는다.
 4. 규칙이 아니라 특정 기능의 설계나 계획이면 `.agents/rules/`가 아니라 `.agents/docs/`에 기록한다.
 

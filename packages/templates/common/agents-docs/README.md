@@ -23,7 +23,7 @@
 | Kiro | `.kiro/steering/*.md` | `.agents/rules` 원본에서 만든 생성물 + 이 기록 시스템 참조 |
 
 규칙을 바꿀 때는 `.agents/rules/`(규칙)나 `.agents/docs/`(기록)를 먼저 고치고,
-그다음 진입 파일을 맞춘다. steering 등 하네스 폴더 생성물은 `npx knots-sync repair`가 다시 만든다.
+그다음 진입 파일을 맞춘다. steering 등 하네스 폴더 생성물은 `knots-sync repair`가 다시 만든다.
 
 ## 구조 (제품 단위 SDD)
 
