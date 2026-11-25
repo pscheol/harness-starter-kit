@@ -102,7 +102,7 @@ const USAGE = `knots-sync ${VERSION} — 하네스 엔지니어링 스타터 킷
 init · plan: --stack --arch --domain --lang --agents <목록|all> --modules <목록|all|none>
              --name --slug --package-ns --protected-path --token KEY=VALUE --issue-source kit|jira
              --issue-prefix --base --adopt --force --no-register(등록부에 더하지 않는다) --install-tools --allow-unverified(외부 도구 모듈 aidlc · entire 는 이름을 줄 때만 켠다)
-add · remove: <이름>…(하네스 claude codex cursor kiro · 모듈 jira-workflow multi-harness aidlc entire notion)
+add · remove: <이름>…(하네스 claude codex cursor kiro · 모듈 jira-workflow multi-harness ci aidlc entire notion — ci 는 CI 진입 파일, 깔면 다음 push 부터 파이프라인이 돈다)
              add: --install-tools(도구가 없을 때 사람 터미널에서만 설치) --allow-unverified(검증 범위 밖 도구 버전을 허용)
 dashboard: --port --open --read-only --export <폴더> --all --root <dir> --workspace <file> · 관리 페이지 명령은 knots-sync <명령> --help
 update: --accept-all --prune --forget <경로>(반복) --to <CLI 버전> --packs(메타 packs 의 팩만 받아 깐다) --tools(켠 외부 도구의 지금 · 최신 버전을 보이고 사람이 고른 것만 올린다 · --allow-unverified) · outdated: --check --source <git 원격>

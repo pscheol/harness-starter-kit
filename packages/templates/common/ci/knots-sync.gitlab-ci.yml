@@ -1,6 +1,7 @@
 # HARNESS STARTER KIT ({{PROJECT_NAME}}) — GitLab CI 검증 단계(설계 09 §3.7). 킷이 깐 파일이다(주인 kit).
 #
-# 리포의 .gitlab-ci.yml 이 include 한다. 검증 단계는 scripts/verify.sh 만 부른다.
+# 리포의 .gitlab-ci.yml 이 include 한다(진입 파일은 ci 모듈이 깐다 — knots-sync add ci. 진입 파일이 없으면 돌지 않는다).
+# 검증 단계는 scripts/verify.sh 만 부른다.
 #   harness:fast           모든 파이프라인
 #   harness:affected       MR. base 브랜치의 검증 코드 · 설정으로 판정한다(MR 이 바꾼 판은 병합 뒤부터 적용된다)
 #   harness:affected-head  MR 이 검증 코드 · 설정을 바꿨을 때 head 판으로 한 번 더(정보용, 실패해도 MR 을 막지 않는다)

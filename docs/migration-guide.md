@@ -31,6 +31,16 @@
 
 그대로인 것: GitHub 저장소 이름(`harness-starter-kit`), 파일 머리 표지 `HARNESS STARTER KIT`, `scripts/harness/` 폴더, 훅 id `harness-*`. 이것들은 "하네스 엔지니어링"이라는 개념 이름이거나 v1 파일을 알아보는 열쇠다.
 
+### 1.2 CI 진입 파일은 선택 모듈 `ci` 다
+
+v2 는 CI 진입 파일(`.gitlab-ci.yml` · `.github/workflows/harness-verify.yml` · `.github/actions/harness-setup/action.yml`)을 `ci` 모듈을 켤 때만 깐다. 진입 파일이 생기면 다음 push 부터 원격 파이프라인이 돌기 때문이다(회사 GitLab 리포가 킷 갱신만으로 파이프라인을 돌리면 안 된다). 진입 파일이 include 하는 단계 템플릿(`ci/knots-sync.gitlab-ci.yml` · `ci/harness.gocd.yaml`)은 늘 깔리지만 진입 파일 없이는 돌지 않는다.
+
+| 지금 리포 | `update` 뒤 | 사람이 할 일 |
+|---|---|---|
+| v1 의 `.github/workflows/verify.yml` 이 있다 | '킷에서 빠짐'(orphan)으로 남는다. 새 진입 파일은 깔리지 않는다 | 원격 CI 를 계속 쓰면 `knots-sync add ci` 로 새 진입 파일을 받고 옛 `verify.yml` 을 지운다 |
+| 2.0.0-alpha.0 · alpha.1 로 진입 파일을 받았다 | 세 파일을 orphan 으로 알리고 "이제 ci 모듈이 깐다"를 붙인다. 지우지 않는다 | 쓰면 `knots-sync add ci`(파일은 그대로, lock 만 모듈로), 안 쓰면 `knots-sync update --prune`(고치지 않은 것만 지운다) |
+| 팀이 만든 `.gitlab-ci.yml` 이 있다 | 건드리지 않는다 | 킷 단계가 필요하면 그 파일에 `include: - local: ci/knots-sync.gitlab-ci.yml` 을 더한다(`add ci` 는 있는 파일을 사람 파일로 두고 덮지 않는다) |
+
 CLI 는 GitHub 에서 태그를 고정해 npx 로 부른다(결정 D3): `npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.1 <명령>`. 셸 별칭 `alias knots-sync='npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.1'` 를 두면 아래의 `npx knots-sync <명령>` 을 그대로 `knots-sync <명령>` 으로 쓸 수 있다. npm 에는 아직 올리지 않았으니 `npx knots-sync`(npm)는 쓰지 않고, `npx kns` 는 npm 의 다른 사람 패키지라 절대 쓰지 않는다. Node 가 없으면 플러그인 안의 `bash <플러그인>/skills/bootstrap/kit.sh <명령>` 이 v1 스크립트로 내려간다.
 
 ## 2. 작업 공간 만들기
@@ -121,7 +131,7 @@ K2 의 AI-DLC 결정(사람이 고르고 ADR 로 남긴다):
 | 단계 | 킷 판 | 할 일 | 끝의 확인 |
 |---|---|---|---|
 | H1 | 2.0 | `npx knots-sync init --adopt --dry-run` → 목록 검토 → 승인 → `init --adopt` | 기존 파일이 `owner: user` 로 남았는가, `doctor --check` exit 0 |
-| H2 | 2.1 | worktree 는 도메인 리포 단위로만. 기존 `.gitlab-ci.yml` 에 킷 CI include 를 더한다 | MR 파이프라인에 `harness:fast` · `harness:affected` |
+| H2 | 2.1 | worktree 는 도메인 리포 단위로만. 기존 `.gitlab-ci.yml` 에 킷 CI include 를 더한다(1.2 절 — `ci` 모듈은 켜지 않는다) | MR 파이프라인에 `harness:fast` · `harness:affected` |
 | H3 | 2.5 | 승인 강제 켬. 각자 `.claude/settings.local.json` 의 `Bash(git push*)` · `Bash(git commit*)` 무조건 허용을 지운다(개인 파일) | 승인 기록 없는 completed 이동이 막힌다 |
 | H4 | 2.6 | multi-harness 모듈: submodule 규칙 사본을 `sync units` 로 합친다 | `sync units --check` exit 0 |
 

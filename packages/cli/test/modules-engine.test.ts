@@ -35,9 +35,9 @@ function externalHashes(t: string, hookMarks: string[]): Record<string, string> 
 }
 
 describe("module.json 선언(MD-R1)", () => {
-  it("모듈 다섯의 선언이 읽히고 모듈 폴더의 파일은 모두 선언돼 있다", () => {
+  it("모듈 여섯의 선언이 읽히고 모듈 폴더의 파일은 모두 선언돼 있다", () => {
     const ids = listModuleIds(REAL_TEMPLATES);
-    expect(ids).toEqual(["aidlc", "entire", "jira-workflow", "multi-harness", "notion"]);
+    expect(ids).toEqual(["aidlc", "ci", "entire", "jira-workflow", "multi-harness", "notion"]);
     for (const id of ids) {
       const m = loadModule(REAL_TEMPLATES, id);
       expect(undeclaredTemplateFiles(REAL_TEMPLATES, m)).toEqual([]);
@@ -440,7 +440,8 @@ describe("init --modules 외부 도구 모듈 · update --tools", () => {
     fs.mkdirSync(plain, { recursive: true });
     const all = await cli(plain, ["init", "--yes", "--templates", REAL_TEMPLATES, "--stack", "python", "--agents", "claude", "--modules", "all", "--no-register"], bin);
     expect(all.code).toBe(0);
-    expect(meta(plain).modules).toEqual(["jira-workflow", "multi-harness"]);
+    // all 은 킷 모듈 전부다(ci 포함 — 이름으로 고른 것과 같다). 외부 도구 모듈은 들지 않는다
+    expect(meta(plain).modules).toEqual(["jira-workflow", "multi-harness", "ci"]);
   });
 
   it("update --tools: 에이전트 세션에서는 목록만, 범위 밖 최신 판은 --allow-unverified 없이는 올리지 않는다", async () => {

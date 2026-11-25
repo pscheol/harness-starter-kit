@@ -65,6 +65,10 @@ v1.0.8 이하 lock 은 둘을 가리지 못해, 첫 업데이트에서 킷이 �
 - 업데이트는 **에이전트 구성을 바꾸지 않는다**. 메타의 `agents` · `modules` 에 있는 것만 대상이다.
   하네스 · 모듈을 켜고 끄는 것은 `kns:agent-add`(`kit.sh add` · `remove`)가 맡는다.
   메타에 적힌 모듈이 킷에서 사라졌으면 경고하고 그 모듈만 건너뛴다.
+- **킷에서 빠진 파일이 모듈로 옮겨 갔으면 그 모듈 이름을 알린다**(`movedToModules`, `update.sh` 는 orphan 줄 끝).
+  CI 진입 파일(`.gitlab-ci.yml` · `.github/workflows/harness-verify.yml` · `.github/actions/harness-setup/action.yml`)은
+  `ci` 모듈로 옮겼다 — 옛 설치에서는 '킷에서 빠짐'으로 보이고 지워지지 않는다. 계속 쓸지 사람에게 묻는다:
+  쓰면 `kit.sh add ci`, 안 쓰면 `--prune`(고치지 않은 것만 지운다). 묻지 않고 `--prune` 을 붙이지 않는다.
 - **도메인은 메타에서 읽고, 없으면 스택에서 유도한다.** 구버전 메타에는 `domain`·`modules` 가 없다 —
   `web`·`electron` 이면 `frontend` 로 채워 넣고, 그 도메인 규칙이 `new` 로 잡혀 처음 설치된다.
 - 상태 파일이 없는 리포(구버전 킷으로 설치)는 멈춘다(CLI exit 3 · `update.sh` exit 1). `kns:bootstrap` 으로 한 번

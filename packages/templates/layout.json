@@ -7,7 +7,8 @@
     { "id": "domain", "dir": "domains/{domain}", "whenExists": true },
     { "id": "stack", "dir": "stacks/{stack}", "exclude": ["**/arch/**"] },
     { "id": "arch", "dir": "stacks/{stack}/arch/{arch}" },
-    { "id": "module", "dir": "optional/{module}", "each": "modules" }
+    { "id": "module", "dir": "optional/{module}", "each": "modules", "exclude": ["stacks/**"] },
+    { "id": "module-stack", "dir": "optional/{module}/stacks/{stack}", "each": "modules", "whenExists": true }
   ],
   "segments": [
     { "from": "root/CLAUDE.md", "to": "CLAUDE.md", "harness": "claude" },
@@ -48,7 +49,7 @@
     "kiro": { "dirs": [".kiro"], "env": ["KIRO_IDE", "KIRO_HOME"] }
   },
   "defaultHarnesses": ["claude"],
-  "modules": ["jira-workflow", "multi-harness"],
+  "modules": ["jira-workflow", "multi-harness", "ci"],
   "externalModules": ["aidlc", "entire", "notion"],
   "domains": ["backend", "frontend"],
   "defaultStack": "jvm",

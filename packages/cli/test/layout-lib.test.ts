@@ -8,14 +8,15 @@ import { LEGACY_LIB, REAL_TEMPLATES } from "./helpers";
 
 const layout = loadLayout(REAL_TEMPLATES);
 
-function filesUnder(dir: string, skipArch: boolean): string[] {
+/** skip = 레이어가 빼는 맨 위 폴더(스택 층은 arch/, 모듈 층은 stacks/ — 그 아래는 다른 레이어다). */
+function filesUnder(dir: string, skip: string | null): string[] {
   const out: string[] = [];
   const walk = (d: string): void => {
     for (const name of fs.readdirSync(d)) {
       const full = path.join(d, name);
       const rel = path.relative(dir, full).split(path.sep).join("/");
       if (fs.lstatSync(full).isDirectory()) {
-        if (skipArch && rel === "arch") continue;
+        if (skip !== null && rel === skip) continue;
         walk(full);
       } else if (name !== ".DS_Store" && name !== "ABOUT") out.push(rel);
     }
@@ -26,18 +27,22 @@ function filesUnder(dir: string, skipArch: boolean): string[] {
 
 /** setup.sh 가 순회하는 레이어 루트 전부(스택 · 변형 · 도메인 · 모듈 조합과 무관하게). */
 function layerRoots(): { root: string; files: string[] }[] {
-  const roots: { root: string; skipArch: boolean }[] = [{ root: "common", skipArch: false }];
-  for (const d of fs.readdirSync(path.join(REAL_TEMPLATES, "domains"))) roots.push({ root: `domains/${d}`, skipArch: false });
-  for (const s of fs.readdirSync(path.join(REAL_TEMPLATES, "stacks"))) {
-    roots.push({ root: `stacks/${s}`, skipArch: true });
+  const roots: { root: string; skip: string | null }[] = [{ root: "common", skip: null }];
+  for (const d of fs.readdirSync(path.join(REAL_TEMPLATES, "domains"))) roots.push({ root: `domains/${d}`, skip: null });
+  const stacks = fs.readdirSync(path.join(REAL_TEMPLATES, "stacks"));
+  for (const s of stacks) {
+    roots.push({ root: `stacks/${s}`, skip: "arch" });
     for (const a of fs.readdirSync(path.join(REAL_TEMPLATES, "stacks", s, "arch"))) {
-      roots.push({ root: `stacks/${s}/arch/${a}`, skipArch: false });
+      roots.push({ root: `stacks/${s}/arch/${a}`, skip: null });
     }
   }
-  for (const m of fs.readdirSync(path.join(REAL_TEMPLATES, "optional"))) roots.push({ root: `optional/${m}`, skipArch: false });
+  for (const m of fs.readdirSync(path.join(REAL_TEMPLATES, "optional"))) {
+    roots.push({ root: `optional/${m}`, skip: "stacks" });
+    for (const s of stacks) roots.push({ root: `optional/${m}/stacks/${s}`, skip: null });
+  }
   return roots
-    .filter((r) => fs.statSync(path.join(REAL_TEMPLATES, r.root)).isDirectory())
-    .map((r) => ({ root: r.root, files: filesUnder(path.join(REAL_TEMPLATES, r.root), r.skipArch) }));
+    .filter((r) => fs.existsSync(path.join(REAL_TEMPLATES, r.root)) && fs.statSync(path.join(REAL_TEMPLATES, r.root)).isDirectory())
+    .map((r) => ({ root: r.root, files: filesUnder(path.join(REAL_TEMPLATES, r.root), r.skip) }));
 }
 
 const BASH = `

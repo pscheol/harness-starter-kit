@@ -1,0 +1,5 @@
+CI 진입 파일 — .gitlab-ci.yml · GitHub Actions 워크플로 · 스택별 실행 환경 액션. 깔면 다음 push 부터 파이프라인이 돈다.
+설치물: .gitlab-ci.yml(ci/knots-sync.gitlab-ci.yml 을 include 만 한다) · .github/workflows/harness-verify.yml ·
+        .github/actions/harness-setup/action.yml(고른 스택 판 — 모듈 안 stacks/<스택>/)
+검증 단계 템플릿 ci/knots-sync.gitlab-ci.yml · ci/harness.gocd.yaml 은 공통 층이라 늘 깔린다. 진입 파일이 없으면 돌지 않는다.
+실행 환경(이미지 · 런타임 · 분석기)은 팀이 채운다 — .gitlab-ci.yml 의 .knots-sync-setup · harness-setup/action.yml.

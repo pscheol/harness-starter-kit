@@ -626,5 +626,84 @@ class CliUpdateParityTest(unittest.TestCase):
         self.assertEqual(json.loads(cl2.stdout)["merged"], [])
 
 
+# CI 진입 파일을 ci 모듈로 옮겼다. 그 전 판(2.0.0-alpha.1)은 공통 · 스택 층에서 늘 깔았다.
+CI_FILES = (".gitlab-ci.yml", ".github/workflows/harness-verify.yml", ".github/actions/harness-setup/action.yml")
+
+
+def make_pre_ci_kit(root: Path) -> Path:
+    """ci 모듈 전 판 킷: 진입 파일이 common/root, 실행 환경 액션이 stacks/<스택>/root 에 있다."""
+    kit = root / "pre-ci"
+    for part in KIT_PARTS:
+        shutil.copytree(PLUGIN / part, kit / part, symlinks=True)
+    tpl = kit / "skills/bootstrap/templates"
+    module = tpl / "optional/ci"
+    shutil.copytree(module / "root", tpl / "common/root", dirs_exist_ok=True)
+    for stack in (module / "stacks").iterdir():
+        shutil.copytree(stack / "root", tpl / "stacks" / stack.name / "root", dirs_exist_ok=True)
+    return kit
+
+
+def edit_ci_entry(target: Path, picks: Picks | None) -> None:
+    append(target, ".gitlab-ci.yml", "# 사람이 더한 줄\n")
+
+
+CI_CASES = (
+    Case("C1-pre-ci-orphans", "go", "hexagonal", "codex", nothing),
+    Case("C2-pre-ci-prune", "python", "layered", "claude", edit_ci_entry, cli_flags=("--prune",)),
+)
+
+
+@unittest.skipUnless(shutil.which("node"), "Node 18.3 이상이 필요하다")
+class CiModuleUpdateParityTest(unittest.TestCase):
+    """진입 파일을 늘 깔던 옛 설치의 update: 두 update 모두 킷에서 빠진 파일로 알리고 지우지 않는다. ci 모듈을 켜지 않는다."""
+
+    outcomes: dict[str, Outcome] = {}
+    ran = CliUpdateParityTest.ran
+    assert_same_tree = CliUpdateParityTest.assert_same_tree
+    assert_lock_means_same = CliUpdateParityTest.assert_lock_means_same
+    assert_meta_means_same = CliUpdateParityTest.assert_meta_means_same
+
+    @classmethod
+    def setUpClass(cls):
+        cls.cli = cli_dist.cli_bundle()
+        cls.tmp = Path(tempfile.mkdtemp(prefix="hk-update-ci-")).resolve()
+        old = make_pre_ci_kit(cls.tmp)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            done = list(pool.map(lambda c: run_case(cls.cli, cls.tmp, old, PLUGIN, None, c), CI_CASES))
+        cls.outcomes = {o.case.name: o for o in done}
+
+    @classmethod
+    def tearDownClass(cls):
+        shutil.rmtree(cls.tmp, ignore_errors=True)
+
+    def test_c1_entry_files_are_reported_not_deleted(self):
+        o, j = self.ran("C1-pre-ci-orphans")
+        self.assertEqual(o.cli_run.returncode, 0)
+        for rel in CI_FILES:
+            self.assertIn(rel, lock_hashes(o.base / LOCK), rel)
+        self.assert_same_tree(o)
+        self.assert_lock_means_same(o)
+        self.assert_meta_means_same(o)
+        self.assertEqual(sorted(op["path"] for op in j["ops"] if op["action"] == "orphan"), sorted(CI_FILES))
+        for target in (o.sh, o.cli):
+            for rel in CI_FILES:
+                self.assertTrue((target / rel).is_file(), f"{target.parent.name}: {rel}")
+            self.assertEqual(json.loads((target / META).read_text(encoding="utf-8"))["modules"], [])
+        # 계속 쓰려면 ci 모듈을 켠다 — 두 update 모두 어느 모듈이 그 파일을 까는지 알린다
+        self.assertEqual(j["movedToModules"], [{"module": "ci", "paths": sorted(CI_FILES)}])
+        for rel in CI_FILES:
+            self.assertRegex(o.sh_run.stdout, rf"orphan +{re.escape(rel)} .*ci 모듈")
+
+    def test_c2_prune_deletes_only_unmodified(self):
+        o, j = self.ran("C2-pre-ci-prune")
+        self.assertEqual(o.cli_run.returncode, 4)
+        pruned = set(CI_FILES[1:])
+        self.assert_same_tree(o, drop_sh=pruned, dirs=False)
+        self.assert_lock_means_same(o, pruned=pruned)
+        self.assertEqual(sorted(op["path"] for op in j["ops"] if op["action"] == "delete"), sorted(pruned))
+        self.assertTrue((o.cli / ".gitlab-ci.yml").read_text(encoding="utf-8").endswith("# 사람이 더한 줄\n"))
+        self.assertFalse((o.cli / ".github").exists())
+
+
 if __name__ == "__main__":
     unittest.main()

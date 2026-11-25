@@ -31,6 +31,7 @@ SETUP = PLUGIN / "skills/bootstrap/setup.sh"
 ADD_AGENT = PLUGIN / "skills/agent-add/add-agent.sh"
 TEMPLATES = cli_dist.PLUGIN_TEMPLATES
 HARNESSES = ("claude", "codex", "cursor", "kiro")
+CI_FILES = (".gitlab-ci.yml", ".github/workflows/harness-verify.yml", ".github/actions/harness-setup/action.yml")
 
 
 @dataclass(frozen=True)
@@ -52,12 +53,15 @@ ADD_CASES = (
          pre={".cursor/commands/kns-specify.md": "사람이 먼저 둔 커맨드\n"}),
     Case("A3-web-add-guards-claude", "web", "nextjs-app", "codex", "none", ("platform-guards", "claude")),
     Case("A4-go-add-kiro-multi", "go", "hexagonal", "claude", "jira-workflow", ("kiro", "multi-harness")),
+    # ci 모듈: 진입 파일 둘 + 그 스택의 실행 환경 액션(모듈 안 stacks/<스택>/ 층)
+    Case("A5-electron-add-ci", "electron", "main-renderer", "claude", "none", ("ci",)),
 )
 REMOVE_CASES = (
     # names 를 뺀 선택값(agents · modules 의 남는 것)으로 새로 깐 리포와 비교한다.
     Case("R1-electron-remove-codex-guards", "electron", "main-renderer", "claude,codex,kiro", "jira-workflow,platform-guards", ("codex", "platform-guards")),
     Case("R2-python-remove-cursor-edited", "python", "hexagonal", "claude,cursor", "none", ("cursor",),
          edit={".cursor/commands/kns-specify.md": "사람이 더한 줄\n"}),
+    Case("R3-jvm-remove-ci", "jvm", "layered", "claude", "ci,jira-workflow", ("ci",)),
 )
 
 
@@ -254,6 +258,27 @@ class CliAddRemoveParityTest(unittest.TestCase):
         self.assert_lock_means_same(o, user={mine})
         self.assertTrue((o.cli / mine).read_text(encoding="utf-8").endswith("사람이 더한 줄\n"))
         self.assertEqual(j["keep"], [mine])
+
+    def test_a5_add_ci_brings_entry_files_and_stack_action(self):
+        o, j = self.ran("A5-electron-add-ci")
+        self.assert_same_tree(o)
+        self.assert_lock_means_same(o)
+        self.assert_meta_means_same(o)
+        created = sorted(op["path"] for op in j["ops"] if op["action"] == "create")
+        self.assertEqual(created, sorted(CI_FILES))
+        self.assertIn("하네스 검증 실행 환경(Electron)", (o.cli / CI_FILES[2]).read_text(encoding="utf-8"))
+        lock = {e["path"]: e for e in json.loads((o.cli / LOCK).read_text(encoding="utf-8"))["entries"]}
+        self.assertEqual([lock[p]["layer"] for p in CI_FILES], ["optional/ci", "optional/ci", "optional/ci/stacks/electron"])
+        self.doctor_ok(o.cli)
+
+    def test_r3_remove_ci_equals_install_without_ci(self):
+        o, j = self.ran("R3-jvm-remove-ci")
+        self.assert_same_tree(o)
+        self.assert_lock_means_same(o)
+        self.assert_meta_means_same(o)
+        self.assertEqual(sorted(op["path"] for op in j["ops"] if op["action"] == "delete"), sorted(CI_FILES))
+        self.assertFalse((o.cli / ".github").exists())
+        self.assertTrue((o.cli / "ci/knots-sync.gitlab-ci.yml").is_file())
 
 
 if __name__ == "__main__":

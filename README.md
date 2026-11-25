@@ -206,7 +206,7 @@ kns:bootstrap 스킬로 이 리포에 하네스 골격을 세팅해줘
 | 첫 위치 인자 | 대상 프로젝트 경로 | 현재 작업 디렉터리 |
 | `--stack=` | `jvm` · `python` · `go` · `web` · `electron` | 빌드 파일로 판단(`build.gradle.kts`/`pom.xml`→jvm, `pyproject.toml`→python, `go.mod`→go, `package.json`+`electron` 의존→electron, `package.json`만→web) |
 | `--arch=` | 스택별 아키텍처 변형(jvm 8 · python 5 · go 4 · web 3 · electron 3) | 기존 레이아웃에서 추론, 새 리포면 선택 기준을 제시하고 고르게 한다 |
-| `--modules=` | 선택 모듈 `jira-workflow`(이슈 트래커 연동) · `multi-harness`(여러 리포·단위 하네스의 공통 파일 배포와 게이트). 고유 불변식 가드(`scripts/run-guards.sh`)는 공통 층이라 늘 깔린다 | **없음**. 필요할 때만 켠다 — 목록은 `--list-modules` |
+| `--modules=` | 선택 모듈 `jira-workflow`(이슈 트래커 연동) · `multi-harness`(여러 리포·단위 하네스의 공통 파일 배포와 게이트) · `ci`(CI 진입 파일 `.gitlab-ci.yml` · `.github/workflows/harness-verify.yml` + 스택별 셋업 액션 — 깔면 다음 push 부터 원격 파이프라인이 돈다). 고유 불변식 가드(`scripts/run-guards.sh`)는 공통 층이라 늘 깔린다 | **없음**. 필요할 때만 켠다 — 목록은 `--list-modules` |
 | `--dry-run` | 설치 없이 파일 목록만 | 실제 설치 |
 
 기존 파일은 덮지 않는다(`↷ skip (존재)`). 덮으려면 `--force`를 명시해야 한다.
@@ -223,7 +223,10 @@ bash "$SKILL_DIR/setup.sh" --dry-run --stack=python --arch=modular /path/to/proj
 「에이전트 선택」 · 「선택 모듈」 표다(시험이 템플릿과 맞춘다). 고른 값으로 정확한 수는 `knots-sync plan --json` 의 `counts` 가 낸다.
 
 프론트엔드가 많은 건 `web`·`electron` 이 공유하는 `frontend` 도메인 규칙(디자인 시스템·접근성·
-UI 상태·성능) 때문이다. 선택 모듈(`jira-workflow` · `multi-harness`)은 여기에 더해진다.
+UI 상태·성능) 때문이다. 선택 모듈(`jira-workflow` · `multi-harness` · `ci`)은 여기에 더해진다.
+CI 진입 파일은 `ci` 모듈을 켤 때만 깔린다. 진입 파일이 include 하는 단계 템플릿(`ci/knots-sync.gitlab-ci.yml` · `ci/harness.gocd.yaml`)은
+늘 깔리지만 진입 파일 없이는 돌지 않는다. 2.0.0-alpha.1 까지 진입 파일을 받은 리포는 `update` 가 그 파일을 '킷에서 빠짐'으로 알린다 —
+계속 쓰려면 `knots-sync add ci`, 지우려면 `knots-sync update --prune`(고치지 않은 것만).
 core 에는 규칙·SDD 템플릿·검증 스크립트·세션 협업 도구·역할 정의와 기능 문서 생성기가 들어 있다.
 설치 끝에 `tools/docs/feature_docs.py build`가 한 번 돌아 `docs/features/*.html`이 생긴다(위 수에 없다).
 
