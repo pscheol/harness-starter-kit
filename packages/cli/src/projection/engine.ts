@@ -14,7 +14,7 @@ import type { LockEntry } from "../core/lock";
 import { removeEmptyDirs } from "../core/remove";
 import { FLOOR_HOOKS } from "../core/floor";
 import { HOOKS_REL, HooksError, kitScriptSuffixes, mergeHookDocs, settingsHooks, type HookDef } from "./hooks";
-import { claudeMdWant, codexConfigWant, codexHooksWant, gitattributesWant, MERGE_KIND, mergeWith, settingsWant, unmergeWith, type MergeKind, type MergeWant } from "./merge";
+import { claudeMdWant, codexConfigWant, codexHooksWant, gitattributesWant, MERGE_KIND, mergeWith, settingsWant, unmergeWith, type CodexHooksWant, type MergeKind, type MergeWant, type SettingsWant } from "./merge";
 import { vscodeSettingsWant } from "./vscode";
 import { resolveModel, skillModelProblem } from "./render";
 import { ignoredName, loadSources, treeSha, walkView, type Sources } from "./sources";
@@ -214,9 +214,17 @@ function extraFiles(w: FileWant, cur: Cur): string[] {
   return cur.kind === "file" && cur.files ? [...cur.files.keys()].filter((rel) => !wanted.has(rel)) : [];
 }
 
+/** 훅 설정 병합(.claude/settings.json · .codex/hooks.json) */
+const HOOK_MERGE_KINDS = new Set<MergeKind>(["settings", "codex-hooks"]);
+/** v1.0.7 이하 킷이 훅 스크립트를 둔 폴더(v1.0.8 부터 scripts/hooks/) */
+const LEGACY_HOOK_DIRS = [".claude/hooks/", ".codex/hooks/"];
+const KEPT_LEGACY_HOOK = "사람이 고친 옛 훅 스크립트다 — 지우지 않았고 설정의 호출 줄도 남겼다(새 훅과 함께 돈다). 고친 내용을 새 훅으로 옮긴 뒤 호출 줄과 파일을 지운다";
+
 export class Engine {
   readonly ops: ProjOp[] = [];
   readonly entries: LockEntry[] = [];
+  /** 이번 update 가 지우는 v1 포인터 경로. 그 경로로 끝나는 훅 줄은 킷 줄로 보고 새 훅으로 바꾼다 — 남기면 지운 파일을 부른다. */
+  private goneScripts: string[] = [];
 
   constructor(
     private readonly target: string,
@@ -230,7 +238,26 @@ export class Engine {
     if (entry) this.entries.push(entry);
   }
 
-  merge(w: MergeOpWant, prev: LockEntry | undefined, claimed: LockEntry[]): void {
+  /** drop 이 지울 항목인가(킷 소유 copy 이고 파일이 없거나 설치 때 그대로다). drop 의 판정과 같다. */
+  willRemove(e: LockEntry): boolean {
+    if (ownerKind(e.owner) !== "kit" || e.op === "merge") return false;
+    const st = lstat(full(this.target, e.path));
+    const cur = stateOf(this.target, e.path, Boolean(st?.isDirectory() && !st.isSymbolicLink()));
+    return cur.kind === "none" || (cur.kind === "file" && shaOf(e) !== null && cur.sha === shaOf(e));
+  }
+
+  setGoneScripts(paths: string[]): void {
+    this.goneScripts = [...paths];
+  }
+
+  private withGoneScripts(w: MergeOpWant): MergeOpWant {
+    if (!this.goneScripts.length || !HOOK_MERGE_KINDS.has(w.kind)) return w;
+    const want = w.want as SettingsWant | CodexHooksWant;
+    return { ...w, want: { ...want, suffixes: [...want.suffixes, ...this.goneScripts] } };
+  }
+
+  merge(given: MergeOpWant, prev: LockEntry | undefined, claimed: LockEntry[]): void {
+    const w = this.withGoneScripts(given);
     let cur = readTextAt(this.target, w.path);
     const exists = lstat(full(this.target, w.path)) !== null;
     if (cur === null && exists) {
@@ -388,7 +415,8 @@ export class Engine {
       return;
     }
     const kept: LockEntry = { path: e.path, op: e.op, owner: "user", sha256: null, ...(e.layer ? { layer: e.layer } : {}) };
-    this.emit({ path: e.path, op: e.op, harness: "", action: "keep-modified", reason: "사람이 고친 파일이다 — 지우지 않았다" }, kept);
+    const reason = LEGACY_HOOK_DIRS.some((d) => e.path.startsWith(d)) ? KEPT_LEGACY_HOOK : "사람이 고친 파일이다 — 지우지 않았다";
+    this.emit({ path: e.path, op: e.op, harness: "", action: "keep-modified", reason }, kept);
   }
 }
 
@@ -438,6 +466,8 @@ export function judgeUpdate(args: { target: string; spec: ProjectionSpec; tokens
     else rest.push(e);
   }
   const claimed = new Set<string>([...claimedBy.values()].flat().map((e) => e.path));
+  const retiring = args.retire ? rest.filter((e) => HARNESS_DIRS.some((d) => e.path.startsWith(d)) && !replacementDeferred(e.path, wants)).sort((a, b) => byteCompare(a.path, b.path)) : [];
+  engine.setGoneScripts(retiring.filter((e) => engine.willRemove(e)).map((e) => e.path));
   for (const w of sortWants(args.wants)) engine.update(w, projection.get(w.path), claimedBy.get(w.path) ?? [], args.acceptAll);
   for (const p of [...projection.keys()].filter((x) => !wants.has(x)).sort(byteCompare)) engine.drop(projection.get(p) as LockEntry, "원본이 없다");
   if (args.retire) {

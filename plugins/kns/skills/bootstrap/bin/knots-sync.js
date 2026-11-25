@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// knots-sync 2.0.0-alpha.1 · src-sha256 c781ea715a4da526d95cbd1b175732234f4482180150c1563ce13ebd0ea791e9 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// knots-sync 2.0.0-alpha.1 · src-sha256 9b1688fb11d060c17ccbe84adea0feb9e9db46c840f410847f1b71c653f5ecbf · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -2880,6 +2880,9 @@ function extraFiles(w, cur) {
   const wanted2 = new Set(w.files.map((f) => f.rel));
   return cur.kind === "file" && cur.files ? [...cur.files.keys()].filter((rel2) => !wanted2.has(rel2)) : [];
 }
+var HOOK_MERGE_KINDS = /* @__PURE__ */ new Set(["settings", "codex-hooks"]);
+var LEGACY_HOOK_DIRS = [".claude/hooks/", ".codex/hooks/"];
+var KEPT_LEGACY_HOOK = "사람이 고친 옛 훅 스크립트다 — 지우지 않았고 설정의 호출 줄도 남겼다(새 훅과 함께 돈다). 고친 내용을 새 훅으로 옮긴 뒤 호출 줄과 파일을 지운다";
 var Engine = class {
   constructor(target, spec, tokens, sources) {
     this.target = target;
@@ -2893,11 +2896,29 @@ var Engine = class {
   sources;
   ops = [];
   entries = [];
+  /** 이번 update 가 지우는 v1 포인터 경로. 그 경로로 끝나는 훅 줄은 킷 줄로 보고 새 훅으로 바꾼다 — 남기면 지운 파일을 부른다. */
+  goneScripts = [];
   emit(op, entry) {
     this.ops.push(op);
     if (entry) this.entries.push(entry);
   }
-  merge(w, prev, claimed) {
+  /** drop 이 지울 항목인가(킷 소유 copy 이고 파일이 없거나 설치 때 그대로다). drop 의 판정과 같다. */
+  willRemove(e) {
+    if (ownerKind(e.owner) !== "kit" || e.op === "merge") return false;
+    const st = lstat(full3(this.target, e.path));
+    const cur = stateOf(this.target, e.path, Boolean(st?.isDirectory() && !st.isSymbolicLink()));
+    return cur.kind === "none" || cur.kind === "file" && shaOf(e) !== null && cur.sha === shaOf(e);
+  }
+  setGoneScripts(paths) {
+    this.goneScripts = [...paths];
+  }
+  withGoneScripts(w) {
+    if (!this.goneScripts.length || !HOOK_MERGE_KINDS.has(w.kind)) return w;
+    const want = w.want;
+    return { ...w, want: { ...want, suffixes: [...want.suffixes, ...this.goneScripts] } };
+  }
+  merge(given, prev, claimed) {
+    const w = this.withGoneScripts(given);
     let cur = readTextAt(this.target, w.path);
     const exists3 = lstat(full3(this.target, w.path)) !== null;
     if (cur === null && exists3) {
@@ -3050,7 +3071,8 @@ var Engine = class {
       return;
     }
     const kept = { path: e.path, op: e.op, owner: "user", sha256: null, ...e.layer ? { layer: e.layer } : {} };
-    this.emit({ path: e.path, op: e.op, harness: "", action: "keep-modified", reason: "사람이 고친 파일이다 — 지우지 않았다" }, kept);
+    const reason = LEGACY_HOOK_DIRS.some((d) => e.path.startsWith(d)) ? KEPT_LEGACY_HOOK : "사람이 고친 파일이다 — 지우지 않았다";
+    this.emit({ path: e.path, op: e.op, harness: "", action: "keep-modified", reason }, kept);
   }
 };
 function claims(w, p) {
@@ -3083,6 +3105,8 @@ function judgeUpdate(args) {
     else rest.push(e);
   }
   const claimed = new Set([...claimedBy.values()].flat().map((e) => e.path));
+  const retiring = args.retire ? rest.filter((e) => HARNESS_DIRS.some((d) => e.path.startsWith(d)) && !replacementDeferred(e.path, wants)).sort((a3, b) => byteCompare(a3.path, b.path)) : [];
+  engine.setGoneScripts(retiring.filter((e) => engine.willRemove(e)).map((e) => e.path));
   for (const w of sortWants(args.wants)) engine.update(w, projection.get(w.path), claimedBy.get(w.path) ?? [], args.acceptAll);
   for (const p of [...projection.keys()].filter((x) => !wants.has(x)).sort(byteCompare)) engine.drop(projection.get(p), "원본이 없다");
   if (args.retire) {
