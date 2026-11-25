@@ -110,11 +110,12 @@
 <div class="unverified"><span class="box-title">Cursor 규칙의 globs</span><p>Cursor 규칙의 <code>globs</code> 쉼표 목록, Kiro <code>fileMatchPattern</code> 배열이 실제 도구에서 의도대로 걸리는지는 사람이 확인해야 할 항목으로 남아 있다.</p></div>
 
 <h2 id="cli">CLI — <code>knots-sync</code> · <code>kns</code></h2>
-<p>CLI 는 Node 파일 하나다(런타임 의존성 0). 패키지가 내는 실행 이름은 <code>knots-sync</code> · <code>kns</code> · <code>harness-kit</code>(옛 이름, 한동안) 셋이다.</p>
-<div class="warn"><span class="box-title">지금은 npx 로 부르지 않는다</span><p>npm 배포 전이라 <code>npx knots-sync</code> 가 같은 이름의 남의 패키지를 받을 수 있다. 결정 D3 에 따라 먼저 <code>npx github:&lt;owner&gt;/harness-starter-kit</code> 로 배포하고, v2.2 까지 명령이 그대로면 npm 에 올린다. 그 전에는 아래 둘 중 하나를 쓴다.</p></div>
+<p>CLI 는 Node 파일 하나다(런타임 의존성 0). 실행 이름은 <code>knots-sync</code> 이고, 설치된 CLI 안에서는 <code>kns</code> · <code>harness-kit</code>(옛 이름, 한동안)도 같은 CLI 다.</p>
+<div class="note"><span class="box-title">npx 로 부르기 — GitHub 에서 태그를 고정해 받는다(결정 D3)</span><p><code>npx github:pscheol/harness-starter-kit#v2.0.0-alpha.1 &lt;명령&gt;</code> — 예: <code>npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.1 doctor</code>. 자주 쓰면 셸 별칭 <code>alias knots-sync='npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.1'</code> 를 둔다. 태그를 고정하면 lock 에 어느 판으로 깔았는지가 남고, 같은 명령이 늘 같은 판을 돈다. v2.2 까지 명령이 그대로면 npm 에 올린다 — 그 전에는 <code>npx knots-sync</code>(npm)를 쓰지 않는다. <strong><code>npx kns</code> 는 npm 에 있는 다른 사람의 패키지</strong>라 절대 쓰지 않는다.</p></div>
 <div class="table-wrap"><table>
 <thead><tr><th scope="col">방법</th><th scope="col">명령</th><th scope="col">비고</th></tr></thead>
 <tbody>
+<tr><td>npx(GitHub, 태그 고정)</td><td><code>npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.1 &lt;명령&gt;</code></td><td>설치 없이 돈다. 받는 크기 약 1.8MB(플러그인 폴더만)</td></tr>
 <tr><td>킷 저장소의 CLI 직접</td><td><code>node &lt;킷&gt;/plugins/kns/skills/bootstrap/bin/knots-sync.js &lt;명령&gt;</code></td><td>셸 별칭 <code>alias knots-sync='node …/knots-sync.js'</code> 를 권한다</td></tr>
 <tr><td>플러그인 안의 입구</td><td><code>bash &lt;플러그인&gt;/skills/bootstrap/kit.sh &lt;명령&gt;</code></td><td>Node 18.3 이상이면 CLI 를 그대로 부르고, 없으면 v1 스크립트로 내려간다(v2.0 동안만)</td></tr>
 </tbody></table></div>
