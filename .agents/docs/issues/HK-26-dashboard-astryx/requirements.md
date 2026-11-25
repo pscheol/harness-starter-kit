@@ -3,7 +3,7 @@ key: HK-26
 area: dashboard
 type: feat
 title: 관리 페이지 화면 층을 astryx 디자인 시스템(React 19)으로 다시 쓴다
-status: in-review
+status: approved
 created: 2026-11-24
 ---
 

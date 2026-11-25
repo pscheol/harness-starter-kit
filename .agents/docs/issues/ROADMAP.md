@@ -80,7 +80,7 @@
 - (HK-17) 살아 있는 Claude 세션에 소켓 요청 전달 · deep link · Codex 대기함 표시는 수동 확인이 남았다. `harness-kit dispatch` 를 에이전트 세션이 부를 때 막을지는 HK-24 훅 정리에서 정한다.
 
 - (정함) platform-guards 모듈은 없앤다 → HK-25.
-- 승인 대기 설계 문서: HK-9 ~ HK-12 design.md는 에이전트가 approved로 두었다. 사람 확인이 필요하다.
+- 설계 문서 승인: (2026-11-25) 사람(devjoshuap)이 검토하고 승인을 지시했다 — 승인 대기이던 15개(HK-11 · 12 · 14 · 15 · 17 · 18 · 19 · 20 · 21 · 22 · 23 · 24 · 26 의 design, HK-20 · 26 의 requirements)를 approved 로 바꿨다. HK-9 ~ HK-12 처럼 에이전트가 approved 로 두었던 것도 이 검토에 들었다.
 - (정함) v1.0.8 첫 update의 구별 불가 파일은 문서는 줄 병합, JSON은 키 병합, 코드는 .new → HK-25.
 - `outdated`의 기본 원격(배포 원격이 정해지면 `package.json` repository 등).
 - (HK-13) 처음 v1.0.8 lock을 올릴 때 `.agents/rules|skills|roles`도 구별 불가로 보아 배치를 미룬다 → HK-25에서 사용자 편한 쪽으로 정한다.

@@ -3,7 +3,7 @@ key: HK-17
 area: dashboard
 type: feat
 title: 관리 페이지 서버 — REST · 읽기 · 쓰기 규칙 · 승인 · 질문 · 세션 · 작업 요청 · 내보내기
-status: in-review
+status: approved
 created: 2026-11-24
 ---
 

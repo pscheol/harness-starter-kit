@@ -3,7 +3,7 @@ key: HK-22
 area: release
 type: feat
 title: v1 → v2 이전 · 릴리스 스크립트 · 두 구성 e2e · knots · hdr 복사본 실측
-status: in-review
+status: approved
 created: 2026-11-24
 ---
 

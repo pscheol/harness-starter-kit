@@ -3,7 +3,7 @@ key: HK-12
 area: cli
 type: feat
 title: CLI add · remove · outdated와 플러그인 스킬의 CLI 호출
-status: in-review
+status: approved
 created: 2026-11-23
 ---
 

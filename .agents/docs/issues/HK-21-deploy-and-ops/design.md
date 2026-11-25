@@ -3,7 +3,7 @@ key: HK-21
 area: ops
 type: feat
 title: 배포 · 운영 기록 · 전달 지표 · 규칙 후보
-status: in-review
+status: approved
 created: 2026-11-24
 ---
 
