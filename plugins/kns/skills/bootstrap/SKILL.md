@@ -24,7 +24,7 @@ description: 단일 프로젝트에 하네스 엔지니어링 기본 골격을 �
   | jvm · python · go | 42 | 14 | 14 | 9 | 34 | 113 |
   | web · electron (frontend 도메인 +4/+4) | 46 | 14 | 14 | 9 | 38 | 121 |
 
-  선택 모듈은 여기에 더해진다(`jira-workflow` 15 · `multi-harness` 9 — 고른 에이전트에 따라 실제 수는 줄어든다).
+  선택 모듈은 여기에 더해진다(`jira-workflow` 15 · `multi-harness` 9 · `ci` 3 — 고른 에이전트에 따라 실제 수는 줄어든다).
 - **설치 상태를 남긴다** — `.agents/knots-sync.json`(버전·스택·변형·에이전트·치환값)과 `.agents/knots-sync.lock`(파일별 설치 시점 해시). 이 두 파일이 있어야 `kns:agent-add`·`kns:update` 가 다시 묻지 않고, 업데이트가 **사용자가 고친 파일**을 가려낼 수 있다. 둘 다 커밋한다.
 - **슬래시 커맨드는 4개 하네스 공통** — 커맨드 11종을 `kns-` 접두사로 깔되(SDLC: `/kns-specify` → `/kns-plan` → `/kns-tasks` → `/kns-implement` → `/kns-docs`), 본문 원본은 `.agents/skills/kns-*/SKILL.md` 한 곳이고(스킬이 `.agents/rules/sdd-workflow.md`의 절을 읽는다) 하네스 폴더에는 그 복사본 · 생성물이 있다. Claude Code(`.claude/skills/`) · Cursor(`.cursor/commands/`) · Kiro(IDE `.kiro/steering/` + CLI `.kiro/skills/`) · Codex(`.agents/skills/` 그대로). 접두사는 `/plan` 같은 흔한 이름이 타 플러그인과 충돌하는 것을 막는다.
 
@@ -123,7 +123,9 @@ description: 단일 프로젝트에 하네스 엔지니어링 기본 골격을 �
      exit 2 사용법 · exit 3 이미 설치됨(`kns:update` · `kns:agent-add` 로) · exit 4 사람 판단(`.new` 목록을 그대로 보인다) · exit 5 실행 환경.
    - `--stack <jvm|python|go|web|electron>` · `--arch <변형>`(기본 스택 `jvm`, 기본 변형은 스택마다 다르다).
    - `--agents <claude,codex,cursor,kiro|all>` 생략 시 감지 결과를 쓴다.
-   - `--modules <jira-workflow,multi-harness|all|none>` **기본은 none**.
+   - `--modules <jira-workflow,multi-harness,ci|all|none>` **기본은 none**.
+     `ci` 는 CI 진입 파일(`.gitlab-ci.yml` · `.github/workflows/harness-verify.yml` · 스택별 셋업 액션)이다. 깔면 다음 push 부터
+     원격 파이프라인이 돈다 — 사람이 원격 CI 를 쓰겠다고 할 때만 넣는다(묻지 않고 `all` 로 켜지 않는다).
    - `--domain <frontend>` 는 스택 기본값을 덮을 때만. `--lang kotlin|java` 는 jvm 전용.
    - 치환값: `--name` `--slug` `--package-ns` `--protected-path` `--token KEY=VALUE`(없으면 같은 이름 환경변수 → 기본값).
    - 스택에 없는 변형이나 모르는 에이전트·모듈 이름을 주면 사용 가능한 목록을 출력하고 `exit 2`로 중단한다.
@@ -135,7 +137,7 @@ description: 단일 프로젝트에 하네스 엔지니어링 기본 골격을 �
    - `go`: `go mod init`, `.golangci.yml`의 depguard 규칙(골격은 `ARCHITECTURE.md` — 변형마다 규칙이 다르다). `feature`·`flat`은 구조 테스트도 함께 둔다.
    - `web`: `package.json` 스크립트 이름을 게이트(`lint`·`typecheck`·`test`·`build`)에 맞추고, `tsconfig` 에 `strict` + `noUncheckedIndexedAccess` 를 켜고, **ESLint import 경계 규칙을 등록**한다(골격은 `ARCHITECTURE.md` §4). 이걸 미루면 레이어 규칙이 문서로만 남는다. 진입 스킬: `kns:web-setup`.
    - `electron`: 위와 같고, 추가로 프로세스 경계(`contextIsolation: true`·`nodeIntegration: false`·`sandbox: true`)를 먼저 세우고 **IPC 채널 목록을 한 파일에 모아** preload 에서 화이트리스트로만 노출한다. `electron-builder` 의 `appId` 는 `PACKAGE_NS` 다. 진입 스킬: `kns:electron-setup`.
-   - 선택 모듈을 켰다면: `jira-workflow` → `.agents/issue-tracker.yml` 의 `statusIds`·`transitionIds`·`lock` 을 실제 값으로 채운다(`TBD` 인 채로 자동화를 켜면 엉뚱한 상태로 옮긴다). 고유 불변식 가드는 모듈 없이 `scripts/guards/` 에 쓴다 — `verify.sh` 가 `run-guards.sh` 로 자동으로 부른다(배선 작업 없음).
+   - 선택 모듈을 켰다면: `jira-workflow` → `.agents/issue-tracker.yml` 의 `statusIds`·`transitionIds`·`lock` 을 실제 값으로 채운다(`TBD` 인 채로 자동화를 켜면 엉뚱한 상태로 옮긴다). `ci` → 실행 환경(`.gitlab-ci.yml` 의 `.knots-sync-setup` · `.github/actions/harness-setup/action.yml`)을 팀이 채운다. 고유 불변식 가드는 모듈 없이 `scripts/guards/` 에 쓴다 — `verify.sh` 가 `run-guards.sh` 로 자동으로 부른다(배선 작업 없음).
 6. **채우기** — `.agents/rules/product.md`·`ARCHITECTURE.md`·`.agents/rules/structure.md` 의 `{{플레이스홀더}}`.
    `.agents/docs/specs-index.md` 보드와 영역 등록표는 비어 있는 채로 시작한다 — 이슈 폴더는 설치가 아니라
    `scripts/new-feature.sh <키|--next> <이름> --area <영역>`(또는 `/kns-specify`)가 첫 이슈에서 만든다. 임의로 이슈 폴더를 만들지 않는다.

@@ -170,7 +170,7 @@ ARCHITECTURE.md
 scripts/               verify.sh · new-feature.sh · new-intent.sh · board.sh · harness/ · hooks/ · git-hooks/
 tools/docs/            기능 문서 생성기
 docs/features/         기능 문서(설치 끝에 한 번 생성)
-.github/ · .gitlab-ci.yml · ci/   CI 템플릿(fast · affected · full)</code></pre>
+ci/                    CI 단계 템플릿(fast · affected · full). 진입 파일(.gitlab-ci.yml · .github/)은 ci 모듈을 켤 때만</code></pre>
 <p><code>AGENTS.md</code> 5,971바이트 + <code>CLAUDE.md</code> 751바이트였다(상한 24KB). 커밋할 것: 위 전부. 커밋하지 않을 것: <code>.agents/state/</code> · <code>.agents/reports/</code> · <code>.agents/local/</code>(<code>.gitignore</code> 에 들어간다).</p>
 <p>git 훅을 켜려면 <code>bash scripts/install-git-hooks.sh</code> 를 한 번 돌린다(pre-commit 의 승인 기록 검사 · pre-push 의 이슈 폴더 검사 등).</p>
 

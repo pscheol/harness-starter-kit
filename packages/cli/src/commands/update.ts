@@ -11,6 +11,7 @@ import { loadLayout } from "../core/layout";
 import { AMBIGUOUS_REASON, resolvedLock } from "../core/legacy-lock";
 import { LOCK_REL, serializeLock } from "../core/lock";
 import { mergeMetaForUpdate, META_REL, serializeMeta } from "../core/meta";
+import { movedLines, movedToModules } from "../core/moved-modules";
 import { NOTICE_REL, planNotice, UPGRADE_FILE, type NoticeAction, type NoticePlan } from "../core/notice";
 import { satisfiesKit } from "../core/packs";
 import { MANIFEST_PATH, manifestContent } from "../core/plan";
@@ -245,6 +246,8 @@ export function runUpdate(ctx: Ctx): CommandResult | Promise<CommandResult> {
   const shown = plan.ops.filter((o) => o.action !== "same" && (!ctx.quiet || o.action === "conflict"));
   const conflicts = [...conflictList(plan), ...projectionConflicts(projection?.plan ?? null)];
   const counts = { ...plan.counts, excludedByHarness: plan.excludedByHarness, overlapped: plan.overlaps.length };
+  // 킷에서 빠진 파일 중 켜지 않은 모듈이 까는 것(공통 층에서 모듈로 옮긴 CI 진입 파일 등) — 계속 쓰려면 그 모듈을 켠다
+  const moved = movedToModules(layout, loc.dir, selection, tokens, plan.ops.filter((o) => o.action === "orphan" || o.action === "delete").map((o) => o.path));
   const data: Record<string, unknown> = {
     command: "update",
     target,
@@ -255,6 +258,7 @@ export function runUpdate(ctx: Ctx): CommandResult | Promise<CommandResult> {
     selection: { stack: selection.stack, arch: selection.arch, domain: selection.domain, agents: selection.agents, modules: selection.modules },
     droppedModules,
     retiredModules,
+    movedToModules: moved,
     counts,
     ops: shown.map(opJson),
     conflicts,
@@ -273,6 +277,7 @@ export function runUpdate(ctx: Ctx): CommandResult | Promise<CommandResult> {
     ...(droppedModules.length ? [`  ⚠ 킷에 없는 모듈을 뺀다: ${droppedModules.join(", ")}`] : []),
   ];
   const lines = humanLines(ctx, head, plan, shown, conflicts, dryRun, board, merged, `${MERGE_BACKUP_DIR}/${stamp}`);
+  lines.splice(lines.length - 1, 0, ...movedLines(moved));
   const noticeLine = NOTICE_LINES[notice.action];
   if (noticeLine) lines.splice(lines.length - 1, 0, `  ${noticeLine}`);
   // 개인 층(HK-14 design §5): .agents/local/ 이 있으면 새 판 원본 기준으로 다시 배치한다

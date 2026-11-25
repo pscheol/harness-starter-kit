@@ -96,10 +96,15 @@ class AnalyzerTemplateTest(unittest.TestCase):
 
 class CiTemplateTest(unittest.TestCase):
     def test_ci_files_and_stack_setup_actions(self):
-        for relative in ("common/root/.github/workflows/harness-verify.yml", "common/root/.gitlab-ci.yml", "common/ci/knots-sync.gitlab-ci.yml", "common/ci/harness.gocd.yaml"):
+        # 진입 파일(.gitlab-ci.yml · 워크플로)은 ci 모듈이다. 있으면 다음 push 부터 파이프라인이 돌아 기본으로 깔지 않는다.
+        # include 되는 단계 템플릿(ci/)은 진입 파일 없이 돌지 않아 공통 층에 둔다.
+        for relative in ("optional/ci/root/.github/workflows/harness-verify.yml", "optional/ci/root/.gitlab-ci.yml", "common/ci/knots-sync.gitlab-ci.yml", "common/ci/harness.gocd.yaml"):
             self.assertTrue((TEMPLATES / relative).is_file(), relative)
+        for relative in ("common/root/.github", "common/root/.gitlab-ci.yml"):
+            self.assertFalse((TEMPLATES / relative).exists(), f"{relative}: 진입 파일은 ci 모듈에만 둔다")
         for stack in STACKS:
-            root = TEMPLATES / "stacks" / stack / "root/.github"
+            self.assertFalse((TEMPLATES / "stacks" / stack / "root/.github").exists(), f"{stack}: 실행 환경 액션은 ci 모듈의 스택 층에 둔다")
+            root = TEMPLATES / "optional/ci/stacks" / stack / "root/.github"
             self.assertTrue((root / "actions/harness-setup/action.yml").is_file(), stack)
             self.assertFalse((root / "workflows/verify.yml").exists(), f"{stack}: 옛 verify.yml 이 남아 있다")
             action = (root / "actions/harness-setup/action.yml").read_text()

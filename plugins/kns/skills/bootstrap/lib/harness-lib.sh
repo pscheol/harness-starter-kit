@@ -50,7 +50,7 @@ harness_state_paths() {
   done
 }
 HARNESS_ALL_AGENTS="claude codex cursor kiro"
-HARNESS_ALL_MODULES="jira-workflow multi-harness"
+HARNESS_ALL_MODULES="jira-workflow multi-harness ci"
 # 없앤 모듈(HK-25): 파일이 공통 층과 같아져 따로 켤 것이 없다. 받으면 한 줄 알리고 넘긴다(오류가 아니다).
 HARNESS_RETIRED_MODULES="platform-guards"
 # 도메인 이름의 유효 집합. templates/domains/ 디렉터리 유무와는 별개다 —
@@ -158,7 +158,7 @@ harness_agent_selected() {
 
 # ── 선택 모듈 ───────────────────────────────────────────────────────────────
 #
-# 모듈은 "어떤 팀은 쓰고 어떤 팀은 안 쓰는" 규약 묶음이다(이슈 트래커 연동·여러 리포 하네스).
+# 모듈은 "어떤 팀은 쓰고 어떤 팀은 안 쓰는" 규약 묶음이다(이슈 트래커 연동·여러 리포 하네스·CI 진입 파일).
 # 안 쓰는 규칙 파일은 컨텍스트만 먹고, 지켜지지 않는 규칙은 나머지 규칙의 신뢰도를 깎는다.
 # 그래서 기본은 '설치 안 함'이고 명시할 때만 깔린다.
 harness_module_retired() {
@@ -198,29 +198,46 @@ harness_normalize_modules() {
 
 # ── 레이어 · 설치 후보(뒤 레이어가 이긴다) ─────────────────────────────────
 #
-# 레이어 순서: common → domains/<도메인> → stacks/<스택>(arch/ 제외) → stacks/<스택>/arch/<변형> → optional/<모듈>.
+# 레이어 순서: common → domains/<도메인> → stacks/<스택>(arch/ 제외) → stacks/<스택>/arch/<변형>
+#           → optional/<모듈>(stacks/ 제외) → optional/<모듈>/stacks/<스택>(있을 때만).
+# 모듈 안 stacks/<스택>/ 은 고른 스택 판만 까는 모듈 파일이다(ci 모듈의 실행 환경 액션, CLI layout.json module-stack).
 # 같은 설치 경로가 두 레이어에 있으면 뒤 레이어 판 하나만 쓰고 lock 에 한 줄만 남긴다(CLI layout.json overlap: last).
 
-# 한 레이어의 템플릿 파일. skip_arch=1 이면 arch/ 아래를 뺀다(변형 레이어는 고른 하나만 따로 돈다).
+# 한 레이어의 템플릿 파일. 둘째 인자 1 이면 arch/ 아래를 뺀다(변형 레이어는 고른 하나만 따로 돈다).
+# 2 면 맨 위 stacks/ 를 뺀다(모듈 레이어 — 스택 판은 모듈 스택 레이어가 따로 돈다).
 # ABOUT 는 --list-modules 가 읽는 모듈 설명 파일, module.json 은 CLI 가 읽는 모듈 선언 파일(설계 10 §3.1)이라 템플릿이 아니다(빼지 않으면 대상 리포 루트에 생긴다).
 harness_list_layer() {
-  if [ "${2:-0}" = 1 ]; then
-    find "$1" -type f ! -path "*/arch/*" ! -name '.DS_Store' ! -name 'ABOUT' ! -name 'module.json' | sort
-  else
-    find "$1" -type f ! -name '.DS_Store' ! -name 'ABOUT' ! -name 'module.json' | sort
-  fi
+  case "${2:-0}" in
+    1) find "$1" -type f ! -path "*/arch/*" ! -name '.DS_Store' ! -name 'ABOUT' ! -name 'module.json' | sort ;;
+    2) find "$1" -type f ! -name '.DS_Store' ! -name 'ABOUT' ! -name 'module.json' \
+         | while IFS= read -r f; do case "$f" in "$1"/stacks/*) ;; *) printf '%s\n' "$f" ;; esac; done | sort ;;
+    *) find "$1" -type f ! -name '.DS_Store' ! -name 'ABOUT' ! -name 'module.json' | sort ;;
+  esac
 }
 
-# 이번 설치가 도는 레이어를 순서대로 "<경로>|<라벨>|<arch 제외>" 로 낸다. setup.sh · update.sh 가 같이 쓴다
+# 이번 설치가 도는 레이어를 순서대로 "<경로>|<라벨>|<뺄 폴더>" 로 낸다. setup.sh · update.sh 가 같이 쓴다
 # (순서나 라벨이 어긋나면 lock 이 어긋난다). 도메인 폴더가 없으면(backend) domain_dir 을 비워서 넘긴다.
+# 모듈 스택 레이어 라벨 mod/<모듈>/stacks/<스택> 은 CLI 가 optional/<모듈>/stacks/<스택> 으로 읽는다(v1LabelToLayer).
 harness_layer_roots() {
   local templates="$1" domain_dir="$2" domain="$3" stack="$4" arch="$5" modules="$6" m
   echo "$templates/common|common|0"
   [ -n "$domain_dir" ] && echo "$domain_dir|$domain|0"
   echo "$templates/stacks/$stack|$stack|1"
   echo "$templates/stacks/$stack/arch/$arch|$stack/$arch|0"
-  for m in $modules; do echo "$templates/optional/$m|mod/$m|0"; done
+  for m in $modules; do echo "$templates/optional/$m|mod/$m|2"; done
+  for m in $modules; do
+    [ -d "$templates/optional/$m/stacks/$stack" ] && echo "$templates/optional/$m/stacks/$stack|mod/$m/stacks/$stack|0"
+  done
   return 0
+}
+
+# 한 모듈이 이 스택에 까는 템플릿 수(--list-modules). 모듈 폴더(stacks/ 제외) + 그 스택 판.
+harness_module_file_count() {
+  local dir="$1" stack="$2"
+  {
+    harness_list_layer "$dir" 2
+    if [ -d "$dir/stacks/$stack" ]; then harness_list_layer "$dir/stacks/$stack" 0; fi
+  } | wc -l | tr -d ' '
 }
 
 # stdin 의 레이어 줄로 설치 후보를 "<라벨>\t<소속>\t<템플릿 경로>\t<설치 경로>" 로 낸다.

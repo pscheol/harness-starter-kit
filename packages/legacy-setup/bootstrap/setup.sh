@@ -8,7 +8,7 @@
 #   domains/<DOMAIN>/              여러 스택이 공유하는 도메인 규칙(현재 frontend 만 존재)
 #   stacks/<STACK>/                언어·플랫폼 규약(arch/ 제외)
 #   stacks/<STACK>/arch/<ARCH>/    아키텍처 변형 4종
-#   optional/<MODULE>/             고른 팀만 쓰는 규약 묶음(기본: 설치 안 함)
+#   optional/<MODULE>/             고른 팀만 쓰는 규약 묶음(기본: 설치 안 함). 모듈 안 stacks/<STACK>/ 은 그 스택 판만 깐다
 # 각 파일은 프로젝트 표준 경로로 복사되며 {{PLACEHOLDER}} 가 치환된다.
 #
 # 사용법:
@@ -24,7 +24,8 @@
 #   --domain=<backend|frontend>
 #                            도메인 레이어를 직접 지정한다. 생략하면 스택에서 유도한다
 #                            (jvm·python·go→backend · web·electron→frontend)
-#   --modules=<목록>         선택 모듈 (jira-workflow,multi-harness · all · none)
+#   --modules=<목록>         선택 모듈 (jira-workflow,multi-harness,ci · all · none)
+#                            ci = CI 진입 파일(.gitlab-ci.yml · GitHub Actions). 깔면 다음 push 부터 파이프라인이 돈다
 #                            기본 none. 안 쓰는 규칙은 컨텍스트만 먹고 나머지 규칙의
 #                            신뢰도를 깎으므로 실제로 쓸 것만 고른다
 #                            (환경변수 HARNESS_MODULES 로도 지정 가능)
@@ -133,11 +134,11 @@ if [ "$LIST_MODULES" = 1 ]; then
   echo ""
   for m in $HARNESS_ALL_MODULES; do
     d="$TEMPLATES/optional/$m"
-    n="$(find "$d" -type f ! -name '.DS_Store' ! -name 'ABOUT' ! -name 'module.json' 2>/dev/null | wc -l | tr -d ' ')"
+    n="$(harness_module_file_count "$d" "$STACK")"
     printf "  %-16s %3s files   %s\n" "$m" "$n" "$(head -1 "$d/ABOUT" 2>/dev/null || echo '')"
   done
   echo ""
-  echo "  사용:  --modules=jira-workflow,multi-harness   (전체는 all, 명시적 없음은 none)"
+  echo "  사용:  --modules=jira-workflow,multi-harness,ci   (전체는 all, 명시적 없음은 none)"
   exit 0
 fi
 
@@ -627,6 +628,10 @@ if [ -n "$MODULES_SEL" ]; then
         echo "      킷은 트래커 호출 수단을 주지 않는다 — MCP/CLI/REST 중 무엇으로 닿을지 access 에 적는다"
         echo "      이 설정을 순서대로 안내하는 킷 스킬이 있다: kns:jira-setup"
         echo "      커맨드는 둘이다 — /kns-issue(트래커 단품) · /kns-ticket(티켓→SDD→구현→리뷰 전 여정)"
+        ;;
+      ci)
+        echo "    - CI 진입 파일(.gitlab-ci.yml · .github/workflows/harness-verify.yml)을 깔았다 — 다음 push 부터 파이프라인이 돈다"
+        echo "      실행 환경은 팀이 채운다: .gitlab-ci.yml 의 .knots-sync-setup · .github/actions/harness-setup/action.yml"
         ;;
     esac
   done

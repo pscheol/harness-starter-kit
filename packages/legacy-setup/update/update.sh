@@ -262,6 +262,17 @@ while IFS=$'\t' read -r label owner src dest_rel; do
   process_file "$src" "$dest_rel" "$label" "$owner"
 done < "$PLAN_DIR/winners"
 
+# 켜지 않은 킷 모듈이 까는 경로(설치 경로 → 모듈). 공통 층에서 모듈로 옮긴 파일(CI 진입 파일 → ci 모듈)은
+# 옛 설치에서 킷에서 빠진 파일로 보인다. orphan 줄에 모듈 이름을 붙여 계속 쓰는 길을 알린다(CLI update 와 같은 규칙).
+: > "$PLAN_DIR/module-paths"
+moved_modules=""
+for m in $HARNESS_ALL_MODULES; do
+  case " $MODULES_SEL " in *" $m "*) continue ;; esac
+  [ -d "$TEMPLATES/optional/$m" ] || continue
+  harness_candidates "$AGENTS_SEL" < <(harness_layer_roots "$TEMPLATES" "" "" "$STACK" "$ARCH" "$m" | grep -F '|mod/') \
+    | awk -F'\t' -v m="$m" '{ print $4 "\t" m }' >> "$PLAN_DIR/module-paths"
+done
+
 # 이번 킷에 더는 없는 파일. 사용자가 계속 쓰고 있을 수 있어 지우지 않고 알리기만 한다.
 if [ -f "$LOCK" ]; then
   while IFS=$'\t' read -r sha layer _owner path; do
@@ -285,7 +296,13 @@ if [ -f "$LOCK" ]; then
         continue
       fi ;;
     esac
-    echo "  orphan    $path   (킷에서 빠짐 — 그대로 둔다)"
+    mod="$(awk -F'\t' -v p="$path" '$1 == p { print $2; exit }' "$PLAN_DIR/module-paths")"
+    if [ -n "$mod" ]; then
+      echo "  orphan    $path   (킷에서 빠짐 — 그대로 둔다 · 이제 $mod 모듈이 깐다)"
+      case " $moved_modules " in *" $mod "*) ;; *) moved_modules="${moved_modules:+$moved_modules }$mod" ;; esac
+    else
+      echo "  orphan    $path   (킷에서 빠짐 — 그대로 둔다)"
+    fi
     n_orphan=$((n_orphan+1))
   done < "$LOCK"
 fi
@@ -354,6 +371,9 @@ rebuild_board
 
 echo ""
 echo "✔ new=$n_new  update=$n_update  same=$n_same  conflict=$n_conflict  orphan=$n_orphan$([ "$n_renamed" -gt 0 ] && echo "  renamed=$n_renamed")$([ "$n_merge" -gt 0 ] && echo "  merge=$n_merge") $([ $DRY_RUN = 1 ] && echo '(dry-run — 실제 변경 없음)')"
+for m in $moved_modules; do
+  echo "  · 킷에서 빠진 파일 중 $m 모듈이 까는 것이 있다 — 계속 쓰려면: bash <킷>/skills/agent-add/add-agent.sh --modules=$m $TARGET"
+done
 
 # v1 lock 첫 업데이트 목록(한 번). 킷 판으로 바꾼 파일은 위 줄에 있다 — 여기에는 사람이 볼 병합본만 낸다.
 if [ "$n_merge" -gt 0 ] || [ "$n_kit" -gt 0 ]; then

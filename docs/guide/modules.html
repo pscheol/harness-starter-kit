@@ -41,8 +41,8 @@
 <article>
 <p class="kicker">08 · 모듈</p>
 <h1>jira-workflow · notion · multi-harness</h1>
-<p class="lede">선택 모듈은 다섯이다. 외부 도구를 붙이는 <code>aidlc</code> · <code>entire</code> 는 앞 두 장에서 다뤘고, 이 장은 모듈 공통 규칙과 나머지 셋 — 이슈 트래커(<code>jira-workflow</code>), Notion 접수(<code>notion</code>), 여러 리포(<code>multi-harness</code>) — 을 다룬다.</p>
-<nav class="on-page" aria-label="이 장의 절"><h2>이 장에서</h2><ol><li><a href="#common">모듈 공통</a></li><li><a href="#jira">jira-workflow — 이슈 트래커</a></li><li><a href="#notion">notion — Notion 접수 출처</a></li><li><a href="#multi">multi-harness — 여러 리포</a></li></ol></nav>
+<p class="lede">선택 모듈은 여섯이다. 외부 도구를 붙이는 <code>aidlc</code> · <code>entire</code> 는 앞 두 장에서 다뤘고, 이 장은 모듈 공통 규칙과 나머지 넷 — 이슈 트래커(<code>jira-workflow</code>), Notion 접수(<code>notion</code>), 여러 리포(<code>multi-harness</code>), CI 진입 파일(<code>ci</code>) — 을 다룬다.</p>
+<nav class="on-page" aria-label="이 장의 절"><h2>이 장에서</h2><ol><li><a href="#common">모듈 공통</a></li><li><a href="#jira">jira-workflow — 이슈 트래커</a></li><li><a href="#notion">notion — Notion 접수 출처</a></li><li><a href="#multi">multi-harness — 여러 리포</a></li><li><a href="#ci">ci — CI 진입 파일</a></li></ol></nav>
 
 <h2 id="common">모듈 공통</h2>
 <div class="table-wrap"><table>
@@ -53,6 +53,7 @@
 <tr><td><code>jira-workflow</code></td><td>킷</td><td>한 세션 = 한 활성 티켓, pull gate, ID 로 전이, 에이전트는 검증 단계까지</td><td><code>.agents/issue-tracker.yml</code></td></tr>
 <tr><td><code>notion</code></td><td>외부 출처</td><td>Notion 페이지 · 데이터베이스 항목을 요구사항 접수로</td><td><code>notion.writeBack = false</code></td></tr>
 <tr><td><code>multi-harness</code></td><td>킷</td><td>상위 리포 + 도메인 submodule 을 하네스 하나로. 단위 동기화 · 게이트 · 안전 검사</td><td><code>tools/harness/units.json</code></td></tr>
+<tr><td><code>ci</code></td><td>킷</td><td>리포 루트 CI 진입 파일(GitLab CI · GitHub Actions)과 스택별 실행 환경 액션. 깔면 다음 push 부터 원격 파이프라인이 돈다</td><td>—(메타 <code>modules</code> 만)</td></tr>
 </tbody></table></div>
 <pre class="cmd"><code><span class="p">$ </span>knots-sync init … --modules jira-workflow,multi-harness   <span class="c"># 깔 때 함께</span>
 <span class="p">$ </span>knots-sync add notion                                      <span class="c"># 나중에 켜기 — 그 몫만 깐다</span>
@@ -184,6 +185,22 @@
 <li>도메인 파일이 다른 도메인 경로를 참조하면 <code>scripts/guards/no-cross-domain-paths.sh</code> 가 알린다. 예외는 <code>.agents/guards/cross-domain-allow.txt</code> 에 <code>경로 사유</code> 로. 경고로 시작하고 위반이 0건이 되면 강제로 올린다.</li>
 <li>하위 단위는 <code>.agents/harness.json</code> 으로 자기 하네스 루트를 표시한다. 훅과 스크립트는 작업 폴더에서 위로 올라가며 가장 가까운 <code>knots-sync.json</code> 또는 <code>harness.json</code> 을 루트로 쓴다.</li>
 <li>submodule 이 있는 상위 리포는 worktree 로 만들지 않는다(git 이 권하지 않는다). worktree 는 도메인 리포 단위로만.</li>
+</ul>
+
+<h2 id="ci">ci — CI 진입 파일</h2>
+<p>리포 루트에 CI 진입 파일이 생기면 다음 push 부터 원격 파이프라인이 돈다. 회사 GitLab 리포가 킷을 깔거나 올렸다는 이유만으로 파이프라인을 돌리면 안 되므로, 진입 파일은 이 모듈을 켤 때만 깐다. 진입 파일이 include 하는 단계 템플릿(<code>ci/knots-sync.gitlab-ci.yml</code> · <code>ci/harness.gocd.yaml</code>)은 공통 층이라 늘 깔리지만, 진입 파일 없이는 돌지 않는다.</p>
+<pre class="cmd"><code><span class="p">$ </span>knots-sync add ci          <span class="c"># 진입 파일 둘 + 고른 스택의 실행 환경 액션</span>
+<span class="p">$ </span>knots-sync remove ci       <span class="c"># 고치지 않은 것만 지운다. 고친 파일은 남기고 exit 4</span></code></pre>
+<div class="table-wrap"><table>
+<thead><tr><th scope="col">깔리는 파일</th><th scope="col">하는 일</th></tr></thead>
+<tbody>
+<tr><td><code>.gitlab-ci.yml</code></td><td><code>ci/knots-sync.gitlab-ci.yml</code> 을 include 만 한다. 실행 환경은 <code>.knots-sync-setup</code> 을 덮어 넣는다</td></tr>
+<tr><td><code>.github/workflows/harness-verify.yml</code></td><td>push · PR 마다 fast, PR 은 base 판 affected, 야간 · 수동은 full. 검증 단계는 <code>scripts/verify.sh</code> 만 부른다</td></tr>
+<tr><td><code>.github/actions/harness-setup/action.yml</code></td><td>고른 스택의 런타임 · 의존성 준비(모듈 안 <code>stacks/&lt;스택&gt;/</code> 에서 온다, lock 레이어 <code>optional/ci/stacks/&lt;스택&gt;</code>). 분석기 설치는 팀이 더한다</td></tr>
+</tbody></table></div>
+<ul>
+<li>이미 팀이 만든 <code>.gitlab-ci.yml</code> 이 있으면 <code>add ci</code> 는 그 파일을 사람 파일로 두고 덮지 않는다. 킷 단계를 쓰려면 그 파일에 <code>include: - local: ci/knots-sync.gitlab-ci.yml</code> 을 더한다.</li>
+<li>2.0.0-alpha.1 까지는 진입 파일을 늘 깔았다. 그 리포에서 <code>update</code> 는 세 파일을 '킷에서 빠짐'으로 알리고 "이제 ci 모듈이 깐다"를 붙인다 — 지우지 않는다. 계속 쓰면 <code>knots-sync add ci</code>(파일은 그대로, lock 만 모듈로 옮긴다), 안 쓰면 <code>knots-sync update --prune</code>(고치지 않은 것만 지운다).</li>
 </ul>
 
 </article>

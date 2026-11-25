@@ -66,7 +66,7 @@ describe("선택값", () => {
   });
 
   it("모듈 목록: all · none · 적은 순서", () => {
-    expect(sel({ modules: "all" }).modules).toEqual(["jira-workflow", "multi-harness"]);
+    expect(sel({ modules: "all" }).modules).toEqual(["jira-workflow", "multi-harness", "ci"]);
     expect(sel({ modules: "none" }).modules).toEqual([]);
     expect(sel({ modules: "multi-harness,jira-workflow" }).modules).toEqual(["multi-harness", "jira-workflow"]);
   });

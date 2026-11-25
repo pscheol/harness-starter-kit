@@ -86,7 +86,7 @@ skills/bootstrap/          ← 스킬 루트 (= SKILL_DIR)
     ├── domains/          ★ 여러 스택이 공유하는 규약만 (스택이 하나뿐이면 만들지 않는다)
     │   └── frontend/      agents-rules{design-system,accessibility,ui-state,frontend-performance} — web·electron 공용
     ├── stacks/
-    │   ├── jvm/     root(AGENTS·.gitignore·CI) · agents-rules 6종 · scripts/verify.sh
+    │   ├── jvm/     root(AGENTS·.gitignore) · agents-rules 6종 · scripts/verify.sh
     │   │   └── arch/{hexagonal,hexagonal-nested,hexagonal-standalone,layered,layered-multimodule,modulith,feature,multimodule}/{root/ARCHITECTURE.md, agents-rules/{structure,tech}.md}
     │   ├── python/  (동일 구성) + arch/{hexagonal,layered,modular,django,ai-service}/
     │   ├── go/      (동일 구성) + arch/{hexagonal,layered,feature,flat}/
@@ -94,12 +94,13 @@ skills/bootstrap/          ← 스킬 루트 (= SKILL_DIR)
     │   └── electron/(동일 구성) + arch/{main-renderer,feature,monorepo}/   ← verify.sh 에 프로세스 경계 가드
     └── optional/         ★ --modules= 로 켤 때만 (기본 none)
         ├── jira-workflow/    issue-tracker.yml · 규칙 2 · 스킬 /kns-issue + /kns-ticket(하네스 사본은 배치가 만든다)
-        └── multi-harness/    tools/harness/{sync,sync_safety,gates,install_verification_entry}.py + 시험 5 — 여러 리포·단위 하네스
+        ├── multi-harness/    tools/harness/{sync,sync_safety,gates,install_verification_entry}.py + 시험 5 — 여러 리포·단위 하네스
+        └── ci/               root(.gitlab-ci.yml · .github/workflows/harness-verify.yml) + stacks/<STACK>/(.github/actions/harness-setup) — 깔면 다음 push 부터 파이프라인이 돈다
 ```
 
 스택별 6종 규칙(변형 무관): `code-comments` · `api-standards` · `security` · `reliability` · `quality-score` · `guardrails`. 스택마다 `docs/features/_src/docs.config.json`(기능 문서 단위 설정)도 따로 있다.
 변형별 3종: `root/ARCHITECTURE.md` · `agents-rules/structure.md` · `agents-rules/tech.md`. 하네스 폴더 파일(규칙 · 스킬 · 역할 · `CLAUDE.md` · 설정)은 템플릿이 아니라 설치가 `.agents/` 원본에서 만든다.
-설치 순서는 common → domains/&lt;DOMAIN&gt; → stack(`arch/` 제외) → arch/&lt;ARCH&gt; → optional/&lt;MODULE&gt; 이며, 뒤 레이어가 앞을 덮는다.
+설치 순서는 common → domains/&lt;DOMAIN&gt; → stack(`arch/` 제외) → arch/&lt;ARCH&gt; → optional/&lt;MODULE&gt;(`stacks/` 제외) → optional/&lt;MODULE&gt;/stacks/&lt;STACK&gt; 이며, 뒤 레이어가 앞을 덮는다.
 각 모듈 폴더의 `ABOUT` 첫 줄이 `--list-modules` 설명이고, `ABOUT` 자체는 설치되지 않는다.
 
 ## 슬래시 커맨드 (4개 하네스)
@@ -155,6 +156,7 @@ go=`github.com/org/my-app`(모듈 경로) · web=`@`(임포트 별칭 루트 →
 `ARCH` 기본값은 스택마다 다르다(백엔드 `hexagonal` · web `nextjs-app` · electron `main-renderer`). 스택에 없는 변형을 주면 사용 가능한 목록을 출력하고 `exit 2`로 중단한다.
 
 선택 모듈은 기본으로 깔리지 않는다. `bash "$SKILL_DIR/setup.sh" --list-modules` 로 목록을 보고 `--modules=jira-workflow,multi-harness` 처럼 명시한다.
+CI 진입 파일(`.gitlab-ci.yml` · GitHub Actions 워크플로)도 모듈 `ci` 다 — 깔면 다음 push 부터 원격 파이프라인이 돌아, 원격 CI 를 쓸 때만 `--modules=ci` 로 켠다.
 
 기본은 덮어쓰지 않음(기존 파일 skip). 재생성은 `--force`, 미리보기는 `--dry-run`.
 
