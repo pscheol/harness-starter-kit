@@ -87,6 +87,18 @@ codex plugin add kns@knots-sync
 codex plugin marketplace add <owner>/harness-starter-kit
 ```
 
+### 터미널 CLI — npx(GitHub, 태그 고정)
+
+플러그인 없이 터미널에서 바로 쓴다. npm 에는 아직 올리지 않았다(결정 D3 — v2.2 까지 명령이 그대로면 올린다).
+
+```bash
+npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.1 --version
+npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.1 init --stack python --agents claude,codex
+alias knots-sync='npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.1'   # 자주 쓰면 별칭
+```
+
+`npx kns` 는 npm 에 있는 **다른 사람의 패키지**라 쓰지 않는다. `kns` 별칭은 설치된 CLI 안에서만 쓴다.
+
 ### Kiro — `install-kiro.sh`
 
 Kiro에는 플러그인 마켓플레이스가 없다. 킷 루트의 `install-kiro.sh`가 그 자리를 대신한다.

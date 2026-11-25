@@ -2,6 +2,11 @@
 
 `scripts/release.sh <버전>` 은 이 파일에 `## <버전>` 절이 있어야 돈다(설계 11 §3.5). 버전 규칙은 설계 11 §3.6.
 
+## 2.0.0-alpha.1
+
+- `npx github:<owner>/harness-starter-kit#<태그> <명령>` 으로 CLI 를 부를 수 있게 했다(결정 D3 · 설계 02 R1.1 — alpha.0 에서 빠졌다). 루트 package.json 에 bin `knots-sync` 와 담을 파일(`plugins/kns/`, 약 1.8MB)을 지정하고, 묶어서 npx 로 도는지 보는 시험(`tests/test_npx_package.py`)을 더했다. README · 안내서 · 이전 안내서의 CLI 안내를 이 방식으로 바꿨다. npm 의 `kns` 는 다른 사람 패키지라 쓰지 않는다
+- 설계 문서 승인 대기 15개를 사람 검토 · 지시로 approved 로 바꿨다
+
 ## 2.0.0-alpha.0
 
 v2 첫 사전 릴리스. 아래는 이 판에 들어 있는 이슈다. 자세한 것은 `.agents/docs/issues/<키>/` 에 있다.

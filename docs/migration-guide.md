@@ -31,7 +31,7 @@
 
 그대로인 것: GitHub 저장소 이름(`harness-starter-kit`), 파일 머리 표지 `HARNESS STARTER KIT`, `scripts/harness/` 폴더, 훅 id `harness-*`. 이것들은 "하네스 엔지니어링"이라는 개념 이름이거나 v1 파일을 알아보는 열쇠다.
 
-npm 에 올리기 전에는 `npx knots-sync` 가 npm 에서 남의 패키지를 받을 수 있다. 그때까지는 플러그인 안의 CLI(`bash <플러그인>/skills/bootstrap/kit.sh <명령>`)로 부른다. 아래의 `npx knots-sync` 는 그 명령으로 읽는다.
+CLI 는 GitHub 에서 태그를 고정해 npx 로 부른다(결정 D3): `npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.1 <명령>`. 셸 별칭 `alias knots-sync='npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.1'` 를 두면 아래의 `npx knots-sync <명령>` 을 그대로 `knots-sync <명령>` 으로 쓸 수 있다. npm 에는 아직 올리지 않았으니 `npx knots-sync`(npm)는 쓰지 않고, `npx kns` 는 npm 의 다른 사람 패키지라 절대 쓰지 않는다. Node 가 없으면 플러그인 안의 `bash <플러그인>/skills/bootstrap/kit.sh <명령>` 이 v1 스크립트로 내려간다.
 
 ## 2. 작업 공간 만들기
 
