@@ -31,7 +31,7 @@
 
 그대로인 것: GitHub 저장소 이름(`harness-starter-kit`), 파일 머리 표지 `HARNESS STARTER KIT`, `scripts/harness/` 폴더, 훅 id `harness-*`. 이것들은 "하네스 엔지니어링"이라는 개념 이름이거나 v1 파일을 알아보는 열쇠다.
 
-가장 쉬운 길은 Claude Code 플러그인이다: 리포 폴더에서 연 Claude Code 에 `/kns:update` 를 입력하면 미리보기 → 요약 → 승인 → 반영을 진행한다. 터미널에서는 CLI 를 GitHub 묶음 주소로 전역 설치해 `knots-sync <명령>` 으로 부른다(결정 D3, npm 에는 v2.2 에 올린다): `npm i -g https://codeload.github.com/pscheol/harness-starter-kit/tar.gz/refs/tags/v2.0.0-alpha.2`. 한 번만 쓸 때는 `npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.2 <명령>`. `npm i -g github:…` 는 npm 11 에서 명령 링크가 깨지고, `npx knots-sync`(npm 에 없는 이름) · `npx kns`(npm 의 다른 사람 패키지)는 쓰지 않는다. Node 가 없으면 플러그인 안의 `bash <플러그인>/skills/bootstrap/kit.sh <명령>` 이 v1 스크립트로 내려간다.
+가장 쉬운 길은 Claude Code 플러그인이다: 리포 폴더에서 연 Claude Code 에 `/kns:update` 를 입력하면 미리보기 → 요약 → 승인 → 반영을 진행한다. 터미널에서는 CLI 를 GitHub 묶음 주소로 전역 설치해 `knots-sync <명령>` 으로 부른다(결정 D3, npm 에는 v2.2 에 올린다): `npm i -g https://codeload.github.com/pscheol/harness-starter-kit/tar.gz/refs/tags/v2.0.0-alpha.3`. 한 번만 쓸 때는 `npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.3 <명령>`. `npm i -g github:…` 는 npm 11 에서 명령 링크가 깨지고, `npx knots-sync`(npm 에 없는 이름) · `npx kns`(npm 의 다른 사람 패키지)는 쓰지 않는다. Node 가 없으면 플러그인 안의 `bash <플러그인>/skills/bootstrap/kit.sh <명령>` 이 v1 스크립트로 내려간다.
 
 ### 1.2 CI 진입 파일은 선택 모듈 `ci` 다
 

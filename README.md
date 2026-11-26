@@ -99,7 +99,7 @@ codex plugin add kns@knots-sync
 npm 에는 아직 올리지 않았다(결정 D3 — v2.2 까지 명령이 그대로면 올린다). 자주 쓰면 **전역 설치**가 빠르다(설치 한 번 약 5초, 이후 명령마다 약 0.5초).
 
 ```bash
-npm i -g https://codeload.github.com/pscheol/harness-starter-kit/tar.gz/refs/tags/v2.0.0-alpha.2
+npm i -g https://codeload.github.com/pscheol/harness-starter-kit/tar.gz/refs/tags/v2.0.0-alpha.3
 knots-sync --version
 # 최신 main 을 받으려면 끝을 refs/heads/main 으로 바꾼다. 새 판은 같은 줄을 다시 친다
 ```
@@ -107,8 +107,8 @@ knots-sync --version
 한 번만 쓸 때는 npx 로 부른다(명령마다 GitHub 에서 받아 약 13초 걸린다).
 
 ```bash
-npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.2 --version
-knots-sync() { npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.2 "$@"; }   # 자주 쓰면 함수로
+npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.3 --version
+knots-sync() { npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.3 "$@"; }   # 자주 쓰면 함수로
 ```
 
 - `npm i -g github:pscheol/harness-starter-kit…` 는 쓰지 않는다. npm 11 에서 설치는 성공한 것처럼 끝나지만 명령 링크가 지워진 임시 폴더를 가리켜 실행되지 않는다.

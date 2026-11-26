@@ -119,8 +119,8 @@
 <div class="table-wrap"><table>
 <thead><tr><th scope="col">방법</th><th scope="col">명령</th><th scope="col">비고</th></tr></thead>
 <tbody>
-<tr><td>전역 설치(권장)</td><td><code>npm i -g https://codeload.github.com/pscheol/harness-starter-kit/tar.gz/refs/tags/v2.0.0-alpha.2</code></td><td>설치 약 5초, 이후 명령마다 약 0.5초. 최신 main 은 끝을 <code>refs/heads/main</code> 으로</td></tr>
-<tr><td>npx(GitHub, 태그 고정)</td><td><code>npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.2 &lt;명령&gt;</code></td><td>설치 없이 돈다. 명령마다 받아 약 13초. 자주 쓰면 셸 함수 <code>knots-sync() { npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.2 "$@"; }</code>(별칭은 정의하는 줄과 쓰는 줄을 따로 쳐야 한다)</td></tr>
+<tr><td>전역 설치(권장)</td><td><code>npm i -g https://codeload.github.com/pscheol/harness-starter-kit/tar.gz/refs/tags/v2.0.0-alpha.3</code></td><td>설치 약 5초, 이후 명령마다 약 0.5초. 최신 main 은 끝을 <code>refs/heads/main</code> 으로</td></tr>
+<tr><td>npx(GitHub, 태그 고정)</td><td><code>npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.3 &lt;명령&gt;</code></td><td>설치 없이 돈다. 명령마다 받아 약 13초. 자주 쓰면 셸 함수 <code>knots-sync() { npx -y github:pscheol/harness-starter-kit#v2.0.0-alpha.3 "$@"; }</code>(별칭은 정의하는 줄과 쓰는 줄을 따로 쳐야 한다)</td></tr>
 <tr><td>킷 저장소의 CLI 직접</td><td><code>node &lt;킷&gt;/plugins/kns/skills/bootstrap/bin/knots-sync.js &lt;명령&gt;</code></td><td>킷을 고치며 시험할 때</td></tr>
 <tr><td>플러그인 안의 입구</td><td><code>bash &lt;플러그인&gt;/skills/bootstrap/kit.sh &lt;명령&gt;</code></td><td>Node 18.3 이상이면 CLI 를 그대로 부르고, 없으면 v1 스크립트로 내려간다(v2.0 동안만)</td></tr>
 </tbody></table></div>
