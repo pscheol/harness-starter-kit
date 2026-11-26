@@ -1,6 +1,6 @@
 {
   "name": "knots-sync",
-  "version": "2.0.0-alpha.2",
+  "version": "2.0.0-alpha.3",
   "description": "knots-sync CLI — 리포에 에이전트 협업 골격을 설치 · 점검한다",
   "repository": {
     "type": "git",

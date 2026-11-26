@@ -12,7 +12,7 @@
       "name": "kns",
       "source": "./plugins/kns",
       "description": "백엔드·웹·데스크톱 프로젝트에 하네스 엔지니어링 적용.",
-      "version": "2.0.0-alpha.2",
+      "version": "2.0.0-alpha.3",
       "license": "MIT",
       "keywords": [
         "harness",

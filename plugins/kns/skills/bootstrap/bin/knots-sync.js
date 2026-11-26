@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// knots-sync 2.0.0-alpha.2 · src-sha256 416b3f60edce0415f833add61632e7a233874fea91c877eba1bf245ab76137f1 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
+// knots-sync 2.0.0-alpha.3 · src-sha256 0ef74555a9b817da07266951376e3793714a6eb0a20698348b64f605b8abfb07 · 생성물(packages/cli/build.mjs) — 손으로 고치지 않는다
 "use strict";
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -3572,7 +3572,7 @@ function resolveSelection(layout2, templatesDir, input, ctx) {
 }
 
 // src/core/version.ts
-var VERSION = "2.0.0-alpha.2";
+var VERSION = "2.0.0-alpha.3";
 var MIN_NODE = { major: 18, minor: 3 };
 var MIN_NODE_TEXT = `${MIN_NODE.major}.${MIN_NODE.minor}`;
 function nodeTooOld(version) {
@@ -9619,7 +9619,7 @@ async function readWorktrees(p) {
 }
 
 // ../dashboard/src/model.ts
-var VERSION2 = true ? "2.0.0-alpha.2" : "0.0.0-dev";
+var VERSION2 = true ? "2.0.0-alpha.3" : "0.0.0-dev";
 async function load(p) {
   const sessions = await readSessions(p);
   const cos = await checkouts(p);
