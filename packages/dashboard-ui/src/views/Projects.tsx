@@ -1,4 +1,4 @@
-// S00 전체 프로젝트. 이 컴퓨터에 등록한 킷 리포의 처리할 일 · 진행 · 킷 버전을 한 화면에 모은다. 이 화면은 아무것도 쓰지 않는다(DB-R27).
+// S00 전체 프로젝트. 이 컴퓨터에 등록한 킷 리포의 처리할 일 · 진행 · 킷 판을 한 화면에 모은다. 이 화면은 아무것도 쓰지 않는다(DB-R27).
 // 프로젝트로 들어가는 링크는 같은 문서 안이 아니라 새로 읽는다(세션 · 프로젝트 목록이 모드마다 달라서).
 import { Badge } from "@astryxdesign/core/Badge";
 import { Button } from "@astryxdesign/core/Button";
@@ -10,12 +10,12 @@ import { HStack, VStack } from "@astryxdesign/core/Stack";
 import { Text } from "@astryxdesign/core/Text";
 import { useMemo, useState } from "react";
 import { get } from "../lib/api";
-import { ago, KIND_KO, STEP_KO, type Route } from "../lib/format";
+import { ago, HARNESS_KO, KIND_KO, STEP_KO, type Route } from "../lib/format";
 import { useLoad } from "../lib/hooks";
 import { useAppState } from "../lib/store";
 import type { Loose } from "../lib/types";
 import { SegBar } from "../ui/charts";
-import { CommandBox, Empty, ErrorBlock, HarnessBadge, Ico, IconNote, Key, Loading, Muted, Notice, Panel, Seg, Tag } from "../ui/common";
+import { CommandBox, Details, ErrorBlock, HarnessBadge, Ico, Key, Loading, Muted, Notice, Panel, Seg, Tag } from "../ui/common";
 import { Page, TwoCol } from "../ui/Page";
 
 const STAGE_COLOR: Record<string, string> = {
@@ -37,7 +37,7 @@ export function StageSeg({ stages }: { stages: Record<string, number> | undefine
   return (
     <VStack gap={1}>
       <SegBar label={`단계별 이슈: ${desc || "없음"}`} parts={entries.map(([k, n]) => ({ key: k, n, color: STAGE_COLOR[k] ?? "var(--hk-todo)", title: `${stageName(k)} ${n}` }))} />
-      <Muted size="xsm">{desc || "이슈 없음"}</Muted>
+      <Muted>{desc || "이슈 없음"}</Muted>
     </VStack>
   );
 }
@@ -50,16 +50,17 @@ function Hard({ href, label, size = "sm" }: { href: string; label: string; size?
 export default function Projects({ route: _route }: { route: Route }) {
   const app = useAppState();
   const multi = app.mode === "multi-root";
-  const { state, reload } = useLoad<[Loose, Loose, Loose]>(
+  const { state, reload, at, every, stale } = useLoad<[Loose, Loose, Loose]>(
     () => (multi ? [get("/projects", { scope: "top" }), get("/projects/overview", { scope: "top" }), get("/sessions", { scope: "top", query: { scope: "machine" } })] : [Promise.resolve({ ok: true as const, status: 200, data: null, meta: {} }), Promise.resolve({ ok: true as const, status: 200, data: null, meta: {} }), Promise.resolve({ ok: true as const, status: 200, data: null, meta: {} })]),
     [multi],
-    { tolerate: ["not_found", "not_implemented"] },
+    { tolerate: ["not_found", "not_implemented"], live: multi },
   );
+  const live = multi ? { at, every, stale } : undefined;
   const [group, setGroup] = useState("project");
   const [only, setOnly] = useState("all");
-  const sub = "이 컴퓨터에 등록한 킷 리포 · 쓰기는 들어간 리포 안에서만 됩니다";
+  const sub = "이 컴퓨터에 등록한 킷 리포들의 처리할 일과 진행을 한곳에서 봅니다. 승인 · 저장은 각 리포 화면에 들어가서 합니다.";
   const crumbs = [{ label: "프로젝트" }, { label: "전체 프로젝트" }];
-  const tools = <Tag icon="eye" label="쓰기 없음 · 쓰기는 프로젝트 안에서" />;
+  const tools = <Tag icon="eye" label="보기만 하는 화면" />;
 
   const data = state.status === "ready" ? state.data : null;
   const projects: Loose[] = data?.[0]?.projects ?? [];
@@ -71,22 +72,39 @@ export default function Projects({ route: _route }: { route: Route }) {
 
   if (!multi) {
     return (
-      <Page title="전체 프로젝트" sub={sub} crumbs={crumbs} tools={tools}>
-        <Notice kind="info" title="지금은 한 리포만 연 서버입니다. ">여러 리포를 한 화면에서 보려면 등록부(~/.config/knots-sync/projects.json)나 폴더를 가리켜 서버를 다시 엽니다.</Notice>
-        <VStack gap={2}>
-          <CommandBox cmd="knots-sync dashboard --all" label="--all 복사" />
-          <CommandBox cmd="knots-sync dashboard --root ~/work" label="--root 복사" />
-          <CommandBox cmd="knots-sync projects add <폴더>" label="등록 명령 복사" />
-        </VStack>
+      <Page title="전체 프로젝트" sub={sub} crumbs={crumbs} search={false}>
+        <Panel title="여러 리포 함께 보기">
+          <VStack gap={1}>
+            <Text weight="semibold">지금은 이 리포 하나만 보는 관리 페이지입니다</Text>
+            <Muted>킷을 깐 리포 여러 곳의 처리할 일을 한 화면에서 보려면, 리포를 등록한 뒤 관리 페이지를 모든 프로젝트 보기로 다시 엽니다.</Muted>
+          </VStack>
+          <HStack gap={2} align="center" wrap="wrap">
+            <Hard href="/" label="이 리포 홈으로" />
+          </HStack>
+          <Details label="터미널 명령">
+            <CommandBox cmd="knots-sync projects add <폴더>" label="리포 등록 명령 복사" />
+            <CommandBox cmd="knots-sync dashboard --all" label="등록한 리포 모두 보기 명령 복사" />
+            <CommandBox cmd="knots-sync dashboard --root ~/work" label="한 폴더 아래 리포 모두 보기 명령 복사" />
+            <Muted>등록한 리포 목록은 ~/.config/knots-sync/projects.json 에 둡니다(경로 · 이름 · 더한 날만).</Muted>
+          </Details>
+        </Panel>
       </Page>
     );
   }
-  if (state.status === "loading") return <Page title="전체 프로젝트" sub={sub} crumbs={crumbs} tools={tools}><Loading rows={5} /></Page>;
-  if (state.status === "error") return <Page title="전체 프로젝트" sub={sub} crumbs={crumbs} tools={tools}><ErrorBlock error={state.error} retry={reload} /></Page>;
+  if (state.status === "loading") return <Page title="전체 프로젝트" sub={sub} crumbs={crumbs} tools={tools} live={live}><Loading rows={5} /></Page>;
+  if (state.status === "error") return <Page title="전체 프로젝트" sub={sub} crumbs={crumbs} tools={tools} live={live}><ErrorBlock error={state.error} retry={reload} /></Page>;
   if (!projects.length) {
     return (
-      <Page title="전체 프로젝트" sub={sub} crumbs={crumbs} tools={tools}>
-        <Empty title="등록된 프로젝트가 없습니다" text="킷을 설치한 리포를 등록하면 여기서 한꺼번에 봅니다." actions={<CommandBox cmd="knots-sync projects add <폴더>" label="명령 복사" />} />
+      <Page title="전체 프로젝트" sub={sub} crumbs={crumbs} tools={tools} live={live}>
+        <Panel title="등록한 리포">
+          <VStack gap={1}>
+            <Text weight="semibold">등록한 리포가 없습니다</Text>
+            <Muted>킷을 깐 리포를 등록하면 처리할 일과 진행을 여기서 한꺼번에 봅니다.</Muted>
+          </VStack>
+          <Details label="터미널 명령">
+            <CommandBox cmd="knots-sync projects add <폴더>" label="리포 등록 명령 복사" />
+          </Details>
+        </Panel>
       </Page>
     );
   }
@@ -118,18 +136,17 @@ export default function Projects({ route: _route }: { route: Route }) {
         });
 
   return (
-    <Page title="전체 프로젝트" sub={sub} crumbs={crumbs} tools={tools} search={false}>
-      <IconNote icon="folder" size="xsm">{`등록된 프로젝트 ${projects.length} · ~/.config/knots-sync/projects.json · 경로 · 이름 · 더한 날만 둡니다. 리포 안 파일은 그 리포에서 읽습니다.`}</IconNote>
+    <Page title="전체 프로젝트" sub={sub} crumbs={crumbs} tools={tools} search={false} live={live}>
       <TwoCol
         main={
-          <Panel title="처리할 일" aside={<><Badge variant="red" label={String(total)} /><Muted size="xsm">{`프로젝트 ${okOver.length}곳 · 각 체크아웃의 git 사용자 기준`}</Muted></>}>
+          <Panel title="처리할 일" aside={<><Badge variant={total ? "red" : "neutral"} label={String(total)} /><Muted>{`리포 ${okOver.length}곳 · 리포마다 내 git 사용자 기준`}</Muted></>}>
             <HStack gap={3} wrap="wrap" align="center">
               <Seg label="묶기" items={[{ id: "project", label: "프로젝트별" }, { id: "kind", label: "종류별" }]} value={group} onChange={setGroup} />
               <Selector label="프로젝트" isLabelHidden size="sm" value={only} onChange={(v) => v && setOnly(v)} options={[{ value: "all", label: `모두 ${total}` }, ...okOver.map((o) => ({ value: o.id as string, label: `${o.name} ${o.total}` }))]} />
             </HStack>
             {state.data[1] === null ? <Notice kind="err" title="처리할 일을 모으지 못했습니다." /> : null}
             <VStack gap={4} aria-live="polite">
-              {todoList.length ? todoList : <Empty title="처리할 일이 없습니다" text="등록한 프로젝트 모두 조용합니다." />}
+              {todoList.length ? todoList : <Text>등록한 리포 모두 지금 처리할 일이 없습니다.</Text>}
             </VStack>
           </Panel>
         }
@@ -142,10 +159,12 @@ export default function Projects({ route: _route }: { route: Route }) {
                   return (
                     <Card key={p.id} padding={4}>
                       <VStack gap={2}>
-                        <HStack gap={2} align="center" wrap="wrap"><Ico name="folder" /><Text weight="semibold">{p.name}</Text><Tag label={p.state === "missing" ? "없음" : "킷 리포 아님"} /></HStack>
-                        <Muted size="xsm">{p.path}</Muted>
-                        <Muted>폴더가 없습니다. 옮겼거나 지웠습니다. 등록부에서 저절로 지우지 않습니다.</Muted>
-                        <CommandBox cmd={p.remove ?? `knots-sync projects remove ${p.name}`} label="복사" />
+                        <HStack gap={2} align="center" wrap="wrap"><Ico name="folder" /><Text weight="semibold">{p.name}</Text><Tag label={p.state === "missing" ? "폴더 없음" : "킷 리포 아님"} /></HStack>
+                        <Muted>{p.state === "missing" ? "등록한 폴더가 없습니다. 옮겼거나 지운 것 같습니다. 목록에서 저절로 빼지 않습니다." : "이 폴더에는 킷이 깔려 있지 않습니다."}</Muted>
+                        <Details label="위치 · 목록에서 빼는 명령">
+                          <Text type="code" size="sm" wordBreak="break-all">{p.path}</Text>
+                          <CommandBox cmd={p.remove ?? `knots-sync projects remove ${p.name}`} label="빼는 명령 복사" />
+                        </Details>
                       </VStack>
                     </Card>
                   );
@@ -157,17 +176,20 @@ export default function Projects({ route: _route }: { route: Route }) {
                         <HStack gap={2} align="center"><Ico name="folder" /><Text weight="semibold">{p.name}</Text>{o && o.state === "ok" ? <Tag tone={o.total ? "gate" : "ops"} label={`처리할 일 ${o.total}`} /> : <Tag tone="gate" icon="alert" label="읽기 실패" />}</HStack>
                         <Hard href={`/p/${p.id}/`} label="열기" />
                       </HStack>
-                      <Muted size="xsm">{`${p.path}${p.addedAt ? ` · ${p.addedAt} 더함` : ""}`}</Muted>
                       {o && o.state === "ok" ? (
                         <VStack gap={2}>
                           <StageSeg stages={o.stages} />
-                          <HStack gap={4} wrap="wrap"><Muted size="xsm">{`이슈 ${o.issues}`}</Muted><Muted size="xsm">{`킷 ${p.version ?? "?"}`}</Muted><Muted size="xsm">{`세션 ${o.sessions?.alive ?? 0}개`}</Muted></HStack>
+                          <HStack gap={4} wrap="wrap"><Muted>{`이슈 ${o.issues}개`}</Muted><Muted>{`킷 ${p.version ?? "판 모름"}`}</Muted><Muted>{`켜 둔 세션 ${o.sessions?.alive ?? 0}개`}</Muted></HStack>
                         </VStack>
                       ) : (
                         <Text color="secondary">{o?.error ?? "읽지 못했습니다"}</Text>
                       )}
+                      <Details label="위치">
+                        <Text type="code" size="sm" wordBreak="break-all">{p.path}</Text>
+                        {p.addedAt ? <Muted>{`${p.addedAt}에 등록`}</Muted> : null}
+                      </Details>
                       {(o?.children ?? []).length ? (
-                        <Collapsible defaultIsOpen={false} trigger={<Text size="sm">{`하위 리포 ${o.children.length}개`}</Text>}>
+                        <Collapsible defaultIsOpen={false} chevronPosition="start" trigger={<Text size="sm" color="secondary">{`하위 리포 ${o.children.length}개`}</Text>}>
                           <VStack gap={1}>{(o.children as Loose[]).map((c) => (<HStack key={c.name} gap={2}><Text size="sm">{c.name}</Text><Tag label={c.state} /></HStack>))}</VStack>
                         </Collapsible>
                       ) : null}
@@ -180,11 +202,11 @@ export default function Projects({ route: _route }: { route: Route }) {
               {sessions.length ? (
                 <List hasDividers>
                   {sessions.map((s) => (
-                    <ListItem key={s.id} label={s.name ?? String(s.id).slice(0, 10)} description={`${s.project}${s.issue ? ` · ${s.issue}` : ""}`} startContent={<HarnessBadge name={s.harness} />} endContent={<Tag tone={s.state === "gone" ? "line" : s.turn === "working" ? "build" : "ops"} label={s.state === "gone" ? "끊김" : s.turn === "working" ? "일하는 중" : "쉬는 중"} />} />
+                    <ListItem key={s.id} label={s.name ?? `${HARNESS_KO[s.harness] ?? s.harness ?? "하네스"} 세션`} description={`${s.project}${s.issue ? ` · ${s.issue}` : ""}${s.startedAt ? ` · ${ago(s.startedAt)} 시작` : ""}`} startContent={<HarnessBadge name={s.harness} />} endContent={<Tag tone={s.state === "gone" ? "line" : s.turn === "working" ? "build" : "ops"} label={s.state === "gone" ? "끊김" : s.turn === "working" ? "일하는 중" : "쉬는 중"} />} />
                   ))}
                 </List>
               ) : (
-                <VStack padding={4}><Muted>켜 둔 세션이 없습니다</Muted></VStack>
+                <VStack paddingBlock={4} paddingInline={2}><Muted>이 컴퓨터에 켜 둔 세션이 없습니다</Muted></VStack>
               )}
             </Panel>
           </>

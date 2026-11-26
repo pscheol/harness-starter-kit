@@ -111,7 +111,7 @@ export function LineChart({ labels, series, height = 160, step = false, yMin = 0
           ))}
         </svg>
       </div>
-      <Text color="secondary" size="xsm" hasTabularNumbers>
+      <Text color="secondary" size="sm" hasTabularNumbers>
         {hover === null ? (readout ?? summary) : `${labels[hover]} · ${series.map((s) => `${s.name} ${s.values[hover] === null || s.values[hover] === undefined ? "-" : fmt(s.values[hover] as number)}`).join(" · ")}`}
       </Text>
     </VStack>

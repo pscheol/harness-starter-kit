@@ -4,6 +4,12 @@
   outline: none;
 }
 
+/* 한글은 단어 단위로 줄을 바꾼다("승인 대기 시|간"처럼 끊기지 않게). 칸을 넘는 긴 경로 · 영문 토큰만 꺾는다. */
+body {
+  word-break: keep-all;
+  overflow-wrap: break-word;
+}
+
 /* 흐름 보기(packages/flow-view/src/flow.css)가 쓰는 옛 이름의 변수를 astryx 토큰으로 이어 준다 */
 .react-flow {
   --raised: var(--color-background-card);
@@ -191,6 +197,11 @@
   border-block-end: 1px solid var(--color-border);
 }
 
+/* 두 칸 격자(TwoCol)의 칸: 내용의 최소 폭이 칸 비율을 깨지 않게 한다 */
+.hk-col {
+  min-width: 0;
+}
+
 .hk-notice-body {
   flex: 1 1 16rem;
   min-width: 0;
@@ -299,6 +310,13 @@
 .astryx-side-nav-item,
 .astryx-side-nav-item :not(.astryx-badge, .astryx-badge *) {
   color: var(--kns-nav-text);
+}
+
+/* 막힌 메뉴(읽기 전용에서 새 요구사항 등)는 흐리게 — 위 색 덮어쓰기가 astryx 의 막힘 표시를 지웠다 */
+.astryx-side-nav-item[aria-disabled="true"],
+.astryx-side-nav-item[aria-disabled="true"] :not(.astryx-badge, .astryx-badge *) {
+  color: var(--kns-nav-muted);
+  cursor: not-allowed;
 }
 
 .astryx-side-nav-item:hover:not([aria-current="page"]) {

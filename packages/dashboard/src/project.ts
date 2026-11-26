@@ -8,9 +8,24 @@ import { gitUser, locate, type Location } from "./repo";
 import { type Env, isObj, kitConfigDir, readJson } from "./util";
 
 export interface DoctorSummary {
+  /** problems 가 있으면 "problems". 참고(notes)만 있으면 "ok" */
   status: "ok" | "problems" | "unavailable";
   counts: Record<string, number>;
-  problems: { kind: string; path?: string; message: string }[];
+  /** 사람이 손봐야 하는 것(오류 · 주의 · 되살릴 파일) */
+  problems: DoctorItem[];
+  /** 알아 두면 되는 것(사람이 고친 킷 파일 · 옛 이름 · 만료 공지 등). 홈 '처리할 일'에 넣지 않는다 */
+  noteCounts?: Record<string, number>;
+  notes?: DoctorItem[];
+}
+
+/** message 는 CLI hint 원문, label · help 는 관리 페이지용 쉬운 말(합니다체) */
+export interface DoctorItem {
+  kind: string;
+  severity?: string;
+  path?: string;
+  message: string;
+  label?: string;
+  help?: string;
 }
 
 /** CLI 가 넣는 함수(서버는 CLI 모듈을 import 하지 않는다). 시험은 바꿔 끼운다. */

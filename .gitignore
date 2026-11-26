@@ -18,3 +18,10 @@ packages/cli/dist/
 
 # 에이전트 작업 폴더(git worktree) — 커밋하지 않는다
 .claude/worktrees/
+
+# impeccable 디자인 검사기: 오탐 예외(config.json)만 커밋하고 평가 기록 · 캐시는 남기지 않는다(2026-11-26 결정)
+.impeccable/critique/
+.impeccable/hook.cache.json
+
+# 브라우저 도구(playwright MCP)가 남기는 콘솔 기록 — 커밋하지 않는다
+.playwright-mcp/

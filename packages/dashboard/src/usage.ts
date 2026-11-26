@@ -1,6 +1,7 @@
 /**
  * 기록 · 사용량(설계 06 §3.18, DB-R26 · R28). 모델을 부르지 않고 대화 내용을 요약하지 않는다.
- * 대화 기록(`~/.claude` · `~/.codex`)은 `~/.config/knots-sync/config.json` 의 `history` 가 "on" 일 때만 연다.
+ * 대화 기록(`~/.claude` · `~/.codex`)은 기본으로 읽는다(사용자 결정 2026-11-26 — 설치하자마자 세션 컨텍스트가 보이게).
+ * `~/.config/knots-sync/config.json` 에 `"history": "off"` 를 쓰면 열지 않는다.
  * 켜져 있어도 복사본 · 집계 파일을 남기지 않는다(읽은 위치와 줄 값은 메모리에만 둔다).
  */
 import fs from "node:fs";
@@ -49,12 +50,13 @@ const states = new WeakMap<Project, Map<string, FileState>>();
 const num = (v: unknown): number => (typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : 0);
 const str = (v: unknown): string | null => (typeof v === "string" && v ? v : null);
 
+/** 기본은 켬. "off" 일 때만 끈다(그 밖의 값 · 설정 없음은 켬). */
 export function historyOn(p: Project): boolean {
-  return p.machineConfig().history === "on";
+  return p.machineConfig().history !== "off";
 }
 
 export function configHint(p: Project): Record<string, unknown> {
-  return { config: "~/.config/knots-sync/config.json", enable: '{ "history": "on" }', current: p.machineConfig().history ?? null };
+  return { config: "~/.config/knots-sync/config.json", enable: '{ "history": "on" }', disable: '{ "history": "off" }', current: p.machineConfig().history ?? null };
 }
 
 function enc(dir: string): string {
@@ -363,6 +365,7 @@ export async function usageData(p: Project, q: UsageQuery): Promise<Record<strin
   const dayList = [...daily.values()];
   return {
     enabled: true,
+    ...configHint(p),
     range: { from: new Date(range.from).toISOString(), to: new Date(range.to).toISOString(), days: range.days },
     sources, totals, daily: dayList, roles: [...roles].sort(),
     byIssue: [...issues].map(([issue, sum]) => ({ issue, sum })).sort((a, b) => b.sum - a.sum || (a.issue < b.issue ? -1 : 1)),
@@ -378,7 +381,7 @@ export async function usageNow(p: Project): Promise<Record<string, unknown>> {
   const { recs } = await loadRecords(p, Date.now() - 2 * DAY, null);
   const sess = await sessionMap(p);
   const last = recs.reduce<Rec | null>((a, r) => (!a || r.ts > a.ts ? r : a), null);
-  if (!last) return { enabled: true, session: null };
+  if (!last) return { enabled: true, ...configHint(p), session: null };
   const usage = isObj(p.machineConfig().usage) ? (p.machineConfig().usage as Record<string, unknown>) : {};
   const windows = isObj(usage.contextWindows) ? usage.contextWindows : {};
   let window: number | null = null;
@@ -393,6 +396,7 @@ export async function usageNow(p: Project): Promise<Record<string, unknown>> {
   const meta = sess.get(last.session);
   return {
     enabled: true,
+    ...configHint(p),
     session: {
       id: last.session, harness: last.harness, model: last.model, role: meta?.role ?? null, issue: meta?.issue ?? issueOf(last.branch),
       at: new Date(last.ts).toISOString(), since: new Date(Math.min(...mine.map((r) => r.ts))).toISOString(), requests: mine.length,
@@ -505,7 +509,7 @@ export interface HistoryQuery {
 
 /** GET /history — 프롬프트 기록. 꺼져 있으면 404 history_off. 글을 보여 주기만 한다. */
 export async function historyData(p: Project, q: HistoryQuery): Promise<Record<string, unknown>> {
-  if (!historyOn(p)) throw new ApiError(404, "history_off", "대화 기록 읽기가 꺼져 있습니다. 켜려면 사람이 ~/.config/knots-sync/config.json 에 \"history\": \"on\" 을 씁니다", configHint(p));
+  if (!historyOn(p)) throw new ApiError(404, "history_off", "대화 기록 읽기를 꺼 두었습니다(~/.config/knots-sync/config.json 의 \"history\": \"off\"). 다시 켜려면 그 값을 \"on\" 으로 바꿉니다", configHint(p));
   const dirs = projectDirs(p);
   const sess = await sessionMap(p);
   const prompts: { at: string; text: string; session: string | null; role: string | null; issue: string | null; harness: string }[] = [];
@@ -556,5 +560,5 @@ export async function historyData(p: Project, q: HistoryQuery): Promise<Record<s
   const all = prompts
     .filter((x) => (!needle || x.text.toLowerCase().includes(needle)) && (!q.session || x.session === q.session) && (!q.role || x.role === q.role))
     .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0));
-  return { enabled: true, prompts: all.slice(0, HISTORY_LIMIT), total: all.length, shown: Math.min(all.length, HISTORY_LIMIT), unreadable, note: "글을 보여 주기만 합니다. 내보내기 · 커밋 · 세션 요청에 넣지 않습니다" };
+  return { enabled: true, ...configHint(p), prompts: all.slice(0, HISTORY_LIMIT), total: all.length, shown: Math.min(all.length, HISTORY_LIMIT), unreadable, note: "글을 보여 주기만 합니다. 내보내기 · 커밋 · 세션 요청에 넣지 않습니다" };
 }

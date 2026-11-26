@@ -3,8 +3,10 @@ import { Badge } from "@astryxdesign/core/Badge";
 import { Banner } from "@astryxdesign/core/Banner";
 import { Button } from "@astryxdesign/core/Button";
 import { Card } from "@astryxdesign/core/Card";
+import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { Divider } from "@astryxdesign/core/Divider";
 import { EmptyState } from "@astryxdesign/core/EmptyState";
+import { IconButton } from "@astryxdesign/core/IconButton";
 import { SegmentedControl, SegmentedControlItem } from "@astryxdesign/core/SegmentedControl";
 import { Selector } from "@astryxdesign/core/Selector";
 import { useMediaQuery } from "@astryxdesign/core/hooks";
@@ -14,7 +16,7 @@ import { Text } from "@astryxdesign/core/Text";
 import { useToast } from "@astryxdesign/core/Toast";
 import type { ReactNode } from "react";
 import { errorText, type ApiError } from "../lib/api";
-import { HARNESS_KO } from "../lib/format";
+import { HARNESS_KO, TERMS } from "../lib/format";
 import { ICONS, type IconName } from "./icons";
 
 type BadgeVariant = "neutral" | "info" | "success" | "warning" | "error" | "blue" | "yellow" | "teal" | "red";
@@ -110,12 +112,15 @@ export function Seg({ label, items, value, onChange }: { label: string; items: A
   );
 }
 
-/** 패널: 제목줄(제목 + 곁 정보) · 구분선 · 본문. 본문 간격은 한 군데(gap 3)에서만 정한다. */
+/**
+ * 패널: 제목줄(제목 + 곁 정보) · 구분선 · 본문. 안쪽 좌우 여백(5)과 본문 간격(4)은 이 한 곳에서만 정한다.
+ * flush 는 표 · 목록을 가장자리까지 붙일 때 쓴다(표 칸이 자기 여백을 가진다).
+ */
 export function Panel({ title, aside, children, flush = false, headingId, lift = false }: { title: ReactNode; aside?: ReactNode; children: ReactNode; flush?: boolean; headingId?: string; lift?: boolean }) {
   return (
     <Card padding={0} elevation={lift ? "low" : "none"} {...(headingId ? { "aria-labelledby": headingId } : {})}>
       <VStack gap={0}>
-        <HStack padding={3} paddingInline={4} gap={3} wrap="wrap" align="center" justify="between">
+        <HStack paddingBlock={3} paddingInline={5} gap={3} wrap="wrap" align="center" justify="between">
           <Text as="h2" size="base" weight="bold" {...(headingId ? { id: headingId } : {})}>
             {title}
           </Text>
@@ -126,16 +131,17 @@ export function Panel({ title, aside, children, flush = false, headingId, lift =
           ) : null}
         </HStack>
         <Divider />
-        {flush ? children : <VStack gap={3} padding={4}>{children}</VStack>}
+        {/* flush: 표 칸 · 목록 줄은 스스로 2(8px) 만큼 들이므로 3(12px)을 더해 제목줄 글과 같은 세로줄(5 = 20px)에 맞춘다 */}
+        {flush ? <VStack paddingInline={3}>{children}</VStack> : <VStack gap={4} paddingBlock={4} paddingInline={5}>{children}</VStack>}
       </VStack>
     </Card>
   );
 }
 
 /** 읽기 쉬운 보조 글 */
-export function Muted({ children, size = "sm" }: { children: ReactNode; size?: "xsm" | "sm" }) {
+export function Muted({ children }: { children: ReactNode; /** 옛 호출 호환: 가장 작은 글자(10px)는 쓰지 않는다 */ size?: "xsm" | "sm" }) {
   return (
-    <Text color="secondary" size={size}>
+    <Text color="secondary" size="sm">
       {children}
     </Text>
   );
@@ -206,6 +212,60 @@ export function IconNote({ icon, children, size = "sm" }: { icon: IconName; chil
     <HStack gap={1} align="center">
       <Ico name={icon} size={size === "xsm" ? 12 : 14} />
       <Muted size={size}>{children}</Muted>
+    </HStack>
+  );
+}
+
+/**
+ * '자세히' 접기: 파일 경로 · 터미널 명령 · 데이터 출처처럼 자주 보지 않는 것을 넣는다(사용자 결정 2026-11-26).
+ * 기본은 접혀 있고, 화면의 첫 글은 무엇을 하면 되는지만 말한다.
+ */
+export function Details({ label = "자세히", children }: { label?: string; children: ReactNode }) {
+  return (
+    <Collapsible defaultIsOpen={false} chevronPosition="start" trigger={<Text size="sm" color="secondary">{label}</Text>}>
+      <VStack gap={2} paddingBlockStart={2}>
+        {children}
+      </VStack>
+    </Collapsible>
+  );
+}
+
+/** 용어 옆의 작은 ? 단추. 마우스를 올리거나 초점을 주면 한 줄 풀이(TERMS)가 뜬다. */
+export function TermHelp({ term }: { term: keyof typeof TERMS & string }) {
+  const t = TERMS[term];
+  if (!t) return null;
+  return <IconButton label={`${t.label} 풀이`} tooltip={t.help} icon={<Ico name="help" size={14} />} variant="ghost" size="sm" />;
+}
+
+/** 용어 이름 + ? 풀이를 한 묶음으로 */
+export function Term({ term, children }: { term: keyof typeof TERMS & string; children?: ReactNode }) {
+  return (
+    <HStack gap={0.5} align="center">
+      <Text>{children ?? TERMS[term]?.label ?? term}</Text>
+      <TermHelp term={term} />
+    </HStack>
+  );
+}
+
+/** 패널 안 빈 상태(왼쪽 정렬): 굵은 제목 + 왜 비었는지 · 다음에 할 일 + (접힌 명령). 가운데 정렬 EmptyState 와 섞지 않는다. */
+export function EmptyNote({ title, text, children }: { title: string; text?: string; children?: ReactNode }) {
+  return (
+    <VStack gap={1}>
+      <Text weight="semibold">{title}</Text>
+      {text ? <Muted>{text}</Muted> : null}
+      {children}
+    </VStack>
+  );
+}
+
+/** 읽기 전용 화면에서 승인 · 답 칸 대신 보이는 한 줄(사용자 결정 2026-11-26) */
+export function ReadOnlyLine({ text = "승인 · 답은 자기 터미널에서 연 관리 페이지에서 합니다" }: { text?: string }) {
+  return (
+    // 줄이 넘쳐도 아이콘 · 글 · ? 가 흩어지지 않게 한 줄 묶음으로 두고 글만 꺾는다
+    <HStack gap={1} align="center" role="note">
+      <Ico name="lock" size={14} />
+      <Muted>{text}</Muted>
+      <TermHelp term="readOnly" />
     </HStack>
   );
 }

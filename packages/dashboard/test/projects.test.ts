@@ -81,8 +81,8 @@ describe("dashboard --all", () => {
   });
 });
 
-describe("대화 기록은 기본 꺼짐(DB-R28)", () => {
-  it("history 가 없거나 off 면 /history 404 history_off, ~/.claude · ~/.codex 를 열지 않는다", async () => {
+describe("대화 기록은 기본 켬 · \"off\" 면 열지 않는다(사용자 결정 2026-11-26)", () => {
+  it("history 가 off 면 /history 404 history_off, ~/.claude · ~/.codex 를 열지 않는다", async () => {
     const repo = makeRepo();
     writeFile(repo.home, ".claude/projects/x/a.jsonl", "{}\n");
     writeFile(repo.home, ".codex/sessions/a.jsonl", "{}\n");
@@ -100,11 +100,10 @@ describe("대화 기록은 기본 꺼짐(DB-R28)", () => {
     (fs as any).openSync = (p: any, ...a: any[]) => (watch(p), (origOpen as any)(p, ...a));
     (fs as any).statSync = (p: any, ...a: any[]) => (watch(p), (origStat as any)(p, ...a));
     try {
+      writeFile(repo.home, ".config/knots-sync/config.json", JSON.stringify({ history: "off" }));
       const srv = await serve(repo);
       const h = await call(srv, "GET", "/api/v1/history");
       expect([h.status, h.json.error.code]).toEqual([404, "history_off"]);
-      writeFile(repo.home, ".config/knots-sync/config.json", JSON.stringify({ history: "off" }));
-      expect((await call(srv, "GET", "/api/v1/history")).json.error.code).toBe("history_off");
       for (const r of ["usage", "usage/now", "usage/kit", "overview", "sessions"]) await call(srv, "GET", `/api/v1/${r}`);
       expect(touched).toEqual([]);
       writeFile(repo.home, ".config/knots-sync/config.json", JSON.stringify({ history: "on" }));

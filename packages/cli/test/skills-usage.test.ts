@@ -90,17 +90,27 @@ describe("skills", () => {
 });
 
 describe("usage · history", () => {
-  it("꺼져 있으면(기본) usage 는 켜는 곳을 알리고 exit 0, history 는 exit 1(history_off)", async () => {
+  it("설정이 없으면(기본) 켜져 있다 — 기록이 없어도 꺼졌다고 하지 않는다", async () => {
     const repo = makeRepo();
     const u = await cli(["usage"], repo);
     expect(u.code).toBe(0);
-    expect(u.stdout).toContain('"history": "on"');
-    expect(u.stdout).toContain("꺼져 있다");
+    expect(u.stdout).not.toContain("꺼 두었다");
+    const h = await cli(["history"], repo);
+    expect(h.code).toBe(0);
+  });
+
+  it("\"history\": \"off\" 면 usage 는 다시 켜는 법을 알리고 exit 0, history 는 exit 1(history_off)", async () => {
+    const repo = makeRepo();
+    writeFile(repo.home, ".config/knots-sync/config.json", JSON.stringify({ history: "off" }));
+    const u = await cli(["usage"], repo);
+    expect(u.code).toBe(0);
+    expect(u.stdout).toContain('"history": "off"');
+    expect(u.stdout).toContain("꺼 두었다");
     const now = await cli(["usage", "--now"], repo);
-    expect(now.stdout).toContain("꺼져 있다");
+    expect(now.stdout).toContain("꺼 두었다");
     const h = await cli(["history"], repo);
     expect(h.code).toBe(1);
-    expect(h.stderr).toContain("꺼져 있습니다");
+    expect(h.stderr).toContain("꺼 두었습니다");
   });
 
   it("usage --kit 은 늘 보인다: 세션 시작 평균 · 훅별 · owner", async () => {

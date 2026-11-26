@@ -20,7 +20,8 @@ describe("노드 글(색만으로 말하지 않는다)", () => {
     expect(stepOf("requirements:done")).toEqual({ id: "requirements", state: "done" });
     expect(stepOf("mr")).toEqual({ id: "mr", state: "todo" });
     expect(flagText("critical:1", labels)).toBe("CRITICAL 1");
-    expect(flagText("verify:failed", labels)).toBe("검증 failed");
+    expect(flagText("verify:failed", labels)).toBe("검증 failed"); // 값 풀이가 없으면 원문
+    expect(flagText("verify:failed", { ...labels, flagValues: { failed: "실패" } })).toBe("검증 실패");
   });
 
   it("ariaLabelOf: Unit 이름 · 지금 단계 · 표시 · Bolt 를 글로 읽는다", () => {

@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "dark-glow",
+        "value": "*",
+        "files": [
+          "packages/dashboard/static/index.html"
+        ],
+        "createdAt": "2026-11-25T14:42:22.816Z",
+        "reason": "agent triage 2026-11-25: index.html has no shadows; the hit comes from bundled @astryxdesign/core main.css whose zero-offset shadows are all 'inset 0 0 0 1-2px' zero-blur selection/focus rings, not chromatic halos"
+      },
+      {
+        "rule": "side-tab",
+        "value": "*",
+        "files": [
+          "packages/dashboard-ui/src/css/app.css"
+        ],
+        "createdAt": "2026-11-25T16:14:52.729Z",
+        "reason": "agent triage 2026-11-26: the only hit is .hk-md blockquote { border-inline-start: 3px solid var(--color-border) } — a neutral markdown quote rule in rendered docs, not a colored accent on a card"
+      }
+    ]
+  }
+}

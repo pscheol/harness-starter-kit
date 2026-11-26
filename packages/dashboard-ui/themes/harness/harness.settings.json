@@ -24,11 +24,6 @@
       "source": "dial"
     },
     {
-      "thing": "spacing",
-      "value": "compact",
-      "source": "dial"
-    },
-    {
       "thing": "neutral",
       "value": "#78716c",
       "source": "dial"
@@ -36,6 +31,16 @@
     {
       "thing": "accent",
       "value": "#2f2b27",
+      "source": "dial"
+    },
+    {
+      "thing": "spacing",
+      "value": "medium",
+      "source": "dial"
+    },
+    {
+      "thing": "text-size",
+      "value": "15",
       "source": "dial"
     }
   ],

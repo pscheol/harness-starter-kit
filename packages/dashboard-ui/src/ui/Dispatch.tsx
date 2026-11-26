@@ -164,7 +164,7 @@ function DispatchBody({ opts, close }: { opts: DispatchOptions; close: () => voi
             {Object.keys(picked).length ? (
               Object.keys(picked).map((p) => <CheckboxInput key={p} label={p} value={picked[p] ?? false} onChange={(v) => setPicked((cur) => ({ ...cur, [p]: v }))} />)
             ) : (
-              <Muted size="xsm">경로가 없습니다 — 메모만 보냅니다</Muted>
+              <Muted size="sm">경로가 없습니다 — 메모만 보냅니다</Muted>
             )}
           </VStack>
           <TextArea label="메모" value={text} onChange={setText} rows={2} maxLength={300} placeholder="한 줄 메모(300자 이하, 선택)" isOptional description="제어 문자 · 줄바꿈은 지우고 한 줄로 보냅니다. 글 전체 1,000자에서 자릅니다." />
@@ -186,7 +186,7 @@ function DispatchBody({ opts, close }: { opts: DispatchOptions; close: () => voi
               ) : null}
             </VStack>
           ) : null}
-          {data.queue.length ? <Muted size="xsm">{`대기함에 ${data.queue.length}건이 있습니다 — 작업 공간에서 봅니다.`}</Muted> : null}
+          {data.queue.length ? <Muted size="sm">{`대기함에 ${data.queue.length}건이 있습니다 — 작업 공간에서 봅니다.`}</Muted> : null}
         </VStack>
       )}
     </VStack>

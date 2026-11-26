@@ -121,7 +121,8 @@ export function badges(overview: Loose | null | undefined): Record<string, RailB
   const more: Record<string, number> = overview?.more ?? {};
   const moreOf = (ranks: number[]): number => ranks.reduce((s, r) => s + (more[String(r)] ?? 0), 0);
   return {
-    home: { n: overview?.total ?? 0, kind: "decide" },
+    // 사람이 결정할 일(막는 리뷰 · 승인 · 질문 · 실패한 검증)만. 정리 · 설치 점검은 제 메뉴 배지에만 보인다
+    home: { n: count((t) => t.rank >= 1 && t.rank <= 6) + moreOf([1, 2, 3, 4, 5, 6]), kind: "decide" },
     docs: { n: count((t) => [2, 3, 5].includes(t.rank)) + moreOf([2, 3, 5]), kind: "decide" },
     verify: { n: count((t) => t.rank === 1 || t.rank === 4) + moreOf([1, 4]), kind: "decide" },
     workspace: { n: count((t) => t.rank === 7 || t.rank === 9) + moreOf([7, 9]), kind: "info" },

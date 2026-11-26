@@ -35,7 +35,9 @@ describe("store", () => {
     stubBrowser();
     const { badges } = await import("../src/lib/store");
     const b = badges(overview);
-    expect(b.home).toEqual({ n: 7, kind: "decide" });
+    // 홈의 빨간 배지는 사람이 결정할 일(rank 1~6)만 센다 — 정리 · 설치 점검(7~9)은 제 메뉴에만(2026-11-26)
+    expect(b.home).toEqual({ n: 5 + 3, kind: "decide" }); // rank 1 · 2 · 3 · 4 · 5 + more[2]
+    expect(badges({ todo: [{ rank: 8 }, { rank: 7 }], total: 2 }).home.n).toBe(0);
     expect(b.docs.n).toBe(3 + 3); // rank 2 · 3 · 5 + more[2]
     expect(b.verify.n).toBe(2); // rank 1 · 4
     expect(b.workspace).toEqual({ n: 2, kind: "info" });
@@ -136,7 +138,7 @@ describe("찾기 · PIN · 제안 · 차트 입력", () => {
 
   it("stageRows: 게이트 순서 → 완료 → 그 밖의 단계, 없는 단계는 0", () => {
     const rows = stageRows({ requirements: 2, completed: 1, weird: 4 }, ["intent", "requirements", "design", "tasks", "mr", "done"]);
-    expect(rows.map((r) => [r.id, r.label, r.v])).toEqual([["requirements", "요구사항", 2], ["design", "설계", 0], ["tasks", "tasks", 0], ["mr", "MR", 0], ["completed", "완료", 1], ["weird", "weird", 4]]);
+    expect(rows.map((r) => [r.id, r.label, r.v])).toEqual([["requirements", "요구사항", 2], ["design", "설계", 0], ["tasks", "작업 목록", 0], ["mr", "병합 요청", 0], ["completed", "완료", 1], ["weird", "weird", 4]]);
   });
 
   it("activityDays: 하루 합계를 점 격자 입력(date · v)으로", () => {
