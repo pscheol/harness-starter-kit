@@ -89,7 +89,7 @@ def auto_verify_state(root):
         return {"enabled": False, "status": "off", "consecutiveFailures": 0, "lastPassedSha": (last or {}).get("lastPassedSha"), "lastRun": (last or {}).get("finishedAt")}
     return {"enabled": True, "status": (last or {}).get("status", "none"), "consecutiveFailures": (last or {}).get("consecutiveFailures", 0), "lastPassedSha": (last or {}).get("lastPassedSha"),
             "lastRun": (last or {}).get("finishedAt"), "reason": (last or {}).get("reason"), "maxConsecutiveFailures": auto["maxConsecutiveFailures"],
-            "resume": "플랫폼에서 파이프라인을 수동 실행하고 KNS_DEPLOY_RESUME=true 를 넣습니다" if (last or {}).get("status") == "stopped" else None}
+            "resume": "사람이 파이프라인을 직접 다시 돌려야 이어집니다(KNS_DEPLOY_RESUME=true 를 넣고 수동 실행)" if (last or {}).get("status") == "stopped" else None}
 
 
 def delivery(root, today):
@@ -110,13 +110,13 @@ def todo(root, today):
         out.append({"rank": 1, "kind": "deploy-stopped", "target": ".", "title": f"자동 검증 배포가 멈췄습니다(연속 실패 {state['consecutiveFailures']}회)", "reason": state.get("resume") or "", "since": state.get("lastRun") or stamp, "link": "/ops", "mine": False})
     for record in deploy_record.all_records(root):
         if record.state in ("planned", "approved") and deploy_gate.approval_summary(root, record)["state"] != "valid":
-            out.append({"rank": 2, "kind": "deploy-approval", "target": record.id, "title": f"{record.id} deploy 승인 대기", "reason": "승인하면 운영 배포 작업이 deploy.py check --require-approved 를 통과합니다", "since": str(record.fm.get("created") or stamp), "link": "/ops", "mine": False})
+            out.append({"rank": 2, "kind": "deploy-approval", "target": record.id, "title": f"{record.id} 배포 승인 대기", "reason": "승인해야 운영 배포가 진행됩니다", "since": str(record.fm.get("created") or stamp), "link": "/ops", "mine": False})
     for record in ops_records.all_records(root):
         for warning in ops_records.problems(record)[1]:
-            out.append({"rank": 4, "kind": "ops-metric-miss", "target": record["name"], "title": warning.split(": ", 1)[-1], "reason": "미달 지표는 장애 · 다음 Intent 후보가 가리켜야 합니다", "since": str(record["fm"].get("created") or stamp), "link": "/ops", "mine": False})
+            out.append({"rank": 4, "kind": "ops-metric-miss", "target": record["name"], "title": warning.split(": ", 1)[-1], "reason": "목표에 못 미친 지표입니다. 장애나 다음 요구사항 후보로 이어 둡니다", "since": str(record["fm"].get("created") or stamp), "link": "/ops", "mine": False})
     for item in rule_candidates.summary(root, today):
         if item["status"] == "proposed" and item["ageDays"] > STALE_CANDIDATE_DAYS:
-            out.append({"rank": 7, "kind": "rule-candidate-stale", "target": item["id"], "title": f"{item['id']} 규칙 후보가 {item['ageDays']}일째 proposed", "reason": "승격(rules promote) 또는 거절(rules reject)합니다", "since": stamp, "link": "/ops", "mine": False})
+            out.append({"rank": 7, "kind": "rule-candidate-stale", "target": item["id"], "title": f"{item['id']} 규칙 후보가 {item['ageDays']}일째 결정을 기다립니다", "reason": "받아들이거나 거절합니다(터미널에서 knots-sync rules promote · reject)", "since": stamp, "link": "/ops", "mine": False})
     return out
 
 

@@ -50,7 +50,7 @@
 | DB-R25 | 문서 저장 · 승인 · 수정 요청 · 질문 답 · 변경 제안 저장은 세션에 아무것도 보내지 않는다. 세션 요청은 사람이 "저장하고 세션에 요청" · "세션에 요청" · `dispatch`를 고를 때만 간다. |
 | DB-R26 | 관리 페이지 서버와 CLI는 모델 API를 부르지 않고 모델 SDK를 의존성에 두지 않는다. |
 | DB-R27 | 전체 프로젝트 보기는 아무 파일도 쓰지 않는다. 쓰기는 들어간 리포 안에서 그 리포의 쓰기 검사로만 된다. |
-| DB-R28 | 이 컴퓨터 설정 `~/.config/knots-sync/config.json`의 `history`가 `"on"`이 아니면 서버와 CLI는 대화 기록(`~/.claude` · `~/.codex`)을 열지 않는다. 켜져 있어도 복사본을 남기지 않고 내보내기 · 커밋 · 세션 요청에 넣지 않는다. |
+| DB-R28 | 대화 기록(`~/.claude` · `~/.codex`) 읽기는 기본 켬이다(사용자 결정 2026-11-26 — 설치하자마자 세션 컨텍스트가 보이게). 이 컴퓨터 설정 `~/.config/knots-sync/config.json`의 `history`가 `"off"`이면 서버와 CLI는 대화 기록을 열지 않는다. 켜져 있어도 복사본을 남기지 않고 내보내기 · 커밋 · 세션 요청에 넣지 않는다. |
 | DB-R29 | Unit 변경 제안을 저장해도 `units.json`은 바뀌지 않는다. 제안은 intent 게이트 승인 처리만 `units.json`에 옮긴다. |
 
 ## 3. 설계
@@ -206,7 +206,7 @@ worktree 정리 항목은 명령을 보여 주기만 한다(`python3 scripts/har
 | `GET /projects` · `GET /projects/overview` | 등록부 프로젝트 목록 · 프로젝트를 가로지른 처리할 일(§3.17). 전체 프로젝트 모드에서만 | — |
 | `GET /sessions?scope=machine` | 이 컴퓨터의 켜 둔 세션 전부(§3.17) | — |
 | `GET /usage?days=&project=&harness=` · `GET /usage/now` · `GET /usage/kit` | 토큰 사용량 · 지금 세션 컨텍스트 · 킷이 덧붙인 양(§3.18) | — |
-| `GET /history?q=&session=&role=` | 프롬프트 기록(§3.18). `history`가 꺼져 있으면 404 `history_off` | — |
+| `GET /history?q=&session=&role=` | 프롬프트 기록(§3.18). `history`가 `"off"`이면 404 `history_off` | — |
 | `GET /raw/{경로}?exp=&sig=` | 문서 안 이미지·와이어프레임 원본. 서명 URL, 읽기 전용 | — |
 
 `/raw`는 브라우저가 `<img>`·`<iframe>`으로 부르므로 머리를 붙일 수 없다. 대신 `sig = HMAC-SHA256(토큰, 경로 + "\n" + exp)`이고 `exp`는 발급 후 600초다. 문서 응답의 HTML이 이미지 주소를 서명 URL로 바꿔 준다. 응답에는 `Content-Security-Policy: default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'`과 `X-Content-Type-Options: nosniff`를 붙인다.
@@ -649,9 +649,9 @@ Unit 변경 제안:
 |---|---|---|---|
 | 킷이 덧붙인 양 | 늘 켜짐 | 리포의 `.agents/state/hook-output.jsonl`. 킷 훅이 실행마다 `{at, event, hook, bytes, truncated}` 한 줄을 남긴다(내용은 남기지 않는다, 1 MiB에서 돌린다) | 훅이 그 줄만 |
 | 모듈이 덧붙인 양 | 늘 켜짐 | lock의 `owner`별 정적 합계(세션마다 실리는 파일 · 이벤트별 훅 수, 10 §3.7). 대화 기록 읽기를 켜면 외부 훅이 실제로 붙인 글도 owner별로 센다 | 없음 |
-| 대화 기록 | 꺼짐(DB-R28, README 원칙 7, 12 MR-R11) | Claude Code `~/.claude/projects/<경로>/*.jsonl`(응답의 `usage` · `model` · `sessionId` · `cwd` · `gitBranch`) · `~/.claude/history.jsonl`(프롬프트 글 · 시각 · 프로젝트), Codex `~/.codex/sessions/**`. Kiro는 기록 위치 확인 전까지 "자료 없음" | 없음. 복사본 · 집계 파일을 남기지 않는다 |
+| 대화 기록 | 켬 · `"off"`로 끔(DB-R28, README 원칙 7, 12 MR-R11) | Claude Code `~/.claude/projects/<경로>/*.jsonl`(응답의 `usage` · `model` · `sessionId` · `cwd` · `gitBranch`) · `~/.claude/history.jsonl`(프롬프트 글 · 시각 · 프로젝트), Codex `~/.codex/sessions/**`. Kiro는 기록 위치 확인 전까지 "자료 없음" | 없음. 복사본 · 집계 파일을 남기지 않는다 |
 
-- 켜기: 사람이 `~/.config/knots-sync/config.json`에 `"history": "on"`을 쓴다. 꺼져 있으면 S13은 무엇을 읽는지와 켜는 곳을 보이고, 킷이 덧붙인 양은 그대로 보인다.
+- 끄기: 사람이 `~/.config/knots-sync/config.json`에 `"history": "off"`를 쓴다(설정이 없거나 다른 값이면 켬). 꺼져 있으면 S13은 무엇을 읽는지와 다시 켜는 곳을 보이고, 킷이 덧붙인 양은 그대로 보인다.
 - 대화 기록 형식은 공식 형식이 아니다. 하네스 버전별 파서를 두고 모르는 필드는 무시한다. 못 읽은 파일은 수를 세어 "읽지 못함"으로 보인다. 12의 `metrics.tokens: "otel"`이 켜져 있으면 그 값을 먼저 쓴다.
 - 프로젝트 거르기: 기록의 `cwd`가 그 리포나 그 리포의 worktree 폴더(`<리포>.worktrees/`) 안인 것.
 - 역할 · 이슈: 세션 등록(§3.9)의 `sessionId` → `role` · `issue`, 없으면 `gitBranch`의 이슈 키, 그것도 없으면 "이슈 없음".
@@ -720,7 +720,7 @@ Unit 변경 제안:
 14. 시험: 대기함에 요청 5건을 넣고 세션 시작 훅을 돌리면 출력이 512바이트 이하이고 첫 요청 하나만 `consumed/`로 옮겨진다. 맞는 항목이 없으면 출력 0바이트.
 15. 시험: CLI 패키지 의존성 트리에 모델 SDK 0개, 시험 중 외부 주소로 나가는 연결 0건(`outdated` 제외, DB-R26).
 16. 시험: 등록 프로젝트 3개로 `dashboard --all`을 열고 모든 읽기 API를 부른 뒤 세 리포와 `~/.config/knots-sync/`의 파일 수 · mtime이 그대로다(DB-R27).
-17. 시험: `history`가 없거나 `"off"`이면 `~/.claude` · `~/.codex` 아래 파일 열기 0건(fs 모의 객체), `/history`는 404 `history_off`. 켜도 리포 · `~/.config` 아래 새 파일 0건(DB-R28).
+17. 시험: 설정이 없으면 켬. `history`가 `"off"`이면 `~/.claude` · `~/.codex` 아래 파일 열기 0건(fs 모의 객체), `/history`는 404 `history_off`. 켜도 리포 · `~/.config` 아래 새 파일 0건(DB-R28).
 18. 시험: 제안 저장 뒤 `units.json` 바이트가 그대로이고, intent 승인 뒤 `units.json`이 제안 반영 결과와 같고 승인 기록의 sha가 그 파일과 같다. `dependsOn` 고리 제안은 422(DB-R29).
 19. 측정: 같은 fixture에서 v1.0.8과 v2의 세션 시작 출력 바이트를 재 v2가 2,560바이트 이하이고 v1.0.8 이하다. 값을 릴리스 노트에 적는다.
 20. 시험: Unit 30개 Intent에서 흐름 보기가 1초 안에 그려지고 키보드만으로 Unit을 고르고 푼다. `flow.bundle.js`는 흐름 보기를 열 때만 받는다.

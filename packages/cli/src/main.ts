@@ -133,7 +133,7 @@ const COMMAND_HELP: Record<string, string> = {
   units: "knots-sync units propose <INT> --add-dep U-a:U-b | --remove-dep U-a:U-b | --split U-n=제목1|제목2 | --merge U-a,U-b | --order U-a,U-b [--reason …] | units discard <INT>\n",
   flow: "knots-sync flow gates [--add <게이트> --after <게이트> | --remove <게이트>] [--json]\n",
   quality: "knots-sync quality [--findings [--issue <키>] [--severity S] [--new]] [--json]\n",
-  history: "knots-sync history [--q …] [--session <id>] [--role <역할>] [--json] — ~/.config/knots-sync/config.json 의 history 가 on 일 때만. 꺼져 있으면 exit 1(history_off)\n",
+  history: "knots-sync history [--q …] [--session <id>] [--role <역할>] [--json] — 기본으로 읽는다. ~/.config/knots-sync/config.json 의 history 가 off 면 exit 1(history_off)\n",
   skills: "knots-sync skills [--stage <단계>] [--harness <h>] [--conflicts] [--errors] [--all] [--no-user] [--refresh] [--json] — 읽기만 한다. 단계는 설계 · 구현 · 검증 · 반영 · 운영(영어도 된다)\n",
   usage: "knots-sync usage [--days n] [--harness h] [--sources] | usage --now | usage --kit [--json] — 대화 기록 읽기가 꺼져 있으면(기본) 킷이 덧붙인 양(--kit)만 보인다\n",
   pack: "knots-sync pack new <이름> --dir <경로> [--from <파일|폴더>[#훅·검사 id]]… [--kit-range \">=2.0.0 <3.0.0\"] [--json] — --dir 은 빈 폴더나 없는 경로\n",

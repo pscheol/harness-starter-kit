@@ -82,6 +82,11 @@ const mtime = (f: string): number | null => {
   }
 };
 
+/** 할 일 글에 쓰는 단계 이름(화면 lib/format.ts GATE_KO 와 같은 말). 할 일 글은 관리 페이지 · status 에 그대로 보인다 */
+const GATE_WORD: Record<string, string> = { codebase: "기존 코드", intent: "Intent", plans: "기획물", requirements: "요구사항", design: "설계", tasks: "작업 목록", mr: "병합 요청", done: "완료", deploy: "배포" };
+const gateWord = (g: string): string => GATE_WORD[g] ?? g;
+const VERIFY_WORD: Record<string, string> = { failed: "실패", incomplete: "덜 끝남" };
+
 export async function todos(p: Project, loaded: Loaded): Promise<Todo[]> {
   const out: Todo[] = [];
   /** 시각이 없는 항목의 since: 메타 파일 시각(같은 입력이면 같은 응답, 06 §3.15 CLI 대응) */
@@ -93,20 +98,20 @@ export async function todos(p: Project, loaded: Loaded): Promise<Todo[]> {
     const open = i.review?.open ?? {};
     const blocking = (open.CRITICAL ?? 0) + (open.HIGH ?? 0);
     if (blocking > 0) {
-      out.push({ rank: 1, kind: "review-blocker", target: i.key, title: `${i.key} 리뷰 지적 CRITICAL ${open.CRITICAL ?? 0} · HIGH ${open.HIGH ?? 0}`, reason: "열린 CRITICAL · HIGH 지적이 있으면 mr 승인 · full 이 막힙니다", since: iso(i.review?.report ? mtime(path.join(p.root, i.review.report)) : null), link: `${link}/review`, mine: false });
+      out.push({ rank: 1, kind: "review-blocker", target: i.key, title: `${i.key} 리뷰에서 막는 지적 ${blocking}건(CRITICAL ${open.CRITICAL ?? 0} · HIGH ${open.HIGH ?? 0})`, reason: "판단하기 전까지 병합 요청 승인과 전체 검증이 막힙니다", since: iso(i.review?.report ? mtime(path.join(p.root, i.review.report)) : null), link: `${link}/review`, mine: false });
     }
     if (i.waitingOn) {
       const d = (i.docs as Record<string, { mtimeMs?: number } | null>)[i.waitingOn.gate];
       out.push({
         rank: i.waitingOn.mine ? 2 : 6, kind: i.waitingOn.mine ? "gate-mine" : "gate-others", target: i.key,
-        title: `${i.key} ${i.waitingOn.gate} 승인 대기`, reason: i.waitingOn.approvers.length ? `승인자: ${i.waitingOn.approvers.join(", ")}` : "approvers 가 비어 git 사용자 누구나 승인합니다",
+        title: `${i.key} ${gateWord(i.waitingOn.gate)} 승인 대기`, reason: i.waitingOn.approvers.length ? `승인할 사람: ${i.waitingOn.approvers.join(", ")}` : "승인할 사람을 정하지 않아 이 리포의 git 사용자 누구나 승인합니다",
         since: iso(d?.mtimeMs ?? null), link: `${link}/approve?gate=${i.waitingOn.gate}`, mine: i.waitingOn.mine,
       });
     }
     for (const [gate, d] of Object.entries(i.docs) as [string, { clarify: number; approval: string; mtimeMs?: number } | null][]) {
       if (!d) continue;
-      if (d.clarify > 0) out.push({ rank: 3, kind: "questions", target: i.key, title: `${i.key} ${gate}.md 에 [NEEDS CLARIFICATION ${d.clarify}건`, reason: "표시가 남은 문서는 승인할 수 없습니다(DB-R13)", since: iso(d.mtimeMs ?? null), link: `${link}/docs/${gate}`, mine: false });
-      if (d.approval === "stale" && gate !== "tasks") out.push({ rank: 5, kind: "approval-stale", target: i.key, title: `${i.key} ${gate} 승인 뒤 내용이 바뀌었습니다`, reason: "승인 기록의 sha 와 지금 문서가 다르입니다. 다시 승인합니다", since: iso(d.mtimeMs ?? null), link: `${link}/docs/${gate}`, mine: allowed(user.email, gate, p.policy()) });
+      if (d.clarify > 0) out.push({ rank: 3, kind: "questions", target: i.key, title: `${i.key} ${gateWord(gate)} 문서에 '확인 필요' ${d.clarify}건`, reason: "'확인 필요' 표시가 남은 문서는 승인할 수 없습니다. 답을 적어 표시를 지웁니다", since: iso(d.mtimeMs ?? null), link: `${link}/docs/${gate}`, mine: false });
+      if (d.approval === "stale" && gate !== "tasks") out.push({ rank: 5, kind: "approval-stale", target: i.key, title: `${i.key} ${gateWord(gate)} 문서가 승인 뒤 바뀌었습니다`, reason: "승인한 때와 지금 내용이 다릅니다. 다시 읽고 승인합니다", since: iso(d.mtimeMs ?? null), link: `${link}/docs/${gate}`, mine: allowed(user.email, gate, p.policy()) });
     }
   }
   for (const info of intentFolders(p.root)) {
@@ -115,29 +120,32 @@ export async function todos(p: Project, loaded: Loaded): Promise<Todo[]> {
     const model = intentModel(p, info, loaded.issues);
     const stage = String(model.stage);
     const open = parseQuestions(fs.readFileSync(qf, "utf8")).questions.filter((q) => q.open && (q.blocks === stage || q.blocks === null));
-    if (open.length) out.push({ rank: 3, kind: "questions", target: info.key, title: `${info.key} 답할 질문 ${open.length}건`, reason: `막는 게이트: ${stage}`, since: iso(mtime(qf)), link: `/intents/${info.key}/questions`, mine: false });
+    if (open.length) out.push({ rank: 3, kind: "questions", target: info.key, title: `${info.key} 답할 질문 ${open.length}건`, reason: `답해야 ${gateWord(stage)} 단계로 넘어갑니다`, since: iso(mtime(qf)), link: `/intents/${info.key}/questions`, mine: false });
   }
   for (const v of await readVerify(p, null)) {
     const rec = v.record as { status?: string; finishedAt?: string } | null;
     if (rec && (rec.status === "failed" || rec.status === "incomplete")) {
       const co = v.checkout as { path: string };
-      out.push({ rank: 4, kind: "verify-failed", target: (v.issue as string | null) ?? co.path, title: `검증 ${rec.status}: ${(v.issue as string | null) ?? (co.path === "." ? "메인 폴더" : co.path)}`, reason: "마지막 검증 기록이 통과가 아닙니다", since: rec.finishedAt ?? iso(null), link: "/verify", mine: false });
+      out.push({ rank: 4, kind: "verify-failed", target: (v.issue as string | null) ?? co.path, title: `검증 ${VERIFY_WORD[rec.status] ?? rec.status}: ${(v.issue as string | null) ?? (co.path === "." ? "메인 폴더" : co.path)}`, reason: "마지막 검증이 통과하지 못했습니다. 검증 화면에서 실패한 단계를 봅니다", since: rec.finishedAt ?? iso(null), link: "/verify", mine: false });
     }
   }
   const wt = await readWorktrees(p);
   for (const w of wt.worktrees as { name: string; path: string; done: boolean; lastUsed: string | null; kind: string }[]) {
-    if (w.kind === "worktree" && w.done) out.push({ rank: 7, kind: "worktree-cleanup", target: w.path, title: `worktree 정리: ${w.name}`, reason: "변경 없음 · push 안 된 커밋 0 · 병합됨", since: w.lastUsed ?? iso(null), link: "/workspace", mine: false });
+    if (w.kind === "worktree" && w.done) out.push({ rank: 7, kind: "worktree-cleanup", target: w.path, title: `다 끝난 작업 공간 정리: ${w.name}`, reason: "바뀐 것도, 올리지 않은 커밋도 없고 병합까지 끝났습니다. 지워도 됩니다", since: w.lastUsed ?? iso(null), link: "/workspace", mine: false });
   }
-  if (wt.over) out.push({ rank: 7, kind: "worktree-cleanup", target: ".", title: `worktree ${String(wt.count)}개 — 상한 ${String(wt.maxPerRepo)}개 초과`, reason: "git.maxPerRepo", since: iso(null), link: "/workspace", mine: false });
+  if (wt.over) out.push({ rank: 7, kind: "worktree-cleanup", target: ".", title: `작업 공간 ${String(wt.count)}개 — 정한 수(${String(wt.maxPerRepo)}개)를 넘었습니다`, reason: "끝난 작업 공간부터 정리합니다", since: iso(null), link: "/workspace", mine: false });
   const doctor = await doctorOf(p);
-  if (doctor && doctor.status === "problems") out.push({ rank: 8, kind: "harness", target: ".", title: `하네스 점검 문제 ${doctor.problems.length}건`, reason: Object.entries(doctor.counts).map(([k, n]) => `${k} ${n}`).join(" · "), since: iso(null), link: "/harness", mine: false });
+  if (doctor && doctor.status === "problems") {
+    const labels = new Map(doctor.problems.map((x) => [x.kind, x.label ?? x.kind]));
+    out.push({ rank: 8, kind: "harness", target: ".", title: `설치 점검에서 손볼 것 ${doctor.problems.length}건`, reason: Object.entries(doctor.counts).map(([k, n]) => `${labels.get(k) ?? k} ${n}`).join(" · "), since: iso(null), link: "/harness", mine: false });
+  }
   for (const q of await readQueue(p)) {
-    if (q.stale) out.push({ rank: 9, kind: "dispatch-stale", target: q.id, title: `24시간 넘게 가져가지 않은 요청: ${q.message.slice(0, 60)}`, reason: "대기함 항목", since: q.createdAt ?? iso(null), link: "/workspace", mine: false });
+    if (q.stale) out.push({ rank: 9, kind: "dispatch-stale", target: q.id, title: `24시간 넘게 아무도 가져가지 않은 요청: ${q.message.slice(0, 60)}`, reason: "대기함에 남은 요청입니다. 필요 없으면 버립니다", since: q.createdAt ?? iso(null), link: "/workspace", mine: false });
   }
   const summary = await readSummary(p);
   const gate = summary.gate as { status?: string } | null;
   const findings = summary.findings as { new?: Record<string, number>; at?: string } | null;
-  if (gate?.status === "failed" && (findings?.new?.CRITICAL ?? 0) > 0) out.push({ rank: 1, kind: "quality-blocker", target: ".", title: `품질 게이트 failed · 새 CRITICAL ${findings?.new?.CRITICAL ?? 0}`, reason: "quality-gate-last.json", since: findings?.at ?? iso(null), link: "/verify", mine: false });
+  if (gate?.status === "failed" && (findings?.new?.CRITICAL ?? 0) > 0) out.push({ rank: 1, kind: "quality-blocker", target: ".", title: `품질 검사 실패 · 새로 생긴 CRITICAL ${findings?.new?.CRITICAL ?? 0}건`, reason: "검증 화면에서 무엇이 실패했는지 봅니다", since: findings?.at ?? iso(null), link: "/verify", mine: false });
   out.push(...(await opsTodos(p)));
   return out.sort((a, b) => a.rank - b.rank || Date.parse(a.since) - Date.parse(b.since) || (a.target < b.target ? -1 : a.target > b.target ? 1 : 0));
 }

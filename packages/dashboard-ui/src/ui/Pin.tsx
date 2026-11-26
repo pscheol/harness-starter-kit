@@ -73,7 +73,7 @@ export function PinProvider({ children }: { children: ReactNode }) {
             <Button label="취소" onClick={() => finish(null)} />
             <Button label="확인" variant="primary" onClick={submit} />
           </HStack>
-          <Text color="secondary" size="xsm">
+          <Text color="secondary" size="sm">
             PIN 을 5번 틀리면 서버를 다시 열어야 합니다.
           </Text>
         </VStack>

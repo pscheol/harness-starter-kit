@@ -33,7 +33,7 @@ export function PalettePicker() {
               <RadioListItem key={p.id} value={p.id} label={p.label} description={p.description} endContent={<Swatch id={p.id} />} />
             ))}
           </RadioList>
-          <Text color="secondary" size="xsm">
+          <Text color="secondary" size="sm">
             고르면 바로 바뀌고 이 브라우저에만 저장됩니다.
           </Text>
           <HStack justify="end">

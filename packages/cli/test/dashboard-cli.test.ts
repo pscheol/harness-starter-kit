@@ -255,9 +255,9 @@ describe("쓰기 명령", () => {
     expect(usage.code).toBe(2);
   });
 
-  it("history 는 꺼져 있으면 history_off, 켜면 읽는다", async () => {
+  it("history 는 \"off\" 면 history_off, 켜면 읽는다", async () => {
     const repo = fixture();
-    fs.rmSync(path.join(repo.home, ".config/knots-sync/config.json"));
+    writeFile(repo.home, ".config/knots-sync/config.json", JSON.stringify({ history: "off" }));
     const off = await cli(["history", "--json"], repo);
     expect([off.code, off.json.error.code]).toEqual([1, "history_off"]);
     writeFile(repo.home, ".config/knots-sync/config.json", JSON.stringify({ history: "on" }));

@@ -42,6 +42,8 @@ export interface FlowLabels {
   steps: Record<string, string>;
   state: { done: string; active: string; todo: string };
   flags: Record<string, string>;
+  /** 표시 값 풀이(예: failed → 실패). 없으면 원문 그대로 */
+  flagValues?: Record<string, string>;
   area: string;
 }
 
@@ -53,7 +55,7 @@ export function stepOf(raw: string): { id: string; state: "done" | "active" | "t
 export function flagText(flag: string, labels: FlowLabels): string {
   const [kind, value] = flag.split(":");
   const base = labels.flags[kind as string] ?? (kind as string);
-  return value ? `${base} ${value}` : base;
+  return value ? `${base} ${labels.flagValues?.[value] ?? value}` : base;
 }
 
 export function ariaLabelOf(id: string, type: string, d: UnitData, labels: FlowLabels): string {

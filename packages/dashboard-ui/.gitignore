@@ -2,6 +2,8 @@
 themes/harness/preview.html
 themes/harness/preview.png
 themes/harness/sheet.html
+themes/harness/sheet-*.html
+themes/harness/sheet-*.png
 themes/harness/sheet-overlays/
 themes/harness/*.history.json
 themes/harness/*.pictures.json

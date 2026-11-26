@@ -1,12 +1,12 @@
 // 화면 공용 순수 함수(DOM 없음). vitest 가 직접 불러 시험한다.
 import type { Loose } from "./types";
 
-export const GATE_KO: Record<string, string> = { codebase: "기존 코드", intent: "Intent", plans: "기획물", requirements: "요구사항", design: "설계", tasks: "tasks", mr: "MR", done: "완료", deploy: "배포" };
+export const GATE_KO: Record<string, string> = { codebase: "기존 코드", intent: "Intent", plans: "기획물", requirements: "요구사항", design: "설계", tasks: "작업 목록", mr: "병합 요청", done: "완료", deploy: "배포" };
 /** 게이트 → 단계 색 계열(설계 · 구현 · 반영/운영) */
 export const GATE_FAMILY: Record<string, string> = { codebase: "design", intent: "design", plans: "design", requirements: "design", design: "design", tasks: "build", mr: "build", done: "ops", deploy: "ops" };
 export const STAGE_KO: Record<string, string> = { design: "설계", implement: "구현", verify: "검증", docs: "반영", ops: "운영" };
 export const STAGE_CLASS: Record<string, string> = { design: "design", implement: "build", verify: "build", docs: "ops", ops: "ops" };
-export const STEP_KO: Record<string, string> = { requirements: "요구사항", design: "설계", tasks: "tasks", impl: "구현", verify: "검증", mr: "MR", done: "완료", deploy: "배포" };
+export const STEP_KO: Record<string, string> = { requirements: "요구사항", design: "설계", tasks: "작업 목록", impl: "구현", verify: "검증", mr: "병합 요청", done: "완료", deploy: "배포" };
 export const ROLE_KO: Record<string, string> = { design: "설계", implement: "구현", review: "리뷰", docs: "문서", unknown: "역할 모름" };
 export const HARNESS_KO: Record<string, string> = { claude: "Claude Code", codex: "Codex", kiro: "Kiro", cursor: "Cursor", gemini: "Gemini" };
 export const HARNESS_LETTER: Record<string, string> = { claude: "C", codex: "X", kiro: "K", cursor: "U", gemini: "G" };
@@ -63,6 +63,31 @@ export function ago(iso: string | null | undefined, now = new Date()): string {
   if (ms < 86_400_000) return `${Math.floor(ms / 3_600_000)}시간 전`;
   return `${Math.floor(ms / 86_400_000)}일 전`;
 }
+
+/** 화면 머리의 자동 갱신 표시: "방금 읽음" · "12초 전에 읽음" · "3분 전에 읽음" */
+export function freshText(at: number | null, now = Date.now()): string {
+  if (at === null) return "아직 읽지 못했습니다";
+  const ms = Math.max(0, now - at);
+  if (ms < 5000) return "방금 읽음";
+  if (ms < 60_000) return `${Math.floor(ms / 1000)}초 전에 읽음`;
+  return `${ago(new Date(at).toISOString(), new Date(now)).replace(/ 전$/, "")} 전에 읽음`;
+}
+
+/**
+ * 화면에 남겨 두는 용어와 한 줄 풀이(합니다체). 처음 보는 사람이 마우스를 올리거나 초점을 주면 본다.
+ * 내부 문서 번호(HK-*, S11, §5)와 스크립트 이름은 화면에 쓰지 않는다 — 꼭 필요하면 '자세히' 안에 둔다.
+ */
+export const TERMS: Record<string, { label: string; help: string }> = {
+  intent: { label: "Intent", help: "여러 이슈를 하나로 묶는 큰 요구사항입니다. 쓰지 않는 팀은 이 칸이 보이지 않습니다." },
+  unit: { label: "Unit", help: "Intent 를 나눈 작업 단위입니다. Unit 하나가 이슈 하나가 됩니다." },
+  bolt: { label: "Bolt", help: "한 번에 끝내는 짧은 작업 묶음입니다. Intent 를 쓸 때만 셉니다." },
+  gate: { label: "단계 확인", help: "이슈가 다음 단계로 가기 전에 사람이 승인하거나 검사를 통과해야 하는 자리입니다." },
+  mr: { label: "병합 요청", help: "GitLab 의 Merge Request(GitHub 의 Pull Request)입니다." },
+  worktree: { label: "작업 공간", help: "한 리포를 여러 폴더로 나눠 이슈마다 따로 작업하는 git worktree 입니다." },
+  doctor: { label: "설치 점검", help: "킷이 깔아 둔 파일이 제자리에 있는지 보는 점검입니다. 터미널의 knots-sync doctor 와 같습니다." },
+  harness: { label: "하네스", help: "Claude Code · Codex · Kiro 처럼 AI 에이전트를 돌리는 도구입니다." },
+  readOnly: { label: "읽기 전용", help: "보기만 하는 화면입니다. 승인 · 답 · 저장은 사람이 자기 터미널에서 연 화면에서 합니다." },
+};
 
 const WEEK = ["일", "월", "화", "수", "목", "금", "토"];
 export function dayLabel(dateText: string): { short: string; week: string; text: string } {
@@ -149,8 +174,9 @@ export function parseRoute(pathname: string, search = ""): Route {
 /** 메뉴 항목 → 이 라우트가 속한 메뉴 */
 export function menuOf(route: Route): string {
   const n = route.name;
-  if (n === "flow" || n === "progress" || n === "intent") return "progress";
-  if (n === "issue" || n === "questions" || n === "docs") return "docs";
+  // 이슈 · Intent 는 진행 화면에서 들어간다(메뉴와 이동 경로가 같은 곳을 가리키게)
+  if (n === "flow" || n === "progress" || n === "intent" || n === "issue") return "progress";
+  if (n === "questions" || n === "docs") return "docs";
   return n;
 }
 
@@ -192,6 +218,24 @@ export function stageRows(stages: Record<string, number>, gates: string[]): Arra
   const label = (st: string): string => (st === "completed" ? "완료" : (STEP_KO[st] ?? st));
   const keys = [...order, ...Object.keys(stages).filter((st) => !order.includes(st))];
   return keys.map((st) => ({ id: st, label: label(st), v: stages[st] ?? 0 }));
+}
+
+/**
+ * 기록 · 사용량 요약 글(화면 읽기 프로그램용 요약 · 캐시 꺾은선 값).
+ * 대화 기록 읽기가 꺼진 기본 상태에서는 서버가 totals 를 null 로 준다. 그때도 던지지 않는다.
+ */
+export function usageSummary(u: Loose): { summary: string; cacheVals: Array<number | null>; cacheSummary: string } {
+  const daily = (u.daily ?? []) as Array<{ date: string; sum: number }>;
+  const sum = (u.totals as Loose | null)?.sum ?? 0;
+  const peak = daily.reduce<{ date: string; sum: number } | null>((a, d) => (a === null || d.sum > a.sum ? d : a), null);
+  const peakText = peak?.sum ? `가장 많은 날 ${dayLabel(peak.date).text} ${fmtTokens(peak.sum)}.` : "기록이 없습니다.";
+  const summary = `하루 토큰 ${daily.length}일 합 ${fmtTokens(sum)}. ${peakText}`;
+  const cacheDaily = ((u.cache as Loose | null)?.daily ?? []) as Array<{ date: string; ratio: number | null }>;
+  const cacheVals = cacheDaily.map((d) => (d.ratio === null ? null : Math.round(d.ratio * 1000) / 10));
+  const cacheSummary = cacheVals.some((v) => v !== null)
+    ? `캐시 읽기 비율 평균 ${pct((u.cache as Loose).average)}. ${cacheDaily.map((d) => `${dayLabel(d.date).short} ${d.ratio === null ? "-" : pct(d.ratio)}`).join(", ")}`
+    : "캐시 읽기 기록이 없습니다";
+  return { summary, cacheVals, cacheSummary };
 }
 
 /** 날마다 하루 합계 → 점 격자 입력(최근 순서대로, 요일 정렬) */

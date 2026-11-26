@@ -1,4 +1,5 @@
-// S12 진행 · 흐름. Unit 의존을 캔버스(React Flow, 이 화면을 열 때만 받는 조각)로 보고 변경 제안을 남긴다. 제안은 승인이 아니고 units.json 을 바꾸지 않는다(DB-R29).
+// S12 진행 · 흐름. Unit 의존을 캔버스(React Flow, 이 화면을 열 때만 받는 조각)로 보고 변경 제안을 남긴다. 제안은 승인이 아니고 Unit 목록 파일을 바꾸지 않는다.
+// 흐름은 Intent 가 있을 때만 있다(사용자 결정 2026-11-26). Intent 가 없는 리포는 진행 보드로 안내한다.
 import { Button } from "@astryxdesign/core/Button";
 import { Collapsible } from "@astryxdesign/core/Collapsible";
 import { Dialog } from "@astryxdesign/core/Dialog";
@@ -20,7 +21,7 @@ import { navigate } from "../lib/router";
 import { useAppState } from "../lib/store";
 import type { Loose } from "../lib/types";
 import { LineChart } from "../ui/charts";
-import { CommandBox, Empty, ErrorBlock, Ico, Key, Loading, Muted, Notice, Panel, Tag, useNotify } from "../ui/common";
+import { Code, CommandBox, Details, Empty, ErrorBlock, Ico, Key, Loading, Muted, Notice, Panel, ReadOnlyLine, Tag, TermHelp, useNotify } from "../ui/common";
 import { useDispatch } from "../ui/Dispatch";
 import { Page } from "../ui/Page";
 import { ViewSwitch } from "./Progress";
@@ -28,7 +29,7 @@ import { ViewSwitch } from "./Progress";
 const FlowCanvas = lazy(() => import("@flow-view/FlowView").then((m) => ({ default: m.FlowView })));
 
 const LABELS = {
-  canvas: "Unit 의존 흐름",
+  canvas: "Unit 흐름",
   controls: "확대 · 축소 · 맞춤",
   minimap: "전체 미니맵",
   contract: "계약",
@@ -39,27 +40,40 @@ const LABELS = {
   steps: STEP_KO,
   state: { done: "지남", active: "진행 중", todo: "아직" },
   flags: { critical: "CRITICAL", high: "HIGH", verify: "검증" },
+  flagValues: { failed: "실패", incomplete: "덜 끝남", passed: "통과", running: "도는 중" },
   area: "영역",
 };
 
 const OPS = [
-  { value: "add-dep", label: "의존 더하기" },
-  { value: "remove-dep", label: "의존 빼기" },
+  { value: "add-dep", label: "앞 Unit 더하기" },
+  { value: "remove-dep", label: "앞 Unit 빼기" },
   { value: "split", label: "나누기" },
   { value: "merge", label: "합치기" },
   { value: "order", label: "순서" },
 ];
 
 export default function Flow({ route }: { route: Route }) {
-  const intentsLoad = useLoad<[Loose]>(() => [get("/intents")], []);
-  const intents: Loose[] = intentsLoad.state.status === "ready" ? intentsLoad.state.data[0].intents : [];
+  const intentsLoad = useLoad<[Loose, Loose]>(() => [get("/intents"), get("/issues")], [], { tolerate: ["not_found"] });
+  const ready = intentsLoad.state.status === "ready" ? intentsLoad.state.data : null;
+  const intents: Loose[] = ready?.[0]?.intents ?? [];
+  const issueCount: number = ((ready?.[1]?.issues ?? []) as Loose[]).length;
   const key: string | undefined = route.query.intent && intents.some((i) => i.key === route.query.intent) ? route.query.intent : intents[0]?.key;
-  const subtitle = "Intent → Unit 의존 흐름 · 자리는 units.json 의 dependsOn 에서 계산";
+  const subtitle = "Unit 사이의 앞뒤 순서를 보고, 바꿀 점을 제안합니다.";
   const crumbs = [{ label: "작업" }, { label: "진행", path: "/progress" }, { label: "흐름" }];
 
-  if (intentsLoad.state.status === "loading") return <Page title="진행" sub={subtitle} crumbs={crumbs} tools={<ViewSwitch active="flow" />}><Loading rows={6} /></Page>;
-  if (intentsLoad.state.status === "error") return <Page title="진행" sub={subtitle} crumbs={crumbs}><ErrorBlock error={intentsLoad.state.error} retry={intentsLoad.reload} /></Page>;
-  if (!key) return <Page title="진행" sub={subtitle} crumbs={crumbs} tools={<ViewSwitch active="flow" />}><Empty title="Intent 가 없습니다" text="새 요구사항을 접수하면 Intent 와 Unit 이 생기고 흐름이 그려집니다." actions={<Link href="/intake">새 요구사항</Link>} /></Page>;
+  if (intentsLoad.state.status === "loading") return <Page title="진행 · 흐름" sub={subtitle} crumbs={crumbs}><Loading rows={6} /></Page>;
+  if (intentsLoad.state.status === "error") return <Page title="진행 · 흐름" sub={subtitle} crumbs={crumbs}><ErrorBlock error={intentsLoad.state.error} retry={intentsLoad.reload} /></Page>;
+  if (!key) {
+    return (
+      <Page title="진행 · 흐름" sub={subtitle} crumbs={crumbs}>
+        <Empty
+          title="이 리포에는 흐름으로 볼 Intent 가 없습니다"
+          text={issueCount ? `Intent 없이 이슈 ${issueCount}개로 진행하는 리포입니다. 이슈는 진행 보드에서 봅니다.` : "새 요구사항을 접수해 Intent 와 Unit 이 생기면 여기에 흐름이 그려집니다."}
+          actions={issueCount ? <Button label="진행 보드 보기" variant="primary" size="sm" href="/progress" /> : <Link href="/intake">새 요구사항</Link>}
+        />
+      </Page>
+    );
+  }
   return <FlowBody key={key} intentKey={key} intents={intents} route={route} subtitle={subtitle} crumbs={crumbs} />;
 }
 
@@ -68,12 +82,14 @@ function FlowBody({ intentKey: key, intents, route, subtitle, crumbs }: { intent
   const notify = useNotify();
   const dispatch = useDispatch();
   const readOnly = Boolean(app.session?.readOnly);
-  const { state, reload } = useLoad<[Loose, Loose, Loose, Loose]>(() => [get("/flow", { query: { intent: key } }), get(`/intents/${encodeURIComponent(key)}/burn`, { query: { days: "14" } }), get(`/intents/${encodeURIComponent(key)}`), get("/overview")], [key]);
+  // 변경 제안 폼이 보이는 동안(읽기 전용이 아닐 때)은 새로 읽지 않는다
+  const load = useLoad<[Loose, Loose, Loose, Loose]>(() => [get("/flow", { query: { intent: key } }), get(`/intents/${encodeURIComponent(key)}/burn`, { query: { days: "14" } }), get(`/intents/${encodeURIComponent(key)}`), get("/overview")], [key], { live: readOnly });
+  const { state, reload } = load;
   const [selected, setSelected] = useState<string | null>(route.query.sel ?? null);
 
   const tools = <ViewSwitch active="flow" intent={key} />;
-  if (state.status === "loading") return <Page title="진행" sub={subtitle} crumbs={crumbs} tools={tools}><Loading rows={6} /></Page>;
-  if (state.status === "error") return <Page title="진행" sub={subtitle} crumbs={crumbs} tools={tools}><ErrorBlock error={state.error} retry={reload} /></Page>;
+  if (state.status === "loading") return <Page title="진행 · 흐름" sub={subtitle} crumbs={crumbs} tools={tools}><Loading rows={6} /></Page>;
+  if (state.status === "error") return <Page title="진행 · 흐름" sub={subtitle} crumbs={crumbs} tools={tools} live={load}><ErrorBlock error={state.error} retry={reload} /></Page>;
   const [flow, burn, intent, over] = state.data;
 
   const select = (id: string | null): void => {
@@ -89,9 +105,10 @@ function FlowBody({ intentKey: key, intents, route, subtitle, crumbs }: { intent
 
   return (
     <Page
-      title="진행"
+      title="진행 · 흐름"
       sub={subtitle}
       crumbs={crumbs}
+      live={load}
       tools={
         <>
           <Selector label="Intent 고르기" isLabelHidden size="sm" value={key} onChange={(v) => v && navigate(`/progress?view=flow&intent=${v}`)} options={intents.map((i) => ({ value: i.key as string, label: `${i.key} ${i.title ?? i.name}` }))} />
@@ -103,14 +120,14 @@ function FlowBody({ intentKey: key, intents, route, subtitle, crumbs }: { intent
         <FlowLayout
           left={
             <VStack gap={4}>
-              <Panel title="Unit 의존 흐름" aside={<Muted size="xsm">{`${clock(flow.readAt)}에 읽음`}</Muted>} flush>
+              <Panel title="Unit 흐름" aside={<TermHelp term="unit" />} flush>
                 <div className="hk-flow-canvas">
                   <Suspense fallback={<VStack padding={4}><Loading rows={4} /></VStack>}>
                     <FlowCanvas data={flow} selectedId={selected} labels={LABELS} onSelect={select} />
                   </Suspense>
                 </div>
-                <VStack gap={1} padding={3}>
-                  <Muted size="xsm">{`단계 ${Object.values(STEP_KO).join(" · ")} — 속 찬 마름모 = 지난 단계 · 속 빈 굵은 테두리 = 진행 중 · 옅은 테두리 = 아직 · 실선 = 의존(앞 → 뒤) · 점선 = 계약`}</Muted>
+                <VStack gap={1} paddingBlock={3} paddingInline={2}>
+                  <Muted>{`단계 ${Object.values(STEP_KO).join(" · ")} — 속 찬 마름모는 지난 단계, 속 빈 굵은 테두리는 진행 중, 옅은 테두리는 아직입니다. 실선은 먼저 끝낼 Unit(앞 → 뒤), 점선은 계약입니다.`}</Muted>
                 </VStack>
               </Panel>
               <Collapsible defaultIsOpen={false} trigger={<Text weight="semibold">표로 보기(같은 데이터)</Text>}>
@@ -135,7 +152,7 @@ function FlowBody({ intentKey: key, intents, route, subtitle, crumbs }: { intent
                         return <Text>{sid ? `${STEP_KO[sid] ?? sid}${active ? " 진행 중" : " 지남"}` : "-"}</Text>;
                       },
                     },
-                    { key: "dep", header: "의존", renderCell: (u: Loose) => <Text>{(u.dependsOn as string[]).join(", ") || "-"}</Text> },
+                    { key: "dep", header: "먼저 끝낼 Unit", renderCell: (u: Loose) => <Text>{(u.dependsOn as string[]).join(", ") || "-"}</Text> },
                   ]}
                 />
               </Collapsible>
@@ -146,11 +163,11 @@ function FlowBody({ intentKey: key, intents, route, subtitle, crumbs }: { intent
               <Panel title={intent.title ?? intent.name}>
                 <HStack gap={2} wrap="wrap" align="center">
                   <Key>{intent.key}</Key>
-                  <Tag tone={intent.approvals.intent === "valid" ? "ops" : "gate"} label={`intent ${intent.approvals.intent === "valid" ? "승인됨" : "승인 전"}`} />
+                  <Tag tone={intent.approvals.intent === "valid" ? "ops" : "line"} label={`Intent ${intent.approvals.intent === "valid" ? "승인됨" : "승인 전"}`} />
                   <Tag tone={intent.approvals.plans === "valid" ? "ops" : "line"} label={`기획물 ${intent.approvals.plans === "valid" ? "승인됨" : "승인 전"}`} />
                 </HStack>
                 <Muted>{`Unit ${intent.units.length}${flow.intent?.approved ? ` · ${String(flow.intent.approved.at).slice(0, 10)} ${flow.intent.approved.by} 승인` : ""}`}</Muted>
-                {intent.questions.open ? <Button label={`열린 질문 ${intent.questions.open}`} size="sm" icon={<Ico name="question" />} href={`/intents/${intent.key}/questions`} /> : null}
+                {intent.questions.open ? <Button label={`답할 질문 ${intent.questions.open}`} size="sm" icon={<Ico name="question" />} href={`/intents/${intent.key}/questions`} /> : null}
                 {node ? (
                   <VStack gap={2}>
                     <Text weight="semibold">{`${node.id} ${node.data.title ?? ""}`}</Text>
@@ -171,16 +188,16 @@ function FlowBody({ intentKey: key, intents, route, subtitle, crumbs }: { intent
                     ))}
                   </List>
                 ) : (
-                  <VStack padding={4}><Muted>이 Intent 에 처리할 일이 없습니다.</Muted></VStack>
+                  <VStack paddingBlock={4} paddingInline={2}><Muted>이 Intent 에 처리할 일이 없습니다.</Muted></VStack>
                 )}
               </Panel>
-              <Panel title="남은 일" aside={<Muted size="xsm">{`Bolt ${burn.now.remaining} 남음 · 끝난 Unit ${burn.now.units.done}/${burn.now.units.total}`}</Muted>}>
+              <Panel title="남은 일" aside={<><Muted>{`Bolt ${burn.now.remaining}개 남음 · 끝난 Unit ${burn.now.units.done}/${burn.now.units.total}`}</Muted><TermHelp term="bolt" /></>}>
                 <BurnChart burn={burn} />
               </Panel>
-              <Panel title="의존 순서" flush>
+              <Panel title="시작 순서" flush>
                 <List hasDividers>
                   {planned.map((u) => (
-                    <ListItem key={u.id} label={<HStack gap={2}><Key>{u.id}</Key><Text>{u.title}</Text></HStack>} description={u.dependsOn.length ? `${(u.dependsOn as string[]).join(", ")} 뒤` : "먼저 시작할 수 있습니다"} />
+                    <ListItem key={u.id} label={<HStack gap={2}><Key>{u.id}</Key><Text>{u.title}</Text></HStack>} description={u.dependsOn.length ? `${(u.dependsOn as string[]).join(", ")} 다음에 시작합니다` : "바로 시작할 수 있습니다"} />
                   ))}
                 </List>
               </Panel>
@@ -216,7 +233,7 @@ function BurnChart({ burn }: { burn: Loose }) {
   return (
     <VStack gap={2}>
       <LineChart labels={labels} series={[{ name: "남은 Bolt", kind: "main", values: series.map((s) => s.remaining as number) }, { name: "이상선", kind: "ref", values: ideal }]} step summary={summary} readout={`남은 Bolt ${last.remaining}개 · 전체 ${last.total} · 끝 ${last.done}`} height={150} fmt={(v) => `${v}개`} />
-      {burn.estimated ? <Muted size="xsm">tasks 가 없는 Unit 은 units.json 의 스토리 수로 센 추정 Bolt 다.</Muted> : null}
+      {burn.estimated ? <Muted>작업 목록이 아직 없는 Unit 은 스토리 수로 어림한 값입니다.</Muted> : null}
       <Collapsible defaultIsOpen={false} trigger={<Text size="sm" weight="semibold">표로 보기</Text>}>
         <Table data={series} idKey="date" density="compact" columns={[{ key: "date", header: "날짜", renderCell: (s: Loose) => <Text>{dayLabel(s.date).text}</Text> }, { key: "remaining", header: "남음", align: "end" }, { key: "done", header: "끝/전체", align: "end", renderCell: (s: Loose) => <Text>{`${s.done}/${s.total}`}</Text> }]} />
       </Collapsible>
@@ -240,12 +257,13 @@ function ProposalPanel({ flow, intentKey, planned, selected, readOnly, reload, n
     const r = await post("/units/proposals", { intent: intentKey, baseSha256: flow.unitsSha256, changes: draft });
     if (!r.ok) {
       const e = r.error;
-      const hint = e.code === "cycle" ? "의존이 고리를 만듭니다" : e.code === "conflict" ? "units.json 이 바뀌었습니다. 다시 읽고 제안합니다" : e.code === "contract_merge" ? "계약 Unit 은 합치지 않습니다" : e.code === "unknown_unit" ? "없는 Unit 입니다" : "";
-      setOut({ kind: "err", title: `${e.code}: `, text: `${errorText(e)}${hint ? ` (${hint})` : ""}`, conflict: e.code === "conflict" });
+      const HINT: Record<string, string> = { cycle: "앞뒤 순서가 고리를 만듭니다", conflict: "그사이 Unit 목록이 바뀌었습니다. 다시 읽고 제안합니다", contract_merge: "계약 Unit 은 합치지 않습니다", unknown_unit: "없는 Unit 입니다" };
+      const hint = HINT[e.code] ?? "";
+      setOut({ kind: "err", title: "제안을 저장하지 못했습니다. ", text: `${errorText(e)}${hint ? ` (${hint})` : ""}`, conflict: e.code === "conflict" });
       return;
     }
     notify("변경 제안을 저장했습니다(승인이 아닙니다)");
-    setOut({ kind: "ok", title: "제안을 저장했습니다. ", text: "units.json 은 그대로이고 세션에는 아무것도 보내지 않았습니다. 반영은 intent 게이트 승인 때 합니다. 설계 세션에 알리려면 '세션에 요청'을 누릅니다.", path: r.data.path });
+    setOut({ kind: "ok", title: "제안을 저장했습니다. ", text: "Unit 목록은 그대로이고 세션에는 아무것도 보내지 않았습니다. 반영은 Intent 승인 때 합니다. 설계 세션에 알리려면 '세션에 요청'을 누릅니다.", path: r.data.path });
   }
   async function discard(): Promise<void> {
     const r = await del(`/units/proposals/${encodeURIComponent(intentKey)}`);
@@ -259,15 +277,20 @@ function ProposalPanel({ flow, intentKey, planned, selected, readOnly, reload, n
 
   return (
     <Panel title="변경 제안" aside={flow.proposal ? <Tag tone="build" label="저장된 제안 있음" /> : <Tag label="없음" />}>
-      <Muted>제안은 승인이 아닙니다. units.json 은 바뀌지 않고, intent 게이트 승인 때만 반영됩니다. 팀 흐름 틀(flow.gates)은 여기서 바꾸지 않습니다.</Muted>
+      <Muted>제안은 승인이 아닙니다. Unit 목록은 그대로 두고, Intent 를 승인할 때 반영합니다.</Muted>
       {flow.proposal ? <Notice kind="warn" title={`저장된 제안 ${flow.proposal.changes?.length ?? 0}건 · ${flow.proposal.createdBy ?? ""} · ${clock(flow.proposal.createdAt)}`}>다시 저장하면 바뀝니다.</Notice> : null}
       {readOnly ? (
-        <Notice kind="warn" title="읽기 전용. ">제안을 저장하지 않습니다. 사람이 자기 터미널에서 연 서버나 <code>{`knots-sync units propose ${intentKey} …`}</code> 로 합니다.</Notice>
+        <VStack gap={2}>
+          <ReadOnlyLine text="변경 제안은 자기 터미널에서 연 관리 페이지에서 합니다" />
+          <Details label="터미널에서 제안하기">
+            <Code>{`knots-sync units propose ${intentKey} …`}</Code>
+          </Details>
+        </VStack>
       ) : (
         <VStack gap={3}>
           <Selector label="종류" value={op} onChange={(v) => v && setOp(v)} options={OPS} />
           <Selector label="Unit" value={unit} onChange={(v) => v && setUnit(v)} options={opts} />
-          <Selector label="상대 Unit(의존 · 합치기)" value={other} onChange={(v) => v && setOther(v)} options={opts} />
+          <Selector label="상대 Unit(앞뒤 순서 · 합치기)" value={other} onChange={(v) => v && setOther(v)} options={opts} />
           <TextArea label="나누기 · 순서 입력" value={text} onChange={setText} rows={2} placeholder="나누기: 새 Unit 제목을 한 줄에 하나(2개 이상) · 순서: Unit id 를 쉼표로" />
           <TextInput label="이유" value={reason} onChange={setReason} placeholder="이유 한 줄" />
           <HStack gap={2} wrap="wrap">
@@ -282,7 +305,7 @@ function ProposalPanel({ flow, intentKey, planned, selected, readOnly, reload, n
           draft.map((c, i) => (
             <HStack key={`${describeChange(c)}${i}`} gap={2} align="center" wrap="wrap" role="listitem">
               <Text type="code">{describeChange(c)}</Text>
-              {c.reason ? <Muted size="xsm">{`— ${c.reason}`}</Muted> : null}
+              {c.reason ? <Muted size="sm">{`— ${c.reason}`}</Muted> : null}
               <Button label="빼기" size="sm" variant="ghost" isDisabled={readOnly} onClick={() => setDraft((d) => d.filter((_, k) => k !== i))} />
             </HStack>
           ))
@@ -315,13 +338,15 @@ function GatesDialog({ isOpen, onClose }: { isOpen: boolean; onClose: () => void
         {g ? (
           <>
             <HStack gap={1} wrap="wrap" align="center">
-              <Text>지금 게이트:</Text>
+              <Text>지금 단계:</Text>
               {(g.gates as string[]).map((x) => (
                 <Tag key={x} tone={(g.floor as string[]).includes(x) ? "design" : "line"} label={GATE_KO[x] ?? x} />
               ))}
             </HStack>
-            <Muted>바닥(requirements · design · mr · done)은 줄일 수 없습니다. 팀 설정이라 터미널에서 바꾸고 MR 로 올립니다.</Muted>
-            <CommandBox cmd={g.command} />
+            <Muted>요구사항 · 설계 · 병합 요청 · 완료는 늘 거치는 단계라 뺄 수 없습니다. 단계 구성은 팀 설정이라 터미널에서 바꾸고 병합 요청으로 올립니다.</Muted>
+            <Details label="터미널 명령">
+              <CommandBox cmd={g.command} />
+            </Details>
           </>
         ) : null}
         <HStack justify="end">

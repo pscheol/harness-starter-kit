@@ -24,8 +24,19 @@ function on(home: string, extra: Record<string, unknown> = {}): void {
 }
 
 describe("GET /usage · /usage/now · /history", () => {
-  it("꺼져 있으면 enabled:false 와 켜는 곳만 낸다(~/.claude 를 열지 않는다)", async () => {
+  it("설정이 없으면(기본) 켜져 있다 — 사용자 결정 2026-11-26", async () => {
     const repo = makeRepo();
+    const srv = await serve(repo);
+    const u = await call(srv, "GET", "/api/v1/usage");
+    expect(u.status).toBe(200);
+    expect(u.json.data).toMatchObject({ enabled: true, config: "~/.config/knots-sync/config.json", disable: '{ "history": "off" }' });
+    expect((await call(srv, "GET", "/api/v1/usage/now")).json.data.enabled).toBe(true);
+    expect((await call(srv, "GET", "/api/v1/history")).status).toBe(200);
+  });
+
+  it("\"history\": \"off\" 면 enabled:false 와 다시 켜는 법만 낸다(~/.claude 를 열지 않는다)", async () => {
+    const repo = makeRepo();
+    writeFile(repo.home, ".config/knots-sync/config.json", JSON.stringify({ history: "off" }));
     const srv = await serve(repo);
     const u = await call(srv, "GET", "/api/v1/usage");
     expect(u.status).toBe(200);

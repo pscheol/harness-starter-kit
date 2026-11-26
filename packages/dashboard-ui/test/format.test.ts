@@ -81,6 +81,59 @@ describe("게이트 레일 · 처리할 일 묶음 · 라우트", () => {
     expect(F.parseRoute("/issues/K-1/docs/design").params).toEqual({ key: "K-1", tab: "design" });
     expect(F.parseRoute("/issues/K-1/review").params.tab).toBe("review");
     expect(F.menuOf(F.parseRoute("/progress", "?view=flow"))).toBe("progress");
-    expect(F.menuOf(F.parseRoute("/issues/K-1"))).toBe("docs");
+    expect(F.menuOf(F.parseRoute("/issues/K-1"))).toBe("progress");
+  });
+});
+
+describe("기록 · 사용량 요약(usageSummary)", () => {
+  // 대화 기록 읽기가 꺼진 기본 상태에서 서버(/api/v1/usage)가 실제로 주는 모양
+  const off = { enabled: false, totals: null, daily: [], roles: [], byIssue: [], cache: { average: null, daily: [] }, cost: null };
+
+  it("대화 기록이 꺼져 totals 가 null 이어도 던지지 않고 기록 없음으로 요약한다", () => {
+    const s = F.usageSummary(off);
+    expect(s.summary).toContain("기록이 없습니다");
+    expect(s.cacheSummary).toBe("캐시 읽기 기록이 없습니다");
+    expect(s.cacheVals).toEqual([]);
+  });
+
+  it("켜져 있으면 합계 · 가장 많은 날 · 캐시 비율을 요약한다", () => {
+    const on = {
+      enabled: true,
+      totals: { sum: 3000, requests: 4 },
+      daily: [
+        { date: "2026-11-24", sum: 1000, byRole: {} },
+        { date: "2026-11-25", sum: 2000, byRole: {} },
+      ],
+      cache: { average: 0.5, daily: [{ date: "2026-11-24", ratio: 0.4 }, { date: "2026-11-25", ratio: null }] },
+    };
+    const s = F.usageSummary(on);
+    expect(s.summary).toContain("2일 합 3.0K");
+    expect(s.summary).toContain("2.0K");
+    expect(s.cacheVals).toEqual([40, null]);
+    expect(s.cacheSummary).toContain("평균 50%");
+  });
+});
+
+describe("자동 갱신 표시(freshText) · 간격(liveMs)", () => {
+  const now = new Date("2026-11-26T10:00:30Z").getTime();
+  it("방금 · N초 전 · N분 전에 읽음, 아직 못 읽었으면 그렇게 말한다", () => {
+    expect(F.freshText(null, now)).toBe("아직 읽지 못했습니다");
+    expect(F.freshText(now - 2000, now)).toBe("방금 읽음");
+    expect(F.freshText(now - 12_000, now)).toBe("12초 전에 읽음");
+    expect(F.freshText(now - 3 * 60_000, now)).toBe("3분 전에 읽음");
+  });
+
+  it("live: true 는 5초, 숫자는 그 값, 끄면 null", async () => {
+    const H = await import("../src/lib/hooks");
+    expect([H.liveMs(true), H.liveMs(15_000), H.liveMs(false), H.liveMs(undefined), H.liveMs(0)]).toEqual([5000, 15_000, null, null, null]);
+  });
+});
+
+describe("쉬운 말(용어 풀이)", () => {
+  it("화면에 남는 용어는 한 줄 풀이가 있다", () => {
+    for (const k of ["intent", "bolt", "unit", "gate", "mr", "worktree", "doctor", "harness", "readOnly"]) {
+      expect(F.TERMS[k]?.label, k).toBeTruthy();
+      expect(F.TERMS[k]?.help, k).toMatch(/니다\.?$/);
+    }
   });
 });
